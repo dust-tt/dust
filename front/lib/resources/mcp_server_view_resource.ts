@@ -13,6 +13,7 @@ import {
   internalMCPServerNameToSId,
   remoteMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
+import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type {
   InternalMCPServerNameType,
   MCPServerAvailability,
@@ -23,7 +24,6 @@ import {
   getInternalMCPServerAvailability,
   isValidInternalMCPServerId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { isInternalMCPServerEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/helpers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -552,10 +552,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
       const autoInternalMCPServerIds: string[] = [];
       for (const name of names) {
-        const isEnabled = await isInternalMCPServerEnabledForWorkspace(
-          auth,
-          name
-        );
+        const isEnabled = await isEnabledForWorkspace(auth, name);
         const availability = getAvailabilityOfInternalMCPServerByName(name);
 
         if (isEnabled && availability !== "manual") {

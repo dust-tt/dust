@@ -1,11 +1,16 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
-import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  getInternalMCPServerNameAndWorkspaceId,
+  INTERNAL_MCP_SERVERS,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import { getInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/servers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 
 export const connectToInternalMCPServer = async (
   mcpServerId: string,
@@ -30,4 +35,21 @@ export const connectToInternalMCPServer = async (
   await server.connect(transport);
 
   return server;
+};
+
+export const isEnabledForWorkspace = async (
+  auth: Authenticator,
+  name: InternalMCPServerNameType
+): Promise<boolean> => {
+  const mcpServer = INTERNAL_MCP_SERVERS[name];
+
+  // If the server has a restriction, check if the restrictions are met.
+  if (mcpServer.isRestricted) {
+    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    const plan = auth.getNonNullablePlan();
+    return !mcpServer.isRestricted({ plan, featureFlags });
+  }
+
+  // If the server has no restriction, it is available by default.
+  return true;
 };

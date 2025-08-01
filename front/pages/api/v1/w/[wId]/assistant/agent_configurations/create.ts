@@ -43,7 +43,7 @@ function assistantHandleIsValid(handle: string) {
  * /api/v1/w/{wId}/assistant/agent_configurations/create:
  *   post:
  *     summary: Create agent with default tools
- *     description: Create a new agent configuration with default tools. Only accessible via system API keys and requires agent_management feature flag.
+ *     description: Create a new agent configuration with default tools. Only accessible via system API keys and requires agent_management feature flag. Optionally create a sub-agent with the main agent having a run_agent tool to call it.
  *     tags:
  *       - Agents
  *     parameters:
@@ -79,11 +79,23 @@ function assistantHandleIsValid(handle: string) {
  *               pictureUrl:
  *                 type: string
  *                 description: URL of an image to use as the agent's avatar. Mutually exclusive with emoji.
+ *               subAgentName:
+ *                 type: string
+ *                 description: The name of the sub-agent to create. If subAgentInstructions is provided, this field is required.
+ *               subAgentDescription:
+ *                 type: string
+ *                 description: A brief description of what the sub-agent does. If subAgentInstructions is provided, this field is required.
+ *               subAgentInstructions:
+ *                 type: string
+ *                 description: The prompt/instructions that define the sub-agent's behavior. If provided, subAgentName and subAgentDescription are required.
+ *               subAgentEmoji:
+ *                 type: string
+ *                 description: An emoji character to use as the sub-agent's avatar (e.g., '🤔'). Defaults to '🤖' if not provided.
  *     security:
  *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: Successfully created agent configuration
+ *         description: Successfully created agent configuration(s). If sub-agent parameters were provided, both the sub-agent and main agent are created, with the main agent having a run_agent tool configured to call the sub-agent.
  *         content:
  *           application/json:
  *             schema:
@@ -92,7 +104,7 @@ function assistantHandleIsValid(handle: string) {
  *                 agentConfiguration:
  *                   $ref: '#/components/schemas/LightAgentConfiguration'
  *       400:
- *         description: Bad Request. Invalid parameters or validation failed.
+ *         description: Bad Request. Invalid parameters or validation failed. Common errors include missing required sub-agent fields when subAgentInstructions is provided.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
  *       403:
@@ -114,7 +126,6 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "POST": {
-      // Check if it's a system key
       if (!auth.isSystemKey()) {
         return apiError(req, res, {
           status_code: 403,
@@ -136,7 +147,6 @@ async function handler(
         });
       }
 
-      // Check for agent_management feature flag
       const workspace = auth.getNonNullableWorkspace();
       const flags = await getFeatureFlags(workspace);
       if (!flags.includes("agent_management_tool")) {
@@ -175,7 +185,6 @@ async function handler(
         subAgentEmoji,
       } = bodyValidation.right;
 
-      // Validate that emoji and pictureUrl are mutually exclusive
       if (emoji && pictureUrl) {
         return apiError(req, res, {
           status_code: 400,
@@ -187,7 +196,6 @@ async function handler(
         });
       }
 
-      // Validate sub-agent parameters
       if (subAgentInstructions) {
         if (!subAgentName || subAgentName.trim() === "") {
           return apiError(req, res, {
@@ -243,7 +251,6 @@ async function handler(
         }
       }
 
-      // Get the large whitelisted model for this workspace
       const model = getLargeWhitelistedModel(owner);
       if (!model) {
         return apiError(req, res, {
@@ -256,7 +263,6 @@ async function handler(
         });
       }
 
-      // Build the agent model configuration
       const agentModel = {
         providerId: model.providerId,
         modelId: model.modelId,
@@ -264,14 +270,11 @@ async function handler(
         reasoningEffort: model.defaultReasoningEffort,
       };
 
-      // Build avatar URL
       let finalPictureUrl: string;
 
       if (pictureUrl) {
-        // Use provided picture URL
         finalPictureUrl = pictureUrl;
       } else {
-        // Use emoji (default to 🤖 if neither provided)
         const selectedEmoji = emoji || "🤖";
         const emojiData = buildSelectedEmojiType(selectedEmoji);
 
@@ -292,9 +295,8 @@ async function handler(
 
       let subAgentConfiguration: LightAgentConfigurationType | null = null;
 
-      // Create sub-agent if requested
+      // Create a sub-agent if requested.
       if (subAgentInstructions) {
-        // Validate sub-agent name
         if (!assistantHandleIsValid(subAgentName!)) {
           return apiError(req, res, {
             status_code: 400,
@@ -325,7 +327,6 @@ async function handler(
             "https://dust.tt/static/systemavatar/dust_avatar_full.png";
         }
 
-        // Create the sub-agent
         const subAgentResult =
           await createGenericAgentConfigurationWithDefaultTools(auth, {
             name: subAgentName!,
@@ -348,7 +349,7 @@ async function handler(
         subAgentConfiguration = subAgentResult.value;
       }
 
-      // Create the main agent
+      // Create the main agent.
       const result = await createGenericAgentConfigurationWithDefaultTools(
         auth,
         {

@@ -64,7 +64,9 @@ const createServer = (
       sub_agent_instructions: z
         .string()
         .optional()
-        .describe("The prompt/instructions that define the sub-agent's behavior"),
+        .describe(
+          "The prompt/instructions that define the sub-agent's behavior"
+        ),
       sub_agent_emoji: z
         .string()
         .optional()
@@ -92,7 +94,6 @@ const createServer = (
         return makeMCPToolTextError("User not found");
       }
 
-      // Validate sub-agent parameters
       if (sub_agent_instructions) {
         if (!sub_agent_name || sub_agent_name.trim() === "") {
           return makeMCPToolTextError(
@@ -106,17 +107,13 @@ const createServer = (
         }
       }
 
-      // Clean the agent name before sending to API
-      const cleanedName = name.startsWith("@") ? name.slice(1) : name;
-
-      // Use the public API with system credentials
-      // Pass the user email to exchange system key for user auth
       const prodCredentials = await prodAPICredentialsForOwner(owner);
       const api = new DustAPI(
         apiConfig.getDustAPIConfig(),
         {
           ...prodCredentials,
           extraHeaders: {
+            // Needed to add the user as editor of the agent.
             "x-api-user-email": user.email,
           },
         },
@@ -124,7 +121,7 @@ const createServer = (
       );
 
       const result = await api.createAgentConfigurationWithDefaults({
-        name: cleanedName,
+        name,
         description,
         instructions,
         emoji,
@@ -144,7 +141,7 @@ const createServer = (
       const agentUrl = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/builder/assistants/${agent.sId}`;
 
       return makeMCPToolTextSuccess({
-        message: `Successfully created agent "${cleanedName}" (ID: ${agent.sId}).\n\nThe agent has been created as:\n- Status: Active\n- Scope: Hidden (unpublished, visible to editors only)\n\nView and edit it at: ${agentUrl}`,
+        message: `Successfully created agent "${name}" (ID: ${agent.sId}).\n\nThe agent has been created.\n\nView and edit it at: ${agentUrl}`,
       });
     }
   );
