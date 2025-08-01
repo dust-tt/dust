@@ -20,6 +20,7 @@ import {
 import {
   getChannelById,
   getChannels,
+  joinChannel,
   migrateChannelsFromLegacyBotToNewBot,
   updateSlackChannelInConnectorsDb,
   updateSlackChannelInCoreDb,
@@ -1201,6 +1202,31 @@ export async function deleteChannelsFromConnectorDb(
     },
     "Deleted channels from connectors db while garbage collecting."
   );
+}
+
+export async function attemptChannelJoinActivity(
+  connectorId: ModelId,
+  channelId: string
+) {
+  const res = await joinChannel(connectorId, channelId);
+
+  if (res.isErr()) {
+    throw res.error;
+  }
+
+  const { channel, result } = res.value;
+  if (result === "is_archived") {
+    logger.info(
+      {
+        channel,
+        connectorId,
+      },
+      "Channel is archived, skipping sync."
+    );
+    return false;
+  }
+
+  return true;
 }
 
 export async function migrateChannelsFromLegacyBotToNewBotActivity(
