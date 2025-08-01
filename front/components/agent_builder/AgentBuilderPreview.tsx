@@ -104,6 +104,20 @@ export function AgentBuilderPreview() {
 
     return (
       <div className="flex h-full flex-col">
+        {conversation && (
+          <div className="flex items-center justify-between px-4 py-3">
+            <h2 className="font-semibold text-foreground dark:text-foreground-night">
+              {conversation.title}
+            </h2>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={ArrowPathIcon}
+              onClick={resetConversation}
+              label="Reset conversation"
+            />
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto">
           {conversation && user && (
             <InteractiveContentProvider>
@@ -119,17 +133,6 @@ export function AgentBuilderPreview() {
           )}
         </div>
         <div className="flex-shrink-0 p-4">
-          {conversation && (
-            <div className="mb-2">
-              <Button
-                variant="outline"
-                size="sm"
-                icon={ArrowPathIcon}
-                onClick={resetConversation}
-                label="Reset conversation"
-              />
-            </div>
-          )}
           <AssistantInputBar
             disableButton={isSavingDraftAgent}
             owner={owner}
