@@ -413,6 +413,7 @@ async function getSteps(
                   workspaceId,
                   conversationId,
                   agentMessageId: message.sId,
+                  functionCallId: functionCall.id,
                 },
                 "Unexpected state, agent message step with no action for function call"
               );
