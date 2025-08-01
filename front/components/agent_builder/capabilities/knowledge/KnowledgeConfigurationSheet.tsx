@@ -6,6 +6,7 @@ import {
   ScrollArea,
 } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
+import { BookOpenIcon } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -100,9 +101,8 @@ export function KnowledgeConfigurationSheet({
 
   // Memoize default values based on action (React Hook Form best practice)
   const defaultValues = useMemo(() => {
-    const dataSourceTree = action
-      ? getDataSourceTree(action)
-      : { in: [], notIn: [] };
+    const dataSourceTree =
+      action && open ? getDataSourceTree(action) : { in: [], notIn: [] };
 
     return {
       sources: dataSourceTree,
@@ -110,7 +110,7 @@ export function KnowledgeConfigurationSheet({
       timeFrame: getTimeFrame(action),
       jsonSchema: getJsonSchema(action),
     };
-  }, [action]);
+  }, [action, open]);
 
   const formMethods = useForm<CapabilityFormData>({
     resolver: zodResolver(capabilityFormSchema),
@@ -137,7 +137,11 @@ export function KnowledgeConfigurationSheet({
   return (
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
       <MultiPageSheetTrigger asChild>
-        <Button label="Add knowledge" onClick={handleTriggerClick} />
+        <Button
+          label="Add knowledge"
+          onClick={handleTriggerClick}
+          icon={BookOpenIcon}
+        />
       </MultiPageSheetTrigger>
       <FormProvider {...formMethods}>
         <KnowledgeConfigurationSheetContent
