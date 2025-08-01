@@ -38,8 +38,13 @@ type KeyResolver<Args extends unknown[]> = (...args: Args) => string;
 export function cacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,
-  ttlMs: number,
-  redisUri?: string
+  {
+    ttlMs,
+    redisUri,
+  }: {
+    ttlMs: number;
+    redisUri?: string;
+  }
 ): (...args: Args) => Promise<JsonSerializable<T>> {
   if (ttlMs > 60 * 60 * 24 * 1000) {
     throw new Error("ttlMs should be less than 24 hours");
