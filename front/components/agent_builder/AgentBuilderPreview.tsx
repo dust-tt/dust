@@ -1,4 +1,4 @@
-import { ArrowPathIcon, Button, Spinner } from "@dust-tt/sparkle";
+import { ArrowPathIcon, Button, Spinner, TrashIcon } from "@dust-tt/sparkle";
 import React from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -68,7 +68,7 @@ export function AgentBuilderPreview() {
     setStickyMentions,
   } = useDraftAgent();
 
-  const { conversation, handleSubmit, resetConversation } =
+  const { conversation, setConversation, handleSubmit, resetConversation } =
     useDraftConversation({
       draftAgent,
       getDraftAgent,
@@ -104,6 +104,20 @@ export function AgentBuilderPreview() {
 
     return (
       <div className="flex h-full flex-col">
+        {conversation && (
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <h3 className="text-sm font-medium text-foreground">
+              {conversation.title || `Trying @${draftAgent?.name || "your agent"}`}
+            </h3>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={ArrowPathIcon}
+              onClick={resetConversation}
+              label="Reset conversation"
+            />
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto">
           {conversation && user && (
             <InteractiveContentProvider>
@@ -119,17 +133,6 @@ export function AgentBuilderPreview() {
           )}
         </div>
         <div className="flex-shrink-0 p-4">
-          {conversation && (
-            <div className="mb-2">
-              <Button
-                variant="outline"
-                size="sm"
-                icon={ArrowPathIcon}
-                onClick={resetConversation}
-                label="Reset conversation"
-              />
-            </div>
-          )}
           <AssistantInputBar
             disableButton={isSavingDraftAgent}
             owner={owner}

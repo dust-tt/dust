@@ -90,9 +90,7 @@ export default function AssistantBuilderRightPanel({
     });
 
   const { user } = useUser();
-  const {
-    conversation,
-    stickyMentions,
+  const { conversation, setConversation, stickyMentions,
     setStickyMentions,
     handleSubmit,
     resetConversation,
@@ -218,23 +216,12 @@ export default function AssistantBuilderRightPanel({
               <ConversationsNavigationProvider>
                 <ActionValidationProvider owner={owner}>
                   <GenerationContextProvider>
-                    <div className="flex-grow overflow-y-auto">
+                    <div className="flex h-full flex-col">
                       {conversation && (
-                        <InteractiveContentProvider>
-                          <ConversationViewer
-                            owner={owner}
-                            user={user}
-                            conversationId={conversation.sId}
-                            onStickyMentionsChange={setStickyMentions}
-                            isInModal
-                            key={conversation.sId}
-                          />
-                        </InteractiveContentProvider>
-                      )}
-                    </div>
-                    <div className="shrink-0">
-                      {conversation && (
-                        <div className="mb-2 px-4">
+                        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                          <h3 className="text-sm font-medium text-foreground">
+                            {conversation.title || `Trying @${draftAssistant?.name || "your assistant"}`}
+                          </h3>
                           <Button
                             variant="outline"
                             size="sm"
@@ -244,19 +231,35 @@ export default function AssistantBuilderRightPanel({
                           />
                         </div>
                       )}
-                      <AssistantInputBar
-                        disableButton={isSavingDraftAgent}
-                        owner={owner}
-                        onSubmit={handleSubmit}
-                        stickyMentions={stickyMentions}
-                        conversationId={conversation?.sId || null}
-                        additionalAgentConfiguration={
-                          draftAssistant ?? undefined
-                        }
-                        actions={["attachment"]}
-                        disableAutoFocus
-                        isFloating={false}
-                      />
+                      <div className="flex-grow overflow-y-auto">
+                        {conversation && (
+                          <InteractiveContentProvider>
+                            <ConversationViewer
+                              owner={owner}
+                              user={user}
+                              conversationId={conversation.sId}
+                              onStickyMentionsChange={setStickyMentions}
+                              isInModal
+                              key={conversation.sId}
+                            />
+                          </InteractiveContentProvider>
+                        )}
+                      </div>
+                      <div className="shrink-0">
+                        <AssistantInputBar
+                          disableButton={isSavingDraftAgent}
+                          owner={owner}
+                          onSubmit={handleSubmit}
+                          stickyMentions={stickyMentions}
+                          conversationId={conversation?.sId || null}
+                          additionalAgentConfiguration={
+                            draftAssistant ?? undefined
+                          }
+                          actions={["attachment"]}
+                          disableAutoFocus
+                          isFloating={false}
+                        />
+                      </div>
                     </div>
                   </GenerationContextProvider>
                 </ActionValidationProvider>
