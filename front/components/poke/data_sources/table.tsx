@@ -27,9 +27,7 @@ export function DataSourceDataTable({ owner }: DataSourceDataTableProps) {
     >
       {(data, mutate) => (
         <PokeDataTable
-          columns={makeColumnsForDataSources(owner, async () => {
-            await mutate();
-          })}
+          columns={makeColumnsForDataSources(owner)}
           data={prepareDataSourceForDisplay(data)}
         />
       )}
