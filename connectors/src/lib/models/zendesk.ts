@@ -53,6 +53,9 @@ export class ZendeskConfigurationModel extends ConnectorBaseModel<ZendeskConfigu
 
   declare organizationTagsToInclude: string[] | null;
   declare organizationTagsToExclude: string[] | null;
+
+  declare ticketTagsToInclude: string[] | null;
+  declare ticketTagsToExclude: string[] | null;
 }
 
 ZendeskConfigurationModel.init(
@@ -91,6 +94,14 @@ ZendeskConfigurationModel.init(
       allowNull: true,
     },
     organizationTagsToExclude: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    ticketTagsToInclude: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    ticketTagsToExclude: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },

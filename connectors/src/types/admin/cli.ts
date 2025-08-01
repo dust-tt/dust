@@ -687,6 +687,8 @@ export const ZendeskCommandSchema = t.type({
     t.literal("set-retention-period"),
     t.literal("add-organization-tag"),
     t.literal("remove-organization-tag"),
+    t.literal("add-ticket-tag"),
+    t.literal("remove-ticket-tag"),
   ]),
   args: t.type({
     wId: t.union([t.string, t.undefined]),
