@@ -158,7 +158,7 @@ export function ToolsList({
                         {tool.description}
                       </p>
                     )}
-                    {serverType === "remote" && (
+                    {serverType === "remote" && toolEnabled && (
                       <>
                         <Card variant="primary" className="flex-col">
                           <div className="heading-sm text-muted-foreground dark:text-muted-foreground-night">
