@@ -120,7 +120,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
       case "agent_message":
         return (
-          <div key={`message-id-${sId}`} ref={ref}>
+          <div key={`message-id-${sId}`} ref={ref} className="mt-6 md:mt-10">
             <AgentMessage
               conversationId={conversationId}
               isLastMessage={isLastMessage}
