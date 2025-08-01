@@ -5,10 +5,10 @@ const showReactScan =
 
 const CONTENT_SECURITY_POLICIES = [
   "default-src 'none';",
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval' dust.tt *.dust.tt *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.usercentrics.eu *.cr-relay.com *.licdn.com *.datadoghq-browser-agent.com *.doubleclick.net ${showReactScan ? "unpkg.com" : ""};`,
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://dust.tt https://*.dust.tt *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.usercentrics.eu *.cr-relay.com *.licdn.com *.datadoghq-browser-agent.com *.doubleclick.net *.hsadspixel.net ${showReactScan ? "unpkg.com" : ""};`,
   `style-src 'self' 'unsafe-inline' *.fontawesome.com *.googleapis.com;`,
   `img-src 'self' data: https:;`,
-  `connect-src 'self' blob: browser-intake-datadoghq.eu *.google-analytics.com *.googlesyndication.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.cr-relay.com *.usercentrics.eu *.ads.linkedin.com px.ads.linkedin.com *.google.com;`,
+  `connect-src 'self' blob: https://dust.tt https://*.dust.tt browser-intake-datadoghq.eu *.google-analytics.com *.googlesyndication.com *.googleadservices.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.cr-relay.com *.usercentrics.eu *.ads.linkedin.com px.ads.linkedin.com google.com *.google.com;`,
   `frame-src 'self' *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net *.googletagmanager.com *.doubleclick.net;`,
   `font-src 'self' data: dust.tt *.dust.tt *.gstatic.com;`,
   `media-src 'self' data:;`,
