@@ -137,9 +137,9 @@ export async function getRunAgentData(
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: agentMessage.configuration.sId,
     // We do define agentMessage.configuration.version for global agent, ignoring this value here.
-    agentVersion: !isGlobalAgentId(agentMessage.configuration.sId)
-      ? agentMessage.configuration.version
-      : undefined,
+    agentVersion: isGlobalAgentId(agentMessage.configuration.sId)
+      ? undefined
+      : agentMessage.configuration.version,
     variant: "full",
   });
   if (!agentConfiguration) {
