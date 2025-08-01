@@ -21,6 +21,9 @@ export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServ
   declare internalMCPServerId: string | null;
   declare remoteMCPServerId: ForeignKey<RemoteMCPServerModel["id"]> | null;
 
+  // Can be null if the user did not set a custom name.
+  //declare name: string | null;
+
   declare vaultId: ForeignKey<SpaceModel["id"]>;
 
   declare editedByUser: NonAttribute<UserModel>;

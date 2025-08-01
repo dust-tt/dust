@@ -865,6 +865,7 @@ const getOptimisticDataForCreate = (
             {
               id: -1, // The ID is not known at optimistic data creation time.
               sId: "global",
+              name: null,
               createdAt: Date.now(),
               updatedAt: Date.now(),
               serverType: "internal" as const,
