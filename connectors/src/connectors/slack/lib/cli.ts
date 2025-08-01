@@ -1,5 +1,6 @@
 import {
   getChannelById,
+  joinChannel,
   updateSlackChannelInConnectorsDb,
 } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
@@ -448,6 +449,13 @@ export const slack = async ({
       if (!remoteChannel.name) {
         throw new Error(
           `Could not find channel name for channel ${args.channelId}`
+        );
+      }
+
+      const joinRes = await joinChannel(connector.id, args.channelId);
+      if (joinRes.isErr()) {
+        throw new Error(
+          `Could not join channel ${args.channelId}: ${joinRes.error}`
         );
       }
 

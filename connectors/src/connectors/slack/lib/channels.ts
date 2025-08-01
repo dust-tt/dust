@@ -364,8 +364,7 @@ export async function getChannelsToSync(
   connectorId: number
 ) {
   const [remoteChannels, localChannels] = await Promise.all([
-    // Fetch all the channels, not just the joined ones. The state in DB is the source of truth.
-    getChannels(slackClient, connectorId, false /* joinedOnly */),
+    getChannels(slackClient, connectorId, true),
     SlackChannel.findAll({
       where: {
         connectorId,
@@ -458,39 +457,6 @@ export async function migrateChannelsFromLegacyBotToNewBot(
       },
       "Migrating channel"
     );
-
-    // Surround with try/catch as the new scope might not always be available.
-    try {
-      // Leave the channel but keep it in the database as it's still use to be indexed.
-      const channelId = channel.id;
-
-      const res = await withSlackErrorHandling(() =>
-        slackClient.conversations.leave({
-          channel: channelId,
-        })
-      );
-
-      if (res.ok) {
-        childLogger.info(
-          {
-            channelId: channel.id,
-          },
-          "Left channel"
-        );
-      }
-
-      if (res.error) {
-        childLogger.error(
-          { error: res.error, channelId: channel.id },
-          "Could not leave channel"
-        );
-      }
-    } catch (error) {
-      childLogger.error(
-        { error, channelId: channel.id },
-        "Could not leave channel"
-      );
-    }
 
     // Join the new bot to the channel.
     const joinRes = await joinChannel(slackBotConnector.id, channel.id);
