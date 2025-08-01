@@ -1,8 +1,11 @@
-import { UpdateMCPToolSettingsBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-import { CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
+import {
+  CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS,
+  MCP_TOOL_STAKE_LEVELS,
+} from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -16,6 +19,22 @@ import { assertNever } from "@app/types";
 export type PatchMCPServerToolsPermissionsResponseBody = {
   success: boolean;
 };
+
+const UpdateMCPToolSettingsBodySchema = z
+  .object({
+    permission: z.enum(MCP_TOOL_STAKE_LEVELS).optional(),
+    enabled: z.boolean().optional(),
+  })
+  .refine(
+    (data) => data.permission !== undefined || data.enabled !== undefined,
+    {
+      message: "At least one of 'permission' or 'enabled' must be provided.",
+    }
+  );
+
+export type UpdateMCPToolSettingsBodyType = z.infer<
+  typeof UpdateMCPToolSettingsBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,

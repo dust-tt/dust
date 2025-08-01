@@ -2687,19 +2687,3 @@ export interface GetSpaceMembersResponseBody {
 export interface GetWorkspaceMembersResponseBody {
   users: Pick<UserType, "sId" | "id" | "email">[];
 }
-
-export const UpdateMCPToolSettingsBodySchema = z
-  .object({
-    permission: z.enum(MCP_TOOL_STAKE_LEVELS).optional(),
-    enabled: z.boolean().optional(),
-  })
-  .refine(
-    (data) => data.permission !== undefined || data.enabled !== undefined,
-    {
-      message: "At least one of 'permission' or 'enabled' must be provided.",
-    }
-  );
-
-export type UpdateMCPToolSettingsBodyType = z.infer<
-  typeof UpdateMCPToolSettingsBodySchema
->;

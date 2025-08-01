@@ -1,4 +1,3 @@
-import type { UpdateMCPToolSettingsBodyType } from "@dust-tt/client";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -28,7 +27,10 @@ import type {
 } from "@app/pages/api/w/[wId]/mcp/[serverId]";
 import type { SyncMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/sync";
 import type { GetMCPServerToolsSettingsResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/tools";
-import type { PatchMCPServerToolsPermissionsResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/tools/[toolName]";
+import type {
+  PatchMCPServerToolsPermissionsResponseBody,
+  UpdateMCPToolSettingsBodyType,
+} from "@app/pages/api/w/[wId]/mcp/[serverId]/tools/[toolName]";
 import type {
   GetConnectionsResponseBody,
   PostConnectionResponseBody,
