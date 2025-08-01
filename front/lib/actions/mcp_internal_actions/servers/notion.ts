@@ -35,7 +35,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   description: "Notion tools to manage pages and databases.",
   authorization: {
     provider: "notion" as const,
-    supported_use_cases: ["platform_actions"] as const,
+    supported_use_cases: ["platform_actions", "personal_actions"] as const,
   },
   icon: "NotionLogo",
   documentationUrl: null,
