@@ -21,8 +21,9 @@ export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServ
   declare internalMCPServerId: string | null;
   declare remoteMCPServerId: ForeignKey<RemoteMCPServerModel["id"]> | null;
 
-  // Can be null if the user did not set a custom name.
-  //declare name: string | null;
+  // Can be null if the user did not set a custom name or description.
+  declare name: string | null;
+  declare description: string | null;
 
   declare vaultId: ForeignKey<SpaceModel["id"]>;
 
@@ -53,6 +54,14 @@ MCPServerViewModel.init(
       validate: {
         isIn: [["internal", "remote"]],
       },
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    description: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     internalMCPServerId: {
       type: DataTypes.STRING,
@@ -92,6 +101,14 @@ MCPServerViewModel.init(
         },
         unique: true,
         name: "mcp_server_views_workspace_remote_mcp_server_vault_active",
+      },
+      {
+        fields: ["workspaceId", "name", "vaultId"],
+        where: {
+          deletedAt: null,
+        },
+        unique: true,
+        name: "mcp_server_views_workspace_name_vault_active",
       },
       {
         fields: ["workspaceId", "internalMCPServerId", "vaultId"],
