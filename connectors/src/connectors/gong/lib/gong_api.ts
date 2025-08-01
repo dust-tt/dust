@@ -283,12 +283,14 @@ export class GongClient {
       return {
         transcripts: transcripts.callTranscripts,
         nextPageCursor: transcripts.records.cursor ?? null,
+        totalRecords: transcripts.records.totalRecords,
       };
     } catch (err) {
       if (isNotFoundError(err)) {
         return {
           transcripts: [],
           nextPageCursor: null,
+          totalRecords: 0,
         };
       }
       throw err;
@@ -307,12 +309,14 @@ export class GongClient {
       return {
         users: users.users,
         nextPageCursor: users.records.cursor,
+        totalRecords: users.records.totalRecords,
       };
     } catch (err) {
       if (isNotFoundError(err)) {
         return {
           users: [],
           nextPageCursor: null,
+          totalRecords: 0,
         };
       }
 
