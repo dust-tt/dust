@@ -3,19 +3,19 @@ import type { McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { Logger } from "pino";
 
 import { generatePlainTextFile } from "@app/lib/actions/action_file_helpers";
+import {
+  computeTextByteSize,
+  MAX_RESOURCE_CONTENT_SIZE,
+  MAX_TEXT_CONTENT_SIZE,
+  MAXED_OUTPUT_FILE_SNIPPET_LENGTH,
+} from "@app/lib/actions/action_output_limits";
 import type {
   MCPActionType,
   MCPApproveExecutionEvent,
   MCPToolConfigurationType,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
-import {
-  computeTextByteSize,
-  MAX_RESOURCE_CONTENT_SIZE,
-  MAX_TEXT_CONTENT_SIZE,
-  MAXED_OUTPUT_FILE_SNIPPET_LENGTH,
-  tryCallMCPTool,
-} from "@app/lib/actions/mcp_actions";
+import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import type { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import { augmentInputsWithConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import {
