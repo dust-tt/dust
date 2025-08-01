@@ -1,5 +1,5 @@
-use crate::error;
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions};
+use crate::{error, warn};
 use anyhow::{anyhow, Result};
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
@@ -195,6 +195,7 @@ pub async fn handle_streaming_response(
     let mut final_response: Option<StreamChatResponse> = None;
     let mut request_id: Option<String> = None;
     let mut tokens_sent = false;
+    let mut last_delta_index: Option<u64> = None;
 
     let mut send_event = |event: Value| {
         tokens_sent = true;
@@ -235,6 +236,9 @@ pub async fn handle_streaming_response(
                                             event.data
                                         )
                                     })?;
+
+                                // Reset delta index tracking on block start
+                                last_delta_index = None;
 
                                 match final_response.as_mut() {
                                     None => {
@@ -303,6 +307,17 @@ pub async fn handle_streaming_response(
                                             event.data
                                         )
                                     })?;
+
+                                // Check for non-increasing delta index
+                                if let Some(last_index) = last_delta_index {
+                                    if event.index <= last_index {
+                                        warn!(
+                                            "Received delta with non-increasing index: current={}, last={}, request_id={:?}",
+                                            event.index, last_index, request_id
+                                        );
+                                    }
+                                }
+                                last_delta_index = Some(event.index);
 
                                 match final_response.as_mut() {
                                     None => {
@@ -390,6 +405,9 @@ pub async fn handle_streaming_response(
                                             event.data
                                         )
                                     })?;
+
+                                // Reset delta index tracking on block end
+                                last_delta_index = None;
 
                                 match final_response.as_mut() {
                                     None => {
