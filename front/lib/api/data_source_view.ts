@@ -3,7 +3,10 @@ import {
   FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
   getContentNodeFromCoreNode,
 } from "@app/lib/api/content_nodes";
-import type { CursorPaginationParams } from "@app/lib/api/pagination";
+import type {
+  CursorPaginationParams,
+  SortingParams,
+} from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -27,7 +30,7 @@ interface GetContentNodesForDataSourceViewParams {
   parentId?: string;
   pagination?: CursorPaginationParams;
   viewType: ContentNodesViewType;
-  sorting?: { id: string; order: "asc" | "desc" }[];
+  sorting?: SortingParams;
 }
 
 interface GetContentNodesForDataSourceViewResult {
@@ -173,8 +176,8 @@ export async function getContentNodesForDataSourceView(
 
   // Convert sorting parameter to CoreAPI format
   const coreAPISorting = sorting?.map((sort) => ({
-    field: sort.id === "lastUpdatedAt" ? "timestamp" : sort.id,
-    direction: sort.order,
+    field: sort.field === "lastUpdatedAt" ? "timestamp" : sort.field,
+    direction: sort.direction,
   }));
 
   let resultNodes: CoreAPIContentNode[] = [];

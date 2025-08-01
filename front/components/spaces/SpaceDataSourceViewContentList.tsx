@@ -324,8 +324,8 @@ export const SpaceDataSourceViewContentList = ({
 
   // Convert DataTable sorting format to our API format
   const apiSorting = sorting.map((sort) => ({
-    id: sort.id,
-    order: sort.desc ? ("desc" as const) : ("asc" as const),
+    field: sort.id,
+    direction: sort.desc ? ("desc" as const) : ("asc" as const),
   }));
 
   const {
