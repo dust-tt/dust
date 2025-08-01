@@ -191,25 +191,19 @@ function KnowledgeConfigurationSheetContent({
     useState<ConfigurationSheetPageId>(initialPageId);
 
   useEffect(() => {
-    if (action) {
-      if (isSupportedAgentBuilderAction(action)) {
-        setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION);
-        const serverName = ACTION_TYPE_TO_MCP_SERVER_MAP[action.type];
-        setSelectedMCPServerName(serverName);
-        if (serverName && isKnowledgeServerName(serverName)) {
-          setConfig(CAPABILITY_CONFIGS[serverName]);
-        }
+    if (action && isSupportedAgentBuilderAction(action)) {
+      setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION);
+      const serverName = ACTION_TYPE_TO_MCP_SERVER_MAP[action.type];
+      setSelectedMCPServerName(serverName);
+      if (serverName && isKnowledgeServerName(serverName)) {
+        setConfig(CAPABILITY_CONFIGS[serverName]);
       }
-    }
-  }, [action, setConfig]);
-
-  useEffect(() => {
-    if (!isOpen && !action) {
+    } else if (!isOpen && !action) {
       setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
       setSelectedMCPServerName("search");
       setConfig(CAPABILITY_CONFIGS["search"]);
     }
-  }, [isOpen, action, setConfig]);
+  }, [action, isOpen, setConfig]);
 
   const [selectedMCPServerName, setSelectedMCPServerName] = useState<
     string | null
