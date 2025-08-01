@@ -653,46 +653,57 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     // Mark all content fragments that reference this data source view as expired.
     await this.expireContentFragments(auth, transaction);
 
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
     const agentDataSourceConfigurations =
       await AgentDataSourceConfiguration.findAll({
         where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
           dataSourceViewId: this.id,
+          workspaceId,
         },
       });
+
+    const agentTablesQueryConfigurations =
+      await AgentTablesQueryConfigurationTable.findAll({
+        where: {
+          dataSourceViewId: this.id,
+          workspaceId,
+        },
+      });
+
+    const mcpServerConfigurationIds = removeNulls(
+      [...agentDataSourceConfigurations, ...agentTablesQueryConfigurations].map(
+        (a) => a.mcpServerConfigurationId
+      )
+    );
 
     // Delete associated MCP server configurations.
-    if (agentDataSourceConfigurations.length > 0) {
+    if (mcpServerConfigurationIds.length > 0) {
       await AgentMCPServerConfiguration.destroy({
         where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
           id: {
-            [Op.in]: removeNulls(
-              agentDataSourceConfigurations.map(
-                (a) => a.mcpServerConfigurationId
-              )
-            ),
+            [Op.in]: mcpServerConfigurationIds,
           },
-        },
-        transaction,
-      });
-
-      await AgentDataSourceConfiguration.destroy({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          id: {
-            [Op.in]: agentDataSourceConfigurations.map((a) => a.id),
-          },
+          workspaceId,
         },
         transaction,
       });
     }
 
+    await AgentDataSourceConfiguration.destroy({
+      where: {
+        dataSourceViewId: this.id,
+        workspaceId,
+      },
+      transaction,
+    });
+
     await AgentTablesQueryConfigurationTable.destroy({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceViewId: this.id,
+        workspaceId,
       },
+      transaction,
     });
 
     const deletedCount = await DataSourceViewModel.destroy({
