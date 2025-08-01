@@ -683,6 +683,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       id: this.id,
       sId: this.sId,
       name: null,
+      description: null,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,

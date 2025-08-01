@@ -65,6 +65,7 @@ export interface MCPServerViewType {
   id: ModelId;
   sId: string;
   name: string | null; // Can be null if the user did not set a custom name.
+  description: string | null; // Can be null if the user did not set a custom description.
   createdAt: number;
   updatedAt: number;
   spaceId: string;
