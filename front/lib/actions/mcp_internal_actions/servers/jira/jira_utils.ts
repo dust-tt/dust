@@ -36,9 +36,19 @@ export function createJQLFromSearchFilters(filters: SearchFilter[]): string {
       jqlField = fieldMapping.jqlField;
     }
     
-    // Use fuzzy search if requested and supported for the field
-    const useFuzzy = filter.fuzzy && "supportsFuzzy" in fieldMapping;
-    const operator = useFuzzy ? "~" : "=";
+    // Determine the operator to use
+    let operator: string;
+    if (filter.operator && fieldMapping && "supportsOperators" in fieldMapping && fieldMapping.supportsOperators) {
+      // Use the provided operator for fields that support it (like dueDate)
+      operator = filter.operator;
+    } else if (filter.fuzzy && "supportsFuzzy" in fieldMapping) {
+      // Use fuzzy search if requested and supported for the field
+      operator = "~";
+    } else {
+      // Default to exact match
+      operator = "=";
+    }
+    
     return `${jqlField} ${operator} ${escapeJQLValue(filter.value)}`;
   });
 

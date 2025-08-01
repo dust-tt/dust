@@ -23,6 +23,7 @@ import {
   JiraCreateIssueLinkRequestSchema,
   JiraCreateIssueRequestSchema,
   SEARCH_FILTER_FIELDS,
+  SUPPORTED_OPERATORS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
   makeMCPToolJSONSuccess,
@@ -44,7 +45,23 @@ const serverInfo: InternalMCPServerDefinitionType = {
 };
 
 const createServer = (): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = new McpServer(serverInfo, {
+    instructions: `
+      You have access to the following tools: get_issue, get_projects, get_project, get_transitions, create_comment, get_issues, get_issue_types, get_issue_fields, get_connection_info, transition_issue, create_issue, update_issue, create_issue_link, delete_issue_link, get_issue_link_types.
+
+      # General Workflow for JIRA Data:
+      1.  **List Objects:** When using custom fields, always use \`get_issue_fields\` to find the field name.
+      2.  **Describe Object:** Use \`get_issue_types\` and \`get_issue_fields\` with the specific issue typename to get its detailed metadata. This will show you all available fields, their exact names, data types, and information about relationships (child relationships are particularly important for subqueries).
+      3.  **Execute Read Query:** Use \`get_issues\` to retrieve data using JQL. Construct your JQL queries based on the information obtained from \`get_issue_types\` to ensure you are using correct field and relationship names.
+
+      # execute_read_query
+      You can use it to execute SOQL read queries on JIRA. Queries can be used to retrieve or discover data, never to write data.
+
+      **Best Practices for Querying:**
+      1.  **Discover Object Structure First:** ALWAYS use \`get_issue_fields\` to understand an object's fields and relationships before writing complex queries. Alternatively, for a quick field list directly in a query, use \`get_issues\` .
+      2.  **Verify Field and Relationship Names:** If you encounter JIRA 400 errors suggesting that the field or relationship does not exist, use \`get_issue_types\` for the relevant object(s) to confirm the exact names and their availability.
+    `,
+  });
 
   server.tool(
     "get_issue",
@@ -219,7 +236,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_issues",
-    "Search issues using one or more filters (e.g., status, priority, labels, assignee, customField). Use exact matching by default, or fuzzy matching for approximate/partial matches on summary field. For custom fields, use field 'customField' with customFieldName parameter (e.g., customFieldName: 'Story Points', value: '5').",
+    "Search issues using one or more filters (e.g., status, priority, labels, assignee, customField, dueDate, created, resolved). Use exact matching by default, or fuzzy matching for approximate/partial matches on summary field. For custom fields, use field 'customField' with customFieldName parameter. For date fields (dueDate, created, resolved), use operator parameter with '<', '>', '=', etc. and date format '2023-07-03' or relative '-25d', '7d', '2w', '1M', etc. When referring to the user, use the get_connection_info tool. When referring to unknown fields, use the get_issue_fields or get_issue_types tool to discover the field names.",
     {
       filters: z
         .array(
@@ -243,6 +260,12 @@ const createServer = (): McpServer => {
               .optional()
               .describe(
                 "Required when field is 'customField'. The name of the custom field to search (e.g., 'Story Points', 'Epic Link')."
+              ),
+            operator: z
+              .enum(SUPPORTED_OPERATORS)
+              .optional()
+              .describe(
+                `Operator for comparison. Supported operators: ${SUPPORTED_OPERATORS.join(", ")}. Only supported for date fields like 'dueDate', 'created', 'resolved'. For dates, use format '2023-07-03' or relative format like '-25d', '7d', '2w', '1M', etc.`
               ),
           })
         )
@@ -318,7 +341,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_issue_fields",
-    "Retrieves available fields for creating issues in a JIRA project for a specific issue type.",
+    "Retrieves available fields for creating issues in a JIRA project for a specific issue type. Use get_issue_types to get the issue type ID.",
     {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
       issueTypeId: z
@@ -357,7 +380,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_connection_info",
-    "Gets comprehensive connection information including user details, cloud ID, and site URL for the currently authenticated JIRA instance.",
+    "Gets comprehensive connection information including user details, cloud ID, and site URL for the currently authenticated JIRA instance. This tool is used when the user is referring about themselves",
     {},
     async (_, { authInfo }) => {
       const accessToken = authInfo?.token;

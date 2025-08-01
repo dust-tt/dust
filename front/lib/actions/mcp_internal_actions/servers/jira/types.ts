@@ -3,15 +3,20 @@ import { z } from "zod";
 // Search filter constants and types
 export const SEARCH_MAX_RESULTS = 20;
 
+export const SUPPORTED_OPERATORS = ["=", "<", ">", "<=", ">="] as const;
+export type SupportedOperator = (typeof SUPPORTED_OPERATORS)[number];
+
 export const FIELD_MAPPINGS = {
   assignee: { jqlField: "assignee" },
-  dueDate: { jqlField: "dueDate" },
+  created: { jqlField: "created", supportsOperators: true },
+  dueDate: { jqlField: "dueDate", supportsOperators: true },
   issueType: { jqlField: "issueType" },
   labels: { jqlField: "labels" },
   priority: { jqlField: "priority" },
   parentIssueKey: { jqlField: "parent" },
   project: { jqlField: "project" },
   reporter: { jqlField: "reporter" },
+  resolved: { jqlField: "resolved", supportsOperators: true },
   status: { jqlField: "status" },
   summary: { jqlField: "summary", supportsFuzzy: true },
   customField: {
@@ -32,6 +37,7 @@ export interface SearchFilter {
   value: string;
   fuzzy?: boolean;
   customFieldName?: string;
+  operator?: SupportedOperator;
 }
 
 // Jira entity schemas - shared field definitions
