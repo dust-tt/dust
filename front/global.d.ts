@@ -22,10 +22,11 @@ declare global {
     gtag: (command: string, action: string, params: object) => void;
     dataLayer?: DataLayer[];
     signals?: Signals;
-    DD_RUM?: {
+    DD_RUM: {
       clearUser: () => void;
+      onReady: (callback: () => void) => void;
       setUser: (user: { id: string; name?: string; email?: string }) => void;
-      setGlobalContext: ({ [string]: string }) => void;
+      setGlobalContext: (context: { [key: string]: string }) => void;
     };
   }
 }
