@@ -107,9 +107,7 @@ const createServer = (
       content: [
         {
           type: "text",
-          text: memory
-            .map((entry, i) => `[${i}] ${entry.content}`)
-            .join("\n---\n"),
+          text: memory.map((entry, i) => `[${i}] ${entry.content}`).join("\n"),
         },
       ],
     };
