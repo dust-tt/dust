@@ -8,8 +8,12 @@ import {
 import { Button } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
-import type { Control } from "react-hook-form";
-import { createFormControl, useWatch } from "react-hook-form";
+import {
+  FormProvider,
+  useForm,
+  useFormContext,
+  useWatch,
+} from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -94,24 +98,29 @@ export function KnowledgeConfigurationSheet({
     }
   };
 
-  const { control, handleSubmit } = useMemo(() => {
+  // Memoize default values based on action (React Hook Form best practice)
+  const defaultValues = useMemo(() => {
     const dataSourceTree = action
       ? getDataSourceTree(action)
-      : {
-          in: [],
-          notIn: [],
-        };
+      : { in: [], notIn: [] };
 
-    return createFormControl<CapabilityFormData>({
-      resolver: zodResolver(capabilityFormSchema),
-      defaultValues: {
-        sources: dataSourceTree,
-        description: action?.description ?? "",
-        timeFrame: getTimeFrame(action),
-        jsonSchema: getJsonSchema(action),
-      },
-    });
+    return {
+      sources: dataSourceTree,
+      description: action?.description ?? "",
+      timeFrame: getTimeFrame(action),
+      jsonSchema: getJsonSchema(action),
+    };
   }, [action]);
+
+  const formMethods = useForm<CapabilityFormData>({
+    resolver: zodResolver(capabilityFormSchema),
+    defaultValues,
+  });
+
+  // Reset form when action changes (recommended pattern for dynamic data)
+  useEffect(() => {
+    formMethods.reset(defaultValues);
+  }, [defaultValues, formMethods]);
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
@@ -130,15 +139,15 @@ export function KnowledgeConfigurationSheet({
       <MultiPageSheetTrigger asChild>
         <Button label="Add knowledge" onClick={handleTriggerClick} />
       </MultiPageSheetTrigger>
-      <KnowledgeConfigurationSheetContent
-        config={config}
-        setConfig={setConfig}
-        action={action}
-        onSave={handleSave}
-        control={control}
-        handleSubmit={handleSubmit}
-        isOpen={open}
-      />
+      <FormProvider {...formMethods}>
+        <KnowledgeConfigurationSheetContent
+          config={config}
+          setConfig={setConfig}
+          action={action}
+          onSave={handleSave}
+          isOpen={open}
+        />
+      </FormProvider>
     </MultiPageSheet>
   );
 }
@@ -152,10 +161,6 @@ interface KnowledgeConfigurationSheetContentProps {
     dataSourceConfigurations: DataSourceViewSelectionConfigurations,
     configToUse: CapabilityConfig
   ) => void;
-  control: Control<CapabilityFormData>;
-  handleSubmit: (
-    fn: (data: CapabilityFormData) => void
-  ) => (e?: React.BaseSyntheticEvent) => Promise<void>;
   isOpen: boolean;
 }
 
@@ -164,10 +169,9 @@ function KnowledgeConfigurationSheetContent({
   config,
   setConfig,
   onSave,
-  control,
-  handleSubmit,
   isOpen,
 }: KnowledgeConfigurationSheetContentProps) {
+  const { control, handleSubmit } = useFormContext<CapabilityFormData>();
   const { owner } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { spaces } = useSpacesContext();
@@ -283,7 +287,6 @@ function KnowledgeConfigurationSheetContent({
                 <h3 className="text-lg font-semibold">Configuration</h3>
                 {config.hasTimeFrame && (
                   <TimeFrameSection
-                    control={control}
                     actionType={
                       config.name === "extract_data" ? "extract" : "include"
                     }
@@ -291,7 +294,6 @@ function KnowledgeConfigurationSheetContent({
                 )}
                 {config.hasJsonSchema && (
                   <JsonSchemaSection
-                    control={control}
                     initialSchemaString={
                       action && getJsonSchema(action)
                         ? JSON.stringify(getJsonSchema(action), null, 2)
@@ -301,10 +303,7 @@ function KnowledgeConfigurationSheetContent({
                     owner={owner}
                   />
                 )}
-                <DescriptionSection
-                  control={control}
-                  {...config.descriptionConfig}
-                />
+                <DescriptionSection {...config.descriptionConfig} />
               </div>
             </>
           )}
