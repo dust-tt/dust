@@ -1,4 +1,6 @@
+import { UpdateMCPToolSettingsBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import { CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
@@ -69,16 +71,18 @@ async function handler(
             },
           });
         case "remote": {
-          const { permission, enabled } = req.body;
-          if (!permission && !enabled) {
+          const r = UpdateMCPToolSettingsBodySchema.safeParse(req.body);
+          if (r.error) {
             return apiError(req, res, {
-              status_code: 400,
               api_error: {
                 type: "invalid_request_error",
-                message: "Permission or enabled state is required.",
+                message: fromError(r.error).toString(),
               },
+              status_code: 400,
             });
           }
+
+          const { permission, enabled } = r.data;
 
           if (permission !== undefined) {
             if (!CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS.includes(permission)) {
@@ -115,8 +119,8 @@ async function handler(
             {
               serverId: id,
               toolName,
-              permission: permission ?? undefined,
-              enabled,
+              permission: permission ?? "high",
+              enabled: enabled ?? true,
             }
           );
           return res.status(200).json({ success: true });

@@ -1,8 +1,9 @@
+import type { UpdateMCPToolSettingsBodyType } from "@dust-tt/client";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type { CustomRemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
 import {
   getMcpServerDisplayName,
@@ -711,9 +712,13 @@ export function useUpdateMCPServerToolsSettings({
     enabled,
   }: {
     toolName: string;
-    permission: MCPToolStakeLevelType;
+    permission: CustomRemoteMCPToolStakeLevelType;
     enabled: boolean;
   }): Promise<PatchMCPServerToolsPermissionsResponseBody> => {
+    const body: UpdateMCPToolSettingsBodyType = {
+      permission,
+      enabled,
+    };
     const response = await fetch(
       `/api/w/${owner.sId}/mcp/${serverId}/tools/${toolName}`,
       {
@@ -721,7 +726,7 @@ export function useUpdateMCPServerToolsSettings({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ permission, enabled }),
+        body: JSON.stringify(body),
       }
     );
     if (!response.ok) {
