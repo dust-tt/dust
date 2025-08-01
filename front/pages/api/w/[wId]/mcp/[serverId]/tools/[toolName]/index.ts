@@ -85,7 +85,9 @@ async function handler(
           const { permission, enabled } = r.data;
 
           if (permission !== undefined) {
-            if (!CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS.includes(permission)) {
+            if (
+              !CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS.includes(permission as any)
+            ) {
               const remoteMCPServer = await RemoteMCPServerResource.findByPk(
                 auth,
                 id

@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { CustomRemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
 import {
   getMcpServerDisplayName,
@@ -712,7 +712,7 @@ export function useUpdateMCPServerToolsSettings({
     enabled,
   }: {
     toolName: string;
-    permission: CustomRemoteMCPToolStakeLevelType;
+    permission: MCPToolStakeLevelType;
     enabled: boolean;
   }): Promise<PatchMCPServerToolsPermissionsResponseBody> => {
     const body: UpdateMCPToolSettingsBodyType = {

@@ -2690,7 +2690,7 @@ export interface GetWorkspaceMembersResponseBody {
 
 export const UpdateMCPToolSettingsBodySchema = z
   .object({
-    permission: z.enum(REMOTE_MCP_TOOL_STAKE_LEVELS).optional(),
+    permission: z.enum(MCP_TOOL_STAKE_LEVELS).optional(),
     enabled: z.boolean().optional(),
   })
   .refine(
