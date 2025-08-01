@@ -95,12 +95,12 @@ export async function gongSyncTranscriptsActivity({
   connectorId,
   forceResync,
   pageCursor,
-  processedRecords = 0,
+  currentRecordCount = 0,
 }: {
   forceResync: boolean;
   connectorId: ModelId;
   pageCursor: string | null;
-  processedRecords?: number;
+  currentRecordCount?: number;
 }) {
   const connector = await fetchGongConnector({ connectorId });
   const configuration = await fetchGongConfiguration(connector);
@@ -121,11 +121,11 @@ export async function gongSyncTranscriptsActivity({
       pageCursor,
     });
 
-  const currentProcessedRecords = processedRecords + transcripts.length;
+  const processedRecords = transcripts.length;
 
   // Report sync progress
   if (totalRecords > 0) {
-    const progressMessage = `${currentProcessedRecords}/${totalRecords} transcripts`;
+    const progressMessage = `${processedRecords + currentRecordCount + 1}/${totalRecords} transcripts`;
     await reportInitialSyncProgress(connectorId, progressMessage);
   }
 
@@ -134,7 +134,10 @@ export async function gongSyncTranscriptsActivity({
       { ...loggerArgs, pageCursor },
       "[Gong] No more transcripts found."
     );
-    return { nextPageCursor: null, processedRecords: currentProcessedRecords };
+    return {
+      nextPageCursor: null,
+      processedRecords,
+    };
   }
 
   const transcriptsInDb = await GongTranscriptResource.fetchByCallIds(
@@ -153,7 +156,7 @@ export async function gongSyncTranscriptsActivity({
     logger.info({ ...loggerArgs }, "[Gong] All transcripts are already in DB.");
     return {
       nextPageCursor,
-      processedRecords: currentProcessedRecords,
+      processedRecords,
     };
   }
 
@@ -220,7 +223,7 @@ export async function gongSyncTranscriptsActivity({
 
   return {
     nextPageCursor,
-    processedRecords: currentProcessedRecords,
+    processedRecords,
   };
 }
 
