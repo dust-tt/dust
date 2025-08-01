@@ -8,6 +8,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { ZendeskOrganizationTagFilters } from "@app/components/data_source/ZendeskOrganizationTagFilters";
+import { ZendeskTicketTagFilters } from "@app/components/data_source/ZendeskTicketTagFilters";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
@@ -228,6 +230,18 @@ export function ZendeskConfigView({
           </div>
         </ContextItem.Description>
       </ContextItem>
+      <ZendeskTicketTagFilters
+        owner={owner}
+        readOnly={readOnly}
+        isAdmin={isAdmin}
+        dataSource={dataSource}
+      />
+      <ZendeskOrganizationTagFilters
+        owner={owner}
+        readOnly={readOnly}
+        isAdmin={isAdmin}
+        dataSource={dataSource}
+      />
     </ContextItem.List>
   );
 }
