@@ -19,7 +19,7 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";

@@ -1,14 +1,19 @@
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { SupportedResourceType } from "@app/types";
+import type {
+  LightAgentConfigurationType,
+  SupportedResourceType,
+} from "@app/types";
 import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
 export type ResourceTypeMap = {
+  agents: LightAgentConfigurationType;
   apps: AppResource;
   workspaces: LightWorkspaceType;
   data_sources: DataSourceResource;
@@ -25,6 +30,12 @@ export async function fetchPluginResource<T extends SupportedResourceType>(
   let result: unknown = null;
 
   switch (resourceType) {
+    case "agents":
+      result = await getAgentConfiguration(auth, {
+        agentId: resourceId,
+        variant: "light",
+      });
+      break;
     case "apps":
       result = await AppResource.fetchById(auth, resourceId);
       break;

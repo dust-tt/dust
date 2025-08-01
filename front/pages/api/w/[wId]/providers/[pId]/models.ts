@@ -9,6 +9,7 @@ import {
   FIREWORKS_DEEPSEEK_R1_MODEL_ID,
   GEMINI_1_5_FLASH_LATEST_MODEL_ID,
   GEMINI_1_5_PRO_LATEST_MODEL_ID,
+  GEMINI_2_5_PRO_MODEL_ID,
   GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID,
   GEMINI_2_FLASH_MODEL_ID,
   GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
@@ -264,6 +265,7 @@ async function handler(
               { id: GEMINI_2_FLASH_MODEL_ID },
               { id: GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID },
               { id: GEMINI_2_PRO_PREVIEW_MODEL_ID },
+              { id: GEMINI_2_5_PRO_MODEL_ID },
             ],
           });
 

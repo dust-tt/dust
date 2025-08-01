@@ -8,7 +8,7 @@ import {
   getAgentConfigurations,
   getFullAgentConfiguration,
   getLightAgentConfiguration,
-} from "@app/lib/api/assistant/configuration";
+} from "@app/lib/api/assistant/configuration/agent";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { canReadMessage } from "@app/lib/api/assistant/messages";

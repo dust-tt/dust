@@ -193,6 +193,7 @@ export const GEMINI_1_5_FLASH_LATEST_MODEL_ID =
 export const GEMINI_2_FLASH_MODEL_ID = "gemini-2.0-flash" as const;
 export const GEMINI_2_FLASH_LITE_MODEL_ID = "gemini-2.0-flash-lite" as const;
 export const GEMINI_2_5_PRO_PREVIEW_MODEL_ID = "gemini-2.5-pro-preview-03-25";
+export const GEMINI_2_5_PRO_MODEL_ID = "gemini-2.5-pro" as const;
 
 // These Gemini preview models are deprecated (either replaced by a GA model or not making it to GA)
 export const GEMINI_2_FLASH_PREVIEW_MODEL_ID = "gemini-2.0-flash-exp" as const;
@@ -261,6 +262,7 @@ export const MODEL_IDS = [
   GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID,
   GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
   GEMINI_2_PRO_PREVIEW_MODEL_ID,
+  GEMINI_2_5_PRO_MODEL_ID,
   GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
   GEMINI_2_FLASH_PREVIEW_MODEL_ID,
   TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
@@ -931,7 +933,7 @@ export const GEMINI_2_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
 };
 
-// Current Preview model
+// DEPRECATED - Gemini 2.5 pro preview
 export const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
@@ -942,6 +944,25 @@ export const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description: "Google's powerful large context model (1m context).",
   shortDescription: "Google's powerful model (preview).",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
+};
+
+export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_2_5_PRO_MODEL_ID,
+  displayName: "Gemini 2.5 Pro",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description: "Google's powerful large context model (1m context).",
+  shortDescription: "Google's powerful model.",
   isLegacy: false,
   isLatest: true,
   generationTokensCount: 64_000,
@@ -1354,6 +1375,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GEMINI_2_FLASH_MODEL_CONFIG,
   GEMINI_2_FLASH_LITE_PREVIEW_MODEL_CONFIG,
   GEMINI_2_PRO_PREVIEW_MODEL_CONFIG,
+  GEMINI_2_5_PRO_MODEL_CONFIG,
   GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG,
   TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG,
   TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG,

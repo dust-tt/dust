@@ -20,7 +20,6 @@ import {
 import {
   getChannelById,
   getChannels,
-  joinChannel,
   migrateChannelsFromLegacyBotToNewBot,
   updateSlackChannelInConnectorsDb,
   updateSlackChannelInCoreDb,
@@ -49,7 +48,10 @@ import {
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
-import { ProviderWorkflowError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
 import { SlackChannel, SlackMessages } from "@connectors/lib/models/slack";
 import {
   reportInitialSyncProgress,
@@ -1090,7 +1092,8 @@ export async function getChannelsToGarbageCollect(
   const remoteChannels = new Set(
     (
       await withSlackErrorHandling(() =>
-        getChannels(slackClient, connectorId, true)
+        // Fetch all the channels, not just the joined ones. The state in DB is the source of truth.
+        getChannels(slackClient, connectorId, false)
       )
     )
       .filter((c) => c.id)
@@ -1200,31 +1203,6 @@ export async function deleteChannelsFromConnectorDb(
   );
 }
 
-export async function attemptChannelJoinActivity(
-  connectorId: ModelId,
-  channelId: string
-) {
-  const res = await joinChannel(connectorId, channelId);
-
-  if (res.isErr()) {
-    throw res.error;
-  }
-
-  const { channel, result } = res.value;
-  if (result === "is_archived") {
-    logger.info(
-      {
-        channel,
-        connectorId,
-      },
-      "Channel is archived, skipping sync."
-    );
-    return false;
-  }
-
-  return true;
-}
-
 export async function migrateChannelsFromLegacyBotToNewBotActivity(
   slackConnectorId: ModelId,
   slackBotConnectorId: ModelId
@@ -1255,5 +1233,21 @@ export async function migrateChannelsFromLegacyBotToNewBotActivity(
     return;
   }
 
-  await migrateChannelsFromLegacyBotToNewBot(slackConnector, slackBotConnector);
+  try {
+    await migrateChannelsFromLegacyBotToNewBot(
+      slackConnector,
+      slackBotConnector
+    );
+  } catch (e) {
+    if (e instanceof ExternalOAuthTokenError) {
+      logger.info(
+        { error: e, slackConnectorId, slackBotConnectorId },
+        "Skipping migration of channels from legacy bot to new bot: external oauth token error"
+      );
+
+      return;
+    }
+
+    throw e;
+  }
 }

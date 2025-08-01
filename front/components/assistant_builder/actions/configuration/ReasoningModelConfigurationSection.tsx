@@ -25,11 +25,12 @@ import { useModels } from "@app/lib/swr/models";
 import type {
   LightWorkspaceType,
   ModelConfigurationType,
+  ModelIdType,
   ModelProviderIdType,
   ReasoningModelConfigurationType,
 } from "@app/types";
 import {
-  GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
+  GEMINI_2_5_PRO_MODEL_ID,
   getProviderDisplayName,
   O3_MODEL_ID,
   O4_MINI_MODEL_ID,
@@ -41,10 +42,10 @@ interface ReasoningModelConfigurationSectionProps {
   onModelSelect: (modelConfig: ReasoningModelConfigurationType) => void;
 }
 
-const BEST_PERFORMING_REASONING_MODELS_ID = [
+const BEST_PERFORMING_REASONING_MODELS_ID: readonly ModelIdType[] = [
   O4_MINI_MODEL_ID,
   O3_MODEL_ID,
-  GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
+  GEMINI_2_5_PRO_MODEL_ID,
 ];
 
 function groupReasoningModelsByPerformance(

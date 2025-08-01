@@ -1,9 +1,7 @@
 import _ from "lodash";
 
-import {
-  archiveAgentConfiguration,
-  getAgentConfigurationsForView,
-} from "@app/lib/api/assistant/configuration";
+import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import config from "@app/lib/api/config";
 import {

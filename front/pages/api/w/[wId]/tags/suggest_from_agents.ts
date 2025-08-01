@@ -4,7 +4,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { runAction } from "@app/lib/actions/server";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdActionRegistry } from "@app/lib/registry";

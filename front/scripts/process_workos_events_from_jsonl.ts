@@ -7,6 +7,20 @@ import { launchWorkOSEventsWorkflow } from "@app/temporal/workos_events_queue/cl
 
 import { makeScript } from "./helpers";
 
+function snakeToCamelCase(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(snakeToCamelCase);
+  } else if (obj && typeof obj === "object") {
+    return Object.fromEntries(
+      Object.entries(obj).map(([key, value]) => [
+        key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()),
+        snakeToCamelCase(value),
+      ])
+    );
+  }
+  return obj;
+}
+
 async function processJsonlFile(filePath: string): Promise<Event[]> {
   const events: Event[] = [];
   const fileStream = fs.createReadStream(filePath);
@@ -25,7 +39,7 @@ async function processJsonlFile(filePath: string): Promise<Event[]> {
     }
 
     try {
-      const event = JSON.parse(line) as Event;
+      const event = snakeToCamelCase(JSON.parse(line)) as Event;
       events.push(event);
     } catch (error) {
       logger.error({ lineNumber, line, error }, "Failed to parse JSON on line");

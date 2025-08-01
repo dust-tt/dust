@@ -6,7 +6,7 @@ import {
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import { Authenticator } from "@app/lib/auth";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";

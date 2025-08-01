@@ -1,5 +1,5 @@
 import { dataSourceConfigurationSchema } from "@app/components/agent_builder/types";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { AssistantTemplateListType } from "@app/pages/api/templates";
 import type { Result, TemplateTagCodeType } from "@app/types";
 import { Err, Ok } from "@app/types";

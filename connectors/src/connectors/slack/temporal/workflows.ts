@@ -24,7 +24,6 @@ function getSlackActivities() {
     syncChannelMetadata,
     reportInitialSyncProgressActivity,
     getChannelsToGarbageCollect,
-    attemptChannelJoinActivity,
     deleteChannelsFromConnectorDb,
   } = proxyActivities<typeof activities>({
     startToCloseTimeout: "10 minutes",
@@ -44,7 +43,6 @@ function getSlackActivities() {
     });
 
   return {
-    attemptChannelJoinActivity,
     deleteChannel,
     deleteChannelsFromConnectorDb,
     fetchUsers,
@@ -126,8 +124,8 @@ export async function workspaceFullSync(
 
 /**
  * This workflow is in charge of synchronizing all the content of a Slack channel.
- * A thread with more than one message is indexed as one document, and a the non threaded message of a channel are indexed
- * as a document per week.
+ * A thread with more than one message is indexed as one document, and a the non threaded message of
+ * a channel are indexed as a document per week.
  */
 export async function syncOneChannel(
   connectorId: ModelId,
@@ -135,15 +133,6 @@ export async function syncOneChannel(
   updateSyncStatus: boolean,
   fromTs: number | null
 ) {
-  const channelJoinSuccess =
-    await getSlackActivities().attemptChannelJoinActivity(
-      connectorId,
-      channelId
-    );
-  if (!channelJoinSuccess) {
-    return;
-  }
-
   let messagesCursor: string | undefined = undefined;
   let weeksSynced: Record<number, boolean> = {};
 

@@ -1,7 +1,7 @@
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
-import { createAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   LightAgentConfigurationType,
