@@ -225,7 +225,7 @@ function ConversationInnerLayout({
                   <div
                     id={CONVERSATION_VIEW_SCROLL_LAYOUT}
                     className={cn(
-                      "h-full overflow-y-auto scroll-smooth px-4",
+                      "h-full overflow-y-auto scroll-smooth px-4 md:px-8 xl:px-0",
                       // Hide conversation on mobile when interactive content is opened.
                       isContentOpen && "hidden md:block"
                     )}
