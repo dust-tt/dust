@@ -233,8 +233,8 @@ export class MCPActionType {
   readonly mcpServerConfigurationId: string;
   readonly params: Record<string, unknown>; // Hold the inputs for the action.
   readonly output: CallToolResult["content"] | null;
-  readonly functionCallId: string | null;
-  readonly functionCallName: string | null;
+  readonly functionCallId: string;
+  readonly functionCallName: string;
   readonly step: number = -1;
   readonly isError: boolean = false;
   readonly citationsAllocated: number = 0;
@@ -263,13 +263,6 @@ export class MCPActionType {
   }
 
   renderForFunctionCall(): FunctionCallType {
-    if (!this.functionCallId) {
-      throw new Error("MCPAction: functionCallId is required");
-    }
-    if (!this.functionCallName) {
-      throw new Error("MCPAction: functionCallName is required");
-    }
-
     return {
       id: this.functionCallId,
       name: this.functionCallName,
@@ -280,14 +273,6 @@ export class MCPActionType {
   async renderForMultiActionsModel(
     model: ModelConfigurationType
   ): Promise<FunctionMessageTypeModel> {
-    if (!this.functionCallName) {
-      throw new Error("MCPAction: functionCallName is required");
-    }
-
-    if (!this.functionCallId) {
-      throw new Error("MCPAction: functionCallId is required");
-    }
-
     const totalTextLength =
       this.output?.reduce(
         (acc, curr) =>
