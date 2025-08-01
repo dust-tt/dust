@@ -222,8 +222,7 @@ export default function AssistantBuilderRightPanel({
                       {conversation && (
                         <div className="flex items-center justify-between px-4 py-3">
                           <h3 className="text-sm font-medium text-foreground dark:text-foreground-night">
-                            {conversation.title ||
-                              `Trying @${draftAssistant?.name || "your assistant"}`}
+                            {conversation.title}
                           </h3>
                           <Button
                             variant="outline"
