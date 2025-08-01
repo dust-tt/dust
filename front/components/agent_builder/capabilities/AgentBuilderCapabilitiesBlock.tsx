@@ -295,6 +295,13 @@ export function AgentBuilderCapabilitiesBlock() {
             action={
               <div className="flex items-center gap-2">{dropdownButtons}</div>
             }
+            style={{
+              backgroundImage: 'url("/static/IconBar.svg")',
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "center 30px",
+              backgroundSize: "auto 70px",
+              paddingTop: "120px",
+            }}
           />
         ) : (
           <CardGrid>
