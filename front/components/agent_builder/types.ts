@@ -108,7 +108,6 @@ export const AGENT_BUILDER_MCP_SERVERS = [
   "extract_data",
   "search",
   "include_data",
-  "extract_data",
   "query_tables",
 ] as const;
 export type AgentBuilderMCPServerName =
