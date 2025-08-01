@@ -662,6 +662,7 @@ export async function* runToolWithStreaming(
     toolCallResult: toolCallResult.value,
     conversation,
     action,
+    actionConfiguration,
     localLogger,
   });
 

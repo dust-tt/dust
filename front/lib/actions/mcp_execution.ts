@@ -2,13 +2,20 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { Logger } from "pino";
 
+import { generatePlainTextFile } from "@app/lib/actions/action_file_helpers";
 import type {
   MCPActionType,
   MCPApproveExecutionEvent,
   MCPToolConfigurationType,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
-import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
+import {
+  computeTextByteSize,
+  MAX_RESOURCE_CONTENT_SIZE,
+  MAX_TEXT_CONTENT_SIZE,
+  MAXED_OUTPUT_FILE_SNIPPET_LENGTH,
+  tryCallMCPTool,
+} from "@app/lib/actions/mcp_actions";
 import type { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import { augmentInputsWithConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import {
@@ -270,12 +277,14 @@ export async function processToolResults({
   toolCallResult,
   conversation,
   action,
+  actionConfiguration,
   localLogger,
 }: {
   auth: Authenticator;
   toolCallResult: CallToolResult["content"];
   conversation: ConversationType;
   action: AgentMCPAction;
+  actionConfiguration: MCPToolConfigurationType;
   localLogger: Logger;
 }): Promise<{
   outputItems: AgentMCPActionOutputItem[];
@@ -294,6 +303,34 @@ export async function processToolResults({
     async (block) => {
       switch (block.type) {
         case "text": {
+          // If the text is too large we create a file and return a resource block that references the file.
+          if (
+            computeTextByteSize(block.text) > MAX_TEXT_CONTENT_SIZE &&
+            actionConfiguration.mcpServerName !== "conversation_files"
+          ) {
+            const fileName = `${actionConfiguration.mcpServerName}_${Date.now()}.txt`;
+            const snippet =
+              block.text.substring(0, MAXED_OUTPUT_FILE_SNIPPET_LENGTH) +
+              "... (truncated)";
+
+            const file = await generatePlainTextFile(auth, {
+              title: fileName,
+              conversationId: conversation.sId,
+              content: block.text,
+              snippet,
+            });
+            return {
+              content: {
+                type: "resource",
+                resource: {
+                  uri: file.getPublicUrl(auth),
+                  mimeType: "text/plain",
+                  text: block.text,
+                },
+              },
+              file,
+            };
+          }
           return {
             content: {
               type: block.type,
@@ -392,16 +429,44 @@ export async function processToolResults({
               file: fileUpsertResult.value,
             };
           } else {
-            // Generic case for other kinds of resources.
+            const text =
+              "text" in block.resource &&
+              typeof block.resource.text === "string"
+                ? stripNullBytes(block.resource.text)
+                : null;
+
+            // If the resource text is too large, we create a file and return a resource block that references the file.
+            if (text && computeTextByteSize(text) > MAX_RESOURCE_CONTENT_SIZE) {
+              const fileName =
+                block.resource.uri?.split("/").pop() ??
+                `resource_${Date.now()}.txt`;
+              const snippet =
+                text.substring(0, MAXED_OUTPUT_FILE_SNIPPET_LENGTH) +
+                "... (truncated)";
+
+              const file = await generatePlainTextFile(auth, {
+                title: fileName,
+                conversationId: conversation.sId,
+                content: text,
+                snippet,
+              });
+              return {
+                content: {
+                  type: block.type,
+                  resource: {
+                    ...block.resource,
+                    text: text,
+                  },
+                },
+                file,
+              };
+            }
             return {
               content: {
                 type: block.type,
                 resource: {
                   ...block.resource,
-                  ...("text" in block.resource &&
-                  typeof block.resource.text === "string"
-                    ? { text: stripNullBytes(block.resource.text) }
-                    : {}),
+                  ...(text ? { text } : {}),
                 },
               },
               file: null,
