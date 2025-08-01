@@ -1,17 +1,10 @@
 import type { ZendeskFetchedOrganization } from "@connectors/connectors/zendesk/lib/types";
 
-// In-memory cache for organizations.
-const organizationCache = new Map<string, ZendeskFetchedOrganization>();
-
-function makeOrganizationCacheKey({
-  brandSubdomain,
-  organizationId,
-}: {
-  brandSubdomain: string;
-  organizationId: number;
-}) {
-  return `zendesk:organization:${brandSubdomain}:${organizationId}`;
-}
+// Nested Map structure: brandSubdomain -> organizationId -> organization
+const organizationCache = new Map<
+  string,
+  Map<number, ZendeskFetchedOrganization>
+>();
 
 export function getOrganizationFromCache({
   brandSubdomain,
@@ -19,10 +12,9 @@ export function getOrganizationFromCache({
 }: {
   brandSubdomain: string;
   organizationId: number;
-}) {
-  return organizationCache.get(
-    makeOrganizationCacheKey({ brandSubdomain, organizationId })
-  );
+}): ZendeskFetchedOrganization | undefined {
+  const brandCache = organizationCache.get(brandSubdomain);
+  return brandCache?.get(organizationId);
 }
 
 export function setOrganizationInCache(
@@ -34,13 +26,19 @@ export function setOrganizationInCache(
     brandSubdomain: string;
     organizationId: number;
   }
-) {
-  return organizationCache.set(
-    makeOrganizationCacheKey({ brandSubdomain, organizationId }),
-    organization
-  );
+): void {
+  let brandCache = organizationCache.get(brandSubdomain);
+  if (!brandCache) {
+    brandCache = new Map<number, ZendeskFetchedOrganization>();
+    organizationCache.set(brandSubdomain, brandCache);
+  }
+  brandCache.set(organizationId, organization);
 }
 
-export function clearOrganizationCache() {
-  organizationCache.clear();
+export function clearOrganizationCache({
+  brandSubdomain,
+}: {
+  brandSubdomain: string;
+}): void {
+  organizationCache.delete(brandSubdomain);
 }

@@ -358,7 +358,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
   );
 
   if (!hasMore) {
-    clearOrganizationCache();
+    clearOrganizationCache({ brandSubdomain });
   }
   return { hasMore, nextLink };
 }

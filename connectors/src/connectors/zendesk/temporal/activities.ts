@@ -752,7 +752,7 @@ export async function syncZendeskTicketBatchActivity({
 
   // Clear the cache on the last batch.
   if (!hasMore) {
-    clearOrganizationCache();
+    clearOrganizationCache({ brandSubdomain });
   }
   return { hasMore, nextLink };
 }
