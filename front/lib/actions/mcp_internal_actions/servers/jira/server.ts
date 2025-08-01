@@ -22,7 +22,8 @@ import {
 import {
   JiraCreateIssueLinkRequestSchema,
   JiraCreateIssueRequestSchema,
-  SEARCH_FILTER_FIELDS,
+  JiraSearchFilterSchema,
+  JiraSortSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
   makeMCPToolJSONSuccess,
@@ -44,7 +45,20 @@ const serverInfo: InternalMCPServerDefinitionType = {
 };
 
 const createServer = (): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = new McpServer(serverInfo, {
+    instructions: `
+      You have access to the following tools: get_issue, get_projects, get_project, get_transitions, create_comment, get_issues, get_issue_types, get_issue_fields, get_connection_info, transition_issue, create_issue, update_issue, create_issue_link, delete_issue_link, get_issue_link_types.
+
+      # General Workflow for JIRA Data:
+      0.  **Authenticate:** Use \`get_connection_info\` to authenticate with JIRA if you are not authenticated ("No access token found").
+      1.  **Describe Object:** Use \`get_issue_types\` and \`get_issue_fields\` with the specific issue typename to get its detailed metadata. This will show you all available fields, their exact names, data types, and information about relationships (child relationships are particularly important for subqueries).
+      3.  **Execute Read Query:** Use \`get_issues\` to retrieve data using JQL. Construct your JQL queries based on the information obtained from \`get_issue_types\` to ensure you are using correct field and relationship names.
+
+      **Best Practices for Querying:**
+      1.  **Discover Object Structure First:** Use \`get_issue_fields\` to understand an object's fields and relationships before writing complex queries. Alternatively, for a quick field list directly in a query, use \`get_issues\` .
+      2.  **Verify Field and Relationship Names:** If you encounter JIRA 400 errors suggesting that the field or relationship does not exist, use \`get_issue_types\` for the relevant object(s) to confirm the exact names and their availability.
+    `,
+  });
 
   server.tool(
     "get_issue",
@@ -219,43 +233,27 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_issues",
-    "Search issues using one or more filters (e.g., status, priority, labels, assignee). Use exact matching by default, or fuzzy matching for approximate/partial matches on summary field.",
+    "Search issues using one or more filters (e.g., status, priority, labels, assignee, customField, dueDate, created, resolved). Use exact matching by default, or fuzzy matching for approximate/partial matches on summary field. For custom fields, use field 'customField' with customFieldName parameter. For date fields (dueDate, created, resolved), use operator parameter with '<', '>', '=', etc. and date format '2023-07-03' or relative '-25d', '7d', '2w', '1M', etc. Results can be sorted using the sortBy parameter with field and direction (ASC/DESC). When referring to the user, use the get_connection_info tool. When referring to unknown fields, use the get_issue_fields or get_issue_types tool to discover the field names.",
     {
       filters: z
-        .array(
-          z.object({
-            field: z
-              .string()
-              .describe(
-                `The field to filter by. Must be one of: ${SEARCH_FILTER_FIELDS.join(
-                  ", "
-                )}`
-              ),
-            value: z.string().describe("The value to search for"),
-            fuzzy: z
-              .boolean()
-              .optional()
-              .describe(
-                "Use fuzzy search (~) for partial/similar matches instead of exact match (=). Only supported for 'summary' field. Use fuzzy when: searching for partial text, handling typos, finding related terms. Use exact when: looking for specific titles, precise matching needed."
-              ),
-          })
-        )
+        .array(JiraSearchFilterSchema)
         .min(1)
         .describe("Array of search filters to apply (all must match)"),
+      sortBy: JiraSortSchema.optional().describe(
+        "Optional sorting configuration for results"
+      ),
       nextPageToken: z
         .string()
         .optional()
         .describe("Token for next page of results (for pagination)"),
     },
-    async ({ filters, nextPageToken }, { authInfo }) => {
+    async ({ filters, sortBy, nextPageToken }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await searchIssues(
-            baseUrl,
-            accessToken,
-            filters,
-            nextPageToken
-          );
+          const result = await searchIssues(baseUrl, accessToken, filters, {
+            nextPageToken,
+            sortBy,
+          });
           if (result.isErr()) {
             return makeMCPToolTextError(
               `Error searching issues: ${result.error}`
@@ -312,7 +310,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_issue_fields",
-    "Retrieves available fields for creating issues in a JIRA project for a specific issue type.",
+    "Retrieves available fields for creating issues in a JIRA project for a specific issue type. Use get_issue_types to get the issue type ID.",
     {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
       issueTypeId: z
@@ -351,7 +349,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_connection_info",
-    "Gets comprehensive connection information including user details, cloud ID, and site URL for the currently authenticated JIRA instance.",
+    "Gets comprehensive connection information including user details, cloud ID, and site URL for the currently authenticated JIRA instance. This tool is used when the user is referring about themselves",
     {},
     async (_, { authInfo }) => {
       const accessToken = authInfo?.token;

@@ -16,6 +16,7 @@ import type {
   JiraTransitionRequestSchema,
   SearchFilter,
   SearchFilterField,
+  SortDirection,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
   JiraCommentSchema,
@@ -288,8 +289,11 @@ export async function searchIssues(
   baseUrl: string,
   accessToken: string,
   filters: SearchFilter[],
-  nextPageToken?: string,
-  maxResults: number = SEARCH_MAX_RESULTS
+  options?: {
+    nextPageToken?: string;
+    sortBy?: { field: SearchFilterField; direction: SortDirection };
+    maxResults?: number;
+  }
 ): Promise<
   Result<
     JiraSearchResult & {
@@ -310,7 +314,13 @@ export async function searchIssues(
     );
   }
 
-  const jql = createJQLFromSearchFilters(filters);
+  const {
+    nextPageToken,
+    sortBy,
+    maxResults = SEARCH_MAX_RESULTS,
+  } = options || {};
+
+  const jql = createJQLFromSearchFilters(filters, sortBy);
 
   const requestBody: z.infer<typeof JiraSearchRequestSchema> = {
     jql,
