@@ -364,8 +364,7 @@ export async function getChannelsToSync(
   connectorId: number
 ) {
   const [remoteChannels, localChannels] = await Promise.all([
-    // Fetch all the channels, not just the joined ones. The state in DB is the source of truth.
-    getChannels(slackClient, connectorId, false /* joinedOnly */),
+    getChannels(slackClient, connectorId, true),
     SlackChannel.findAll({
       where: {
         connectorId,

@@ -1093,8 +1093,7 @@ export async function getChannelsToGarbageCollect(
   const remoteChannels = new Set(
     (
       await withSlackErrorHandling(() =>
-        // Fetch all the channels, not just the joined ones. The state in DB is the source of truth.
-        getChannels(slackClient, connectorId, false)
+        getChannels(slackClient, connectorId, true)
       )
     )
       .filter((c) => c.id)
