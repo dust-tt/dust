@@ -321,7 +321,7 @@ const ConversationViewer = React.forwardRef<
       className={classNames(
         "s-@container/conversation",
         "flex w-full max-w-3xl flex-1 flex-col justify-start gap-8 py-4",
-        isInModal ? "pt-4" : "sm:px-4"
+        isInModal ? "pt-4" : "px-4 md:px-8"
       )}
       ref={ref}
     >
