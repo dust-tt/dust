@@ -1,6 +1,7 @@
 import { Err, isSupportedImageContentType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
+import { MAX_RESOURCE_CONTENT_SIZE } from "@app/lib/actions/mcp_actions";
 import {
   isBlobResource,
   isSearchQueryResourceType,
@@ -31,8 +32,6 @@ import {
   isSupportedFileContentType,
   Ok,
 } from "@app/types";
-
-const MAX_BLOB_SIZE_BYTES = 1024 * 1024 * 10; // 10MB
 
 export function hideFileFromActionOutput({
   fileId,
@@ -157,7 +156,7 @@ export async function handleBase64Upload(
     };
   }
 
-  if (base64Data.length > MAX_BLOB_SIZE_BYTES) {
+  if (base64Data.length > MAX_RESOURCE_CONTENT_SIZE) {
     return {
       content: {
         type: "text",

@@ -96,11 +96,22 @@ function isEmptyInputSchema(schema: JSONSchema7): boolean {
 
 const MAX_TOOL_NAME_LENGTH = 64;
 
-const MAX_TEXT_CONTENT_SIZE = 2 * 1024 * 1024;
-const MAX_IMAGE_CONTENT_SIZE = 2 * 1024 * 1024;
-const MAX_RESOURCE_CONTENT_SIZE = 10 * 1024 * 1024;
+// Size limits for MCP tool outputs
+export const MAX_TEXT_CONTENT_SIZE = 2 * 1024 * 1024; // 2MB.
+export const MAX_IMAGE_CONTENT_SIZE = 2 * 1024 * 1024; // 2MB.
+export const MAX_RESOURCE_CONTENT_SIZE = 10 * 1024 * 1024; // 10MB.
+
+export const MAXED_OUTPUT_FILE_SNIPPET_LENGTH = 64_000; // Approximately 16K tokens.
 
 export const TOOL_NAME_SEPARATOR = "__";
+
+export function computeTextByteSize(text: string): number {
+  return text.length * 2; // UTF-8 approximate
+}
+
+export function computeBase64ByteSize(base64: string): number {
+  return Math.ceil((base64.length * 3) / 4);
+}
 
 // Define the new type here for now, or move to a dedicated types file later.
 export interface ServerToolsAndInstructions {
@@ -418,16 +429,22 @@ export async function* tryCallMCPTool(
     ): number => {
       switch (item.type) {
         case "text":
-          return item.text.length * 2;
+          return computeTextByteSize(item.text);
         case "image":
-          return Math.ceil((item.data.length * 3) / 4);
+          return computeBase64ByteSize(item.data);
         case "resource":
           if (
             "blob" in item.resource &&
             item.resource.blob &&
             typeof item.resource.blob === "string"
           ) {
-            return Math.ceil((item.resource.blob.length * 3) / 4);
+            return computeBase64ByteSize(item.resource.blob);
+          }
+          if (
+            "text" in item.resource &&
+            typeof item.resource.text === "string"
+          ) {
+            return computeTextByteSize(item.resource.text);
           }
           return 0;
         case "audio":
