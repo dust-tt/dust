@@ -52,8 +52,16 @@ class MyDocument extends Document {
                  service: 'front',
                  env: '${process.env.NODE_ENV === "production" ? "prod" : "dev"}',
                  version: '${process.env.NEXT_PUBLIC_COMMIT_HASH || ""}',
+                 allowedTracingUrls: [
+                  "https://dust.tt",
+                  "https://eu.dust.tt",
+                  "https://front-edge.dust.tt",
+                  "https://eu.front-edge.dust.tt",
+                 ],
+                 traceSampleRate: 5,
+                 traceContextInjection: 'sampled',
                  sessionSampleRate: 100,
-                 sessionReplaySampleRate: 1,
+                 sessionReplaySampleRate: 5,
                  defaultPrivacyLevel: 'mask',
                });
              })
