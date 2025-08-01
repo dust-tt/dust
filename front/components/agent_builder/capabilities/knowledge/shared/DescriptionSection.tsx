@@ -1,5 +1,4 @@
 import { TextArea } from "@dust-tt/sparkle";
-import type { Control } from "react-hook-form";
 import { useController } from "react-hook-form";
 
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
@@ -11,7 +10,6 @@ interface DescriptionSectionProps {
   placeholder: string;
   helpText?: string;
   maxLength?: number;
-  control: Control<CapabilityFormData>;
 }
 
 export function DescriptionSection({
@@ -20,10 +18,8 @@ export function DescriptionSection({
   label,
   placeholder,
   helpText,
-  control,
 }: DescriptionSectionProps) {
-  const { field, fieldState } = useController({
-    control,
+  const { field, fieldState } = useController<CapabilityFormData>({
     name: "description",
   });
 

@@ -2,12 +2,19 @@ import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
   MultiPageSheet,
   MultiPageSheetContent,
+  MultiPageSheetTrigger,
   ScrollArea,
 } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
+import { BookOpenIcon } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
-import type { Control } from "react-hook-form";
-import { createFormControl, useFormState, useWatch } from "react-hook-form";
+import {
+  FormProvider,
+  useForm,
+  useFormContext,
+  useWatch,
+} from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -26,60 +33,61 @@ import {
   CAPABILITY_CONFIGS,
   generateActionFromFormData,
 } from "@app/components/agent_builder/capabilities/knowledge/utils";
+import { MCPServerViewsKnowledgeDropdown } from "@app/components/agent_builder/capabilities/MCPServerViewsKnowledgeDropdown";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type {
   CapabilityFormData,
   ConfigurationSheetPageId,
-  KnowledgeServerName,
 } from "@app/components/agent_builder/types";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
+  ACTION_TYPE_TO_MCP_SERVER_MAP,
   capabilityFormSchema,
   CONFIGURATION_SHEET_PAGE_IDS,
+  isKnowledgeServerName,
+  isSupportedAgentBuilderAction,
 } from "@app/components/agent_builder/types";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
 import type { DataSourceViewSelectionConfigurations } from "@app/types";
 
 interface KnowledgeConfigurationSheetProps {
-  capability: KnowledgeServerName | null;
   onSave: (action: AgentBuilderAction) => void;
-  isOpen: boolean;
   onClose: () => void;
+  onOpen?: () => void;
   action?: AgentBuilderAction;
+  open: boolean;
 }
 
 export function KnowledgeConfigurationSheet({
-  capability,
   onSave,
-  isOpen,
   onClose,
+  onOpen,
   action,
+  open,
 }: KnowledgeConfigurationSheetProps) {
-  // We store as state to control the timing to update the content for exit animation.
-  const [config, setConfig] = useState<CapabilityConfig | null>(null);
+  const [config, setConfig] = useState<CapabilityConfig | null>(() => {
+    if (action && isSupportedAgentBuilderAction(action)) {
+      const serverName = ACTION_TYPE_TO_MCP_SERVER_MAP[action.type];
+      return serverName && isKnowledgeServerName(serverName)
+        ? CAPABILITY_CONFIGS[serverName]
+        : null;
+    }
+    return CAPABILITY_CONFIGS["search"];
+  });
 
   const handleClose = () => {
     onClose();
-
-    // TODO: This is a hack and we should find a proper solution.
-    // Wait until closing animation ends, otherwise exit animation won't work.
-    setTimeout(() => {
-      setConfig(null);
-    }, 200);
   };
 
   const handleSave = (
     formData: CapabilityFormData,
-    dataSourceConfigurations: DataSourceViewSelectionConfigurations
+    dataSourceConfigurations: DataSourceViewSelectionConfigurations,
+    configToUse: CapabilityConfig
   ) => {
-    if (!config) {
-      // never going here
-      return;
-    }
-
     const newAction = generateActionFromFormData({
-      config,
+      config: configToUse,
       formData,
       dataSourceConfigurations,
       actionId: action?.id,
@@ -87,86 +95,126 @@ export function KnowledgeConfigurationSheet({
 
     if (newAction) {
       onSave(newAction);
+      handleClose();
     }
-
-    handleClose();
   };
 
-  useEffect(() => {
-    if (isOpen) {
-      setConfig(capability ? CAPABILITY_CONFIGS[capability] : null);
-    }
-  }, [capability, isOpen]);
+  // Memoize default values based on action (React Hook Form best practice)
+  const defaultValues = useMemo(() => {
+    const dataSourceTree =
+      action && open ? getDataSourceTree(action) : { in: [], notIn: [] };
 
-  const { control, handleSubmit } = createFormControl<CapabilityFormData>({
-    resolver: zodResolver(capabilityFormSchema),
-    defaultValues: {
-      sources: action
-        ? getDataSourceTree(action)
-        : {
-            in: [],
-            notIn: [],
-          },
+    return {
+      sources: dataSourceTree,
       description: action?.description ?? "",
       timeFrame: getTimeFrame(action),
       jsonSchema: getJsonSchema(action),
-    },
+    };
+  }, [action, open]);
+
+  const formMethods = useForm<CapabilityFormData>({
+    resolver: zodResolver(capabilityFormSchema),
+    defaultValues,
   });
+
+  // Reset form when action changes (recommended pattern for dynamic data)
+  useEffect(() => {
+    formMethods.reset(defaultValues);
+  }, [defaultValues, formMethods]);
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      handleClose();
+    }
+  };
+
+  const handleTriggerClick = () => {
+    if (!open && onOpen) {
+      onOpen();
+    }
+  };
+
   return (
-    <MultiPageSheet
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          handleClose();
-        }
-      }}
-    >
-      {config && (
+    <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
+      <MultiPageSheetTrigger asChild>
+        <Button
+          label="Add knowledge"
+          onClick={handleTriggerClick}
+          icon={BookOpenIcon}
+        />
+      </MultiPageSheetTrigger>
+      <FormProvider {...formMethods}>
         <KnowledgeConfigurationSheetContent
           config={config}
-          onClose={handleClose}
+          setConfig={setConfig}
           action={action}
           onSave={handleSave}
-          control={control}
-          handleSubmit={handleSubmit}
+          isOpen={open}
         />
-      )}
+      </FormProvider>
     </MultiPageSheet>
   );
 }
 
 interface KnowledgeConfigurationSheetContentProps {
-  config: CapabilityConfig;
+  config: CapabilityConfig | null;
+  setConfig: (config: CapabilityConfig | null) => void;
   action?: AgentBuilderAction;
   onSave: (
     formData: CapabilityFormData,
-    dataSourceConfigurations: DataSourceViewSelectionConfigurations
+    dataSourceConfigurations: DataSourceViewSelectionConfigurations,
+    configToUse: CapabilityConfig
   ) => void;
-  onClose: () => void;
-  control: Control<CapabilityFormData>;
-  handleSubmit: (
-    fn: (data: CapabilityFormData) => void
-  ) => (e?: React.BaseSyntheticEvent) => Promise<void>;
+  isOpen: boolean;
 }
 
-// This component gets unmounted when config is null so no need to reset the state.
 function KnowledgeConfigurationSheetContent({
   action,
   config,
+  setConfig,
   onSave,
-  control,
-  handleSubmit,
+  isOpen,
 }: KnowledgeConfigurationSheetContentProps) {
+  const { control, handleSubmit } = useFormContext<CapabilityFormData>();
   const { owner } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { spaces } = useSpacesContext();
+  const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
+    useMCPServerViewsContext();
 
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
     name: "instructions",
   });
 
-  const [currentPageId, setCurrentPageId] = useState<ConfigurationSheetPageId>(
-    CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION
+  const initialPageId =
+    action && isSupportedAgentBuilderAction(action)
+      ? CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION
+      : CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
+
+  const [currentPageId, setCurrentPageId] =
+    useState<ConfigurationSheetPageId>(initialPageId);
+
+  useEffect(() => {
+    if (action && isSupportedAgentBuilderAction(action)) {
+      setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION);
+      const serverName = ACTION_TYPE_TO_MCP_SERVER_MAP[action.type];
+      setSelectedMCPServerName(serverName);
+      if (serverName && isKnowledgeServerName(serverName)) {
+        setConfig(CAPABILITY_CONFIGS[serverName]);
+      }
+    } else if (!isOpen) {
+      setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
+      setSelectedMCPServerName("search");
+      setConfig(CAPABILITY_CONFIGS["search"]);
+    }
+  }, [action, isOpen, setConfig]);
+
+  const [selectedMCPServerName, setSelectedMCPServerName] = useState<
+    string | null
+  >(
+    action && isSupportedAgentBuilderAction(action)
+      ? ACTION_TYPE_TO_MCP_SERVER_MAP[action.type]
+      : "search"
   );
 
   const handlePageChange = (pageId: string) => {
@@ -175,12 +223,19 @@ function KnowledgeConfigurationSheetContent({
     }
   };
 
+  const handleMCPServerSelection = (serverName: string) => {
+    setSelectedMCPServerName(serverName);
+    if (isKnowledgeServerName(serverName)) {
+      setConfig(CAPABILITY_CONFIGS[serverName]);
+    }
+  };
+
   const pages: MultiPageSheetPage[] = [
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
-      title: config.title,
-      description: config.description,
-      icon: config.icon,
+      title: "Select Data Sources",
+      description: "Choose the data sources to include in your knowledge base",
+      icon: undefined,
       content: (
         <div className="space-y-4">
           <ScrollArea>
@@ -197,49 +252,63 @@ function KnowledgeConfigurationSheetContent({
     },
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION,
-      title: config.configPageTitle,
-      description: config.configPageDescription,
-      icon: config.icon,
+      title: config?.configPageTitle || "Configure Knowledge",
+      description:
+        config?.configPageDescription ||
+        "Select knowledge type and configure settings",
+      icon: config?.icon,
       content: (
         <div className="space-y-6">
-          {config.hasTimeFrame && (
-            <TimeFrameSection
-              control={control}
-              actionType={
-                config.name === "extract_data" ? "extract" : "include"
-              }
-            />
+          {/* MCP Server View Selection Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">
+              Choose your processing method
+            </h3>
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Smart data access through search, extraction, and queries.
+            </span>
+            <div className="flex flex-col items-start">
+              <MCPServerViewsKnowledgeDropdown
+                mcpServerViewsWithKnowledge={mcpServerViewsWithKnowledge}
+                onItemClick={handleMCPServerSelection}
+                isMCPServerViewsLoading={isMCPServerViewsLoading}
+                selectedServerName={selectedMCPServerName}
+              />
+            </div>
+          </div>
+
+          {/* Configuration Section - Only show when MCP server is selected */}
+          {selectedMCPServerName && config && (
+            <>
+              <hr className="border-gray-200" />
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold">Configuration</h3>
+                {config.hasTimeFrame && (
+                  <TimeFrameSection
+                    actionType={
+                      config.name === "extract_data" ? "extract" : "include"
+                    }
+                  />
+                )}
+                {config.hasJsonSchema && (
+                  <JsonSchemaSection
+                    initialSchemaString={
+                      action && getJsonSchema(action)
+                        ? JSON.stringify(getJsonSchema(action), null, 2)
+                        : null
+                    }
+                    agentInstructions={instructions}
+                    owner={owner}
+                  />
+                )}
+                <DescriptionSection {...config.descriptionConfig} />
+              </div>
+            </>
           )}
-          {config.hasJsonSchema && (
-            <JsonSchemaSection
-              control={control}
-              initialSchemaString={
-                action && getJsonSchema(action)
-                  ? JSON.stringify(getJsonSchema(action), null, 2)
-                  : null
-              }
-              agentInstructions={instructions}
-              owner={owner}
-            />
-          )}
-          <DescriptionSection control={control} {...config.descriptionConfig} />
         </div>
       ),
     },
   ];
-
-  const { isDirty } = useFormState({ control });
-
-  const sources = useWatch({
-    control,
-    name: "sources",
-  });
-  const disableNext = useMemo(() => {
-    if (currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION) {
-      return sources.in.length === 0;
-    }
-    return false;
-  }, [currentPageId, sources.in.length]);
 
   return (
     <MultiPageSheetContent
@@ -247,17 +316,18 @@ function KnowledgeConfigurationSheetContent({
       currentPageId={currentPageId}
       onPageChange={handlePageChange}
       onSave={handleSubmit((formData) => {
+        if (!config) {
+          return;
+        }
         // Transform the tree structure to selection configurations
         const dataSourceConfigurations = transformTreeToSelectionConfigurations(
           formData.sources,
           supportedDataSourceViews
         );
-        onSave(formData, dataSourceConfigurations);
+        onSave(formData, dataSourceConfigurations, config);
       })}
       size="xl"
       showNavigation
-      disableNext={disableNext}
-      disableSave={!isDirty}
     />
   );
 }
