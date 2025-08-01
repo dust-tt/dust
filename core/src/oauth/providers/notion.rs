@@ -25,6 +25,7 @@ lazy_static! {
 pub enum NotionUseCase {
     Connection,
     PlatformActions,
+    PersonalActions,
 }
 
 impl NotionUseCase {
@@ -32,6 +33,7 @@ impl NotionUseCase {
         match s {
             Some("connection") | None => Ok(NotionUseCase::Connection),
             Some("platform_actions") => Ok(NotionUseCase::PlatformActions),
+            Some("personal_actions") => Ok(NotionUseCase::PersonalActions),
             Some(other) => Err(anyhow!(format!(
                 "Notion use_case format invalid: {}",
                 other
@@ -50,6 +52,10 @@ impl NotionConnectionProvider {
     fn basic_auth(&self, use_case: &NotionUseCase) -> String {
         let (client_id, client_secret) = match use_case {
             NotionUseCase::PlatformActions => (
+                &*OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_ID,
+                &*OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_SECRET,
+            ),
+            NotionUseCase::PersonalActions => (
                 &*OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_ID,
                 &*OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_SECRET,
             ),
