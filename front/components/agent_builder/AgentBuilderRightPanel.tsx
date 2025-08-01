@@ -15,7 +15,7 @@ import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuil
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 
-type AgentBuilderRightPanelTabType = "testing" | "performance";
+type AgentBuilderRightPanelTabType = "preview" | "performance";
 
 interface PanelHeaderProps {
   isPreviewPanelOpen: boolean;
@@ -33,7 +33,7 @@ function PanelHeader({
   return (
     <div className="flex h-16 items-end">
       {isPreviewPanelOpen ? (
-        <div className="flex w-full items-center px-6">
+        <div className="flex w-full items-center px-0 md:px-6">
           <ScrollArea aria-orientation="horizontal" className="flex-1">
             <Tabs value={selectedTab} className="w-full">
               <TabsList>
@@ -42,13 +42,14 @@ function PanelHeader({
                   size="sm"
                   variant="ghost-secondary"
                   tooltip="Hide preview"
+                  className="hidden md:flex"
                   onClick={onTogglePanel}
                 />
                 <TabsTrigger
-                  value="testing"
-                  label="Testing"
+                  value="preview"
+                  label="Preview"
                   icon={TestTubeIcon}
-                  onClick={() => onTabChange("testing")}
+                  onClick={() => onTabChange("preview")}
                 />
                 <TabsTrigger
                   value="performance"
@@ -61,9 +62,10 @@ function PanelHeader({
           </ScrollArea>
         </div>
       ) : (
-        <div className="flex h-full w-full items-end justify-center">
+        <div className="flex h-full w-full items-center justify-center">
           <Button
             icon={SidebarRightOpenIcon}
+            className="hidden h-9 w-9 md:flex"
             size="sm"
             variant="ghost-secondary"
             tooltip="Open preview"
@@ -75,6 +77,7 @@ function PanelHeader({
   );
 }
 
+
 interface CollapsedTabsProps {
   onTabSelect: (tab: AgentBuilderRightPanelTabType) => void;
 }
@@ -84,13 +87,15 @@ function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
       <Button
         icon={TestTubeIcon}
+        className="h-9 w-9"
         variant="ghost"
         size="sm"
-        tooltip="Testing"
-        onClick={() => onTabSelect("testing")}
+        tooltip="Preview"
+        onClick={() => onTabSelect("preview")}
       />
       <Button
         icon={BarChartIcon}
+        className="h-9 w-9"
         variant="ghost"
         size="sm"
         tooltip="Performance"
@@ -111,7 +116,7 @@ function ExpandedContent({
 }: ExpandedContentProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {selectedTab === "testing" && (
+      {selectedTab === "preview" && (
         <div className="min-h-0 flex-1">
           <AgentBuilderPreview />
         </div>
@@ -137,7 +142,7 @@ export function AgentBuilderRightPanel({
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
   const [selectedTab, setSelectedTab] =
-    useState<AgentBuilderRightPanelTabType>("testing");
+    useState<AgentBuilderRightPanelTabType>("preview");
 
   const handleTogglePanel = () => {
     setIsPreviewPanelOpen(!isPreviewPanelOpen);

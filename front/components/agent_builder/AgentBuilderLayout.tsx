@@ -76,7 +76,7 @@ export function AgentBuilderLayout({
                 className="h-full w-full"
               >
                 <ResizablePanel defaultSize={70} minSize={30}>
-                  <div className="h-full w-full overflow-y-auto px-6">
+                  <div className="h-full w-full overflow-y-auto px-0 md:px-6">
                     {leftPanel}
                   </div>
                 </ResizablePanel>
@@ -101,8 +101,8 @@ export function AgentBuilderLayout({
                   onExpand={handlePanelExpand}
                   className={
                     !isResizing
-                      ? "overflow-hidden transition-all duration-300 ease-in-out"
-                      : "overflow-hidden"
+                      ? "overflow-hidden transition-all duration-300 ease-in-out hidden md:block"
+                      : "overflow-hidden hidden md:block"
                   }
                 >
                   <div className="h-full w-full overflow-y-auto">
