@@ -136,7 +136,7 @@ function getTableColumns(
     id: "lastSync",
     header: "Last sync",
     meta: {
-      className: "w-48",
+      className: "w-64",
     },
     accessorFn: (row) =>
       row.dataSourceView.dataSource.connector?.lastSyncSuccessfulTime,
