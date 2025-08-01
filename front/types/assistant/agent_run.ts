@@ -20,6 +20,7 @@ import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
+import { isGlobalAgentId } from "@app/types";
 
 export type RunAgentAsynchronousArgs = {
   agentMessageId: string;
@@ -135,7 +136,10 @@ export async function getRunAgentData(
   // Fetch the agent configuration as we need the full version of the agent configuration.
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: agentMessage.configuration.sId,
-    agentVersion: agentMessage.configuration.version,
+    // We do define agentMessage.configuration.version for global agent, ignoring this value here.
+    agentVersion: isGlobalAgentId(agentMessage.configuration.sId)
+      ? undefined
+      : agentMessage.configuration.version,
     variant: "full",
   });
   if (!agentConfiguration) {
