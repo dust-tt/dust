@@ -34,6 +34,7 @@ import {
 } from "@app/types";
 
 export function hideFileFromActionOutput({
+  file,
   fileId,
   content,
   workspaceId,
@@ -62,9 +63,10 @@ export function hideFileFromActionOutput({
       contentType = "unknown";
       break;
   }
+  const snippet = file?.snippet ?? null;
   return {
     type: "text",
-    text: `A file of type ${contentType} with id ${sid} was generated successfully and made available to the conversation.`,
+    text: `A file of type ${contentType} with id ${sid} was generated successfully and made available to the conversation. ${snippet ? `\n\nSnippet:\n ${snippet}` : ""}`,
   };
 }
 
