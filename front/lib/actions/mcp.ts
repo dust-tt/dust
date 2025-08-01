@@ -233,7 +233,6 @@ export class MCPActionType {
   readonly mcpServerConfigurationId: string;
   readonly params: Record<string, unknown>; // Hold the inputs for the action.
   readonly output: CallToolResult["content"] | null;
-  // TODO(durable-agents): drop this column.
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number = -1;
@@ -279,12 +278,7 @@ export class MCPActionType {
   }
 
   async renderForMultiActionsModel(
-    _: Authenticator,
-    {
-      model,
-    }: {
-      model: ModelConfigurationType;
-    }
+    model: ModelConfigurationType
   ): Promise<FunctionMessageTypeModel> {
     if (!this.functionCallName) {
       throw new Error("MCPAction: functionCallName is required");
@@ -311,27 +305,13 @@ export class MCPActionType {
       };
     }
 
-    const outputItems = removeNulls(
-      this.output?.map(rewriteContentForModel) ?? []
-    );
-
-    const output = (() => {
-      if (outputItems.length === 0) {
-        return "Successfully executed action, no output.";
-      }
-
-      if (outputItems.every((item) => isTextContent(item))) {
-        return outputItems.map((item) => item.text).join("\n");
-      }
-
-      return JSON.stringify(outputItems);
-    })();
-
     return {
       role: "function" as const,
       name: this.functionCallName,
       function_call_id: this.functionCallId,
-      content: output,
+      content: stringifyOutputItems(
+        removeNulls(this.output?.map(rewriteContentForModel) ?? [])
+      ),
     };
   }
 
@@ -354,6 +334,18 @@ export class MCPActionType {
       workspaceId,
     });
   }
+}
+
+function stringifyOutputItems(outputItems: CallToolResult["content"]) {
+  if (outputItems.length === 0) {
+    return "Successfully executed action, no output.";
+  }
+
+  if (outputItems.every((item) => isTextContent(item))) {
+    return outputItems.map((item) => item.text).join("\n");
+  }
+
+  return JSON.stringify(outputItems);
 }
 
 /**

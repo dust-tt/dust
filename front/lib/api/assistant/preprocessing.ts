@@ -360,9 +360,7 @@ async function getSteps(
     // be reconsidered in the future.
     stepByStepIndex[stepIndex].actions.push({
       call: action.renderForFunctionCall(),
-      result: await action.renderForMultiActionsModel(auth, {
-        model,
-      }),
+      result: await action.renderForMultiActionsModel(model),
     });
   }
 
