@@ -273,7 +273,9 @@ export const getChannels = cacheWithRedis(
   _getChannelsUncached,
   (slackClient, connectorId, joinedOnly) =>
     `slack-channels-${connectorId}-${joinedOnly}`,
-  5 * 60 * 1000
+  {
+    ttlMs: 5 * 60 * 1000,
+  }
 );
 
 async function _getChannelsUncached(

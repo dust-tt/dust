@@ -1306,7 +1306,9 @@ const cachedGetParentFromGraphAPI = cacheWithRedis(
     startGarbageCollectionTs: number;
   }) =>
     `microsoft-garbage-collection-ts-${startGarbageCollectionTs}-node-${parentInternalId}`,
-  60 * 60 * 24 * 1000
+  {
+    ttlMs: 60 * 60 * 24 * 1000,
+  }
 );
 
 async function isOutsideRootNodes({

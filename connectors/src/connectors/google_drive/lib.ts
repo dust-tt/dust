@@ -120,7 +120,9 @@ export const getLocalParents = cacheWithRedis(
   (connectorId, contentNodeInternalId, memoizationKey) => {
     return `${connectorId}:${contentNodeInternalId}:${memoizationKey}`;
   },
-  60 * 10 * 1000
+  {
+    ttlMs: 60 * 10 * 1000,
+  }
 );
 
 export async function internalDeleteFile(
