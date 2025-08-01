@@ -135,6 +135,7 @@ export async function getRunAgentData(
   // Fetch the agent configuration as we need the full version of the agent configuration.
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: agentMessage.configuration.sId,
+    agentVersion: agentMessage.configuration.version,
     variant: "full",
   });
   if (!agentConfiguration) {
