@@ -1,4 +1,4 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { Button, Spinner } from "@dust-tt/sparkle";
 import React from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -68,10 +68,11 @@ export function AgentBuilderPreview() {
     setStickyMentions,
   } = useDraftAgent();
 
-  const { conversation, handleSubmit } = useDraftConversation({
-    draftAgent,
-    getDraftAgent,
-  });
+  const { conversation, handleSubmit, resetConversation } =
+    useDraftConversation({
+      draftAgent,
+      getDraftAgent,
+    });
 
   // Show loading spinner only when the first time we create a draft agent. After that the spinner is shown
   // inside the button in the input bar. This way we don't have to unmount the conversation viewer every time.
@@ -103,6 +104,16 @@ export function AgentBuilderPreview() {
 
     return (
       <div className="flex h-full flex-col">
+        {conversation && (
+          <div className="flex-shrink-0 border-b border-border p-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetConversation}
+              label="Reset conversation"
+            />
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto">
           {conversation && user && (
             <InteractiveContentProvider>
