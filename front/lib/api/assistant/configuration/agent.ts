@@ -254,30 +254,6 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
   });
 }
 
-export async function getLightAgentConfiguration(
-  auth: Authenticator,
-  agentId: string
-): Promise<LightAgentConfigurationType | null> {
-  return getAgentConfiguration(auth, { agentId, variant: "light" });
-}
-
-export async function getFullAgentConfiguration(
-  auth: Authenticator,
-  configuration: LightAgentConfigurationType
-): Promise<AgentConfigurationType> {
-  const fullConfiguration = await getAgentConfiguration(auth, {
-    agentId: configuration.sId,
-    variant: "full",
-  });
-
-  assert(
-    fullConfiguration,
-    "Unreachable: could not find detailed configuration for agent"
-  );
-
-  return fullConfiguration;
-}
-
 /**
  * Search agent configurations by name.
  */

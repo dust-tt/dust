@@ -17,7 +17,7 @@ export class RemoteMCPServerFactory {
       tools?: MCPToolType[];
     } = {}
   ) {
-    const cachedName = options.name || "Test Server";
+    const cachedName = options.name || "Test Server" + faker.number.int(1000);
     const url = options.url || `https://${faker.internet.domainName()}`;
     const cachedDescription = options.description || `${name} description`;
     const tools: MCPToolType[] = options.tools || [

@@ -1,4 +1,5 @@
 import {
+  ArrowPathIcon,
   BarChartIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
@@ -89,13 +90,18 @@ export default function AssistantBuilderRightPanel({
     });
 
   const { user } = useUser();
-  const { conversation, stickyMentions, setStickyMentions, handleSubmit } =
-    useTryAssistantCore({
-      owner,
-      user,
-      assistant: draftAssistant,
-      createDraftAgent,
-    });
+  const {
+    conversation,
+    stickyMentions,
+    setStickyMentions,
+    handleSubmit,
+    resetConversation,
+  } = useTryAssistantCore({
+    owner,
+    user,
+    assistant: draftAssistant,
+    createDraftAgent,
+  });
 
   const isBuilderStateEmpty =
     !builderState.instructions?.trim() && !builderState.actions.length;
@@ -227,6 +233,17 @@ export default function AssistantBuilderRightPanel({
                       )}
                     </div>
                     <div className="shrink-0">
+                      {conversation && (
+                        <div className="mb-2 px-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            icon={ArrowPathIcon}
+                            onClick={resetConversation}
+                            label="Reset conversation"
+                          />
+                        </div>
+                      )}
                       <AssistantInputBar
                         disableButton={isSavingDraftAgent}
                         owner={owner}

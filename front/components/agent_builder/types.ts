@@ -3,13 +3,12 @@ import { uniqueId } from "lodash";
 import { z } from "zod";
 
 import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { SupportedModel, WhitelistableFeature } from "@app/types";
 import { ioTsEnum } from "@app/types";
-
-import { dataSourceBuilderTreeType } from "../data_source_view/context/types";
 
 type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
@@ -35,6 +34,11 @@ export type ExtractDataAgentBuilderAction = Extract<
   { type: "EXTRACT_DATA" }
 >;
 
+export type QueryTablesAgentBuilderAction = Extract<
+  AgentBuilderAction,
+  { type: "QUERY_TABLES" }
+>;
+
 export type SearchActionConfiguration =
   SearchAgentBuilderAction["configuration"];
 
@@ -47,11 +51,15 @@ export type IncludeDataActionConfiguration =
 export type ExtractDataActionConfiguration =
   ExtractDataAgentBuilderAction["configuration"];
 
+export type QueryTablesActionConfiguration =
+  QueryTablesAgentBuilderAction["configuration"];
+
 export type AgentBuilderActionConfiguration =
   | SearchActionConfiguration
   | DataVisualizationActionConfiguration
   | IncludeDataActionConfiguration
-  | ExtractDataActionConfiguration;
+  | ExtractDataActionConfiguration
+  | QueryTablesActionConfiguration;
 
 // Type guards
 export function isSearchAction(
@@ -78,12 +86,28 @@ export function isExtractDataAction(
   return action.type === "EXTRACT_DATA";
 }
 
+export type SupportedAgentBuilderAction =
+  | SearchAgentBuilderAction
+  | IncludeDataAgentBuilderAction
+  | ExtractDataAgentBuilderAction
+  | QueryTablesAgentBuilderAction;
+
+export function isSupportedAgentBuilderAction(
+  action: AgentBuilderAction
+): action is SupportedAgentBuilderAction {
+  return (
+    action.type === "SEARCH" ||
+    action.type === "INCLUDE_DATA" ||
+    action.type === "EXTRACT_DATA" ||
+    action.type === "QUERY_TABLES"
+  );
+}
+
 // MCP server names that map to agent builder actions
 export const AGENT_BUILDER_MCP_SERVERS = [
   "extract_data",
   "search",
   "include_data",
-  "extract_data",
   "query_tables",
 ] as const;
 export type AgentBuilderMCPServerName =

@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { computeTextByteSize } from "@app/lib/actions/action_output_limits";
 import {
   DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
@@ -27,6 +28,9 @@ import type {
   TextContent,
 } from "@app/types";
 import { Err, isImageContent, isTextContent, Ok } from "@app/types";
+
+const MAX_FILE_SIZE_FOR_GREP = 20 * 1024 * 1024; // 20MB.
+const MAX_FILE_SIZE_FOR_INCLUDE = 1024 * 1024; // 1MB.
 
 /**
  * MCP server for handling conversation file operations.
@@ -92,6 +96,15 @@ function createServer(
       );
 
       if (isTextContent(content)) {
+        const textByteSize = computeTextByteSize(content.text);
+        if (textByteSize > MAX_FILE_SIZE_FOR_INCLUDE) {
+          return makeMCPToolTextError(
+            `File ${title} is too large (${(textByteSize / 1024 / 1024).toFixed(2)}MB) to include in the conversation. ` +
+              `Maximum supported size is ${MAX_FILE_SIZE_FOR_INCLUDE / 1024 / 1024}MB. ` +
+              `Consider using cat to read smaller portions of the file.`
+          );
+        }
+
         return {
           isError: false,
           content: [
@@ -162,6 +175,112 @@ function createServer(
           {
             type: "text",
             text: content,
+          },
+        ],
+      };
+    }
+  );
+
+  server.tool(
+    "cat",
+    "Read the contents of a large file from conversation attachments with offset/limit and optional grep filtering (named after the 'cat' unix tool). " +
+      "Use this when files are too large to read in full, or when you need to search for specific patterns within a file.",
+    {
+      fileId: z
+        .string()
+        .describe(
+          "The fileId of the attachment to read, as returned by the conversation_list_files action"
+        ),
+      offset: z
+        .number()
+        .optional()
+        .describe(
+          "The character position to start reading from (0-based). If not provided, starts from " +
+            "the beginning."
+        ),
+      limit: z
+        .number()
+        .optional()
+        .describe(
+          "The maximum number of characters to read. If not provided, reads all characters."
+        ),
+      grep: z
+        .string()
+        .optional()
+        .describe(
+          "A regular expression to filter lines. Applied after offset/limit slicing. Only lines " +
+            "matching this pattern will be returned."
+        ),
+    },
+    async ({ fileId, offset, limit, grep }) => {
+      if (!agentLoopContext?.runContext) {
+        return makeMCPToolTextError("No conversation context available");
+      }
+
+      const conversation = agentLoopContext.runContext.conversation;
+      const model = getSupportedModelConfig(
+        agentLoopContext.runContext.agentConfiguration.model
+      );
+
+      const fileRes = await getFileFromConversation(
+        auth,
+        fileId,
+        conversation,
+        model
+      );
+
+      if (fileRes.isErr()) {
+        return makeMCPToolTextError(fileRes.error);
+      }
+
+      const { content, title } = fileRes.value;
+
+      // Only process text content.
+      if (!isTextContent(content)) {
+        return makeMCPToolTextError(
+          `File ${title} does not have text content that can be read with offset/limit`
+        );
+      }
+
+      let text = content.text;
+
+      // Apply offset and limit.
+      if (offset !== undefined || limit !== undefined) {
+        const start = offset || 0;
+        const end = limit !== undefined ? start + limit : undefined;
+        text = text.slice(start, end);
+      }
+
+      // Apply grep filter if provided.
+      if (grep) {
+        // Check if the grep pattern is too large.
+        const grepByteSize = computeTextByteSize(grep);
+        if (grepByteSize > MAX_FILE_SIZE_FOR_GREP) {
+          return makeMCPToolTextError(
+            `Grep pattern is too large (${(grepByteSize / 1024 / 1024).toFixed(2)}MB) to apply grep filtering. ` +
+              `Maximum supported size is ${MAX_FILE_SIZE_FOR_GREP / 1024 / 1024}MB. ` +
+              `Consider using offset/limit to read smaller portions of the file.`
+          );
+        }
+
+        try {
+          const regex = new RegExp(grep, "gm");
+          const lines = text.split("\n");
+          const matchedLines = lines.filter((line) => regex.test(line));
+          text = matchedLines.join("\n");
+        } catch (e) {
+          return makeMCPToolTextError(
+            `Invalid regular expression: ${grep}. Error: ${e instanceof Error ? e.message : String(e)}`
+          );
+        }
+      }
+
+      return {
+        isError: false,
+        content: [
+          {
+            type: "text",
+            text: text,
           },
         ],
       };

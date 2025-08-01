@@ -19,7 +19,6 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
-import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { isDefaultRemoteMcpServerURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import {
@@ -52,8 +51,9 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   const form = useForm<MCPFormType>({
     resolver: zodResolver(MCPFormSchema),
     defaultValues: {
-      name: getMcpServerDisplayName(mcpServer),
-      description: mcpServer.description,
+      name: mcpServer.name || mcpServer.cachedName,
+      description:
+        (mcpServer.description || mcpServer.cachedDescription) ?? undefined,
       icon: mcpServer.icon,
       sharedSecret: mcpServer.sharedSecret || "",
     },

@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
-import type { CursorPaginationParams } from "@app/lib/api/pagination";
+import type {
+  CursorPaginationParams,
+  SortingParams,
+} from "@app/lib/api/pagination";
 import {
   emptyArray,
   fetcher,
@@ -200,6 +203,7 @@ export function useDataSourceViewContentNodes({
   parentId,
   pagination,
   viewType,
+  sorting,
   disabled = false,
   swrOptions,
 }: {
@@ -209,6 +213,7 @@ export function useDataSourceViewContentNodes({
   parentId?: string;
   pagination?: CursorPaginationParams;
   viewType?: ContentNodesViewType;
+  sorting?: SortingParams;
   disabled?: boolean;
   swrOptions?: SWRConfiguration;
 }): {
@@ -238,6 +243,7 @@ export function useDataSourceViewContentNodes({
     internalIds,
     parentId,
     viewType,
+    sorting,
   };
 
   const fetchKey = JSON.stringify([url + "?" + params.toString(), body]);
@@ -252,7 +258,7 @@ export function useDataSourceViewContentNodes({
 
         return fetcherWithBody([
           url,
-          { internalIds, parentId, viewType },
+          { internalIds, parentId, viewType, sorting },
           "POST",
         ]);
       },

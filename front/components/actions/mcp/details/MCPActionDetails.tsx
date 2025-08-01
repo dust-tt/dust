@@ -150,7 +150,10 @@ export function GenericActionDetails({
   action,
   defaultOpen,
 }: MCPActionDetailsProps) {
-  const inputs = JSON.stringify(action.params, undefined, 2) ?? "";
+  const inputs =
+    Object.keys(action.params).length > 0
+      ? JSON.stringify(action.params, undefined, 2)
+      : null;
 
   return (
     <ActionDetailsWrapper
@@ -171,7 +174,9 @@ export function GenericActionDetails({
               <span className="heading-base">Inputs</span>
             </div>
           }
-          contentChildren={<RenderToolItemMarkdown text={inputs} />}
+          contentChildren={
+            <RenderToolItemMarkdown text={inputs} type="input" />
+          }
         />
 
         {action.output && (
@@ -197,6 +202,7 @@ export function GenericActionDetails({
                     <RenderToolItemMarkdown
                       key={index}
                       text={getOutputText(o)}
+                      type="output"
                     />
                   ))}
               </div>
@@ -240,7 +246,20 @@ export function GenericActionDetails({
   );
 }
 
-const RenderToolItemMarkdown = ({ text }: { text: string }) => {
+const RenderToolItemMarkdown = ({
+  text,
+  type,
+}: {
+  text: string | null;
+  type: "input" | "output";
+}) => {
+  if (!text) {
+    text =
+      type === "input"
+        ? "*The tool was called with no specified inputs.*"
+        : "*The tool completed with no output.*";
+  }
+
   if (isValidJSON(text)) {
     return <Markdown content={`\`\`\`json\n${text}\n\`\`\``} />;
   }

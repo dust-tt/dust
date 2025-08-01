@@ -131,15 +131,21 @@ export default function AgentBuilder({
         agentConfigurationId: agentConfiguration?.sId || null,
       });
 
-      if (result.isOk()) {
-        await router.push(`/w/${owner.sId}/builder/assistants`);
-      } else {
+      if (!result.isOk()) {
         sendNotification({
           title: agentConfiguration
             ? "Error updating agent"
             : "Error creating agent",
           description: result.error.message,
           type: "error",
+        });
+      } else {
+        sendNotification({
+          title: agentConfiguration ? "Agent saved" : "Agent created",
+          description: agentConfiguration
+            ? "Your agent has been successfully saved"
+            : "Your agent has been successfully created",
+          type: "success",
         });
       }
     } catch (error) {

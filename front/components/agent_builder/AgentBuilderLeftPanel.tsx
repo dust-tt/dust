@@ -74,12 +74,6 @@ export function AgentBuilderLeftPanel({
         rightActions={
           <BarFooter.ButtonBar
             variant="validate"
-            cancelButtonProps={{
-              size: "sm",
-              label: "Cancel",
-              variant: "ghost",
-              onClick: handleCancel,
-            }}
             saveButtonProps={saveButtonProps}
           />
         }
