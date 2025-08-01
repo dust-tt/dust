@@ -12,6 +12,8 @@ import { useState } from "react";
 
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
+import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
@@ -19,10 +21,12 @@ import type { WorkspaceType } from "@app/types";
 
 type AddActionMenuProps = {
   owner: WorkspaceType;
-  enabledMCPServers: string[];
+  enabledMCPServers: { id: string; name: string }[];
   buttonVariant?: "primary" | "outline";
   createInternalMCPServer: (mcpServer: MCPServerType) => void;
-  createRemoteMCPServer: () => void;
+  createRemoteMCPServer: (
+    defaultServerConfig?: DefaultRemoteMCPServerConfig
+  ) => void;
   setIsLoading: (isLoading: boolean) => void;
 };
 
@@ -61,7 +65,8 @@ export const AddActionMenu = ({
             <Button
               icon={PlusIcon}
               label="Add MCP Server"
-              onClick={createRemoteMCPServer}
+              // Empty call is required given onClick passes a MouseEvent
+              onClick={() => createRemoteMCPServer()}
             />
           }
         />
@@ -71,7 +76,17 @@ export const AddActionMenu = ({
           </div>
         )}
         {availableMCPServers
-          .filter((mcpServer) => !enabledMCPServers.includes(mcpServer.sId))
+          .filter(
+            (mcpServer) =>
+              !enabledMCPServers.some((enabled) => enabled.id === mcpServer.sId)
+          )
+          // ID is auto-incremented, so we need to filter out default servers with matching names
+          .filter(
+            (mcpServer) =>
+              !enabledMCPServers.some(
+                (enabled) => enabled.name === mcpServer.name
+              )
+          )
           .filter((mcpServer) => filterMCPServer(mcpServer, searchText))
           .map((mcpServer) => (
             <DropdownMenuItem
@@ -80,7 +95,14 @@ export const AddActionMenu = ({
               icon={() => getAvatar(mcpServer, "xs")}
               description={mcpServer.description}
               onClick={async () => {
-                createInternalMCPServer(mcpServer);
+                const remoteMcpServer = getDefaultRemoteMCPServerByName(
+                  mcpServer.name
+                );
+                if (remoteMcpServer) {
+                  createRemoteMCPServer(remoteMcpServer);
+                } else {
+                  createInternalMCPServer(mcpServer);
+                }
               }}
             />
           ))}

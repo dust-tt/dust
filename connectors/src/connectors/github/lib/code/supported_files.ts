@@ -59,6 +59,8 @@ const EXTENSION_WHITELIST = [
   ".env",
   ".conf",
   ".config",
+  ".avsc", // Apache Avro schema definition
+  ".avdl", // Apache Avro IDL definition
 
   // Build & Dependencies
   ".gradle",
@@ -81,6 +83,7 @@ const EXTENSION_WHITELIST = [
   ".tex", // LaTeX
   ".txt",
   ".patch",
+  ".dsl", // Structurizr domain-specific language
 
   // Shell & Scripts
   ".sh",
@@ -109,6 +112,7 @@ const FILENAME_WHITELIST = [
   "Dockerfile",
   "package.json",
   "Cargo.toml",
+  ".authors",
 ];
 
 const DIRECTORY_BLACKLIST = [

@@ -23,6 +23,7 @@ export const OAUTH_PROVIDERS = [
   "microsoft",
   "zendesk",
   "salesforce",
+  "monday",
 ] as const;
 
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
@@ -86,6 +87,7 @@ export const CREDENTIALS_PROVIDERS = [
   "snowflake",
   "bigquery",
   "salesforce",
+  "notion",
   // Labs
   "modjo",
   "hubspot",
@@ -198,11 +200,17 @@ export type SalesforceCredentials = t.TypeOf<
   typeof SalesforceCredentialsSchema
 >;
 
+export const NotionCredentialsSchema = t.type({
+  integration_token: t.string,
+});
+export type NotionCredentials = t.TypeOf<typeof NotionCredentialsSchema>;
+
 export type ConnectionCredentials =
   | SnowflakeCredentials
   | ModjoCredentials
   | BigQueryCredentialsWithLocation
-  | SalesforceCredentials;
+  | SalesforceCredentials
+  | NotionCredentials;
 
 export function isSnowflakeCredentials(
   credentials: ConnectionCredentials

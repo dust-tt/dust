@@ -8,16 +8,16 @@ import { z } from "zod";
 
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import type {
+  CustomServerIconType,
   InternalAllowedIconType,
-  RemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 import {
+  CUSTOM_SERVER_ALLOWED,
   INTERNAL_ALLOWED_ICONS,
-  REMOTE_ALLOWED_ICONS,
 } from "@app/lib/actions/mcp_icons";
-import type { SupportedFileContentType } from "@app/types";
+import type { AllSupportedFileContentType } from "@app/types";
 import { CONNECTOR_PROVIDERS } from "@app/types";
-import { FILE_FORMATS } from "@app/types";
+import { ALL_FILE_FORMATS } from "@app/types";
 
 export function isBlobResource(
   outputBlock: CallToolResult["content"][number]
@@ -41,9 +41,9 @@ const ToolGeneratedFileSchema = z.object({
   fileId: z.string(),
   title: z.string(),
   contentType: z.enum(
-    Object.keys(FILE_FORMATS) as [
-      SupportedFileContentType,
-      ...SupportedFileContentType[],
+    Object.keys(ALL_FILE_FORMATS) as [
+      AllSupportedFileContentType,
+      ...AllSupportedFileContentType[],
     ]
   ),
   snippet: z.string().nullable(),
@@ -660,12 +660,40 @@ export const isFilesystemPathType = (
  * Notification output types.
  */
 
+// Image.
+
 const NotificationImageContentSchema = z.object({
   type: z.literal("image"),
   mimeType: z.string(),
 });
 
 type ImageProgressOutput = z.infer<typeof NotificationImageContentSchema>;
+
+export function isImageProgressOutput(
+  output: ProgressNotificationOutput
+): output is ImageProgressOutput {
+  return output !== undefined && output.type === "image";
+}
+
+// Interactive file.
+
+const NotificationInteractiveFileContentSchema = z.object({
+  type: z.literal("interactive_file"),
+  fileId: z.string(),
+  mimeType: z.string(),
+  title: z.string(),
+  updatedAt: z.string(),
+});
+
+type InteractiveFileContentProgressOutput = z.infer<
+  typeof NotificationInteractiveFileContentSchema
+>;
+
+export function isInteractiveFileContentOutput(
+  output: ProgressNotificationOutput
+): output is InteractiveFileContentProgressOutput {
+  return output !== undefined && output.type === "interactive_file";
+}
 
 const InternalAllowedIconSchema = z.enum(
   INTERNAL_ALLOWED_ICONS as [
@@ -674,8 +702,8 @@ const InternalAllowedIconSchema = z.enum(
   ]
 );
 
-const RemoteAllowedIconSchema = z.enum(
-  REMOTE_ALLOWED_ICONS as [RemoteAllowedIconType, ...RemoteAllowedIconType[]]
+const CustomServerIconSchema = z.enum(
+  CUSTOM_SERVER_ALLOWED as [CustomServerIconType, ...CustomServerIconType[]]
 );
 
 // Schema for the resource of a notification where the tool is asking for tool approval.
@@ -694,7 +722,7 @@ const NotificationToolApproveBubbleUpContentSchema = z.object({
     toolName: z.string(),
     agentName: z.string(),
     icon: z
-      .union([InternalAllowedIconSchema, RemoteAllowedIconSchema])
+      .union([InternalAllowedIconSchema, CustomServerIconSchema])
       .optional(),
   }),
 });
@@ -709,12 +737,6 @@ export function isToolApproveBubbleUpNotificationType(
   return NotificationToolApproveBubbleUpContentSchema.safeParse(
     notificationOutput
   ).success;
-}
-
-export function isImageProgressOutput(
-  output: ProgressNotificationOutput
-): output is ImageProgressOutput {
-  return output !== undefined && output.type === "image";
 }
 
 const NotificationTextContentSchema = z.object({
@@ -744,9 +766,10 @@ export function isRunAgentProgressOutput(
 export const ProgressNotificationOutputSchema = z
   .union([
     NotificationImageContentSchema,
+    NotificationInteractiveFileContentSchema,
+    NotificationRunAgentContentSchema,
     NotificationTextContentSchema,
     NotificationToolApproveBubbleUpContentSchema,
-    NotificationRunAgentContentSchema,
   ])
   .optional();
 
@@ -790,3 +813,35 @@ export function isTextContent(
 ): content is { type: "text"; text: string } {
   return content.type === "text";
 }
+
+export function isResourceContentWithText(
+  content: CallToolResult["content"][number]
+): content is {
+  type: "resource";
+  resource: {
+    [x: string]: unknown;
+    text: string;
+    uri: string;
+    mimeType?: string | undefined;
+  };
+} {
+  return (
+    content.type === "resource" &&
+    typeof content.resource === "object" &&
+    content.resource !== null &&
+    "text" in content.resource &&
+    typeof (content.resource as any).text === "string"
+  );
+}
+
+export const getOutputText = (
+  output: CallToolResult["content"][number]
+): string => {
+  if (isTextContent(output)) {
+    return output.text;
+  }
+  if (isResourceContentWithText(output)) {
+    return output.resource.text;
+  }
+  return "";
+};

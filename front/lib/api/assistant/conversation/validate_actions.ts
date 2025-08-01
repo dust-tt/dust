@@ -1,9 +1,7 @@
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import { isMCPApproveExecutionEvent } from "@app/lib/actions/mcp";
-import {
-  getMessageChannelId,
-  publishEvent,
-} from "@app/lib/api/assistant/pubsub";
+import { publishEvent } from "@app/lib/api/assistant/pubsub";
+import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import logger from "@app/logger/logger";
 

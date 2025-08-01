@@ -8,7 +8,6 @@ import type {
   CoreEntitiesRelocationBlob,
   RelocationBlob,
 } from "@app/temporal/relocation/activities/types";
-import { isArrayOfPlainObjects } from "@app/temporal/relocation/activities/types";
 import {
   deleteFromRelocationStorage,
   readFromRelocationStorage,
@@ -106,7 +105,23 @@ export async function processFrontTableChunk({
 
   localLogger.info("[SQL] Writing table chunk.");
 
-  const blob = await readFromRelocationStorage<RelocationBlob>(dataPath);
+  let blob: RelocationBlob;
+  try {
+    blob = await readFromRelocationStorage<RelocationBlob>(dataPath);
+  } catch (error: unknown) {
+    if (
+      error instanceof Error &&
+      error.message.includes("Cannot create a string longer than")
+    ) {
+      localLogger.warn(
+        { error: error.message, dataPath },
+        "[SQL] File too large to process, skipping with empty blob."
+      );
+      blob = { statements: {} };
+    } else {
+      throw error;
+    }
+  }
 
   for (const [tableName, statements] of Object.entries(blob.statements)) {
     logger.info(

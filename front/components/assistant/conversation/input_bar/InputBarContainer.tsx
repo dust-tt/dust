@@ -3,7 +3,6 @@ import {
   Button,
   FullscreenExitIcon,
   FullscreenIcon,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
@@ -27,6 +26,7 @@ import useUrlHandler from "@app/components/assistant/conversation/input_bar/edit
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";

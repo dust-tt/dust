@@ -11,7 +11,6 @@ import {
   Page,
   TextArea,
   TrashIcon,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { capitalize } from "lodash";
 import { LockIcon } from "lucide-react";
@@ -20,13 +19,14 @@ import { useContext, useMemo, useState } from "react";
 
 import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
 import { ConfirmContext } from "@app/components/Confirm";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
 import TrackerBuilderDataSourceModal from "@app/components/trackers/TrackerBuilderDataSourceModal";
 import { TrackerDataSourceSelectedTree } from "@app/components/trackers/TrackerDataSourceSelectedTree";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { isConnectorTypeTrackable } from "@app/lib/connector_providers";
 import { isEmailValid } from "@app/lib/utils";
 import type {
@@ -275,15 +275,14 @@ export const TrackerBuilder = ({
   );
 
   return (
-    <AppContentLayout
+    <AppCenteredLayout
       owner={owner}
       subscription={subscription}
       hideSidebar
-      isWideMode
       pageTitle={
         initialTrackerId ? "Dust - Edit Tracker" : "Dust - New Tracker"
       }
-      titleChildren={
+      title={
         !edited ? (
           <AppLayoutSimpleCloseTitle
             title={initialTrackerId ? "Edit Tracker" : "New Tracker"}
@@ -303,7 +302,7 @@ export const TrackerBuilder = ({
         )
       }
     >
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-16 pb-12 pt-2">
+      <div className="flex flex-col gap-16 pb-12 pt-2">
         <div className="flex">
           <div className="flex flex-grow" />
           <div className="flex flex-shrink-0 gap-2">
@@ -346,6 +345,7 @@ export const TrackerBuilder = ({
                   providerId: tracker.providerId,
                 },
                 temperature: tracker.temperature,
+                reasoningEffort: "none",
               }}
               setGenerationSettings={(g: {
                 modelSettings: SupportedModel;
@@ -640,6 +640,6 @@ export const TrackerBuilder = ({
           </div>
         </div>
       </div>
-    </AppContentLayout>
+    </AppCenteredLayout>
   );
 };

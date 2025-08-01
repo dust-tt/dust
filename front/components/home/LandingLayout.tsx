@@ -7,24 +7,28 @@ import {
   Hover3D,
   LoginIcon,
 } from "@dust-tt/sparkle";
+import { cva } from "class-variance-authority";
 import Head from "next/head";
 import Link from "next/link";
 import Script from "next/script";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
 import { A } from "@app/components/home/ContentComponents";
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
-// import Particles, { shapeNamesArray } from "@app/components/home/Particles";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
+import UTMButton from "@app/components/UTMButton";
+import UTMHandler from "@app/components/UTMHandler";
+import { useGeolocation } from "@app/lib/swr/geo";
 import { classNames } from "@app/lib/utils";
 
 export interface LandingLayoutProps {
   shape: number;
   postLoginReturnToUrl?: string;
   gtmTrackingId?: string;
+  utmParams?: { [key: string]: string | string[] | undefined };
 }
 
 export default function LandingLayout({
@@ -34,36 +38,74 @@ export default function LandingLayout({
   children: React.ReactNode;
   pageProps: LandingLayoutProps;
 }) {
-  const { postLoginReturnToUrl = "/api/login", gtmTrackingId } = pageProps;
+  const {
+    postLoginReturnToUrl = "/api/login",
+    gtmTrackingId,
+    utmParams,
+  } = pageProps;
 
-  const [acceptedCookie, setAcceptedCookie, removeAcceptedCookie] = useCookies([
-    "dust-cookies-accepted",
-  ]);
+  const [cookies, setCookie] = useCookies(["dust-cookies-accepted"], {
+    doNotParse: true,
+  });
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
-  const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
+  const cookieValue = cookies["dust-cookies-accepted"];
+  const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(
+    ["true", "auto"].includes(cookieValue)
+  );
+
+  const shouldCheckGeo = cookieValue === undefined;
+
+  const { geoData, isGeoDataLoading } = useGeolocation({
+    disabled: !shouldCheckGeo,
+  });
+
+  const setCookieApproval = useCallback(
+    (type: "true" | "auto" | "false") => {
+      // true is when the user accepts all cookies.
+      // auto is when not in GDPR region
+      if (type === "true" || type === "auto") {
+        setHasAcceptedCookies(true);
+      }
+      setShowCookieBanner(false);
+      setCookie("dust-cookies-accepted", type, {
+        path: "/",
+        maxAge: 183 * 24 * 60 * 60, // 6 months
+        sameSite: "lax",
+      });
+    },
+    [setCookie]
+  );
 
   useEffect(() => {
-    const hasAccepted = Boolean(acceptedCookie["dust-cookies-accepted"]);
-    setHasAcceptedCookies(hasAccepted);
-    setShowCookieBanner(!hasAccepted);
-  }, [acceptedCookie]);
+    if (cookieValue !== undefined) {
+      setShowCookieBanner(false);
+      return;
+    }
+
+    if (isGeoDataLoading) {
+      return;
+    }
+
+    if (geoData && geoData.isGDPR === false) {
+      // For non-GDPR countries (like US), show banner and set cookies to auto
+      setShowCookieBanner(true);
+      setHasAcceptedCookies(true); // Enable cookies immediately for non-GDPR
+      // Note: We don't set the cookie value here, letting the user choose to accept/reject
+    } else {
+      // For GDPR countries, just show the banner
+      setShowCookieBanner(true);
+    }
+  }, [geoData, isGeoDataLoading, cookieValue]);
 
   return (
     <>
       <Header />
+      {/* Handle UTM parameter storage */}
+      {utmParams && <UTMHandler utmParams={utmParams} />}
       <ScrollingHeader>
         <div className="flex h-full w-full items-center gap-4 px-6 xl:gap-10">
           <div className="hidden h-[24px] w-[96px] xl:block">
-            <Link href="/home">
-              <Hover3D className="relative h-[24px] w-[96px]">
-                <Div3D depth={0} className="h-[24px] w-[96px]">
-                  <DustLogoLayer1 className="h-[24px] w-[96px]" />
-                </Div3D>
-                <Div3D depth={25} className="absolute top-0">
-                  <DustLogoLayer2 className="h-[24px] w-[96px]" />
-                </Div3D>
-              </Hover3D>
-            </Link>
+            <PublicWebsiteLogo />
           </div>
           <MobileNavigation />
           <div className="block xl:hidden">
@@ -73,7 +115,7 @@ export default function LandingLayout({
           </div>
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
-            <Button
+            <UTMButton
               href="/home/contact"
               className="hidden xs:inline-flex"
               variant="outline"
@@ -85,15 +127,7 @@ export default function LandingLayout({
               size="sm"
               label="Sign in"
               icon={LoginIcon}
-              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                if (e.metaKey) {
-                  window.location.href = `/api/auth/login?returnTo=${postLoginReturnToUrl}`;
-                } else if (e.shiftKey) {
-                  window.location.href = `/api/auth/login?prompt=login&returnTo=${postLoginReturnToUrl}`;
-                } else {
-                  window.location.href = `/api/workos/login?returnTo=${postLoginReturnToUrl}`;
-                }
-              }}
+              href={`/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`}
             />
           </div>
         </div>
@@ -115,20 +149,13 @@ export default function LandingLayout({
           {children}
         </div>
         <CookieBanner
-          className="fixed bottom-4 right-4"
+          className="fixed bottom-0 left-0 z-50 w-full"
           show={showCookieBanner}
           onClickAccept={() => {
-            setAcceptedCookie("dust-cookies-accepted", "true", {
-              path: "/",
-              maxAge: 183 * 24 * 60 * 60, // 6 months in seconds
-              sameSite: "lax",
-            });
-            setHasAcceptedCookies(true);
-            setShowCookieBanner(false);
+            setCookieApproval("true");
           }}
           onClickRefuse={() => {
-            removeAcceptedCookie("dust-cookies-accepted", { path: "/" });
-            setShowCookieBanner(false);
+            setCookieApproval("false");
           }}
         />
         {hasAcceptedCookies && (
@@ -139,7 +166,17 @@ export default function LandingLayout({
               j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
               })(window,document,'script','dataLayer','${gtmTrackingId}');
-              (function(){var g=new URLSearchParams(window.location.search).get('gclid');g&&sessionStorage.setItem('gclid',g);})();
+              (function(){
+                var utmParams = {};
+                var urlParams = new URLSearchParams(window.location.search);
+                ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid', 'msclkid'].forEach(function(param) {
+                  var value = urlParams.get(param);
+                  if (value) {
+                    utmParams[param] = value;
+                    sessionStorage.setItem(param, value);
+                  }
+                });
+              })();
             `}
           </Script>
         )}
@@ -173,13 +210,13 @@ const CookieBanner = ({
   return (
     <div
       className={classNames(
-        "z-30 flex w-64 flex-col gap-3 rounded-xl border border-border bg-white p-4 shadow-xl",
+        "fixed bottom-0 left-0 z-30 flex w-full flex-col items-center justify-between gap-4 border-t border-border bg-blue-100 p-6 shadow-2xl md:flex-row",
         "s-transition-opacity s-duration-300 s-ease-in-out",
         isVisible ? "s-opacity-100" : "s-opacity-0",
         className || ""
       )}
     >
-      <div className="text-sm font-normal text-foreground">
+      <div className="text-sm font-normal text-foreground md:text-base">
         We use{" "}
         <A variant="primary">
           <Link
@@ -195,7 +232,7 @@ const CookieBanner = ({
         <Button
           variant="outline"
           size="sm"
-          label="Reject"
+          label="Reject All"
           onClick={() => {
             setIsVisible(false);
             onClickRefuse();
@@ -214,6 +251,7 @@ const CookieBanner = ({
     </div>
   );
 };
+
 const Header = () => {
   return (
     <Head>
@@ -302,5 +340,40 @@ const Header = () => {
       />
       <meta id="og-image" property="og:image" content="/static/og_image.png" />
     </Head>
+  );
+};
+
+interface PublicWebsiteLogoProps {
+  size?: "default" | "small";
+}
+
+const logoVariants = cva("", {
+  variants: {
+    size: {
+      default: "h-[24px] w-[96px]",
+      small: "h-[20px] w-[80px]",
+    },
+  },
+  defaultVariants: {
+    size: "default",
+  },
+});
+
+export const PublicWebsiteLogo = ({
+  size = "default",
+}: PublicWebsiteLogoProps) => {
+  const className = logoVariants({ size });
+
+  return (
+    <Link href="/home">
+      <Hover3D className={`relative ${className}`}>
+        <Div3D depth={0} className={className}>
+          <DustLogoLayer1 className={className} />
+        </Div3D>
+        <Div3D depth={25} className="absolute top-0">
+          <DustLogoLayer2 className={className} />
+        </Div3D>
+      </Hover3D>
+    </Link>
   );
 };

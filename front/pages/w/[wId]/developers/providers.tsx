@@ -15,7 +15,7 @@ import {
   ProviderSetup,
   SERVICE_PROVIDER_CONFIGS,
 } from "@app/components/providers/ProviderSetup";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
@@ -225,7 +225,7 @@ export default function ProvidersPage({
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <AppContentLayout
+    <AppCenteredLayout
       subscription={subscription}
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "providers" })}
@@ -240,7 +240,7 @@ export default function ProvidersPage({
           <Providers owner={owner} />
         </Page.Vertical>
       </Page.Vertical>
-    </AppContentLayout>
+    </AppCenteredLayout>
   );
 }
 

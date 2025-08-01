@@ -44,6 +44,7 @@ export interface InputBarContainerProps {
   onNodeUnselect: (node: DataSourceViewContentNodeType) => void;
   attachedNodes: DataSourceViewContentNodeType[];
   isSubmitting: boolean;
+  attachmentPickerSide?: "top" | "right" | "bottom" | "left";
 }
 
 export const InputBarContainer = ({
@@ -61,6 +62,7 @@ export const InputBarContainer = ({
   onNodeUnselect,
   attachedNodes,
   isSubmitting,
+  attachmentPickerSide = "bottom",
 }: InputBarContainerProps) => {
   const platform = usePlatform();
   const suggestions = usePublicAssistantSuggestions(agentConfigurations);
@@ -250,6 +252,7 @@ export const InputBarContainer = ({
             onNodeSelect={onNodeSelect}
             onNodeUnselect={onNodeUnselect}
             attachedNodes={attachedNodes}
+            side={attachmentPickerSide}
           />
           <AssistantPicker
             owner={owner}

@@ -86,7 +86,9 @@ describe("POST /api/w/[wId]/members/[uId]", () => {
 
         // Create another admin so current user is not sole admin
         const anotherAdmin = await UserFactory.basic();
-        await MembershipFactory.associate(workspace, anotherAdmin, "admin");
+        await MembershipFactory.associate(workspace, anotherAdmin, {
+          role: "admin",
+        });
 
         req.query.uId = user.sId;
         req.body = { role: "user" };
@@ -110,7 +112,9 @@ describe("POST /api/w/[wId]/members/[uId]", () => {
 
         // Create a user with user role
         const targetUser = await UserFactory.basic();
-        await MembershipFactory.associate(workspace, targetUser, "user");
+        await MembershipFactory.associate(workspace, targetUser, {
+          role: "user",
+        });
 
         req.query.uId = targetUser.sId;
         req.body = { role: "builder" };

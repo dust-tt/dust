@@ -27,7 +27,6 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
       "crm.objects.deals.read",
       "crm.objects.deals.write",
       "crm.schemas.deals.read",
-      "tickets",
       "crm.objects.owners.read",
       "crm.schemas.custom.read",
       "crm.objects.custom.read",
@@ -36,7 +35,6 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
       "timeline",
       "crm.lists.read",
       "crm.lists.write",
-      "automation",
     ];
     return (
       `https://app.hubspot.com/oauth/authorize` +
@@ -55,7 +53,12 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
     return getStringFromQuery(query, "state");
   }
 
-  isExtraConfigValid(extraConfig: ExtraConfigType) {
+  isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
+    if (useCase === "personal_actions") {
+      if (extraConfig.mcp_server_id) {
+        return true;
+      }
+    }
     return Object.keys(extraConfig).length === 0;
   }
 }

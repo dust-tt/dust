@@ -2,21 +2,21 @@ import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { UniqueConstraintError } from "sequelize";
 
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
-  getConversation,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
-import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import mainLogger from "@app/logger/logger";
 import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/transcripts/client";
 import {
@@ -31,7 +31,7 @@ import {
   retrieveModjoTranscriptContent,
   retrieveModjoTranscripts,
 } from "@app/temporal/labs/transcripts/utils/modjo";
-import type { AgentMessageType, ModelId } from "@app/types";
+import type { AgentMessageType } from "@app/types";
 import {
   assertNever,
   dustManagedCredentials,
@@ -44,28 +44,29 @@ import { CoreAPI } from "@app/types";
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: string
 ): Promise<string[]> {
-  const localLogger = mainLogger.child({
-    transcriptsConfigurationId: transcriptsConfigurationId,
-  });
-
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.fetchById(
       transcriptsConfigurationId
     );
 
   if (!transcriptsConfiguration) {
-    localLogger.error(
-      {},
+    mainLogger.error(
+      {
+        transcriptsConfigurationId,
+      },
       "[retrieveNewTranscripts] Transcript configuration not found. Skipping."
     );
     return [];
   }
 
-  const workspace = await WorkspaceModel.findOne({
-    where: {
-      id: transcriptsConfiguration.workspaceId,
-    },
+  const localLogger = mainLogger.child({
+    transcriptsConfigurationId,
+    transcriptsConfigurationSid: transcriptsConfiguration.sId,
   });
+
+  const workspace = await WorkspaceResource.fetchByModelId(
+    transcriptsConfiguration.workspaceId
+  );
 
   if (!workspace) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
@@ -208,11 +209,9 @@ export async function processTranscriptActivity(
     );
   }
 
-  const workspace = await WorkspaceModel.findOne({
-    where: {
-      id: transcriptsConfiguration.workspaceId,
-    },
-  });
+  const workspace = await WorkspaceResource.fetchByModelId(
+    transcriptsConfiguration.workspaceId
+  );
 
   if (!workspace) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
@@ -561,11 +560,10 @@ export async function processTranscriptActivity(
       return;
     }
 
-    const agent = await getAgentConfiguration(
-      auth,
-      agentConfigurationId,
-      "light"
-    );
+    const agent = await getAgentConfiguration(auth, {
+      agentId: agentConfigurationId,
+      variant: "light",
+    });
 
     if (!agent) {
       await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
@@ -655,20 +653,16 @@ export async function processTranscriptActivity(
 
     let conversation = conversationRes.value;
 
-    const messageRes = await postUserMessageWithPubSub(
-      auth,
-      {
-        conversation,
-        content: `Transcript: ${transcriptTitle}`,
-        mentions: [{ configurationId: agentConfigurationId }],
-        context: baseContext,
-        // When running an agent as trigger of a transcript we have no chance of validating tools so
-        // we skip all of them and run the tools by default. This is in tension with the admin
-        // settings and could be revisited if needed.
-        skipToolsValidation: true,
-      },
-      { resolveAfterFullGeneration: true }
-    );
+    const messageRes = await postUserMessageAndWaitForCompletion(auth, {
+      conversation,
+      content: `Transcript: ${transcriptTitle}`,
+      mentions: [{ configurationId: agentConfigurationId }],
+      context: baseContext,
+      // When running an agent as trigger of a transcript we have no chance of validating tools so
+      // we skip all of them and run the tools by default. This is in tension with the admin
+      // settings and could be revisited if needed.
+      skipToolsValidation: true,
+    });
 
     if (messageRes.isErr()) {
       localLogger.error(

@@ -1,3 +1,5 @@
+// @ts-nocheck
+// This migration file references deleted process modules but has already been run in production
 import { QueryTypes } from "sequelize";
 
 import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";

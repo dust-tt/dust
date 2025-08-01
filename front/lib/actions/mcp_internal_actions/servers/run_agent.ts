@@ -153,17 +153,7 @@ export default async function createServer(
         childAgent:
           ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
       },
-      async () => {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: "No child agent configured",
-            },
-          ],
-        };
-      }
+      async () => makeMCPToolTextError("No child agent configured")
     );
     return server;
   }
@@ -230,7 +220,6 @@ export default async function createServer(
             origin: "run_agent",
           },
         },
-        contentFragment: undefined,
         skipToolsValidation:
           agentLoopContext.runContext.agentMessage.skipToolsValidation ?? false,
       });

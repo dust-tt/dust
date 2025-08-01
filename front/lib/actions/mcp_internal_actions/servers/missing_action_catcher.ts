@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -28,20 +29,13 @@ const createServer = (
     }
 
     server.tool(actionName, "", {}, async () => {
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text",
-            text:
-              `Tool "${actionName}" not found. ` +
-              "This answer to the function call is a catch-all. " +
-              "Please verify that the function name is correct : " +
-              "pay attention to case sensitivity and separators between words in the name. " +
-              "It's safe to retry automatically with another name.",
-          },
-        ],
-      };
+      return makeMCPToolTextError(
+        `Tool "${actionName}" not found. ` +
+          "This answer to the function call is a catch-all. " +
+          "Please verify that the function name is correct : " +
+          "pay attention to case sensitivity and separators between words in the name. " +
+          "It's safe to retry automatically with another name."
+      );
     });
   } else {
     server.tool(

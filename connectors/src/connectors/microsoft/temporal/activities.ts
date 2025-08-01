@@ -30,6 +30,7 @@ import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
+import { isItemNotFoundError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import {
   deleteFile,
   deleteFolder,
@@ -37,14 +38,12 @@ import {
   isAlreadySeenItem,
   recursiveNodeDeletion,
   syncOneFile,
+  updateDescendantsParentsInCore,
 } from "@connectors/connectors/microsoft/temporal/file";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import {
-  updateDataSourceDocumentParents,
-  upsertDataSourceFolder,
-} from "@connectors/lib/data_sources";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { heartbeat } from "@connectors/lib/temporal";
 import { getActivityLogger } from "@connectors/logger/logger";
@@ -55,7 +54,6 @@ import {
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
 import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const FILES_SYNC_CONCURRENCY = 10;
@@ -469,6 +467,7 @@ export async function syncFiles({
         file: child,
         parentInternalId,
         startSyncTs,
+        heartbeat,
       }),
     { concurrency: FILES_SYNC_CONCURRENCY }
   );
@@ -599,10 +598,20 @@ export async function syncDeltaForRootNodesInDrive({
     rootNodeIds
   );
 
-  const node = nodes[0];
+  let node = nodes[0];
 
   if (nodes.length !== rootNodeIds.length || !node) {
-    throw new Error(`Root or node resource ${nodes} not found`);
+    const logger = getActivityLogger(connector);
+    logger.error(
+      {
+        connectorId,
+        rootNodeIds,
+        foundNodes: nodes.length,
+        expectedNodes: rootNodeIds.length,
+      },
+      "Some root nodes not found in database, skipping delta sync for this drive"
+    );
+    return;
   }
 
   const client = await getClient(connector.connectionId);
@@ -621,6 +630,27 @@ export async function syncDeltaForRootNodesInDrive({
   //
   // If it ever becomes an issue, redis-caching the list and having activities
   // grabbing pages of it can be implemented
+
+  if (!node.deltaLink) {
+    const logger = getActivityLogger(connector);
+    logger.info(
+      { connectorId, internalId: node.internalId },
+      "No delta link for root node, populating delta"
+    );
+    const internalId = node.internalId;
+    await populateDeltas(connectorId, [internalId]);
+    node =
+      (await MicrosoftNodeResource.fetchByInternalId(
+        connectorId,
+        node.internalId
+      )) ?? undefined;
+    if (!node) {
+      throw new Error(
+        `Unreachable: Node ${internalId} (connectorId: ${connectorId}) not found after populateDeltas, skipping delta sync`
+      );
+    }
+  }
+
   const { results, deltaLink } = await getDeltaData({
     logger,
     client,
@@ -630,24 +660,48 @@ export async function syncDeltaForRootNodesInDrive({
   const uniqueChangedItems = removeAllButLastOccurences(results);
 
   const sortedChangedItems: DriveItem[] = [];
-  const containWholeDrive = rootNodeIds.some(
+  const containsWholeDrive = rootNodeIds.some(
     (nodeId) => typeAndPathFromInternalId(nodeId).nodeType === "drive"
   );
 
-  if (containWholeDrive) {
+  logger.info(
+    {
+      uniqueChangedItems: uniqueChangedItems.length,
+      containsWholeDrive,
+    },
+    "Changes to process"
+  );
+
+  if (containsWholeDrive) {
     sortedChangedItems.push(...sortForIncrementalUpdate(uniqueChangedItems));
   } else {
     const microsoftNodes = await concurrentExecutor(
       rootNodeIds,
-      async (rootNodeId) =>
-        getItem(
-          logger,
-          client,
-          typeAndPathFromInternalId(rootNodeId).itemAPIPath + "?$select=id"
-        ) as Promise<{ id: string }>,
+      async (rootNodeId) => {
+        try {
+          return (await getItem(
+            logger,
+            client,
+            typeAndPathFromInternalId(rootNodeId).itemAPIPath + "?$select=id"
+          )) as { id: string };
+        } catch (error) {
+          if (isItemNotFoundError(error)) {
+            // Resource not found will be garbage collected later and is not blocking the activity
+            logger.info(
+              { rootNodeId, error: error.message },
+              "Root node not found, skipping"
+            );
+            return null;
+          }
+          throw error;
+        }
+      },
       { concurrency: 5 }
     );
-    microsoftNodes.forEach((rootNode) => {
+    const validMicrosoftNodes = microsoftNodes.filter(
+      (node): node is { id: string } => node !== null
+    );
+    validMicrosoftNodes.forEach((rootNode) => {
       sortedChangedItems.push(
         ...sortForIncrementalUpdate(uniqueChangedItems, rootNode.id)
       );
@@ -661,8 +715,13 @@ export async function syncDeltaForRootNodesInDrive({
       sortedChangedItems,
     });
   }
-
+  let count = 0;
   for (const driveItem of sortedChangedItems) {
+    count++;
+    if (count % 1000 === 0) {
+      logger.info({ count }, "Processing delta changes");
+    }
+
     await heartbeat();
     if (!driveItem.parentReference) {
       throw new Error(`Unexpected: parent reference missing: ${driveItem}`);
@@ -683,6 +742,7 @@ export async function syncDeltaForRootNodesInDrive({
             driveItem.parentReference
           ),
           startSyncTs,
+          heartbeat,
         });
       }
     } else if (driveItem.folder) {
@@ -698,12 +758,6 @@ export async function syncDeltaForRootNodesInDrive({
           deleteRootNode: true,
         });
       } else {
-        const isMoved = await isFolderMovedInSameRoot({
-          connectorId,
-          folder: driveItem,
-          internalId,
-        });
-
         const { item, type } = driveItem.root
           ? {
               item: await getItem(
@@ -721,26 +775,47 @@ export async function syncDeltaForRootNodesInDrive({
           blob.name = blob.name + ` (${extractPath(item)})`;
         }
 
+        const existingResource = await MicrosoftNodeResource.fetchByInternalId(
+          connectorId,
+          blob.internalId
+        );
+        if (
+          existingResource &&
+          isAlreadySeenItem({
+            driveItemResource: existingResource,
+            startSyncTs,
+          })
+        ) {
+          continue;
+        }
+
+        const isMoved = await isFolderMovedInSameRoot({
+          connectorId,
+          folder: driveItem,
+          internalId,
+        });
+
         const resource = await MicrosoftNodeResource.updateOrCreate(
           connectorId,
           blob
         );
 
-        if (isAlreadySeenItem({ driveItemResource: resource, startSyncTs })) {
-          continue;
-        }
-
         // add parent information to new node resource. for the toplevel folder,
         // parent is null
-        // todo check filter
-        const parentInternalId =
+        const parentInternalId = getParentReferenceInternalId(
+          driveItem.parentReference
+        );
+
+        const isTopLevel =
           resource.internalId === driveId ||
-          rootNodeIds.indexOf(resource.internalId) !== -1
-            ? null
-            : getParentReferenceInternalId(driveItem.parentReference);
+          (rootNodeIds.indexOf(resource.internalId) !== -1 &&
+            !(await MicrosoftNodeResource.fetchByInternalId(
+              connectorId,
+              parentInternalId
+            )));
 
         await resource.update({
-          parentInternalId,
+          parentInternalId: isTopLevel ? null : parentInternalId,
         });
 
         const parents = await getParents({
@@ -845,10 +920,15 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
     return false;
   });
 
+  // As we will iterate on both sortedItemList and changedList, we need to
+  // keep track of the items we have already seen in sortedItemList to avoid
+  // O(n^2) complexity.
+  const sortedItemSet = new Set(sortedItemList.map(getDriveItemInternalId));
+
   for (;;) {
     const nextLevel = changedList.filter((item) => {
       // Already in the list - skip
-      if (sortedItemList.includes(item)) {
+      if (sortedItemSet.has(getDriveItemInternalId(item))) {
         return false;
       }
 
@@ -872,9 +952,7 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
         return true;
       }
 
-      return sortedItemList.some(
-        (sortedItem) => getDriveItemInternalId(sortedItem) === parentInternalId
-      );
+      return sortedItemSet.has(parentInternalId);
     });
 
     if (nextLevel.length === 0) {
@@ -882,6 +960,11 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
     }
 
     sortedItemList.push(...nextLevel);
+
+    // Mark nodes as seen for the next iterations.
+    nextLevel.forEach((item) => {
+      sortedItemSet.add(getDriveItemInternalId(item));
+    });
   }
 }
 
@@ -963,73 +1046,6 @@ async function isFolderMovedInSameRoot({
   return oldParentId !== newParentId;
 }
 
-async function updateDescendantsParentsInCore({
-  folder,
-  dataSourceConfig,
-  startSyncTs,
-}: {
-  folder: MicrosoftNodeResource;
-  dataSourceConfig: DataSourceConfig;
-  startSyncTs: number;
-}) {
-  const children = await folder.fetchChildren();
-  const files = children.filter((child) => child.nodeType === "file");
-  const folders = children.filter((child) => child.nodeType === "folder");
-
-  const parents = await getParents({
-    connectorId: folder.connectorId,
-    internalId: folder.internalId,
-    startSyncTs,
-  });
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId: folder.internalId,
-    parents,
-    parentId: parents[1] || null,
-    title: folder.name ?? "Untitled Folder",
-    mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
-    sourceUrl: folder.webUrl ?? undefined,
-  });
-
-  await concurrentExecutor(
-    files,
-    async (file) => updateParentsField({ file, dataSourceConfig, startSyncTs }),
-    {
-      concurrency: 10,
-    }
-  );
-  for (const childFolder of folders) {
-    await updateDescendantsParentsInCore({
-      dataSourceConfig,
-      folder: childFolder,
-      startSyncTs,
-    });
-  }
-}
-
-async function updateParentsField({
-  file,
-  dataSourceConfig,
-  startSyncTs,
-}: {
-  file: MicrosoftNodeResource;
-  dataSourceConfig: DataSourceConfig;
-  startSyncTs: number;
-}) {
-  const parents = await getParents({
-    connectorId: file.connectorId,
-    internalId: file.internalId,
-    startSyncTs,
-  });
-
-  await updateDataSourceDocumentParents({
-    dataSourceConfig,
-    documentId: file.internalId,
-    parents,
-    parentId: parents[1] || null,
-  });
-}
-
 export async function microsoftDeletionActivity({
   connectorId,
   nodeIdsToDelete,
@@ -1045,12 +1061,24 @@ export async function microsoftDeletionActivity({
 
   const results = await concurrentExecutor(
     nodeIdsToDelete,
-    async (nodeId) =>
-      recursiveNodeDeletion({
+    async (nodeId) => {
+      // First check if we have a parentInternalId.
+      // This means an ancestor is selected, and this node should not be removed
+      const node = await MicrosoftNodeResource.fetchByInternalId(
+        connectorId,
+        nodeId
+      );
+      if (node && node.parentInternalId) {
+        return [];
+      }
+
+      // Node has no parent and has been removed from selection - delete recursively
+      return recursiveNodeDeletion({
         nodeId,
         connectorId,
         dataSourceConfig,
-      }),
+      });
+    },
     { concurrency: DELETE_CONCURRENCY }
   );
 
@@ -1117,9 +1145,40 @@ export async function microsoftGarbageCollectionActivity({
   const chunkedRequests = _.chunk(requests, 20);
 
   for (const chunk of chunkedRequests) {
-    const batchRes = await clientApiPost(logger, client, "/$batch", {
-      requests: chunk,
-    });
+    let batchRes: {
+      responses: Array<{
+        id: string;
+        status: number;
+        body: unknown;
+      }>;
+    };
+    try {
+      batchRes = await clientApiPost(logger, client, "/$batch", {
+        requests: chunk,
+      });
+    } catch (error) {
+      if (isItemNotFoundError(error)) {
+        logger.info(
+          {
+            connectorId,
+            error: error.message,
+            chunkSize: chunk.length,
+          },
+          "Batch request failed with 404, treating all items as deleted"
+        );
+        // Create fake 404 responses for all items in the chunk
+        batchRes = {
+          responses: chunk.map((req) => ({
+            id: req.id,
+            status: 404,
+            body: null,
+          })),
+        };
+      } else {
+        throw error;
+      }
+    }
+
     for (const res of batchRes.responses) {
       const node = nodesToCheck[Number(res.id)];
       if (node && (res.status === 200 || res.status === 404)) {
@@ -1216,13 +1275,27 @@ const cachedGetParentFromGraphAPI = cacheWithRedis(
       return null;
     }
 
-    const driveItem: DriveItem = await getItem(logger, client, itemAPIPath);
+    try {
+      const driveItem: DriveItem = await getItem(logger, client, itemAPIPath);
 
-    if (!driveItem.parentReference) {
-      throw new Error("Unexpected: no parent reference for drive item");
+      if (!driveItem.parentReference) {
+        throw new Error("Unexpected: no parent reference for drive item");
+      }
+
+      return getParentReferenceInternalId(driveItem.parentReference);
+    } catch (error) {
+      if (isItemNotFoundError(error)) {
+        logger.info(
+          {
+            parentInternalId,
+            error: error.message,
+          },
+          "Parent item not found, treating as no parent"
+        );
+        return null;
+      }
+      throw error;
     }
-
-    return getParentReferenceInternalId(driveItem.parentReference);
   },
   ({
     parentInternalId,
@@ -1233,7 +1306,9 @@ const cachedGetParentFromGraphAPI = cacheWithRedis(
     startGarbageCollectionTs: number;
   }) =>
     `microsoft-garbage-collection-ts-${startGarbageCollectionTs}-node-${parentInternalId}`,
-  60 * 60 * 24 * 1000
+  {
+    ttlMs: 60 * 60 * 24 * 1000,
+  }
 );
 
 async function isOutsideRootNodes({

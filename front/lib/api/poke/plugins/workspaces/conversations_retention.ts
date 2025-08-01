@@ -1,5 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { updateWorkspaceConversationsRetention } from "@app/lib/api/workspace";
+import { getWorkspaceDataRetention } from "@app/lib/data_retention";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { Err, Ok } from "@app/types";
 
 export const conversationsRetentionPlugin = createPlugin({
@@ -14,11 +15,19 @@ export const conversationsRetentionPlugin = createPlugin({
         label: "Retention Days",
         description:
           "Number of days to retain conversations (-1 for unlimited)",
+        async: true,
       },
     },
   },
+  populateAsyncArgs: async (auth) => {
+    const retentionDays = await getWorkspaceDataRetention(auth);
+
+    return new Ok({
+      retentionDays: retentionDays ?? -1,
+    });
+  },
   execute: async (auth, _, args) => {
-    const retentionDays = args.retentionDays;
+    const retentionDays = args.retentionDays ?? -1;
 
     if (retentionDays !== -1 && retentionDays < 1) {
       return new Err(
@@ -28,8 +37,8 @@ export const conversationsRetentionPlugin = createPlugin({
       );
     }
 
-    const res = await updateWorkspaceConversationsRetention(
-      auth.getNonNullableWorkspace(),
+    const res = await WorkspaceResource.updateConversationsRetention(
+      auth.getNonNullableWorkspace().id,
       retentionDays
     );
     if (res.isErr()) {

@@ -205,7 +205,8 @@ export async function upsertTableFromCsv({
       const errorDetails = {
         type: "internal_server_error" as const,
         coreAPIError: csvRes.error,
-        message: "Failed to upsert CSV.",
+        truncate,
+        message: `Failed to upsert CSV.`,
       };
       logger.error(
         {
@@ -220,26 +221,30 @@ export async function upsertTableFromCsv({
         "Error upserting CSV in CoreAPI."
       );
 
-      const delRes = await coreAPI.deleteTable({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        tableId,
-      });
+      // Only delete the table if we are truncating.
+      // Otherwise, we will delete the whole previous data while we just failed an upsert.
+      if (truncate) {
+        const delRes = await coreAPI.deleteTable({
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceId: dataSource.dustAPIDataSourceId,
+          tableId,
+        });
 
-      if (delRes.isErr()) {
-        logger.error(
-          {
-            type: "internal_server_error",
-            coreAPIError: delRes.error,
-            projectId: dataSource.dustAPIProjectId,
-            dataSourceId: dataSource.dustAPIDataSourceId,
-            dataSourceName: dataSource.name,
-            workspaceId: owner.sId,
-            tableId,
-            tableName,
-          },
-          "Failed to delete table after failed CSV upsert."
-        );
+        if (delRes.isErr()) {
+          logger.error(
+            {
+              type: "internal_server_error",
+              coreAPIError: delRes.error,
+              projectId: dataSource.dustAPIProjectId,
+              dataSourceId: dataSource.dustAPIDataSourceId,
+              dataSourceName: dataSource.name,
+              workspaceId: owner.sId,
+              tableId,
+              tableName,
+            },
+            "Failed to delete table after failed CSV upsert."
+          );
+        }
       }
       return new Err(errorDetails);
     }

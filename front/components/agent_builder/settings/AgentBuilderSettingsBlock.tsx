@@ -4,23 +4,30 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Input,
   Page,
   PencilSquareIcon,
   SparklesIcon,
-  TextArea,
-  useSendNotification,
+  Spinner,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { AgentBuilderEditors } from "@app/components/agent_builder/settings/AgentBuilderEditors";
+import { AgentBuilderScopeSelector } from "@app/components/agent_builder/settings/AgentBuilderScopeSelector";
+import { AgentBuilderSlackSelector } from "@app/components/agent_builder/settings/AgentBuilderSlackSelector";
+import { TagsSection } from "@app/components/agent_builder/settings/TagsSection";
 import {
+  fetchWithErr,
   getDescriptionSuggestion,
   getNameSuggestions,
 } from "@app/components/agent_builder/settings/utils";
-import { fetchWithErr } from "@app/components/agent_builder/settings/utils";
 import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
 import {
   buildSelectedEmojiType,
@@ -30,6 +37,7 @@ import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   APIError,
   BuilderEmojiSuggestionsType,
@@ -37,7 +45,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 
-const MIN_INSTRUCTIONS_LENGTH_FOR_SUGGESTION = 30;
+const MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS = 20;
 
 async function getEmojiSuggestions({
   owner,
@@ -82,7 +90,17 @@ function AgentNameInput() {
   });
 
   const handleGenerateNameSuggestions = async () => {
+    if (
+      isGenerating ||
+      !instructions ||
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+    ) {
+      return;
+    }
+
     setIsGenerating(true);
+    setNameSuggestions([]);
+
     const result = await getNameSuggestions({
       owner,
       instructions,
@@ -119,39 +137,54 @@ function AgentNameInput() {
   };
 
   return (
-    <div className="max-w-md space-y-2">
-      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
+    <div className="space-y-2">
+      <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
         Name
       </label>
-      <div className="flex items-center gap-2">
-        <div className="flex-grow">
-          <Input placeholder="Enter agent name" {...field} />
-        </div>
-        <Button
-          label="Suggest"
-          size="xs"
-          icon={SparklesIcon}
-          variant="outline"
-          isLoading={isGenerating}
-          onClick={handleGenerateNameSuggestions}
-        />
-      </div>
-      {nameSuggestions.length > 0 && (
-        <div className="flex items-center gap-2">
-          <div className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
-            Suggestions:
-          </div>
-          {nameSuggestions.slice(0, 3).map((suggestion, index) => (
+      <div className="relative">
+        <Input placeholder="Enter agent name" {...field} className="pr-10" />
+        <DropdownMenu
+          onOpenChange={(open) => open && handleGenerateNameSuggestions()}
+        >
+          <DropdownMenuTrigger asChild>
             <Button
-              label={suggestion}
+              icon={SparklesIcon}
               variant="outline"
-              key={`naming-suggestion-${index}`}
               size="xs"
-              onClick={() => handleSelectNameSuggestion(suggestion)}
+              className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"
+              disabled={
+                !instructions ||
+                instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+              }
+              tooltip={
+                !instructions ||
+                instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+                  ? `Add at least ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} characters to instructions to get suggestions`
+                  : "Get name suggestions"
+              }
             />
-          ))}
-        </div>
-      )}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-64">
+            {isGenerating ? (
+              <div className="flex items-center justify-center p-4">
+                <Spinner size="sm" />
+              </div>
+            ) : nameSuggestions.length > 0 ? (
+              nameSuggestions.map((suggestion, index) => (
+                <DropdownMenuItem
+                  key={`naming-suggestion-${index}`}
+                  label={suggestion}
+                  onClick={() => handleSelectNameSuggestion(suggestion)}
+                />
+              ))
+            ) : (
+              <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
+                No suggestions available
+              </div>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       {fieldState.error && (
         <p className="text-sm text-warning-500">{fieldState.error.message}</p>
       )}
@@ -177,7 +210,16 @@ function AgentDescriptionInput() {
   >({ name: "agentSettings.description" });
 
   const handleGenerateDescription = async () => {
+    if (
+      isGenerating ||
+      !instructions ||
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+    ) {
+      return;
+    }
+
     setIsGenerating(true);
+
     const result = await getDescriptionSuggestion({
       owner,
       instructions,
@@ -200,27 +242,49 @@ function AgentDescriptionInput() {
       result.value.suggestions &&
       result.value.suggestions.length > 0
     ) {
+      // Apply the first suggestion directly
       field.onChange(result.value.suggestions[0]);
+    } else {
+      sendNotification({
+        type: "info",
+        title: "No description suggestions available",
+        description:
+          "Try adding more details to your instructions to get better suggestions.",
+      });
     }
     setIsGenerating(false);
   };
 
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
+      <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
         Description
       </label>
-      <div className="flex items-center gap-2">
-        <div className="flex-grow">
-          <TextArea placeholder="Enter agent description" rows={3} {...field} />
-        </div>
+      <div className="relative">
+        <Input
+          placeholder="Enter agent description"
+          {...field}
+          className="pr-10"
+        />
         <Button
-          label="Suggest"
-          size="xs"
-          icon={SparklesIcon}
+          icon={isGenerating ? () => <Spinner size="xs" /> : SparklesIcon}
           variant="outline"
-          isLoading={isGenerating}
+          size="xs"
+          className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"
+          disabled={
+            isGenerating ||
+            !instructions ||
+            instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+          }
           onClick={handleGenerateDescription}
+          tooltip={
+            isGenerating
+              ? "Generating description..."
+              : !instructions ||
+                  instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+                ? `Add at least ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} characters to the instructions to get suggestions`
+                : "Generate description"
+          }
         />
       </div>
       {fieldState.error && (
@@ -278,7 +342,7 @@ function AgentPictureInput() {
     if (
       !field.value &&
       instructions &&
-      instructions.length >= MIN_INSTRUCTIONS_LENGTH_FOR_SUGGESTION
+      instructions.length >= MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
     ) {
       void updateEmojiFromSuggestions();
     }
@@ -295,23 +359,44 @@ function AgentPictureInput() {
         spiritAvatarUrls={SPIRIT_AVATAR_URLS}
         avatarUrl={field.value || null}
       />
-      <div className="flex flex-col items-center space-y-2">
+      <div className="group relative py-2">
         <Avatar size="xl" visual={field.value || null} />
         <Button
-          label="Change"
           variant="outline"
-          size="xs"
+          size="sm"
           icon={PencilSquareIcon}
           type="button"
           onClick={() => setIsAvatarModalOpen(true)}
+          className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
         />
       </div>
     </>
   );
 }
 
-export function AgentBuilderSettingsBlock() {
-  const [isOpen, setIsOpen] = useState(false);
+function AgentAccessAndPublication() {
+  return (
+    <div className="flex h-full flex-col space-y-2">
+      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
+        Access and Publication
+      </label>
+      <div className="flex flex-wrap items-center gap-2">
+        <AgentBuilderEditors />
+        <AgentBuilderScopeSelector />
+        <AgentBuilderSlackSelector />
+      </div>
+    </div>
+  );
+}
+
+interface AgentBuilderSettingsBlockProps {
+  isSettingBlocksOpen: boolean;
+}
+
+export function AgentBuilderSettingsBlock({
+  isSettingBlocksOpen,
+}: AgentBuilderSettingsBlockProps) {
+  const [isOpen, setIsOpen] = useState(isSettingBlocksOpen);
 
   return (
     <div className="flex h-full flex-col gap-4">
@@ -326,17 +411,19 @@ export function AgentBuilderSettingsBlock() {
           <div className="flex flex-col gap-4 pt-4">
             <Page.P>
               <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Configure the basic settings for your agent.
+                Configure tags and access settings for your agent.
               </span>
             </Page.P>
             <div className="space-y-4">
-              <div className="flex gap-8">
-                <div className="flex flex-grow flex-col gap-4">
+              <div className="flex items-start gap-8">
+                <div className="flex-grow">
                   <AgentNameInput />
-                  <AgentDescriptionInput />
                 </div>
                 <AgentPictureInput />
               </div>
+              <AgentDescriptionInput />
+              <TagsSection />
+              <AgentAccessAndPublication />
             </div>
           </div>
         </CollapsibleContent>

@@ -538,9 +538,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       ? PRO_PLAN_SEAT_39_CODE
       : PRO_PLAN_SEAT_29_CODE;
 
-    const proPlan = await SubscriptionResource.findPlanOrThrow(
-      PRO_PLAN_SEAT_29_CODE
-    );
+    const proPlan = await SubscriptionResource.findPlanOrThrow(planCode);
 
     // We verify that the workspace is not already subscribed to the Pro plan product.
     const isAlreadyOnProPlan = await this.isSubscriptionOnProPlan(owner);
@@ -556,6 +554,10 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       user,
       billingPeriod,
       planCode,
+      allowedPaymentMethods:
+        owner.metadata?.isBusiness && planCode === PRO_PLAN_SEAT_39_CODE
+          ? ["card", "sepa_debit"]
+          : ["card"],
     });
 
     if (!checkoutUrl) {

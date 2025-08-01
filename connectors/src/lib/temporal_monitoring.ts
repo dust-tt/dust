@@ -1,5 +1,6 @@
 import { assertNever } from "@dust-tt/client";
 import type { Context } from "@temporalio/activity";
+import { ApplicationFailure } from "@temporalio/activity";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
@@ -122,9 +123,30 @@ export class ActivityInboundLogInterceptor
     } catch (err: unknown) {
       error = err;
 
+      // Log connection-related errors with more context
+      if (err instanceof Error && err.message.includes("other side closed")) {
+        this.logger.error(
+          {
+            error: err,
+            errorType: "grpc_connection_error",
+            errorMessage: err.message,
+            errorStack: err.stack,
+            activityType: this.context.info.activityType,
+            workflowType: this.context.info.workflowType,
+            workflowId: this.context.info.workflowExecution.workflowId,
+            workflowRunId: this.context.info.workflowExecution.runId,
+            attempt: this.context.info.attempt,
+            activityStartTime: startTime.toISOString(),
+            elapsedMs: new Date().getTime() - startTime.getTime(),
+          },
+          "gRPC connection error during activity execution"
+        );
+      }
+
       if (
         err instanceof ExternalOAuthTokenError ||
-        err instanceof WorkspaceQuotaExceededError
+        err instanceof WorkspaceQuotaExceededError ||
+        err instanceof ApplicationFailure
       ) {
         // We have a connector working on an expired token, we need to cancel the workflow.
         const { workflowId } = this.context.info.workflowExecution;
@@ -149,6 +171,10 @@ export class ActivityInboundLogInterceptor
             this.logger.info(
               `Stopping connector manager because of quota exceeded for the workspace.`
             );
+          } else if (err instanceof ApplicationFailure) {
+            // This will be handled automatically by the Temporal SDK.
+            // We don't need to do anything here.
+            return;
           } else {
             assertNever(err);
           }

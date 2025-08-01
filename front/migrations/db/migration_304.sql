@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS agent_search_labels_actions;

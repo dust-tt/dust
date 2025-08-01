@@ -10,16 +10,18 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
-import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type { CustomRemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
+  CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
-  REMOTE_MCP_TOOL_STAKE_LEVELS,
 } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import { isRemoteMCPServerType } from "@app/lib/actions/mcp_helper";
+import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
-  useMCPServerToolsPermissions,
-  useUpdateMCPServerToolsPermissions,
+  useMCPServerToolsSettings,
+  useUpdateMCPServerToolsSettings,
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName, isAdmin } from "@app/types";
@@ -49,29 +51,56 @@ export function ToolsList({
     () => mcpServerView.server.tools,
     [mcpServerView.server.tools]
   );
-  const { toolsPermissions } = useMCPServerToolsPermissions({
+  const { toolsSettings } = useMCPServerToolsSettings({
     owner,
     serverId: mcpServerView.server.sId,
   });
 
-  const { updateToolPermission } = useUpdateMCPServerToolsPermissions({
+  const { updateToolSettings } = useUpdateMCPServerToolsSettings({
     owner,
     serverId: mcpServerView.server.sId,
   });
+
+  const getAvailableStakeLevelsForTool = (toolName: string) => {
+    if (isRemoteMCPServerType(mcpServerView.server)) {
+      const defaultRemoteServer = getDefaultRemoteMCPServerByURL(
+        mcpServerView.server.url
+      );
+      // We only allow users to set the "never_ask" stake level for tools that are configured with it in the default server.
+      if (defaultRemoteServer?.toolStakes?.[toolName] === "never_ask") {
+        return [...CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS, "never_ask"] as const;
+      }
+    }
+    return CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS;
+  };
 
   const handleClick = (
     name: string,
-    permission: RemoteMCPToolStakeLevelType
+    permission: CustomRemoteMCPToolStakeLevelType | "never_ask",
+    enabled: boolean
   ) => {
-    void updateToolPermission({
+    void updateToolSettings({
       toolName: name,
       permission,
+      enabled,
     });
   };
 
-  const toolPermissionLabel: Record<RemoteMCPToolStakeLevelType, string> = {
+  const getToolPermission = (toolName: string) => {
+    return toolsSettings[toolName]
+      ? toolsSettings[toolName].permission
+      : FALLBACK_MCP_TOOL_STAKE_LEVEL;
+  };
+
+  const getToolEnabled = (toolName: string) => {
+    // Default tools to be enabled by default
+    return toolsSettings[toolName] ? toolsSettings[toolName].enabled : true;
+  };
+
+  const toolPermissionLabel: Record<string, string> = {
     high: "High (update data or send information)",
     low: "Low (retrieve data or generate content)",
+    never_ask: "Never ask (automatic execution)",
   };
 
   return (
@@ -96,20 +125,40 @@ export function ToolsList({
           <div className="flex flex-col gap-2">
             {tools.map(
               (tool: { name: string; description: string }, index: number) => {
-                const toolPermission = toolsPermissions[tool.name]
-                  ? toolsPermissions[tool.name]
-                  : FALLBACK_MCP_TOOL_STAKE_LEVEL;
+                const toolPermission = getToolPermission(tool.name);
+                const toolEnabled = getToolEnabled(tool.name);
                 return (
-                  <div key={index} className="flex flex-col gap-1 pb-2">
-                    <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
-                      {asDisplayName(tool.name)}
-                    </h4>
+                  <div
+                    key={index}
+                    className={`flex flex-col gap-1 pb-2 ${
+                      !toolEnabled ? "opacity-50" : ""
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={toolEnabled}
+                        disabled={!canUpdate}
+                        onChange={(e) =>
+                          handleClick(
+                            tool.name,
+                            getToolPermission(tool.name),
+                            e.target.checked
+                          )
+                        }
+                        className="form-checkbox h-4 w-4"
+                        style={{ pointerEvents: "auto" }}
+                      />
+                      <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
+                        {asDisplayName(tool.name)}
+                      </h4>
+                    </div>
                     {tool.description && (
                       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                         {tool.description}
                       </p>
                     )}
-                    {serverType === "remote" && (
+                    {serverType === "remote" && toolEnabled && (
                       <>
                         <Card variant="primary" className="flex-col">
                           <div className="heading-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -119,7 +168,7 @@ export function ToolsList({
                             <DropdownMenu>
                               <DropdownMenuTrigger
                                 asChild
-                                disabled={!canUpdate}
+                                disabled={!canUpdate || !toolEnabled}
                               >
                                 <Button
                                   variant="outline"
@@ -127,14 +176,19 @@ export function ToolsList({
                                 />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent>
-                                {REMOTE_MCP_TOOL_STAKE_LEVELS.map(
+                                {getAvailableStakeLevelsForTool(tool.name).map(
                                   (permission) => (
                                     <DropdownMenuItem
                                       key={permission}
                                       onClick={() => {
-                                        handleClick(tool.name, permission);
+                                        handleClick(
+                                          tool.name,
+                                          permission,
+                                          getToolEnabled(tool.name)
+                                        );
                                       }}
                                       label={toolPermissionLabel[permission]}
+                                      disabled={!toolEnabled}
                                     />
                                   )
                                 )}

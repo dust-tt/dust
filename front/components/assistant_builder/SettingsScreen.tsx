@@ -12,7 +12,6 @@ import {
   SliderToggle,
   SparklesIcon,
   Spinner,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
 import React, {
@@ -40,6 +39,7 @@ import type { AssistantBuilderState } from "@app/components/assistant_builder/ty
 import { useBuilderActionInfo } from "@app/components/assistant_builder/useBuilderActionInfo";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MembersList } from "@app/components/members/MembersList";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useTags } from "@app/lib/swr/tags";
 import { debounce } from "@app/lib/utils/debounce";
 import type {

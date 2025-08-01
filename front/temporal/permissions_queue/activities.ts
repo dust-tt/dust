@@ -1,6 +1,6 @@
 import assert from "assert";
 
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import {
   getAgentConfigurationGroupIdsFromActions,
   listAgentConfigurationsForGroups,
@@ -9,7 +9,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isArrayEqual2DUnordered, normalizeArrays } from "@app/lib/utils";
 import mainLogger from "@app/logger/logger";
 
@@ -20,11 +20,7 @@ export async function updateSpacePermissions({
   spaceId: string;
   workspaceId: string;
 }) {
-  const workspace = await WorkspaceModel.findOne({
-    where: {
-      sId: workspaceId,
-    },
-  });
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
   if (!workspace) {
     throw new Error("Workspace not found.");
   }
@@ -69,14 +65,11 @@ export async function updateSpacePermissions({
 
   // Update the permissions of all the agent configurations.
   for (const acId of agentConfigurationIds) {
-    const [ac] = await getAgentConfigurations({
-      auth,
-      agentsGetView: {
-        agentIds: [acId],
-      },
+    const acList = await getAgentConfigurations(auth, {
+      agentIds: [acId],
       variant: "full",
-      dangerouslySkipPermissionFiltering: true,
     });
+    const [ac] = acList;
     if (!ac) {
       logger.warn(
         {

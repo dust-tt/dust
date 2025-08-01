@@ -1,3 +1,4 @@
+import { GraphError } from "@microsoft/microsoft-graph-client";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
@@ -17,6 +18,14 @@ export function isMicrosoftSignInError(err: unknown): err is Error {
       "Error retrieving access token from microsoft: code=provider_access_token_refresh_error"
     ) &&
     knownMicrosoftSignInErrors.some((code) => err.message.includes(code))
+  );
+}
+
+export function isItemNotFoundError(err: unknown): err is GraphError {
+  return (
+    err instanceof GraphError &&
+    err.statusCode === 404 &&
+    err.code === "itemNotFound"
   );
 }
 

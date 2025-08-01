@@ -20,7 +20,7 @@ import { INTERNAL_MIME_TYPES } from "@connectors/types";
 // Discover all Salesforce synced queries for a given connector.
 export async function discoverSalesforceSyncedQueries(
   connectorId: ModelId
-): Promise<{ id: ModelId; lastSeenModifiedDate: Date | null }[]> {
+): Promise<{ id: ModelId; lastSeenModifiedDateTs: number | null }[]> {
   const connAndCredsRes = await getConnectorAndCredentials(connectorId);
   if (connAndCredsRes.isErr()) {
     throw connAndCredsRes.error;
@@ -34,7 +34,7 @@ export async function discoverSalesforceSyncedQueries(
   return queries.map((query) => {
     return {
       id: query.id,
-      lastSeenModifiedDate: query.lastSeenModifiedDate ?? null,
+      lastSeenModifiedDateTs: query.lastSeenModifiedDate?.getTime() ?? null,
     };
   });
 }

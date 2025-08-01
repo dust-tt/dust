@@ -5,7 +5,7 @@ import { hardDeleteApp } from "@app/lib/api/apps";
 import {
   getAgentConfigurations,
   updateAgentRequestedGroupIds,
-} from "@app/lib/api/assistant/configuration";
+} from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -24,7 +24,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import type { DataSourceWithAgentsUsageType, Result } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { Err, Ok, removeNulls, SPACE_GROUP_PREFIX } from "@app/types";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -143,12 +143,11 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       await concurrentExecutor(
         agentIds,
         async (agentId) => {
-          const [agentConfig] = await getAgentConfigurations({
-            auth,
-            agentsGetView: { agentIds: [agentId] },
+          const agentConfigs = await getAgentConfigurations(auth, {
+            agentIds: [agentId],
             variant: "full",
-            dangerouslySkipPermissionFiltering: true,
           });
+          const [agentConfig] = agentConfigs;
 
           // Get the required group IDs from the agent's actions
           const requestedGroupIds =
@@ -297,7 +296,7 @@ export async function createRegularSpaceAndGroup(
 
     const group = await GroupResource.makeNew(
       {
-        name: `Group for space ${name}`,
+        name: `${SPACE_GROUP_PREFIX} ${name}`,
         workspaceId: owner.id,
         kind: "regular",
       },

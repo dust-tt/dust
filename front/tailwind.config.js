@@ -340,10 +340,21 @@ module.exports = {
       borderRadius: {
         "4xl": "2rem",
       },
-      maxWidth: {
-        48: "12rem",
+      containers: {
+        xxxs: "16rem",
+        xxs: "24rem",
+        xs: "32rem",
+        sm: "40rem",
+        md: "48rem",
+        lg: "64rem",
+        xl: "80rem",
       },
       width: {
+        100: "400px",
+        125: "500px",
+        150: "600px",
+      },
+      height: {
         100: "400px",
         125: "500px",
         150: "600px",
@@ -371,10 +382,27 @@ module.exports = {
       },
       minWidth: (theme) => ({
         ...theme("spacing"),
+        100: "400px",
+        125: "500px",
+        150: "600px",
       }),
       minHeight: (theme) => ({
         ...theme("spacing"),
+        100: "400px",
+        125: "500px",
+        150: "600px",
       }),
+      maxWidth: {
+        48: "12rem",
+        100: "400px",
+        125: "500px",
+        150: "600px",
+      },
+      maxHeight: {
+        100: "400px",
+        125: "500px",
+        150: "600px",
+      },
       keyframes: {
         appear: {
           "0%": { opacity: "0", width: "0" },

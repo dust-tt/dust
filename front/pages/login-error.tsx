@@ -10,28 +10,14 @@ import Link from "next/link";
 
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 
-const SSO_REQUIRED_REASON_PREFIX = "sso_required_";
-
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
 })<{
   domain: string | null;
   reason: string | null;
 }>(async (context) => {
-  //TODO(workos): This is probably not needed anymore, sso_required_ prefix is an error from auth0
   const reason =
     typeof context.query.reason === "string" ? context.query.reason : null;
-
-  if (reason?.startsWith(SSO_REQUIRED_REASON_PREFIX)) {
-    const workspaceId = reason.split(SSO_REQUIRED_REASON_PREFIX)[1];
-
-    return {
-      redirect: {
-        destination: `/sso-enforced?workspaceId=${workspaceId}`,
-        permanent: false,
-      },
-    };
-  }
 
   return {
     props: {

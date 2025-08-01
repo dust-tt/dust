@@ -5,10 +5,10 @@ import {
   GongLogo,
   Input,
   SliderToggle,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 import { normalizeError } from "@app/types";

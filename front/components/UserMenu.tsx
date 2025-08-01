@@ -1,6 +1,8 @@
+import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
   ChevronDownIcon,
+  ChromeLogo,
   cn,
   DropdownMenu,
   DropdownMenuContent,
@@ -19,11 +21,11 @@ import {
   StarIcon,
   TestTubeIcon,
   UserIcon,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { forceUserRole, showDebugTools } from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -95,23 +97,25 @@ export function UserMenu({
             }
             clickable
           />
-          <div className="flex flex-col items-start">
+          <div className="flex min-w-0 flex-1 flex-col items-start text-left">
             <span
               className={cn(
-                "heading-sm transition-colors duration-200",
+                "heading-sm w-full truncate transition-colors duration-200",
                 "text-foreground group-hover:text-primary-600 group-active:text-primary-950 dark:text-foreground-night dark:group-hover:text-muted-foreground-night dark:group-active:text-primary-700"
               )}
             >
               {user.firstName}
             </span>
-            <span className="-mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <span className="w-full truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
               {owner.name}
             </span>
           </div>
-          <Icon
-            visual={ChevronDownIcon}
-            className="text-muted-foreground group-hover:text-primary-400 group-active:text-primary-950 dark:text-muted-foreground-night dark:group-hover:text-foreground-night dark:group-active:text-primary-700"
-          />
+          <div className="flex-shrink-0">
+            <Icon
+              visual={ChevronDownIcon}
+              className="text-muted-foreground group-hover:text-primary-400 group-active:text-primary-950 dark:text-muted-foreground-night dark:group-hover:text-foreground-night dark:group-active:text-primary-700"
+            />
+          </div>
         </div>
       </DropdownMenuTrigger>
 
@@ -154,6 +158,14 @@ export function UserMenu({
           </>
         )}
 
+        <DropdownMenuLabel label="Extension" />
+        <DropdownMenuItem
+          label="Dust Chrome Extension"
+          icon={ChromeLogo}
+          href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn?authuser=0&hl=fr"
+          target="_blank"
+        />
+
         <DropdownMenuLabel label="Account" />
         {subscription?.plan.limits.canUseProduct && (
           <DropdownMenuItem
@@ -167,6 +179,10 @@ export function UserMenu({
           label="Sign&nbsp;out"
           icon={LogoutIcon}
           onClick={() => {
+            datadogLogs.clearUser();
+            window.DD_RUM.onReady(() => {
+              window.DD_RUM.clearUser();
+            });
             if (document.cookie.includes("sessionType=workos")) {
               window.location.href = "/api/workos/logout";
             } else {

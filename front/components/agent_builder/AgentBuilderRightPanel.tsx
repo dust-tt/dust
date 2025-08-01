@@ -1,6 +1,7 @@
 import {
   BarChartIcon,
   Button,
+  ScrollArea,
   SidebarRightCloseIcon,
   SidebarRightOpenIcon,
   Tabs,
@@ -8,10 +9,11 @@ import {
   TabsTrigger,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
-import { ScrollArea } from "@dust-tt/sparkle";
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 
-import { AgentBuilderContext } from "./AgentBuilderContext";
+import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
+import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
+import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 
 type AgentBuilderRightPanelTabType = "testing" | "performance";
 
@@ -31,19 +33,17 @@ function PanelHeader({
   return (
     <div className="flex h-16 items-end">
       {isPreviewPanelOpen ? (
-        <div className="flex w-full items-center">
-          <div className="px-1">
-            <Button
-              icon={SidebarRightCloseIcon}
-              size="sm"
-              variant="ghost-secondary"
-              tooltip="Hide preview"
-              onClick={onTogglePanel}
-            />
-          </div>
+        <div className="flex w-full items-center px-6">
           <ScrollArea aria-orientation="horizontal" className="flex-1">
             <Tabs value={selectedTab} className="w-full">
               <TabsList>
+                <Button
+                  icon={SidebarRightCloseIcon}
+                  size="sm"
+                  variant="ghost-secondary"
+                  tooltip="Hide preview"
+                  onClick={onTogglePanel}
+                />
                 <TabsTrigger
                   value="testing"
                   label="Testing"
@@ -61,7 +61,7 @@ function PanelHeader({
           </ScrollArea>
         </div>
       ) : (
-        <div className="flex h-full w-full items-end justify-center px-1">
+        <div className="flex h-full w-full items-end justify-center">
           <Button
             icon={SidebarRightOpenIcon}
             size="sm"
@@ -102,24 +102,40 @@ function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
 
 interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
+  agentConfigurationSId?: string;
 }
 
-function ExpandedContent({ selectedTab }: ExpandedContentProps) {
+function ExpandedContent({
+  selectedTab,
+  agentConfigurationSId,
+}: ExpandedContentProps) {
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex-1 p-4">
-        {selectedTab === "testing" && <div className="space-y-4">Testing</div>}
-        {selectedTab === "performance" && (
-          <div className="space-y-4">Performance</div>
-        )}
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col">
+      {selectedTab === "testing" && (
+        <div className="min-h-0 flex-1">
+          <AgentBuilderPreview />
+        </div>
+      )}
+      {selectedTab === "performance" && agentConfigurationSId && (
+        <div className="flex-1 overflow-y-auto p-4">
+          <AgentBuilderPerformance
+            agentConfigurationSId={agentConfigurationSId}
+          />
+        </div>
+      )}
     </div>
   );
 }
 
-export function AgentBuilderRightPanel() {
+interface AgentBuilderRightPanelProps {
+  agentConfigurationSId?: string;
+}
+
+export function AgentBuilderRightPanel({
+  agentConfigurationSId,
+}: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
-    useContext(AgentBuilderContext);
+    usePreviewPanelContext();
   const [selectedTab, setSelectedTab] =
     useState<AgentBuilderRightPanelTabType>("testing");
 
@@ -145,7 +161,10 @@ export function AgentBuilderRightPanel() {
         onTabChange={handleTabChange}
       />
       {isPreviewPanelOpen ? (
-        <ExpandedContent selectedTab={selectedTab} />
+        <ExpandedContent
+          selectedTab={selectedTab}
+          agentConfigurationSId={agentConfigurationSId}
+        />
       ) : (
         <CollapsedTabs onTabSelect={handleTabSelect} />
       )}

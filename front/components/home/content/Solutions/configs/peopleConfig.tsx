@@ -29,9 +29,9 @@ export const pageSettings: pageSettingsProps = {
     <>Expedite HR operations and focus on what matters most - people.</>
   ),
   bulletPoints: [
-    "Answer recurring HR questions with information from your policies",
-    "Onboard new hires through company processes and documentation",
-    "Guide managers to deliver quality feedback based on your company guidelines",
+    "Answer recurring HR questions with information from your policies.",
+    "Onboard new hires through company processes and documentation.",
+    "Guide managers to deliver quality feedback based on your company guidelines.",
   ],
   image: "/static/landing/hr/askhr.png",
 };
@@ -161,11 +161,18 @@ export const DemoVideo: DemoVideoProps = {
 
 export const Stories: CustomerStory[] = [
   {
-    title: "30% time savings in HR: How Alan’s People team scaled with Dust",
+    title: "Creating an AI-first culture at Doctolib: the People team's role",
     content:
-      "Alan’s HR team quadrupled AI adoption and saved 30% of time spent on employee queries by deploying custom Dust agents for people operations.",
+      "Doctolib's People team laid the foundations for AI transformation, driving 70% weekly usage across 3,000 employees through cultural change.",
+    href: "https://blog.dust.tt/why-doctolib-made-company-wide-enterprise-ai-a-national-cause/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Doctolib-__-Dust---Part-1.jpg",
+  },
+  {
+    title: "30% time savings in HR: How Alan's People team scaled with Dust",
+    content:
+      "Alan's HR team quadrupled AI adoption and saved 30% of time spent on employee queries by deploying custom Dust agents for people operations.",
     href: "https://blog.dust.tt/how-lucas-people-analyst-at-alan-introduced-dust-to-his-hr-team/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_alan.png",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Alan-__-Dust-1--1-.png",
   },
   {
     title: "Clay accelerates team onboarding with Dust AI agents",
@@ -174,11 +181,4 @@ export const Stories: CustomerStory[] = [
     href: "https://blog.dust.tt/clay-scaling-gtme-team/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
   },
-  // {
-  //   title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
-  //   content:
-  //     "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
-  //   href: "https://blog.dust.tt/customer-story-lifen/",
-  //   src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
-  // },
 ];

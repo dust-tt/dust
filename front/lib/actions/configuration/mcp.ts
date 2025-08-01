@@ -7,8 +7,8 @@ import {
 } from "@app/lib/actions/configuration/helpers";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type {
+  CustomServerIconType,
   InternalAllowedIconType,
-  RemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -133,10 +133,8 @@ export async function fetchMCPServerActionConfigurations(
     );
     let serverName: string | null = null;
     let serverDescription: string | null = null;
-    let serverIcon:
-      | InternalAllowedIconType
-      | RemoteAllowedIconType
-      | undefined = undefined;
+    let serverIcon: InternalAllowedIconType | CustomServerIconType | undefined =
+      undefined;
 
     if (!mcpServerView) {
       logger.warn(
@@ -166,6 +164,7 @@ export async function fetchMCPServerActionConfigurations(
         icon: serverIcon,
         mcpServerViewId: mcpServerView?.sId ?? "",
         internalMCPServerId: config.internalMCPServerId,
+        mcpServerName: serverName,
         dataSources: dataSourceConfigurations.map(
           renderDataSourceConfiguration
         ),

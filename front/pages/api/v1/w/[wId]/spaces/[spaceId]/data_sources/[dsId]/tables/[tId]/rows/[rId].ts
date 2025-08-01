@@ -216,7 +216,8 @@ async function handler(
       return res.status(200).json({ row });
 
     case "DELETE":
-      if (!dataSource.canWrite(auth)) {
+      // To write we must have canWrite or be a systemAPIKey
+      if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {

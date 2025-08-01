@@ -8,6 +8,7 @@ import {
 import type { WorkspaceType } from "@dust-tt/client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+const PROACTIVE_REFRESH_WINDOW_MS = 1000 * 60; // 1 minute
 const log = console.error;
 
 export const useAuthHook = () => {
@@ -19,10 +20,15 @@ export const useAuthHook = () => {
   const [forcedConnection, setForcedConnection] = useState<
     string | undefined
   >();
-  const isAuthenticated = !!(
-    tokens?.accessToken &&
-    tokens.expiresAt > Date.now() &&
-    user?.dustDomain
+
+  const isAuthenticated = useMemo(
+    () =>
+      !!(
+        tokens?.accessToken &&
+        tokens.expiresAt > Date.now() &&
+        user?.dustDomain
+      ),
+    [tokens, user]
   );
 
   const isUserSetup = !!(user && user.sId && user.selectedWorkspace);
@@ -102,7 +108,7 @@ export const useAuthHook = () => {
       setUser(savedUser);
 
       // Token refresh.
-      if (storedTokens.expiresAt <= Date.now()) {
+      if (storedTokens.expiresAt < Date.now() + PROACTIVE_REFRESH_WINDOW_MS) {
         await handleRefreshToken();
       }
 
@@ -148,43 +154,39 @@ export const useAuthHook = () => {
     setUser(updatedUser);
   };
 
-  const handleLogin = useCallback(
-    async (isForceLogin?: boolean) => {
-      setIsLoading(true);
-      const response = await platform.auth.login({
-        isForceLogin,
-        forcedConnection,
-      });
-      if (response.isErr()) {
-        setAuthError(response.error);
+  const handleLogin = useCallback(async () => {
+    setIsLoading(true);
+    const response = await platform.auth.login({
+      forcedConnection,
+    });
+    if (response.isErr()) {
+      setAuthError(response.error);
+      setIsLoading(false);
+      void platform.clearStoredData();
+      return;
+    }
+
+    const { tokens, user } = response.value;
+
+    if (user.selectedWorkspace) {
+      const selectedWorkspace = user.workspaces.find(
+        (w) => w.sId === user.selectedWorkspace
+      );
+      if (
+        selectedWorkspace &&
+        !isValidEnterpriseConnection(user, selectedWorkspace)
+      ) {
+        await redirectToSSOLogin(selectedWorkspace);
         setIsLoading(false);
-        void platform.clearStoredData();
         return;
       }
+    }
 
-      const { tokens, user } = response.value;
-
-      if (user.selectedWorkspace) {
-        const selectedWorkspace = user.workspaces.find(
-          (w) => w.sId === user.selectedWorkspace
-        );
-        if (
-          selectedWorkspace &&
-          !isValidEnterpriseConnection(user, selectedWorkspace)
-        ) {
-          await redirectToSSOLogin(selectedWorkspace);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      setTokens(tokens);
-      setAuthError(null);
-      setUser(user);
-      setIsLoading(false);
-    },
-    [forcedConnection]
-  );
+    setTokens(tokens);
+    setAuthError(null);
+    setUser(user);
+    setIsLoading(false);
+  }, [forcedConnection]);
 
   return {
     token: tokens?.accessToken ?? null,

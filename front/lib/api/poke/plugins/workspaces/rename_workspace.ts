@@ -1,6 +1,7 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { changeWorkspaceName } from "@app/lib/api/workspace";
-import { Err, Ok } from "@app/types";
+import { getWorkOS } from "@app/lib/api/workos/client";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { Err, normalizeError, Ok } from "@app/types";
 
 export const renameWorkspace = createPlugin({
   manifest: {
@@ -24,17 +25,37 @@ export const renameWorkspace = createPlugin({
       );
     }
 
-    const res = await changeWorkspaceName(
-      auth.getNonNullableWorkspace(),
+    const res = await WorkspaceResource.updateName(
+      auth.getNonNullableWorkspace().id,
       newName
     );
     if (res.isErr()) {
       return res;
     }
 
+    const organization_id = auth.getNonNullableWorkspace().workOSOrganizationId;
+    if (!organization_id) {
+      return new Ok({
+        display: "text",
+        value: `Workspace renamed to ${newName}.`,
+      });
+    }
+
+    try {
+      await getWorkOS().organizations.updateOrganization({
+        organization: organization_id,
+        name: newName,
+      });
+    } catch (error) {
+      const e = normalizeError(error);
+      return new Err(
+        new Error(`Failed to update WorkOS organization name: ${e.message}`)
+      );
+    }
+
     return new Ok({
       display: "text",
-      value: `Workspace renamed to ${newName}.`,
+      value: `Workspace renamed to ${newName}. It was renamed in WorkOS as well.`,
     });
   },
 });

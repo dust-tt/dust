@@ -5,12 +5,12 @@ import {
   LoadingBlock,
   Page,
   RobotIcon,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useCallback, useMemo, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   useAgentConfigurations,
@@ -85,8 +85,8 @@ export function AgentSuggestion({
         const data = await mRes.json();
         sendNotification({
           type: "error",
-          title: "Invite sent",
-          description: `Error adding mention to message: ${data.error.message}`,
+          title: "Error adding mention to message",
+          description: data.error.message,
         });
       }
     }

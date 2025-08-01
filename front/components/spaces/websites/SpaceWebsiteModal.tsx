@@ -7,13 +7,13 @@ import {
   SheetHeader,
   SheetTitle,
   TrashIcon,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useEffect, useReducer, useState } from "react";
 
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { SpaceWebsiteForm } from "@app/components/spaces/websites/SpaceWebsiteForm";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { createWebsite, updateWebsite } from "@app/lib/api/website";
 import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";

@@ -1,8 +1,8 @@
 import {
-  AUTH0_CLAIM_NAMESPACE,
   DEFAULT_DUST_API_DOMAIN,
   DUST_EU_URL,
   DUST_US_URL,
+  WORKOS_CLAIM_NAMESPACE,
 } from "@app/shared/lib/config";
 import type { StorageService } from "@app/shared/services/storage";
 import type {
@@ -28,7 +28,6 @@ export type StoredUser = UserTypeWithExtensionWorkspaces & {
   dustDomain: string;
   connectionStrategy: SupportedEnterpriseConnectionStrategy | undefined;
   connection?: string;
-  authProvider: "workos" | "auth0";
 };
 
 export type OAuthAuthorizeResponse = {
@@ -37,7 +36,6 @@ export type OAuthAuthorizeResponse = {
   refreshToken: string;
   expiresIn: number;
   authentication_method?: string;
-  provider: "workos" | "auth0";
 };
 
 type AuthErrorCode =
@@ -107,7 +105,6 @@ export abstract class AuthService {
 
   // Abstract methods that must be implemented by platform-specific services
   abstract login(args: {
-    isForceLogin?: boolean;
     forcedConnection?: string;
   }): Promise<Result<{ tokens: StoredTokens; user: StoredUser }, AuthError>>;
 
@@ -142,9 +139,9 @@ export abstract class AuthService {
   }
 }
 
-const REGION_CLAIM = `${AUTH0_CLAIM_NAMESPACE}region`;
-const CONNECTION_STRATEGY_CLAIM = `${AUTH0_CLAIM_NAMESPACE}connection.strategy`;
-const WORKSPACE_ID_CLAIM = `${AUTH0_CLAIM_NAMESPACE}workspaceId`;
+const REGION_CLAIM = `${WORKOS_CLAIM_NAMESPACE}region`;
+const CONNECTION_STRATEGY_CLAIM = `${WORKOS_CLAIM_NAMESPACE}connection.strategy`;
+const WORKSPACE_ID_CLAIM = `${WORKOS_CLAIM_NAMESPACE}workspaceId`;
 
 export function getDustDomain(claims: Record<string, string>) {
   const region = claims[REGION_CLAIM];
@@ -172,12 +169,7 @@ export function getConnectionDetails(claims: Record<string, string>) {
   };
 }
 
-export const SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES = [
-  "okta",
-  "samlp",
-  "waad",
-  "SSO",
-] as const;
+export const SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES = ["SSO"] as const;
 export type SupportedEnterpriseConnectionStrategy =
   (typeof SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES)[number];
 

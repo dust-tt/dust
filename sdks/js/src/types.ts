@@ -1,4 +1,3 @@
-import type { JSONSchema7 } from "json-schema";
 import moment from "moment-timezone";
 import { z } from "zod";
 
@@ -7,6 +6,7 @@ import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,
 } from "./mcp_icon_types";
+import { NotificationInteractiveFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
 
 type StringLiteral<T> = T extends string
@@ -64,6 +64,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gemini-2.0-flash"
   | "gemini-2.0-flash-lite"
   | "gemini-2.5-pro-preview-03-25"
+  | "gemini-2.5-pro"
   | "gemini-2.0-flash-exp" // DEPRECATED
   | "gemini-2.0-flash-lite-preview-02-05" // DEPRECATED
   | "gemini-2.0-pro-exp-02-05" // DEPRECATED
@@ -77,6 +78,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "deepseek-chat" // deepseek api
   | "deepseek-reasoner" // deepseek api
   | "accounts/fireworks/models/deepseek-r1" // fireworks
+  | "accounts/fireworks/models/kimi-k2-instruct" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
   | "grok-3-fast-latest" // xAI
@@ -543,106 +545,6 @@ export const GenerationTokensEventSchema = z.object({
 });
 export type GenerationTokensEvent = z.infer<typeof GenerationTokensEventSchema>;
 
-const BaseActionTypeSchema = FlexibleEnumSchema<
-  "dust_app_run_action" | "process_action" | "visualization_action"
->();
-
-const BaseActionSchema = z.object({
-  id: ModelIdSchema,
-  type: BaseActionTypeSchema,
-});
-
-const SearchLabelsActionOutputSchema = z.object({
-  tags: z.array(
-    z.object({
-      tag: z.string(),
-      match_count: z.number(),
-      data_sources: z.array(z.string()),
-    })
-  ),
-});
-
-const SearchLabelsActionTypeSchema = BaseActionSchema.extend({
-  agentMessageId: ModelIdSchema,
-  output: SearchLabelsActionOutputSchema.nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  step: z.number(),
-  type: z.literal("search_labels_action"),
-});
-type SearchLabelsActionPublicType = z.infer<
-  typeof SearchLabelsActionTypeSchema
->;
-
-const ConversationIncludeFileActionTypeSchema = BaseActionSchema.extend({
-  agentMessageId: ModelIdSchema,
-  params: z.object({
-    fileId: z.string(),
-  }),
-  tokensCount: z.number().nullable(),
-  fileTitle: z.string().nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  step: z.number(),
-  type: z.literal("conversation_include_file_action"),
-});
-
-const ConversationAttachmentTypeSchema = z.union([
-  // File case
-  z.object({
-    fileId: z.string(),
-    contentFragmentId: z.undefined(),
-    nodeDataSourceViewId: z.undefined(),
-    title: z.string(),
-    contentType: SupportedContentFragmentTypeSchema,
-  }),
-  // Node case
-  z.object({
-    fileId: z.undefined(),
-    contentFragmentId: z.string(),
-    nodeDataSourceViewId: z.string(),
-    title: z.string(),
-    contentType: SupportedContentFragmentTypeSchema,
-  }),
-]);
-
-const ConversationListFilesActionTypeSchema = BaseActionSchema.extend({
-  files: z.array(ConversationAttachmentTypeSchema),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  agentMessageId: ModelIdSchema,
-  step: z.number(),
-  type: z.literal("conversation_list_files_action"),
-});
-
-const DustAppParametersSchema = z.record(
-  z.union([z.string(), z.number(), z.boolean()])
-);
-
-const DustAppRunActionTypeSchema = BaseActionSchema.extend({
-  agentMessageId: ModelIdSchema,
-  appWorkspaceId: z.string(),
-  appId: z.string(),
-  appName: z.string(),
-  params: DustAppParametersSchema,
-  runningBlock: z
-    .object({
-      type: z.string(),
-      name: z.string(),
-      status: z.enum(["running", "succeeded", "errored"]),
-    })
-    .nullable(),
-  output: z.unknown().nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  step: z.number(),
-  type: z.literal("dust_app_run_action"),
-}).transform((o) => ({
-  ...o,
-  output: o.output,
-}));
-type DustAppRunActionPublicType = z.infer<typeof DustAppRunActionTypeSchema>;
-
 const DataSourceViewKindSchema = FlexibleEnumSchema<"default" | "custom">();
 
 const DataSourceViewSchema = z.object({
@@ -658,29 +560,6 @@ const DataSourceViewSchema = z.object({
   spaceId: z.string(),
 });
 export type DataSourceViewType = z.infer<typeof DataSourceViewSchema>;
-
-const TIME_FRAME_UNITS = ["hour", "day", "week", "month", "year"] as const;
-const TimeframeUnitSchema = z.enum(TIME_FRAME_UNITS);
-
-const TimeFrameSchema = z.object({
-  duration: z.number(),
-  unit: TimeframeUnitSchema,
-});
-
-const DataSourceFilterSchema = z.object({
-  parents: z
-    .object({
-      in: z.array(z.string()),
-      not: z.array(z.string()),
-    })
-    .nullable(),
-});
-
-const DataSourceConfigurationSchema = z.object({
-  workspaceId: z.string(),
-  dataSourceViewId: z.string(),
-  filter: DataSourceFilterSchema,
-});
 
 const RetrievalDocumentChunkTypeSchema = z.object({
   offset: z.number(),
@@ -704,38 +583,13 @@ export type RetrievalDocumentPublicType = z.infer<
   typeof RetrievalDocumentTypeSchema
 >;
 
-const ProcessSchemaPropertySchema = z.union([
-  z.custom<JSONSchema7>(),
-  z.null(),
-]);
-
-const ProcessActionOutputsSchema = z.object({
-  data: z.array(z.unknown()),
-  min_timestamp: z.number(),
-  total_documents: z.number(),
-  total_chunks: z.number(),
-  total_tokens: z.number(),
-});
-
-const ProcessActionTypeSchema = BaseActionSchema.extend({
-  agentMessageId: ModelIdSchema,
-  params: z.object({
-    relativeTimeFrame: TimeFrameSchema.nullable(),
-  }),
-  jsonSchema: ProcessSchemaPropertySchema,
-  outputs: ProcessActionOutputsSchema.nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  step: z.number(),
-  type: z.literal("process_action"),
-});
-type ProcessActionPublicType = z.infer<typeof ProcessActionTypeSchema>;
-
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "advanced_search"
+  | "agent_builder_instructions_autocomplete"
   | "agent_builder_v2"
-  | "claude_3_7_reasoning"
+  | "anthropic_vertex_fallback"
+  | "async_loop"
   | "claude_4_opus_feature"
   | "co_edition"
   | "deepseek_feature"
@@ -743,14 +597,17 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
-  | "enforce_datasource_quota"
   | "exploded_tables_query"
-  | "extended_max_steps_per_run"
   | "google_ai_studio_experimental_models_feature"
+  | "google_sheets_tool"
   | "index_private_slack_channel"
+  | "interactive_content_server"
+  | "jira_tool"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"
+  | "monday_tool"
+  | "notion_private_integration"
   | "okta_enterprise_connection"
   | "openai_o1_custom_assistants_feature"
   | "openai_o1_feature"
@@ -824,15 +681,14 @@ export const WebsearchResultSchema = z.object({
 
 export type WebsearchResultPublicType = z.infer<typeof WebsearchResultSchema>;
 
-const MCPActionTypeSchema = BaseActionSchema.extend({
+const MCPActionTypeSchema = z.object({
+  id: ModelIdSchema,
   agentMessageId: ModelIdSchema,
   functionCallName: z.string().nullable(),
   params: z.unknown(),
   output: CallToolResultSchema.shape.content.nullable(),
   type: z.literal("tool_action"),
 });
-
-export type MCPActionPublicType = z.infer<typeof MCPActionTypeSchema>;
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
   | "active"
@@ -1015,15 +871,7 @@ export type UserMessageWithRankType = z.infer<
   typeof UserMessageWithRankTypeSchema
 >;
 
-const AgentActionTypeSchema = z.union([
-  DustAppRunActionTypeSchema,
-  ProcessActionTypeSchema,
-  ConversationListFilesActionTypeSchema,
-  ConversationIncludeFileActionTypeSchema,
-  SearchLabelsActionTypeSchema,
-  MCPActionTypeSchema,
-]);
-export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
+export type AgentActionPublicType = z.infer<typeof MCPActionTypeSchema>;
 
 const AgentMessageStatusSchema = FlexibleEnumSchema<
   "created" | "succeeded" | "failed" | "cancelled"
@@ -1040,7 +888,7 @@ const AgentMessageTypeSchema = z.object({
   parentMessageId: z.string().nullable(),
   configuration: LightAgentConfigurationSchema,
   status: AgentMessageStatusSchema,
-  actions: z.array(AgentActionTypeSchema),
+  actions: z.array(MCPActionTypeSchema),
   content: z.string().nullable(),
   chainOfThought: z.string().nullable(),
   rawContents: z.array(
@@ -1053,12 +901,13 @@ const AgentMessageTypeSchema = z.object({
     .object({
       code: z.string(),
       message: z.string(),
+      metadata: z.record(z.any()).nullable(),
     })
     .nullable(),
 });
 export type AgentMessagePublicType = z.infer<typeof AgentMessageTypeSchema>;
 
-const AgentMesssageFeedbackSchema = z.object({
+const AgentMessageFeedbackSchema = z.object({
   messageId: z.string(),
   agentMessageId: z.number(),
   userId: z.number(),
@@ -1127,47 +976,6 @@ export type ConversationMessageReactionsType = z.infer<
   typeof ConversationMessageReactionsSchema
 >;
 
-const ConversationIncludeFileParamsEventSchema = z.object({
-  type: z.literal("conversation_include_file_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: ConversationIncludeFileActionTypeSchema,
-});
-
-const DustAppRunParamsEventSchema = z.object({
-  type: z.literal("dust_app_run_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: DustAppRunActionTypeSchema,
-});
-
-const DustAppRunBlockEventSchema = z.object({
-  type: z.literal("dust_app_run_block"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: DustAppRunActionTypeSchema,
-});
-
-const ProcessParamsEventSchema = z.object({
-  type: z.literal("process_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  dataSources: z.array(DataSourceConfigurationSchema),
-  action: ProcessActionTypeSchema,
-});
-
-const SearchLabelsParamsEventSchema = z.object({
-  type: z.literal("search_labels_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: SearchLabelsActionTypeSchema,
-});
-
 const MCPStakeLevelSchema = z.enum(["low", "high", "never_ask"]).optional();
 
 const MCPValidationMetadataSchema = z.object({
@@ -1218,8 +1026,9 @@ const NotificationRunAgentContentSchema = z.object({
 
 const NotificationContentSchema = z.union([
   NotificationImageContentSchema,
-  NotificationTextContentSchema,
+  NotificationInteractiveFileContentSchema,
   NotificationRunAgentContentSchema,
+  NotificationTextContentSchema,
   NotificationToolApproveBubbleUpContentSchema,
 ]);
 
@@ -1271,16 +1080,12 @@ const AgentErrorEventSchema = z.object({
   error: z.object({
     code: z.string(),
     message: z.string(),
+    metadata: z.record(z.any()).nullable(),
   }),
 });
 export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
 
 const AgentActionSpecificEventSchema = z.union([
-  ConversationIncludeFileParamsEventSchema,
-  DustAppRunBlockEventSchema,
-  DustAppRunParamsEventSchema,
-  ProcessParamsEventSchema,
-  SearchLabelsParamsEventSchema,
   MCPParamsEventSchema,
   ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
@@ -1294,7 +1099,7 @@ const AgentActionSuccessEventSchema = z.object({
   created: z.number(),
   configurationId: z.string(),
   messageId: z.string(),
-  action: AgentActionTypeSchema,
+  action: MCPActionTypeSchema,
 });
 export type AgentActionSuccessEvent = z.infer<
   typeof AgentActionSuccessEventSchema
@@ -1465,7 +1270,6 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "subscription_state_invalid"
   | "table_not_found"
   | "template_not_found"
-  | "template_not_found"
   | "transcripts_configuration_already_exists"
   | "transcripts_configuration_default_not_allowed"
   | "transcripts_configuration_not_found"
@@ -1475,7 +1279,6 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "unexpected_response_format"
   | "user_not_found"
   | "workspace_auth_error"
-  | "workspace_not_found"
   | "workspace_not_found"
   | "workspace_user_not_found"
 >();
@@ -1588,6 +1391,46 @@ export const DustAppRunTokensEventSchema = z.object({
   }),
 });
 export type DustAppRunTokensEvent = z.infer<typeof DustAppRunTokensEventSchema>;
+
+export const DustAppRunReasoningTokensEventSchema = z.object({
+  type: z.literal("reasoning_tokens"),
+  content: z.object({
+    block_type: z.string(),
+    block_name: z.string(),
+    input_index: z.number(),
+    map: z
+      .object({
+        name: z.string(),
+        iteration: z.number(),
+      })
+      .nullable(),
+    tokens: z.object({
+      text: z.string(),
+    }),
+  }),
+});
+export type DustAppRunReasoningTokensEvent = z.infer<
+  typeof DustAppRunReasoningTokensEventSchema
+>;
+
+export const DustAppRunReasoningItemEventSchema = z.object({
+  type: z.literal("reasoning_item"),
+  content: z.object({
+    block_type: z.string(),
+    block_name: z.string(),
+    input_index: z.number(),
+    map: z
+      .object({
+        name: z.string(),
+        iteration: z.number(),
+      })
+      .nullable(),
+    item: z.unknown(),
+  }),
+});
+export type DustAppRunReasoningItemEvent = z.infer<
+  typeof DustAppRunReasoningItemEventSchema
+>;
 
 export const DustAppRunFunctionCallEventSchema = z.object({
   type: z.literal("function_call"),
@@ -1759,7 +1602,7 @@ export type CreateConversationResponseType = z.infer<
 >;
 
 export const GetFeedbacksResponseSchema = z.object({
-  feedbacks: z.array(AgentMesssageFeedbackSchema),
+  feedbacks: z.array(AgentMessageFeedbackSchema),
 });
 
 export type GetFeedbacksResponseType = z.infer<
@@ -2163,6 +2006,29 @@ const GetDocumentResponseSchema = z.object({
 });
 export type GetDocumentResponseType = z.infer<typeof GetDocumentResponseSchema>;
 
+const CoreAPIDataSourceDocumentBlobSchema = z.object({
+  document_id: z.string(),
+  mime_type: z.string(),
+  parent_id: z.string().nullable(),
+  parents: z.array(z.string()),
+  section: FrontDataSourceDocumentSectionSchema,
+  source_url: z.string().nullable(),
+  tags: z.array(z.string()),
+  timestamp: z.number(),
+  title: z.string(),
+});
+
+export type CoreAPIDataSourceDocumentBlob = z.infer<
+  typeof CoreAPIDataSourceDocumentBlobSchema
+>;
+
+const GetDocumentBlobResponseSchema = z.object({
+  blob: CoreAPIDataSourceDocumentBlobSchema,
+});
+export type GetDocumentBlobResponseType = z.infer<
+  typeof GetDocumentBlobResponseSchema
+>;
+
 const DeleteDocumentResponseSchema = z.object({
   document: z.object({
     document_id: z.string(),
@@ -2344,7 +2210,7 @@ const SupportedUsageTablesSchema = FlexibleEnumSchema<
   | "assistant_messages"
   | "builders"
   | "assistants"
-  | "feedbacks"
+  | "feedback"
   | "all"
 >();
 
@@ -2517,30 +2383,6 @@ export type CancelMessageGenerationRequestType = z.infer<
 >;
 
 // Typeguards.
-
-export function isMCPActionType(
-  action: AgentActionPublicType
-): action is MCPActionPublicType {
-  return action.type === "tool_action";
-}
-
-export function isDustAppRunActionType(
-  action: AgentActionPublicType
-): action is DustAppRunActionPublicType {
-  return action.type === "dust_app_run_action";
-}
-
-export function isProcessActionType(
-  action: AgentActionPublicType
-): action is ProcessActionPublicType {
-  return action.type === "process_action";
-}
-
-export function isSearchLabelsActionType(
-  action: AgentActionPublicType
-): action is SearchLabelsActionPublicType {
-  return action.type === "search_labels_action";
-}
 
 export function isAgentMention(arg: AgentMentionType): arg is AgentMentionType {
   return (arg as AgentMentionType).configurationId !== undefined;
@@ -2717,18 +2559,7 @@ export type PostWorkspaceSearchResponseBodyType = z.infer<
   typeof PostWorkspaceSearchResponseBodySchema
 >;
 
-// TODO(mcp) move somewhere else as we'll need dynamic labels for MCP.
-export const ACTION_RUNNING_LABELS: Record<
-  AgentActionPublicType["type"],
-  string
-> = {
-  conversation_include_file_action: "Reading file",
-  conversation_list_files_action: "Listing files",
-  dust_app_run_action: "Running App",
-  process_action: "Extracting data",
-  search_labels_action: "Searching labels",
-  tool_action: "Using a tool",
-};
+export const TOOL_RUNNING_LABEL = "Using a tool";
 
 // MCP Related.
 

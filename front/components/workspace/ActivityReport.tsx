@@ -11,7 +11,7 @@ import { useState } from "react";
 
 interface ActivityReportProps {
   monthOptions: string[];
-  isDownloading: boolean;
+  downloadingMonth: string | null;
   handleDownload: (selectedMonth: string | null) => void;
 }
 
@@ -19,7 +19,7 @@ const maxItemsPerPage = 4;
 
 export function ActivityReport({
   monthOptions,
-  isDownloading,
+  downloadingMonth,
   handleDownload,
 }: ActivityReportProps) {
   const [pagination, setPagination] = useState({
@@ -75,8 +75,8 @@ export function ActivityReport({
                       onClick={() => {
                         handleDownload(item);
                       }}
-                      disabled={isDownloading}
-                      isLoading={isDownloading}
+                      disabled={downloadingMonth !== null}
+                      isLoading={downloadingMonth === item}
                     />
                   }
                 ></ContextItem>

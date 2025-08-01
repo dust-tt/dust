@@ -2,7 +2,7 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { diffStrings } from "@app/lib/diff";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { Diff } from "@app/types";
 import { CoreAPI } from "@app/types";
@@ -105,11 +105,7 @@ export async function getDatasource(
   dataSourceId: string
 ): Promise<DataSourceResource> {
   const owner = auth.getNonNullableWorkspace();
-  const workspace = await WorkspaceModel.findOne({
-    where: {
-      sId: owner.sId,
-    },
-  });
+  const workspace = await WorkspaceResource.fetchById(owner.sId);
   if (!workspace) {
     throw new Error(`Could not find workspace ${owner.sId}`);
   }

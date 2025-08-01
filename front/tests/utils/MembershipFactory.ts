@@ -1,3 +1,5 @@
+import type { Transaction } from "sequelize";
+
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
@@ -10,14 +12,21 @@ export class MembershipFactory {
   static async associate(
     workspace: WorkspaceType,
     user: UserResource,
-    role: MembershipRoleType,
-    origin: MembershipOriginType = "invited"
+    {
+      role,
+      origin = "invited",
+    }: {
+      role: MembershipRoleType;
+      origin?: MembershipOriginType;
+    },
+    t?: Transaction
   ) {
     return MembershipResource.createMembership({
       workspace,
       user,
       role,
       origin,
+      transaction: t,
     });
   }
 }

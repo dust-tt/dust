@@ -207,7 +207,7 @@ export default function Join({
         </div>
         <div className="flex flex-col gap-3 pb-20">
           <p>
-            By signing-up, you accept Dust's{" "}
+            By signing up, you accept Dust's{" "}
             <Hoverable
               href="https://dust.tt/terms"
               variant="highlight"

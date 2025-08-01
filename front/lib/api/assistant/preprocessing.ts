@@ -2,11 +2,13 @@ import {
   getTextContentFromMessage,
   getTextRepresentationFromMessages,
 } from "@app/lib/api/assistant/utils";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 import type {
+  AgentMessageType,
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
   ConversationType,
@@ -29,6 +31,7 @@ import {
 } from "@app/types";
 import type {
   AgentContentItemType,
+  ErrorContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
 
@@ -46,6 +49,7 @@ export async function renderConversationForModel(
     allowedTokenCount,
     excludeActions,
     excludeImages,
+    checkMissingActions = true,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -54,6 +58,7 @@ export async function renderConversationForModel(
     allowedTokenCount: number;
     excludeActions?: boolean;
     excludeImages?: boolean;
+    checkMissingActions?: boolean;
   }
 ): Promise<
   Result<
@@ -72,75 +77,33 @@ export async function renderConversationForModel(
     const m = versions[versions.length - 1];
 
     if (isAgentMessageType(m)) {
-      const actions = removeNulls(m.actions);
-
-      // This is a record of arrays, because we can have multiple calls per agent message (parallel
-      // calls).  Actions all have a step index which indicates how they should be grouped but some
-      // actions injected by `getEmulatedAgentMessageActions` have a step index of `-1`. We
-      // therefore group by index, then order and transform in a 2D array to present to the model.
-      const stepByStepIndex = {} as Record<
-        string,
-        {
-          contents: Array<{ step: number; content: AgentContentItemType }>;
-          actions: Array<{
-            call: FunctionCallType;
-            result: FunctionMessageTypeModel;
-          }>;
-        }
-      >;
-
-      const emptyStep = () =>
-        ({
-          contents: [],
-          actions: [],
-        }) satisfies (typeof stepByStepIndex)[number];
-
-      for (const action of actions) {
-        const stepIndex = action.step;
-        stepByStepIndex[stepIndex] = stepByStepIndex[stepIndex] || emptyStep();
-        // All these calls (except `conversation_include_files_action` are not async so we're not
-        // doing a Promise.all for now but might need to be reconsiderd in the future.
-        stepByStepIndex[stepIndex].actions.push({
-          call: action.renderForFunctionCall(),
-          result: await action.renderForMultiActionsModel(auth, {
-            conversation,
-            model,
-          }),
-        });
-      }
-
-      for (const content of m.contents) {
-        stepByStepIndex[content.step] =
-          stepByStepIndex[content.step] || emptyStep();
-        stepByStepIndex[content.step].contents.push({
-          step: content.step,
-          content: content.content,
-        });
-      }
-
-      const steps = Object.entries(stepByStepIndex)
-        .sort(([a], [b]) => Number(a) - Number(b))
-        .map(([, step]) => step);
+      const steps = await getSteps(auth, {
+        model,
+        message: m,
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        checkMissingActions,
+      });
 
       if (excludeActions) {
         // In Exclude Actions mode, we only render the last step that has text content.
         const stepsWithContent = steps.filter((s) =>
-          s?.contents.some((c) => c.content.type === "text_content")
+          s?.contents.some((c) => c.type === "text_content")
         );
         if (stepsWithContent.length) {
           const lastStepWithContent =
             stepsWithContent[stepsWithContent.length - 1];
           const textContents: TextContentType[] = [];
           for (const content of lastStepWithContent.contents) {
-            if (content.content.type === "text_content") {
-              textContents.push(content.content);
+            if (content.type === "text_content") {
+              textContents.push(content);
             }
           }
           messages.push({
             role: "assistant",
             name: m.configuration.name,
             content: textContents.map((c) => c.value).join("\n"),
-            contents: lastStepWithContent.contents.map((c) => c.content),
+            contents: lastStepWithContent.contents,
           } satisfies AssistantContentMessageTypeModel);
         }
       } else {
@@ -160,8 +123,8 @@ export async function renderConversationForModel(
           }
           const textContents: TextContentType[] = [];
           for (const content of step.contents) {
-            if (content.content.type === "text_content") {
-              textContents.push(content.content);
+            if (content.type === "text_content") {
+              textContents.push(content);
             }
           }
           if (!step.actions.length && !textContents.length) {
@@ -181,14 +144,14 @@ export async function renderConversationForModel(
               role: "assistant",
               function_calls: step.actions.map((s) => s.call),
               content: textContents.map((c) => c.value).join("\n"),
-              contents: step.contents.map((c) => c.content),
+              contents: step.contents,
             } satisfies AssistantFunctionCallMessageTypeModel);
           } else {
             messages.push({
               role: "assistant",
               content: textContents.map((c) => c.value).join("\n"),
               name: m.configuration.name,
-              contents: step.contents.map((c) => c.content),
+              contents: step.contents,
             } satisfies AssistantContentMessageTypeModel);
           }
 
@@ -244,17 +207,28 @@ export async function renderConversationForModel(
     return new Err(res.error);
   }
 
-  const [promptCount, toolsCount, ...messagesCount] = res.value;
+  const [promptCount, toolDefinitionsCount, ...messagesCount] = res.value;
+
+  // Add reasoning content token count to each message.
+  for (const [i, message] of messages.entries()) {
+    if (message.role === "assistant") {
+      for (const content of message.contents ?? []) {
+        if (content.type === "reasoning") {
+          messagesCount[i] += content.value.tokens ?? 0;
+        }
+      }
+    }
+  }
 
   // Models turns the json schema into an internal representation that is more efficient to tokenize.
-  const toolsCountAdjustmentFactor = 0.7;
+  const toolDefinitionsCountAdjustmentFactor = 0.7;
 
   // We initialize `tokensUsed` to the prompt tokens + a bit of buffer for message rendering
   // approximations.
   const tokensMargin = 1024;
   let tokensUsed =
     promptCount +
-    Math.floor(toolsCount * toolsCountAdjustmentFactor) +
+    Math.floor(toolDefinitionsCount * toolDefinitionsCountAdjustmentFactor) +
     tokensMargin;
 
   // Go backward and accumulate as much as we can within allowedTokenCount.
@@ -315,6 +289,12 @@ export async function renderConversationForModel(
     selected.shift();
   }
 
+  if (selected.length === 0) {
+    return new Err(
+      new Error("Context window exceeded: at least one message is required")
+    );
+  }
+
   logger.info(
     {
       workspaceId: conversation.owner.sId,
@@ -334,4 +314,129 @@ export async function renderConversationForModel(
     },
     tokensUsed,
   });
+}
+
+type Step = {
+  contents: Array<Exclude<AgentContentItemType, ErrorContentType>>;
+  actions: Array<{
+    call: FunctionCallType;
+    result: FunctionMessageTypeModel;
+  }>;
+};
+
+async function getSteps(
+  auth: Authenticator,
+  {
+    model,
+    message,
+    workspaceId,
+    conversationId,
+    checkMissingActions,
+  }: {
+    model: ModelConfigurationType;
+    message: AgentMessageType;
+    workspaceId: string;
+    conversationId: string;
+    checkMissingActions: boolean;
+  }
+): Promise<Step[]> {
+  const supportedModel = getSupportedModelConfig(model);
+  const actions = removeNulls(message.actions);
+
+  // We store for each step (identified by its index) the "contents" array (raw model outputs, including
+  // text content, reasoning and function calls) and "actions", i.e the function results.
+  const stepByStepIndex = {} as Record<number, Step>;
+
+  const emptyStep = (): Step =>
+    ({
+      contents: [],
+      actions: [],
+    }) satisfies Step;
+
+  for (const action of actions) {
+    const stepIndex = action.step;
+    stepByStepIndex[stepIndex] = stepByStepIndex[stepIndex] || emptyStep();
+    // All these calls are not async, so we're not doing a Promise.all for now but might need to
+    // be reconsidered in the future.
+    stepByStepIndex[stepIndex].actions.push({
+      call: action.renderForFunctionCall(),
+      result: await action.renderForMultiActionsModel(auth, {
+        model,
+      }),
+    });
+  }
+
+  for (const content of message.contents) {
+    if (content.content.type === "error") {
+      // Don't render error content.
+      logger.warn(
+        {
+          workspaceId,
+          conversationId,
+          agentMessageId: message.sId,
+        },
+        "agent message step with error content in renderConversationForModelMultiActions"
+      );
+      continue;
+    }
+
+    if (
+      content.content.type === "reasoning" &&
+      content.content.value.provider !== supportedModel.providerId
+    ) {
+      // Skip reasoning content from other providers.
+      continue;
+    }
+
+    stepByStepIndex[content.step] =
+      stepByStepIndex[content.step] || emptyStep();
+
+    stepByStepIndex[content.step].contents.push(content.content);
+  }
+
+  return (
+    Object.entries(stepByStepIndex)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([, step]) => step)
+      // This is a hack to avoid errors when rendering conversations that are in a corrupted state
+      // (some content is saved but tool was never executed)
+      // For each step, we look at the contents to find the function calls.
+      // If some function calls have no associated function result, we make a dummy "errored" one.
+      .map((step) => {
+        const actions = step.actions;
+        const functionResultByCallId: Record<string, FunctionMessageTypeModel> =
+          {};
+        for (const action of actions) {
+          functionResultByCallId[action.call.id] = action.result;
+        }
+        if (checkMissingActions) {
+          for (const content of step.contents) {
+            if (content.type === "function_call") {
+              const functionCall = content.value;
+              if (!functionResultByCallId[functionCall.id]) {
+                logger.warn(
+                  {
+                    workspaceId,
+                    conversationId,
+                    agentMessageId: message.sId,
+                    functionCallId: functionCall.id,
+                  },
+                  "Unexpected state, agent message step with no action for function call"
+                );
+                actions.push({
+                  call: functionCall,
+                  result: {
+                    role: "function",
+                    name: functionCall.name,
+                    function_call_id: functionCall.id,
+                    content: "Error: tool execution failed",
+                  },
+                });
+              }
+            }
+          }
+        }
+        return { ...step, actions };
+      })
+  );
 }

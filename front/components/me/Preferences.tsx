@@ -9,12 +9,12 @@ import {
   LightModeIcon,
   MoonIcon,
   SunIcon,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { Page } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { SubmitMessageKey } from "@app/lib/keymaps";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 

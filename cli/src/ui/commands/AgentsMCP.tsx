@@ -2,7 +2,7 @@ import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import clipboardy from "clipboardy";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
-import type { FC} from "react";
+import type { FC } from "react";
 import React, { useEffect, useState } from "react";
 
 import { useClearTerminalOnMount } from "../../utils/hooks/use_clear_terminal_on_mount.js";
@@ -26,19 +26,26 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  useClearTerminalOnMount();
-
   // This useEffect handles starting the server after confirmedSelection is set
   useEffect(() => {
     if (confirmedSelection && !isServerStarted) {
-      void startMcpServer(
-        confirmedSelection,
-        (url) => {
-          setIsServerStarted(true);
-          setServerUrl(url);
-        },
-        port
-      );
+      const startServer = async () => {
+        const startMcpServerRes = await startMcpServer(
+          confirmedSelection,
+          (url) => {
+            setIsServerStarted(true);
+            setServerUrl(url);
+          },
+          port
+        );
+
+        if (startMcpServerRes.isErr()) {
+          setError(startMcpServerRes.error.message);
+          process.exit(1);
+        }
+      };
+
+      void startServer();
     }
   }, [confirmedSelection, isServerStarted, port]);
 
@@ -52,6 +59,11 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
       setTimeout(() => setCopied(false), 1500);
     }
   });
+
+  const isCleared = useClearTerminalOnMount();
+  if (!isCleared) {
+    return null;
+  }
 
   if (error) {
     return <Text color="red">Error: {error}</Text>;

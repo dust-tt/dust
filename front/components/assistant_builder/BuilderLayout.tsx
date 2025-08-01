@@ -29,36 +29,32 @@ export function BuilderLayout({ leftPanel, rightPanel }: BuilderLayoutProps) {
   }, [isPreviewPanelOpen]);
 
   return (
-    <div className="flex h-full w-full">
-      <ResizablePanelGroup
-        id="assistant-builder-layout"
-        autoSaveId="assistant-builder-layout"
-        direction="horizontal"
-        className="h-full w-full"
+    <ResizablePanelGroup
+      id="assistant-builder-layout"
+      autoSaveId="assistant-builder-layout"
+      direction="horizontal"
+      className="h-full w-full"
+    >
+      <ResizablePanel defaultSize={70} minSize={30}>
+        <div className="h-full w-full overflow-y-auto px-6">{leftPanel}</div>
+      </ResizablePanel>
+
+      <ResizableHandle onDragging={(isDragging) => setIsResizing(isDragging)} />
+
+      <ResizablePanel
+        ref={previewPanelRef}
+        id="preview-panel"
+        defaultSize={30}
+        minSize={20}
+        collapsible={true}
+        className={
+          !isResizing
+            ? "overflow-hidden transition-all duration-300 ease-in-out"
+            : "overflow-hidden"
+        }
       >
-        <ResizablePanel defaultSize={70} minSize={30}>
-          <div className="h-full w-full overflow-y-auto px-6">{leftPanel}</div>
-        </ResizablePanel>
-
-        <ResizableHandle
-          onDragging={(isDragging) => setIsResizing(isDragging)}
-        />
-
-        <ResizablePanel
-          ref={previewPanelRef}
-          id="preview-panel"
-          defaultSize={30}
-          minSize={20}
-          collapsible={true}
-          className={
-            !isResizing
-              ? "overflow-hidden transition-all duration-300 ease-in-out"
-              : "overflow-hidden"
-          }
-        >
-          <div className="h-full w-full overflow-y-auto px-6">{rightPanel}</div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
-    </div>
+        <div className="h-full w-full overflow-y-auto px-6">{rightPanel}</div>
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }

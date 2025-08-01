@@ -30,6 +30,7 @@ import type {
   RunStatus,
   TraceType,
 } from "@app/types/run";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LoggerInterface } from "@app/types/shared/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -530,6 +531,7 @@ export class CoreAPI {
 
   async createRun(
     workspace: LightWorkspaceType,
+    featureFlags: WhitelistableFeature[],
     groups: GroupType[],
     {
       projectId,
@@ -551,9 +553,10 @@ export class CoreAPI {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Dust-Workspace-Id": workspace.sId,
+          "X-Dust-Feature-Flags": featureFlags.join(","),
           "X-Dust-Group-Ids": groups.map((g) => g.sId).join(","),
           "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
+          "X-Dust-Workspace-Id": workspace.sId,
         },
         body: JSON.stringify({
           run_type: runType,
@@ -574,6 +577,7 @@ export class CoreAPI {
 
   async createRunStream(
     workspace: LightWorkspaceType,
+    featureFlags: WhitelistableFeature[],
     groups: GroupType[],
     {
       projectId,
@@ -600,9 +604,10 @@ export class CoreAPI {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Dust-Workspace-Id": workspace.sId,
+          "X-Dust-Feature-Flags": featureFlags.join(","),
           "X-Dust-Group-Ids": groups.map((g) => g.sId).join(","),
           "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
+          "X-Dust-Workspace-Id": workspace.sId,
         },
         body: JSON.stringify({
           run_type: runType,

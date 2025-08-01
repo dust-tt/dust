@@ -172,38 +172,40 @@ const SheetFooter = ({
 }: SheetFooterProps) => (
   <div
     className={cn(
-      "s-flex s-flex-none s-flex-row s-gap-2 s-border-t s-px-3 s-py-3",
+      "s-flex s-flex-none s-flex-col s-gap-2",
       "s-border-border dark:s-border-border-night",
       className
     )}
     {...props}
   >
-    {leftButtonProps &&
-      (leftButtonProps.disabled ? (
-        <Button {...leftButtonProps} />
-      ) : (
-        <SheetClose className={sheetCloseClassName} asChild>
-          <Button {...leftButtonProps} />
-        </SheetClose>
-      ))}
-    <div className="s-flex-grow" />
-    {rightButtonProps &&
-      (rightButtonProps.disabled ? (
-        <Button {...rightButtonProps} />
-      ) : (
-        <SheetClose className={sheetCloseClassName} asChild>
-          <Button {...rightButtonProps} />
-        </SheetClose>
-      ))}
-    {rightEndButtonProps &&
-      (rightEndButtonProps.disabled ? (
-        <Button {...rightEndButtonProps} />
-      ) : (
-        <SheetClose className={sheetCloseClassName} asChild>
-          <Button {...rightEndButtonProps} />
-        </SheetClose>
-      ))}
     {children}
+    <div className="s-flex s-flex-row s-gap-2 s-border-t s-border-border s-px-3 s-py-3 dark:s-border-border-night">
+      {leftButtonProps &&
+        (leftButtonProps.disabled ? (
+          <Button {...leftButtonProps} />
+        ) : (
+          <SheetClose className={sheetCloseClassName} asChild>
+            <Button {...leftButtonProps} />
+          </SheetClose>
+        ))}
+      <div className="s-flex-grow" />
+      {rightButtonProps &&
+        (rightButtonProps.disabled ? (
+          <Button {...rightButtonProps} />
+        ) : (
+          <SheetClose className={sheetCloseClassName} asChild>
+            <Button {...rightButtonProps} />
+          </SheetClose>
+        ))}
+      {rightEndButtonProps &&
+        (rightEndButtonProps.disabled ? (
+          <Button {...rightEndButtonProps} />
+        ) : (
+          <SheetClose className={sheetCloseClassName} asChild>
+            <Button {...rightEndButtonProps} />
+          </SheetClose>
+        ))}
+    </div>
   </div>
 );
 SheetFooter.displayName = "SheetFooter";

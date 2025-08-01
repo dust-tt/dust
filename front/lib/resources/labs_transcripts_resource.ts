@@ -353,6 +353,17 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return count > 0;
   }
 
+  async getMostRecentHistoryDate(): Promise<Date | null> {
+    const history = await LabsTranscriptsHistoryModel.findOne({
+      where: {
+        configurationId: this.id,
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return history ? history.createdAt : null;
+  }
+
   private async deleteHistory(
     auth: Authenticator,
     transaction?: Transaction

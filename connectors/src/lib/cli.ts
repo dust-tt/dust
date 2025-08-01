@@ -1,5 +1,9 @@
 import type { Result } from "@dust-tt/client";
 import { assertNever } from "@dust-tt/client";
+import { isLeft } from "fp-ts/lib/Either";
+import fs from "fs";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import PQueue from "p-queue";
 import readline from "readline";
 
@@ -16,6 +20,7 @@ import { slack } from "@connectors/connectors/slack/lib/cli";
 import { snowflake } from "@connectors/connectors/snowflake/lib/cli";
 import {
   launchCrawlWebsiteScheduler,
+  updateCrawlerActions,
   updateCrawlerCrawlFrequency,
 } from "@connectors/connectors/webcrawler/temporal/client";
 import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
@@ -35,6 +40,17 @@ import type {
   WebcrawlerCommandType,
 } from "@connectors/types";
 import { isConnectorError } from "@connectors/types";
+
+// Schema for permissions file validation
+const PermissionsFileSchema = t.record(
+  t.string,
+  t.union([
+    t.literal("read"),
+    t.literal("write"),
+    t.literal("read_write"),
+    t.literal("none"),
+  ])
+);
 
 const { INTERACTIVE_CLI } = process.env;
 
@@ -205,21 +221,62 @@ export const connectors = async ({
     }
 
     case "set-permission": {
-      const { permissionKey, permissionValue } = args;
-      if (!permissionKey) {
-        throw new Error("Missing --permissionKey argument");
-      }
-      if (!permissionValue) {
-        throw new Error("Missing --permissionValue argument");
-      }
-      if (!["read", "write", "read_write", "none"].includes(permissionValue)) {
-        throw new Error("Invalid permissionValue argument");
+      const { permissionKey, permissionValue, permissionsFile } = args;
+
+      let permissions: Record<string, ConnectorPermission> = {};
+
+      if (permissionsFile) {
+        // Read permissions from JSON file
+        if (!fs.existsSync(permissionsFile)) {
+          throw new Error(`Permissions file not found: ${permissionsFile}`);
+        }
+
+        try {
+          const fileContent = fs.readFileSync(permissionsFile, "utf8");
+          const parsedPermissions = JSON.parse(fileContent);
+
+          // Validate using io-ts schema
+          const validation = PermissionsFileSchema.decode(parsedPermissions);
+
+          if (isLeft(validation)) {
+            const pathError = reporter.formatValidationErrors(validation.left);
+            throw new Error(`Invalid permissions file format: ${pathError}`);
+          }
+
+          permissions = validation.right;
+        } catch (error) {
+          if (error instanceof SyntaxError) {
+            throw new Error(
+              `Invalid JSON in permissions file: ${error.message}`
+            );
+          }
+          throw error;
+        }
+      } else {
+        // Use existing permissionKey/permissionValue arguments
+        if (!permissionKey) {
+          throw new Error(
+            "Missing --permissionKey argument (or use --permissionsFile)"
+          );
+        }
+        if (!permissionValue) {
+          throw new Error(
+            "Missing --permissionValue argument (or use --permissionsFile)"
+          );
+        }
+        if (
+          !["read", "write", "read_write", "none"].includes(permissionValue)
+        ) {
+          throw new Error("Invalid permissionValue argument");
+        }
+
+        permissions = {
+          [permissionKey as string]: permissionValue as ConnectorPermission,
+        };
       }
 
       const setPermissionsRes = await manager.setPermissions({
-        permissions: {
-          [permissionKey as string]: permissionValue as ConnectorPermission,
-        },
+        permissions,
       });
 
       if (setPermissionsRes.isErr()) {
@@ -403,6 +460,19 @@ export const webcrawler = async ({
       await throwOnError(
         updateCrawlerCrawlFrequency(args.connectorId, args.crawlFrequency)
       );
+
+      return { success: true };
+    }
+    case "set-actions": {
+      if (!args.connectorId) {
+        throw new Error("Missing --connectorId argument");
+      }
+
+      if (args.actions == null) {
+        throw new Error("Missing --actions argument");
+      }
+
+      await throwOnError(updateCrawlerActions(args.connectorId, args.actions));
 
       return { success: true };
     }

@@ -1,7 +1,9 @@
+import { EventEmitter } from "events";
 import type { RedisClientType } from "redis";
 import { createClient } from "redis";
 
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
+import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
 
 type EventCallback = (event: EventPayload | "close") => void;
@@ -419,6 +421,78 @@ class RedisHybridManager {
    */
   private getStreamName(channelName: string): string {
     return `${this.STREAM_PREFIX}${channelName}`;
+  }
+
+  /**
+   * Subscribe to a channel and return an async iterator for events using fromEvent helper
+   */
+  public async subscribeAsAsyncIterator<T>({
+    channelName,
+    includeHistory = true,
+    lastEventId,
+    origin,
+  }: {
+    channelName: string;
+    includeHistory: boolean;
+    lastEventId: string | null;
+    origin: RedisUsageTagsType;
+  }): Promise<{
+    iterator: AsyncGenerator<T, void, unknown>;
+    unsubscribe: () => void;
+  }> {
+    // Create a temporary EventEmitter to bridge Redis to fromEvent.
+    const eventEmitter = new EventEmitter();
+
+    const { history, unsubscribe } = await this.subscribe(
+      channelName,
+      (event) => {
+        if (event === "close") {
+          eventEmitter.emit("end");
+          return;
+        }
+
+        try {
+          const parsedEvent = JSON.parse(event.message.payload) as T;
+          eventEmitter.emit("data", parsedEvent);
+        } catch (error) {
+          logger.error(
+            { error, channel: channelName },
+            "Error parsing Redis event"
+          );
+          eventEmitter.emit("error", error);
+        }
+      },
+      lastEventId,
+      origin
+    );
+
+    // Create the async iterator using fromEvent.
+    const iterator = fromEvent<T>(eventEmitter, "data");
+
+    // Emit history events first (on next tick to ensure iterator is ready).
+    if (includeHistory) {
+      process.nextTick(() => {
+        for (const historyEvent of history) {
+          try {
+            const parsedEvent = JSON.parse(historyEvent.message.payload) as T;
+            eventEmitter.emit("data", parsedEvent);
+          } catch (error) {
+            logger.error(
+              { error, channel: channelName },
+              "Error parsing Redis history event"
+            );
+          }
+        }
+      });
+    }
+
+    return {
+      iterator,
+      unsubscribe: () => {
+        eventEmitter.emit("end");
+        unsubscribe();
+      },
+    };
   }
 }
 

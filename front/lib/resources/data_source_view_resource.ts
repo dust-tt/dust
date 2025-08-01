@@ -17,6 +17,7 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -652,17 +653,57 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     // Mark all content fragments that reference this data source view as expired.
     await this.expireContentFragments(auth, transaction);
 
-    // Delete agent configurations elements pointing to this data source view.
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const agentDataSourceConfigurations =
+      await AgentDataSourceConfiguration.findAll({
+        where: {
+          dataSourceViewId: this.id,
+          workspaceId,
+        },
+      });
+
+    const agentTablesQueryConfigurations =
+      await AgentTablesQueryConfigurationTable.findAll({
+        where: {
+          dataSourceViewId: this.id,
+          workspaceId,
+        },
+      });
+
+    const mcpServerConfigurationIds = removeNulls(
+      [...agentDataSourceConfigurations, ...agentTablesQueryConfigurations].map(
+        (a) => a.mcpServerConfigurationId
+      )
+    );
+
+    // Delete associated MCP server configurations.
+    if (mcpServerConfigurationIds.length > 0) {
+      await AgentMCPServerConfiguration.destroy({
+        where: {
+          id: {
+            [Op.in]: mcpServerConfigurationIds,
+          },
+          workspaceId,
+        },
+        transaction,
+      });
+    }
+
     await AgentDataSourceConfiguration.destroy({
       where: {
         dataSourceViewId: this.id,
+        workspaceId,
       },
       transaction,
     });
+
     await AgentTablesQueryConfigurationTable.destroy({
       where: {
         dataSourceViewId: this.id,
+        workspaceId,
       },
+      transaction,
     });
 
     const deletedCount = await DataSourceViewModel.destroy({

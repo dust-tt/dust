@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
+import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import logger from "@app/logger/logger";
 import type { AdminCommandType } from "@app/types";
@@ -100,6 +101,19 @@ export const slackWhitelistBotPlugin = createPlugin({
       );
     }
 
+    // Always include the Workspace (global) group
+    const workspaceGroupRes =
+      await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    if (workspaceGroupRes.isErr()) {
+      return new Err(new Error("Failed to fetch workspace global group"));
+    }
+
+    // Combine the selected group with the Workspace group (avoid duplicates)
+    const groupIds: string[] = [groupId];
+    if (workspaceGroupRes.value.sId !== groupId) {
+      groupIds.push(workspaceGroupRes.value.sId);
+    }
+
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
       logger
@@ -111,7 +125,7 @@ export const slackWhitelistBotPlugin = createPlugin({
       args: {
         botName,
         wId: owner.sId,
-        groupId,
+        groupId: groupIds.join(","),
         whitelistType,
         providerType: resource.connectorProvider,
       },
@@ -124,15 +138,16 @@ export const slackWhitelistBotPlugin = createPlugin({
       );
     }
 
-    const metabaseUrl =
-      `https://metabase.dust.tt/question/637-whitelisted-bots-given-connector` +
-      `?connectorId=${resource.connectorId}`;
+    const isEU = regionsConfig.getCurrentRegion() === "europe-west1";
+    const metabaseUrl = isEU
+      ? `https://eu.metabase.dust.tt/question/46-whitelisted-bots-given-connector?connectorId=${resource.connectorId}`
+      : `https://metabase.dust.tt/question/637-whitelisted-bots-given-connector?connectorId=${resource.connectorId}`;
 
     return new Ok({
       display: "textWithLink",
       value:
         `Successfully whitelisted Slack bot "${botName}" for ${whitelistType} in the ` +
-        "selected group.",
+        "selected group and the Workspace group.",
       link: metabaseUrl,
       linkText: "View all whitelisted bots for this workspace",
     });

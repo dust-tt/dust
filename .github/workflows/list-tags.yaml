@@ -15,7 +15,6 @@ on:
         description: "Component to deploy"
         type: choice
         options:
-          - alerting-temporal
           - connectors
           - core
           - front

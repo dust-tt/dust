@@ -89,12 +89,12 @@ export async function getUserWithWorkspaces<T extends boolean>(
   const { memberships } = await MembershipResource.getActiveMemberships({
     users: [user],
   });
-  const workspaceIds = memberships.map((m) => m.workspaceId);
-  const workspaces = await WorkspaceResource.fetchByModelIds(workspaceIds);
+  const workspaceModelIds = memberships.map((m) => m.workspaceId);
+  const workspaces = await WorkspaceResource.fetchByModelIds(workspaceModelIds);
 
   const configs = populateExtensionConfig
     ? await ExtensionConfigurationResource.internalFetchForWorkspaces(
-        workspaceIds
+        workspaceModelIds
       )
     : [];
 

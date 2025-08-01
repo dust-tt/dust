@@ -5,16 +5,23 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import type { Readable, Writable } from "stream";
 
 import config from "@app/lib/api/config";
+import {
+  generateSignedToken,
+  verifySignedToken,
+} from "@app/lib/api/files/share_tokens";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getPrivateUploadBucket,
   getPublicUploadBucket,
   getUpsertQueueBucket,
 } from "@app/lib/file_storage";
+import { isFileUsingConversationFiles } from "@app/lib/files";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   FileType,
   FileTypeWithUploadUrl,
@@ -24,7 +31,14 @@ import type {
   Result,
   UserType,
 } from "@app/types";
-import { Err, FILE_FORMATS, normalizeError, Ok, removeNulls } from "@app/types";
+import {
+  ALL_FILE_FORMATS,
+  Err,
+  isInteractiveContentType,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
@@ -44,7 +58,7 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<FileModel>, "status" | "sId">
+    blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "sharedAt">
   ) {
     const key = await FileResource.model.create({
       ...blob,
@@ -109,6 +123,63 @@ export class FileResource extends BaseResource<FileModel> {
     return file ? new this(this.model, file.get()) : null;
   }
 
+  static async fetchByShareTokenWithContent(
+    token: string
+  ): Promise<{ file: FileResource; content: string } | null> {
+    const tokenRes = verifySignedToken(token, config.getFileShareSecret());
+    if (tokenRes.isErr()) {
+      return null;
+    }
+
+    const workspace = await WorkspaceResource.fetchById(tokenRes.value.wId);
+    if (!workspace) {
+      return null;
+    }
+
+    const fileId = getResourceIdFromSId(tokenRes.value.fId);
+    if (!fileId) {
+      return null;
+    }
+
+    const blob = await this.model.findOne({
+      where: {
+        id: fileId,
+        workspaceId: workspace.id,
+      },
+    });
+
+    const file = blob ? new this(this.model, blob.get()) : null;
+    if (!file || !file.isShared) {
+      return null;
+    }
+
+    // Validate that the token's sharedAt timestamp matches the file's current sharedAt timestamp.
+    if (!file.sharedAt || tokenRes.value.sAt !== file.sharedAt.getTime()) {
+      return null;
+    }
+
+    const content = await file.getFileContent(
+      renderLightWorkspaceType({ workspace }),
+      "original"
+    );
+
+    if (!content) {
+      return null;
+    }
+
+    if (isFileUsingConversationFiles(content)) {
+      // Set the file as not shared.
+      await file.setIsShared(false);
+
+      return null;
+    }
+
+    return {
+      file,
+      content,
+    };
+  }
+
   static async deleteAllForWorkspace(
     workspace: LightWorkspaceType,
     transaction?: Transaction
@@ -121,13 +192,18 @@ export class FileResource extends BaseResource<FileModel> {
     });
   }
 
-  static async deleteAllForUser(user: UserType, transaction?: Transaction) {
+  static async deleteAllForUser(
+    auth: Authenticator,
+    user: UserType,
+    transaction?: Transaction
+  ) {
     // We don't actually delete, instead we set the userId field to null.
     return this.model.update(
       { userId: null },
       {
         where: {
           userId: user.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
         transaction,
       }
@@ -203,6 +279,18 @@ export class FileResource extends BaseResource<FileModel> {
 
   get isFailed(): boolean {
     return this.status === "failed";
+  }
+
+  get updatedAtMs(): number {
+    return this.updatedAt.getTime();
+  }
+
+  get isShared(): boolean {
+    return this.sharedAt !== null;
+  }
+
+  get sharedAtMs(): number | null {
+    return this.sharedAt?.getTime() ?? null;
   }
 
   // Cloud storage logic.
@@ -317,6 +405,63 @@ export class FileResource extends BaseResource<FileModel> {
       .createReadStream();
   }
 
+  /**
+   * Get read stream for shared access without authentication.
+   */
+  private async getSharedReadStream(
+    owner: LightWorkspaceType,
+    version: FileVersion
+  ): Promise<Readable> {
+    const cloudPath = FileResource.getCloudStoragePathForId({
+      fileId: this.sId,
+      workspaceId: owner.sId,
+      version,
+    });
+
+    return this.getBucketForVersion(version).file(cloudPath).createReadStream();
+  }
+
+  /**
+   * Get file content as string for shared access without authentication.
+   */
+  private async getFileContent(
+    owner: LightWorkspaceType,
+    version: FileVersion = "original"
+  ): Promise<string | null> {
+    try {
+      const readStream = await this.getSharedReadStream(owner, version);
+
+      // Convert stream to string.
+      const chunks: Buffer[] = [];
+      for await (const chunk of readStream) {
+        chunks.push(chunk);
+      }
+
+      const content = Buffer.concat(chunks).toString("utf-8");
+      return content || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // Direct upload logic.
+
+  async uploadContent(auth: Authenticator, content: string): Promise<void> {
+    // Update the file size.
+    await this.update({
+      fileSize: Buffer.byteLength(content, "utf8"),
+    });
+
+    await this.getBucketForVersion("original").uploadRawContentToBucket({
+      content,
+      contentType: this.contentType,
+      filePath: this.getCloudStoragePath(auth, "original"),
+    });
+
+    // Mark the file as ready.
+    await this.markAsReady();
+  }
+
   setUseCaseMetadata(metadata: FileUseCaseMetadata) {
     return this.update({ useCaseMetadata: metadata });
   }
@@ -325,9 +470,42 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ snippet });
   }
 
+  setIsShared(isShared: boolean) {
+    // Only interactive files can be shared.
+    if (
+      this.useCase !== "conversation" ||
+      !isInteractiveContentType(this.contentType)
+    ) {
+      throw new Error("Only interactive files can be shared");
+    }
+
+    return this.update({ sharedAt: isShared ? new Date() : null });
+  }
+
+  // Sharing logic.
+
+  private getShareToken(auth: Authenticator): string | null {
+    return generateSignedToken(auth, this, {
+      secret: config.getFileShareSecret(),
+    });
+  }
+
+  getShareUrl(auth: Authenticator): string | null {
+    if (!this.isShared) {
+      return null;
+    }
+
+    const token = this.getShareToken(auth);
+    if (!token) {
+      return null;
+    }
+
+    return `${config.getClientFacingUrl()}/share/file/${token}`;
+  }
+
   // Serialization logic.
 
-  toJSON(auth: Authenticator): FileType {
+  toJSON(auth?: Authenticator): FileType {
     const blob: FileType = {
       // TODO(spolu): move this to ModelId
       id: this.sId,
@@ -339,11 +517,11 @@ export class FileResource extends BaseResource<FileModel> {
       useCase: this.useCase,
     };
 
-    if (this.isReady && !this.isUpsertUseCase()) {
+    if (auth && this.isReady && !this.isUpsertUseCase()) {
       blob.downloadUrl = this.getPrivateUrl(auth);
     }
 
-    if (this.useCase === "avatar") {
+    if (auth && this.useCase === "avatar") {
       blob.publicUrl = this.getPublicUrlForDownload(auth);
     }
 
@@ -393,6 +571,6 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   isSafeToDisplay(): boolean {
-    return FILE_FORMATS[this.contentType].isSafeToDisplay;
+    return ALL_FILE_FORMATS[this.contentType].isSafeToDisplay;
   }
 }

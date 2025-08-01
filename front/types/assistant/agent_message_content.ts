@@ -1,3 +1,6 @@
+import type { MCPActionType } from "@app/lib/actions/mcp";
+import type { ModelId } from "@app/types";
+import type { ModelProviderIdType } from "@app/types/assistant/assistant";
 import type { FunctionCallType } from "@app/types/assistant/generation";
 
 export type TextContentType = {
@@ -10,6 +13,8 @@ export type ReasoningContentType = {
   value: {
     reasoning?: string;
     metadata: string;
+    tokens: number;
+    provider: ModelProviderIdType;
   };
 };
 
@@ -18,10 +23,20 @@ export type FunctionCallContentType = {
   value: FunctionCallType;
 };
 
+export type ErrorContentType = {
+  type: "error";
+  value: {
+    code: string;
+    message: string;
+    metadata: Record<string, string | number | boolean> | null;
+  };
+};
+
 export type AgentContentItemType =
   | TextContentType
   | ReasoningContentType
-  | FunctionCallContentType;
+  | FunctionCallContentType
+  | ErrorContentType;
 
 export function isTextContent(
   content: AgentContentItemType
@@ -40,3 +55,24 @@ export function isFunctionCallContent(
 ): content is FunctionCallContentType {
   return content.type === "function_call";
 }
+
+export function isErrorContent(
+  content: AgentContentItemType
+): content is ErrorContentType {
+  return content.type === "error";
+}
+
+export type AgentStepContentType = {
+  id: ModelId;
+  sId: string;
+  createdAt: number;
+  updatedAt: number;
+  agentMessageId: ModelId;
+  step: number;
+  index: number;
+  version: number;
+  type: AgentContentItemType["type"];
+  value: AgentContentItemType;
+  // Array of MCP actions that reference this step content.
+  mcpActions?: MCPActionType[];
+};

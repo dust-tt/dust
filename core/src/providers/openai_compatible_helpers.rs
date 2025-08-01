@@ -140,9 +140,11 @@ impl TryFrom<&OpenAIToolCall> for ChatFunctionCall {
 
     fn try_from(tc: &OpenAIToolCall) -> Result<Self, Self::Error> {
         // Some providers don't provide a function call ID (eg google_ai_studio)
+        // or provide an empty string ID.
         let id = tc
             .id
             .clone()
+            .filter(|id| !id.is_empty())
             .unwrap_or(format!("fc_{}", utils::new_id()[0..9].to_string()));
 
         Ok(ChatFunctionCall {
@@ -580,7 +582,6 @@ impl OpenAICompatibleError {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransformSystemMessages {
-    Remove,
     ReplaceWithDeveloper,
     Keep,
 }
@@ -748,6 +749,7 @@ pub async fn openai_compatible_chat_completion(
         usage: c.usage.map(|usage| LLMTokenUsage {
             prompt_tokens: usage.prompt_tokens,
             completion_tokens: usage.completion_tokens.unwrap_or(0),
+            reasoning_tokens: None,
         }),
         provider_request_id: request_id,
         logprobs: logprobs_from_choices(&c.choices),
@@ -850,13 +852,6 @@ fn to_openai_messages(
                 }),
                 content: m.content,
             }
-        })
-        // Remove system messages if requested.
-        // Some models don't support system messages, so we need this to be
-        // configurable.
-        .filter(|m| {
-            transform_system_messages != TransformSystemMessages::Remove
-                || m.role != OpenAIChatMessageRole::System
         })
         .collect::<Vec<_>>();
 
@@ -1294,30 +1289,36 @@ async fn streamed_chat_completion(
                     for tool_call in tool_calls {
                         match (
                             tool_call.get("type").and_then(|v| v.as_str()),
-                            tool_call.get("id").and_then(|v| v.as_str()),
+                            tool_call.get("id"),
                             tool_call.get("function"),
                         ) {
-                            (Some("function"), id, Some(f)) => {
+                            (Some("function"), Some(Value::String(id)), Some(f)) => {
                                 if let Some(Value::String(name)) = f.get("name") {
+                                    // Get initial arguments, treating empty string as no arguments
+                                    let initial_arguments = f
+                                        .get("arguments")
+                                        .and_then(|v| v.as_str())
+                                        .filter(|s| !s.is_empty())
+                                        .map(|s| s.to_string())
+                                        .unwrap_or_default();
+
                                     c.choices[j]
                                         .message
                                         .tool_calls
                                         .get_or_insert_with(Vec::new)
                                         .push(OpenAIToolCall {
-                                            // Set None if id is empty
-                                            id: id.filter(|s| !s.is_empty()).map(|s| s.to_string()),
+                                            // Use the id directly
+                                            id: Some(id.clone()),
                                             r#type: OpenAIToolType::Function,
                                             function: OpenAIToolCallFunction {
                                                 name: name.clone(),
-                                                arguments: match f.get("arguments") {
-                                                    Some(Value::String(a)) => a.clone(),
-                                                    _ => String::new(),
-                                                },
+                                                arguments: initial_arguments,
                                             },
                                         });
                                 }
                             }
-                            (None, None, Some(f)) => {
+                            // Handle subsequent chunks - either id is null or missing
+                            (_, id, Some(f)) if id.is_none() || matches!(id, Some(Value::Null)) => {
                                 if let (Some(Value::Number(idx)), Some(Value::String(a))) =
                                     (tool_call.get("index"), f.get("arguments"))
                                 {

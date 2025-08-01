@@ -15,6 +15,7 @@ export class WorkspaceFactory {
       sId: generateRandomModelSId(),
       name: faker.company.name(),
       description: faker.company.catchPhrase(),
+      workOSOrganizationId: faker.string.alpha(10),
     });
 
     const newPlan = await Plan.findOne({

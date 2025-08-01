@@ -22,10 +22,10 @@ describe("GET /api/user", () => {
         firstName: user.firstName,
         lastName: user.lastName,
         username: user.username,
+        provider: user.provider,
         fullName: `${user.firstName} ${user.lastName}`,
         image: user.imageUrl,
         createdAt: user.createdAt.getTime(),
-        provider: user.provider,
         lastLoginAt: user.lastLoginAt?.getTime(),
         workspaces: [
           {

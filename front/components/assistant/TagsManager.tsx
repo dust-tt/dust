@@ -12,13 +12,13 @@ import {
   SheetTitle,
   SparklesIcon,
   Spinner,
-  useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import { useState } from "react";
 
 import { TagsSuggestDialog } from "@app/components/assistant_builder/TagsSuggestDialog";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useTagsUsage } from "@app/lib/swr/tags";
 import type { WorkspaceType } from "@app/types";
 import type { TagTypeWithUsage } from "@app/types/tag";

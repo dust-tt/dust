@@ -1,4 +1,5 @@
 import { assertNever } from "@dust-tt/client";
+import { Storage } from "@google-cloud/storage";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
@@ -7,6 +8,7 @@ import type { Logger } from "pino";
 import { Op } from "sequelize";
 
 import { nodeIdFromNotionId } from "@connectors/connectors/notion";
+import { getNotionAccessToken } from "@connectors/connectors/notion/lib/access_token";
 import {
   getNotionDatabaseFromConnectorsDb,
   getNotionPageFromConnectorsDb,
@@ -36,6 +38,7 @@ import {
   DATABASE_PROCESSING_INTERVAL_MS,
   DATABASE_TO_CSV_MAX_SIZE,
 } from "@connectors/connectors/notion/temporal/config";
+import { connectorsConfig } from "@connectors/connectors/shared/config";
 import {
   dataSourceConfigFromConnector,
   dataSourceInfoFromConnector,
@@ -67,7 +70,6 @@ import {
   NotionDatabase,
   NotionPage,
 } from "@connectors/lib/models/notion";
-import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { redisClient } from "@connectors/lib/redis";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
@@ -82,10 +84,17 @@ import type { DataSourceConfig } from "@connectors/types";
 import {
   getNotionDatabaseTableId,
   INTERNAL_MIME_TYPES,
+  isDevelopment,
   slugify,
 } from "@connectors/types";
+import { sha256 } from "@connectors/types/shared/utils/hashing";
 
 const logger = mainLogger.child({ provider: "notion" });
+
+// Connector ID hashes for which deletion should be skipped during garbage collection.
+const SKIP_DELETION_CONNECTOR_ID_HASHES = new Set<string>([
+  "vket28uPYFZqPX/Vo2+BlXmOKEizaBldml0g4AfFmgw=",
+]);
 
 export async function fetchDatabaseChildPages({
   connectorId,
@@ -130,7 +139,7 @@ export async function fetchDatabaseChildPages({
     };
   }
 
-  const accessToken = await getNotionAccessToken(connector.connectionId);
+  const accessToken = await getNotionAccessToken(connector.id);
 
   const localLoggerArgs = {
     ...loggerArgs,
@@ -295,7 +304,7 @@ export async function getPagesAndDatabasesToSync({
     workspaceId: connector.workspaceId,
   });
 
-  const accessToken = await getNotionAccessToken(connector.connectionId);
+  const accessToken = await getNotionAccessToken(connector.id);
 
   const skippedDatabases = await NotionDatabase.findAll({
     where: {
@@ -456,7 +465,7 @@ export async function upsertDatabaseInConnectorsDb({
     throw new Error("Could not find connector");
   }
 
-  const accessToken = await getNotionAccessToken(connector.connectionId);
+  const accessToken = await getNotionAccessToken(connector.id);
 
   const localLogger = logger.child({ ...loggerArgs, databaseId });
 
@@ -559,17 +568,6 @@ export async function saveStartSync(connectorId: ModelId) {
   if (res.isErr()) {
     throw res.error;
   }
-}
-
-export async function getNotionAccessToken(
-  connectionId: string
-): Promise<string> {
-  const token = await getOAuthConnectionAccessTokenWithThrow({
-    logger,
-    provider: "notion",
-    connectionId,
-  });
-  return token.access_token;
 }
 
 export async function isFullSyncPendingOrOngoing({
@@ -702,6 +700,22 @@ export async function deletePage({
   pageId: string;
   logger: Logger;
 }) {
+  const connectorIdHash = sha256(connectorId.toString());
+
+  if (SKIP_DELETION_CONNECTOR_ID_HASHES.has(connectorIdHash)) {
+    logger.info(
+      {
+        action: "skip_deletion",
+        resource_type: "page",
+        pageId,
+        connectorId,
+        connectorIdHash,
+      },
+      "Skipping page deletion for connector with deletion disabled"
+    );
+    return;
+  }
+
   logger.info("Deleting page.");
   await deleteDataSourceDocument(dataSourceConfig, `notion-${pageId}`);
   const notionPage = await NotionPage.findOne({
@@ -737,6 +751,22 @@ export async function deleteDatabase({
   databaseId: string;
   logger: Logger;
 }) {
+  const connectorIdHash = sha256(connectorId.toString());
+
+  if (SKIP_DELETION_CONNECTOR_ID_HASHES.has(connectorIdHash)) {
+    logger.info(
+      {
+        action: "skip_deletion",
+        resource_type: "database",
+        databaseId,
+        connectorId,
+        connectorIdHash,
+      },
+      "Skipping database deletion for connector with deletion disabled"
+    );
+    return;
+  }
+
   logger.info("Deleting database.");
   await deleteDataSourceDocument(
     dataSourceConfig,
@@ -792,7 +822,7 @@ export async function garbageCollectBatch({
   if (!notionConnectorState) {
     throw new Error("Could not find notionConnectorState");
   }
-  const notionAccessToken = await getNotionAccessToken(connector.connectionId);
+  const notionAccessToken = await getNotionAccessToken(connector.id);
 
   const NOTION_UNHEALTHY_ERROR_CODES = [
     "internal_server_error",
@@ -964,7 +994,7 @@ export async function deletePageOrDatabaseIfArchived({
     throw new Error("Could not find connector");
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const accessToken = await getNotionAccessToken(connector.connectionId);
+  const accessToken = await getNotionAccessToken(connector.id);
 
   const localLogger = logger.child({
     ...loggerArgs,
@@ -1362,7 +1392,7 @@ export async function cachePage({
   if (!connector) {
     throw new Error("Could not find connector");
   }
-  const accessToken = await getNotionAccessToken(connector.connectionId);
+  const accessToken = await getNotionAccessToken(connector.id);
 
   let localLogger = logger.child({
     ...loggerArgs,
@@ -1514,7 +1544,7 @@ export async function cacheBlockChildren({
     workspaceId: connector.workspaceId,
   });
 
-  const accessToken = await getNotionAccessToken(connector.connectionId);
+  const accessToken = await getNotionAccessToken(connector.id);
 
   localLogger.info(
     "notionBlockChildrenResultPageActivity: Retrieving result page from Notion API."
@@ -1856,7 +1886,7 @@ export async function renderAndUpsertPageFromCache({
     throw new Error("Could not find connector");
   }
   const dsConfig = dataSourceConfigFromConnector(connector);
-  const accessToken = await getNotionAccessToken(connector.connectionId);
+  const accessToken = await getNotionAccessToken(connector.id);
 
   const localLogger = logger.child({
     ...loggerArgs,
@@ -2871,8 +2901,7 @@ export async function getParentPageOrDb({
     throw new Error("Could not find connector");
   }
 
-  const connectionId = connector.connectionId;
-  const notionAccessToken = await getNotionAccessToken(connectionId);
+  const notionAccessToken = await getNotionAccessToken(connector.id);
 
   if (!notionAccessToken) {
     throw new Error("Unreachable: connection id without access token");
@@ -2881,7 +2910,7 @@ export async function getParentPageOrDb({
   const page = await retrievePage({
     accessToken: notionAccessToken,
     pageId: pageOrDbId,
-    loggerArgs: { connectorId, connectionId },
+    loggerArgs: { connectorId },
   });
   if (page) {
     switch (page.parent.type) {
@@ -2910,7 +2939,6 @@ export async function getParentPageOrDb({
 
   const db = await getParsedDatabase(notionAccessToken, pageOrDbId, {
     connectorId,
-    connectionId,
   });
 
   if (db) {
@@ -3167,4 +3195,151 @@ export async function markDatabasesAsUpserted({
   );
 
   return { isNewDatabase: !db.lastUpsertedRunTs, isMissing: false };
+}
+
+export async function getResourcesFromGCSFile({
+  gcsFilePath,
+}: {
+  gcsFilePath: string;
+}): Promise<
+  Array<{
+    resourceId: string;
+    resourceType: "page" | "database";
+  }>
+> {
+  const logger = mainLogger.child({ gcsFilePath });
+
+  const storage = new Storage({
+    keyFilename: isDevelopment()
+      ? connectorsConfig.getServiceAccount()
+      : undefined,
+  });
+  const bucket = storage.bucket(connectorsConfig.getDustTmpSyncBucketName());
+
+  try {
+    // Validate file metadata for security
+    const file = bucket.file(gcsFilePath);
+    const [metadata] = await file.getMetadata();
+
+    // Check if this is a Dust internal file
+    if (metadata.metadata?.dustInternal !== "notion-accessibility-check") {
+      throw new Error(
+        "Invalid file: not a Dust internal accessibility check file"
+      );
+    }
+
+    const [content] = await file.download();
+
+    const lines = content.toString().trim().split("\n");
+
+    // Validate file has content (at least header + 1 data line)
+    if (lines.length < 2) {
+      throw new Error(
+        `GCS file ${gcsFilePath} is empty or only contains header`
+      );
+    }
+
+    const resources: Array<{
+      resourceId: string;
+      resourceType: "page" | "database";
+    }> = [];
+
+    // Skip header
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line || !line.trim()) {
+        continue;
+      }
+
+      const [resourceId, resourceType] = line.split(",").map((s) => s.trim());
+      if (
+        resourceId &&
+        (resourceType === "page" || resourceType === "database")
+      ) {
+        resources.push({
+          resourceId,
+          resourceType: resourceType as "page" | "database",
+        });
+      }
+    }
+
+    // Ensure we found at least one valid resource
+    if (resources.length === 0) {
+      throw new Error(`No valid resources found in GCS file ${gcsFilePath}`);
+    }
+
+    logger.info(
+      { resourceCount: resources.length },
+      "[NOTION_RESOURCE_CHECK] Loaded resources from GCS file"
+    );
+
+    return resources;
+  } catch (error) {
+    logger.error({ error }, "Failed to read resources from GCS file");
+    throw new Error(`Failed to read GCS file: ${gcsFilePath}`);
+  }
+}
+
+export async function checkResourceAccessibility({
+  connectorId,
+  resourceId,
+  resourceType,
+}: {
+  connectorId: ModelId;
+  resourceId: string;
+  resourceType: "page" | "database";
+}): Promise<void> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const loggerArgs = { connectorId, resourceId };
+
+  try {
+    const notionAccessToken = await getNotionAccessToken(connectorId);
+
+    if (resourceType === "page") {
+      // Check as a page
+      const page = await retrievePage({
+        accessToken: notionAccessToken,
+        pageId: resourceId,
+        loggerArgs,
+      });
+
+      logger.info(
+        {
+          connectorId,
+          resourceId,
+          resourceType: "page",
+          isAccessible: !!page,
+        },
+        "[NOTION_RESOURCE_CHECK] Checked resource"
+      );
+    } else {
+      // Check as a database
+      const db = await getParsedDatabase(
+        notionAccessToken,
+        resourceId,
+        loggerArgs
+      );
+
+      logger.info(
+        {
+          connectorId,
+          resourceId,
+          resourceType: "database",
+          isAccessible: !!db,
+        },
+        "[NOTION_RESOURCE_CHECK] Checked resource"
+      );
+    }
+  } catch (error) {
+    // Let the error propagate so Temporal can handle retries based on error type
+    logger.error(
+      { ...loggerArgs, error },
+      "Error checking resource accessibility"
+    );
+    throw error;
+  }
 }

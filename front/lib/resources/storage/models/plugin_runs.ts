@@ -7,6 +7,7 @@ import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type { SupportedResourceType } from "@app/types";
 
 export const POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH = 4096;
+export const POKE_PLUGIN_RUN_MAX_ARGS_LENGTH = 1024;
 
 export class PluginRunModel extends BaseModel<PluginRunModel> {
   declare createdAt: CreationOptional<Date>;
@@ -28,7 +29,7 @@ export class PluginRunModel extends BaseModel<PluginRunModel> {
 PluginRunModel.init(
   {
     args: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(POKE_PLUGIN_RUN_MAX_ARGS_LENGTH),
       allowNull: true,
     },
     author: {

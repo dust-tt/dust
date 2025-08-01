@@ -5,7 +5,7 @@ import {
   getAccessibleSourcesAndAppsForActions,
 } from "@app/components/assistant_builder/server_side_props_helpers";
 import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -42,7 +42,10 @@ async function handler(
   }
 
   try {
-    const agentConfiguration = await getAgentConfiguration(auth, aId, "full");
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: aId,
+      variant: "full",
+    });
     if (!agentConfiguration) {
       return apiError(req, res, {
         status_code: 404,

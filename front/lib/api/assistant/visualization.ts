@@ -41,6 +41,14 @@ Guidelines using the :::visualization directive:
 - Available third-party libraries:
   - Base React is available to be imported. In order to use hooks, they have to be imported at the top of the script, e.g. \`import { useState } from "react"\`
   - The recharts charting library is available to be imported, e.g. \`import { LineChart, XAxis, ... } from "recharts"\` & \`<LineChart ...><XAxis dataKey="name"> ...\`.
+    - Important Recharts usage notes:
+      - Tooltip formatters: The formatter prop must be a function returning an array [formattedValue, formattedName]:
+        - CORRECT: \`formatter={(value, name) => [value, name]}\` or \`formatter={(value, name) => ['$' + value, 'Sales: ' + name]}\`
+        - INCORRECT: \`formatter={[value, 'Label']}\` (not a function)
+      - Label formatters: Use labelFormatter prop with a function returning a string:
+        - Example: \`labelFormatter={(label) => \`Date: \${label}\`}\`
+      - Always wrap charts in ResponsiveContainer for proper sizing
+      - Use proper margins to prevent label cutoff: \`margin={{ top: 20, right: 30, left: 20, bottom: 20 }}\`
   - The papaparse library is available to be imported, e.g. \`import Papa from "papaparse"\` & \`const parsed = Papa.parse(fileContent, {header:true, skipEmptyLines: "greedy"});\`. The \`skipEmptyLines:"greedy"\` configuration should always be used.
   - No other third-party libraries are installed or available to be imported. They cannot be used, imported, or installed.
 - Miscellaneous:

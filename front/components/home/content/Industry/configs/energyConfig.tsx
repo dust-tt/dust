@@ -36,7 +36,7 @@ export const energyConfig: IndustryPageConfig = {
       },
     },
     heroImage: {
-      src: "/static/landing/industry/Dust_Connectors.webp",
+      src: "/static/landing/industry/Dust_connectors_microsoft.webp",
       alt: "Energy & Utilities AI-powered automation illustration",
     },
   },
@@ -129,7 +129,7 @@ export const energyConfig: IndustryPageConfig = {
       },
       {
         title: "Field operations",
-        image: "/static/landing/industry/features/Document_generation.webp",
+        image: "/static/landing/industry/features/Document_generator.webp",
         bgColor: "bg-golden-100",
         features: [
           {
@@ -204,7 +204,7 @@ export const energyConfig: IndustryPageConfig = {
         content:
           "Germi, Qonto's AI assistant, analyzes German industry codes and screens prohibited activities, automating compliance checks across European markets.",
         href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_qonto.png",
+        src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Qonto-__-Dust.jpg",
       },
       {
         title: "Kyriba's adoption of Dust across all functions",
@@ -221,8 +221,8 @@ export const energyConfig: IndustryPageConfig = {
     titleColor: "text-blue-600",
     ctaButtons: {
       primary: {
-        label: "Start free trial",
-        href: "/api/auth/login",
+        label: "Start Free Trial",
+        href: "/api/workos/login",
       },
       secondary: {
         label: "Contact sales",

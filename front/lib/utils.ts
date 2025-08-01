@@ -83,7 +83,7 @@ export function formatTimestampToFriendlyDate(
       return date
         .toLocaleDateString("en-US", {
           month: "short",
-          year: "2-digit",
+          year: "numeric",
         })
         .replace(" ", ", ");
 

@@ -14,9 +14,7 @@ use crate::{
         folder::Folder,
         node::{Node, ProviderVisibility},
     },
-    databases::{
-        table::Row, table::Table, table_schema::TableSchema, transient_database::TransientDatabase,
-    },
+    databases::{table::Table, table_schema::TableSchema, transient_database::TransientDatabase},
     dataset::Dataset,
     http::request::{HttpRequest, HttpResponse},
     project::Project,
@@ -246,8 +244,7 @@ pub trait Store {
         document_ids: &Option<Vec<String>>,
         limit_offset: Option<(usize, usize)>,
         remove_system_tags: bool,
-        include_count: bool,
-    ) -> Result<(Vec<Document>, usize)>;
+    ) -> Result<Vec<Document>>;
     async fn delete_data_source_document(
         &self,
         project: &Project,
@@ -296,20 +293,6 @@ pub trait Store {
         schema: &TableSchema,
     ) -> Result<()>;
     async fn invalidate_data_source_table_schema(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        table_id: &str,
-    ) -> Result<()>;
-    async fn store_data_source_table_csv(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        table_id: &str,
-        schema: &TableSchema,
-        rows: &Vec<Row>,
-    ) -> Result<()>;
-    async fn delete_data_source_table_csv(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -607,7 +590,6 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        schema                       TEXT, -- json, kept up-to-date automatically with the last insert
        schema_stale_at              BIGINT, -- timestamp when the schema was last invalidated
        data_source                  BIGINT NOT NULL,
-       migrated_to_csv              BOOLEAN DEFAULT FALSE,
        remote_database_table_id     TEXT,
        remote_database_secret_id    TEXT,
        FOREIGN KEY(data_source)     REFERENCES data_sources(id)

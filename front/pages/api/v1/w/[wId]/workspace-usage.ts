@@ -15,7 +15,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import {
   getAssistantsUsageData,
   getBuildersUsageData,
-  getFeedbacksUsageData,
+  getFeedbackUsageData,
   getMessageUsageData,
   getUserUsageData,
 } from "@app/lib/workspace_usage";
@@ -76,11 +76,11 @@ import { assertNever } from "@app/types";
  *           - "assistant_messages": The list of messages sent by users including the mentioned agents.
  *           - "builders": The list of builders categorized by their activity level.
  *           - "assistants": The list of workspace agents and their corresponding usage.
- *           - "feedbacks": The list of feedbacks given by users on the agent messages.
+ *           - "feedback": The list of feedback given by users on the agent messages.
  *           - "all": A concatenation of all the above tables.
  *         schema:
  *           type: string
- *           enum: [users, inactive_users, assistant_messages, builders, assistants, feedbacks, all]
+ *           enum: [users, inactive_users, assistant_messages, builders, assistants, feedback, all]
  *     responses:
  *       200:
  *         description: The usage data in CSV or JSON format, or a ZIP of multiple CSVs if table is equal to "all"
@@ -270,25 +270,25 @@ async function fetchUsageData({
       return {
         assistants: await getAssistantsUsageData(start, end, workspace),
       };
-    case "feedbacks":
+    case "feedback":
       return {
-        feedbacks: await getFeedbacksUsageData(start, end, workspace),
+        feedback: await getFeedbackUsageData(start, end, workspace),
       };
     case "all":
-      const [users, assistant_messages, builders, assistants, feedbacks] =
+      const [users, assistant_messages, builders, assistants, feedback] =
         await Promise.all([
           getUserUsageData(start, end, workspace),
           getMessageUsageData(start, end, workspace),
           getBuildersUsageData(start, end, workspace),
           getAssistantsUsageData(start, end, workspace),
-          getFeedbacksUsageData(start, end, workspace),
+          getFeedbackUsageData(start, end, workspace),
         ]);
       return {
         users,
         assistant_messages,
         builders,
         assistants,
-        feedbacks,
+        feedback,
       };
     default:
       return {};

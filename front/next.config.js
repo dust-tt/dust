@@ -5,11 +5,11 @@ const showReactScan =
 
 const CONTENT_SECURITY_POLICIES = [
   "default-src 'none';",
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.cr-relay.com ${showReactScan ? "unpkg.com" : ""};`,
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.usercentrics.eu *.cr-relay.com *.licdn.com *.datadoghq-browser-agent.com ${showReactScan ? "unpkg.com" : ""};`,
   `style-src 'self' 'unsafe-inline';`,
   `img-src 'self' data: https:;`,
-  `connect-src 'self' blob: browser-intake-datadoghq.eu *.google-analytics.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.cr-relay.com;`,
-  `frame-src 'self' *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net;`,
+  `connect-src 'self' blob: browser-intake-datadoghq.eu *.google-analytics.com *.googlesyndication.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.cr-relay.com *.usercentrics.eu *.ads.linkedin.com *.google.com/ccm/;`,
+  `frame-src 'self' *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net *.googletagmanager.com;`,
   `font-src 'self' data: dust.tt *.dust.tt;`,
   `object-src 'none';`,
   `form-action 'self';`,
@@ -93,7 +93,13 @@ module.exports = {
       },
     ];
   },
-  webpack: (config) => {
+  webpack(config) {
+    if (process.env.BUILD_WITH_SOURCE_MAPS === "true") {
+      // Force webpack to generate source maps for both client and server code
+      // This is used in production builds to upload source maps to Datadog for error tracking
+      // Note: Next.js normally only generates source maps for client code in development
+      config.devtool = "source-map";
+    }
     // For `types` package import (which includes some dependence to server code).
     // Otherwise client-side code will throw an error when importing the packaged file.
     config.resolve.fallback = {

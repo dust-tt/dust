@@ -12,7 +12,6 @@ import apiConfig from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { computeWorkspaceOverallSizeCached } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
@@ -376,6 +375,17 @@ async function handler(
         });
       }
 
+      // To write we must have canWrite or be a systemAPIKey
+      if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You are not allowed to update data in this data source.",
+          },
+        });
+      }
+
       if (!auth.isSystemKey()) {
         const remaining = await rateLimiter({
           key: `upsert-document-w-${owner.sId}`,
@@ -446,46 +456,6 @@ async function handler(
 
       const fullText = sectionFullText(section);
 
-      // Enforce plan limits: DataSource documents count.
-      // We only load the number of documents if the limit is not -1 (unlimited).
-      // the `getDataSourceDocuments` query involves a SELECT COUNT(*) in the DB that is not
-      // optimized, so we avoid it for large workspaces if we know we're unlimited anyway
-      if (plan.limits.dataSources.documents.count != -1) {
-        const documents = await coreAPI.getDataSourceDocuments(
-          {
-            projectId: dataSource.dustAPIProjectId,
-            dataSourceId: dataSource.dustAPIDataSourceId,
-          },
-          { limit: 1, offset: 0 }
-        );
-
-        if (documents.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "data_source_error",
-              message: "There was an error retrieving the data source.",
-              data_source_error: documents.error,
-            },
-          });
-        }
-
-        if (
-          plan.limits.dataSources.documents.count != -1 &&
-          documents.value.total >= plan.limits.dataSources.documents.count
-        ) {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "data_source_quota_error",
-              message:
-                `Data sources are limited to ${plan.limits.dataSources.documents.count} ` +
-                `documents on your current plan. Contact support@dust.tt if you want to increase this limit.`,
-            },
-          });
-        }
-      }
-
       if (
         plan.limits.dataSources.documents.sizeMb != -1 &&
         fullText.length > 1024 * 1024 * plan.limits.dataSources.documents.sizeMb
@@ -503,48 +473,45 @@ async function handler(
         });
       }
 
-      const flags = await getFeatureFlags(owner);
-      if (flags.includes("enforce_datasource_quota")) {
-        // Enforce plan limits: Datasource quota
-        try {
-          const [activeSeats, quotaUsed] = await Promise.all([
-            countActiveSeatsInWorkspaceCached(owner.sId),
-            computeWorkspaceOverallSizeCached(auth),
-          ]);
+      // Enforce plan limits: Datasource quota
+      try {
+        const [activeSeats, quotaUsed] = await Promise.all([
+          countActiveSeatsInWorkspaceCached(owner.sId),
+          computeWorkspaceOverallSizeCached(auth),
+        ]);
 
-          if (
-            quotaUsed >
-            (activeSeats + 1) * DATASOURCE_QUOTA_PER_SEAT // +1 we allow to go over the limit by one additional seat
-          ) {
-            logger.info(
-              {
-                workspace: owner.sId,
-                datasource_project_id: dataSource.dustAPIProjectId,
-                datasource_id: dataSource.dustAPIDataSourceId,
-                quota_used: quotaUsed,
-                quota_limit: activeSeats * DATASOURCE_QUOTA_PER_SEAT,
-              },
-              "Datasource quota exceeded for upsert document (overrun expected)"
-            );
-            return apiError(req, res, {
-              status_code: 403,
-              api_error: {
-                type: "workspace_quota_error",
-                message: `You've exceeded your plan limit (${fileSizeToHumanReadable(quotaUsed)} used / ${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} allowed)`,
-              },
-            });
-          }
-        } catch (error) {
-          logger.error(
+        if (
+          quotaUsed >
+          (activeSeats + 1) * DATASOURCE_QUOTA_PER_SEAT // +1 we allow to go over the limit by one additional seat
+        ) {
+          logger.info(
             {
-              error,
               workspace: owner.sId,
               datasource_project_id: dataSource.dustAPIProjectId,
               datasource_id: dataSource.dustAPIDataSourceId,
+              quota_used: quotaUsed,
+              quota_limit: activeSeats * DATASOURCE_QUOTA_PER_SEAT,
             },
-            "Unable to enforce datasource quota"
+            "Datasource quota exceeded for upsert document (overrun expected)"
           );
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_quota_error",
+              message: `You've exceeded your plan limit (${fileSizeToHumanReadable(quotaUsed)} used / ${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} allowed)`,
+            },
+          });
         }
+      } catch (error) {
+        logger.error(
+          {
+            error,
+            workspace: owner.sId,
+            datasource_project_id: dataSource.dustAPIProjectId,
+            datasource_id: dataSource.dustAPIDataSourceId,
+          },
+          "Unable to enforce datasource quota"
+        );
       }
 
       // Prohibit passing parents when not coming from connectors.
@@ -729,6 +696,17 @@ async function handler(
           api_error: {
             type: "data_source_auth_error",
             message: "You cannot delete a document from a managed data source.",
+          },
+        });
+      }
+
+      // To write we must have canWrite or be a systemAPIKey
+      if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You are not allowed to update data in this data source.",
           },
         });
       }

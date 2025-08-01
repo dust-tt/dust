@@ -23,8 +23,10 @@ import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentM
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
-import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import type {
+  DataSourceConfiguration,
+  TableDataSourceConfiguration,
+} from "@app/lib/api/assistant/configuration/types";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
@@ -87,71 +89,75 @@ export function AssistantKnowledgeSection({
 
   const retrievalByDataSources = useMemo(() => {
     const acc: Record<string, DataSourceConfiguration> = {};
-    categorizedActions.retrieval.forEach((action) => {
-      action.dataSources.forEach((ds) => {
-        if (!acc[ds.dataSourceViewId]) {
-          // First one sets the filter
-          acc[ds.dataSourceViewId] = ds;
-        } else {
-          if (ds.filter.parents) {
-            const existingFilter = acc[ds.dataSourceViewId].filter.parents;
-            // Merge the filters if they are not null
-            if (existingFilter) {
-              existingFilter.in = existingFilter.in.concat(
-                ds.filter.parents.in
-              );
-              existingFilter.not = existingFilter.not.concat(
-                ds.filter.parents.not
-              );
-
-              // We need to remove duplicates
-              existingFilter.in = _.uniq(existingFilter.in);
-              existingFilter.not = _.uniq(existingFilter.not);
-            }
+    categorizedActions.retrieval.forEach(
+      (action: { dataSources: DataSourceConfiguration[] }) => {
+        action.dataSources.forEach((ds: DataSourceConfiguration) => {
+          if (!acc[ds.dataSourceViewId]) {
+            // First one sets the filter
+            acc[ds.dataSourceViewId] = ds;
           } else {
-            // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
-            acc[ds.dataSourceViewId].filter.parents = null;
+            if (ds.filter.parents) {
+              const existingFilter = acc[ds.dataSourceViewId].filter.parents;
+              // Merge the filters if they are not null
+              if (existingFilter) {
+                existingFilter.in = existingFilter.in.concat(
+                  ds.filter.parents.in
+                );
+                existingFilter.not = existingFilter.not.concat(
+                  ds.filter.parents.not
+                );
+
+                // We need to remove duplicates
+                existingFilter.in = _.uniq(existingFilter.in);
+                existingFilter.not = _.uniq(existingFilter.not);
+              }
+            } else {
+              // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
+              acc[ds.dataSourceViewId].filter.parents = null;
+            }
           }
-        }
-      });
-    });
+        });
+      }
+    );
     return acc;
   }, [categorizedActions.retrieval]);
 
   const queryTableByDataSources = useMemo(() => {
     const acc: Record<string, DataSourceConfiguration> = {};
-    categorizedActions.queryTables.forEach((action) => {
-      const dataSources = getDataSourceConfigurationsForTableAction(
-        action,
-        dataSourceViews
-      );
-      dataSources.forEach((ds) => {
-        if (!acc[ds.dataSourceViewId]) {
-          // First one sets the filter
-          acc[ds.dataSourceViewId] = ds;
-        } else {
-          if (ds.filter.parents) {
-            const existingFilter = acc[ds.dataSourceViewId].filter.parents;
-            // Merge the filters if they are not null
-            if (existingFilter) {
-              existingFilter.in = existingFilter.in.concat(
-                ds.filter.parents.in
-              );
-              existingFilter.not = existingFilter.not.concat(
-                ds.filter.parents.not
-              );
-
-              // We need to remove duplicates
-              existingFilter.in = _.uniq(existingFilter.in);
-              existingFilter.not = _.uniq(existingFilter.not);
-            }
+    categorizedActions.queryTables.forEach(
+      (action: { tables: TableDataSourceConfiguration[] }) => {
+        const dataSources = getDataSourceConfigurationsForTableAction(
+          action,
+          dataSourceViews
+        );
+        dataSources.forEach((ds) => {
+          if (!acc[ds.dataSourceViewId]) {
+            // First one sets the filter
+            acc[ds.dataSourceViewId] = ds;
           } else {
-            // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
-            acc[ds.dataSourceViewId].filter.parents = null;
+            if (ds.filter.parents) {
+              const existingFilter = acc[ds.dataSourceViewId].filter.parents;
+              // Merge the filters if they are not null
+              if (existingFilter) {
+                existingFilter.in = existingFilter.in.concat(
+                  ds.filter.parents.in
+                );
+                existingFilter.not = existingFilter.not.concat(
+                  ds.filter.parents.not
+                );
+
+                // We need to remove duplicates
+                existingFilter.in = _.uniq(existingFilter.in);
+                existingFilter.not = _.uniq(existingFilter.not);
+              }
+            } else {
+              // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
+              acc[ds.dataSourceViewId].filter.parents = null;
+            }
           }
-        }
-      });
-    });
+        });
+      }
+    );
     return acc;
   }, [categorizedActions.queryTables, dataSourceViews]);
 

@@ -1,5 +1,6 @@
 import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import { FirecrawlError } from "@mendable/firecrawl-js";
 
 import type {
   CreateConnectorErrorCode,
@@ -35,6 +36,7 @@ import {
   DepthOptions,
   INTERNAL_MIME_TYPES,
   isDepthOption,
+  normalizeError,
   WEBCRAWLER_MAX_PAGES,
   WebCrawlerHeaderRedactedValue,
 } from "@connectors/types";
@@ -74,6 +76,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       crawlFrequency: configuration.crawlFrequency,
       lastCrawledAt: null,
       headers: configuration.headers,
+      sitemapOnly: false,
     };
 
     const connector = await ConnectorResource.makeNew(
@@ -132,11 +135,19 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       try {
         await getFirecrawl().cancelCrawl(webConfig.crawlId);
       } catch (error) {
-        return new Err(
-          new Error(
-            `Error cancelling crawl on Firecrawl: ${error instanceof Error ? error.message : String(error)}`
-          )
-        );
+        // If we don't find the job, we might just have an expired ID, so it's safe to continue.
+        if (!(error instanceof FirecrawlError) || error.statusCode !== 404) {
+          return new Err(
+            new Error(
+              `Error cancelling crawl on Firecrawl: ${normalizeError(error)}`
+            )
+          );
+        } else {
+          logger.info(
+            { connectorId: this.connectorId, crawlId: webConfig.crawlId },
+            "Firecrawl job not found. Nothing to cancel."
+          );
+        }
       }
     } else {
       const res = await stopCrawlWebsiteWorkflow(this.connectorId);

@@ -7,17 +7,15 @@ import {
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
-  GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG,
+  GEMINI_2_5_PRO_MODEL_CONFIG,
   GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
-  O1_HIGH_REASONING_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
-  O3_MINI_HIGH_REASONING_MODEL_CONFIG,
   O3_MODEL_CONFIG,
 } from "@app/types";
 
@@ -70,14 +68,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.O1_HIGH_REASONING,
         name: "o1-high-reasoning",
-        description: O1_HIGH_REASONING_MODEL_CONFIG.description,
+        description: O1_MODEL_CONFIG.description,
         pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.O3_MINI:
       return {
         sId: GLOBAL_AGENTS_SID.O3_MINI,
         name: "o3-mini",
-        description: O3_MINI_HIGH_REASONING_MODEL_CONFIG.description,
+        description: O3_MODEL_CONFIG.description,
         pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.O3:
@@ -171,7 +169,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.GEMINI_PRO,
         name: "gemini-pro",
-        description: GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG.description,
+        description: GEMINI_2_5_PRO_MODEL_CONFIG.description,
         pictureUrl:
           "https://dust.tt/static/systemavatar/gemini_avatar_full.png",
       };

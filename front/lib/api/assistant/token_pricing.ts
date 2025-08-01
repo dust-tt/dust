@@ -277,6 +277,10 @@ export const MODEL_PRICING: Record<
     input: 1.25,
     output: 15.0,
   },
+  "gemini-2.5-pro": {
+    input: 1.25,
+    output: 15.0,
+  },
 };
 
 // If model is not found in the MODEL_PRICING, use the default pricing.

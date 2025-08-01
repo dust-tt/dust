@@ -17,6 +17,7 @@ import {
 import { useMemo, useRef, useState } from "react";
 
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { NodePathTooltip } from "@app/components/NodePathTooltip";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -164,7 +165,7 @@ export const InputBarAttachmentsPicker = ({
                   e.preventDefault();
                   const firstMenuItem =
                     itemsContainerRef.current?.querySelector(
-                      '[role="menuitem"]'
+                      '[role="menuitemcheckbox"]'
                     );
                   (firstMenuItem as HTMLElement)?.focus();
                 }
@@ -184,43 +185,44 @@ export const InputBarAttachmentsPicker = ({
         {searchQuery ? (
           <div ref={itemsContainerRef}>
             {pickedSpaceNodes.map((item, index) => (
-              <DropdownMenuCheckboxItem
-                key={index}
-                label={item.title}
-                icon={
-                  isWebsite(item.dataSourceView.dataSource) ||
-                  isFolder(item.dataSourceView.dataSource) ? (
-                    <Icon
-                      visual={getVisualForDataSourceViewContentNode(item)}
-                      size="md"
-                    />
-                  ) : (
-                    <DoubleIcon
-                      size="md"
-                      mainIcon={getVisualForDataSourceViewContentNode(item)}
-                      secondaryIcon={getConnectorProviderLogoWithFallback({
-                        provider:
-                          item.dataSourceView.dataSource.connectorProvider,
-                      })}
-                    />
-                  )
-                }
-                description={getLocationForDataSourceViewContentNode(item)}
-                checked={attachedNodes.some(
-                  (attachedNode) =>
-                    attachedNode.internalId === item.internalId &&
-                    attachedNode.dataSourceView.dataSource.sId ===
-                      item.dataSourceView.dataSource.sId
-                )}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    onNodeSelect(item);
-                  } else {
-                    onNodeUnselect(item);
+              <NodePathTooltip key={index} node={item} owner={owner}>
+                <DropdownMenuCheckboxItem
+                  label={item.title}
+                  icon={
+                    isWebsite(item.dataSourceView.dataSource) ||
+                    isFolder(item.dataSourceView.dataSource) ? (
+                      <Icon
+                        visual={getVisualForDataSourceViewContentNode(item)}
+                        size="md"
+                      />
+                    ) : (
+                      <DoubleIcon
+                        size="md"
+                        mainIcon={getVisualForDataSourceViewContentNode(item)}
+                        secondaryIcon={getConnectorProviderLogoWithFallback({
+                          provider:
+                            item.dataSourceView.dataSource.connectorProvider,
+                        })}
+                      />
+                    )
                   }
-                }}
-                truncateText
-              />
+                  description={getLocationForDataSourceViewContentNode(item)}
+                  checked={attachedNodes.some(
+                    (attachedNode) =>
+                      attachedNode.internalId === item.internalId &&
+                      attachedNode.dataSourceView.dataSource.sId ===
+                        item.dataSourceView.dataSource.sId
+                  )}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      onNodeSelect(item);
+                    } else {
+                      onNodeUnselect(item);
+                    }
+                  }}
+                  truncateText
+                />
+              </NodePathTooltip>
             ))}
             {pickedSpaceNodes.length === 0 && !showLoader && (
               <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">

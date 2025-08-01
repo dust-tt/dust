@@ -7,7 +7,7 @@ import {
 } from "@connectors/connectors/github/lib/utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { GithubCodeDirectory } from "@connectors/lib/models/github";
-import logger from "@connectors/logger/logger";
+import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
@@ -25,7 +25,8 @@ export async function upsertCodeDirectory({
   repoId,
   repoLogin,
   repoName,
-  updatedDirectoryIds = new Set(),
+  updatedDirectoryIds,
+  logger,
 }: {
   codeSyncStartedAt: Date;
   connectorId: ModelId;
@@ -35,7 +36,8 @@ export async function upsertCodeDirectory({
   repoId: number;
   repoLogin: string;
   repoName: string;
-  updatedDirectoryIds?: Set<string>;
+  updatedDirectoryIds: Set<string>;
+  logger: Logger;
 }): Promise<void> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {

@@ -6,7 +6,7 @@ import { AssistantBuilderProviders } from "@app/components/assistant_builder/con
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -45,7 +45,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     }
 
     const [configuration] = await Promise.all([
-      getAgentConfiguration(auth, context.params?.aId as string, "light"),
+      getAgentConfiguration(auth, {
+        agentId: context.params?.aId as string,
+        variant: "light",
+      }),
       MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
     ]);
 
@@ -127,14 +130,13 @@ export default function EditAssistant({
             modelSettings: {
               modelId: agentConfiguration.model.modelId,
               providerId: agentConfiguration.model.providerId,
-              reasoningEffort: agentConfiguration.model.reasoningEffort,
             },
             temperature: agentConfiguration.model.temperature,
+            reasoningEffort: agentConfiguration.model.reasoningEffort || "none",
             responseFormat: agentConfiguration.model.responseFormat,
           },
           actions: [], // Actions will be populated later from the client
           visualizationEnabled: agentConfiguration.visualizationEnabled,
-          maxStepsPerRun: agentConfiguration.maxStepsPerRun,
           templateId: agentConfiguration.templateId,
           tags: agentConfiguration.tags,
           editors: agentEditors,

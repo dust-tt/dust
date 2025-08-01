@@ -1,10 +1,4 @@
-import {
-  BarHeader,
-  Button,
-  LockIcon,
-  Page,
-  useSendNotification,
-} from "@dust-tt/sparkle";
+import { BarHeader, Button, LockIcon, Page } from "@dust-tt/sparkle";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -13,6 +7,7 @@ import React from "react";
 import { ProPlansTable } from "@app/components/plans/ProPlansTable";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
@@ -97,37 +92,35 @@ export default function Subscribe({
 
   return (
     <>
-      <div className="mb-10">
-        <BarHeader
-          title="Joining Dust"
-          className="ml-10 lg:ml-0"
-          rightActions={
-            <>
-              <div className="flex flex-row items-center">
-                {user && user.workspaces.length > 1 && (
-                  <WorkspacePicker
-                    user={user}
-                    workspace={owner}
-                    onWorkspaceUpdate={(workspace) => {
-                      const assistantRoute = `/w/${workspace.sId}/assistant/new`;
-                      if (workspace.id !== owner.id) {
-                        void router
-                          .push(assistantRoute)
-                          .then(() => router.reload());
-                      }
-                    }}
-                  />
+      <BarHeader
+        title="Joining Dust"
+        className="ml-10 lg:ml-0"
+        rightActions={
+          <>
+            <div className="flex flex-row items-center">
+              {user && user.workspaces.length > 1 && (
+                <WorkspacePicker
+                  user={user}
+                  workspace={owner}
+                  onWorkspaceUpdate={(workspace) => {
+                    const assistantRoute = `/w/${workspace.sId}/assistant/new`;
+                    if (workspace.id !== owner.id) {
+                      void router
+                        .push(assistantRoute)
+                        .then(() => router.reload());
+                    }
+                  }}
+                />
+              )}
+              <div>
+                {user && (
+                  <UserMenu user={user} owner={owner} subscription={null} />
                 )}
-                <div>
-                  {user && (
-                    <UserMenu user={user} owner={owner} subscription={null} />
-                  )}
-                </div>
               </div>
-            </>
-          }
-        />
-      </div>
+            </div>
+          </>
+        }
+      />
       <Page>
         <div className="flex h-full flex-col justify-center">
           {isAdmin ? (

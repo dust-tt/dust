@@ -1,10 +1,4 @@
-import {
-  BookOpenIcon,
-  Breadcrumbs,
-  Page,
-  Spinner,
-  useSendNotification,
-} from "@dust-tt/sparkle";
+import { BookOpenIcon, Breadcrumbs, Page, Spinner } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
@@ -14,8 +8,9 @@ import { DeleteProviderDialog } from "@app/components/labs/transcripts/DeletePro
 import { ProcessingConfiguration } from "@app/components/labs/transcripts/ProcessingConfiguration";
 import { ProviderSelection } from "@app/components/labs/transcripts/ProviderSelection";
 import { StorageConfiguration } from "@app/components/labs/transcripts/StorageConfiguration";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -155,7 +150,7 @@ export default function LabsTranscriptsIndex({
 
   return (
     <ConversationsNavigationProvider>
-      <AppContentLayout
+      <AppCenteredLayout
         subscription={subscription}
         owner={owner}
         pageTitle="Dust - Transcripts processing"
@@ -214,7 +209,7 @@ export default function LabsTranscriptsIndex({
             )}
           </Page.Layout>
         </Page>
-      </AppContentLayout>
+      </AppCenteredLayout>
     </ConversationsNavigationProvider>
   );
 }

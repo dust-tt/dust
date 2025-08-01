@@ -154,13 +154,15 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   async isBotWhitelistedToIndexMessages(
     botName: string | string[]
   ): Promise<boolean> {
-    return !!(await SlackBotWhitelistModel.findOne({
+    const isWhitelisted = await SlackBotWhitelistModel.findOne({
       where: {
         connectorId: this.connectorId,
         botName: botName,
         whitelistType: "index_messages",
       },
-    }));
+    });
+
+    return !!isWhitelisted;
   }
 
   async whitelistBot(

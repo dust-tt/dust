@@ -9,6 +9,11 @@ import assert from "assert";
 import EventEmitter from "events";
 import type { JSONSchema7 } from "json-schema";
 
+import {
+  calculateContentSize,
+  getMaxSize,
+  isValidContentSize,
+} from "@app/lib/actions/action_output_limits";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
@@ -23,7 +28,7 @@ import type {
   ServerSideMCPServerConfigurationType,
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
+import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import { CallToolResultSchemaWithoutBase64Validation } from "@app/lib/actions/mcp_call_tool_result_schema";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
@@ -73,7 +78,7 @@ import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
 
 const MAX_OUTPUT_ITEMS = 128;
 
-const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes.
+const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes.
 
 const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
@@ -95,10 +100,6 @@ function isEmptyInputSchema(schema: JSONSchema7): boolean {
 }
 
 const MAX_TOOL_NAME_LENGTH = 64;
-
-const MAX_TEXT_CONTENT_SIZE = 2 * 1024 * 1024;
-const MAX_IMAGE_CONTENT_SIZE = 2 * 1024 * 1024;
-const MAX_RESOURCE_CONTENT_SIZE = 10 * 1024 * 1024;
 
 export const TOOL_NAME_SEPARATOR = "__";
 
@@ -320,6 +321,34 @@ export async function* tryCallMCPTool(
     // Do not raise an error here as it will break the conversation.
     // Let the model decide what to do.
     if (toolCallResult.isError) {
+      // Check if MCP tool called for personal re-authentication
+      if (
+        Array.isArray(toolCallResult.content) &&
+        toolCallResult.content.length > 0
+      ) {
+        const jsonContent = toolCallResult.content[0];
+        if (jsonContent?.type === "text") {
+          try {
+            const parsed = JSON.parse(jsonContent.text);
+            if (parsed?.__dust_auth_required) {
+              const authReq = parsed.__dust_auth_required;
+              yield {
+                type: "result",
+                result: new Err(
+                  new MCPServerPersonalAuthenticationRequiredError(
+                    authReq.mcpServerId,
+                    authReq.provider
+                  )
+                ),
+              };
+              return;
+            }
+          } catch {
+            // Not valid JSON, continue with normal processing
+          }
+        }
+      }
+
       logger.error(
         {
           conversationId,
@@ -343,14 +372,6 @@ export async function* tryCallMCPTool(
       };
     }
 
-    const isValidContentSize = (
-      content: CallToolResult["content"]
-    ): boolean => {
-      return !content.some(
-        (item) => calculateContentSize(item) > getMaxSize(item)
-      );
-    };
-
     const generateContentMetadata = (
       content: CallToolResult["content"]
     ): {
@@ -370,43 +391,6 @@ export async function* tryCallMCPTool(
         }
       }
       return result;
-    };
-
-    const getMaxSize = (item: CallToolResult["content"][number]) => {
-      switch (item.type) {
-        case "text":
-          return MAX_TEXT_CONTENT_SIZE;
-        case "image":
-          return MAX_IMAGE_CONTENT_SIZE;
-        case "resource":
-          return MAX_RESOURCE_CONTENT_SIZE;
-        default:
-          return 1 * 1024 * 1024; // 1MB default
-      }
-    };
-
-    const calculateContentSize = (
-      item: CallToolResult["content"][number]
-    ): number => {
-      switch (item.type) {
-        case "text":
-          return item.text.length * 2;
-        case "image":
-          return Math.ceil((item.data.length * 3) / 4);
-        case "resource":
-          if (
-            "blob" in item.resource &&
-            item.resource.blob &&
-            typeof item.resource.blob === "string"
-          ) {
-            return Math.ceil((item.resource.blob.length * 3) / 4);
-          }
-          return 0;
-        case "audio":
-          return item.data.length;
-        default:
-          return 0;
-      }
     };
 
     const serverType = (() => {
@@ -567,7 +551,7 @@ export async function tryListMCPTools(
     ...agentLoopListToolsContext.agentConfiguration.actions,
     ...(agentLoopListToolsContext.clientSideActionConfigurations ?? []),
     ...(jitServers ?? []),
-  ].filter(isMCPServerConfiguration);
+  ];
 
   // Discover all tools exposed by all available MCP servers.
   const results = await concurrentExecutor(
@@ -585,8 +569,9 @@ export async function tryListMCPTools(
             workspaceId: owner.sId,
             conversationId: agentLoopListToolsContext.conversation.sId,
             messageId: agentLoopListToolsContext.agentMessage.sId,
-            error: toolsAndInstructionsRes.error,
+            actionId: action.sId,
             mcpServerName: action.name,
+            error: toolsAndInstructionsRes.error,
           },
           `Error listing tools from MCP server: ${normalizeError(
             toolsAndInstructionsRes.error
@@ -792,6 +777,19 @@ async function listToolsForServerSideMCPServer(
         },
         {}
       );
+
+      // Filter out tools that are not enabled.
+      const toolsEnabled = metadata.reduce<Record<string, boolean>>(
+        (acc, metadata) => {
+          acc[metadata.toolName] = metadata.enabled;
+          return acc;
+        },
+        {}
+      );
+      allToolsRaw = allToolsRaw.filter((tool) => {
+        return !toolsEnabled[tool.name] || toolsEnabled[tool.name];
+      });
+
       break;
     }
     default:

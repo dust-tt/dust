@@ -1,4 +1,6 @@
 export * from "./compute_statistics";
+export * from "./confluence_page_checker";
+export * from "./delete_data_source";
 export * from "./garbage_collect_google_drive_document";
 export * from "./mark_connector_as_error";
 export * from "./notion_unstuck_syncing_nodes";
@@ -8,4 +10,5 @@ export * from "./operations";
 export * from "./slack_whitelist_bot";
 export * from "./toggle_restricted_space_agent_slack_access";
 export * from "./toggle_slack_bot";
+export * from "./webcrawler_actions";
 export * from "./webcrawler_frequency";

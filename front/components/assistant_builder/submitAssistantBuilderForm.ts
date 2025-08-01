@@ -1,6 +1,5 @@
 import type { ConnectorProvider } from "@dust-tt/client";
 
-import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import { removeLeadingAt } from "@app/components/assistant_builder/SettingsScreen";
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
@@ -8,8 +7,10 @@ import type {
   AssistantBuilderActionAndDataVisualizationConfiguration,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
-import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import type {
+  DataSourceConfiguration,
+  TableDataSourceConfiguration,
+} from "@app/lib/api/assistant/configuration/types";
 import type {
   AgentConfigurationType,
   DataSourceViewSelectionConfigurations,
@@ -162,11 +163,6 @@ export async function submitAssistantBuilderForm({
 
   const actionParams: ActionsType = builderState.actions.flatMap(map);
 
-  const isLegacyAgent = isLegacyAssistantBuilderConfiguration(builderState);
-  const maxStepsPerRun = isLegacyAgent
-    ? undefined
-    : builderState.maxStepsPerRun ?? undefined;
-
   const body: PostOrPatchAgentConfigurationRequestBody = {
     assistant: {
       name: removeLeadingAt(handle),
@@ -180,11 +176,9 @@ export async function submitAssistantBuilderForm({
         modelId: builderState.generationSettings.modelSettings.modelId,
         providerId: builderState.generationSettings.modelSettings.providerId,
         temperature: builderState.generationSettings.temperature,
-        reasoningEffort:
-          builderState.generationSettings.modelSettings.reasoningEffort,
+        reasoningEffort: builderState.generationSettings.reasoningEffort,
         responseFormat: builderState.generationSettings.responseFormat,
       },
-      maxStepsPerRun,
       visualizationEnabled: builderState.visualizationEnabled,
       templateId: builderState.templateId,
       tags: builderState.tags,

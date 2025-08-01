@@ -1,19 +1,12 @@
-import type { ConversationIncludeFileActionType } from "@app/lib/actions/conversation/include_file";
-import type { ConversationListFilesActionType } from "@app/lib/actions/conversation/list_files";
-import type { DustAppRunActionType } from "@app/lib/actions/dust_app_run";
 import type { MCPActionType } from "@app/lib/actions/mcp";
-import type { ProcessActionType } from "@app/lib/actions/process";
-import type { SearchLabelsActionType } from "@app/lib/actions/search_labels";
-import type {
-  ActionGeneratedFileType,
-  BaseAgentActionType,
-} from "@app/lib/actions/types";
+import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 
 import type { ContentFragmentType } from "../content_fragment";
 import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
+  ErrorContent,
   LightAgentConfigurationType,
 } from "./agent";
 import type { AgentContentItemType } from "./agent_message_content";
@@ -123,34 +116,11 @@ export function isUserMessageType(
 /**
  * Agent messages
  */
-export type ConfigurableAgentActionType =
-  | DustAppRunActionType
-  | ProcessActionType
-  | MCPActionType;
-
-export type ConversationAgentActionType =
-  | ConversationListFilesActionType
-  | ConversationIncludeFileActionType;
-
-export type AgentActionType =
-  | ConfigurableAgentActionType
-  | ConversationAgentActionType
-  | SearchLabelsActionType;
-
 export type AgentMessageStatus =
   | "created"
   | "succeeded"
   | "failed"
   | "cancelled";
-
-export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
-  conversation_include_file_action: "Reading file",
-  conversation_list_files_action: "Listing files",
-  dust_app_run_action: "Running App",
-  process_action: "Extracting data",
-  search_labels_action: "Searching labels",
-  tool_action: "Using a tool",
-};
 
 export interface CitationType {
   description?: string;
@@ -174,11 +144,7 @@ export type BaseAgentMessageType = {
   status: AgentMessageStatus;
   content: string | null;
   chainOfThought: string | null;
-  error: {
-    code: string;
-    message: string;
-    metadata: Record<string, string | number | boolean> | null;
-  } | null;
+  error: ErrorContent | null;
 };
 
 export type AgentMessageType = BaseAgentMessageType & {
@@ -188,7 +154,7 @@ export type AgentMessageType = BaseAgentMessageType & {
   visibility: MessageVisibility;
   configuration: LightAgentConfigurationType;
   skipToolsValidation: boolean;
-  actions: AgentActionType[];
+  actions: MCPActionType[];
   rawContents: Array<{
     step: number;
     content: string;
@@ -205,7 +171,11 @@ export type LightAgentMessageType = BaseAgentMessageType & {
     canRead: boolean;
     requestedGroupIds: string[][];
   };
-  actions: BaseAgentActionType[];
+  actions: {
+    // TODO(2025-07-24 aubin): remove the type here.
+    type: "tool_action";
+    id: ModelId;
+  }[];
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
 };

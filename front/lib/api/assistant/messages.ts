@@ -1,17 +1,12 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-import { conversationIncludeFileTypesFromAgentMessageIds } from "@app/lib/actions/conversation/include_file";
-import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/actions/dust_app_run";
-import { mcpActionTypesFromAgentMessageIds } from "@app/lib/actions/mcp";
-import { processActionTypesFromAgentMessageIds } from "@app/lib/actions/process";
-import { searchLabelsActionTypesFromAgentMessageIds } from "@app/lib/actions/search_labels";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import { Authenticator } from "@app/lib/auth";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
@@ -21,12 +16,12 @@ import {
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
-  AgentActionType,
   AgentMessageType,
   ContentFragmentType,
   ConversationWithoutContentType,
@@ -40,7 +35,25 @@ import type {
   UserMessageType,
 } from "@app/types";
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
-import type { TextContentType } from "@app/types/assistant/agent_message_content";
+import type {
+  ReasoningContentType,
+  TextContentType,
+} from "@app/types/assistant/agent_message_content";
+
+export function getMaximalVersionAgentStepContent(
+  agentStepContents: AgentStepContentModel[]
+): AgentStepContentModel[] {
+  const maxVersionStepContents = agentStepContents.reduce((acc, current) => {
+    const key = `${current.step}-${current.index}`;
+    const existing = acc.get(key);
+    if (!existing || current.version > existing.version) {
+      acc.set(key, current);
+    }
+    return acc;
+  }, new Map<string, AgentStepContentModel>());
+
+  return Array.from(maxVersionStepContents.values());
+}
 
 async function batchRenderUserMessages(
   auth: Authenticator,
@@ -128,14 +141,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   const agentMessageIds = removeNulls(
     agentMessages.map((m) => m.agentMessageId || null)
   );
-  const [
-    agentConfigurations,
-    agentDustAppRunActions,
-    agentProcessActions,
-    agentConversationIncludeFileActions,
-    agentSearchLabelsActions,
-    agentMCPActions,
-  ] = await Promise.all([
+  const [agentConfigurations, agentMCPActions] = await Promise.all([
     (async () => {
       const agentConfigurationIds: Set<string> = agentMessages.reduce(
         (acc: Set<string>, m) => {
@@ -147,9 +153,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         },
         new Set<string>()
       );
-      const agents = await getAgentConfigurations({
-        auth,
-        agentsGetView: { agentIds: [...agentConfigurationIds] },
+      const agents = await getAgentConfigurations(auth, {
+        agentIds: [...agentConfigurationIds],
         variant: "extra_light",
       });
       if (agents.some((a) => !a)) {
@@ -157,17 +162,15 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       return agents as LightAgentConfigurationType[];
     })(),
-    (async () => dustAppRunTypesFromAgentMessageIds(auth, agentMessageIds))(),
-    (async () =>
-      processActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
-    (async () =>
-      conversationIncludeFileTypesFromAgentMessageIds(auth, {
-        agentMessageIds,
-      }))(),
-    (async () =>
-      searchLabelsActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
-    (async () =>
-      mcpActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
+    (async () => {
+      const agentStepContents =
+        await AgentStepContentResource.fetchByAgentMessages(auth, {
+          agentMessageIds,
+          includeMCPActions: true,
+          latestVersionsOnly: true,
+        });
+      return agentStepContents.map((sc) => sc.toJSON().mcpActions ?? []).flat();
+    })(),
   ]);
 
   if (!agentConfigurations) {
@@ -187,14 +190,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       const agentMessage = message.agentMessage;
 
-      const actions: AgentActionType[] = [
-        agentConversationIncludeFileActions,
-        agentDustAppRunActions,
-        agentProcessActions,
-        agentSearchLabelsActions,
-        agentMCPActions,
-      ]
-        .flat()
+      const actions = agentMCPActions
         .filter((a) => a.agentMessageId === agentMessage.id)
         .sort((a, b) => a.step - b.step);
 
@@ -238,14 +234,44 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           textContents.push({ step: content.step, content: content.content });
         }
       }
-      const contentParser = new AgentMessageContentParser(
-        agentConfiguration,
-        message.sId,
-        getDelimitersConfiguration({ agentConfiguration })
-      );
-      const parsedContent = await contentParser.parseContents(
-        textContents.map((r) => r.content.value)
-      );
+      const reasoningContents: Array<{
+        step: number;
+        content: ReasoningContentType;
+      }> = [];
+      for (const content of agentStepContents) {
+        if (content.content.type === "reasoning") {
+          reasoningContents.push({
+            step: content.step,
+            content: content.content,
+          });
+        }
+      }
+
+      const { content, chainOfThought } = await (async () => {
+        if (reasoningContents.length > 0) {
+          // don't use the content parser, we just use raw contents and native CoT
+          return {
+            content: textContents.map((c) => c.content.value).join(""),
+            chainOfThought: reasoningContents
+              .map((sc) => sc.content.value.reasoning)
+              .filter((r) => !!r)
+              .join("\n\n"),
+          };
+        } else {
+          const contentParser = new AgentMessageContentParser(
+            agentConfiguration,
+            message.sId,
+            getDelimitersConfiguration({ agentConfiguration })
+          );
+          const parsedContent = await contentParser.parseContents(
+            textContents.map((r) => r.content.value)
+          );
+          return {
+            content: parsedContent.content,
+            chainOfThought: parsedContent.chainOfThought,
+          };
+        }
+      })();
 
       const m = {
         id: message.id,
@@ -259,8 +285,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           messages.find((m) => m.id === message.parentId)?.sId ?? null,
         status: agentMessage.status,
         actions,
-        content: parsedContent.content,
-        chainOfThought: parsedContent.chainOfThought,
+        content,
+        chainOfThought,
         rawContents: textContents.map((c) => ({
           step: c.step,
           content: c.content.value,
@@ -415,6 +441,16 @@ async function fetchMessagesForPage(
       },
     ],
   });
+
+  // Filter to only keep the step content with the maximum version for each step and index combination.
+  for (const message of messages) {
+    if (message.agentMessage && message.agentMessage.agentStepContents) {
+      message.agentMessage.agentStepContents =
+        getMaximalVersionAgentStepContent(
+          message.agentMessage.agentStepContents
+        );
+    }
+  }
 
   return {
     hasMore,

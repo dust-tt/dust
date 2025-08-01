@@ -1,4 +1,4 @@
-import { Page, useSendNotification } from "@dust-tt/sparkle";
+import { Page } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
@@ -16,6 +16,7 @@ import {
 } from "@app/components/assistant/conversation/lib";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
@@ -60,6 +61,10 @@ export function ConversationContainer({
   const { scrollConversationsToTop } = useConversationsNavigation();
 
   const router = useRouter();
+
+  // TODO(DURABLE_AGENT 2025-07-22): Remove this once we have a proper way to handle
+  // asynchronous loops.
+  const { async } = router.query;
 
   const sendNotification = useSendNotification();
 
@@ -129,6 +134,7 @@ export function ConversationContainer({
             user,
             conversationId: activeConversationId,
             messageData,
+            forceAsync: async === "true",
           });
 
           // Replace placeholder message with API response.
@@ -218,6 +224,7 @@ export function ConversationContainer({
           contentFragments,
           clientSideMCPServerIds: removeNulls([serverId]),
         },
+        forceAsync: async === "true",
       });
 
       setIsSubmitting(false);
@@ -252,14 +259,15 @@ export function ConversationContainer({
       }
     },
     [
+      async,
       isSubmitting,
-      owner,
-      user,
-      sendNotification,
-      router,
       mutateConversations,
+      owner,
+      router,
       scrollConversationsToTop,
+      sendNotification,
       serverId,
+      user,
     ]
   );
 

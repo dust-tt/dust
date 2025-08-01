@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { usePlatform } from "@app/shared/context/PlatformContext";
 import { retryMessage } from "@app/shared/lib/conversation";
 import type { StoredUser } from "@app/shared/services/auth";
@@ -18,29 +17,20 @@ import {
   getCiteDirective,
 } from "@app/ui/components/markdown/CiteBlock";
 import type { MarkdownCitation } from "@app/ui/components/markdown/MarkdownCitation";
-import { getCitationIcon } from "@app/ui/components/markdown/MarkdownCitation";
 import {
   MentionBlock,
   mentionDirective,
 } from "@app/ui/components/markdown/MentionBlock";
 import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
 import { useEventSource } from "@app/ui/hooks/useEventSource";
-import { useTheme } from "@app/ui/hooks/useTheme";
 import type {
   AgentMessagePublicType,
   LightWorkspaceType,
-  RetrievalDocumentPublicType,
   SearchResultResourceType,
-  WebsearchActionPublicType,
-  WebsearchResultPublicType,
   WebsearchResultResourceType,
-  WorkspaceType,
 } from "@dust-tt/client";
 import {
   assertNever,
-  getProviderFromRetrievedDocument,
-  getTitleFromRetrievedDocument,
-  isMCPActionType,
   isSearchResultResourceType,
   isWebsearchResultResourceType,
   removeNulls,
@@ -59,6 +49,7 @@ import {
   DocumentPileIcon,
   DocumentTextIcon,
   EyeIcon,
+  InformationCircleIcon,
   Markdown,
   Page,
   Popover,
@@ -74,7 +65,6 @@ import {
   useState,
 } from "react";
 import type { Components } from "react-markdown";
-import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { visit } from "unist-util-visit";
 
@@ -83,13 +73,7 @@ function cleanUpCitations(message: string): string {
   return message.replace(regex, "");
 }
 
-export const FeedbackSelectorPopoverContent = ({
-  owner,
-  agentMessageToRender,
-}: {
-  owner: WorkspaceType;
-  agentMessageToRender: AgentMessagePublicType;
-}) => {
+export const FeedbackSelectorPopoverContent = () => {
   return (
     <div className="mb-4 mt-2 flex flex-col gap-2">
       <Page.P variant="secondary">
@@ -110,21 +94,6 @@ export function visualizationDirective() {
         };
       }
     });
-  };
-}
-
-export function makeDocumentCitation(
-  document: RetrievalDocumentPublicType,
-  isDark?: boolean
-): MarkdownCitation {
-  const IconComponent = getCitationIcon(
-    getProviderFromRetrievedDocument(document),
-    isDark
-  );
-  return {
-    href: document.sourceUrl ?? undefined,
-    title: getTitleFromRetrievedDocument(document),
-    icon: <IconComponent />,
   };
 }
 
@@ -181,7 +150,6 @@ export function AgentMessage({
 }: AgentMessageProps) {
   const platform = usePlatform();
   const sendNotification = useSendNotification();
-  const { theme } = useTheme();
 
   const [messageStreamState, dispatch] = useReducer(
     messageReducer,
@@ -220,10 +188,6 @@ export function AgentMessage({
         assertNever(messageStreamState.message.status);
     }
   })();
-
-  const [lastTokenClassification, setLastTokenClassification] = useState<
-    null | "tokens" | "chain_of_thought"
-  >(null);
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
@@ -372,7 +336,6 @@ export function AgentMessage({
   useEffect(() => {
     // MCP search actions
     const allMCPSearchResources = agentMessageToRender.actions
-      .filter((a) => isMCPActionType(a))
       .map((a) =>
         a.output?.filter(isSearchResultResourceType).map((o) => o.resource)
       )
@@ -387,7 +350,6 @@ export function AgentMessage({
 
     // MCP websearch actions
     const allMCPWebSearchResources = agentMessageToRender.actions
-      .filter((a) => isMCPActionType(a))
       .map((a) =>
         a.output?.filter(isWebsearchResultResourceType).map((o) => o.resource)
       )
@@ -404,7 +366,6 @@ export function AgentMessage({
 
     // Merge all references
     setReferences({
-      ...allWebReferences,
       ...allMCPSearchReferences,
       ...allMCPWebSearchReferences,
     });
@@ -417,7 +378,7 @@ export function AgentMessage({
 
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
-      visualization: (props: ReactMarkdownProps) => (
+      visualization: () => (
         <div className="w-full flex justify-center">
           <Button
             label="See visualization on Dust website"
@@ -446,13 +407,8 @@ export function AgentMessage({
   );
 
   const PopoverContent = useCallback(
-    () => (
-      <FeedbackSelectorPopoverContent
-        owner={owner}
-        agentMessageToRender={agentMessageToRender}
-      />
-    ),
-    [owner, agentMessageToRender]
+    () => <FeedbackSelectorPopoverContent />,
+    []
   );
 
   const buttons =
@@ -522,7 +478,8 @@ export function AgentMessage({
           agentMessage: agentMessageToRender,
           references: references,
           streaming: shouldStream,
-          lastTokenClassification: lastTokenClassification,
+          lastTokenClassification:
+            messageStreamState.agentState === "thinking" ? "tokens" : null,
         })}
       </div>
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
@@ -548,6 +505,7 @@ export function AgentMessage({
             agentMessage.error || {
               message: "Unexpected Error",
               code: "unexpected_error",
+              metadata: {},
             }
           }
           retryHandler={async () => retryHandler(agentMessage)}
@@ -653,37 +611,55 @@ function ErrorMessage({
   error,
   retryHandler,
 }: {
-  error: { code: string; message: string };
+  error: NonNullable<AgentMessagePublicType["error"]>;
   retryHandler: () => void;
 }) {
-  const fullMessage =
-    "ERROR: " + error.message + (error.code ? ` (code: ${error.code})` : "");
+  const errorIsRetryable =
+    error.metadata?.category === "retryable_model_error" ||
+    error.metadata?.category === "stream_error";
+
+  const debugInfo = [
+    error.metadata?.category ? `category: ${error.metadata?.category}` : "",
+    error.code ? `code: ${error.code}` : "",
+  ]
+    .filter((s) => s.length > 0)
+    .join(", ");
 
   const { submit: retry, isSubmitting: isRetrying } = useSubmitFunction(
     async () => retryHandler()
   );
 
   return (
-    <div className="flex flex-col gap-9">
-      <div className="flex flex-col gap-1 sm:flex-row">
-        <Chip
-          color="warning"
-          label={"ERROR: " + shortText(error.message)}
+    <ContentMessage
+      title={`${error.metadata?.errorTitle || "Agent error"}`}
+      variant={errorIsRetryable ? "golden" : "warning"}
+      className="flex flex-col gap-3"
+      icon={InformationCircleIcon}
+    >
+      <div className="whitespace-normal break-words">{error.message}</div>
+      <div className="flex flex-row gap-2 pt-3">
+        <Button
+          variant="outline"
           size="xs"
+          icon={ArrowPathIcon}
+          label="Retry"
+          onClick={retry}
+          disabled={isRetrying}
         />
         <Popover
+          popoverTriggerAsChild
           trigger={
             <Button
-              variant="ghost"
+              variant="outline"
               size="xs"
               icon={EyeIcon}
-              label="See the error"
+              label="Details"
             />
           }
           content={
             <div className="flex flex-col gap-3">
-              <div className="text-sm font-normal text-warning-800">
-                {fullMessage}
+              <div className="whitespace-normal text-sm font-normal text-warning">
+                {debugInfo}
               </div>
               <div className="self-end">
                 <Button
@@ -692,7 +668,9 @@ function ErrorMessage({
                   icon={DocumentPileIcon}
                   label={"Copy"}
                   onClick={() =>
-                    void navigator.clipboard.writeText(fullMessage)
+                    void navigator.clipboard.writeText(
+                      error.message + (debugInfo ? ` (${debugInfo})` : "")
+                    )
                   }
                 />
               </div>
@@ -700,20 +678,6 @@ function ErrorMessage({
           }
         />
       </div>
-      <div>
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={ArrowPathIcon}
-          label="Retry"
-          onClick={retry}
-          disabled={isRetrying}
-        />
-      </div>
-    </div>
+    </ContentMessage>
   );
-}
-
-function shortText(text: string, maxLength = 30) {
-  return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
 }

@@ -57,7 +57,9 @@ export const getProviderStatusMemoized = cacheWithRedis(
   },
   // Caches data for 2 minutes to limit frequent API calls.
   // Status page rate limit is pretty aggressive.
-  2 * 60 * 1000
+  {
+    ttlMs: 2 * 60 * 1000,
+  }
 );
 
 export const getDustStatusMemoized = cacheWithRedis(
@@ -67,5 +69,7 @@ export const getDustStatusMemoized = cacheWithRedis(
   },
   // Caches data for 2 minutes to limit frequent API calls.
   // Status page rate limit is pretty aggressive.
-  2 * 60 * 1000
+  {
+    ttlMs: 2 * 60 * 1000,
+  }
 );

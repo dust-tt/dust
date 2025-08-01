@@ -461,6 +461,8 @@ export const isExtractResultResourceType = (
  * Notification output types.
  */
 
+// Image.
+
 const NotificationImageContentSchema = z.object({
   type: z.literal("image"),
   mimeType: z.string(),
@@ -472,6 +474,26 @@ export function isImageProgressOutput(
   output: ProgressNotificationOutput
 ): output is ImageProgressOutput {
   return output !== undefined && output.type === "image";
+}
+
+// Interactive file.
+
+export const NotificationInteractiveFileContentSchema = z.object({
+  type: z.literal("interactive_file"),
+  fileId: z.string(),
+  mimeType: z.string(),
+  title: z.string(),
+  updatedAt: z.string(),
+});
+
+type InteractiveFileContentOutput = z.infer<
+  typeof NotificationInteractiveFileContentSchema
+>;
+
+export function isInteractiveFileContentOutput(
+  output: ProgressNotificationOutput
+): output is InteractiveFileContentOutput {
+  return output !== undefined && output.type === "interactive_file";
 }
 
 const NotificationTextContentSchema = z.object({
@@ -501,8 +523,9 @@ export function isRunAgentProgressOutput(
 export const ProgressNotificationOutputSchema = z
   .union([
     NotificationImageContentSchema,
-    NotificationTextContentSchema,
+    NotificationInteractiveFileContentSchema,
     NotificationRunAgentContentSchema,
+    NotificationTextContentSchema,
   ])
   .optional();
 

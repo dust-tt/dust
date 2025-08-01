@@ -12,6 +12,7 @@ import type {
   ResourceLogJSON,
 } from "@app/lib/resources/base_resource";
 import type { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/types";
+import { normalizeError } from "@app/types";
 
 import logger from "./logger";
 import { statsDClient } from "./statsDClient";
@@ -90,6 +91,7 @@ export function withLogging<T>(
       });
     } catch (err) {
       const elapsed = new Date().getTime() - now.getTime();
+      const error = normalizeError(err);
       logger.error(
         {
           commitHash,
@@ -102,8 +104,15 @@ export function withLogging<T>(
           sessionId,
           streaming,
           url: req.url,
-          // @ts-expect-error best effort to get err.stack if it exists
-          error_stack: err?.stack,
+          error_stack: error.stack,
+          ...(error.stack
+            ? {
+                error: {
+                  message: error.message || "unknown",
+                  stack: error.stack,
+                },
+              }
+            : {}),
           workspaceId,
           ...req.logContext,
         },
@@ -167,14 +176,19 @@ export function apiError<T>(
   apiError: APIErrorWithStatusCode,
   error?: Error
 ): void {
+  const callstack = new Error().stack;
   logger.error(
     {
       method: req.method,
       url: req.url,
       statusCode: apiError.status_code,
       apiError: apiError,
-      error: error,
-      apiErrorHandlerCallStack: new Error().stack,
+      error: error || {
+        message: apiError.api_error.message,
+        kind: apiError.api_error.type,
+        stack: callstack,
+      },
+      apiErrorHandlerCallStack: callstack,
     },
     "API Error"
   );
@@ -256,6 +270,7 @@ export function withGetServerSidePropsLogging<
       return res;
     } catch (err) {
       const elapsed = new Date().getTime() - now.getTime();
+      const error = normalizeError(err);
 
       logger.error(
         {
@@ -263,9 +278,11 @@ export function withGetServerSidePropsLogging<
           durationMs: elapsed,
           url: context.resolvedUrl,
           route,
-          error: err,
-          // @ts-expect-error best effort to get err.stack if it exists
-          error_stack: err?.stack,
+          error: {
+            message: error.message,
+            stack: error.stack,
+          },
+          error_stack: error.stack,
         },
         "Unhandled getServerSideProps Error"
       );

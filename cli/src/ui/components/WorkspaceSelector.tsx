@@ -2,8 +2,8 @@ import type { WorkspaceType } from "@dust-tt/client";
 import { Box, Text } from "ink";
 import SelectInput from "ink-select-input";
 import Spinner from "ink-spinner";
-import type { FC} from "react";
-import React, { useCallback,useEffect, useState } from "react";
+import type { FC } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { getDustClient } from "../../utils/dustClient.js";
 import TokenStorage from "../../utils/tokenStorage.js";
@@ -28,8 +28,13 @@ const WorkspaceSelector: FC<WorkspaceSelectorProps> = ({ onComplete }) => {
       try {
         setIsLoading(true);
 
-        const client = await getDustClient();
+        const clientRes = await getDustClient();
+        if (clientRes.isErr()) {
+          setError(clientRes.error.message);
+          return;
+        }
 
+        const client = clientRes.value;
         if (!client) {
           setError(
             "Failed to initialize the API client. Please authenticate first using `dust login`."

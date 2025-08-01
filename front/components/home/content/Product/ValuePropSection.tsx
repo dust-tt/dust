@@ -31,7 +31,7 @@ export function ValuePropSection() {
           <div className="order-2 w-full md:order-2 md:w-1/2">
             <div className="flex flex-col gap-3">
               <H3 className="text-foreground">
-                Create AI Agents in seconds,<br></br> no consultants needed
+                Create AI Agents in seconds<br></br>
               </H3>
               <P size="md" className="text-muted-foreground">
                 Build powerful AI agents without code. Connect them to your

@@ -7,14 +7,11 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 
-import { getActionSpecification } from "@app/components/actions/types";
+import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
+import type { MCPActionType } from "@app/lib/actions/mcp";
 import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";
-import type {
-  AgentActionType,
-  LightAgentMessageType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
 
 interface AgentMessageActionsDrawerProps {
   conversationId: string;
@@ -45,7 +42,7 @@ export function AgentMessageActionsDrawer({
     fullAgentMessage?.type === "agent_message" ? fullAgentMessage.actions : [];
 
   const groupedActionsByStep = actions
-    ? actions.reduce<Record<number, AgentActionType[]>>((acc, current) => {
+    ? actions.reduce<Record<number, MCPActionType[]>>((acc, current) => {
         const currentStep = current.step + 1;
         return {
           ...acc,
@@ -83,16 +80,11 @@ export function AgentMessageActionsDrawer({
                     Step {step}
                   </p>
                   {actions.map((action, idx) => {
-                    const actionSpecification = getActionSpecification(
-                      action.type
-                    );
                     const lastNotification =
                       actionProgress.get(action.id)?.progress ?? null;
-                    const ActionDetailsComponent =
-                      actionSpecification.detailsComponent;
                     return (
                       <div key={`action-${action.id}`}>
-                        <ActionDetailsComponent
+                        <MCPActionDetails
                           action={action}
                           lastNotification={lastNotification}
                           defaultOpen={idx === 0 && step === "1"}

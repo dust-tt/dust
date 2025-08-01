@@ -9,8 +9,9 @@ import type {
   RemoteDBTable,
   RemoteDBTree,
 } from "@connectors/lib/remote_databases/utils";
-import logger from "@connectors/logger/logger";
+import type { Logger } from "@connectors/logger/logger";
 import type { BigQueryCredentialsWithLocation } from "@connectors/types";
+import { isBigqueryPermissionsError } from "@connectors/types/bigquery";
 
 const MAX_TABLES_PER_SCHEMA = 1000;
 type TestConnectionErrorCode = "INVALID_CREDENTIALS" | "UNKNOWN";
@@ -64,6 +65,10 @@ export function connectToBigQuery(
     credentials,
     scopes: ["https://www.googleapis.com/auth/bigquery.readonly"],
     location: credentials.location,
+    retryOptions: {
+      autoRetry: true,
+      maxRetries: 3,
+    },
   });
 }
 
@@ -85,14 +90,24 @@ export const fetchDatabases = ({
 export const fetchDatasets = async ({
   credentials,
   connection,
+  logger,
 }: {
   credentials: BigQueryCredentialsWithLocation;
   connection?: BigQuery;
+  logger?: Logger;
 }): Promise<Result<Array<RemoteDBSchema>, Error>> => {
   const conn = connection ?? connectToBigQuery(credentials);
   try {
     const r = await conn.getDatasets();
     const datasets = r[0];
+    if (logger) {
+      logger.info(
+        {
+          datasetsCount: datasets.length,
+        },
+        "[BigQuery] fetchDatasets"
+      );
+    }
     return new Ok(
       removeNulls(
         datasets.map((dataset) => {
@@ -129,11 +144,13 @@ export const fetchTables = async ({
   dataset,
   fetchTablesDescription,
   connection,
+  logger,
 }: {
   credentials: BigQueryCredentialsWithLocation;
   dataset: string;
   fetchTablesDescription: boolean;
   connection?: BigQuery;
+  logger?: Logger;
 }): Promise<Result<Array<RemoteDBTable>, Error>> => {
   const conn = connection ?? connectToBigQuery(credentials);
   try {
@@ -143,9 +160,16 @@ export const fetchTables = async ({
     }
 
     // Get the dataset specified by the schema
-    const d = await conn.dataset(dataset);
+    const d = conn.dataset(dataset);
     const r = await d.getTables();
     const tables = r[0];
+    logger?.info(
+      {
+        tablesCount: tables.length,
+        dataset,
+      },
+      "[BigQuery] dataset.getTables"
+    );
 
     const remoteDBTables: RemoteDBTable[] = removeNulls(
       await concurrentExecutor(
@@ -155,13 +179,46 @@ export const fetchTables = async ({
             return null;
           }
           if (fetchTablesDescription) {
-            const metadata = await table.getMetadata();
-            return {
-              name: table.id!,
-              database_name: credentials.project_id,
-              schema_name: dataset,
-              description: metadata[0].description,
-            };
+            try {
+              const metadata = await table.getMetadata();
+              logger?.info(
+                {
+                  dataset,
+                  table: table.id,
+                },
+                "[BigQuery] table.getMetadata"
+              );
+              return {
+                name: table.id!,
+                database_name: credentials.project_id,
+                schema_name: dataset,
+                description: metadata[0].description,
+              };
+            } catch (error) {
+              // Handle BigQuery permission errors gracefully
+              if (isBigqueryPermissionsError(error)) {
+                const errorMessage =
+                  error &&
+                  typeof error === "object" &&
+                  "message" in error &&
+                  typeof error.message === "string"
+                    ? error.message
+                    : "Permission denied";
+                logger?.warn(
+                  {
+                    projectId: credentials.project_id,
+                    dataset,
+                    table: table.id,
+                    error: errorMessage,
+                  },
+                  "[BigQuery] Permission denied accessing table metadata, skipping table"
+                );
+                // Skip tables when we lack permissions
+                return null;
+              }
+              // Re-throw other errors
+              throw error;
+            }
           } else {
             return {
               name: table.id!,
@@ -171,7 +228,7 @@ export const fetchTables = async ({
           }
         },
         {
-          concurrency: 10,
+          concurrency: 4,
         }
       )
     );
@@ -185,59 +242,65 @@ export const fetchTables = async ({
 export const fetchTree = async ({
   credentials,
   fetchTablesDescription,
+  logger,
 }: {
   credentials: BigQueryCredentialsWithLocation;
   fetchTablesDescription: boolean;
+  logger: Logger;
 }): Promise<Result<RemoteDBTree, Error>> => {
-  const databases = await fetchDatabases({ credentials });
+  const databases = fetchDatabases({ credentials });
 
-  const schemasRes = await fetchDatasets({ credentials });
+  const schemasRes = await fetchDatasets({ credentials, logger });
   if (schemasRes.isErr()) {
     return schemasRes;
   }
   const schemas = schemasRes.value;
 
   const tree = {
-    databases: await Promise.all(
-      databases.map(async (db) => {
+    databases: await concurrentExecutor(
+      databases,
+      async (db) => {
         return {
           ...db,
-          schemas: await Promise.all(
-            schemas
-              .filter((s) => s.database_name === db.name)
-              .map(async (schema) => {
-                const tablesRes = await fetchTables({
-                  credentials,
-                  dataset: schema.name,
-                  fetchTablesDescription,
-                });
-                if (tablesRes.isErr()) {
-                  throw tablesRes.error;
-                }
-                const tables = tablesRes.value;
+          schemas: await concurrentExecutor(
+            schemas.filter((s) => s.database_name === db.name),
+            async (schema) => {
+              const tablesRes = await fetchTables({
+                credentials,
+                dataset: schema.name,
+                fetchTablesDescription,
+                logger,
+              });
+              if (tablesRes.isErr()) {
+                throw tablesRes.error;
+              }
+              const tables = tablesRes.value;
 
-                // Do not store if too many tables, the sync will be too long and it's quite likely that these are useless tables.
-                if (tables.length > MAX_TABLES_PER_SCHEMA) {
-                  logger.warn(
-                    `[BigQuery] Skipping schema ${schema.name} with ${tables.length} tables because it has more than ${MAX_TABLES_PER_SCHEMA} tables.`
-                  );
-                  return {
-                    name:
-                      schema.name +
-                      ` (sync skipped: exceeded ${MAX_TABLES_PER_SCHEMA} tables limit)`,
-                    database_name: credentials.project_id,
-                    tables: [],
-                  };
-                }
-
+              // Do not store if too many tables, the sync will be too long and it's quite likely that these are useless tables.
+              if (tables.length > MAX_TABLES_PER_SCHEMA) {
+                logger.warn(
+                  `[BigQuery] Skipping schema ${schema.name} with ${tables.length} tables because it has more than ${MAX_TABLES_PER_SCHEMA} tables.`
+                );
                 return {
-                  ...schema,
-                  tables,
+                  name:
+                    schema.name +
+                    ` (sync skipped: exceeded ${MAX_TABLES_PER_SCHEMA} tables limit)`,
+                  database_name: credentials.project_id,
+                  tables: [],
                 };
-              })
+              }
+
+              return {
+                ...schema,
+                tables,
+              };
+            },
+            { concurrency: 4 }
           ),
         };
-      })
+      },
+      // There's only one database in BigQuery, so we can use concurrency 1.
+      { concurrency: 1 }
     ),
   };
 

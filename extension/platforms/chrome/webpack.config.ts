@@ -41,6 +41,12 @@ export const getConfig = async ({
   shouldBuild: "none" | "prod" | "analyze";
 }): Promise<Configuration> => {
   const isDevelopment = env === "development";
+  if (!isDevelopment && !process.env.DATADOG_CLIENT_TOKEN) {
+    throw new Error(
+      "❌ DATADOG_CLIENT_TOKEN=[Chrome extension logs collection token] must be set when building for production or release.\n" +
+        "The token can be found on https://app.datadoghq.eu/organization-settings/client-tokens"
+    );
+  }
   const baseManifestPath = resolvePath("./manifests/manifest.base.json");
   const envManifestPath = resolvePath(`./manifests/manifest.${env}.json`);
 
@@ -143,6 +149,8 @@ export const getConfig = async ({
       new webpack.EnvironmentPlugin({
         VERSION: version,
         COMMIT_HASH: getCommitHash(),
+        DATADOG_CLIENT_TOKEN: process.env.DATADOG_CLIENT_TOKEN || "",
+        DATADOG_ENV: isDevelopment ? "dev" : "prod",
       }),
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],

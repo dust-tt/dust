@@ -37,6 +37,23 @@ export function getUserNicknameFromEmail(email: string) {
   return email.split("@")[0] ?? "";
 }
 
+export function getDomainCookieClauseFromRequest(
+  req: NextApiRequest | GetServerSidePropsContext["req"]
+) {
+  // Get domain from request URL, falling back to host header if not available
+  const host = req.headers.host;
+  if (host) {
+    const [hostName] = host.split(":");
+
+    if (hostName.endsWith("dust.tt")) {
+      return "dust.tt";
+    }
+
+    return hostName;
+  }
+  return "";
+}
+
 export async function getWorkOSSession(
   req: NextApiRequest | GetServerSidePropsContext["req"],
   res: NextApiResponse | GetServerSidePropsContext["res"]
@@ -44,12 +61,23 @@ export async function getWorkOSSession(
   const workOSSessionCookie = req.cookies["workos_session"];
   if (workOSSessionCookie) {
     const result = await getWorkOSSessionFromCookie(workOSSessionCookie);
-
+    const domain = getDomainCookieClauseFromRequest(req);
     if (result.cookie === "") {
-      res.setHeader("Set-Cookie", [
-        "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
-        "sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
-      ]);
+      if (domain) {
+        res.setHeader("Set-Cookie", [
+          "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
+          `workos_session=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+          `workos_session=; Domain=.${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+          "sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
+          `sessionType=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+          `sessionType=; Domain=.${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+        ]);
+      } else {
+        res.setHeader("Set-Cookie", [
+          "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax",
+          "sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
+        ]);
+      }
     } else if (result.cookie) {
       res.setHeader("Set-Cookie", [
         `workos_session=${result.cookie}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
@@ -98,9 +126,10 @@ const getRefreshedCookie = cacheWithRedis(
   (workOSSessionCookie) => {
     return `workos_session_refresh:${sha256(workOSSessionCookie)}`;
   },
-  60 * 10 * 1000,
-  undefined,
-  true
+  {
+    ttlMs: 60 * 10 * 1000,
+    useDistributedLock: true,
+  }
 );
 
 export async function getWorkOSSessionFromCookie(
@@ -168,7 +197,6 @@ export async function getWorkOSSessionFromCookie(
           auth0Sub: null,
           workOSUserId: r.user.id,
         },
-        // TODO(workos): Should we resolve the workspaceId and remove organizationId from here?
         organizationId,
         workspaceId,
         isSSO: authenticationMethod?.toLowerCase() === "sso",

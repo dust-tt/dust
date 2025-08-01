@@ -14,6 +14,7 @@ import {
   navigationMenuTriggerStyle,
 } from "@app/components/home/menu/NavigationMenu";
 import { classNames } from "@app/lib/utils";
+import { appendUTMParams } from "@app/lib/utils/utm";
 
 export function MainNavigation() {
   return (
@@ -24,7 +25,9 @@ export function MainNavigation() {
             <NavigationMenuItem key={index}>
               {item.href ? (
                 <Link
-                  href={item.href}
+                  href={
+                    item.isExternal ? item.href : appendUTMParams(item.href)
+                  }
                   target={item.isExternal ? "_blank" : undefined}
                   legacyBehavior
                   passHref
@@ -90,7 +93,7 @@ const ListItem = React.forwardRef<
             "label-base block cursor-pointer select-none space-y-1 text-foreground no-underline outline-none transition-colors hover:text-highlight hover:underline hover:underline-offset-4 active:text-highlight-600",
             className
           )}
-          href={href}
+          href={isExternal ? href : appendUTMParams(href)}
           target={isExternal ? "_blank" : undefined}
           shallow={!isExternal}
           {...props}

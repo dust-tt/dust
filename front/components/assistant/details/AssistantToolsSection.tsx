@@ -1,18 +1,16 @@
-import { Avatar, BarChartIcon, CommandIcon, ScanIcon } from "@dust-tt/sparkle";
+import { Avatar, BarChartIcon, CommandIcon } from "@dust-tt/sparkle";
 import _ from "lodash";
 
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   getMcpServerDisplayName,
   getServerTypeAndIdFromSId,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
-  isDustAppRunConfiguration,
   isMCPServerConfiguration,
-  isProcessConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
@@ -35,7 +33,7 @@ interface AssistantToolsSectionProps {
 // We use the `hidden_dust_search_` prefix to identify these additional searches.
 const isHiddenDustAction = (
   agentConfiguration: AgentConfigurationType,
-  action: AgentActionConfigurationType
+  action: MCPServerConfigurationType
 ) => {
   const isDustGlobalAgent = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
   return isDustGlobalAgent && action.name.startsWith("hidden_dust_search_");
@@ -120,22 +118,10 @@ export function AssistantToolsSection({
 }
 
 function renderOtherAction(
-  action: AgentActionConfigurationType,
+  action: MCPServerConfigurationType,
   mcpServers: MCPServerTypeWithViews[]
 ) {
-  if (isDustAppRunConfiguration(action)) {
-    return {
-      title: action.name,
-      avatar: <Avatar icon={CommandIcon} size="xs" />,
-      order: 2,
-    };
-  } else if (isProcessConfiguration(action)) {
-    return {
-      title: "Extract from documents",
-      avatar: <Avatar icon={ScanIcon} size="xs" />,
-      order: 0,
-    };
-  } else if (isServerSideMCPServerConfiguration(action)) {
+  if (isServerSideMCPServerConfiguration(action)) {
     const mcpServer = mcpServers.find((s) =>
       s.views.some((v) => v.sId === action.mcpServerViewId)
     );

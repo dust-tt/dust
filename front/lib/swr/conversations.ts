@@ -1,8 +1,8 @@
-import { useSendNotification } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { deleteConversation } from "@app/components/assistant/conversation/lib";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
 import {
@@ -225,12 +225,16 @@ export function useVisualizationRetry({
   conversationId,
   agentConfigurationId,
 }: {
-  workspaceId: string;
-  conversationId: string;
-  agentConfigurationId: string;
+  workspaceId: string | null;
+  conversationId: string | null;
+  agentConfigurationId: string | null;
 }) {
   const handleVisualizationRetry = useCallback(
     async (errorMessage: string) => {
+      if (!conversationId || !agentConfigurationId) {
+        return false;
+      }
+
       try {
         const response = await fetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages`,
@@ -266,6 +270,12 @@ export function useVisualizationRetry({
     },
     [workspaceId, conversationId, agentConfigurationId]
   );
+
+  if (!agentConfigurationId) {
+    return () => {
+      return false;
+    };
+  }
 
   return handleVisualizationRetry;
 }

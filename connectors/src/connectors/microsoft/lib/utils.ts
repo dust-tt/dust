@@ -102,7 +102,9 @@ export const getCachedListColumns = cacheWithRedis(
   ({ siteId, listId }) => {
     return `${siteId}-${listId}`;
   },
-  60 * 10 * 1000 // 10 minutes
+  {
+    ttlMs: 60 * 10 * 1000, // 10 minutes
+  }
 );
 
 export async function _getListColumns({

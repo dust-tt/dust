@@ -1,6 +1,5 @@
 import type { AgentActionPublicType } from "@dust-tt/client";
 import {
-  isMCPActionType,
   isSearchResultResourceType,
   isWebsearchResultResourceType,
 } from "@dust-tt/client";
@@ -26,7 +25,7 @@ export function annotateCitations(
   } = {};
 
   for (const action of actions) {
-    if (action && isMCPActionType(action) && action.output) {
+    if (action && action.output) {
       // Handle MCP search results
       action.output?.filter(isSearchResultResourceType).forEach((o) => {
         if (o.type === "resource" && o.resource.ref) {

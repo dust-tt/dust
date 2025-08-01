@@ -74,15 +74,11 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 
   getContentFragmentType(): ContentFragmentType["contentFragmentType"] {
-    if (this.fileId) {
-      return "file";
-    }
-
-    if (this.nodeId) {
+    if (this.nodeType) {
       return "content_node";
     }
 
-    throw new Error(`Invalid content fragment type (sId: ${this.sId})`);
+    return "file";
   }
 
   static async makeNew(
@@ -681,7 +677,7 @@ export async function renderLightContentFragmentForModel(
               attachment,
               content:
                 "[Image content interpreted by a vision-enabled model. " +
-                "Description not available in this context.]",
+                "Description not available in this context.",
             }),
           },
         ],
@@ -699,6 +695,12 @@ export async function renderLightContentFragmentForModel(
           image_url: {
             url: signedUrl,
           },
+        },
+        {
+          type: "text",
+          text: renderAttachmentXml({
+            attachment,
+          }),
         },
       ],
     };

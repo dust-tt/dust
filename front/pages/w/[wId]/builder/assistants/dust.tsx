@@ -7,15 +7,15 @@ import {
   PlusIcon,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import {
@@ -211,11 +211,11 @@ export default function EditDustAssistant({
   };
 
   return (
-    <AppContentLayout
+    <AppCenteredLayout
       subscription={subscription}
       hideSidebar
       owner={owner}
-      titleChildren={
+      title={
         <AppLayoutSimpleCloseTitle
           title="Manage Dust Agent"
           onClose={async () => {
@@ -224,7 +224,6 @@ export default function EditDustAssistant({
         />
       }
     >
-      <div className="h-12" />
       <Page.Header
         title="Dust Agent"
         icon={DustLogoSquare}
@@ -322,7 +321,7 @@ export default function EditDustAssistant({
           ) : null}
         </div>
       </div>
-    </AppContentLayout>
+    </AppCenteredLayout>
   );
 }
 

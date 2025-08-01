@@ -10,7 +10,6 @@ import {
   InformationCircleIcon,
   PlusIcon,
   Tooltip,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React, { useContext, useMemo, useState } from "react";
@@ -20,6 +19,7 @@ import { confirmPrivateNodesSync } from "@app/components/data_source/ConnectorPe
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import {

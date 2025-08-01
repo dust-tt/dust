@@ -1,6 +1,6 @@
-import { useSendNotification } from "@dust-tt/sparkle";
 import type { Fetcher } from "swr";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   fetcher,
   getErrorFromResponse,

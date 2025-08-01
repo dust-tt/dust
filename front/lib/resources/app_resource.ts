@@ -4,7 +4,7 @@ import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { DatasetResource } from "@app/lib/resources/dataset_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
@@ -111,20 +111,19 @@ export class AppResource extends ResourceWithSpace<AppModel> {
   async getUsagesByAgents(auth: Authenticator) {
     const owner = auth.getNonNullableWorkspace();
 
-    const dustAppRunConfigurations = await AgentDustAppRunConfiguration.findAll(
-      {
-        where: {
-          appId: this.sId,
-          workspaceId: owner.id,
-        },
-      }
-    );
+    const mcpConfigurations = await AgentMCPServerConfiguration.findAll({
+      where: {
+        appId: this.sId,
+        workspaceId: owner.id,
+      },
+    });
+
     const agentConfigurations = await AgentConfiguration.findAll({
       where: {
         workspaceId: owner.id,
         status: "active",
         id: {
-          [Op.in]: dustAppRunConfigurations.map((c) => c.agentConfigurationId),
+          [Op.in]: mcpConfigurations.map((c) => c.agentConfigurationId),
         },
       },
     });

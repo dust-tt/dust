@@ -1,4 +1,5 @@
 import {
+  cn,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -8,10 +9,13 @@ import React, { useMemo } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
-import { CoEditionContainer } from "@app/components/assistant/conversation/co_edition/CoEditionContainer";
 import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
-import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
+import { InteractiveContentContainer } from "@app/components/assistant/conversation/content/InteractiveContentContainer";
+import {
+  InteractiveContentProvider,
+  useInteractiveContentContext,
+} from "@app/components/assistant/conversation/content/InteractiveContentContext";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
   ConversationsNavigationProvider,
@@ -29,6 +33,7 @@ import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
+  ConversationError,
   ConversationType,
   LightWorkspaceType,
   SubscriptionType,
@@ -134,57 +139,48 @@ const ConversationLayoutContent = ({
   return (
     <InputBarProvider>
       <AppContentLayout
+        hasTitle={!!activeConversationId}
         subscription={subscription}
         owner={owner}
-        isWideMode
         pageTitle={
           conversation?.title
             ? `Dust - ${conversation?.title}`
             : `Dust - New Conversation`
         }
-        noSidePadding
-        titleChildren={
-          activeConversationId && (
-            <ConversationTitle owner={owner} baseUrl={baseUrl} />
-          )
-        }
-        hasTopPadding={false}
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
-        {conversationError ? (
-          <ConversationErrorDisplay error={conversationError} />
-        ) : (
-          <>
-            <AssistantDetails
+        <AssistantDetails
+          owner={owner}
+          user={user}
+          assistantId={assistantSId}
+          onClose={() => onOpenChangeAssistantModal(false)}
+        />
+        <CoEditionProvider
+          owner={owner}
+          hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
+        >
+          <InteractiveContentProvider>
+            <ConversationInnerLayout
+              activeConversationId={activeConversationId}
+              baseUrl={baseUrl}
+              conversation={conversation}
+              conversationError={conversationError}
               owner={owner}
-              user={user}
-              assistantId={assistantSId}
-              onClose={() => onOpenChangeAssistantModal(false)}
-            />
-            <CoEditionProvider
-              owner={owner}
-              hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
             >
-              <ConversationInnerLayout
-                conversation={conversation}
-                owner={owner}
-                user={user}
-              >
-                {children}
-              </ConversationInnerLayout>
-            </CoEditionProvider>
-            {shouldDisplayWelcomeTourGuide && (
-              <WelcomeTourGuide
-                owner={owner}
-                user={user}
-                isAdmin={isAdmin}
-                startConversationRef={startConversationRef}
-                spaceMenuButtonRef={spaceMenuButtonRef}
-                createAgentButtonRef={createAgentButtonRef}
-                onTourGuideEnd={onTourGuideEnd}
-              />
-            )}
-          </>
+              {children}
+            </ConversationInnerLayout>
+          </InteractiveContentProvider>
+        </CoEditionProvider>
+        {shouldDisplayWelcomeTourGuide && (
+          <WelcomeTourGuide
+            owner={owner}
+            user={user}
+            isAdmin={isAdmin}
+            startConversationRef={startConversationRef}
+            spaceMenuButtonRef={spaceMenuButtonRef}
+            createAgentButtonRef={createAgentButtonRef}
+            onTourGuideEnd={onTourGuideEnd}
+          />
         )}
       </AppContentLayout>
     </InputBarProvider>
@@ -195,16 +191,20 @@ interface ConversationInnerLayoutProps {
   children: React.ReactNode;
   conversation: ConversationType | null;
   owner: LightWorkspaceType;
-  user: UserType;
+  baseUrl: string;
+  conversationError: ConversationError | null;
+  activeConversationId: string | null;
 }
 
 function ConversationInnerLayout({
   children,
   conversation,
   owner,
-  user,
+  baseUrl,
+  conversationError,
+  activeConversationId,
 }: ConversationInnerLayoutProps) {
-  const { isCoEditionOpen } = useCoEditionContext();
+  const { isContentOpen } = useInteractiveContentContext();
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -213,28 +213,48 @@ function ConversationInnerLayout({
         className="flex h-full w-full flex-1"
       >
         <ResizablePanel defaultSize={100}>
-          <FileDropProvider>
-            <GenerationContextProvider>
-              <div
-                id={CONVERSATION_VIEW_SCROLL_LAYOUT}
-                className="h-full overflow-y-auto scroll-smooth px-4 sm:px-8"
-              >
-                {children}
-              </div>
-            </GenerationContextProvider>
-          </FileDropProvider>
+          <div className="flex h-full flex-col">
+            {activeConversationId && (
+              <ConversationTitle owner={owner} baseUrl={baseUrl} />
+            )}
+            {conversationError ? (
+              <ConversationErrorDisplay error={conversationError} />
+            ) : (
+              <FileDropProvider>
+                <GenerationContextProvider>
+                  <div
+                    id={CONVERSATION_VIEW_SCROLL_LAYOUT}
+                    className={cn(
+                      "h-full overflow-y-auto scroll-smooth px-4 sm:px-8",
+                      // Hide conversation on mobile when interactive content is opened.
+                      isContentOpen && "hidden md:block"
+                    )}
+                  >
+                    {children}
+                  </div>
+                </GenerationContextProvider>
+              </FileDropProvider>
+            )}
+          </div>
         </ResizablePanel>
-        {isCoEditionOpen && <ResizableHandle />}
+
+        {/* Interactive Content Panel */}
+        {isContentOpen && <ResizableHandle className="hidden md:block" />}
         <ResizablePanel
           minSize={20}
-          defaultSize={50}
-          className={isCoEditionOpen ? "" : "hidden"}
+          defaultSize={70}
+          className={cn(
+            !isContentOpen && "hidden",
+            // On mobile: overlay full screen with absolute positioning.
+            "md:relative",
+            isContentOpen && "absolute inset-0 md:relative md:inset-auto"
+          )}
         >
-          {isCoEditionOpen && (
-            <CoEditionContainer
+          {isContentOpen && (
+            <InteractiveContentContainer
               conversation={conversation}
+              isOpen={isContentOpen}
               owner={owner}
-              user={user}
             />
           )}
         </ResizablePanel>

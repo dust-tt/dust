@@ -1,56 +1,56 @@
-import {
-  Button,
-  SparklesIcon,
-  TextArea,
-  useSendNotification,
-} from "@dust-tt/sparkle";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { Button, SparklesIcon, TextArea } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
+import type { Control } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
+import type { CapabilityFormData } from "@app/components/agent_builder/types";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { WorkspaceType } from "@app/types";
 
 interface JsonSchemaSectionProps {
-  title: string;
-  description: string;
   label?: string;
   placeholder?: string;
-  value: JSONSchema | null;
   initialSchemaString?: string | null;
-  onChange: (jsonSchema: JSONSchema | null) => void;
   helpText?: string;
   agentInstructions?: string;
-  agentDescription?: string;
   owner: WorkspaceType;
+  control: Control<CapabilityFormData>;
 }
 
 export function JsonSchemaSection({
-  title,
-  description,
   label,
   placeholder,
-  value,
   initialSchemaString,
-  onChange,
   helpText,
   agentInstructions,
-  agentDescription,
   owner,
+  control,
 }: JsonSchemaSectionProps) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Left it here, unused due to NOTE below
+  const { getValues } = useFormContext();
+  const { field } = useController({
+    control,
+    name: "jsonSchema",
+  });
+
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
   const sendNotification = useSendNotification();
 
   const [jsonSchemaString, setJsonSchemaString] = useState(() => {
-    return initialSchemaString || (value ? JSON.stringify(value, null, 2) : "");
+    return (
+      initialSchemaString ||
+      (field.value ? JSON.stringify(field.value, null, 2) : "")
+    );
   });
 
   // Sync internal state when the external value changes
   useEffect(() => {
     if (!initialSchemaString) {
-      const newString = value ? JSON.stringify(value, null, 2) : "";
+      const newString = field.value ? JSON.stringify(field.value, null, 2) : "";
       setJsonSchemaString(newString);
     }
-  }, [value, initialSchemaString]);
+  }, [field.value, initialSchemaString]);
 
   const schemaValidationResult = jsonSchemaString
     ? validateConfiguredJsonSchema(jsonSchemaString)
@@ -59,16 +59,19 @@ export function JsonSchemaSection({
   const generateSchemaFromInstructions = async () => {
     if (!agentInstructions) {
       setJsonSchemaString("");
-      onChange(null);
+      field.onChange(null);
       return;
     }
 
     setIsGeneratingSchema(true);
+
     try {
-      let fullInstructions = agentInstructions;
-      if (agentDescription) {
-        fullInstructions += `\n\nTool description:\n${agentDescription}`;
-      }
+      const fullInstructions = agentInstructions;
+      // NOTE: commented, don't know where that agentDescription comes from. Not in AgentBuilderFormData
+      // const agentDescription = getValues("agentDescription");
+      // if (agentDescription) {
+      //   fullInstructions += `\n\nTool description:\n${agentDescription}`;
+      // }
 
       const res = await fetch(
         `/api/w/${owner.sId}/assistant/builder/process/generate_schema`,
@@ -94,7 +97,7 @@ export function JsonSchemaSection({
         : null;
 
       setJsonSchemaString(schemaString || "");
-      onChange(schemaObject);
+      field.onChange(schemaObject);
     } catch (e) {
       sendNotification({
         title: "Failed to generate schema.",
@@ -113,12 +116,12 @@ export function JsonSchemaSection({
     // null. Storing a null jsonSchema in the database indicates that
     // the model will auto-generate the schema.
     if (newSchemaString === "") {
-      onChange(null);
+      field.onChange(null);
       return;
     }
     const parsedSchema = validateConfiguredJsonSchema(newSchemaString);
     if (parsedSchema.isOk()) {
-      onChange(newSchemaString ? parsedSchema.value : null);
+      field.onChange(newSchemaString ? parsedSchema.value : null);
     } else {
       // If parsing fails, don't update the form value
       // Let user continue typing to fix the JSON
@@ -128,8 +131,12 @@ export function JsonSchemaSection({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-element-900 text-base font-medium">{title}</h3>
-        <p className="text-element-700 mt-1 text-sm">{description}</p>
+        <h3 className="text-element-900 text-base font-medium">Schema</h3>
+        <p className="text-element-700 mt-1 text-sm">
+          Optionally, provide a schema for the data to be extracted. If you do
+          not specify a schema, the tool will determine the schema based on the
+          conversation context.
+        </p>
       </div>
       <Button
         tooltip="Automatically re-generate the extraction schema based on Instructions"

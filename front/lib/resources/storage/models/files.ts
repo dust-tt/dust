@@ -5,22 +5,24 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
+  AllSupportedFileContentType,
   FileStatus,
   FileUseCase,
   FileUseCaseMetadata,
-  SupportedFileContentType,
 } from "@app/types";
 
 export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
 
-  declare contentType: SupportedFileContentType;
+  declare contentType: AllSupportedFileContentType;
   declare fileName: string;
   declare fileSize: number;
+  declare sharedAt: Date | null;
+  declare snippet: string | null;
   declare status: FileStatus;
   declare useCase: FileUseCase;
   declare useCaseMetadata: FileUseCaseMetadata | null;
-  declare snippet: string | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
 
@@ -29,6 +31,11 @@ export class FileModel extends WorkspaceAwareModel<FileModel> {
 FileModel.init(
   {
     createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
@@ -63,11 +70,19 @@ FileModel.init(
       allowNull: true,
       defaultValue: null,
     },
+    sharedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     modelName: "files",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["workspaceId", "id"] }],
+    indexes: [
+      { fields: ["workspaceId", "id"] },
+      { fields: ["workspaceId", "userId"] },
+    ],
   }
 );
 UserModel.hasMany(FileModel, {

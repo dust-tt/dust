@@ -1,7 +1,7 @@
-import { useSendNotification } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
-import React, { createContext, memo, useContext, useEffect } from "react";
+import React, { createContext, useContext, useEffect, useMemo } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import type { DataSourceViewType, LightWorkspaceType } from "@app/types";
 
@@ -32,37 +32,38 @@ interface DataSourceViewsProviderProps {
   children: ReactNode;
 }
 
-export const DataSourceViewsProvider = memo(
-  ({ owner, children }: DataSourceViewsProviderProps) => {
-    const sendNotification = useSendNotification();
-    const {
+export const DataSourceViewsProvider = ({
+  owner,
+  children,
+}: DataSourceViewsProviderProps) => {
+  const sendNotification = useSendNotification();
+  const { dataSourceViews, isDataSourceViewsLoading, isDataSourceViewsError } =
+    useDataSourceViews(owner);
+
+  useEffect(() => {
+    if (isDataSourceViewsError) {
+      sendNotification({
+        type: "error",
+        title: "Failed to load data sources",
+        description: "Unable to fetch data source views. Please try again.",
+      });
+    }
+  }, [isDataSourceViewsError, sendNotification]);
+
+  const value: DataSourceViewsContextType = useMemo(
+    () => ({
       dataSourceViews,
       isDataSourceViewsLoading,
       isDataSourceViewsError,
-    } = useDataSourceViews(owner);
+    }),
+    [dataSourceViews, isDataSourceViewsLoading, isDataSourceViewsError]
+  );
 
-    useEffect(() => {
-      if (isDataSourceViewsError) {
-        sendNotification({
-          type: "error",
-          title: "Failed to load data sources",
-          description: "Unable to fetch data source views. Please try again.",
-        });
-      }
-    }, [isDataSourceViewsError, sendNotification]);
-
-    const value: DataSourceViewsContextType = {
-      dataSourceViews,
-      isDataSourceViewsLoading,
-      isDataSourceViewsError,
-    };
-
-    return (
-      <DataSourceViewsContext.Provider value={value}>
-        {children}
-      </DataSourceViewsContext.Provider>
-    );
-  }
-);
+  return (
+    <DataSourceViewsContext.Provider value={value}>
+      {children}
+    </DataSourceViewsContext.Provider>
+  );
+};
 
 DataSourceViewsProvider.displayName = "DataSourceViewsProvider";

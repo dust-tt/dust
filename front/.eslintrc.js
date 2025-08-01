@@ -59,6 +59,7 @@ module.exports = {
     "dust/no-raw-sql": "error",
     "dust/no-unverified-workspace-bypass": "error",
     "dust/too-long-index-name": "error",
+    "dust/no-direct-sparkle-notification": "warn",
   },
   overrides: [
     {

@@ -55,7 +55,7 @@ export interface BaseOAuthStrategyProvider {
       userId: string;
       useCase: OAuthUseCase;
     }
-  ) => Promise<RelatedCredential>;
+  ) => Promise<RelatedCredential | undefined>;
 
   getUpdatedExtraConfig?: (
     auth: Authenticator,

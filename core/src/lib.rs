@@ -47,8 +47,10 @@ pub mod databases {
             pub mod snowflake;
         }
     }
+    pub mod table_upserts_background_worker;
     pub mod transient_database;
 }
+pub mod gcp_auth;
 pub mod project;
 pub mod run;
 pub mod search_filter;
@@ -70,6 +72,7 @@ pub mod providers {
     }
     pub mod anthropic {
         pub mod anthropic;
+        pub mod backend;
         pub mod helpers;
         pub mod streaming;
         pub mod types;
@@ -118,6 +121,8 @@ pub mod deno {
 }
 
 pub mod databases_store {
+    pub mod gcs;
+    pub mod gcs_background;
     pub mod store;
 }
 
@@ -141,9 +146,12 @@ pub mod oauth {
         pub mod google_drive;
         pub mod hubspot;
         pub mod intercom;
+        pub mod jira;
         pub mod mcp;
         pub mod microsoft;
+        pub mod microsoft_tools;
         pub mod mock;
+        pub mod monday;
         pub mod notion;
         pub mod salesforce;
         pub mod slack;
@@ -157,3 +165,7 @@ pub mod oauth {
 }
 
 pub mod api_keys;
+
+pub mod open_telemetry;
+
+pub mod mem_check;

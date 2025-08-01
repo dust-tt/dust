@@ -30,7 +30,15 @@ const _webhookFirecrawlAPIHandler = async (
     FirecrawlWebhookResBody,
     {
       success: boolean;
-      type: "crawl.started" | "crawl.page" | "crawl.completed" | "crawl.failed";
+      type:
+        | "crawl.started"
+        | "crawl.page"
+        | "crawl.completed"
+        | "crawl.failed"
+        | "batch_scrape.started"
+        | "batch_scrape.page"
+        | "batch_scrape.failed"
+        | "batch_scrape.completed";
       id: string;
       data: Array<{
         markdown: string;
@@ -82,6 +90,7 @@ const _webhookFirecrawlAPIHandler = async (
   }
 
   switch (type) {
+    case "batch_scrape.started":
     case "crawl.started": {
       logger.info(
         {
@@ -109,6 +118,7 @@ const _webhookFirecrawlAPIHandler = async (
       }
       break;
     }
+    case "batch_scrape.page":
     case "crawl.page": {
       if (data && data.length > 0) {
         for (const page of data) {
@@ -164,6 +174,7 @@ const _webhookFirecrawlAPIHandler = async (
       }
       break;
     }
+    case "batch_scrape.completed":
     case "crawl.completed": {
       logger.info(
         { id, metadata, connectorId: connector.id },
@@ -187,6 +198,7 @@ const _webhookFirecrawlAPIHandler = async (
       }
       break;
     }
+    case "batch_scrape.failed":
     case "crawl.failed": {
       logger.info(
         { id, metadata, connectorId: connector.id, error },

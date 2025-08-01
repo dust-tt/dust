@@ -21,15 +21,16 @@ import { useMemo } from "react";
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import { useModels } from "@app/lib/swr/models";
 import type {
   LightWorkspaceType,
   ModelConfigurationType,
+  ModelIdType,
   ModelProviderIdType,
+  ReasoningModelConfigurationType,
 } from "@app/types";
 import {
-  GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
+  GEMINI_2_5_PRO_MODEL_ID,
   getProviderDisplayName,
   O3_MODEL_ID,
   O4_MINI_MODEL_ID,
@@ -37,14 +38,14 @@ import {
 
 interface ReasoningModelConfigurationSectionProps {
   owner: LightWorkspaceType;
-  selectedReasoningModel: ReasoningModelConfiguration | null;
-  onModelSelect: (modelConfig: ReasoningModelConfiguration) => void;
+  selectedReasoningModel: ReasoningModelConfigurationType | null;
+  onModelSelect: (modelConfig: ReasoningModelConfigurationType) => void;
 }
 
-const BEST_PERFORMING_REASONING_MODELS_ID = [
+const BEST_PERFORMING_REASONING_MODELS_ID: readonly ModelIdType[] = [
   O4_MINI_MODEL_ID,
   O3_MODEL_ID,
-  GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
+  GEMINI_2_5_PRO_MODEL_ID,
 ];
 
 function groupReasoningModelsByPerformance(
@@ -53,9 +54,6 @@ function groupReasoningModelsByPerformance(
   const [performingModels, nonPerfomingModels] = partition(
     reasoningModels,
     (model) => {
-      if (model.modelId === O4_MINI_MODEL_ID) {
-        return model.reasoningEffort === "high";
-      }
       return BEST_PERFORMING_REASONING_MODELS_ID.includes(model.modelId);
     }
   );
@@ -157,7 +155,7 @@ export function ReasoningModelConfigurationSection({
                   </DropdownMenuLabel>
                   {performingModels.map((model) => (
                     <ReasoningModelDropdownMenuItem
-                      key={`${model.modelId}-${model.reasoningEffort ?? ""}`}
+                      key={model.modelId}
                       model={model}
                       onClick={onModelSelect}
                       isDark={isDark}
@@ -179,7 +177,7 @@ export function ReasoningModelConfigurationSection({
                           <DropdownMenuSubContent>
                             {models.map((model) => (
                               <ReasoningModelDropdownMenuItem
-                                key={`${model.modelId}-${model.reasoningEffort ?? ""}`}
+                                key={model.modelId}
                                 model={model}
                                 onClick={onModelSelect}
                                 isDark={isDark}
@@ -209,7 +207,7 @@ function ReasoningModelDropdownMenuItem({
   isDark,
 }: {
   model: ModelConfigurationType;
-  onClick: (model: ReasoningModelConfiguration) => void;
+  onClick: (model: ReasoningModelConfigurationType) => void;
   isDark: boolean;
 }) {
   return (
@@ -220,8 +218,8 @@ function ReasoningModelDropdownMenuItem({
         onClick({
           modelId: model.modelId,
           providerId: model.providerId,
-          reasoningEffort: model.reasoningEffort ?? null,
           temperature: null,
+          reasoningEffort: null,
         })
       }
     />

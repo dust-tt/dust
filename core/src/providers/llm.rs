@@ -5,6 +5,7 @@ use crate::providers::provider::{provider, with_retryable_back_off, ProviderID};
 use crate::run::Credentials;
 use crate::stores::store::Store;
 use crate::utils::ParseError;
+use crate::{error, info};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -12,7 +13,6 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{error, info};
 
 #[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]
 pub struct Tokens {
@@ -84,6 +84,8 @@ pub struct ChatFunction {
 pub struct LLMTokenUsage {
     pub prompt_tokens: u64,
     pub completion_tokens: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reasoning_tokens: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]

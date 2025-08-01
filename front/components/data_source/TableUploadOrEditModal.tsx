@@ -11,16 +11,16 @@ import {
   SheetTitle,
   Spinner,
   TextArea,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   useDataSourceViewTable,
   useUpdateDataSourceViewTable,
 } from "@app/lib/swr/data_source_view_tables";
-import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/file";
+import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/files";
 import type {
   DataSourceViewType,
   LightContentNode,
@@ -86,6 +86,9 @@ export const TableUploadOrEditModal = ({
   const fileUploaderService = useFileUploaderService({
     owner,
     useCase: "upsert_table",
+    useCaseMetadata: {
+      spaceId: dataSourceView.spaceId,
+    },
   });
   const [fileId, setFileId] = useState<string | null>(null);
   const doUpsertFileAsDataSourceEntry = useUpsertFileAsDatasourceEntry(
@@ -372,7 +375,7 @@ export const TableUploadOrEditModal = ({
                   <div>
                     <Page.SectionHeader
                       title="Description"
-                      description="Describe the content of your CSV file. It will be used by the LLM model to generate relevant queries."
+                      description="Describe the content of your data. It will be used by the LLM model to generate relevant queries."
                     />
                     <TextArea
                       placeholder="This table contains..."
@@ -389,7 +392,7 @@ export const TableUploadOrEditModal = ({
                       }}
                       error={
                         !tableState.description && editionStatus.description
-                          ? "You need to provide a description to your CSV file."
+                          ? "You need to provide a description for your data file."
                           : null
                       }
                       showErrorLabel
@@ -399,8 +402,11 @@ export const TableUploadOrEditModal = ({
 
                   <div>
                     <Page.SectionHeader
-                      title="CSV File"
-                      description={`Select the CSV file for data extraction. The maximum file size allowed is ${fileSizeToHumanReadable(MAX_FILE_SIZES.delimited)}.`}
+                      title="Data File"
+                      description={
+                        `Select your data file for extraction. Supported formats: CSV, ` +
+                        `XLSX. Maximum file size: ${fileSizeToHumanReadable(MAX_FILE_SIZES.delimited)}.`
+                      }
                       action={{
                         label: fileUploaderService.isProcessingFiles
                           ? "Uploading..."

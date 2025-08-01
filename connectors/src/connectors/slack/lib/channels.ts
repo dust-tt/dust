@@ -1,10 +1,8 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
-import type {
-  Channel,
-  ConversationsListResponse,
-} from "@slack/web-api/dist/response/ConversationsListResponse";
+import type { Channel } from "@slack/web-api/dist/types/response/ConversationsInfoResponse";
+import assert from "assert";
 import { Op } from "sequelize";
 
 import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
@@ -23,7 +21,11 @@ import type { ConnectorPermission } from "@connectors/types";
 import type { ModelId } from "@connectors/types";
 import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
 
-import { getSlackClient, reportSlackUsage } from "./slack_client";
+import {
+  getSlackClient,
+  reportSlackUsage,
+  withSlackErrorHandling,
+} from "./slack_client";
 
 export type SlackChannelType = {
   id: number;
@@ -159,10 +161,7 @@ export async function joinChannel(
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  const client = await getSlackClient(connector.id, {
-    // Do not reject rate limited calls in join channel.
-    rejectRateLimitedCalls: false,
-  });
+  const client = await getSlackClient(connector.id);
   try {
     reportSlackUsage({
       connectorId,
@@ -274,7 +273,9 @@ export const getChannels = cacheWithRedis(
   _getChannelsUncached,
   (slackClient, connectorId, joinedOnly) =>
     `slack-channels-${connectorId}-${joinedOnly}`,
-  5 * 60 * 1000
+  {
+    ttlMs: 5 * 60 * 1000,
+  }
 );
 
 async function _getChannelsUncached(
@@ -316,7 +317,7 @@ async function _getTypedChannelsUncached(
       method: "conversations.list",
       useCase: "batch_sync",
     });
-    const c: ConversationsListResponse = await slackClient.conversations.list({
+    const c = await slackClient.conversations.list({
       types,
       // despite the limit being 1000, slack may return fewer channels
       // we observed ~50 channels per call at times see https://github.com/dust-tt/tasks/issues/1655
@@ -411,4 +412,65 @@ export async function getChannelById(
   }
 
   return res.channel;
+}
+
+export async function migrateChannelsFromLegacyBotToNewBot(
+  slackConnector: ConnectorResource,
+  slackBotConnector: ConnectorResource
+): Promise<Result<{ migratedChannelsCount: number }, Error>> {
+  assert(
+    slackConnector.type === "slack",
+    "Connector must be a Slack connector"
+  );
+  assert(
+    slackBotConnector.type === "slack_bot",
+    "Connector must be a Slack bot connector"
+  );
+
+  const slackClient = await getSlackClient(slackConnector.id);
+
+  const childLogger = logger.child({
+    slackBotConnectorId: slackBotConnector.id,
+    slackConnectorId: slackConnector.id,
+  });
+
+  // Fetch all channels that the deprecated bot is a member of.
+  const channels = await withSlackErrorHandling(() =>
+    getChannels(slackClient, slackConnector.id, true)
+  );
+  const publicChannels = channels.filter((c) => !c.is_private);
+
+  childLogger.info(
+    {
+      channelsCount: channels.length,
+      publicChannelsCount: publicChannels.length,
+    },
+    "Found channels to migrate"
+  );
+
+  for (const channel of publicChannels) {
+    if (!channel.id) {
+      continue;
+    }
+
+    childLogger.info(
+      {
+        channelId: channel.id,
+      },
+      "Migrating channel"
+    );
+
+    // Join the new bot to the channel.
+    const joinRes = await joinChannel(slackBotConnector.id, channel.id);
+    if (joinRes.isErr()) {
+      childLogger.error(
+        { error: joinRes.error, channelId: channel.id },
+        "Could not join channel"
+      );
+
+      return joinRes;
+    }
+  }
+
+  return new Ok({ migratedChannelsCount: channels.length });
 }

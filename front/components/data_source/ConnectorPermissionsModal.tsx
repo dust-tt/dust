@@ -23,7 +23,6 @@ import {
   SheetTitle,
   Spinner,
   TrashIcon,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import React, {
@@ -43,10 +42,12 @@ import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
+import { SetupNotionPrivateIntegrationModal } from "@app/components/data_source/SetupNotionPrivateIntegrationModal";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionManagement";
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   CONNECTOR_CONFIGURATIONS,
   getConnectorPermissionsConfigurableBlocked,
@@ -618,6 +619,13 @@ export function ConnectorPermissionsModal({
     dataSource.connectorProvider === "notion" &&
     featureFlags.includes("advanced_notion_management");
 
+  const getNodeParents = (node: ContentNodeWithParent) => {
+    if (node.parentInternalId) {
+      return [node.parentInternalId];
+    }
+    return node.parentInternalIds ?? [];
+  };
+
   const initialTreeSelectionModel = useMemo(
     () =>
       allSelectedResources.reduce<
@@ -628,7 +636,7 @@ export function ConnectorPermissionsModal({
           [r.internalId]: {
             isSelected: true,
             node: r,
-            parents: r.parentInternalIds ?? [],
+            parents: getNodeParents(r),
           },
         }),
         {}
@@ -643,7 +651,12 @@ export function ConnectorPermissionsModal({
   }, [initialTreeSelectionModel, isOpen]);
 
   const [modalToShow, setModalToShow] = useState<
-    "data_updated" | "edition" | "selection" | "deletion" | null
+    | "data_updated"
+    | "edition"
+    | "selection"
+    | "deletion"
+    | "private_integration"
+    | null
   >(null);
 
   const { activeSubscription } = useWorkspaceActiveSubscription({
@@ -697,19 +710,31 @@ export function ConnectorPermissionsModal({
         );
 
         if (!r.ok) {
-          const error: { error: { message: string } } = await r.json();
-          window.alert(error.error.message);
-        }
-        void mutate(
-          (key) =>
-            typeof key === "string" &&
-            key.startsWith(
-              `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`
-            )
-        );
+          const error: {
+            error: {
+              type: string;
+              message: string;
+              connectors_error: { type: string; message: string };
+            };
+          } = await r.json();
+          console.log(JSON.stringify(error, null, 2));
+          sendNotification({
+            type: "error",
+            title: error.error.message,
+            description: error.error.connectors_error.message,
+          });
+        } else {
+          void mutate(
+            (key) =>
+              typeof key === "string" &&
+              key.startsWith(
+                `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`
+              )
+          );
 
-        // Display the data updated modal.
-        setModalToShow("data_updated");
+          // Display the data updated modal.
+          setModalToShow("data_updated");
+        }
       } else {
         closeModal(false);
       }
@@ -802,6 +827,15 @@ export function ConnectorPermissionsModal({
                       disabled={permissionsConfigurable.blocked}
                     />
                   )}
+                  {dataSource.connectorProvider === "notion" &&
+                    featureFlags.includes("notion_private_integration") && (
+                      <Button
+                        label="Setup Private Integration"
+                        variant="outline"
+                        icon={LockIcon}
+                        onClick={() => setModalToShow("private_integration")}
+                      />
+                    )}
                   {isDeletable && (
                     <Button
                       label="Delete connection"
@@ -830,7 +864,7 @@ export function ConnectorPermissionsModal({
                   )}
                   {OptionsComponent && plan && (
                     <>
-                      <div className="heading-xl p-1">Connector options</div>
+                      <div className="heading-xl p-1">Connection options</div>
                       <div className="p-1">
                         <div className="border-y border-border dark:border-border-night">
                           <OptionsComponent
@@ -929,6 +963,21 @@ export function ConnectorPermissionsModal({
           case "google_drive":
           case "intercom":
           case "notion":
+            if (modalToShow === "private_integration") {
+              return (
+                <SetupNotionPrivateIntegrationModal
+                  isOpen={true}
+                  onClose={() => closeModal(false)}
+                  dataSource={dataSource}
+                  owner={owner}
+                  onSuccess={() => {
+                    closeModal(false);
+                  }}
+                  sendNotification={sendNotification}
+                />
+              );
+            }
+          // Fall through to OAuth modal
           case "slack":
           case "microsoft":
           case "zendesk":

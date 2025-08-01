@@ -4,9 +4,9 @@ import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodRawShape } from "zod";
 import { z } from "zod";
 
-import { getDustAppRunResultsFileTitle } from "@app/components/actions/dust_app_run/utils";
 import {
   generateCSVFileAndSnippet,
+  generateJSONFileAndSnippet,
   generatePlainTextFile,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
@@ -29,13 +29,21 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
 import { AppResource } from "@app/lib/resources/app_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import type { BlockRunConfig, DatasetSchema } from "@app/types";
-import type { SpecificationBlockType } from "@app/types";
+import type {
+  BlockRunConfig,
+  ConversationType,
+  DatasetSchema,
+  SpecificationBlockType,
+  SupportedFileContentType,
+} from "@app/types";
 import {
+  extensionsForContentType,
   getHeaderFromGroupIds,
   getHeaderFromRole,
+  safeParseJSON,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
 
@@ -58,6 +66,21 @@ interface DustFileOutput {
     content: unknown;
   };
   [key: string]: unknown;
+}
+
+function getDustAppRunResultsFileTitle({
+  appName,
+  resultsFileContentType,
+}: {
+  appName: string;
+  resultsFileContentType: SupportedFileContentType;
+}): string {
+  const extensions = extensionsForContentType(resultsFileContentType);
+  let title = `${appName}_output`;
+  if (extensions.length > 0) {
+    title += extensions[0];
+  }
+  return title;
 }
 
 function convertDatasetSchemaToZodRawShape(
@@ -99,6 +122,18 @@ async function prepareAppContext(
   appConfig: BlockRunConfig;
 }> {
   if (!actionConfig.dustAppConfiguration?.appId) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        userId: auth.user()?.sId || "no_user",
+        role: auth.role(),
+        groupIds: auth.groups().map((g) => g.sId),
+        actionConfig,
+        dustAppConfiguration: actionConfig.dustAppConfiguration,
+        appId: actionConfig.dustAppConfiguration?.appId,
+      },
+      "[run_dust_app] Missing Dust app ID"
+    );
     throw new Error("Missing Dust app ID");
   }
 
@@ -107,6 +142,17 @@ async function prepareAppContext(
     actionConfig.dustAppConfiguration.appId
   );
   if (!app) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        userId: auth.user()?.sId || "no_user",
+        role: auth.role(),
+        groupIds: auth.groups().map((g) => g.sId),
+        appId: actionConfig.dustAppConfiguration.appId,
+        actionConfig,
+      },
+      "[run_dust_app] Could not find Dust app"
+    );
     throw new Error("Could not find Dust app");
   }
 
@@ -134,7 +180,7 @@ async function prepareAppContext(
 async function processDustFileOutput(
   auth: Authenticator,
   sanitizedOutput: DustFileOutput,
-  conversation: any,
+  conversation: ConversationType,
   appName: string
 ): Promise<{ type: "resource"; resource: ToolGeneratedFileType }[]> {
   const content: { type: "resource"; resource: ToolGeneratedFileType }[] = [];
@@ -204,26 +250,47 @@ async function processDustFileOutput(
 
     delete sanitizedOutput.__dust_file;
   } else if (containsValidDocumentOutput(sanitizedOutput)) {
-    const fileTitle = getDustAppRunResultsFileTitle({
-      appName,
-      resultsFileContentType: "text/plain",
-    });
+    let fileTitle = "";
+    let file: FileResource | null = null;
 
-    const plainTextFile = await generatePlainTextFile(auth, {
-      title: fileTitle,
-      conversationId: conversation.sId,
-      content: sanitizedOutput.__dust_file?.content ?? "",
-    });
+    const jsonOutputRes = safeParseJSON(
+      sanitizedOutput.__dust_file?.content ?? ""
+    );
+    if (jsonOutputRes.isOk()) {
+      // If the output is a valid json object, generate a json file.
+      fileTitle = getDustAppRunResultsFileTitle({
+        appName,
+        resultsFileContentType: "application/json",
+      });
+      const { jsonFile } = await generateJSONFileAndSnippet(auth, {
+        title: fileTitle,
+        conversationId: conversation.sId,
+        data: jsonOutputRes.value,
+      });
+      file = jsonFile;
+    } else {
+      // If the output is not a valid json object, generate a text file.
+      const fileTitle = getDustAppRunResultsFileTitle({
+        appName,
+        resultsFileContentType: "text/plain",
+      });
+
+      file = await generatePlainTextFile(auth, {
+        title: fileTitle,
+        conversationId: conversation.sId,
+        content: sanitizedOutput.__dust_file?.content ?? "",
+      });
+    }
 
     content.push({
       type: "resource",
       resource: {
         mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-        uri: `file://${plainTextFile.id}`,
-        fileId: plainTextFile.sId,
+        uri: `file://${file.id}`,
+        fileId: file.sId,
         title: fileTitle,
-        contentType: plainTextFile.contentType,
-        snippet: plainTextFile.snippet,
+        contentType: file.contentType,
+        snippet: file.snippet,
         text: `Generated text file: ${fileTitle}`,
       },
     });
@@ -235,7 +302,7 @@ async function processDustFileOutput(
 }
 
 async function prepareParamsWithHistory(
-  params: any,
+  params: { [p: string]: any },
   schema: DatasetSchema | null,
   agentLoopRunContext: AgentLoopRunContextType,
   auth: Authenticator
@@ -259,6 +326,7 @@ async function prepareParamsWithHistory(
         tools: "",
         allowedTokenCount,
         excludeImages: true,
+        checkMissingActions: false,
       });
 
       if (convoRes.isOk()) {

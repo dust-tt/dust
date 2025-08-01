@@ -1,7 +1,8 @@
-import { Page, useSendNotification } from "@dust-tt/sparkle";
+import { Page } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 import type { KeyedMutator } from "swr";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   useLabsTranscriptsDefaultConfiguration,
   useLabsTranscriptsIsConnectorConnected,

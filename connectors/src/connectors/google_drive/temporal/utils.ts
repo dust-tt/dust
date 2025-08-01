@@ -1,8 +1,8 @@
 import { removeNulls } from "@dust-tt/client";
 import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
-import type { GaxiosError, GaxiosResponse } from "googleapis-common";
-import { OAuth2Client } from "googleapis-common";
+import type { GaxiosResponse } from "googleapis-common";
+import { GaxiosError, OAuth2Client } from "googleapis-common";
 
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
@@ -50,7 +50,9 @@ export const getMyDriveIdCached = cacheWithRedis(
     }
     return auth_credentials.credentials.access_token;
   },
-  60 * 10 * 1000 // 10 minutes
+  {
+    ttlMs: 60 * 10 * 1000, // 10 minutes
+  }
 );
 
 // Turn the labels into a string array of formatted string such as labelTitle:labelValue
@@ -289,7 +291,9 @@ export const getCachedLabels = cacheWithRedis(
     }
     return `${connectorId}-labels`;
   },
-  60 * 10 * 1000 // 10 minutes
+  {
+    ttlMs: 60 * 10 * 1000, // 10 minutes
+  }
 );
 
 // Get the list of published labels
@@ -319,4 +323,26 @@ export async function _getLabels(
     );
   }
   return [];
+}
+
+export function isSharedDriveNotFoundError(error: unknown): boolean {
+  if (!(error instanceof GaxiosError)) {
+    return false;
+  }
+
+  if (error.response?.status !== 404) {
+    return false;
+  }
+
+  const errorData = error.response?.data?.error;
+  if (!errorData) {
+    return false;
+  }
+
+  const errors = errorData.errors;
+  if (Array.isArray(errors)) {
+    return errors.some((err) => err.reason === "notFound");
+  }
+
+  return false;
 }

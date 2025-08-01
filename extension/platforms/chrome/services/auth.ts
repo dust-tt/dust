@@ -11,6 +11,7 @@ import {
   getDustDomain,
 } from "@app/shared/services/auth";
 import type { StorageService } from "@app/shared/services/storage";
+import { datadogLogs } from "@datadog/browser-logs";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { jwtDecode } from "jwt-decode";
@@ -32,7 +33,7 @@ export class ChromeAuthService extends AuthService {
     return user;
   }
 
-  // Refresh token sends a message to the background script to call the auth0 refresh token endpoint.
+  // Refresh token sends a message to the background script to call the workos refresh token endpoint.
   // It updates the stored tokens with the new access token.
   // If the refresh token is invalid, it will call handleLogout.
   async refreshToken(
@@ -61,18 +62,12 @@ export class ChromeAuthService extends AuthService {
     }
   }
 
-  // Login sends a message to the background script to call the auth0 login endpoint.
+  // Login sends a message to the background script to call the workos login endpoint.
   // It saves the tokens in the extension and schedules a token refresh.
   // Then it calls the /me route to get the user info.
-  async login({
-    isForceLogin,
-    forcedConnection,
-  }: {
-    isForceLogin?: boolean;
-    forcedConnection?: string;
-  }) {
+  async login({ forcedConnection }: { forcedConnection?: string }) {
     try {
-      const response = await sendAuthMessage(isForceLogin, forcedConnection);
+      const response = await sendAuthMessage(forcedConnection);
       if (!response.success) {
         log(`Authentication error: ${response.error}`);
         throw new Error(response.error);
@@ -105,18 +100,22 @@ export class ChromeAuthService extends AuthService {
       const user = await this.saveUser({
         ...res.value.user,
         ...connectionDetails,
-        authProvider: response.provider,
         dustDomain,
         selectedWorkspace: workspaces.length === 1 ? workspaces[0].sId : null,
       });
-
+      datadogLogs.setUser({
+        id: user.sId,
+      });
+      if (workspaces.length === 1) {
+        datadogLogs.setGlobalContext({ workspaceId: workspaces[0].sId });
+      }
       return new Ok({ tokens, user });
     } catch (error) {
       return new Err(new AuthError("not_authenticated", error?.toString()));
     }
   }
 
-  // Logout sends a message to the background script to call the auth0 logout endpoint.
+  // Logout sends a message to the background script to call the workos logout endpoint.
   // It also clears the stored tokens in the extension.
   async logout() {
     try {
@@ -130,6 +129,8 @@ export class ChromeAuthService extends AuthService {
       log("Logout failed: Unknown error.", error);
       return false;
     } finally {
+      datadogLogs.clearUser();
+      datadogLogs.setGlobalContext({});
       await this.storage.clear();
     }
   }
@@ -164,6 +165,15 @@ export class ChromeAuthService extends AuthService {
 
   async getStoredUser() {
     const result = await this.storage.get<StoredUser>("user");
+
+    if (result) {
+      datadogLogs.setUser({
+        id: result.sId,
+      });
+      if (result.selectedWorkspace) {
+        datadogLogs.setGlobalContext({ workspaceId: result.selectedWorkspace });
+      }
+    }
 
     return result ?? null;
   }

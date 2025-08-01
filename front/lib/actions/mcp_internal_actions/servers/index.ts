@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
+import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { default as conversationFilesServer } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
@@ -9,11 +10,17 @@ import { default as generateFileServer } from "@app/lib/actions/mcp_internal_act
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
 import { default as calendarServer } from "@app/lib/actions/mcp_internal_actions/servers/google_calendar";
+import { default as sheetsServer } from "@app/lib/actions/mcp_internal_actions/servers/google_sheets";
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/server";
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
+import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
+import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira/server";
 import { default as missingActionCatcherServer } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher";
+import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday/server";
 import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/servers/notion";
+import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
+import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/server";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as extractDataServer } from "@app/lib/actions/mcp_internal_actions/servers/process";
 import { default as reasoningServer } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
@@ -74,6 +81,8 @@ export async function getInternalMCPServer(
       return imageGenerationDallEServer(auth);
     case "file_generation":
       return generateFileServer(auth);
+    case "interactive_content":
+      return interactiveContentServer(auth, agentLoopContext);
     case "query_tables":
       return tablesQueryServer(auth, agentLoopContext);
     case "query_tables_v2":
@@ -112,12 +121,24 @@ export async function getInternalMCPServer(
       return gmailServer();
     case "google_calendar":
       return calendarServer();
+    case "google_sheets":
+      return sheetsServer();
     case "data_sources_file_system":
       return dataSourcesFileSystemServer(auth, agentLoopContext);
     case "conversation_files":
       return conversationFilesServer(auth, agentLoopContext);
+    case "jira":
+      return jiraServer();
+    case "monday":
+      return mondayServer();
     case "slack":
       return slackServer(auth, agentLoopContext);
+    case "agent_memory":
+      return agentMemoryServer(auth, agentLoopContext);
+    case "outlook":
+      return outlookServer();
+    case "outlook_calendar":
+      return outlookCalendarServer();
     default:
       assertNever(internalMCPServerName);
   }

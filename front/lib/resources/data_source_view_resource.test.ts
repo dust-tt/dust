@@ -35,7 +35,12 @@ describe("DataSourceViewResource", () => {
         // Create a user for workspace1
         const { globalGroup } = await GroupFactory.defaults(workspace1);
         const user1 = await UserFactory.superUser();
-        await MembershipFactory.associate(workspace1, user1, "user");
+        await MembershipFactory.associate(
+          workspace1,
+          user1,
+          { role: "user" },
+          t
+        );
         await GroupSpaceFactory.associate(space1, globalGroup);
 
         const auth = await Authenticator.fromUserIdAndWorkspaceId(

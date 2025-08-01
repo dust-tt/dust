@@ -48,7 +48,17 @@ impl QueryExecutor {
             r"https://{account}.snowflakecomputing.com/queries/v1/query-request?requestId={request_id}"
         );
 
-        let request: QueryRequest = request.into();
+        let mut request: QueryRequest = request.into();
+
+        if request.parameters.is_none() {
+            request.parameters = Some(HashMap::new());
+        }
+        if let Some(ref mut params) = request.parameters {
+            params.insert(
+                "STATEMENT_TIMEOUT_IN_SECONDS".to_string(),
+                timeout.as_secs().to_string(),
+            );
+        }
         let response = http
             .post(url)
             .header(ACCEPT, "application/snowflake")
@@ -251,12 +261,15 @@ async fn poll_for_async_results(
 #[serde(rename_all = "camelCase")]
 pub struct QueryRequest {
     pub sql_text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parameters: Option<HashMap<String, String>>,
 }
 
 impl From<&str> for QueryRequest {
     fn from(sql_text: &str) -> Self {
         Self {
             sql_text: sql_text.to_string(),
+            parameters: None,
         }
     }
 }
@@ -268,7 +281,10 @@ impl From<&QueryRequest> for QueryRequest {
 
 impl From<String> for QueryRequest {
     fn from(sql_text: String) -> Self {
-        Self { sql_text }
+        Self {
+            sql_text,
+            parameters: None,
+        }
     }
 }
 

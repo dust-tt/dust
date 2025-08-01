@@ -5,6 +5,7 @@ import { DataTypes } from "sequelize";
 
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -182,13 +183,9 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
 
   declare mcpServerConfigurationId: string;
 
-  declare params: Record<string, unknown>;
-
-  declare functionCallId: string | null;
-  declare functionCallName: string | null;
-
-  declare step: number;
+  declare version: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+  declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
 
   declare isError: boolean;
   declare executionState:
@@ -198,7 +195,10 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
     | "allowed_implicitly"
     | "denied";
 
+  declare citationsAllocated: number;
+
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
+  declare agentMessage?: NonAttribute<AgentMessage>;
 }
 
 AgentMCPAction.init(
@@ -217,21 +217,10 @@ AgentMCPAction.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    params: {
-      type: DataTypes.JSONB,
-      allowNull: false,
-    },
-    functionCallId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    functionCallName: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    step: {
+    version: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      defaultValue: 0,
     },
     executionState: {
       type: DataTypes.STRING,
@@ -253,18 +242,28 @@ AgentMCPAction.init(
       allowNull: false,
       defaultValue: false,
     },
+    citationsAllocated: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
   },
   {
     modelName: "agent_mcp_action",
     sequelize: frontSequelize,
     indexes: [
-      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
       {
-        fields: ["agentMessageId"],
+        fields: ["workspaceId", "agentMessageId"],
         concurrently: true,
       },
       {
-        fields: ["workspaceId", "agentMessageId"],
+        fields: ["stepContentId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "agentMessageId", "stepContentId", "version"],
+        name: "agent_mcp_action_workspace_agent_message_step_content_version",
+        unique: true,
         concurrently: true,
       },
     ],
@@ -273,10 +272,22 @@ AgentMCPAction.init(
 
 AgentMCPAction.belongsTo(AgentMessage, {
   foreignKey: { name: "agentMessageId", allowNull: false },
+  as: "agentMessage",
 });
 
 AgentMessage.hasMany(AgentMCPAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+AgentMCPAction.belongsTo(AgentStepContentModel, {
+  foreignKey: { name: "stepContentId", allowNull: false },
+  as: "stepContent",
+  onDelete: "RESTRICT",
+});
+
+AgentStepContentModel.hasMany(AgentMCPAction, {
+  foreignKey: { name: "stepContentId", allowNull: false },
+  as: "agentMCPActions",
 });
 
 export class AgentMCPActionOutputItem extends WorkspaceAwareModel<AgentMCPActionOutputItem> {
@@ -322,6 +333,10 @@ AgentMCPActionOutputItem.init(
     modelName: "agent_mcp_action_output_item",
     sequelize: frontSequelize,
     indexes: [
+      {
+        fields: ["workspaceId"],
+        concurrently: true,
+      },
       {
         fields: ["agentMCPActionId"],
         concurrently: true,

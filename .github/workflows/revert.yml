@@ -19,7 +19,6 @@ on:
         description: "Component to revert"
         type: choice
         options:
-          - alerting-temporal
           - connectors
           - core
           - front

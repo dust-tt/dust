@@ -29,3 +29,9 @@ export function isSlackWebAPIPlatformError(
     err.code === ErrorCode.PlatformError
   );
 }
+
+export function isSlackWebAPIPlatformErrorBotNotFound(
+  err: unknown
+): err is WebAPIPlatformError {
+  return isSlackWebAPIPlatformError(err) && err.data.error === "bot_not_found";
+}

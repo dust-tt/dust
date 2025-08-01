@@ -25,6 +25,7 @@ export const LoginPage = () => {
     handleLogin,
     handleSelectWorkspace,
     isLoading,
+    handleLogout,
   } = useAuth();
 
   useEffect(() => {
@@ -71,7 +72,7 @@ export const LoginPage = () => {
           {authError && authError.code === "user_not_found" && (
             <>
               <div className="text-center">
-                Please sign up to start using Dust extension.
+                Please sign up on the web to start using Dust extension.
               </div>
             </>
           )}
@@ -88,7 +89,7 @@ export const LoginPage = () => {
                   label="Sign up"
                   onClick={() => {
                     window.open(
-                      "https://dust.tt/api/auth/login?returnTo=/api/login&prompt=login&screen_hint=signup",
+                      "https://dust.tt/api/workos/login?returnTo=/api/login",
                       "_blank"
                     );
                   }}
@@ -101,7 +102,7 @@ export const LoginPage = () => {
               icon={LoginIcon}
               variant="primary"
               label="Sign in"
-              onClick={() => handleLogin(!!authError)}
+              onClick={() => handleLogin()}
               disabled={isLoading}
               size="md"
             />
@@ -158,10 +159,87 @@ export const LoginPage = () => {
     );
   }
 
+  if (isAuthenticated && user?.workspaces.length === 0) {
+    return (
+      <div
+        className={cn(
+          "flex h-screen flex-col p-4",
+          "bg-background text-foreground",
+          "dark:bg-background-night dark:text-foreground-night"
+        )}
+      >
+        <div className="flex flex-col gap-2 h-screen items-center justify-center text-center">
+          <Page.SectionHeader title="You are not a member of any workspace." />
+          <Button
+            label="Sign up on Dust"
+            onClick={() => {
+              window.open("https://dust.tt", "_blank");
+            }}
+          />
+          <div className="text-center">Then</div>
+          <Button
+            icon={LoginIcon}
+            variant="primary"
+            label="Sign in"
+            onClick={() => handleLogin()}
+            disabled={isLoading}
+          />
+          <div className="text-center">Or</div>
+          <Button label="Logout" onClick={() => handleLogout()} />
+        </div>
+      </div>
+    );
+  }
+
+  if (authError) {
+    return (
+      <div
+        className={cn(
+          "flex h-screen flex-col p-4",
+          "bg-background text-foreground",
+          "dark:bg-background-night dark:text-foreground-night"
+        )}
+      >
+        <div className="flex flex-col gap-2 h-screen items-center justify-center text-center">
+          <Page.SectionHeader title={authError.message} />
+          {authError.code === "user_not_found" ? (
+            <>
+              <Button
+                label="Sign up on Dust"
+                onClick={() => {
+                  window.open("https://dust.tt", "_blank");
+                }}
+              />
+              <div className="text-center">Then</div>
+              <Button
+                icon={LoginIcon}
+                variant="primary"
+                label="Sign in"
+                onClick={() => handleLogin()}
+                disabled={isLoading}
+              />
+            </>
+          ) : (
+            <Button label="Logout" onClick={() => handleLogout()} />
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // Should never happen.
   return (
-    <div className="flex h-screen items-center justify-center text-center">
-      <Page.SectionHeader title="Something unexpected occured, please contact us at support@dust.tt!" />
+    <div
+      className={cn(
+        "flex h-screen flex-col p-4",
+        "bg-background text-foreground",
+        "dark:bg-background-night dark:text-foreground-night"
+      )}
+    >
+      <div className="flex flex-col h-screen items-center justify-center text-center">
+        <Page.SectionHeader title="Something unexpected occured, please contact us at support@dust.tt!" />
+        <Button label="Logout" onClick={() => handleLogout()} />
+      </div>
     </div>
   );
 };

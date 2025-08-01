@@ -5,12 +5,12 @@ import type { Readable } from "stream";
 import { upsertCodeDirectory } from "@connectors/connectors/github/lib/code/directory_operations";
 import { upsertCodeFile } from "@connectors/connectors/github/lib/code/file_operations";
 import { garbageCollectCodeSync } from "@connectors/connectors/github/lib/code/garbage_collect";
-import {
-  DIRECTORY_PLACEHOLDER_FILE,
-  GCSRepositoryManager,
-} from "@connectors/connectors/github/lib/code/gcs_repository";
+import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs_repository";
 import { extractGitHubTarballToGCS } from "@connectors/connectors/github/lib/code/tar_extraction";
-import { RepositoryAccessBlockedError } from "@connectors/connectors/github/lib/errors";
+import {
+  isGithubRequestErrorNotFound,
+  RepositoryAccessBlockedError,
+} from "@connectors/connectors/github/lib/errors";
 import { getOctokit } from "@connectors/connectors/github/lib/github_api";
 import type { RepositoryInfo } from "@connectors/connectors/github/lib/github_code";
 import {
@@ -18,7 +18,6 @@ import {
   isRepoTooLarge,
 } from "@connectors/connectors/github/lib/github_code";
 import {
-  getCodeDirInternalId,
   getCodeRootInternalId,
   getRepositoryInternalId,
   getRepoUrl,
@@ -34,13 +33,14 @@ import {
   GithubConnectorState,
 } from "@connectors/lib/models/github";
 import { heartbeat } from "@connectors/lib/temporal";
-import logger from "@connectors/logger/logger";
+import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 
-const PARALLEL_FILE_UPLOADS = 15;
-const PARALLEL_DIRECTORY_UPLOADS = 10;
-const GCS_FILES_BATCH_SIZE = 500;
+// Files are uploaded asynchronously, so we can use a high number of parallel uploads.
+const PARALLEL_FILE_UPLOADS = 128;
+// Directories are uploaded synchronously, so we need to use a lower number of parallel uploads.
+const PARALLEL_DIRECTORY_UPLOADS = 64;
 
 const GITHUB_TARBALL_DOWNLOAD_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes.
 
@@ -51,7 +51,7 @@ export async function githubExtractToGcsActivity({
   repoName,
   repoId,
 }: {
-  connectorId: number;
+  connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   repoLogin: string;
   repoName: string;
@@ -64,6 +64,40 @@ export async function githubExtractToGcsActivity({
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
+
+  const logger = getActivityLogger(connector, {
+    repoName,
+    repoLogin,
+    repoId,
+    activityName: "githubExtractToGcsActivity",
+  });
+
+  // Local cleanup function to handle missing/inaccessible repositories.
+  const cleanupMissingRepository = async (loggerTask: string) => {
+    await garbageCollectCodeSync(
+      dataSourceConfig,
+      connector,
+      repoId,
+      new Date(),
+      logger.child({ task: loggerTask })
+    );
+
+    await heartbeat();
+
+    // Deleting the code root folder from data_source_folders (core).
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: getCodeRootInternalId(repoId),
+    });
+
+    // Finally delete the repository object if it exists.
+    await GithubCodeRepository.destroy({
+      where: {
+        connectorId: connector.id,
+        repoId: repoId.toString(),
+      },
+    });
+  };
 
   // Get GitHub client.
   const octokit = await getOctokit(connector);
@@ -90,26 +124,50 @@ export async function githubExtractToGcsActivity({
     },
   });
 
+  logger.info("Fetching GitHub repository tarball");
+
   // Get tarball stream from GitHub.
-  const tarballResponse = await octokit.request(
-    "GET /repos/{owner}/{repo}/tarball/{ref}",
-    {
-      owner: repoLogin,
-      repo: repoName,
-      ref: repoInfo.default_branch,
-      request: {
-        parseSuccessResponseBody: false,
-        timeout: GITHUB_TARBALL_DOWNLOAD_TIMEOUT_MS,
-      },
+  let tarballResponse;
+  try {
+    tarballResponse = await octokit.request(
+      "GET /repos/{owner}/{repo}/tarball/{ref}",
+      {
+        owner: repoLogin,
+        repo: repoName,
+        ref: repoInfo.default_branch,
+        request: {
+          parseSuccessResponseBody: false,
+          timeout: GITHUB_TARBALL_DOWNLOAD_TIMEOUT_MS,
+        },
+      }
+    );
+  } catch (error) {
+    if (isGithubRequestErrorNotFound(error)) {
+      logger.info(
+        { err: error, repoLogin, repoName, repoId },
+        "Repository tarball not found (404): Garbage collecting repo."
+      );
+
+      await cleanupMissingRepository("garbageCollectRepoNotFound");
+
+      return null;
     }
-  );
+
+    throw error;
+  }
 
   const tarballStream = (tarballResponse as { data: Readable }).data;
 
-  const extractResult = await extractGitHubTarballToGCS(tarballStream, {
-    repoId,
-    connectorId,
-  });
+  logger.info("Extracting GitHub repository tarball to GCS");
+
+  const extractResult = await extractGitHubTarballToGCS(
+    tarballStream,
+    {
+      repoId,
+      connectorId,
+    },
+    logger
+  );
 
   if (extractResult.isErr()) {
     if (
@@ -121,29 +179,7 @@ export async function githubExtractToGcsActivity({
         "Missing Github repository: Garbage collecting repo."
       );
 
-      await garbageCollectCodeSync(
-        dataSourceConfig,
-        connector,
-        repoId,
-        new Date(),
-        logger.child({ task: "garbageCollectRepoNotFound" })
-      );
-
-      await heartbeat();
-
-      // Deleting the code root folder from data_source_folders (core)
-      await deleteDataSourceFolder({
-        dataSourceConfig,
-        folderId: getCodeRootInternalId(repoId),
-      });
-
-      // Finally delete the repository object if it exists.
-      await GithubCodeRepository.destroy({
-        where: {
-          connectorId: connector.id,
-          repoId: repoId.toString(),
-        },
-      });
+      await cleanupMissingRepository("garbageCollectRepoNotFound");
 
       return null;
     }
@@ -159,144 +195,54 @@ export async function githubExtractToGcsActivity({
   };
 }
 
-export interface DirectoryListing {
-  dirPath: string;
-  gcsPath: string;
-  internalId: string;
-  parentInternalId: string | null;
-}
-
-interface FileListing {
-  gcsPath: string;
-  relativePath: string;
-}
-
-// Activity to get GCS files with simple pagination to avoid Temporal return size limits.
-export async function githubGetGcsFilesActivity({
-  batchSize = GCS_FILES_BATCH_SIZE,
-  gcsBasePath,
-  pageToken,
-  repoId,
-}: {
-  batchSize?: number;
-  gcsBasePath: string;
-  pageToken?: string;
-  repoId: number;
-}): Promise<{
-  directories: DirectoryListing[];
-  files: FileListing[];
-  nextPageToken?: string;
-  hasMore: boolean;
-}> {
-  const gcsManager = new GCSRepositoryManager();
-  const {
-    files: paginatedFiles,
-    nextPageToken,
-    hasMore,
-  } = await gcsManager.listFiles(gcsBasePath, {
-    maxResults: batchSize,
-    pageToken,
-  });
-
-  const directories: DirectoryListing[] = [];
-  const files: FileListing[] = [];
-
-  for (const file of paginatedFiles) {
-    const relativePath = file.name.replace(`${gcsBasePath}/`, "");
-
-    if (file.name.endsWith(`/${DIRECTORY_PLACEHOLDER_FILE}`)) {
-      // This is a directory placeholder.
-      const dirPath = relativePath.replace(
-        `/${DIRECTORY_PLACEHOLDER_FILE}`,
-        ""
-      );
-      directories.push({
-        gcsPath: file.name,
-        dirPath,
-        internalId: getCodeDirInternalId(repoId, dirPath),
-        parentInternalId: dirPath.includes("/")
-          ? getCodeDirInternalId(
-              repoId,
-              dirPath.split("/").slice(0, -1).join("/")
-            )
-          : null,
-      });
-    } else {
-      // This is a regular file.
-      files.push({
-        gcsPath: file.name,
-        relativePath,
-      });
-    }
-  }
-
-  return {
-    directories,
-    files,
-    nextPageToken,
-    hasMore,
-  };
-}
-
-// Activity to process a chunk of directories with concurrency control.
-export async function githubProcessDirectoryChunkActivity({
-  codeSyncStartedAtMs,
+// Activity to create multiple index files with file paths to optimize temporal memory usage.
+export async function githubCreateGcsIndexActivity({
   connectorId,
-  dataSourceConfig,
-  defaultBranch,
-  directories,
+  gcsBasePath,
   repoId,
   repoLogin,
   repoName,
-  updatedDirectoryIdsArray,
 }: {
-  codeSyncStartedAtMs: number;
-  connectorId: number;
-  dataSourceConfig: DataSourceConfig;
-  defaultBranch: string;
-  directories: Array<{
-    gcsPath: string;
-    dirPath: string;
-    internalId: string;
-    parentInternalId: string | null;
-  }>;
+  connectorId: ModelId;
+  gcsBasePath: string;
   repoId: number;
   repoLogin: string;
   repoName: string;
-  updatedDirectoryIdsArray?: string[];
-}) {
-  const codeSyncStartedAt = new Date(codeSyncStartedAtMs);
+}): Promise<{
+  indexPaths: string[];
+}> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
 
-  const results = await concurrentExecutor(
-    directories,
-    async (dir) => {
-      await upsertCodeDirectory({
-        codeSyncStartedAt,
-        connectorId,
-        dataSourceConfig,
-        defaultBranch,
-        dirPath: dir.dirPath,
-        repoId,
-        repoLogin,
-        repoName,
-        updatedDirectoryIds: new Set(updatedDirectoryIdsArray),
-      });
-    },
-    { concurrency: PARALLEL_DIRECTORY_UPLOADS }
-  );
+  const logger = getActivityLogger(connector, {
+    repoId,
+    repoLogin,
+    repoName,
+    gcsBasePath,
+    activityName: "githubCreateGcsIndexActivity",
+  });
+  const gcsManager = new GCSRepositoryManager();
 
-  return { processedDirectories: results.length };
+  const indexPaths = await gcsManager.createIndexFiles(gcsBasePath, repoId, {
+    childLogger: logger,
+  });
+
+  return {
+    indexPaths,
+  };
 }
 
-// Activity to process a chunk of files with concurrency control.
-export async function githubProcessFileChunkActivity({
+// Activity to process all files from a single index file.
+export async function githubProcessIndexFileActivity({
   codeSyncStartedAtMs,
   connectorId,
   dataSourceConfig,
   defaultBranch,
-  files,
   forceResync = false,
   gcsBasePath,
+  indexPath,
   isBatchSync = false,
   repoId,
   repoLogin,
@@ -306,24 +252,48 @@ export async function githubProcessFileChunkActivity({
   connectorId: number;
   dataSourceConfig: DataSourceConfig;
   defaultBranch: string;
-  files: Array<{
-    gcsPath: string;
-    relativePath: string;
-  }>;
   forceResync?: boolean;
   gcsBasePath: string;
+  indexPath: string;
   isBatchSync?: boolean;
   repoId: number;
   repoLogin: string;
   repoName: string;
 }): Promise<{
   processedFiles: number;
+  processedDirectories: number;
   updatedDirectoryIds: string[];
 }> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const logger = getActivityLogger(connector, {
+    repoId,
+    repoLogin,
+    repoName,
+    gcsBasePath,
+    indexPath,
+    activityName: "githubProcessIndexFileActivity",
+  });
+
+  const gcsManager = new GCSRepositoryManager();
+
+  // Read all files and directories from this index.
+  const files = await gcsManager.readFilesFromIndex(indexPath, gcsBasePath);
+  const directories = await gcsManager.readDirectoriesFromIndex({
+    expectedGcsBasePath: gcsBasePath,
+    indexPath,
+  });
+
   const codeSyncStartedAt = new Date(codeSyncStartedAtMs);
   const updatedDirectoryIdsSet = new Set<string>();
 
-  const results = await concurrentExecutor(
+  logger.info("Processed index file");
+
+  // Process all files.
+  const fileResults = await concurrentExecutor(
     files,
     async (file) => {
       const result = await upsertCodeFile({
@@ -339,6 +309,10 @@ export async function githubProcessFileChunkActivity({
         relativePath: file.relativePath,
         forceResync,
         isBatchSync,
+        logger: logger.child({
+          task: "upsertCodeFile",
+          relativePath: file.relativePath,
+        }),
       });
 
       // Aggregate updated directory IDs.
@@ -351,8 +325,40 @@ export async function githubProcessFileChunkActivity({
     { concurrency: PARALLEL_FILE_UPLOADS }
   );
 
+  // Process all directories.
+  const directoryResults = await concurrentExecutor(
+    directories,
+    async (dir) => {
+      await upsertCodeDirectory({
+        codeSyncStartedAt,
+        connectorId,
+        dataSourceConfig,
+        defaultBranch,
+        dirPath: dir.dirPath,
+        repoId,
+        repoLogin,
+        repoName,
+        updatedDirectoryIds: updatedDirectoryIdsSet,
+        logger: logger.child({
+          task: "upsertCodeDirectory",
+          dirPath: dir.dirPath,
+        }),
+      });
+    },
+    { concurrency: PARALLEL_DIRECTORY_UPLOADS }
+  );
+
+  logger.info(
+    {
+      processedFiles: fileResults.length,
+      processedDirectories: directoryResults.length,
+    },
+    "Processed index file"
+  );
+
   return {
-    processedFiles: results.length,
+    processedFiles: fileResults.length,
+    processedDirectories: directoryResults.length,
     updatedDirectoryIds: Array.from(updatedDirectoryIdsSet),
   };
 }
@@ -375,6 +381,11 @@ export async function githubCleanupCodeSyncActivity({
     throw new Error(`Connector ${connectorId} not found`);
   }
 
+  const logger = getActivityLogger(connector, {
+    repoId,
+    activityName: "githubCleanupCodeSyncActivity",
+  });
+
   const codeSyncStartedAt = new Date(codeSyncStartedAtMs);
 
   // Delete files and directories not seen during sync.
@@ -386,9 +397,7 @@ export async function githubCleanupCodeSyncActivity({
     logger.child({ task: "garbageCollectCodeSync" })
   );
 
-  // Delete the GCS repository.
-  const gcsManager = new GCSRepositoryManager();
-  await gcsManager.deleteRepository(connectorId, repoId);
+  // No need to delete the GCS repository, it will be deleted by the bucket lifecycle policy.
 
   const githubCodeRepository = await GithubCodeRepository.findOne({
     where: {
@@ -427,6 +436,13 @@ export async function githubEnsureCodeSyncEnabledActivity({
   if (!connector) {
     throw new Error(`Connector not found (connectorId: ${connectorId})`);
   }
+
+  const logger = getActivityLogger(connector, {
+    repoId,
+    repoLogin,
+    repoName,
+    activityName: "githubEnsureCodeSyncEnabledActivity",
+  });
 
   const connectorState = await GithubConnectorState.findOne({
     where: {

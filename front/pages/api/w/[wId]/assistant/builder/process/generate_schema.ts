@@ -9,7 +9,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
-  InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema,
+  InternalPostBuilderGenerateSchemaRequestBodySchema,
   ioTsParsePayload,
 } from "@app/types";
 
@@ -28,7 +28,7 @@ async function handler(
     case "POST":
       const bodyRes = ioTsParsePayload(
         req.body,
-        InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema
+        InternalPostBuilderGenerateSchemaRequestBodySchema
       );
       if (bodyRes.isErr()) {
         return apiError(req, res, {

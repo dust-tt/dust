@@ -3,6 +3,8 @@ import path from "path";
 import { promisify } from "util";
 
 import {
+  DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
+  DEFAULT_AGENT_ROUTER_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
@@ -10,12 +12,10 @@ import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import {
-  LIST_ALL_AGENTS_TOOL_NAME,
-  SUGGEST_AGENTS_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
+import { SUGGEST_AGENTS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agent_metadata";
 import config from "@app/lib/api/config";
@@ -42,9 +42,8 @@ import {
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
-  DEFAULT_MAX_STEPS_USE_PER_RUN,
   FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
-  GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG,
+  GEMINI_2_5_PRO_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   GLOBAL_AGENTS_SID,
@@ -52,13 +51,12 @@ import {
   GPT_4_1_MODEL_CONFIG,
   isGlobalAgentId,
   isProviderWhitelisted,
+  MAX_STEPS_USE_PER_RUN_LIMIT,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
-  O1_HIGH_REASONING_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
-  O3_MINI_HIGH_REASONING_MODEL_CONFIG,
   O3_MODEL_CONFIG,
 } from "@app/types";
 
@@ -83,6 +81,7 @@ const dummyModelConfiguration = {
   providerId: GPT_4_1_MODEL_CONFIG.providerId,
   modelId: GPT_4_1_MODEL_CONFIG.modelId,
   temperature: 0,
+  reasoningEffort: GPT_4_1_MODEL_CONFIG.defaultReasoningEffort,
 };
 
 type PrefetchedDataSourcesType = {
@@ -158,6 +157,7 @@ function _getDefaultWebActionsForGlobalAgent({
       // a legacy agent (see isLegacyAgent) and being capped to 1 action.
       description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
       mcpServerViewId: webSearchBrowseMCPServerView.sId,
+      mcpServerName: webSearchBrowseMCPServerView.toJSON().server.name,
       internalMCPServerId: webSearchBrowseMCPServerView.internalMCPServerId,
       dataSources: null,
       tables: null,
@@ -182,29 +182,13 @@ function _getAgentRouterToolsConfiguration(
   return [
     {
       id: -1,
-      sId: agentId + "-agent-router-list-action",
+      sId: agentId + "-agent-router",
       type: "mcp_server_configuration",
-      name: LIST_ALL_AGENTS_TOOL_NAME,
-      description: "List the published agents of the workspace.",
+      name: DEFAULT_AGENT_ROUTER_ACTION_NAME satisfies InternalMCPServerNameType,
+      description: DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
       mcpServerViewId: mcpServerView.sId,
       internalMCPServerId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-    },
-    {
-      id: -1,
-      sId: agentId + "-agent-router-suggest-agents",
-      type: "mcp_server_configuration",
-      name: SUGGEST_AGENTS_TOOL_NAME,
-      description: "Suggest agents based on the user's query.",
-      mcpServerViewId: mcpServerView.sId,
-      internalMCPServerId,
+      mcpServerName: mcpServerView.toJSON().server.name,
       dataSources: null,
       tables: null,
       childAgentId: null,
@@ -261,6 +245,7 @@ function _getHelperGlobalAgent({
         providerId: modelConfiguration?.providerId,
         modelId: modelConfiguration?.modelId,
         temperature: 0.2,
+        reasoningEffort: modelConfiguration?.defaultReasoningEffort,
       }
     : dummyModelConfiguration;
   const status = modelConfiguration ? "active" : "disabled_by_admin";
@@ -275,6 +260,7 @@ function _getHelperGlobalAgent({
       name: "search_dust_docs",
       description: "The documentation of the Dust platform.",
       mcpServerViewId: searchMCPServerView.sId,
+      mcpServerName: searchMCPServerView.toJSON().server.name,
       internalMCPServerId: searchMCPServerView.internalMCPServerId,
       dataSources: [
         {
@@ -329,7 +315,7 @@ function _getHelperGlobalAgent({
     scope: "global",
     model: model,
     actions,
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
@@ -375,7 +361,7 @@ function _getGPT35TurboGlobalAgent({
         webSearchBrowseMCPServerView,
       }),
     ],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
@@ -429,7 +415,7 @@ function _getGPT4GlobalAgent({
         webSearchBrowseMCPServerView,
       }),
     ],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
@@ -473,9 +459,10 @@ function _getO3MiniGlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: O3_MINI_HIGH_REASONING_MODEL_CONFIG.providerId,
-      modelId: O3_MINI_HIGH_REASONING_MODEL_CONFIG.modelId,
+      providerId: O3_MODEL_CONFIG.providerId,
+      modelId: O3_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort: "high" as const,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -483,7 +470,7 @@ function _getO3MiniGlobalAgent({
         webSearchBrowseMCPServerView,
       }),
     ],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
@@ -533,7 +520,7 @@ function _getO1GlobalAgent({
         webSearchBrowseMCPServerView,
       }),
     ],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
@@ -576,7 +563,7 @@ function _getO1MiniGlobalAgent({
       temperature: 1, // 1 is forced for O1
     },
     actions: [],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
@@ -617,10 +604,10 @@ function _getO1HighReasoningGlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: O1_HIGH_REASONING_MODEL_CONFIG.providerId,
-      modelId: O1_HIGH_REASONING_MODEL_CONFIG.modelId,
-      temperature: 1, // 1 is forced for O1
-      reasoningEffort: O1_HIGH_REASONING_MODEL_CONFIG.reasoningEffort,
+      providerId: O1_MODEL_CONFIG.providerId,
+      modelId: O1_MODEL_CONFIG.modelId,
+      temperature: 1,
+      reasoningEffort: "high" as const,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -628,7 +615,7 @@ function _getO1HighReasoningGlobalAgent({
         webSearchBrowseMCPServerView,
       }),
     ],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
@@ -679,7 +666,7 @@ function _getO3GlobalAgent({
         webSearchBrowseMCPServerView,
       }),
     ],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
@@ -716,7 +703,7 @@ function _getClaudeInstantGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
@@ -760,7 +747,7 @@ function _getClaude2GlobalAgent({
     },
 
     actions: [],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
@@ -799,6 +786,8 @@ function _getClaude3HaikuGlobalAgent({
       providerId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -806,7 +795,7 @@ function _getClaude3HaikuGlobalAgent({
         webSearchBrowseMCPServerView,
       }),
     ],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
@@ -850,6 +839,8 @@ function _getClaude3OpusGlobalAgent({
       providerId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -857,7 +848,7 @@ function _getClaude3OpusGlobalAgent({
         webSearchBrowseMCPServerView,
       }),
     ],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
@@ -901,6 +892,8 @@ function _getClaude3GlobalAgent({
       providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -908,7 +901,7 @@ function _getClaude3GlobalAgent({
         webSearchBrowseMCPServerView,
       }),
     ],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
@@ -952,6 +945,8 @@ function _getClaude4SonnetGlobalAgent({
       providerId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -959,7 +954,7 @@ function _getClaude4SonnetGlobalAgent({
         webSearchBrowseMCPServerView,
       }),
     ],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
@@ -1003,6 +998,8 @@ function _getClaude3_7GlobalAgent({
       providerId: CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -1010,7 +1007,7 @@ function _getClaude3_7GlobalAgent({
         webSearchBrowseMCPServerView,
       }),
     ],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
@@ -1054,6 +1051,7 @@ function _getMistralLargeGlobalAgent({
       providerId: MISTRAL_LARGE_MODEL_CONFIG.providerId,
       modelId: MISTRAL_LARGE_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort: MISTRAL_LARGE_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -1061,7 +1059,7 @@ function _getMistralLargeGlobalAgent({
         webSearchBrowseMCPServerView,
       }),
     ],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
@@ -1105,6 +1103,7 @@ function _getMistralMediumGlobalAgent({
       providerId: MISTRAL_MEDIUM_MODEL_CONFIG.providerId,
       modelId: MISTRAL_MEDIUM_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort: MISTRAL_MEDIUM_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -1112,7 +1111,7 @@ function _getMistralMediumGlobalAgent({
         webSearchBrowseMCPServerView,
       }),
     ],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
@@ -1151,6 +1150,7 @@ function _getMistralSmallGlobalAgent({
       providerId: MISTRAL_SMALL_MODEL_CONFIG.providerId,
       modelId: MISTRAL_SMALL_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort: MISTRAL_SMALL_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -1158,7 +1158,7 @@ function _getMistralSmallGlobalAgent({
         webSearchBrowseMCPServerView,
       }),
     ],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
@@ -1199,9 +1199,10 @@ function _getGeminiProGlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG.providerId,
-      modelId: GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG.modelId,
+      providerId: GEMINI_2_5_PRO_MODEL_CONFIG.providerId,
+      modelId: GEMINI_2_5_PRO_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort: GEMINI_2_5_PRO_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -1209,7 +1210,7 @@ function _getGeminiProGlobalAgent({
         webSearchBrowseMCPServerView,
       }),
     ],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
@@ -1251,6 +1252,8 @@ function _getDeepSeekR1GlobalAgent({
       providerId: FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG.providerId,
       modelId: FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort:
+        FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [],
     maxStepsPerRun: 1,
@@ -1302,6 +1305,7 @@ function _getManagedDataSourceAgent(
         providerId: modelConfiguration.providerId,
         modelId: modelConfiguration.modelId,
         temperature: 0.7,
+        reasoningEffort: modelConfiguration.defaultReasoningEffort,
       }
     : dummyModelConfiguration;
 
@@ -1371,6 +1375,7 @@ function _getManagedDataSourceAgent(
       name: "search_data_sources",
       description: `The user's ${connectorProvider} data source.`,
       mcpServerViewId: searchMCPServerView.sId,
+      mcpServerName: searchMCPServerView.toJSON().server.name,
       internalMCPServerId: searchMCPServerView.internalMCPServerId,
       dataSources: filteredDataSourceViews.map((dsView) => ({
         dataSourceViewId: dsView.sId,
@@ -1576,6 +1581,7 @@ function _getDustGlobalAgent(
         providerId: modelConfiguration.providerId,
         modelId: modelConfiguration.modelId,
         temperature: 0.7,
+        reasoningEffort: modelConfiguration.defaultReasoningEffort,
       }
     : dummyModelConfiguration;
 
@@ -1591,7 +1597,8 @@ The agent should not provide additional information or content that the user did
    in which case it is better to search only on the specific data source.
    It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
    If no relevant information is found but the user's question seems to be internal to the company,
-   the agent should use the ${SUGGEST_AGENTS_TOOL_NAME} tool to suggest an agent that might be able to handle the request.
+   the agent should use the ${DEFAULT_AGENT_ROUTER_ACTION_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME}
+   tool to suggest an agent that might be able to handle the request.
 
 2. If the user's question requires information that is recent and likely to be found on the public 
    internet, the agent should use the internet to answer the question.
@@ -1648,7 +1655,7 @@ The agent should not provide additional information or content that the user did
       ...dustAgent,
       status: "active",
       actions: [],
-      maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+      maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     };
   }
 
@@ -1669,6 +1676,7 @@ The agent should not provide additional information or content that the user did
       description: "The user's entire workspace data sources",
       mcpServerViewId: searchMCPServerView.sId,
       internalMCPServerId: searchMCPServerView.internalMCPServerId,
+      mcpServerName: searchMCPServerView.toJSON().server.name,
       dataSources: dataSourceViews.map((dsView) => ({
         dataSourceViewId: dsView.sId,
         workspaceId: preFetchedDataSources.workspaceId,
@@ -1705,6 +1713,7 @@ The agent should not provide additional information or content that the user did
           name: "hidden_dust_search_" + dsView.dataSource.name,
           description: `The user's ${dsView.dataSource.connectorProvider} data source.`,
           mcpServerViewId: searchMCPServerView.sId,
+          mcpServerName: searchMCPServerView.toJSON().server.name,
           internalMCPServerId: searchMCPServerView.internalMCPServerId,
           dataSources: [
             {
@@ -1749,7 +1758,7 @@ The agent should not provide additional information or content that the user did
     ...dustAgent,
     status: "active",
     actions,
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };
 }
 
@@ -1959,19 +1968,20 @@ function getGlobalAgent({
 // to be accessible to users moving forward.
 const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.CLAUDE_2,
-  GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
-  GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
-  GLOBAL_AGENTS_SID.GPT35_TURBO,
-  GLOBAL_AGENTS_SID.MISTRAL_SMALL,
-  GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
-  GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
   GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
-  GLOBAL_AGENTS_SID.SLACK,
-  GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
-  GLOBAL_AGENTS_SID.NOTION,
+  GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
+  GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
+  GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
   GLOBAL_AGENTS_SID.GITHUB,
+  GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
+  GLOBAL_AGENTS_SID.GPT35_TURBO,
   GLOBAL_AGENTS_SID.INTERCOM,
+  GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
+  GLOBAL_AGENTS_SID.MISTRAL_SMALL,
+  GLOBAL_AGENTS_SID.NOTION,
+  GLOBAL_AGENTS_SID.O1_MINI,
+  GLOBAL_AGENTS_SID.SLACK,
 ];
 
 export async function getGlobalAgents(
@@ -2046,11 +2056,6 @@ export async function getGlobalAgents(
     );
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.O3
-    );
-  }
-  if (!flags.includes("openai_o1_mini_feature")) {
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.O1_MINI
     );
   }
   if (!flags.includes("openai_o1_high_reasoning_feature")) {

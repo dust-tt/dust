@@ -1,17 +1,18 @@
 import assert from "assert";
 
 import {
-  DEFAULT_CONVERSATION_EXTRACT_ACTION_DATA_DESCRIPTION,
-  DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
-  DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
+  DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
+  DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import type {
+  DataSourceConfiguration,
+  TableDataSourceConfiguration,
+} from "@app/lib/api/assistant/configuration/types";
 import type {
   ContentNodeAttachmentType,
   ConversationAttachmentType,
@@ -75,6 +76,7 @@ export async function getJITServers(
     jsonSchema: null,
     additionalConfiguration: {},
     mcpServerViewId: conversationFilesView.sId,
+    mcpServerName: conversationFilesView.toJSON().server.name,
     dustAppConfiguration: null,
     internalMCPServerId: conversationFilesView.mcpServerId,
   };
@@ -87,13 +89,9 @@ export async function getJITServers(
   // Check files for the retrieval query action.
   const filesUsableAsRetrievalQuery = attachments.filter((f) => f.isSearchable);
 
-  // Check files for the process action.
-  const filesUsableForExtracting = attachments.filter((f) => f.isExtractable);
-
   if (
     filesUsableAsTableQuery.length === 0 &&
-    filesUsableAsRetrievalQuery.length === 0 &&
-    filesUsableForExtracting.length === 0
+    filesUsableAsRetrievalQuery.length === 0
   ) {
     return jitServers;
   }
@@ -121,11 +119,23 @@ export async function getJITServers(
 
   if (filesUsableAsTableQuery.length > 0) {
     // Get the query_tables MCP server view
-    const queryTablesView =
+
+    // Try to get the new query_tables_v2 server.
+    // Will only be available for users with the "exploded_tables_query" feature flag.
+    let queryTablesView =
       await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
         auth,
-        "query_tables"
+        "query_tables_v2"
       );
+
+    // Fallback to the old query_tables server.
+    if (!queryTablesView) {
+      queryTablesView =
+        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "query_tables"
+        );
+    }
 
     assert(
       queryTablesView,
@@ -159,7 +169,7 @@ export async function getJITServers(
       sId: generateRandomModelSId(),
       type: "mcp_server_configuration",
       name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-      description: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
+      description: `The tables associated with the 'queryable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``,
       dataSources: null,
       tables,
       childAgentId: null,
@@ -168,6 +178,7 @@ export async function getJITServers(
       jsonSchema: null,
       additionalConfiguration: {},
       mcpServerViewId: queryTablesView.sId,
+      mcpServerName: queryTablesView.toJSON().server.name,
       dustAppConfiguration: null,
       internalMCPServerId: queryTablesView.mcpServerId,
     };
@@ -184,18 +195,6 @@ export async function getJITServers(
   assert(
     retrievalView,
     "MCP server view not found for search. Ensure auto tools are created."
-  );
-
-  // Get the extract_data view once - we'll need it for extract functionality
-  const extractDataView =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "extract_data"
-    );
-
-  assert(
-    extractDataView,
-    "MCP server view not found for extract_data. Ensure auto tools are created."
   );
 
   if (filesUsableAsRetrievalQuery.length > 0) {
@@ -230,7 +229,7 @@ export async function getJITServers(
       id: -1,
       sId: generateRandomModelSId(),
       type: "mcp_server_configuration",
-      name: "conversation_search",
+      name: DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
       description: "Semantic search over all files from the conversation",
       dataSources,
       tables: null,
@@ -240,59 +239,11 @@ export async function getJITServers(
       jsonSchema: null,
       additionalConfiguration: {},
       mcpServerViewId: retrievalView.sId,
+      mcpServerName: retrievalView.toJSON().server.name,
       dustAppConfiguration: null,
       internalMCPServerId: retrievalView.mcpServerId,
     };
     jitServers.push(retrievalServer);
-  }
-
-  // Add extract data MCP server for processable files
-  if (filesUsableForExtracting.length > 0) {
-    const contentNodeAttachments: ContentNodeAttachmentType[] = [];
-    for (const f of filesUsableForExtracting) {
-      if (isContentNodeAttachmentType(f)) {
-        contentNodeAttachments.push(f);
-      }
-    }
-    const dataSources: DataSourceConfiguration[] = contentNodeAttachments
-      // For each extractable content node, we add its datasourceview with itself as parent filter.
-      .map((f) => ({
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        dataSourceViewId: f.nodeDataSourceViewId,
-        filter: {
-          parents: {
-            in: [f.nodeId],
-            not: [],
-          },
-          tags: null,
-        },
-      }));
-    if (conversationDataSourceView) {
-      dataSources.push({
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        dataSourceViewId: conversationDataSourceView.sId,
-        filter: { parents: null, tags: null },
-      });
-    }
-
-    const extractServer: ServerSideMCPServerConfigurationType = {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_server_configuration",
-      name: DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
-      description: DEFAULT_CONVERSATION_EXTRACT_ACTION_DATA_DESCRIPTION,
-      dataSources,
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      timeFrame: null,
-      jsonSchema: null,
-      additionalConfiguration: {},
-      mcpServerViewId: extractDataView.sId,
-      dustAppConfiguration: null,
-      internalMCPServerId: extractDataView.mcpServerId,
-    };
-    jitServers.push(extractServer);
   }
 
   const searchableFolders: ContentNodeAttachmentType[] = [];
@@ -339,28 +290,9 @@ export async function getJITServers(
       mcpServerViewId: retrievalView.sId,
       dustAppConfiguration: null,
       internalMCPServerId: retrievalView.mcpServerId,
+      mcpServerName: retrievalView.toJSON().server.name,
     };
     jitServers.push(folderSearchServer);
-
-    // add extract server for the folder
-    const folderExtractServer: ServerSideMCPServerConfigurationType = {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_server_configuration",
-      name: `extract_folder_${i}`,
-      description: `Extract structured data from the documents inside "${folder.title}"`,
-      dataSources,
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      timeFrame: null,
-      jsonSchema: null,
-      additionalConfiguration: {},
-      mcpServerViewId: extractDataView.sId,
-      dustAppConfiguration: null,
-      internalMCPServerId: extractDataView.mcpServerId,
-    };
-    jitServers.push(folderExtractServer);
   }
 
   return jitServers;

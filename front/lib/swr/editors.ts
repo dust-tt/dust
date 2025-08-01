@@ -1,7 +1,7 @@
-import { useSendNotification } from "@dust-tt/sparkle";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   GetAgentEditorsResponseBody,

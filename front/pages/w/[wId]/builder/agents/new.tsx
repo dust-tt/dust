@@ -3,14 +3,11 @@ import type { ParsedUrlQuery } from "querystring";
 
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
-import { DataSourceViewsProvider } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
-import { MCPServerViewsProvider } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
-import { SpacesProvider } from "@app/components/assistant_builder/contexts/SpacesContext";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
 import { getFeatureFlags, isRestrictedFromAgentCreation } from "@app/lib/auth";
@@ -21,6 +18,7 @@ import type {
   PlanType,
   SubscriptionType,
   TemplateAgentConfigurationType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 
@@ -36,6 +34,7 @@ function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
+  user: UserType;
   subscription: SubscriptionType;
   plan: PlanType;
   agentConfiguration:
@@ -82,7 +81,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     context.query
   );
   if (duplicate) {
-    configuration = await getAgentConfiguration(auth, duplicate, "full");
+    configuration = await getAgentConfiguration(auth, {
+      agentId: duplicate,
+      variant: "full",
+    });
 
     if (!configuration) {
       return {
@@ -107,6 +109,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     configuration = agentConfigRes.value;
   }
 
+  const user = auth.getNonNullableUser().toJSON();
+
   return {
     props: {
       agentConfiguration: configuration,
@@ -116,6 +120,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       subscription,
       templateId,
+      user,
     },
   };
 });
@@ -123,6 +128,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function CreateAgent({
   agentConfiguration,
   owner,
+  user,
   templateId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({ templateId });
@@ -136,14 +142,8 @@ export default function CreateAgent({
   }
 
   return (
-    <AgentBuilderProvider owner={owner}>
-      <SpacesProvider owner={owner}>
-        <MCPServerViewsProvider owner={owner}>
-          <DataSourceViewsProvider owner={owner}>
-            <AgentBuilder />
-          </DataSourceViewsProvider>
-        </MCPServerViewsProvider>
-      </SpacesProvider>
+    <AgentBuilderProvider owner={owner} user={user}>
+      <AgentBuilder />
     </AgentBuilderProvider>
   );
 }

@@ -1,4 +1,3 @@
-import { useSendNotification } from "@dust-tt/sparkle";
 import React from "react";
 import { useSWRConfig } from "swr";
 
@@ -9,6 +8,7 @@ import {
 } from "@app/components/assistant/conversation/AttachmentCitation";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import type {

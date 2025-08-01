@@ -16,8 +16,8 @@ export async function launchWorkOSEventsWorkflow({
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
 
-  const { event: eventType } = eventPayload;
-  const workflowId = `workos-events-${eventType}-${Date.now()}`;
+  const { event: eventType, id } = eventPayload;
+  const workflowId = `workos-events-${eventType}-${id}-${Date.now()}`;
 
   try {
     await client.workflow.start(workOSEventsWorkflow, {

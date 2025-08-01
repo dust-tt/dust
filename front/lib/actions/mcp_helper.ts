@@ -1,3 +1,4 @@
+import type { AgentBuilderAction } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
@@ -99,14 +100,14 @@ export function isRemoteMCPServerType(
 
 export function getMcpServerViewDisplayName(
   view: MCPServerViewType,
-  action?: AssistantBuilderMCPConfiguration
+  action?: AssistantBuilderMCPConfiguration | AgentBuilderAction
 ) {
   return getMcpServerDisplayName(view.server, action);
 }
 
 export function getMcpServerDisplayName(
   server: MCPServerType,
-  action?: AssistantBuilderMCPConfiguration
+  action?: AssistantBuilderMCPConfiguration | AgentBuilderAction
 ) {
   // Unreleased internal servers are displayed with a suffix in the UI.
   const res = getInternalMCPServerNameAndWorkspaceId(server.sId);
@@ -122,7 +123,7 @@ export function getMcpServerDisplayName(
 
     const serverConfig = INTERNAL_MCP_SERVERS[res.value.name];
 
-    if (serverConfig.isRestricted !== undefined) {
+    if (serverConfig.isPreview === true) {
       displayName += " (Preview)";
     }
     // Will append Dust App name.

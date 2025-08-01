@@ -1,4 +1,5 @@
 import type {
+  DataSourceFolderSpreadsheetMimeType,
   DataSourceSearchQuery,
   DataSourceSearchResponseType,
 } from "@dust-tt/client";
@@ -471,40 +472,6 @@ export async function upsertDocument({
 
   const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
   const plan = auth.getNonNullablePlan();
-  // Enforce plan limits: DataSource documents count.
-  // We only load the number of documents if the limit is not -1 (unlimited).
-  // the `getDataSourceDocuments` query involves a SELECT COUNT(*) in the DB that is not
-  // optimized, so we avoid it for large workspaces if we know we're unlimited anyway
-  if (plan.limits.dataSources.documents.count !== -1) {
-    const documents = await coreAPI.getDataSourceDocuments(
-      {
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-      },
-      { limit: 1, offset: 0 }
-    );
-    if (documents.isErr()) {
-      return new Err(
-        new DustError(
-          "core_api_error",
-          "There was an error retrieving the data source."
-        )
-      );
-    }
-
-    if (
-      plan.limits.dataSources.documents.count != -1 &&
-      documents.value.total >= plan.limits.dataSources.documents.count
-    ) {
-      return new Err(
-        new DustError(
-          "data_source_quota_error",
-          `Data sources are limited to ${plan.limits.dataSources.documents.count} ` +
-            `documents on your current plan. Contact support@dust.tt if you want to increase this limit.`
-        )
-      );
-    }
-  }
 
   // Enforce plan limits: DataSource document size.
   if (
@@ -899,6 +866,47 @@ export async function upsertTable({
   }
 
   return new Ok(tableRes.value);
+}
+
+export async function createDataSourceFolder(
+  dataSource: DataSourceResource,
+  {
+    folderId,
+    mimeType,
+    parentId,
+    parents,
+    sourceUrl,
+    title,
+  }: {
+    folderId: string;
+    mimeType: DataSourceFolderSpreadsheetMimeType;
+    parentId?: string | null;
+    parents?: string[] | null;
+    sourceUrl?: string | null;
+    title: string;
+  }
+) {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  // Create folder with the Dust internal API.
+  const upsertRes = await coreAPI.upsertDataSourceFolder({
+    dataSourceId: dataSource.dustAPIDataSourceId,
+    folderId,
+    mimeType,
+    parentId: parentId || null,
+    parents: parents || [folderId],
+    projectId: dataSource.dustAPIProjectId,
+    providerVisibility: "public",
+    sourceUrl,
+    timestamp: Date.now(),
+    title: title.trim() || "Untitled Folder",
+  });
+
+  if (upsertRes.isErr()) {
+    return upsertRes;
+  }
+
+  return new Ok(upsertRes.value);
 }
 
 type DataSourceCreationError = Omit<DustError, "code"> & {
@@ -1314,5 +1322,7 @@ export const computeWorkspaceOverallSizeCached = cacheWithRedis(
     const workspaceId = auth.getNonNullableWorkspace().sId;
     return `compute-datasource-stats:${workspaceId}`;
   },
-  60 * 10 * 1000 // 10 minutes
+  {
+    ttlMs: 60 * 10 * 1000, // 10 minutes
+  }
 );

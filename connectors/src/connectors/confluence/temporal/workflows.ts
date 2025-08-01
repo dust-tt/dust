@@ -29,7 +29,6 @@ const {
   confluenceRemoveUnvisitedPagesActivity,
   confluenceSaveStartSyncActivity,
   confluenceSaveSuccessSyncActivity,
-  confluenceUpdatePagesParentIdsActivity,
   confluenceCheckAndUpsertSinglePageActivity,
   confluenceUpsertLeafPagesActivity,
   confluenceGetActiveChildPageRefsActivity,
@@ -50,8 +49,15 @@ const {
   retry: {
     initialInterval: "60 seconds",
     backoffCoefficient: 2,
-    maximumInterval: "3600 seconds",
+    maximumInterval: "600 seconds",
   },
+});
+
+const { confluenceUpdatePagesParentIdsActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "60 minutes",
+  heartbeatTimeout: "5 minutes",
 });
 
 const { reportInitialSyncProgress } = proxyActivities<

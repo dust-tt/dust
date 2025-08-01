@@ -31,7 +31,7 @@ interface MultiPageSheetProps {
   trapFocusScope?: boolean;
   showNavigation?: boolean;
   footerContent?: React.ReactNode;
-  onSave?: () => void;
+  onSave?: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
   className?: string;
   disableNext?: boolean;
   disableSave?: boolean;
@@ -72,17 +72,22 @@ const MultiPageSheetContent = React.forwardRef<
     );
     const currentPage = pages[currentPageIndex];
 
-    const handlePrevious = React.useCallback(() => {
+    const handlePrevious = (
+      e: React.MouseEvent<HTMLButtonElement, MouseEvent>
+    ) => {
+      e.preventDefault();
       if (currentPageIndex > 0) {
         onPageChange(pages[currentPageIndex - 1].id);
       }
-    }, [currentPageIndex, pages, onPageChange]);
+    };
 
-    const handleNext = React.useCallback(() => {
+    const handleNext = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      e.preventDefault();
+
       if (currentPageIndex < pages.length - 1) {
         onPageChange(pages[currentPageIndex + 1].id);
       }
-    }, [currentPageIndex, pages, onPageChange]);
+    };
 
     if (!currentPage) {
       console.warn(`Page with id "${currentPageId}" not found`);
@@ -159,38 +164,41 @@ const MultiPageSheetContent = React.forwardRef<
             variant: "outline",
             size: "sm",
           }}
+          rightButtonProps={
+            showNavigation && pages.length > 1 && hasPrevious
+              ? {
+                  label: "Previous",
+                  variant: "outline",
+                  size: "sm",
+                  onClick: handlePrevious,
+                }
+              : undefined
+          }
+          rightEndButtonProps={
+            showNavigation && pages.length > 1 && hasNext
+              ? {
+                  label: "Next",
+                  variant: "outline",
+                  size: "sm",
+                  disabled: disableNext,
+                  onClick: handleNext,
+                }
+              : showNavigation && pages.length > 1 && !hasNext && onSave
+                ? {
+                    label: "Save changes",
+                    variant: "primary",
+                    size: "sm",
+                    disabled: disableSave,
+                    onClick: (
+                      e: React.MouseEvent<HTMLButtonElement, MouseEvent>
+                    ) => {
+                      onSave(e);
+                    },
+                  }
+                : undefined
+          }
         >
-          <div className="s-ml-auto s-flex s-items-center s-gap-2">
-            {showNavigation && pages.length > 1 && hasPrevious && (
-              <Button
-                label="Previous"
-                icon={ChevronLeftIcon}
-                variant="outline"
-                size="sm"
-                onClick={handlePrevious}
-              />
-            )}
-            {showNavigation && pages.length > 1 && hasNext && (
-              <Button
-                label="Next"
-                icon={ChevronRightIcon}
-                variant="outline"
-                size="sm"
-                disabled={disableNext}
-                onClick={handleNext}
-              />
-            )}
-            {showNavigation && pages.length > 1 && !hasNext && onSave && (
-              <Button
-                label="Save changes"
-                variant="primary"
-                size="sm"
-                disabled={disableSave}
-                onClick={onSave}
-              />
-            )}
-            {footerContent}
-          </div>
+          {footerContent}
         </SheetFooter>
       </SheetContent>
     );

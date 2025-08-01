@@ -17,13 +17,6 @@ const config = {
       "NEXT_PUBLIC_DUST_CLIENT_FACING_URL"
     );
   },
-  getOAuthProvider: (): "auth0" | "workos" => {
-    const provider = EnvironmentConfig.getOptionalEnvVariable("OAUTH_PROVIDER");
-    if (!provider || (provider !== "auth0" && provider !== "workos")) {
-      return "auth0"; // Default to auth0 if not set or invalid.
-    }
-    return provider;
-  },
   getAuth0TenantUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_TENANT_DOMAIN_URL");
   },
@@ -53,6 +46,9 @@ const config = {
   },
   getDustInviteTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_INVITE_TOKEN_SECRET");
+  },
+  getIPInfoApiToken: (): string => {
+    return EnvironmentConfig.getEnvVariable("IPINFO_API_TOKEN");
   },
   getSendgridApiKey: (): string => {
     return EnvironmentConfig.getEnvVariable("SENDGRID_API_KEY");
@@ -180,11 +176,20 @@ const config = {
   getOAuthMicrosoftClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_MICROSOFT_CLIENT_ID");
   },
+  getOAuthMicrosoftToolsClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_MICROSOFT_TOOLS_CLIENT_ID");
+  },
   getOAuthZendeskClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_ZENDESK_CLIENT_ID");
   },
   getOAuthHubspotClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_HUBSPOT_CLIENT_ID");
+  },
+  getOAuthJiraClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_JIRA_CLIENT_ID");
+  },
+  getOAuthMondayClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_MONDAY_CLIENT_ID");
   },
 
   // Text extraction.
@@ -247,6 +252,9 @@ const config = {
     return EnvironmentConfig.getOptionalEnvVariable(
       "UNTRUSTED_EGRESS_PROXY_PORT"
     );
+  },
+  getFileShareSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_FILE_SHARE_SECRET");
   },
 };
 

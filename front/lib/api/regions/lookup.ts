@@ -3,7 +3,7 @@ import { config } from "@app/lib/api/regions/config";
 import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   UserLookupRequestBodyType,
@@ -58,9 +58,9 @@ export async function lookupUserRegionByEmail(
 export async function handleLookupWorkspace(workspaceLookup: {
   workspace: string;
 }) {
-  const workspace = await WorkspaceModel.findOne({
-    where: { sId: workspaceLookup.workspace },
-  });
+  const workspace = await WorkspaceResource.fetchById(
+    workspaceLookup.workspace
+  );
 
   // If workspace is done relocating, return null so users get created in new region.
   if (

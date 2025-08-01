@@ -4,6 +4,7 @@ import {
   IconButton,
   LinkWrapper,
   TrashIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -24,6 +25,7 @@ type AgentConfigurationDisplayType = {
 
 export function makeColumnsForAssistants(
   owner: LightWorkspaceType,
+  agentsRetention: Record<string, number>,
   onAgentArchivedOrRestored: () => Promise<void>
 ): ColumnDef<AgentConfigurationDisplayType>[] {
   return [
@@ -89,6 +91,19 @@ export function makeColumnsForAssistants(
         }
 
         return formatTimestampToFriendlyDate(new Date(createdAt).getTime());
+      },
+    },
+    {
+      accessorKey: "retention",
+      header: "Conversation retention",
+      cell: ({ row }) => {
+        const sId: string = row.getValue("sId");
+        const retention: number = agentsRetention[sId];
+        return retention ? (
+          `${retention} days`
+        ) : (
+          <XMarkIcon className="h-4 w-4" />
+        );
       },
     },
     {

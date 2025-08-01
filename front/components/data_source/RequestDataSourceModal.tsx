@@ -13,12 +13,12 @@ import {
   SheetTitle,
   SheetTrigger,
   TextArea,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import * as _ from "lodash";
 import { useEffect, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import { sendRequestDataSourceEmail } from "@app/lib/email";

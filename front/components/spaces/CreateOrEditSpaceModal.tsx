@@ -20,7 +20,6 @@ import {
   SheetTitle,
   SliderToggle,
   TrashIcon,
-  useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -38,6 +37,7 @@ import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSp
 import { EditSpaceNameDialog } from "@app/components/spaces/EditSpaceNameDialog";
 import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
 import { SearchMembersDropdown } from "@app/components/spaces/SearchMembersDropdown";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useGroups } from "@app/lib/swr/groups";
 import {
   useCreateSpace,

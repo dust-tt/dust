@@ -10,11 +10,11 @@ import {
   SearchInput,
   Tooltip,
   Tree,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import React, { useCallback, useContext, useState } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import type { APIError, ContentNode } from "@app/types";

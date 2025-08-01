@@ -1,5 +1,5 @@
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import type { ConnectorProvider } from "@app/types";
+import type { ConnectorProvider, ContentNodesViewType } from "@app/types";
 
 function getConnectorOrder() {
   return Object.keys(CONNECTOR_CONFIGURATIONS)
@@ -363,4 +363,17 @@ export function nodeCandidateFromUrl(
     console.error("Error parsing URL:", error);
     return null;
   }
+}
+
+// Notion databases have 2 entries in core:
+// - one of type "table" starting with "notion-";
+// - one of type "document" starting with "notion-database-".
+//
+// When we search by URL, we assume the user is looking for the table 99% of the
+// time, as the table is also the "container" of child pages of the database.
+export function getViewTypeForURLNodeCandidateAccountingForNotion(
+  viewType: ContentNodesViewType,
+  nodeId: string
+) {
+  return nodeId.startsWith("notion-") ? "table" : viewType;
 }

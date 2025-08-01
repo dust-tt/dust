@@ -1,11 +1,12 @@
-import { DustAPI } from "@dust-tt/client";
+import type { Result } from "@dust-tt/client";
+import { DustAPI, Err, Ok } from "@dust-tt/client";
 
 import AuthService from "./authService.js";
 import TokenStorage from "./tokenStorage.js";
 
 let dustApiInstance: DustAPI | null = null;
 
-export const getApiDomain = (region: string | null): string => {
+export const getApiDomain = (region: string | null): Result<string, Error> => {
   const url = (() => {
     switch (region) {
       case "europe-west1":
@@ -18,34 +19,40 @@ export const getApiDomain = (region: string | null): string => {
   })();
 
   if (!url) {
-    throw new Error("Unable to determine API domain.");
+    return new Err(new Error("Unable to determine API domain."));
   }
 
-  return url;
+  return new Ok(url);
 };
 
 /**
  * Gets or creates a DustAPI instance with the stored authentication token and region
  * @returns A Promise resolving to a DustAPI instance or null if no token is available
  */
-export const getDustClient = async (): Promise<DustAPI | null> => {
+export const getDustClient = async (): Promise<
+  Result<DustAPI | null, Error>
+> => {
   if (dustApiInstance) {
-    return dustApiInstance;
+    return new Ok(dustApiInstance);
   }
 
   // Get a valid access token (this will refresh if needed)
   const accessToken = await AuthService.getValidAccessToken();
 
   if (!accessToken) {
-    return null;
+    return new Ok(null);
   }
 
   const region = await TokenStorage.getRegion();
-  const apiDomain = getApiDomain(region);
+  const apiDomainRes = getApiDomain(region);
+
+  if (apiDomainRes.isErr()) {
+    return new Err(apiDomainRes.error);
+  }
 
   dustApiInstance = new DustAPI(
     {
-      url: apiDomain,
+      url: apiDomainRes.value,
     },
     {
       apiKey: async () => {
@@ -61,7 +68,7 @@ export const getDustClient = async (): Promise<DustAPI | null> => {
     console
   );
 
-  return dustApiInstance;
+  return new Ok(dustApiInstance);
 };
 
 /**

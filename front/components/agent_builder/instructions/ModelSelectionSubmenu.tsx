@@ -11,12 +11,13 @@ import { useController } from "react-hook-form";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
-  categorizeModels,
   getModelKey,
+  getModelsCategorization,
 } from "@app/components/agent_builder/instructions/utils";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ModelConfigurationType } from "@app/types";
+import { getProviderDisplayName } from "@app/types";
 
 interface ModelSelectionSubmenuProps {
   models: ModelConfigurationType[];
@@ -35,7 +36,7 @@ function ModelRadioItem({
 }: ModelRadioItemProps) {
   return (
     <DropdownMenuRadioItem
-      value={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
+      value={modelConfig.modelId}
       icon={getModelProviderLogo(modelConfig.providerId, isDark)}
       description={modelConfig.shortDescription}
       label={modelConfig.displayName}
@@ -46,56 +47,114 @@ function ModelRadioItem({
 
 export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
   const { isDark } = useTheme();
-  const { field } = useController<
+  const { field: modelField } = useController<
     AgentBuilderFormData,
     "generationSettings.modelSettings"
   >({
     name: "generationSettings.modelSettings",
   });
-  const { bestPerformingModelConfigs, otherModelConfigs } =
-    categorizeModels(models);
+  const { field: reasoningEffortField } = useController<
+    AgentBuilderFormData,
+    "generationSettings.reasoningEffort"
+  >({
+    name: "generationSettings.reasoningEffort",
+  });
 
-  const currentModelKey = `${field.value.modelId}${field.value.reasoningEffort ? `-${field.value.reasoningEffort}` : ""}`;
+  const { bestGeneralModels, providerGroups } = getModelsCategorization(models);
+
+  const currentModelKey = modelField.value.modelId;
+
+  const selectedModel = models.find(
+    (model) => model.modelId === currentModelKey
+  );
+
+  const isSelectedModelNotInBest =
+    selectedModel &&
+    !bestGeneralModels.some((model) => model.modelId === selectedModel.modelId);
 
   const handleModelSelection = (modelConfig: ModelConfigurationType) => {
-    field.onChange({
+    modelField.onChange({
       modelId: modelConfig.modelId,
       providerId: modelConfig.providerId,
-      reasoningEffort: modelConfig.reasoningEffort,
     });
+    // Set reasoning effort to the model's default
+    reasoningEffortField.onChange(modelConfig.defaultReasoningEffort);
   };
 
   return (
     <DropdownMenuSub>
       <DropdownMenuSubTrigger label="Model selection" />
       <DropdownMenuSubContent className="w-80">
-        <DropdownMenuLabel label="Best performing models" />
-        <DropdownMenuRadioGroup value={currentModelKey}>
-          {bestPerformingModelConfigs.map((modelConfig) => {
-            return (
+        {isSelectedModelNotInBest && selectedModel && (
+          <>
+            <DropdownMenuLabel label="Selected model" />
+            <DropdownMenuRadioGroup value={currentModelKey}>
               <ModelRadioItem
-                key={getModelKey(modelConfig)}
-                modelConfig={modelConfig}
+                key={getModelKey(selectedModel)}
+                modelConfig={selectedModel}
                 isDark={isDark}
                 onModelSelection={handleModelSelection}
               />
-            );
-          })}
+            </DropdownMenuRadioGroup>
+          </>
+        )}
+
+        <DropdownMenuLabel label="Best performing models by providers" />
+        <DropdownMenuRadioGroup value={currentModelKey}>
+          {bestGeneralModels.map((modelConfig) => (
+            <ModelRadioItem
+              key={getModelKey(modelConfig)}
+              modelConfig={modelConfig}
+              isDark={isDark}
+              onModelSelection={handleModelSelection}
+            />
+          ))}
         </DropdownMenuRadioGroup>
 
         <DropdownMenuLabel label="Other models" />
-        <DropdownMenuRadioGroup value={currentModelKey}>
-          {otherModelConfigs.map((modelConfig) => {
-            return (
-              <ModelRadioItem
-                key={getModelKey(modelConfig)}
-                modelConfig={modelConfig}
-                isDark={isDark}
-                onModelSelection={handleModelSelection}
-              />
-            );
-          })}
-        </DropdownMenuRadioGroup>
+        {Array.from(providerGroups.entries()).map(([providerId, models]) => {
+          const providerDisplayName = getProviderDisplayName(providerId);
+          const hasRecentModels = models.recent.length > 0;
+          const hasOlderModels = models.older.length > 0;
+
+          return (
+            <DropdownMenuSub key={providerId}>
+              <DropdownMenuSubTrigger label={`From ${providerDisplayName}`} />
+              <DropdownMenuSubContent className="w-80">
+                {hasRecentModels && (
+                  <>
+                    <DropdownMenuLabel label="Recent models" />
+                    <DropdownMenuRadioGroup value={currentModelKey}>
+                      {models.recent.map((modelConfig) => (
+                        <ModelRadioItem
+                          key={getModelKey(modelConfig)}
+                          modelConfig={modelConfig}
+                          isDark={isDark}
+                          onModelSelection={handleModelSelection}
+                        />
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </>
+                )}
+                {hasOlderModels && (
+                  <>
+                    <DropdownMenuLabel label="Older models" />
+                    <DropdownMenuRadioGroup value={currentModelKey}>
+                      {models.older.map((modelConfig) => (
+                        <ModelRadioItem
+                          key={getModelKey(modelConfig)}
+                          modelConfig={modelConfig}
+                          isDark={isDark}
+                          onModelSelection={handleModelSelection}
+                        />
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </>
+                )}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          );
+        })}
       </DropdownMenuSubContent>
     </DropdownMenuSub>
   );

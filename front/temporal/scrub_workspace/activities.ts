@@ -1,9 +1,7 @@
 import _ from "lodash";
 
-import {
-  archiveAgentConfiguration,
-  getAgentConfigurations,
-} from "@app/lib/api/assistant/configuration";
+import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import config from "@app/lib/api/config";
 import {
@@ -22,6 +20,7 @@ import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
+import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -31,6 +30,7 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI, isGlobalAgentId, removeNulls } from "@app/types";
@@ -95,6 +95,7 @@ export async function scrubWorkspaceData({
   });
   await deleteAllConversations(auth);
   await archiveAssistants(auth);
+  await deleteAgentMemories(auth);
   await deleteTags(auth);
   await deleteTrackers(auth);
   await deleteDatasources(auth);
@@ -131,19 +132,21 @@ export async function deleteAllConversations(auth: Authenticator) {
     { workspaceId: workspace.sId, conversationsCount: conversations.length },
     "Deleting all conversations for workspace."
   );
-
-  const conversationChunks = _.chunk(conversations, 4);
-  for (const conversationChunk of conversationChunks) {
-    await Promise.all(
-      conversationChunk.map(async (c) => {
-        await destroyConversation(auth, { conversationId: c.sId });
-      })
-    );
-  }
+  // unique conversations
+  const uniqueConversations = _.uniqBy(conversations, (c) => c.sId);
+  await concurrentExecutor(
+    uniqueConversations,
+    async (conversation) => {
+      await destroyConversation(auth, { conversationId: conversation.sId });
+    },
+    {
+      concurrency: 16,
+    }
+  );
 }
 
 async function archiveAssistants(auth: Authenticator) {
-  const agentConfigurations = await getAgentConfigurations({
+  const agentConfigurations = await getAgentConfigurationsForView({
     auth,
     agentsGetView: "admin_internal",
     variant: "light",
@@ -155,6 +158,10 @@ async function archiveAssistants(auth: Authenticator) {
   for (const agentConfiguration of agentConfigurationsToArchive) {
     await archiveAgentConfiguration(auth, agentConfiguration.sId);
   }
+}
+
+async function deleteAgentMemories(auth: Authenticator) {
+  await AgentMemoryResource.deleteAllForWorkspace(auth);
 }
 
 async function deleteTags(auth: Authenticator) {

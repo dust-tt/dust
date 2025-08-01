@@ -13,7 +13,6 @@ import {
   Page,
   PlusIcon,
   TrashIcon,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { PencilIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
@@ -21,8 +20,9 @@ import { useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
@@ -222,7 +222,7 @@ export default function SecretsPage({
         </DialogContent>
       </Dialog>
 
-      <AppContentLayout
+      <AppCenteredLayout
         subscription={subscription}
         owner={owner}
         subNavigation={subNavigationAdmin({ owner, current: "dev_secrets" })}
@@ -321,7 +321,7 @@ export default function SecretsPage({
           </Page.Vertical>
         </Page.Vertical>
         <div className="h-12" />
-      </AppContentLayout>
+      </AppCenteredLayout>
     </>
   );
 }

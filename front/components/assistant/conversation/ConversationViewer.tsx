@@ -8,8 +8,8 @@ import React, {
 } from "react";
 import { useInView } from "react-intersection-observer";
 
+import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
-import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import MessageGroup from "@app/components/assistant/conversation/MessageGroup";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useLastMessageGroupObserver } from "@app/hooks/useLastMessageGroupObserver";
@@ -117,9 +117,7 @@ const ConversationViewer = React.forwardRef<
 
     // If latest message Id has changed, scroll to bottom of conversation.
     if (lastestMessageId && latestMessageIdRef.current !== lastestMessageId) {
-      const mainTag = document.getElementById(
-        CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
-      );
+      const mainTag = document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT);
 
       if (mainTag) {
         mainTag.scrollTo(0, mainTag.scrollHeight);
@@ -127,7 +125,7 @@ const ConversationViewer = React.forwardRef<
 
       latestMessageIdRef.current = lastestMessageId;
     }
-  }, [isInModal, latestPage]);
+  }, [latestPage]);
 
   // Keep a reference to the previous oldest message to maintain user position
   // after fetching more data. This is a best effort approach to keep the user

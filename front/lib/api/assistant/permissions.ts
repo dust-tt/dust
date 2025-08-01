@@ -1,12 +1,8 @@
 import { Op } from "sequelize";
 
-import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { UnsavedAgentActionConfigurationType } from "@app/lib/actions/types/agent";
-import {
-  isDustAppRunConfiguration,
-  isServerSideMCPServerConfiguration,
-} from "@app/lib/actions/types/guards";
+import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -45,36 +41,25 @@ export async function listAgentConfigurationsForGroups(
 }
 
 export function getDataSourceViewIdsFromActions(
-  actions: UnsavedAgentActionConfigurationType[]
+  actions: UnsavedMCPServerConfigurationType[]
 ): string[] {
   const relevantActions = actions.filter(
-    (action) =>
-      action.type === "process_configuration" ||
-      (action.type === "mcp_server_configuration" &&
-        isServerSideMCPServerConfiguration(action))
+    (action): action is ServerSideMCPServerConfigurationType =>
+      action.type === "mcp_server_configuration" &&
+      isServerSideMCPServerConfiguration(action)
   );
 
   return removeNulls(
     relevantActions.flatMap((action) => {
-      if (action.type === "process_configuration") {
+      if (action.dataSources) {
         return action.dataSources.map(
           (dataSource) => dataSource.dataSourceViewId
         );
-      } else if (
-        action.type === "mcp_server_configuration" &&
-        isServerSideMCPServerConfiguration(action)
-      ) {
-        if (action.dataSources) {
-          return action.dataSources.map(
-            (dataSource) => dataSource.dataSourceViewId
-          );
-        } else if (action.tables) {
-          return action.tables.map((table) => table.dataSourceViewId);
-        } else {
-          return [];
-        }
+      } else if (action.tables) {
+        return action.tables.map((table) => table.dataSourceViewId);
+      } else {
+        return [];
       }
-      return [];
     })
   );
 }
@@ -93,7 +78,7 @@ export function groupsFromRequestedPermissions(
 export async function getAgentConfigurationGroupIdsFromActions(
   auth: Authenticator,
   params: {
-    actions: UnsavedAgentActionConfigurationType[];
+    actions: UnsavedMCPServerConfigurationType[];
     ignoreSpaces?: SpaceResource[];
   }
 ): Promise<ModelId[][]> {
@@ -104,13 +89,6 @@ export async function getAgentConfigurationGroupIdsFromActions(
     auth,
     getDataSourceViewIdsFromActions(actions)
   );
-  const dustApps = await AppResource.fetchByIds(
-    auth,
-    actions
-      .filter((action) => isDustAppRunConfiguration(action))
-      .map((action) => (action as DustAppRunConfigurationType).appId)
-  );
-
   // Map spaceId to its group requirements.
   const spacePermissions = new Map<string, Set<number>>();
 
@@ -125,20 +103,6 @@ export async function getAgentConfigurationGroupIdsFromActions(
       spacePermissions.set(spaceId, new Set());
     }
     const groups = groupsFromRequestedPermissions(view.requestedPermissions());
-    groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
-  }
-
-  // Collect DustApp permissions by space.
-  for (const app of dustApps) {
-    const { sId: spaceId } = app.space;
-    if (ignoreSpaceIds?.has(spaceId)) {
-      continue;
-    }
-
-    if (!spacePermissions.has(spaceId)) {
-      spacePermissions.set(spaceId, new Set());
-    }
-    const groups = groupsFromRequestedPermissions(app.requestedPermissions());
     groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
   }
 
@@ -163,6 +127,31 @@ export async function getAgentConfigurationGroupIdsFromActions(
     }
     const groups = groupsFromRequestedPermissions(view.requestedPermissions());
     groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
+  }
+
+  // Collect Dust App permissions by space.
+  const dustAppIds = removeNulls(
+    actions
+      .filter(isServerSideMCPServerConfiguration)
+      .map((action) => action.dustAppConfiguration?.appId)
+  );
+
+  if (dustAppIds.length > 0) {
+    const dustApps = await AppResource.fetchByIds(auth, dustAppIds);
+
+    for (const app of dustApps) {
+      const { sId: spaceId } = app.space;
+      if (ignoreSpaceIds?.has(spaceId)) {
+        continue;
+      }
+      if (!spacePermissions.has(spaceId)) {
+        spacePermissions.set(spaceId, new Set());
+      }
+      const groups = groupsFromRequestedPermissions(
+        app.space.requestedPermissions()
+      );
+      groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
+    }
   }
 
   // Convert Map to array of arrays, filtering out empty sets.

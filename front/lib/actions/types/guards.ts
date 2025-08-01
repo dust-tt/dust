@@ -1,27 +1,15 @@
 import type {
-  ConversationIncludeFileActionType,
-  ConversationIncludeFileConfigurationType,
-} from "@app/lib/actions/conversation/include_file";
-import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
-import type {
   ClientSideMCPToolConfigurationType,
-  MCPActionType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { ProcessConfigurationType } from "@app/lib/actions/process";
-import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labels";
+import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import type {
-  ActionConfigurationType,
-  AgentActionConfigurationType,
-  UnsavedAgentActionConfigurationType,
-} from "@app/lib/actions/types/agent";
-import type {
-  AgentActionType,
   AgentConfigurationType,
+  DustAppRunConfigurationType,
   TemplateAgentConfigurationType,
 } from "@app/types";
 
@@ -36,32 +24,6 @@ export function isDustAppRunConfiguration(
   );
 }
 
-export function isProcessConfiguration(
-  arg: unknown
-): arg is ProcessConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "process_configuration"
-  );
-}
-
-export function isSearchLabelsConfiguration(
-  arg: unknown
-): arg is SearchLabelsConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "search_labels_configuration"
-  );
-}
-
-export function isMCPActionType(arg: AgentActionType): arg is MCPActionType {
-  return arg.type === "tool_action";
-}
-
 export function isMCPServerConfiguration(
   arg: unknown
 ): arg is MCPServerConfigurationType {
@@ -74,13 +36,13 @@ export function isMCPServerConfiguration(
 }
 
 export function isServerSideMCPServerConfiguration(
-  arg: MCPServerConfigurationType | UnsavedAgentActionConfigurationType
+  arg: MCPServerConfigurationType | UnsavedMCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return isMCPServerConfiguration(arg) && "mcpServerViewId" in arg;
 }
 
 export function isMCPConfigurationWithDataSource(
-  arg: AgentActionConfigurationType
+  arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -89,8 +51,17 @@ export function isMCPConfigurationWithDataSource(
   );
 }
 
+export function isMCPConfigurationForInternalInteractiveContent(
+  arg: MCPServerConfigurationType
+): arg is ServerSideMCPServerConfigurationType {
+  return (
+    isServerSideMCPServerConfiguration(arg) &&
+    isInternalMCPServerOfName(arg.internalMCPServerId, "interactive_content")
+  );
+}
+
 export function isMCPConfigurationForInternalWebsearch(
-  arg: AgentActionConfigurationType
+  arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -99,7 +70,7 @@ export function isMCPConfigurationForInternalWebsearch(
 }
 
 export function isMCPConfigurationForInternalSlack(
-  arg: AgentActionConfigurationType
+  arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -108,7 +79,7 @@ export function isMCPConfigurationForInternalSlack(
 }
 
 export function isMCPConfigurationForInternalNotion(
-  arg: AgentActionConfigurationType
+  arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -138,7 +109,7 @@ export function isMCPToolConfiguration(
 }
 
 export function isMCPInternalSearch(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
@@ -147,7 +118,7 @@ export function isMCPInternalSearch(
 }
 
 export function isMCPInternalInclude(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
@@ -156,7 +127,7 @@ export function isMCPInternalInclude(
 }
 
 export function isMCPInternalDataSourceFileSystem(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
@@ -168,7 +139,7 @@ export function isMCPInternalDataSourceFileSystem(
 }
 
 export function isMCPInternalWebsearch(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
@@ -177,7 +148,7 @@ export function isMCPInternalWebsearch(
 }
 
 export function isMCPInternalSlack(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
@@ -186,7 +157,7 @@ export function isMCPInternalSlack(
 }
 
 export function isMCPInternalNotion(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
@@ -195,7 +166,7 @@ export function isMCPInternalNotion(
 }
 
 export function isMCPInternalDustAppRun(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
@@ -204,32 +175,15 @@ export function isMCPInternalDustAppRun(
 }
 
 export function isServerSideMCPToolConfiguration(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return isMCPToolConfiguration(arg) && "mcpServerViewId" in arg;
 }
 
 export function isClientSideMCPToolConfiguration(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ClientSideMCPToolConfigurationType {
   return isMCPToolConfiguration(arg) && "clientSideMcpServerId" in arg;
-}
-
-export function isConversationIncludeFileConfiguration(
-  arg: unknown
-): arg is ConversationIncludeFileConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "conversation_include_file_configuration"
-  );
-}
-
-export function isConversationIncludeFileConfigurationActionType(
-  arg: AgentActionType
-): arg is ConversationIncludeFileActionType {
-  return arg.type === "conversation_include_file_action";
 }
 
 export function throwIfInvalidAgentConfiguration(

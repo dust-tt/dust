@@ -10,6 +10,7 @@ import { SecurityComplianceSection } from "@app/components/home/ContentComponent
 import { CloudConnectorsSection } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import UTMPageWrapper from "@app/components/UTMPageWrapper";
 
 export async function getStaticProps() {
   return {
@@ -28,7 +29,7 @@ export const DemoVideo: DemoVideoProps = {
 
 export function Landing() {
   return (
-    <>
+    <UTMPageWrapper>
       <IntroSection />
       <CloudConnectorsSection />
       <SecurityComplianceSection />
@@ -42,7 +43,7 @@ export function Landing() {
       <DemoVideoSection demoVideo={DemoVideo} id="demo-video" />
       <BlogSection />
       <CallToActionSection />
-    </>
+    </UTMPageWrapper>
   );
 }
 

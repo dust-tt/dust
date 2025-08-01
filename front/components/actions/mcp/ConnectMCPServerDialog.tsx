@@ -5,11 +5,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getMcpServerDisplayName,
   getServerTypeAndIdFromSId,
@@ -102,8 +102,8 @@ export function ConnectMCPServerDialog({
           } else if (discoverOAuthMetadataRes.isErr()) {
             sendNotification({
               type: "error",
-              title: `Failed to discover OAuth metadata for ${mcpServer.url}`,
-              description: discoverOAuthMetadataRes.error.message,
+              title: "Failed to discover OAuth metadata for MCP server",
+              description: `${discoverOAuthMetadataRes.error.message} (${mcpServer.url})`,
             });
           }
         }

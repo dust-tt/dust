@@ -191,15 +191,23 @@ export async function retrieveModjoTranscripts(
       "[retrieveModjoTranscripts] First sync detected - retrieving all historical transcripts"
     );
   } else {
-    // Subsequent syncs: only pull last day
-    const daysOfHistory = 1;
-    fromDateTime = new Date(
-      Date.now() - daysOfHistory * 24 * 60 * 60 * 1000
-    ).toISOString();
-    localLogger.info(
-      {},
-      "[retrieveModjoTranscripts] Subsequent sync - retrieving last day of transcripts"
-    );
+    // Subsequent syncs: get the most recent history date and use it as the starting point
+    const mostRecentHistoryDate =
+      await transcriptsConfiguration.getMostRecentHistoryDate();
+    if (mostRecentHistoryDate) {
+      fromDateTime = mostRecentHistoryDate.toISOString();
+      localLogger.info(
+        { fromDateTime },
+        "[retrieveModjoTranscripts] Subsequent sync - retrieving transcripts since last sync"
+      );
+    } else {
+      // Fallback to 1 day if we can't get the most recent date
+      fromDateTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      localLogger.info(
+        {},
+        "[retrieveModjoTranscripts] Fallback to 1-day sync - couldn't get most recent history date"
+      );
+    }
   }
 
   const fileIdsToProcess: string[] = [];
@@ -435,7 +443,8 @@ export async function retrieveModjoTranscriptContent(
     localLogger.error(
       {
         fileId,
-        transcriptsConfigurationId: transcriptsConfiguration.sId,
+        transcriptsConfigurationId: transcriptsConfiguration.id,
+        transcriptsConfigurationSid: transcriptsConfiguration.sId,
         status: response.status,
         error: await response.text(),
       },
@@ -464,7 +473,8 @@ export async function retrieveModjoTranscriptContent(
     localLogger.error(
       {
         fileId,
-        transcriptsConfigurationId: transcriptsConfiguration.sId,
+        transcriptsConfigurationId: transcriptsConfiguration.id,
+        transcriptsConfigurationSid: transcriptsConfiguration.sId,
       },
       "[processTranscriptActivity] Call data not found from Modjo. Skipping."
     );

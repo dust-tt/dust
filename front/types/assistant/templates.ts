@@ -118,12 +118,10 @@ const TemplateTagCodeTypeCodec = t.keyof({
 
 type MultiActionType =
   | "RETRIEVAL_SEARCH"
-  | "DUST_APP_RUN"
   | "TABLES_QUERY"
   | "PROCESS"
   | "WEB_NAVIGATION";
 export const MULTI_ACTION_PRESETS: Record<MultiActionType, string> = {
-  DUST_APP_RUN: "Run Dust app",
   RETRIEVAL_SEARCH: "Search data sources",
   TABLES_QUERY: "Query tables",
   PROCESS: "Extract data",

@@ -10,6 +10,7 @@ use axum::{
     routing::{delete, get, patch, post},
     Router,
 };
+use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
 use futures::future::try_join_all;
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
@@ -25,10 +26,6 @@ use tokio::{
     sync::mpsc::unbounded_channel,
 };
 use tokio_stream::Stream;
-use tower_http::trace::{self, TraceLayer};
-use tracing::{error, info, Level};
-use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
-use tracing_subscriber::prelude::*;
 
 use dust::{
     api_keys::validate_api_key,
@@ -42,10 +39,13 @@ use dust::{
     databases::{
         database::{execute_query, get_tables_schema, QueryDatabaseError},
         table::{LocalTable, Row, Table},
+        table_upserts_background_worker::TableUpsertsBackgroundWorker,
     },
-    databases_store::store as databases_store,
+    databases_store::{self, gcs::GoogleCloudStorageDatabasesStore},
     dataset,
     deno::js_executor::JSExecutor,
+    error, info,
+    open_telemetry::init_subscribers,
     project,
     providers::provider::{provider, ProviderID},
     run,
@@ -59,7 +59,7 @@ use dust::{
         postgres,
         store::{self, FolderUpsertParams, TableUpsertParams},
     },
-    utils::{self, error_response, APIError, APIResponse, CoreRequestMakeSpan},
+    utils::{self, error_response, APIError, APIResponse},
 };
 
 #[global_allocator]
@@ -74,7 +74,7 @@ struct RunManager {
 
 struct APIState {
     store: Box<dyn store::Store + Sync + Send>,
-    databases_store: Box<dyn databases_store::DatabasesStore + Sync + Send>,
+    databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send>,
     qdrant_clients: QdrantClients,
     search_store: Box<dyn SearchStore + Sync + Send>,
     run_manager: Arc<Mutex<RunManager>>,
@@ -83,7 +83,7 @@ struct APIState {
 impl APIState {
     fn new(
         store: Box<dyn store::Store + Sync + Send>,
-        databases_store: Box<dyn databases_store::DatabasesStore + Sync + Send>,
+        databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send>,
         qdrant_clients: QdrantClients,
         search_store: Box<dyn SearchStore + Sync + Send>,
     ) -> Self {
@@ -590,11 +590,13 @@ async fn datasets_register(
     }
 }
 
+#[tracing::instrument(level = "info", skip_all)]
 async fn datasets_list(
     Path(project_id): Path<i64>,
     State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
+
     match state.store.list_datasets(&project).await {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -902,6 +904,17 @@ async fn runs_create(
         },
         None => (),
     };
+
+    match headers.get("X-Dust-Feature-Flags") {
+        Some(v) => match v.to_str() {
+            Ok(v) => {
+                credentials.insert("DUST_FEATURE_FLAGS".to_string(), v.to_string());
+            }
+            _ => (),
+        },
+        None => (),
+    };
+
     match headers.get("X-Dust-Group-Ids") {
         Some(v) => match v.to_str() {
             Ok(v) => {
@@ -974,6 +987,17 @@ async fn runs_create_stream(
         },
         None => (),
     };
+
+    match headers.get("X-Dust-Feature-Flags") {
+        Some(v) => match v.to_str() {
+            Ok(v) => {
+                credentials.insert("DUST_FEATURE_FLAGS".to_string(), v.to_string());
+            }
+            _ => (),
+        },
+        None => (),
+    };
+
     match headers.get("X-Dust-Group-Ids") {
         Some(v) => match v.to_str() {
             Ok(v) => {
@@ -2077,7 +2101,6 @@ async fn data_sources_documents_list(
             &document_ids,
             limit_offset,
             true, // remove system tags
-            true,
         )
         .await
     {
@@ -2087,18 +2110,40 @@ async fn data_sources_documents_list(
             "Failed to list data source",
             Some(e),
         ),
-        Ok((documents, total)) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "documents": documents,
-                    "limit": query.limit,
-                    "offset": query.offset,
-                    "total": total,
-                })),
-            }),
-        ),
+        Ok(documents) => {
+            let stats = state
+                .search_store
+                .get_data_source_stats(vec![data_source_id.clone()])
+                .await;
+
+            let total = match stats {
+                Ok((data_source_stats, _)) => data_source_stats
+                    .first()
+                    .map(|ds| ds.document_count as usize)
+                    .unwrap_or(0),
+                Err(e) => {
+                    error!(
+                        error = %e,
+                        data_source_id = data_source_id,
+                        "Failed to get document count from Elasticsearch"
+                    );
+                    0
+                }
+            };
+
+            return (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "documents": documents,
+                        "limit": query.limit,
+                        "offset": query.offset,
+                        "total": total,
+                    })),
+                }),
+            );
+        }
     }
 }
 
@@ -4084,15 +4129,12 @@ fn main() {
         .unwrap();
 
     let r = rt.block_on(async {
-        tracing_subscriber::registry()
-            .with(JsonStorageLayer)
-            .with(
-                BunyanFormattingLayer::new("dust_api".into(), std::io::stdout)
-                    .skip_fields(vec!["file", "line", "target"].into_iter())
-                    .unwrap(),
-            )
-            .with(tracing_subscriber::EnvFilter::new("info"))
-            .init();
+        // Start the background worker for table upserts
+        tokio::task::spawn(async move {
+            TableUpsertsBackgroundWorker::start_loop().await;
+        });
+
+        let _guard = init_subscribers()?;
 
         let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
             Ok(db_uri) => {
@@ -4101,14 +4143,11 @@ fn main() {
             }
             Err(_) => Err(anyhow!("CORE_DATABASE_URI is required (postgres)"))?,
         };
-        let databases_store: Box<dyn databases_store::DatabasesStore + Sync + Send> =
-            match std::env::var("DATABASES_STORE_DATABASE_URI") {
-                Ok(db_uri) => {
-                    let s = databases_store::PostgresDatabasesStore::new(&db_uri).await?;
-                    Box::new(s)
-                }
-                Err(_) => Err(anyhow!("DATABASES_STORE_DATABASE_URI not set."))?,
-            };
+
+        let databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send> = {
+            let store = GoogleCloudStorageDatabasesStore::new();
+            Box::new(store)
+        };
 
         let url = std::env::var("ELASTICSEARCH_URL").expect("ELASTICSEARCH_URL must be set");
         let username =
@@ -4330,14 +4369,11 @@ fn main() {
         // Misc
         .route("/tokenize", post(tokenize))
         .route("/tokenize/batch", post(tokenize_batch))
-
+        .layer(OtelInResponseLayer::default())
+        // Start OpenTelemetry trace on incoming request.
+        .layer(OtelAxumLayer::default())
         // Extensions
         .layer(DefaultBodyLimit::disable())
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(CoreRequestMakeSpan::new())
-                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
-        )
         .layer(from_fn(validate_api_key))
         .with_state(state.clone());
 

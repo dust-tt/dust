@@ -1,19 +1,21 @@
 import type {
-  ActionConfigurationType,
-  AgentActionConfigurationType,
-  AgentActionSpecification,
-} from "@app/lib/actions/types/agent";
+  MCPActionType,
+  MCPServerConfigurationType,
+  MCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
 import type {
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+} from "@app/types/assistant/assistant";
+import type { AgentMessageType } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
-
-import type { ModelId } from "../shared/model_id";
-import type { ModelIdType, ModelProviderIdType } from "./assistant";
-import type { AgentActionType, AgentMessageType } from "./conversation";
 
 /**
  * Agent configuration
@@ -55,7 +57,6 @@ export type AgentConfigurationScope =
  * 'views':
  * - 'current_user': Retrieves agents created or edited by the current user.
  * - 'list': Retrieves all active agents accessible to the user
- * - {agentIds: string}: Retrieves specific agents by their sIds.
  * - 'all': All non-private agents (so combines workspace, published and global
  *   agents); used e.g. for non-user calls such as API
  * - 'published': Retrieves all published agents.
@@ -65,10 +66,10 @@ export type AgentConfigurationScope =
  * - 'archived': Retrieves all agents that are archived. Only available to super
  *   users. Intended strictly for internal use with necessary superuser or admin
  *   authorization.
+ * - 'favorites': Retrieves all agents marked as favorites by the current user.
  */
 // TODO(agent-discovery) remove workspace, published, global
 export type AgentsGetViewType =
-  | { agentIds: string[]; allVersions?: boolean }
   | "current_user"
   | "list"
   | "all"
@@ -88,7 +89,7 @@ export type AgentUsageType = {
 
 export type AgentRecentAuthors = readonly string[];
 
-export type AgentReasoningEffort = "low" | "medium" | "high";
+export type AgentReasoningEffort = "none" | "light" | "medium" | "high";
 
 export type AgentModelConfigurationType = {
   providerId: ModelProviderIdType;
@@ -145,15 +146,13 @@ export type LightAgentConfigurationType = {
   // Example: [[1,2], [3,4]] means (1 OR 2) AND (3 OR 4)
   requestedGroupIds: string[][];
 
-  reasoningEffort?: AgentReasoningEffort;
-
   canRead: boolean;
   canEdit: boolean;
 };
 
 export type AgentConfigurationType = LightAgentConfigurationType & {
   // If empty, no actions are performed, otherwise the actions are performed.
-  actions: AgentActionConfigurationType[];
+  actions: MCPServerConfigurationType[];
 };
 
 export interface TemplateAgentConfigurationType {
@@ -163,7 +162,7 @@ export interface TemplateAgentConfigurationType {
   scope: AgentConfigurationScope;
   description: string;
   model: AgentModelConfigurationType;
-  actions: AgentActionConfigurationType[];
+  actions: MCPServerConfigurationType[];
   instructions: string | null;
   isTemplate: true;
   maxStepsPerRun?: number;
@@ -185,14 +184,31 @@ export function isTemplateAgentConfiguration(
 }
 
 export const DEFAULT_MAX_STEPS_USE_PER_RUN = 8;
-export const MAX_STEPS_USE_PER_RUN_LIMIT = 24;
-export const EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT = 128;
+export const MAX_STEPS_USE_PER_RUN_LIMIT = 128;
+export const MAX_ACTIONS_PER_STEP = 16;
 
 /**
  * Agent events
  */
 
-// Event sent when an agent error occured before we have a agent message in the database.
+export const AgentErrorCategories = [
+  "retryable_model_error",
+  "context_window_exceeded",
+  "provider_internal_error",
+  "stream_error",
+  "unknown_error",
+  "invalid_response_format_configuration",
+] as const;
+
+export type AgentErrorCategory = (typeof AgentErrorCategories)[number];
+
+export function isAgentErrorCategory(
+  category: unknown
+): category is AgentErrorCategory {
+  return AgentErrorCategories.includes(category as AgentErrorCategory);
+}
+
+// Event sent when an agent error occurred before we have an agent message in the database.
 export type AgentMessageErrorEvent = {
   type: "agent_message_error";
   created: number;
@@ -203,18 +219,29 @@ export type AgentMessageErrorEvent = {
   };
 };
 
-// Generic event sent when an error occured (whether it's during the action or the message
-// generation).
+// Generic type for the content of an agent / tool error.
+export type ErrorContent = {
+  code: string;
+  message: string;
+  metadata: Record<string, string | number | boolean> | null;
+};
+
+// Generic event sent when an error occurred during the model call.
 export type AgentErrorEvent = {
   type: "agent_error";
   created: number;
   configurationId: string;
   messageId: string;
-  error: {
-    code: string;
-    message: string;
-    metadata: Record<string, string | number | boolean> | null;
-  };
+  error: ErrorContent;
+};
+
+// Event sent when an error occurred during the tool call.
+export type ToolErrorEvent = {
+  type: "tool_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: ErrorContent;
 };
 
 export type AgentDisabledErrorEvent = {
@@ -233,7 +260,7 @@ export type AgentActionSuccessEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  action: AgentActionType;
+  action: MCPActionType;
 };
 
 // Event sent to stop the generation.
@@ -259,10 +286,8 @@ export type AgentActionsEvent = {
   created: number;
   runId: string;
   actions: Array<{
-    action: ActionConfigurationType;
-    inputs: Record<string, string | boolean | number>;
-    specification: AgentActionSpecification | null;
-    functionCallId: string | null;
+    action: MCPToolConfigurationType;
+    functionCallId: string;
   }>;
 };
 

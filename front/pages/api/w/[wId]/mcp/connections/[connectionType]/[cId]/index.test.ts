@@ -133,7 +133,7 @@ describe("MCP Connection API Handler", () => {
 
       // Create an extra one for the same server, but for a different user
       const user2 = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, user2, "user");
+      await MembershipFactory.associate(workspace, user2, { role: "user" }, t);
       const authenticator2 = await Authenticator.fromUserIdAndWorkspaceId(
         user2.sId,
         workspace.sId
@@ -248,7 +248,7 @@ describe("MCP Connection API Handler", () => {
       const remoteServer = await RemoteMCPServerFactory.create(workspace);
 
       const admin = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, admin, "admin");
+      await MembershipFactory.associate(workspace, admin, { role: "admin" }, t);
       const adminAuthenticator = await Authenticator.fromUserIdAndWorkspaceId(
         admin.sId,
         workspace.sId
@@ -291,7 +291,7 @@ describe("MCP Connection API Handler", () => {
 
       // Create second user and try to delete first user's connection
       const user2 = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, user2, "user");
+      await MembershipFactory.associate(workspace, user2, { role: "user" }, t);
 
       const { req, res } = await createPrivateApiMockRequest({
         method: "DELETE",

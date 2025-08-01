@@ -2,10 +2,6 @@ import {
   ArrowPathIcon,
   Button,
   Chip,
-  Citation,
-  CitationIcons,
-  CitationIndex,
-  CitationTitle,
   ClipboardCheckIcon,
   ClipboardIcon,
   ContentMessage,
@@ -14,6 +10,7 @@ import {
   InteractiveImageGrid,
   Markdown,
   Separator,
+  Tooltip,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { marked } from "marked";
@@ -23,7 +20,12 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
+import {
+  DefaultAgentMessageGeneratedFiles,
+  InteractiveAgentMessageGeneratedFiles,
+} from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { AssistantHandle } from "@app/components/assistant/conversation/AssistantHandle";
+import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/content/useAutoOpenInteractiveContent";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -35,6 +37,7 @@ import {
   CiteBlock,
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
+import { getImgPlugin, imgDirective } from "@app/components/markdown/Image";
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
 import { getCitationIcon } from "@app/components/markdown/MarkdownCitation";
 import {
@@ -53,7 +56,10 @@ import type {
   AgentMessageStateEvent,
   MessageTemporaryState,
 } from "@app/lib/assistant/state/messageReducer";
-import { messageReducer } from "@app/lib/assistant/state/messageReducer";
+import {
+  CLEAR_CONTENT_EVENT,
+  messageReducer,
+} from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type {
   LightAgentMessageType,
@@ -63,6 +69,7 @@ import type {
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
+  isInteractiveFileContentType,
   isOAuthProvider,
   isSupportedImageContentType,
   isValidScope,
@@ -143,6 +150,12 @@ export function AgentMessage({
     message.configuration.sId as GLOBAL_AGENTS_SID
   );
 
+  // Track if this is a fresh mount (no lastEventId) with existing content
+  const isFreshMountWithContent = React.useRef(
+    message.status === "created" &&
+      (!!message.content || !!message.chainOfThought)
+  );
+
   const buildEventSourceURL = React.useCallback(
     (lastEvent: string | null) => {
       const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
@@ -152,6 +165,8 @@ export function AgentMessage({
           eventId: string;
         } = JSON.parse(lastEvent);
         lastEventId = eventPayload.eventId;
+        // We have a lastEventId, so this is not a fresh mount
+        isFreshMountWithContent.current = false;
       }
       const url = esURL + "?lastEventId=" + lastEventId;
 
@@ -198,6 +213,19 @@ export function AgentMessage({
       // event, so we just return.
       if (eventType === "end-of-stream") {
         return;
+      }
+
+      // If this is a fresh mount with existing content and we're getting generation_tokens,
+      // we need to clear the content first to avoid duplication
+      if (
+        isFreshMountWithContent.current &&
+        eventType === "generation_tokens" &&
+        (eventPayload.data.classification === "tokens" ||
+          eventPayload.data.classification === "chain_of_thought")
+      ) {
+        // Clear the existing content from the state
+        dispatch(CLEAR_CONTENT_EVENT);
+        isFreshMountWithContent.current = false;
       }
 
       const shouldRefresh = [
@@ -317,6 +345,13 @@ export function AgentMessage({
     message.sId,
     conversationId,
   ]);
+
+  // Auto-open interactive content drawer when interactive files are available.
+  const { interactiveFiles } = useAutoOpenInteractiveContent({
+    messageStreamState,
+    agentMessageToRender,
+    isLastMessage,
+  });
 
   const PopoverContent = React.useCallback(
     () => (
@@ -451,12 +486,18 @@ export function AgentMessage({
       ),
       sup: CiteBlock,
       mention: getMentionPlugin(owner),
+      dustimg: getImgPlugin(owner),
     }),
     [owner, conversationId, message.sId, agentConfiguration.sId]
   );
 
   const additionalMarkdownPlugins: PluggableList = React.useMemo(
-    () => [mentionDirective, getCiteDirective(), visualizationDirective],
+    () => [
+      mentionDirective,
+      getCiteDirective(),
+      visualizationDirective,
+      imgDirective,
+    ],
     []
   );
 
@@ -539,6 +580,7 @@ export function AgentMessage({
             agentMessage.error || {
               message: "Unexpected Error",
               code: "unexpected_error",
+              metadata: {},
             }
           }
           retryHandler={async () => retryHandler(agentMessage)}
@@ -565,7 +607,9 @@ export function AgentMessage({
     );
 
     const generatedFiles = agentMessage.generatedFiles.filter(
-      (file) => !isSupportedImageContentType(file.contentType)
+      (file) =>
+        !isSupportedImageContentType(file.contentType) &&
+        !isInteractiveFileContentType(file.contentType)
     );
 
     return (
@@ -579,18 +623,27 @@ export function AgentMessage({
             owner={owner}
           />
 
-          {agentMessage.chainOfThought?.length ? (
-            <ContentMessage title="Agent thoughts" variant="primary">
-              <Markdown
-                content={agentMessage.chainOfThought}
-                isStreaming={false}
-                forcedTextSize="text-sm"
-                textColor="text-muted-foreground"
-                isLastMessage={false}
-              />
-            </ContentMessage>
+          {agentMessage.chainOfThought?.trim().length ? (
+            <Tooltip
+              label="Agent thoughts"
+              trigger={
+                <div>
+                  <ContentMessage variant="primary">
+                    <Markdown
+                      content={agentMessage.chainOfThought}
+                      isStreaming={false}
+                      forcedTextSize="text-sm"
+                      textColor="text-muted-foreground"
+                      isLastMessage={false}
+                    />
+                  </ContentMessage>
+                </div>
+              }
+              tooltipTriggerAsChild
+            />
           ) : null}
         </div>
+        <InteractiveAgentMessageGeneratedFiles files={interactiveFiles} />
         {(inProgressImages.length > 0 || completedImages.length > 0) && (
           <InteractiveImageGrid
             images={[
@@ -644,8 +697,8 @@ export function AgentMessage({
                 index: -1,
                 document: {
                   href: `/api/w/${owner.sId}/files/${file.fileId}`,
-                  title: file.title,
                   icon: <DocumentIcon />,
+                  title: file.title,
                 },
               })),
             })}
@@ -688,15 +741,14 @@ function getCitations({
   }[];
 }) {
   activeReferences.sort((a, b) => a.index - b.index);
+
   return activeReferences.map(({ document, index }) => {
     return (
-      <Citation key={index} href={document.href} tooltip={document.title}>
-        <CitationIcons>
-          {index !== -1 && <CitationIndex>{index}</CitationIndex>}
-          {document.icon}
-        </CitationIcons>
-        <CitationTitle>{document.title}</CitationTitle>
-      </Citation>
+      <DefaultAgentMessageGeneratedFiles
+        key={index}
+        document={document}
+        index={index}
+      />
     );
   });
 }

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
@@ -32,7 +32,10 @@ async function handler(
   }
 
   // IMPORTANT: make sure the agent configuration is accessible by the user.
-  const agentConfiguration = await getAgentConfiguration(auth, aId, "light");
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: aId,
+    variant: "light",
+  });
   if (!agentConfiguration) {
     return apiError(req, res, {
       status_code: 404,

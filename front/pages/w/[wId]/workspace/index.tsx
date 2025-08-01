@@ -15,7 +15,6 @@ import {
   SheetTrigger,
   SlackLogo,
   SliderToggle,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useCallback, useEffect, useState } from "react";
@@ -23,9 +22,11 @@ import { useCallback, useEffect, useState } from "react";
 import { updateConnectorConnectionId } from "@app/components/data_source/ConnectorPermissionsModal";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
+import { useSendNotification } from "@app/hooks/useNotification";
+import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -33,6 +34,7 @@ import {
   useConnectorConfig,
   useToggleSlackChatBot,
 } from "@app/lib/swr/connectors";
+import logger from "@app/logger/logger";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
   DataSourceType,
@@ -40,10 +42,12 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
+import { ConnectorsAPI } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  isSlackDataSourceBotEnabled: boolean;
   slackBotDataSource: DataSourceType | null;
   systemSpace: SpaceType;
 }>(async (context, auth) => {
@@ -55,9 +59,25 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const slackBotDataSource =
-    (await DataSourceResource.listByConnectorProvider(auth, "slack_bot"))[0] ??
-    null;
+  const [[slackDataSource], [slackBotDataSource]] = await Promise.all([
+    DataSourceResource.listByConnectorProvider(auth, "slack"),
+    DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
+  ]);
+
+  let isSlackDataSourceBotEnabled = false;
+  if (slackDataSource && slackDataSource.connectorId) {
+    const connectorsAPI = new ConnectorsAPI(
+      config.getConnectorsAPIConfig(),
+      logger
+    );
+    const configRes = await connectorsAPI.getConnectorConfig(
+      slackDataSource.connectorId,
+      "botEnabled"
+    );
+    if (configRes.isOk()) {
+      isSlackDataSourceBotEnabled = configRes.value.configValue === "true";
+    }
+  }
 
   const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
@@ -65,6 +85,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
+      isSlackDataSourceBotEnabled,
       slackBotDataSource: slackBotDataSource?.toJSON() ?? null,
       systemSpace: systemSpace.toJSON(),
     },
@@ -74,6 +95,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function WorkspaceAdmin({
   owner,
   subscription,
+  isSlackDataSourceBotEnabled,
   slackBotDataSource,
   systemSpace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -139,75 +161,75 @@ export default function WorkspaceAdmin({
   };
 
   return (
-    <>
-      <AppContentLayout
-        subscription={subscription}
-        owner={owner}
-        subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
-      >
-        <Page.Vertical align="stretch" gap="xl">
-          <Page.Header title="Workspace Settings" icon={PlanetIcon} />
-          <Page.Vertical align="stretch" gap="md">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <Page.H variant="h4">Workspace Name</Page.H>
-                <Page.P variant="secondary">{owner.name}</Page.P>
-              </div>
-              <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                <SheetTrigger asChild>
+    <AppCenteredLayout
+      subscription={subscription}
+      owner={owner}
+      subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
+    >
+      <Page.Vertical align="stretch" gap="xl">
+        <Page.Header title="Workspace Settings" icon={PlanetIcon} />
+        <Page.Vertical align="stretch" gap="md">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <Page.H variant="h4">Workspace Name</Page.H>
+              <Page.P variant="secondary">{owner.name}</Page.P>
+            </div>
+            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  label="Edit"
+                  icon={PencilSquareIcon}
+                />
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Edit Workspace Name</SheetTitle>
+                </SheetHeader>
+                <SheetContainer>
+                  <div className="mt-6 flex flex-col gap-4">
+                    <Page.P>
+                      Think GitHub repository names, short and memorable.
+                    </Page.P>
+                    <Input
+                      name="name"
+                      placeholder="Workspace name"
+                      value={workspaceName}
+                      onChange={(e) => setWorkspaceName(e.target.value)}
+                      message={workspaceNameError}
+                      messageStatus="error"
+                    />
+                  </div>
+                </SheetContainer>
+                <SheetFooter>
                   <Button
-                    variant="outline"
-                    label="Edit"
-                    icon={PencilSquareIcon}
+                    variant="tertiary"
+                    label="Cancel"
+                    onClick={handleCancel}
                   />
-                </SheetTrigger>
-                <SheetContent>
-                  <SheetHeader>
-                    <SheetTitle>Edit Workspace Name</SheetTitle>
-                  </SheetHeader>
-                  <SheetContainer>
-                    <div className="mt-6 flex flex-col gap-4">
-                      <Page.P>
-                        Think GitHub repository names, short and memorable.
-                      </Page.P>
-                      <Input
-                        name="name"
-                        placeholder="Workspace name"
-                        value={workspaceName}
-                        onChange={(e) => setWorkspaceName(e.target.value)}
-                        message={workspaceNameError}
-                        messageStatus="error"
-                      />
-                    </div>
-                  </SheetContainer>
-                  <SheetFooter>
-                    <Button
-                      variant="tertiary"
-                      label="Cancel"
-                      onClick={handleCancel}
-                    />
-                    <Button
-                      variant="primary"
-                      label={updating ? "Saving..." : "Save"}
-                      disabled={disable || updating}
-                      onClick={handleUpdateWorkspace}
-                    />
-                  </SheetFooter>
-                </SheetContent>
-              </Sheet>
+                  <Button
+                    variant="primary"
+                    label={updating ? "Saving..." : "Save"}
+                    disabled={disable || updating}
+                    onClick={handleUpdateWorkspace}
+                  />
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+          </div>
+        </Page.Vertical>
+        <Page.Vertical align="stretch" gap="md">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <Page.H variant="h4">Model Selection</Page.H>
+              <Page.P variant="secondary">
+                Select the models you want available to your workspace.
+              </Page.P>
             </div>
-          </Page.Vertical>
-          <Page.Vertical align="stretch" gap="md">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <Page.H variant="h4">Model Selection</Page.H>
-                <Page.P variant="secondary">
-                  Select the models you want available to your workspace.
-                </Page.P>
-              </div>
-              <ProviderManagementModal owner={owner} />
-            </div>
-          </Page.Vertical>
+            <ProviderManagementModal owner={owner} plan={subscription.plan} />
+          </div>
+        </Page.Vertical>
+        {!isSlackDataSourceBotEnabled && (
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Integrations</Page.H>
             <SlackBotToggle
@@ -216,9 +238,9 @@ export default function WorkspaceAdmin({
               systemSpace={systemSpace}
             />
           </Page.Vertical>
-        </Page.Vertical>
-      </AppContentLayout>
-    </>
+        )}
+      </Page.Vertical>
+    </AppCenteredLayout>
   );
 }
 

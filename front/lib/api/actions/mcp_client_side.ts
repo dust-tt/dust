@@ -118,6 +118,8 @@ export async function createClientSideMCPServerConfigurations(
     name:
       metadata.find((m) => m?.serverId === serverId)?.serverName ||
       `MCP Server ${serverId}`,
+    mcpServerName:
+      metadata.find((m) => m?.serverId === serverId)?.serverName || null,
     sId: serverId,
     type: "mcp_server_configuration",
   }));

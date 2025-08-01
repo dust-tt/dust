@@ -9,10 +9,10 @@ import {
   SheetTitle,
   SheetTrigger,
   TextArea,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { sendRequestFeatureAccessEmail } from "@app/lib/email";
 import type { LightWorkspaceType } from "@app/types";
 

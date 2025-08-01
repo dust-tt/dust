@@ -1,14 +1,17 @@
 import { TextArea } from "@dust-tt/sparkle";
+import type { Control } from "react-hook-form";
+import { useController } from "react-hook-form";
+
+import type { CapabilityFormData } from "@app/components/agent_builder/types";
 
 interface DescriptionSectionProps {
   title: string;
   description: string;
   label?: string;
   placeholder: string;
-  value: string;
-  onChange: (value: string) => void;
   helpText?: string;
   maxLength?: number;
+  control: Control<CapabilityFormData>;
 }
 
 export function DescriptionSection({
@@ -16,15 +19,14 @@ export function DescriptionSection({
   description,
   label,
   placeholder,
-  value,
-  onChange,
   helpText,
-  maxLength,
+  control,
 }: DescriptionSectionProps) {
-  const validationError =
-    maxLength && value.length > maxLength
-      ? `The description must be less than ${maxLength} characters.`
-      : undefined;
+  const { field, fieldState } = useController({
+    control,
+    name: "description",
+  });
+
   return (
     <div className="space-y-4">
       <div>
@@ -36,11 +38,10 @@ export function DescriptionSection({
         {label && <label className="text-sm font-medium">{label}</label>}
         <TextArea
           placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+          {...field}
           rows={4}
-          error={validationError}
           showErrorLabel={true}
+          error={fieldState.error?.message}
         />
         {helpText && (
           <p className="text-xs text-muted-foreground">{helpText}</p>

@@ -9,8 +9,10 @@ import { uniqueId } from "lodash";
 
 import { config } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
@@ -71,17 +73,33 @@ export async function getOrCreateWorkOSOrganization(
             ]
           : undefined,
       });
+
+      const { memberships } =
+        await MembershipResource.getMembershipsForWorkspace({
+          workspace,
+          includeUser: true,
+        });
+
+      await concurrentExecutor(
+        memberships,
+        async (membership) => {
+          const user = membership.user;
+          if (!user || !user.workOSUserId || !organization) {
+            return;
+          }
+
+          await getWorkOS().userManagement.createOrganizationMembership({
+            userId: user.workOSUserId,
+            organizationId: organization.id,
+          });
+        },
+        { concurrency: 10 }
+      );
     }
 
-    await WorkspaceModel.update(
-      {
-        workOSOrganizationId: organization.id,
-      },
-      {
-        where: {
-          id: workspace.id,
-        },
-      }
+    await WorkspaceResource.updateWorkOSOrganizationId(
+      workspace.id,
+      organization.id
     );
 
     return new Ok(organization);
@@ -178,6 +196,43 @@ export async function removeWorkOSOrganizationDomain(
       _webhookTrigger: uniqueId(),
     },
   });
+
+  return new Ok(undefined);
+}
+
+export async function updateWorkOSOrganizationName(
+  workspace: LightWorkspaceType
+): Promise<Result<void, Error>> {
+  const organizationRes = await getWorkOSOrganization(workspace);
+  if (organizationRes.isErr()) {
+    return new Err(organizationRes.error);
+  }
+
+  const organization = organizationRes.value;
+  if (!organization) {
+    return new Ok(undefined);
+  }
+
+  const newName = `${workspace.name} - ${workspace.sId}`;
+
+  if (organization.name === newName) {
+    return new Ok(undefined);
+  }
+
+  try {
+    await getWorkOS().organizations.updateOrganization({
+      organization: organization.id,
+      name: newName,
+    });
+  } catch (error) {
+    const e = normalizeError(error);
+    logger.error("Failed to update WorkOS organization name", {
+      error: e,
+      workspaceId: workspace.id,
+      organizationId: organization.id,
+    });
+    return new Ok(undefined);
+  }
 
   return new Ok(undefined);
 }

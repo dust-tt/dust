@@ -50,7 +50,7 @@ const INSTALLATION_STEPS: InstallationStep[] = [
   {
     number: "1.",
     title: "Connect to Your Dust Workspace",
-    description: "Log in to Dust as a workspace admin at dust.tt",
+    description: "Log in to Dust as a workspace admin at dust.tt.",
     image: {
       src: "/static/landing/slack/Login.png",
       alt: "Dust login interface",

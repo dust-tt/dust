@@ -5,15 +5,19 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
+
 use dust::{
     databases::table::{LocalTable, Table},
-    databases_store::{self},
+    databases_store::{self, gcs::GoogleCloudStorageDatabasesStore},
+    open_telemetry::init_subscribers,
     sqlite_workers::{
         client::HEARTBEAT_INTERVAL_MS,
         sqlite_database::{SqliteDatabase, SqliteDatabaseError},
     },
-    utils::{self, error_response, APIResponse, CoreRequestMakeSpan},
+    utils::{self, error_response, APIResponse},
 };
+use dust::{error, info};
 use hyper::StatusCode;
 use lazy_static::lazy_static;
 use reqwest::Method;
@@ -27,15 +31,15 @@ use std::{
     },
     time::{Duration, Instant},
 };
+use tikv_jemallocator::Jemalloc;
 use tokio::sync::Mutex;
 use tokio::{
     net::TcpListener,
     signal::unix::{signal, SignalKind},
 };
-use tower_http::trace::{self, TraceLayer};
-use tracing::{error, info, Level};
-use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
-use tracing_subscriber::prelude::*;
+
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
 
 lazy_static! {
     static ref WORKER_URL: String = match std::env::var("IS_LOCAL_DEV") {
@@ -48,8 +52,6 @@ lazy_static! {
     };
     static ref CORE_API: String = std::env::var("CORE_API").unwrap();
     static ref CORE_API_KEY: String = std::env::var("CORE_API_KEY").unwrap();
-    static ref DATABASES_STORE_DATABASE_URI: String =
-        std::env::var("DATABASES_STORE_DATABASE_URI").unwrap();
 }
 
 // Duration after which a database is considered inactive and can be removed from the registry.
@@ -340,19 +342,9 @@ fn main() {
         .unwrap();
 
     let r = rt.block_on(async {
-        tracing_subscriber::registry()
-            .with(JsonStorageLayer)
-            .with(
-                BunyanFormattingLayer::new("sqlite_worker".into(), std::io::stdout)
-                    .skip_fields(vec!["file", "line", "target"].into_iter())
-                    .unwrap(),
-            )
-            .with(tracing_subscriber::EnvFilter::new("info"))
-            .init();
+        let _guard = init_subscribers()?;
 
-        let s = databases_store::store::PostgresDatabasesStore::new(&DATABASES_STORE_DATABASE_URI)
-            .await?;
-        let databases_store = Box::new(s);
+        let databases_store = Box::new(GoogleCloudStorageDatabasesStore::new());
 
         let state = Arc::new(WorkerState::new(databases_store));
 
@@ -360,11 +352,9 @@ fn main() {
             .route("/databases", delete(expire_all))
             .route("/databases/{database_id}", post(databases_query))
             .route("/databases/{database_id}", delete(databases_delete))
-            .layer(
-                TraceLayer::new_for_http()
-                    .make_span_with(CoreRequestMakeSpan::new())
-                    .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
-            )
+            .layer(OtelInResponseLayer::default())
+            // Start OpenTelemetry trace on incoming request.
+            .layer(OtelAxumLayer::default())
             .with_state(state.clone());
 
         let health_check_router = Router::new()

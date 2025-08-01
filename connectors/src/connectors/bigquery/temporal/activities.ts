@@ -6,7 +6,7 @@ import { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import { sync } from "@connectors/lib/remote_databases/activities";
 import { getConnectorAndCredentials } from "@connectors/lib/remote_databases/utils";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
-import logger from "@connectors/logger/logger";
+import logger, { getActivityLogger } from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
 import {
   INTERNAL_MIME_TYPES,
@@ -47,9 +47,12 @@ export async function syncBigQueryConnection(connectorId: ModelId) {
 
   const useMetadataForDBML = connectorConfig.useMetadataForDBML;
 
+  const activityLogger = getActivityLogger(connector);
+
   const treeRes = await fetchTree({
     credentials,
     fetchTablesDescription: useMetadataForDBML,
+    logger: activityLogger,
   });
   if (treeRes.isErr()) {
     throw treeRes.error;

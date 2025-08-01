@@ -9,8 +9,8 @@ import type {
   WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
 import { createProxyAwareFetch } from "@connectors/lib/proxy";
+import type { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 import type { ContentNodeType } from "@connectors/types";
-import { WEBCRAWLER_MAX_DEPTH } from "@connectors/types";
 
 const MAX_REDIRECTS = 20;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
@@ -170,10 +170,16 @@ export function isPrivateIp(ip: string) {
   return simpleRanges.test(ip) || range172.test(ip) || range100.test(ip);
 }
 
+function getURLDepth(url: string): number {
+  const pathSplits = new URL(url).pathname
+    .split("/")
+    .filter((x) => x !== "" && x !== "index.php" && x !== "index.html");
+  return pathSplits.length;
+}
+
 export function shouldCrawlLink(
   link: string,
-  webCrawlerConfig: { url: string; depth: number; crawlMode: string },
-  currentRequestDepth: number
+  webCrawlerConfig: WebCrawlerConfigurationResource
 ): boolean {
   const linkURL = new URL(link);
   const configURL = new URL(webCrawlerConfig.url);
@@ -182,9 +188,7 @@ export function shouldCrawlLink(
   const isChild =
     isSameDomain && linkURL.pathname.startsWith(configURL.pathname);
 
-  const isWithinDepthLimit =
-    currentRequestDepth + 1 < WEBCRAWLER_MAX_DEPTH &&
-    currentRequestDepth + 1 < webCrawlerConfig.depth;
+  const isWithinDepthLimit = getURLDepth(link) <= webCrawlerConfig.getDepth();
 
   const respectsCrawlMode = webCrawlerConfig.crawlMode !== "child" || isChild;
 

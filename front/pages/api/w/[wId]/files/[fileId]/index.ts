@@ -103,6 +103,20 @@ async function handler(
     });
   }
 
+  let space: SpaceResource | null = null;
+  if (file.useCaseMetadata?.spaceId) {
+    space = await SpaceResource.fetchById(auth, file.useCaseMetadata.spaceId);
+  }
+  if (file.useCase === "folders_document" && (!space || !space.canRead(auth))) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  }
+
   // Check permissions based on useCase and useCaseMetadata
   if (file.useCase === "conversation" && file.useCaseMetadata?.conversationId) {
     const conversation = await ConversationResource.fetchById(
@@ -121,24 +135,12 @@ async function handler(
         },
       });
     }
-  } else if (
-    file.useCase === "folders_document" &&
-    file.useCaseMetadata?.spaceId
-  ) {
-    const space = await SpaceResource.fetchById(
-      auth,
-      file.useCaseMetadata.spaceId
-    );
-    if (!space || !space.canRead(auth)) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "file_not_found",
-          message: "File not found.",
-        },
-      });
-    }
   }
+
+  const isFileAuthor = file.userId === auth.user()?.id;
+  const isUploadUseCase =
+    file.useCase === "upsert_table" || file.useCase === "folders_document";
+  const canWriteInSpace = space ? space.canWrite(auth) : false;
 
   switch (req.method) {
     case "GET": {
@@ -175,13 +177,24 @@ async function handler(
 
     case "DELETE": {
       // Check if the user is a builder for the workspace or it's a conversation file
-      if (!auth.isBuilder() && file.useCase !== "conversation") {
+      if (
+        isUploadUseCase &&
+        !((isFileAuthor && canWriteInSpace) || auth.isBuilder())
+      ) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "You cannot edit files in that space.",
+          },
+        });
+      } else if (!auth.isBuilder() && file.useCase !== "conversation") {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
             message:
-              "Only users that are `builders` for the current workspace can delete files.",
+              "Only users that are `builders` for the current workspace can modify files.",
           },
         });
       }
@@ -204,6 +217,18 @@ async function handler(
     case "POST": {
       // Check if the user is a builder for the workspace or it's a conversation file or avatar
       if (
+        isUploadUseCase &&
+        !((isFileAuthor && canWriteInSpace) || auth.isBuilder())
+      ) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "You cannot edit files in that space.",
+          },
+        });
+      } else if (
+        !space &&
         !auth.isBuilder() &&
         file.useCase !== "conversation" &&
         file.useCase !== "avatar"

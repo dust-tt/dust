@@ -23,7 +23,8 @@ export async function launchRetrieveTranscriptsWorkflow(
       workflowId: workflowId,
       cronSchedule: "*/5 * * * *",
       memo: {
-        configurationId: transcriptsConfiguration.sId,
+        transcriptsConfigurationId: transcriptsConfiguration.id,
+        transcriptsConfigurationSid: transcriptsConfiguration.sId,
         IsProcessingTranscripts: transcriptsConfiguration.isActive,
         IsStoringTranscripts:
           transcriptsConfiguration.dataSourceViewId !== null,

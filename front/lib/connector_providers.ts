@@ -19,6 +19,7 @@ import {
 import type { ComponentType } from "react";
 
 import { BigQueryUseMetadataForDBMLView } from "@app/components/data_source/BigQueryUseMetadataForDBMLView";
+import { createConnectorOptionsPdfEnabled } from "@app/components/data_source/ConnectorOptionsPdfEnabled";
 import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
 import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
@@ -37,7 +38,7 @@ import type {
 } from "@app/types";
 import { assertNever } from "@app/types";
 
-interface ConnectorOptionsProps {
+export interface ConnectorOptionsProps {
   owner: WorkspaceType;
   readOnly: boolean;
   isAdmin: boolean;
@@ -188,6 +189,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return DriveLogo;
     },
+    optionsComponent: createConnectorOptionsPdfEnabled(
+      "When enabled, PDF documents from your Google Drive will be synced and processed by Dust."
+    ),
     isNested: true,
     permissions: {
       selected: "read",
@@ -201,11 +205,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     status: "built",
     // TODO(slack 2025-06-19): Hide the Slack connector until we publish the new app.
     hide: true,
-    // TODO(slack 2025-06-19): Prevent users from editing permissions.
-    isPermissionsConfigurableBlocked: true,
-    permissionsDisabledPlaceholder:
-      "Slack permissions are currently being updated with a new integration, due to new restrictive rate limits from Slack. " +
-      "Editing permissions is temporarily disabled. Learn more by clicking [here](https://dust-tt.notion.site/Slack-API-Changes-Impact-and-Response-Plan-21728599d94180f3b2b4e892e6d20af6).",
     description:
       "Authorize granular access to your Slack workspace on a channel-by-channel basis.",
     limitations: "External files and content behind links are not indexed.",
@@ -310,6 +309,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return MicrosoftLogo;
     },
+    optionsComponent: createConnectorOptionsPdfEnabled(
+      "When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust."
+    ),
     isNested: true,
     oauthExtraConfigComponent: MicrosoftOAuthExtraConfig,
     permissions: {

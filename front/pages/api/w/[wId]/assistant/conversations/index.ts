@@ -5,13 +5,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import {
   createConversation,
-  getConversation,
   postNewContentFragment,
+  postUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
@@ -73,6 +74,14 @@ async function handler(
 
       const { title, visibility, message, contentFragments } =
         bodyValidation.right;
+
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+      const hasAsyncLoopFeature = featureFlags.includes("async_loop");
+      const forceAsynchronousLoop =
+        req.query.async === "true" ||
+        (req.query.async !== "false" && hasAsyncLoopFeature);
 
       if (message?.context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(
@@ -162,29 +171,25 @@ async function handler(
 
       if (message) {
         // If a message was provided we do await for the message to be created before returning the
-        // conversation along with the message. PostUserMessageWithPubSub returns swiftly since it
-        // only waits for the initial message creation event (or error) */
-        const messageRes = await postUserMessageWithPubSub(
-          auth,
-          {
-            conversation,
-            content: message.content,
-            mentions: message.mentions,
-            context: {
-              timezone: message.context.timezone,
-              username: user.username,
-              fullName: user.fullName(),
-              email: user.email,
-              profilePictureUrl: message.context.profilePictureUrl,
-              origin: "web",
-              clientSideMCPServerIds:
-                message.context.clientSideMCPServerIds ?? [],
-            },
-            // For now we never skip tools when interacting with agents from the web client.
-            skipToolsValidation: false,
+        // conversation along with the message.
+        const messageRes = await postUserMessage(auth, {
+          conversation,
+          content: message.content,
+          mentions: message.mentions,
+          context: {
+            timezone: message.context.timezone,
+            username: user.username,
+            fullName: user.fullName(),
+            email: user.email,
+            profilePictureUrl: message.context.profilePictureUrl,
+            origin: "web",
+            clientSideMCPServerIds:
+              message.context.clientSideMCPServerIds ?? [],
           },
-          { resolveAfterFullGeneration: false }
-        );
+          // For now we never skip tools when interacting with agents from the web client.
+          skipToolsValidation: false,
+          forceAsynchronousLoop,
+        });
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);
         }

@@ -7,11 +7,11 @@ import {
   DialogHeader,
   DialogTitle,
   Spinner,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import * as _ from "lodash";
 import { useState } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type {
   DataSourceViewType,

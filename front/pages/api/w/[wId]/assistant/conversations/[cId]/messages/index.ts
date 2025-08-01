@@ -3,13 +3,14 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
-import { getConversation } from "@app/lib/api/assistant/conversation";
+import { postUserMessage } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
-import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { statsDClient } from "@app/logger/statsDClient";
 import { apiError } from "@app/logger/withlogging";
@@ -42,6 +43,12 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
+
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const hasAsyncLoopFeature = featureFlags.includes("async_loop");
+  const forceAsynchronousLoop =
+    req.query.async === "true" ||
+    (req.query.async !== "false" && hasAsyncLoopFeature);
 
   switch (req.method) {
     case "GET":
@@ -142,26 +149,23 @@ async function handler(
 
       const conversation = conversationRes.value;
 
-      const messageRes = await postUserMessageWithPubSub(
-        auth,
-        {
-          conversation,
-          content,
-          mentions,
-          context: {
-            timezone: context.timezone,
-            username: user.username,
-            fullName: user.fullName(),
-            email: user.email,
-            profilePictureUrl: context.profilePictureUrl ?? user.imageUrl,
-            origin: "web",
-            clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
-          },
-          // For now we never skip tools when interacting with agents from the web client.
-          skipToolsValidation: false,
+      const messageRes = await postUserMessage(auth, {
+        conversation,
+        content,
+        mentions,
+        context: {
+          timezone: context.timezone,
+          username: user.username,
+          fullName: user.fullName(),
+          email: user.email,
+          profilePictureUrl: context.profilePictureUrl ?? user.imageUrl,
+          origin: "web",
+          clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
         },
-        { resolveAfterFullGeneration: false }
-      );
+        // For now we never skip tools when interacting with agents from the web client.
+        skipToolsValidation: false,
+        forceAsynchronousLoop,
+      });
 
       if (messageRes.isErr()) {
         return apiError(req, res, messageRes.error);

@@ -12,8 +12,11 @@ import { GongOAuthProvider } from "@app/lib/api/oauth/providers/gong";
 import { GoogleDriveOAuthProvider } from "@app/lib/api/oauth/providers/google_drive";
 import { HubspotOAuthProvider } from "@app/lib/api/oauth/providers/hubspot";
 import { IntercomOAuthProvider } from "@app/lib/api/oauth/providers/intercom";
+import { JiraOAuthProvider } from "@app/lib/api/oauth/providers/jira";
 import { MCPOAuthProvider } from "@app/lib/api/oauth/providers/mcp";
 import { MicrosoftOAuthProvider } from "@app/lib/api/oauth/providers/microsoft";
+import { MicrosoftToolsOAuthProvider } from "@app/lib/api/oauth/providers/microsoft_tools";
+import { MondayOAuthProvider } from "@app/lib/api/oauth/providers/monday";
 import { NotionOAuthProvider } from "@app/lib/api/oauth/providers/notion";
 import { SalesforceOAuthProvider } from "@app/lib/api/oauth/providers/salesforce";
 import { SlackOAuthProvider } from "@app/lib/api/oauth/providers/slack";
@@ -49,8 +52,11 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   google_drive: new GoogleDriveOAuthProvider(),
   hubspot: new HubspotOAuthProvider(),
   intercom: new IntercomOAuthProvider(),
+  jira: new JiraOAuthProvider(),
   mcp: new MCPOAuthProvider(),
   microsoft: new MicrosoftOAuthProvider(),
+  microsoft_tools: new MicrosoftToolsOAuthProvider(),
+  monday: new MondayOAuthProvider(),
   notion: new NotionOAuthProvider(),
   salesforce: new SalesforceOAuthProvider(),
   slack: new SlackOAuthProvider(),
@@ -155,7 +161,10 @@ export async function createConnectionAndGetSetupUrl(
     relatedCredential,
   });
   if (cRes.isErr()) {
-    logger.error({ provider, useCase }, "OAuth: Failed to create connection");
+    logger.error(
+      { workspaceId, userId, provider, useCase, error: cRes.error },
+      "OAuth: Failed to create connection"
+    );
     return new Err({
       code: "connection_creation_failed",
       message: "Failed to create new OAuth connection",

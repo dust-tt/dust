@@ -1,7 +1,6 @@
 import {
   Page,
   SearchInput,
-  Spinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -19,7 +18,7 @@ import { InvitationsList } from "@app/components/members/InvitationsList";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
 import { MembersList } from "@app/components/members/MembersList";
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
@@ -29,7 +28,6 @@ import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
-import { useWorkOSSSOStatus } from "@app/lib/swr/workos";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   PlanType,
@@ -123,7 +121,7 @@ export default function WorkspaceAdmin({
   );
 
   return (
-    <AppContentLayout
+    <AppCenteredLayout
       subscription={subscription}
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "members" })}
@@ -175,35 +173,25 @@ export default function WorkspaceAdmin({
           )}
         </Page.Vertical>
       </div>
-    </AppContentLayout>
+    </AppCenteredLayout>
   );
 }
 
 const DEFAULT_PAGE_SIZE = 25;
 
-interface WorkspaceMembersListProps {
+interface WorkspaceMembersGroupsListProps {
   currentUser: UserType | null;
+  isProvisioningEnabled: boolean;
   owner: WorkspaceType;
   searchTerm: string;
-  isProvisioningEnabled: boolean;
 }
 
 function WorkspaceMembersGroupsList({
   currentUser,
+  isProvisioningEnabled,
   owner,
   searchTerm,
-  isProvisioningEnabled,
-}: WorkspaceMembersListProps) {
-  const { isLoading } = useWorkOSSSOStatus({ owner });
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
-
+}: WorkspaceMembersGroupsListProps) {
   return (
     <div className="flex flex-col gap-1 pt-2">
       <Tabs defaultValue="members">
@@ -282,6 +270,7 @@ function WorkspaceMembersList({
         onClose={resetSelectedMember}
         member={selectedMember}
         mutateMembers={membersData.mutateRegardlessOfQueryParams}
+        workspace={owner}
       />
     </>
   );

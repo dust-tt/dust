@@ -135,6 +135,10 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
               model: this.name,
               query_type: "find",
               stack_trace: stack,
+              error: {
+                message: "workspace_isolation_violation",
+                stack,
+              },
               where: whereClause,
             },
             "workspace_isolation_violation"

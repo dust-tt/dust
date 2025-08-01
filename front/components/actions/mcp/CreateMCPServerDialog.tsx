@@ -5,15 +5,19 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Icon,
+  InformationCircleIcon,
   Input,
   Label,
   SliderToggle,
-  useSendNotification,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { MCPConnectionType } from "@app/lib/swr/mcp_servers";
@@ -40,6 +44,7 @@ type RemoteMCPServerDetailsProps = {
   setIsLoading: (isCreating: boolean) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  defaultServerConfig?: DefaultRemoteMCPServerConfig;
 };
 
 export function CreateMCPServerDialog({
@@ -49,6 +54,7 @@ export function CreateMCPServerDialog({
   setIsLoading: setExternalIsLoading,
   isOpen = false,
   setIsOpen,
+  defaultServerConfig,
 }: RemoteMCPServerDetailsProps) {
   const sendNotification = useSendNotification();
   const [
@@ -73,6 +79,15 @@ export function CreateMCPServerDialog({
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
   const { createWithURL } = useCreateRemoteMCPServer(owner);
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
+
+  useEffect(() => {
+    if (defaultServerConfig?.url && isOpen) {
+      setRemoteServerUrl(defaultServerConfig.url);
+    }
+    if (defaultServerConfig && isOpen) {
+      setRequiresBearerToken(defaultServerConfig.authMethod === "bearer");
+    }
+  }, [defaultServerConfig, isOpen]);
 
   useEffect(() => {
     if (internalMCPServer && isOpen) {
@@ -135,8 +150,8 @@ export function CreateMCPServerDialog({
           } else if (discoverOAuthMetadataRes.isErr()) {
             sendNotification({
               type: "error",
-              title: `Failed to discover OAuth metadata for ${remoteServerUrl}`,
-              description: discoverOAuthMetadataRes.error.message,
+              title: "Failed to discover OAuth metadata for MCP server",
+              description: `${discoverOAuthMetadataRes.error.message} (${remoteServerUrl})`,
             });
             setRemoteMCPServerOAuthDiscoveryDone(false);
             setIsLoading(false);
@@ -254,56 +269,112 @@ export function CreateMCPServerDialog({
           <DialogTitle>
             {internalMCPServer
               ? `Add ${getMcpServerDisplayName(internalMCPServer)}`
-              : "Add MCP Server"}
+              : defaultServerConfig
+                ? `Add ${defaultServerConfig.name}`
+                : "Add MCP Server"}
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           {!internalMCPServer && !authorization && (
             <>
-              <div className="space-y-2">
-                <Label htmlFor="url">URL</Label>
-                <div className="flex space-x-2">
-                  <div className="flex-grow">
-                    <Input
-                      id="url"
-                      placeholder="https://example.com/api/mcp"
-                      value={remoteServerUrl}
-                      onChange={(e) => setRemoteServerUrl(e.target.value)}
-                      isError={!!error}
-                      message={error}
-                      autoFocus
-                    />
-                  </div>
+              {defaultServerConfig && (
+                <div className="mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    {defaultServerConfig.description}
+                    {defaultServerConfig.documentationUrl && (
+                      <>
+                        {" "}
+                        <a
+                          href={defaultServerConfig.documentationUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          See {defaultServerConfig.name} documentation.
+                        </a>
+                      </>
+                    )}
+                  </p>
+                  {defaultServerConfig.connectionInstructions && (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {defaultServerConfig.connectionInstructions}
+                    </p>
+                  )}
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="requiresBearerToken">
-                  Requires Bearer Token
-                </Label>
-                <div className="flex items-center space-x-2">
-                  <div>
-                    <SliderToggle
-                      disabled={false}
-                      selected={requiresBearerToken}
-                      onClick={() =>
-                        setRequiresBearerToken(!requiresBearerToken)
-                      }
-                    />
-                  </div>
+              )}
 
-                  <div className="flex-grow">
-                    <Input
-                      id="sharedSecret"
-                      placeholder={
-                        requiresBearerToken ? "Paste the Bearer Token here" : ""
-                      }
-                      disabled={!requiresBearerToken}
-                      value={sharedSecret}
-                      onChange={(e) => setSharedSecret(e.target.value)}
-                    />
+              {!defaultServerConfig?.url && (
+                <div className="space-y-2">
+                  <Label htmlFor="url">URL</Label>
+                  <div className="flex space-x-2">
+                    <div className="flex-grow">
+                      <Input
+                        id="url"
+                        placeholder="https://example.com/api/mcp"
+                        value={remoteServerUrl}
+                        onChange={(e) => setRemoteServerUrl(e.target.value)}
+                        isError={!!error}
+                        message={error}
+                        autoFocus
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+              {defaultServerConfig?.authMethod !== "oauth" && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="requiresBearerToken">
+                        {defaultServerConfig?.authMethod === "bearer"
+                          ? `${defaultServerConfig.name} API Key`
+                          : "Enable Bearer Token Authentication"}
+                      </Label>
+                      <Tooltip
+                        trigger={
+                          <Icon
+                            visual={InformationCircleIcon}
+                            size="xs"
+                            className="text-gray-400"
+                          />
+                        }
+                        label="Dust will automatically discover if OAuth authentication is required. If OAuth is not needed, the server will be accessed without authentication. You can also enable bearer token authentication if your server requires an API key."
+                      />
+                    </div>
+                    {!defaultServerConfig && (
+                      <SliderToggle
+                        disabled={false}
+                        selected={requiresBearerToken}
+                        onClick={() =>
+                          setRequiresBearerToken(!requiresBearerToken)
+                        }
+                      />
+                    )}
+                  </div>
+                  {(requiresBearerToken ||
+                    defaultServerConfig?.authMethod === "bearer") && (
+                    <div className="flex-grow">
+                      <Input
+                        id="sharedSecret"
+                        placeholder={
+                          defaultServerConfig?.authMethod === "bearer"
+                            ? `Paste your ${defaultServerConfig.name} API key here`
+                            : requiresBearerToken
+                              ? "Paste the Bearer Token here"
+                              : ""
+                        }
+                        disabled={!requiresBearerToken}
+                        value={sharedSecret}
+                        onChange={(e) => setSharedSecret(e.target.value)}
+                        isError={
+                          defaultServerConfig?.authMethod === "bearer" &&
+                          !sharedSecret
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
           {authorization && (
@@ -335,7 +406,10 @@ export function CreateMCPServerDialog({
               void handleSave(e);
             },
             disabled:
-              !isOAuthFormValid || (authorization && !useCase) || isLoading,
+              !isOAuthFormValid ||
+              (authorization && !useCase) ||
+              (defaultServerConfig?.authMethod === "bearer" && !sharedSecret) ||
+              isLoading,
           }}
         />
       </DialogContent>

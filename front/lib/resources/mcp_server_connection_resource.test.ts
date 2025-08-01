@@ -70,7 +70,12 @@ describe("MCPServerConnectionResource", () => {
 
         // Create a regular user in the same workspace
         const regularUser = await UserFactory.basic();
-        await MembershipFactory.associate(workspace, regularUser, "user");
+        await MembershipFactory.associate(
+          workspace,
+          regularUser,
+          { role: "user" },
+          t
+        );
         const regularUserAuthenticator =
           await Authenticator.fromUserIdAndWorkspaceId(
             regularUser.sId,
@@ -112,7 +117,12 @@ describe("MCPServerConnectionResource", () => {
 
         // Create second user in the same workspace
         const user2 = await UserFactory.basic();
-        await MembershipFactory.associate(workspace, user2, "user");
+        await MembershipFactory.associate(
+          workspace,
+          user2,
+          { role: "user" },
+          t
+        );
         const authenticator2 = await Authenticator.fromUserIdAndWorkspaceId(
           user2.sId,
           workspace.sId

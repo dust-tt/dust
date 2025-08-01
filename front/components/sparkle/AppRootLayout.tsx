@@ -5,6 +5,7 @@ import React, { useEffect } from "react";
 import { WelcomeTourGuideProvider } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { QuickStartGuide } from "@app/components/QuickStartGuide";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
+import { useDatadogLogs } from "@app/hooks/useDatadogLogs";
 import { useUser } from "@app/lib/swr/user";
 
 // TODO(2025-04-11 yuka) We need to refactor AppLayout to avoid re-mounting on every page navigation.
@@ -16,6 +17,7 @@ export default function AppRootLayout({
   children: React.ReactNode;
 }) {
   const { user } = useUser();
+  useDatadogLogs();
 
   useEffect(() => {
     if (typeof window !== "undefined" && user?.sId) {

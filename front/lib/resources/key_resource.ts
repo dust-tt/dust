@@ -42,19 +42,22 @@ export class KeyResource extends BaseResource<KeyModel> {
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<KeyModel>, "secret" | "groupId">,
+    blob: Omit<CreationAttributes<KeyModel>, "secret" | "groupId" | "scope">,
     group: GroupResource
   ) {
-    const new_id = Buffer.from(blake3(uuidv4())).toString("hex");
-    const secret = `${SECRET_KEY_PREFIX}${new_id.slice(0, 32)}`;
-
+    const secret = this.createNewSecret();
     const key = await KeyResource.model.create({
       ...blob,
       groupId: group.id,
       secret,
+      scope: "default",
     });
 
     return new this(KeyResource.model, key.get());
+  }
+
+  static createNewSecret() {
+    return `${SECRET_KEY_PREFIX}${Buffer.from(blake3(uuidv4())).toString("hex").slice(0, 32)}`;
   }
 
   static async fetchSystemKeyForWorkspace(workspace: LightWorkspaceType) {
@@ -163,6 +166,22 @@ export class KeyResource extends BaseResource<KeyModel> {
     );
   }
 
+  async rotateSecret(
+    {
+      dangerouslyRotateSecret,
+    }: {
+      dangerouslyRotateSecret: boolean;
+    },
+    transaction?: Transaction
+  ) {
+    if (!dangerouslyRotateSecret) {
+      throw new Error("Cannot rotate secret without explicitly allowing it.");
+    }
+
+    const newSecret = KeyResource.createNewSecret();
+    return this.update({ secret: newSecret }, transaction);
+  }
+
   static async countActiveForGroups(
     auth: Authenticator,
     groups: GroupResource[]
@@ -217,6 +236,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       status: this.status,
       groupId: this.groupId,
       role: this.role,
+      scope: this.scope,
     };
   }
 

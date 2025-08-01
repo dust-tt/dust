@@ -1,4 +1,3 @@
-import { UserProvider } from "@auth0/nextjs-auth0/client";
 import { SparkleContext } from "@dust-tt/sparkle";
 import { Notification } from "@dust-tt/sparkle";
 import Link from "next/link";
@@ -87,13 +86,11 @@ export default function RootLayout({
           },
         }}
       >
-        <UserProvider>
-          <SidebarProvider>
-            <ConfirmPopupArea>
-              <Notification.Area>{children}</Notification.Area>
-            </ConfirmPopupArea>
-          </SidebarProvider>
-        </UserProvider>
+        <SidebarProvider>
+          <ConfirmPopupArea>
+            <Notification.Area>{children}</Notification.Area>
+          </ConfirmPopupArea>
+        </SidebarProvider>
       </SWRConfig>
     </SparkleContext.Provider>
   );

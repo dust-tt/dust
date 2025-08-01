@@ -79,10 +79,10 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
       workspaceId: string;
       userId: string;
     }
-  ): Promise<RelatedCredential> {
+  ): Promise<RelatedCredential | undefined> {
     const { client_id, client_secret } = extraConfig;
     if (!client_id || !client_secret) {
-      throw new Error("Client ID and client secret are required");
+      return undefined;
     }
     return {
       content: {
@@ -101,7 +101,7 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
       extraConfig: ExtraConfigType;
     }
   ): Promise<ExtraConfigType> {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_id and client_secret from the extraConfig.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
     const { client_secret, ...restConfig } = extraConfig;
 
     return restConfig;

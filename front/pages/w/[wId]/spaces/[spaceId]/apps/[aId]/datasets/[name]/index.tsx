@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 
 import DatasetView from "@app/components/app/DatasetView";
 import { subNavigationApp } from "@app/components/navigation/config";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getDatasetHash, getDatasetSchema } from "@app/lib/api/datasets";
@@ -163,11 +163,11 @@ export default function ViewDatasetView({
   };
 
   return (
-    <AppContentLayout
+    <AppCenteredLayout
       subscription={subscription}
       owner={owner}
       hideSidebar
-      titleChildren={
+      title={
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
@@ -227,7 +227,7 @@ export default function ViewDatasetView({
           </div>
         </div>
       </div>
-    </AppContentLayout>
+    </AppCenteredLayout>
   );
 }
 

@@ -1,81 +1,46 @@
-import { createContext, useContext, useMemo, useState } from "react";
-import { useEffect } from "react";
+import { createContext, useContext } from "react";
 
-import { MCPServerViewsProvider } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
-import { SpacesProvider } from "@app/components/assistant_builder/contexts/SpacesContext";
-import { supportsDocumentsData } from "@app/lib/data_sources";
-import { useDataSourceViews } from "@app/lib/swr/data_source_views";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { DataSourceViewType, WorkspaceType } from "@app/types";
+import { DataSourceViewsProvider } from "@app/components/agent_builder/DataSourceViewsContext";
+import { MCPServerViewsProvider } from "@app/components/agent_builder/MCPServerViewsContext";
+import { PreviewPanelProvider } from "@app/components/agent_builder/PreviewPanelContext";
+import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
+import type { UserType, WorkspaceType } from "@app/types";
 
 type AgentBuilderContextType = {
   owner: WorkspaceType;
-  supportedDataSourceViews: DataSourceViewType[];
-  isPreviewPanelOpen: boolean;
-  setIsPreviewPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  user: UserType;
 };
 
 export const AgentBuilderContext = createContext<AgentBuilderContextType>({
   owner: {} as WorkspaceType,
-  supportedDataSourceViews: [],
-  isPreviewPanelOpen: true,
-  setIsPreviewPanelOpen: () => {},
+  user: {} as UserType,
 });
 
-interface AgentBuilderContextProps
-  extends Omit<
-    AgentBuilderContextType,
-    "supportedDataSourceViews" | "isPreviewPanelOpen" | "setIsPreviewPanelOpen"
-  > {
+interface AgentBuilderContextProps extends AgentBuilderContextType {
   children: React.ReactNode;
 }
 
 export function AgentBuilderProvider({
   owner,
+  user,
   children,
 }: AgentBuilderContextProps) {
-  const [isPreviewPanelOpen, setIsPreviewPanelOpen] = useState(false);
-
-  const { dataSourceViews } = useDataSourceViews(owner);
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-
-  // Filter data sources for document search (excluding table-only sources)
-  const supportedDataSourceViews = useMemo(() => {
-    return dataSourceViews.filter((dsv) =>
-      supportsDocumentsData(dsv.dataSource, featureFlags)
-    );
-  }, [dataSourceViews, featureFlags]);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(min-width: 1024px)");
-
-    // Set initial state based on screen size after hydration
-    setIsPreviewPanelOpen(mediaQuery.matches);
-
-    const handleMediaChange = (event: MediaQueryListEvent) => {
-      setIsPreviewPanelOpen(event.matches);
-    };
-    mediaQuery.addEventListener("change", handleMediaChange);
-    return () => {
-      mediaQuery.removeEventListener("change", handleMediaChange);
-    };
-  }, []);
   return (
     <AgentBuilderContext.Provider
       value={{
         owner,
-        supportedDataSourceViews,
-        isPreviewPanelOpen,
-        setIsPreviewPanelOpen,
+        user,
       }}
     >
-      <SpacesProvider owner={owner}>
-        <MCPServerViewsProvider owner={owner}>
-          {children}
-        </MCPServerViewsProvider>
-      </SpacesProvider>
+      <PreviewPanelProvider>
+        <SpacesProvider owner={owner}>
+          <MCPServerViewsProvider owner={owner}>
+            <DataSourceViewsProvider owner={owner}>
+              {children}
+            </DataSourceViewsProvider>
+          </MCPServerViewsProvider>
+        </SpacesProvider>
+      </PreviewPanelProvider>
     </AgentBuilderContext.Provider>
   );
 }

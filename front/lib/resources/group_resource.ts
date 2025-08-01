@@ -2,7 +2,7 @@ import type {
   DirectoryGroup,
   DirectoryGroup as WorkOSGroup,
 } from "@workos-inc/node";
-import { assert } from "console";
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -28,6 +28,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   GroupKind,
@@ -40,7 +41,16 @@ import type {
   RolePermission,
   UserType,
 } from "@app/types";
-import { Err, normalizeError, Ok, removeNulls } from "@app/types";
+import {
+  AGENT_GROUP_PREFIX,
+  Err,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@app/types";
+
+export const ADMIN_GROUP_NAME = "dust-admins";
+export const BUILDER_GROUP_NAME = "dust-builders";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -86,7 +96,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const defaultGroup = await GroupResource.makeNew(
       {
         workspaceId: workspace.id,
-        name: `Group for Agent ${agent.name} (${agent.sId})`,
+        name: `${AGENT_GROUP_PREFIX} ${agent.name} (${agent.sId})`,
         kind: "agent_editors",
       },
       { transaction }
@@ -384,23 +394,35 @@ export class GroupResource extends BaseResource<GroupModel> {
     key: KeyResource,
     groupKinds: GroupKind[] = ["global", "regular", "system"]
   ): Promise<GroupResource[]> {
-    const whereCondition: WhereOptions<GroupModel> = key.isSystem
-      ? // If the key is a system key, we include all groups in the workspace.
-        {
+    let groups: GroupModel[] = [];
+
+    if (key.isSystem) {
+      groups = await this.model.findAll({
+        where: {
           workspaceId: key.workspaceId,
           kind: {
             [Op.in]: groupKinds,
           },
-        }
-      : // If it's not a system key, we only fetch the associated group.
-        {
+        },
+      });
+    } else if (key.scope === "restricted_group_only") {
+      // Special case for restricted keys.
+      // Those are regular keys for witch we want to restrict access to the global group.
+      groups = await this.model.findAll({
+        where: {
           workspaceId: key.workspaceId,
           id: key.groupId,
-        };
-
-    const groups = await this.model.findAll({
-      where: whereCondition,
-    });
+        },
+      });
+    } else {
+      // We fetch the associated group and the global group.
+      groups = await this.model.findAll({
+        where: {
+          workspaceId: key.workspaceId,
+          [Op.or]: [{ id: key.groupId }, { kind: "global" }],
+        },
+      });
+    }
 
     if (groups.length === 0) {
       throw new Error("Group for key not found.");
@@ -536,7 +558,17 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    if (groups.some((group) => !group.canRead(auth))) {
+    const unreadableGroups = groups.filter((group) => !group.canRead(auth));
+    if (unreadableGroups.length > 0) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          unreadableGroupIds: unreadableGroups.map((g) => g.sId),
+          authRole: auth.role(),
+          authGroupIds: auth.groups().map((g) => g.sId),
+        },
+        "[GroupResource.fetchByIds] User cannot read some groups"
+      );
       return new Err(
         new DustError(
           "unauthorized",
@@ -695,7 +727,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     options: { groupKinds?: GroupKind[] } = {}
   ): Promise<GroupResource[]> {
-    const { groupKinds = ["global", "regular"] } = options;
+    const { groupKinds = ["global", "regular", "provisioned"] } = options;
     const groups = await this.baseFetch(auth, {
       where: {
         kind: {
@@ -1310,6 +1342,32 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   isProvisioned(): boolean {
     return this.kind === "provisioned";
+  }
+
+  /**
+   * Checks if dust-builders and dust-admins groups exist and are actively provisioned
+   * in the workspace. This indicates that role management should be restricted in the UI.
+   */
+  static async listRoleProvisioningGroupsForWorkspace(
+    auth: Authenticator
+  ): Promise<GroupResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    // Check if workspace has WorkOS organization ID (required for provisioning)
+    if (!owner.workOSOrganizationId) {
+      return [];
+    }
+
+    const provisionedGroups = await this.baseFetch(auth, {
+      where: {
+        kind: "provisioned",
+        name: {
+          [Op.in]: [ADMIN_GROUP_NAME, BUILDER_GROUP_NAME],
+        },
+      },
+    });
+
+    return provisionedGroups;
   }
 
   /**

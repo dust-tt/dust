@@ -25,7 +25,10 @@ import {
   reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { slackChannelIdFromInternalId } from "@connectors/connectors/slack/lib/utils";
-import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
+import {
+  launchSlackMigrateChannelsFromLegacyBotToNewBotWorkflow,
+  launchSlackSyncWorkflow,
+} from "@connectors/connectors/slack/temporal/client.js";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
@@ -124,10 +127,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
     if (connectionId) {
       const accessToken = await getSlackAccessToken(connectionId);
-      const slackClient = await getSlackClient(accessToken, {
-        // Do not reject rate limited calls in update connector. Called from the API.
-        rejectRateLimitedCalls: false,
-      });
+      const slackClient = await getSlackClient(accessToken);
 
       reportSlackUsage({
         connectorId: c.id,
@@ -185,6 +185,21 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
             "CONNECTOR_OAUTH_TARGET_MISMATCH",
             "Cannot change the Slack Team of a Data Source"
           )
+        );
+      }
+
+      // TODO(slack 2025-07-31): If the connection was updated, meaning an admin added the missing
+      // scope (`channels:manage`) to the bot, we need to trigger the migration of channels from
+      // legacy bot to new bot.
+      const slackBotConnector =
+        await ConnectorResource.findByWorkspaceIdAndType(
+          c.workspaceId,
+          "slack_bot"
+        );
+      if (slackBotConnector) {
+        await launchSlackMigrateChannelsFromLegacyBotToNewBotWorkflow(
+          c.id,
+          slackBotConnector.id
         );
       }
 
@@ -605,10 +620,7 @@ export async function uninstallSlack(
 
   try {
     const slackAccessToken = await getSlackAccessToken(connectionId);
-    const slackClient = await getSlackClient(slackAccessToken, {
-      // Do not reject rate limited calls in uninstall slack. Called from the API.
-      rejectRateLimitedCalls: false,
-    });
+    const slackClient = await getSlackClient(slackAccessToken);
     reportSlackUsage({
       connectorId: Number(connectionId),
       method: "auth.test",
@@ -725,10 +737,7 @@ async function getFilteredChannels(
       }))
     );
   } else {
-    const slackClient = await getSlackClient(connectorId, {
-      // Do not reject rate limited calls in update connector. Called from the API.
-      rejectRateLimitedCalls: false,
-    });
+    const slackClient = await getSlackClient(connectorId);
 
     const [remoteChannels, localChannels] = await Promise.all([
       getChannels(slackClient, connectorId, false),

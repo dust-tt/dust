@@ -2,8 +2,8 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type {
+  CustomServerIconType,
   InternalAllowedIconType,
-  RemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 import type {
   InternalMCPServerNameType,
@@ -44,7 +44,7 @@ export type MCPServerType = {
   name: string;
   version: string;
   description: string;
-  icon: RemoteAllowedIconType | InternalAllowedIconType;
+  icon: CustomServerIconType | InternalAllowedIconType;
   authorization: AuthorizationInfo | null;
   tools: MCPToolType[];
   availability: MCPServerAvailability;
@@ -58,7 +58,7 @@ export type RemoteMCPServerType = MCPServerType & {
   sharedSecret?: string | null;
   lastSyncAt?: Date | null;
   lastError?: string | null;
-  icon: RemoteAllowedIconType; // We enforce that we pass an icon here (among the ones we allow).
+  icon: CustomServerIconType | InternalAllowedIconType;
 };
 
 export interface MCPServerViewType {

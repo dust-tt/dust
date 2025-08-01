@@ -1,7 +1,7 @@
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
-import { createAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   LightAgentConfigurationType,
@@ -40,7 +40,6 @@ export class AgentConfigurationFactory {
         name,
         description,
         instructions: "Test Instructions",
-        maxStepsPerRun: 5,
         visualizationEnabled: false,
         pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
         status: "active",

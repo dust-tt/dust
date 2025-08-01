@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import {
   archiveAgentConfiguration,
   getAgentConfiguration,
-} from "@app/lib/api/assistant/configuration";
+} from "@app/lib/api/assistant/configuration/agent";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -33,11 +33,10 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const agent = await getAgentConfiguration(
-    auth,
-    req.query.aId as string,
-    "full"
-  );
+  const agent = await getAgentConfiguration(auth, {
+    agentId: req.query.aId as string,
+    variant: "full",
+  });
   if (!agent || (!agent.canRead && !auth.isAdmin())) {
     return apiError(req, res, {
       status_code: 404,
@@ -84,12 +83,6 @@ async function handler(
         });
       }
 
-      const maxStepsPerRun = bodyValidation.right.assistant.maxStepsPerRun;
-
-      const isLegacyConfiguration =
-        bodyValidation.right.assistant.actions.length === 1 &&
-        !bodyValidation.right.assistant.actions[0].description;
-
       const agentConfiguration = await AgentConfiguration.findOne({
         where: {
           sId: req.query.aId as string,
@@ -107,27 +100,9 @@ async function handler(
         });
       }
 
-      if (isLegacyConfiguration && maxStepsPerRun !== undefined) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "app_auth_error",
-            message: "maxStepsPerRun is only supported in multi-actions mode.",
-          },
-        });
-      }
-      if (!isLegacyConfiguration && maxStepsPerRun === undefined) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "app_auth_error",
-            message: "maxStepsPerRun is required in multi-actions mode.",
-          },
-        });
-      }
       const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
         auth,
-        assistant: { ...bodyValidation.right.assistant, maxStepsPerRun },
+        assistant: bodyValidation.right.assistant,
         agentConfigurationId: req.query.aId as string,
       });
 

@@ -19,6 +19,7 @@ import {
   H5,
   P,
 } from "@app/components/home/ContentComponents";
+import UTMButton from "@app/components/UTMButton";
 import { classNames } from "@app/lib/utils";
 
 import type { ROIProps } from "./content/Solutions/configs/utils";
@@ -182,7 +183,7 @@ export const HeaderContentBlock = ({
       )}
       {hasCTA && (
         <div className="flex flex-col gap-4 xs:flex-row sm:flex-row md:flex-row">
-          <Button
+          <UTMButton
             variant="highlight"
             size="md"
             label="Get started"
@@ -190,7 +191,7 @@ export const HeaderContentBlock = ({
             icon={RocketIcon}
             className="w-full xs:w-auto sm:w-auto md:w-auto"
           />
-          <Button
+          <UTMButton
             href="/home/contact"
             variant="outline"
             size="md"
@@ -292,6 +293,13 @@ interface QuoteProps {
 export const AllQuotes: QuoteProps[] = [
   {
     quote:
+      "It’s not just about retrieving information from one place. Our sales team needs information that’s often scattered across multiple internal applications. Dust brings it all together.",
+    name: "Caren Duane",
+    title: "Head of Business Operations at Clay",
+    logo: "/static/landing/logos/color/clay.png",
+  },
+  {
+    quote:
       "Thanks to what we’ve implemented at Alan, in less than three question iterations, I can craft the perfect SQL query I need and get the context behind it.",
     name: "Vincent Delagabbe",
     title: "Software Engineer at Alan",
@@ -320,20 +328,6 @@ export const AllQuotes: QuoteProps[] = [
   },
   {
     quote:
-      "The Dust platform is more than just a tool for post-ideation; it’s a catalyst for innovation, stimulating idea generation as employees engage with it.",
-    name: "Boris Lipiainen",
-    title: "Chief Product and Technology Officer at Kyriba",
-    logo: "/static/landing/logos/color/kyriba.png",
-  },
-  {
-    quote:
-      "It’s really become a reflex now to ask a Dust agent. With just two keystrokes, it instantly surfaces exactly the context I need - whether from code, documentation, or overlooked team discussions.",
-    name: "Vincent Delagabbe",
-    title: "Software Engineer at Alan",
-    logo: "/static/landing/logos/color/alan.png",
-  },
-  {
-    quote:
       "We’re managing a higher volume of tickets and have cut processing time—from an average of 6 minutes per ticket to just a few seconds.",
     name: "Anaïs Ghelfi",
     title: "Head of Data Platform at Malt",
@@ -345,6 +339,13 @@ export const AllQuotes: QuoteProps[] = [
     name: "Matthieu Birach",
     title: "Chief People Officer at Doctolib",
     logo: "/static/landing/logos/color/doctolib.png",
+  },
+  {
+    quote:
+      "Dust has revolutionized our partner insights, condensing days of manual research into minutes of AI-powered conversation. It's not just about efficiency and time savings—it's about making smarter decisions and doing things we could not do before.",
+    name: "Alexandre Morillon",
+    title: "CEO at Wakam",
+    logo: "/static/landing/logos/color/wakam.svg",
   },
 ];
 

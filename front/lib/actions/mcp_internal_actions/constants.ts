@@ -9,6 +9,7 @@ import type {
 import { Err, Ok } from "@app/types";
 
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
+export const SEARCH_TOOL_NAME = "semantic_search";
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
@@ -20,13 +21,18 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "data_sources_file_system",
   "extract_data",
   "file_generation",
+  "interactive_content",
   "github",
   "gmail",
+  "google_sheets",
   "hubspot",
   "image_generation",
   "include_data",
+  "jira",
   "missing_action_catcher",
+  "monday",
   "notion",
+  "outlook",
   "primitive_types_debugger",
   "query_tables",
   "query_tables_v2",
@@ -38,7 +44,9 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "think",
   "web_search_&_browse",
   "google_calendar",
+  "outlook_calendar",
   "slack",
+  "agent_memory",
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -67,6 +75,7 @@ export const INTERNAL_MCP_SERVERS: Record<
       plan: PlanType;
       featureFlags: WhitelistableFeature[];
     }) => boolean;
+    isPreview?: boolean;
     tools_stakes?: Record<string, MCPToolStakeLevelType>;
     timeoutMs?: number;
   }
@@ -108,6 +117,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("dev_mcp_actions");
     },
+    isPreview: true,
   },
   hubspot: {
     id: 7,
@@ -123,6 +133,17 @@ export const INTERNAL_MCP_SERVERS: Record<
       get_meeting: "never_ask",
       get_file_public_url: "never_ask",
       get_associated_meetings: "never_ask",
+      get_hubspot_link: "never_ask",
+      get_hubspot_portal_id: "never_ask",
+      list_owners: "never_ask",
+      search_owners: "never_ask",
+      get_current_user_id: "never_ask",
+      get_user_activity: "never_ask",
+      list_associations: "never_ask",
+
+      count_objects_by_properties: "never_ask",
+      search_crm_objects: "never_ask",
+      export_crm_objects_csv: "never_ask",
 
       // Create operations.
       create_contact: "high",
@@ -130,19 +151,16 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_deal: "high",
       create_lead: "high",
       create_task: "high",
-      create_ticket: "high",
       create_note: "high",
       create_communication: "high",
       create_meeting: "high",
+      create_association: "high",
 
       // Update operations.
       update_contact: "high",
       update_company: "high",
       update_deal: "high",
-
-      // Other operations.
-      count_objects_by_properties: "never_ask",
-      search_crm_objects: "never_ask",
+      remove_association: "high",
     },
   },
   agent_router: {
@@ -201,9 +219,9 @@ export const INTERNAL_MCP_SERVERS: Record<
       return !isAvailable;
     },
     tools_stakes: {
-      execute_read_query: "low",
-      list_objects: "low",
-      describe_object: "low",
+      execute_read_query: "never_ask",
+      list_objects: "never_ask",
+      describe_object: "never_ask",
     },
   },
   gmail: {
@@ -212,6 +230,8 @@ export const INTERNAL_MCP_SERVERS: Record<
     tools_stakes: {
       get_drafts: "never_ask",
       create_draft: "low",
+      get_messages: "low",
+      create_reply_draft: "low",
     },
   },
   google_calendar: {
@@ -242,6 +262,128 @@ export const INTERNAL_MCP_SERVERS: Record<
       post_message: "low",
     },
   },
+  google_sheets: {
+    id: 19,
+    availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("google_sheets_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      list_spreadsheets: "never_ask",
+      get_spreadsheet: "never_ask",
+      get_worksheet: "never_ask",
+      update_cells: "low",
+      append_data: "low",
+      clear_range: "low",
+      create_spreadsheet: "low",
+      add_worksheet: "low",
+      delete_worksheet: "low",
+      format_cells: "low",
+    },
+  },
+  monday: {
+    id: 20,
+    availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("monday_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      // Read operations
+      get_boards: "never_ask",
+      get_board_items: "never_ask",
+      get_item_details: "never_ask",
+      search_items: "never_ask",
+      get_items_by_column_value: "never_ask",
+      find_user_by_name: "never_ask",
+      get_board_values: "never_ask",
+      get_column_values: "never_ask",
+      get_file_column_values: "never_ask",
+      get_group_details: "never_ask",
+      get_subitem_values: "never_ask",
+      get_user_details: "never_ask",
+
+      // Write operations - High stakes
+      create_item: "high",
+      update_item: "high",
+      update_item_name: "high",
+      create_update: "high",
+      create_board: "high",
+      create_column: "high",
+      create_group: "high",
+      create_subitem: "high",
+      update_subitem: "high",
+      duplicate_group: "high",
+      upload_file_to_column: "high",
+      delete_item: "high",
+      delete_group: "high",
+    },
+  },
+  agent_memory: {
+    id: 21,
+    availability: "auto",
+  },
+  jira: {
+    id: 22,
+    availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("jira_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      // Read operations - never ask (no side effects)
+      get_issue: "never_ask",
+      get_projects: "never_ask",
+      get_project: "never_ask",
+      get_transitions: "never_ask",
+      get_issues: "never_ask",
+      get_issue_types: "never_ask",
+      get_issue_fields: "never_ask",
+      get_connection_info: "never_ask",
+      get_issue_link_types: "never_ask",
+
+      // Update operations - low stakes
+      create_comment: "low",
+      transition_issue: "low",
+      create_issue: "low",
+      update_issue: "low",
+      create_issue_link: "low",
+      delete_issue_link: "low",
+    },
+  },
+  interactive_content: {
+    id: 23,
+    availability: "auto",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("interactive_content_server");
+    },
+    isPreview: true,
+  },
+  outlook: {
+    id: 24,
+    availability: "manual",
+    tools_stakes: {
+      get_messages: "never_ask",
+      get_drafts: "never_ask",
+      create_draft: "low",
+      delete_draft: "low",
+      create_reply_draft: "low",
+    },
+  },
+  outlook_calendar: {
+    id: 25,
+    availability: "manual",
+    tools_stakes: {
+      list_calendars: "never_ask",
+      list_events: "never_ask",
+      get_event: "never_ask",
+      create_event: "low",
+      update_event: "low",
+      delete_event: "low",
+      check_availability: "never_ask",
+    },
+  },
   search: {
     id: 1006,
     availability: "auto",
@@ -249,9 +391,8 @@ export const INTERNAL_MCP_SERVERS: Record<
   run_agent: {
     id: 1008,
     availability: "auto",
-    timeoutMs: 5 * 60 * 1000, // 5 minutes
+    timeoutMs: 10 * 60 * 1000, // 10 minutes
   },
-
   primitive_types_debugger: {
     id: 1004,
     availability: "manual",
@@ -270,6 +411,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("exploded_tables_query");
     },
+    isPreview: true,
   },
   data_sources_file_system: {
     id: 1010,

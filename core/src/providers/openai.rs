@@ -50,7 +50,7 @@ lazy_static! {
     static ref RATE_LIMITS: RwLock<HashMap<String, RateLimitDetails>> = RwLock::new(HashMap::new());
 }
 
-static RESPONSES_API_ENABLED: bool = false;
+static RESPONSES_API_ENABLED: bool = true;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
@@ -1003,6 +1003,7 @@ impl LLM for OpenAILLM {
             usage: c.usage.map(|usage| LLMTokenUsage {
                 prompt_tokens: usage.prompt_tokens,
                 completion_tokens: usage.completion_tokens.unwrap_or(0),
+                reasoning_tokens: None,
             }),
             provider_request_id: request_id,
         })
@@ -1029,17 +1030,12 @@ impl LLM for OpenAILLM {
             || self.id.as_str().starts_with("o1")
             || self.id.as_str().starts_with("o4");
 
-        // o1-mini specifically does not support any type of system messages.
-        let remove_system_messages = self.id.as_str().starts_with("o1-mini");
-
         let api_key = match self.api_key.clone() {
             Some(key) => key,
             None => Err(anyhow!("OPENAI_API_KEY is not set."))?,
         };
 
-        let transform_system_messages = if remove_system_messages {
-            TransformSystemMessages::Remove
-        } else if is_reasoning_model {
+        let transform_system_messages = if is_reasoning_model {
             TransformSystemMessages::ReplaceWithDeveloper
         } else {
             TransformSystemMessages::Keep
@@ -1055,11 +1051,7 @@ impl LLM for OpenAILLM {
         };
 
         // Use response API only when function_call is not forced and when n == 1.
-        if RESPONSES_API_ENABLED
-            && is_auto_function_call
-            && n == 1
-            && (self.id.as_str().starts_with("o3") || self.id.as_str().starts_with("o4"))
-        {
+        if RESPONSES_API_ENABLED && is_auto_function_call && n == 1 && is_reasoning_model {
             openai_responses_api_completion(
                 self.responses_uri()?,
                 self.id.clone(),

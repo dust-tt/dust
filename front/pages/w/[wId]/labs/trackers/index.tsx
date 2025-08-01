@@ -18,7 +18,7 @@ import React, { useMemo } from "react";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -180,7 +180,7 @@ export default function TrackerConfigurations({
 
   return (
     <ConversationsNavigationProvider>
-      <AppContentLayout
+      <AppCenteredLayout
         subscription={subscription}
         owner={owner}
         pageTitle="Dust - Trackers"
@@ -202,7 +202,7 @@ export default function TrackerConfigurations({
             Set up once, stay informed automatically.
           </Page.P>
           <Page.SectionHeader title="Your Trackers" />
-          <div className="w-full max-w-4xl overflow-x-auto">
+          <div className="w-full overflow-x-auto">
             {isTrackersLoading ? (
               <div className="flex h-full items-center justify-center">
                 <Spinner />
@@ -253,7 +253,7 @@ export default function TrackerConfigurations({
             )}
           </div>
         </Page.Vertical>
-      </AppContentLayout>
+      </AppCenteredLayout>
     </ConversationsNavigationProvider>
   );
 }

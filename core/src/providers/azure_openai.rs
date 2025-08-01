@@ -427,6 +427,7 @@ impl LLM for AzureOpenAILLM {
             usage: c.usage.map(|usage| LLMTokenUsage {
                 prompt_tokens: usage.prompt_tokens,
                 completion_tokens: usage.completion_tokens.unwrap_or(0),
+                reasoning_tokens: None,
             }),
             provider_request_id: request_id,
         })

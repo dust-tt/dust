@@ -13,10 +13,13 @@ import React, { useMemo } from "react";
 
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
-import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { useApps } from "@app/lib/swr/apps";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type {
+  DustAppRunConfigurationType,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
 
 interface DustAppConfigurationSectionProps {
   owner: LightWorkspaceType;

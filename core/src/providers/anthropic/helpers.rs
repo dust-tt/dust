@@ -1,16 +1,14 @@
-use std::collections::HashMap;
-
-use crate::providers::chat_messages::{
-    AssistantContentItem, ChatMessage, ContentBlock, MixedContent,
-};
-
 use super::types::{
     AnthropicChatMessage, AnthropicChatMessageRole, AnthropicContent, AnthropicContentToolResult,
     AnthropicContentToolResultContent, AnthropicContentToolResultContentType,
-    AnthropicContentToolUse, AnthropicContentType, AnthropicImageContent,
+    AnthropicContentToolUse, AnthropicContentType,
+};
+use crate::providers::{
+    chat_messages::{AssistantContentItem, ChatMessage, ContentBlock, MixedContent},
+    helpers::{fetch_and_encode_images_from_messages, Base64EncodedImageContent},
 };
 use anyhow::{anyhow, Result};
-use base64::{engine::general_purpose, Engine};
+use std::collections::HashMap;
 
 // Convert a vector of ChatMessages to a vector of AnthropicChatMessages.
 // This function will also fetch the images from URL and encode them to base64.
@@ -18,7 +16,7 @@ pub async fn get_anthropic_chat_messages(
     messages: Vec<ChatMessage>,
 ) -> Result<Vec<AnthropicChatMessage>> {
     // Fetch and encode any images in the messages.
-    let base64_map = fetch_and_encode_images(messages.clone()).await?;
+    let base64_map = fetch_and_encode_images_from_messages(&messages).await?;
 
     let anthropic_messages = messages
         .into_iter()
@@ -48,7 +46,7 @@ pub async fn get_anthropic_chat_messages(
 
 fn convert_chat_message_to_anthropic_chat_message(
     chat_message: &ChatMessage,
-    base64_map: &HashMap<String, AnthropicImageContent>,
+    base64_map: &HashMap<String, Base64EncodedImageContent>,
 ) -> Result<AnthropicChatMessage> {
     match chat_message {
         ChatMessage::System(system_msg) => Ok(AnthropicChatMessage {
@@ -58,6 +56,9 @@ fn convert_chat_message_to_anthropic_chat_message(
                 tool_use: None,
                 tool_result: None,
                 source: None,
+                thinking: None,
+                signature: None,
+                data: None,
             }],
             role: AnthropicChatMessageRole::User,
         }),
@@ -69,6 +70,9 @@ fn convert_chat_message_to_anthropic_chat_message(
                     tool_use: None,
                     tool_result: None,
                     source: None,
+                    thinking: None,
+                    signature: None,
+                    data: None,
                 }],
                 role: AnthropicChatMessageRole::User,
             }),
@@ -82,6 +86,9 @@ fn convert_chat_message_to_anthropic_chat_message(
                             tool_use: None,
                             tool_result: None,
                             source: None,
+                            thinking: None,
+                            signature: None,
+                            data: None,
                         }),
                         MixedContent::ImageContent(ic) => {
                             let base64_data = base64_map
@@ -90,10 +97,13 @@ fn convert_chat_message_to_anthropic_chat_message(
 
                             Ok(AnthropicContent {
                                 r#type: AnthropicContentType::Image,
-                                source: Some(base64_data.clone()),
+                                source: Some(base64_data.clone().into()),
                                 text: None,
                                 tool_use: None,
                                 tool_result: None,
+                                thinking: None,
+                                signature: None,
+                                data: None,
                             })
                         }
                     })
@@ -120,6 +130,9 @@ fn convert_chat_message_to_anthropic_chat_message(
                             tool_use: None,
                             tool_result: None,
                             source: None,
+                            thinking: None,
+                            signature: None,
+                            data: None,
                         })),
                         AssistantContentItem::FunctionCall { value } => {
                             Some(serde_json::from_str(&value.arguments).map(|input| {
@@ -133,12 +146,47 @@ fn convert_chat_message_to_anthropic_chat_message(
                                     }),
                                     tool_result: None,
                                     source: None,
+                                    thinking: None,
+                                    signature: None,
+                                    data: None,
                                 }
                             }))
                         }
-                        AssistantContentItem::Reasoning { value: _ } => {
-                            // TODO(reasoning_v2): use the reasoning content.
-                            None
+                        AssistantContentItem::Reasoning { value } => {
+                            // Parse the metadata to extract thinking content
+                            let metadata: serde_json::Value =
+                                serde_json::from_str(&value.metadata).ok()?;
+                            let encrypted_content = metadata.get("encrypted_content")?.as_str()?;
+
+                            // Determine if this is regular thinking or redacted thinking
+                            let is_redacted = metadata
+                                .get("id")?
+                                .as_str()?
+                                .starts_with("redacted_thinking_");
+
+                            if is_redacted {
+                                Some(Ok(AnthropicContent {
+                                    r#type: AnthropicContentType::RedactedThinking,
+                                    text: None,
+                                    tool_use: None,
+                                    tool_result: None,
+                                    source: None,
+                                    thinking: None,
+                                    signature: None,
+                                    data: Some(encrypted_content.to_string()),
+                                }))
+                            } else {
+                                Some(Ok(AnthropicContent {
+                                    r#type: AnthropicContentType::Thinking,
+                                    text: None,
+                                    tool_use: None,
+                                    tool_result: None,
+                                    source: None,
+                                    thinking: value.reasoning.clone(),
+                                    signature: Some(encrypted_content.to_string()),
+                                    data: None,
+                                }))
+                            }
                         }
                     })
                     .collect::<Result<Vec<_>, _>>()?,
@@ -159,6 +207,9 @@ fn convert_chat_message_to_anthropic_chat_message(
                         }],
                     }),
                     source: None,
+                    thinking: None,
+                    signature: None,
+                    data: None,
                 }],
                 role: AnthropicChatMessageRole::User,
             }),
@@ -177,7 +228,7 @@ fn convert_chat_message_to_anthropic_chat_message(
                                 .ok_or(anyhow!("Invalid Image."))?;
                             Ok(AnthropicContentToolResultContent {
                                 r#type: AnthropicContentToolResultContentType::Image,
-                                source: Some(base64_data.clone()),
+                                source: Some(base64_data.clone().into()),
                                 text: None,
                             })
                         }
@@ -194,81 +245,13 @@ fn convert_chat_message_to_anthropic_chat_message(
                             content,
                         }),
                         source: None,
+                        thinking: None,
+                        signature: None,
+                        data: None,
                     }],
                     role: AnthropicChatMessageRole::User,
                 })
             }
         },
     }
-}
-
-async fn fetch_image_base64(image_url: &str) -> Result<(String, AnthropicImageContent)> {
-    let response = reqwest::get(image_url)
-        .await
-        .map_err(|e| anyhow!("Invalid image: {}", e))?;
-
-    let mime_type = response
-        .headers()
-        .get(reqwest::header::CONTENT_TYPE)
-        .and_then(|ct| ct.to_str().ok())
-        .unwrap_or("application/octet-stream") // Default to a general binary type if MIME type is not found.
-        .to_string();
-
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|e| anyhow!("Invalid image, could not parse response {}", e))?;
-
-    Ok((
-        image_url.to_string(),
-        AnthropicImageContent {
-            r#type: "base64".to_string(),
-            media_type: mime_type,
-            data: general_purpose::STANDARD.encode(&bytes),
-        },
-    ))
-}
-
-async fn fetch_and_encode_images(
-    messages: Vec<ChatMessage>,
-) -> Result<HashMap<String, AnthropicImageContent>, anyhow::Error> {
-    let futures = messages
-        .into_iter()
-        .filter_map(|message| {
-            let mixed_content = match message {
-                ChatMessage::User(user_msg) => match user_msg.content {
-                    ContentBlock::Mixed(content) => Some(content),
-                    _ => None,
-                },
-                ChatMessage::Function(func_msg) => match func_msg.content {
-                    ContentBlock::Mixed(content) => Some(content),
-                    _ => None,
-                },
-                _ => None,
-            };
-
-            mixed_content.map(|content| {
-                content
-                    .into_iter()
-                    .filter_map(|content| {
-                        if let MixedContent::ImageContent(ic) = content {
-                            let url = ic.image_url.url.clone();
-                            Some(async move { fetch_image_base64(&url).await })
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<Vec<_>>()
-            })
-        })
-        .flatten()
-        .collect::<Vec<_>>();
-
-    let base64_pairs = futures::future::try_join_all(futures)
-        .await?
-        .into_iter()
-        .map(|(image_url, img_content)| (image_url.clone(), img_content))
-        .collect::<HashMap<_, _>>();
-
-    Ok(base64_pairs)
 }

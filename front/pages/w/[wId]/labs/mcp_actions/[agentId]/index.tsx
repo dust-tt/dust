@@ -16,9 +16,9 @@ import { useCallback } from "react";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useMCPActions } from "@app/lib/swr/mcp_actions";
@@ -58,7 +58,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const agent = await getAgentConfiguration(auth, agentId, "light");
+  const agent = await getAgentConfiguration(auth, {
+    agentId,
+    variant: "light",
+  });
   if (!agent) {
     return {
       notFound: true,
@@ -150,7 +153,7 @@ export default function AgentMCPActions({
 
   return (
     <ConversationsNavigationProvider>
-      <AppContentLayout
+      <AppCenteredLayout
         subscription={subscription}
         owner={owner}
         pageTitle={`Dust - MCP Actions for ${agent.name}`}
@@ -296,7 +299,7 @@ export default function AgentMCPActions({
             )}
           </Page.Layout>
         </Page>
-      </AppContentLayout>
+      </AppCenteredLayout>
     </ConversationsNavigationProvider>
   );
 }

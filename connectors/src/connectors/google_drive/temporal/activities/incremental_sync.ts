@@ -19,6 +19,7 @@ import {
   getCachedLabels,
   getDriveClient,
   getInternalId,
+  isSharedDriveNotFoundError,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
@@ -278,6 +279,15 @@ export async function incrementalSync(
           error: e.message,
         },
         `Looks like we lost access to this drive. Skipping`
+      );
+      return undefined;
+    } else if (isSharedDriveNotFoundError(e)) {
+      localLogger.error(
+        {
+          error: e instanceof Error ? e.message : "Unknown error",
+          driveId,
+        },
+        `Shared drive not found. Skipping`
       );
       return undefined;
     } else {

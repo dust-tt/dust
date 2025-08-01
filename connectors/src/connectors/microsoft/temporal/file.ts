@@ -32,10 +32,13 @@ import {
   MAX_LARGE_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
   sectionLength,
+  updateDataSourceDocumentParents,
   upsertDataSourceDocument,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
-import logger from "@connectors/logger/logger";
+import { heartbeat } from "@connectors/lib/temporal";
+import logger, { getActivityLogger } from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -44,9 +47,12 @@ import {
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
-import { cacheWithRedis } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
+import {
+  cacheWithRedis,
+  concurrentExecutor,
+  INTERNAL_MIME_TYPES,
+} from "@connectors/types";
 
 const PARENT_SYNC_CACHE_TTL_MS = 30 * 60 * 1000;
 
@@ -58,6 +64,7 @@ export async function syncOneFile({
   parentInternalId,
   startSyncTs,
   isBatchSync = false,
+  heartbeat,
 }: {
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
@@ -66,6 +73,7 @@ export async function syncOneFile({
   parentInternalId: string;
   startSyncTs: number;
   isBatchSync?: boolean;
+  heartbeat: () => Promise<void>;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -76,14 +84,29 @@ export async function syncOneFile({
   }
 
   const documentId = getDriveItemInternalId(file);
-
-  const localLogger = logger.child({
-    provider: "microsoft",
-    connectorId,
+  const localLogger = getActivityLogger(connector, {
     internalId: documentId,
-    originalId: file.id,
-    name: file.name,
+    originalId: file.id || null,
+    name: file.name || null,
   });
+
+  // If the file is too big to be downloaded, we skip it.
+  if (file.size && file.size > MAX_FILE_SIZE_TO_DOWNLOAD) {
+    localLogger.info("File size exceeded, skipping file.");
+
+    return false;
+  }
+
+  const mimeTypesToSync = await getMimeTypesToSync({
+    pdfEnabled: providerConfig.pdfEnabled || false,
+    csvEnabled: providerConfig.csvEnabled || false,
+  });
+
+  const mimeType = file.file.mimeType;
+  if (!mimeType || !mimeTypesToSync.includes(mimeType)) {
+    localLogger.info("Type not supported, skipping file.");
+    return false;
+  }
 
   const fileResource = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
@@ -109,6 +132,7 @@ export async function syncOneFile({
   }
 
   localLogger.info("Syncing file");
+
   const client = await getClient(connector.connectionId);
   const { itemAPIPath } = typeAndPathFromInternalId(documentId);
 
@@ -140,24 +164,6 @@ export async function syncOneFile({
 
   if (!fields) {
     localLogger.warn("Unexpected missing fields for file");
-  }
-
-  // If the file is too big to be downloaded, we skip it.
-  if (file.size && file.size > MAX_FILE_SIZE_TO_DOWNLOAD) {
-    localLogger.info("File size exceeded, skipping file.");
-
-    return false;
-  }
-
-  const mimeTypesToSync = await getMimeTypesToSync({
-    pdfEnabled: providerConfig.pdfEnabled || false,
-    csvEnabled: providerConfig.csvEnabled || false,
-  });
-
-  const mimeType = file.file.mimeType;
-  if (!mimeType || !mimeTypesToSync.includes(mimeType)) {
-    localLogger.info("Type not supported, skipping file.");
-    return false;
   }
 
   const maxDocumentLen = providerConfig.largeFilesEnabled
@@ -286,6 +292,7 @@ export async function syncOneFile({
       parentInternalId,
       localLogger,
       startSyncTs,
+      heartbeat,
     });
 
     if (result.isErr()) {
@@ -467,7 +474,9 @@ const getParentId = cacheWithRedis(
   },
   (connectorId, internalId, startSyncTs) =>
     `microsoft-${connectorId}-parent-${internalId}-syncms-${startSyncTs}`,
-  PARENT_SYNC_CACHE_TTL_MS
+  {
+    ttlMs: PARENT_SYNC_CACHE_TTL_MS,
+  }
 );
 
 export async function deleteFolder({
@@ -578,6 +587,7 @@ export async function recursiveNodeDeletion({
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
 }): Promise<string[]> {
+  await heartbeat();
   const node = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
     nodeId
@@ -598,6 +608,18 @@ export async function recursiveNodeDeletion({
   );
 
   if (root) {
+    // If the node is now a root, we need to update the parentInternalId to null
+    // and update the descendants parents in core
+    await node.update({
+      parentInternalId: null,
+    });
+
+    await updateDescendantsParentsInCore({
+      folder: node,
+      dataSourceConfig,
+      startSyncTs: new Date().getTime(),
+    });
+
     return [];
   }
 
@@ -638,4 +660,71 @@ export async function recursiveNodeDeletion({
   }
 
   return deletedFiles;
+}
+
+export async function updateDescendantsParentsInCore({
+  folder,
+  dataSourceConfig,
+  startSyncTs,
+}: {
+  folder: MicrosoftNodeResource;
+  dataSourceConfig: DataSourceConfig;
+  startSyncTs: number;
+}) {
+  const children = await folder.fetchChildren();
+  const files = children.filter((child) => child.nodeType === "file");
+  const folders = children.filter((child) => child.nodeType === "folder");
+
+  const parents = await getParents({
+    connectorId: folder.connectorId,
+    internalId: folder.internalId,
+    startSyncTs,
+  });
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: folder.internalId,
+    parents,
+    parentId: parents[1] || null,
+    title: folder.name ?? "Untitled Folder",
+    mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
+    sourceUrl: folder.webUrl ?? undefined,
+  });
+
+  await concurrentExecutor(
+    files,
+    async (file) => updateParentsField({ file, dataSourceConfig, startSyncTs }),
+    {
+      concurrency: 10,
+    }
+  );
+  for (const childFolder of folders) {
+    await updateDescendantsParentsInCore({
+      dataSourceConfig,
+      folder: childFolder,
+      startSyncTs,
+    });
+  }
+}
+
+async function updateParentsField({
+  file,
+  dataSourceConfig,
+  startSyncTs,
+}: {
+  file: MicrosoftNodeResource;
+  dataSourceConfig: DataSourceConfig;
+  startSyncTs: number;
+}) {
+  const parents = await getParents({
+    connectorId: file.connectorId,
+    internalId: file.internalId,
+    startSyncTs,
+  });
+
+  await updateDataSourceDocumentParents({
+    dataSourceConfig,
+    documentId: file.internalId,
+    parents,
+    parentId: parents[1] || null,
+  });
 }

@@ -6,6 +6,7 @@ interface InputBoxProps {
   cursorPosition: number;
   isProcessingQuestion: boolean;
   mentionPrefix: string;
+  autoAcceptEdits: boolean;
 }
 
 export function InputBox({
@@ -13,6 +14,7 @@ export function InputBox({
   cursorPosition,
   isProcessingQuestion,
   mentionPrefix,
+  autoAcceptEdits,
 }: InputBoxProps) {
   let currentPos = 0;
   const lines = userInput.split("\n");
@@ -78,6 +80,13 @@ export function InputBox({
           }
         </Box>
       </Box>
+      {autoAcceptEdits && (
+        <Box>
+          <Text color="yellow" dimColor>
+            ➤ auto accept edits on
+          </Text>
+        </Box>
+      )}
     </Box>
   );
 }

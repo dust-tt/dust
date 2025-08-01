@@ -7,7 +7,7 @@ import {
   agentMentionsCount,
   getAgentUsers,
 } from "@app/lib/api/assistant/agent_usage";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
@@ -54,11 +54,10 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const assistant = await getAgentConfiguration(
-    auth,
-    req.query.aId as string,
-    "light"
-  );
+  const assistant = await getAgentConfiguration(auth, {
+    agentId: req.query.aId as string,
+    variant: "light",
+  });
 
   if (!assistant || (!assistant.canRead && !auth.isAdmin())) {
     return apiError(req, res, {

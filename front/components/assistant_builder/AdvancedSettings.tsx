@@ -14,6 +14,7 @@ import {
 import dynamic from "next/dynamic";
 import React from "react";
 
+import { ReasoningEffortSubmenu } from "@app/components/assistant_builder/instructions/ReasoningEffortSubmenu";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -26,7 +27,8 @@ import type {
 import {
   ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES,
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
-  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
+  CLAUDE_4_SONNET_20250514_MODEL_ID,
+  GEMINI_2_5_PRO_MODEL_ID,
   GPT_4O_MODEL_ID,
   isSupportingResponseFormat,
   MISTRAL_LARGE_MODEL_ID,
@@ -39,8 +41,9 @@ const CodeEditor = dynamic(
 
 const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
   GPT_4O_MODEL_ID,
-  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
+  CLAUDE_4_SONNET_20250514_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
+  GEMINI_2_5_PRO_MODEL_ID,
 ] as const;
 
 export const CREATIVITY_LEVELS = Object.entries(
@@ -123,12 +126,12 @@ export function AdvancedSettings({
           <DropdownMenuSubContent className="w-80">
             <DropdownMenuLabel label="Best performing models" />
             <DropdownMenuRadioGroup
-              value={`${generationSettings.modelSettings.modelId}${generationSettings.modelSettings.reasoningEffort ? `-${generationSettings.modelSettings.reasoningEffort}` : ""}`}
+              value={generationSettings.modelSettings.modelId}
             >
               {bestPerformingModelConfigs.map((modelConfig) => (
                 <DropdownMenuRadioItem
-                  key={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
-                  value={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
+                  key={modelConfig.modelId}
+                  value={modelConfig.modelId}
                   icon={getModelProviderLogo(modelConfig.providerId, isDark)}
                   description={modelConfig.shortDescription}
                   label={modelConfig.displayName}
@@ -138,8 +141,8 @@ export function AdvancedSettings({
                       modelSettings: {
                         modelId: modelConfig.modelId,
                         providerId: modelConfig.providerId,
-                        reasoningEffort: modelConfig.reasoningEffort,
                       },
+                      reasoningEffort: modelConfig.defaultReasoningEffort,
                     });
                   }}
                 />
@@ -148,12 +151,12 @@ export function AdvancedSettings({
 
             <DropdownMenuLabel label="Other models" />
             <DropdownMenuRadioGroup
-              value={`${generationSettings.modelSettings.modelId}${generationSettings.modelSettings.reasoningEffort ? `-${generationSettings.modelSettings.reasoningEffort}` : ""}`}
+              value={generationSettings.modelSettings.modelId}
             >
               {otherModelConfigs.map((modelConfig) => (
                 <DropdownMenuRadioItem
-                  key={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
-                  value={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
+                  key={modelConfig.modelId}
+                  value={modelConfig.modelId}
                   icon={getModelProviderLogo(modelConfig.providerId, isDark)}
                   description={modelConfig.shortDescription}
                   label={modelConfig.displayName}
@@ -163,8 +166,8 @@ export function AdvancedSettings({
                       modelSettings: {
                         modelId: modelConfig.modelId,
                         providerId: modelConfig.providerId,
-                        reasoningEffort: modelConfig.reasoningEffort,
                       },
+                      reasoningEffort: modelConfig.defaultReasoningEffort,
                     });
                   }}
                 />
@@ -196,6 +199,11 @@ export function AdvancedSettings({
             </DropdownMenuRadioGroup>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
+
+        <ReasoningEffortSubmenu
+          generationSettings={generationSettings}
+          setGenerationSettings={setGenerationSettings}
+        />
 
         {supportsResponseFormat && (
           <DropdownMenuSub>

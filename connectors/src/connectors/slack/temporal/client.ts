@@ -14,6 +14,8 @@ import { getWeekStart } from "../lib/utils";
 import { QUEUE_NAME } from "./config";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
 import {
+  migrateChannelsFromLegacyBotToNewBotWorkflow,
+  migrateChannelsFromLegacyBotToNewBotWorkflowId,
   slackGarbageCollectorWorkflow,
   slackGarbageCollectorWorkflowId,
   syncOneMessageDebounced,
@@ -37,9 +39,7 @@ export async function launchSlackSyncWorkflow(
   }
 
   if (channelsToSync === null) {
-    const slackClient = await getSlackClient(connectorId, {
-      rejectRateLimitedCalls: false,
-    });
+    const slackClient = await getSlackClient(connectorId);
     channelsToSync = removeNulls(
       (await getChannelsToSync(slackClient, connectorId)).map(
         (c) => c.id || null
@@ -101,7 +101,7 @@ export async function launchSlackSyncOneThreadWorkflow(
       {
         connectorId: connector.id,
       },
-      "Skipping webhook for Slack connector because it is paused (thread sync)."
+      "Skipping Slack connector because it is paused (thread sync)."
     );
 
     return new Ok(undefined);
@@ -245,6 +245,17 @@ export async function launchSlackGarbageCollectWorkflow(connectorId: ModelId) {
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
+
+  if (connector.isPaused()) {
+    logger.info(
+      {
+        connectorId: connector.id,
+      },
+      "Skipping webhook for Slack connector because it is paused (garbage collect)."
+    );
+    return new Ok(undefined);
+  }
+
   const client = await getTemporalClient();
 
   const workflowId = slackGarbageCollectorWorkflowId(connectorId);
@@ -274,6 +285,47 @@ export async function launchSlackGarbageCollectWorkflow(connectorId: ModelId) {
         error: e,
       },
       `Failed starting slackGarbageCollector workflow.`
+    );
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchSlackMigrateChannelsFromLegacyBotToNewBotWorkflow(
+  slackConnectorId: ModelId,
+  slackBotConnectorId: ModelId
+) {
+  const client = await getTemporalClient();
+
+  const workflowId = migrateChannelsFromLegacyBotToNewBotWorkflowId(
+    slackConnectorId,
+    slackBotConnectorId
+  );
+  try {
+    await client.workflow.start(migrateChannelsFromLegacyBotToNewBotWorkflow, {
+      args: [slackConnectorId, slackBotConnectorId],
+      taskQueue: QUEUE_NAME,
+      workflowId: workflowId,
+      searchAttributes: {
+        connectorId: [slackConnectorId],
+      },
+      memo: {
+        connectorId: slackConnectorId,
+      },
+    });
+    logger.info(
+      {
+        workflowId,
+      },
+      "Started migrateChannelsFromLegacyBotToNewBot workflow."
+    );
+    return new Ok(workflowId);
+  } catch (e) {
+    logger.error(
+      {
+        workflowId,
+        error: e,
+      },
+      "Failed starting migrateChannelsFromLegacyBotToNewBot workflow."
     );
     return new Err(normalizeError(e));
   }

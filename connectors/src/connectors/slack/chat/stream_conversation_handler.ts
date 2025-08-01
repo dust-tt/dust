@@ -6,7 +6,7 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/client";
-import { ACTION_RUNNING_LABELS, assertNever, Err, Ok } from "@dust-tt/client";
+import { assertNever, Err, Ok, TOOL_RUNNING_LABEL } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import * as t from "io-ts";
 import slackifyMarkdown from "slackify-markdown";
@@ -73,7 +73,6 @@ export async function streamConversationToSlack(
   await postSlackMessageUpdate(
     {
       messageUpdate: {
-        isComplete: false,
         isThinking: true,
         assistantName,
         agentConfigurations,
@@ -128,22 +127,16 @@ async function streamAgentAnswerToSlack(
   const actions: AgentActionPublicType[] = [];
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
-      case "conversation_include_file_params":
-      case "dust_app_run_block":
-      case "dust_app_run_params":
-      case "process_params":
-      case "search_labels_params":
       case "tool_params":
       case "tool_notification":
         await postSlackMessageUpdate(
           {
             messageUpdate: {
-              isComplete: false,
               isThinking: true,
               assistantName,
               agentConfigurations,
               text: answer,
-              thinkingAction: ACTION_RUNNING_LABELS[event.action.type],
+              thinkingAction: TOOL_RUNNING_LABEL,
             },
             ...conversationData,
           },
@@ -236,7 +229,6 @@ async function streamAgentAnswerToSlack(
         }
         await postSlackMessageUpdate({
           messageUpdate: {
-            isComplete: false,
             text: slackContent,
             assistantName,
             agentConfigurations,
@@ -261,7 +253,6 @@ async function streamAgentAnswerToSlack(
         await postSlackMessageUpdate(
           {
             messageUpdate: {
-              isComplete: true,
               text: slackContent,
               assistantName,
               agentConfigurations,
@@ -334,7 +325,7 @@ async function postSlackMessageUpdate(
   let lastSentDate = new Date();
   let backoffTime = initialBackoffTime;
 
-  const { slackChannelId, slackMessageTs, slackClient } = slack;
+  const { slackChannelId, slackClient } = slack;
   const conversationUrl = makeConversationUrl(
     connector.workspaceId,
     conversation.sId
@@ -360,7 +351,6 @@ async function postSlackMessageUpdate(
       messageUpdate
     ),
     channel: slackChannelId,
-    thread_ts: slackMessageTs,
     ts: mainMessage.ts as string,
   });
 

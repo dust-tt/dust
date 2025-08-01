@@ -14,7 +14,7 @@ type AuthContextType = {
   workspace: ExtensionWorkspaceType | undefined;
   isUserSetup: boolean;
   isLoading: boolean;
-  handleLogin: (isForceLogin: boolean) => void;
+  handleLogin: () => void;
   handleLogout: () => void;
   handleSelectWorkspace: (workspace: WorkspaceType) => void;
 };

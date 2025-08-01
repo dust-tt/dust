@@ -1,4 +1,4 @@
-import { Button, PlayIcon, RocketIcon } from "@dust-tt/sparkle";
+import { PlayIcon, RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -12,6 +12,7 @@ import {
 import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { BorderBeam } from "@app/components/magicui/border-beam";
+import UTMButton from "@app/components/UTMButton";
 
 const HeroContent = () => {
   return (
@@ -30,17 +31,19 @@ const HeroContent = () => {
         <br className="hidden sm:block" /> powered by the best AI models.
       </P>
       <div className="mt-4 flex flex-row justify-center gap-4">
-        <Link href="/home/pricing" shallow={true}>
-          <Button
-            variant="highlight"
-            size="md"
-            label="Get started"
-            icon={RocketIcon}
-          />
-        </Link>
-        <Link href="/home/contact" shallow={true}>
-          <Button variant="outline" size="md" label="Book a demo" />
-        </Link>
+        <UTMButton
+          variant="highlight"
+          size="md"
+          label="Get started"
+          icon={RocketIcon}
+          href="/home/pricing"
+        />
+        <UTMButton
+          variant="outline"
+          size="md"
+          label="Book a demo"
+          href="/home/contact"
+        />
       </div>
     </div>
   );
@@ -89,7 +92,7 @@ const HeroVisual = () => {
             }
           }}
         >
-          <Button
+          <UTMButton
             variant="primary"
             size="md"
             label="Watch Dust in motion"

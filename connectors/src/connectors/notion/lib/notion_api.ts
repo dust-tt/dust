@@ -576,7 +576,9 @@ export const getBlockParentMemoized = cacheWithRedis(
   ) => {
     return blockId;
   },
-  60 * 10 * 1000
+  {
+    ttlMs: 60 * 10 * 1000,
+  }
 );
 
 export async function getParsedDatabase(

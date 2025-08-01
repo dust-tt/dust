@@ -188,5 +188,20 @@ export const CitationsExample = () => (
         <CitationTitle>Hello</CitationTitle>
       </Citation>
     </CitationGrid>
+    Example of interactive content (list variant)
+    <CitationGrid variant="list">
+      <Citation onClick={() => alert("Interactive content clicked")}>
+        <CitationTitle>Analytics Dashboard</CitationTitle>
+        <CitationDescription>Visualization</CitationDescription>
+      </Citation>
+      <Citation onClick={() => alert("Interactive content clicked")}>
+        <CitationTitle>Customer Data Analysis</CitationTitle>
+        <CitationDescription>Interactive Content</CitationDescription>
+      </Citation>
+      <Citation onClick={() => alert("Interactive content clicked")}>
+        <CitationTitle>Sales Report Generator</CitationTitle>
+        <CitationDescription>Visualization</CitationDescription>
+      </Citation>
+    </CitationGrid>
   </div>
 );
