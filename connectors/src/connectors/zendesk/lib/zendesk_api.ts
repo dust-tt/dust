@@ -4,6 +4,10 @@ import {
   isZendeskNotFoundError,
   ZendeskApiError,
 } from "@connectors/connectors/zendesk/lib/errors";
+import {
+  getOrganizationFromCache,
+  setOrganizationInCache,
+} from "@connectors/connectors/zendesk/lib/in_memory_cache";
 import type {
   ZendeskFetchedArticle,
   ZendeskFetchedBrand,
@@ -26,19 +30,6 @@ const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
 const ZENDESK_TICKET_PAGE_SIZE = 300;
 const ZENDESK_COMMENT_PAGE_SIZE = 100;
-
-// In-memory cache for organizations.
-const organizationCache = new Map<string, ZendeskFetchedOrganization>();
-
-function makeOrganizationCacheKey({
-  brandSubdomain,
-  organizationId,
-}: {
-  brandSubdomain: string;
-  organizationId: number;
-}) {
-  return `zendesk:organization:${brandSubdomain}:${organizationId}`;
-}
 
 function extractMetadataFromZendeskUrl(url: string): {
   subdomain: string;
@@ -561,12 +552,7 @@ export async function listZendeskOrganizations({
   const nonCachedOrganizationIds: number[] = [];
 
   for (const organizationId of organizationIds) {
-    const cacheKey = makeOrganizationCacheKey({
-      brandSubdomain,
-      organizationId,
-    });
-    const cached = organizationCache.get(cacheKey);
-
+    const cached = getOrganizationFromCache({ brandSubdomain, organizationId });
     if (cached) {
       results.push(cached);
     } else {
@@ -601,11 +587,10 @@ export async function listZendeskOrganizations({
         });
 
       for (const organization of response.organizations) {
-        const cacheKey = makeOrganizationCacheKey({
+        setOrganizationInCache(organization, {
           brandSubdomain,
           organizationId: organization.id,
         });
-        organizationCache.set(cacheKey, organization);
         results.push(organization);
       }
     }

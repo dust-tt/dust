@@ -32,6 +32,7 @@ import {
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { clearOrganizationCache } from "@connectors/connectors/zendesk/lib/in_memory_cache";
 
 /**
  * Retrieves the timestamp cursor, which is the start date of the last successful incremental sync.
@@ -355,5 +356,9 @@ export async function syncZendeskTicketUpdateBatchActivity({
     },
     { concurrency: 10 }
   );
+
+  if (!hasMore) {
+    clearOrganizationCache();
+  }
   return { hasMore, nextLink };
 }
