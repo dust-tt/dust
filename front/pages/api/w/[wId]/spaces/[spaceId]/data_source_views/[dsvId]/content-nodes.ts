@@ -5,7 +5,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
-import { getCursorPaginationParams } from "@app/lib/api/pagination";
+import {
+  getCursorPaginationParams,
+  SortingParamsCodec,
+} from "@app/lib/api/pagination";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -20,6 +23,7 @@ const GetContentNodesOrChildrenRequestBody = t.type({
   internalIds: t.union([t.array(t.union([t.string, t.null])), t.undefined]),
   parentId: t.union([t.string, t.undefined]),
   viewType: ContentNodesViewTypeCodec,
+  sorting: t.union([SortingParamsCodec, t.undefined]),
 });
 
 export type GetDataSourceViewContentNodes = {
@@ -72,7 +76,7 @@ async function handler(
     });
   }
 
-  const { internalIds, parentId, viewType } = bodyValidation.right;
+  const { internalIds, parentId, viewType, sorting } = bodyValidation.right;
 
   if (parentId && internalIds) {
     return apiError(req, res, {
@@ -102,6 +106,7 @@ async function handler(
       parentId,
       pagination: paginationRes.value,
       viewType,
+      sorting,
     }
   );
 

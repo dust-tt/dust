@@ -85,6 +85,15 @@ export function getPaginationParams(
   return new Ok(queryValidation.right);
 }
 
+export const SortingParamsCodec = t.array(
+  t.type({
+    field: t.string,
+    direction: t.union([t.literal("asc"), t.literal("desc")]),
+  })
+);
+
+export type SortingParams = t.TypeOf<typeof SortingParamsCodec>;
+
 // Cursor pagination.
 
 const CursorPaginationParamsCodec = t.type({
