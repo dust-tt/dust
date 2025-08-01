@@ -21,6 +21,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -190,9 +191,8 @@ async function handler(
         );
 
         if (existingServer) {
-          const existingServersWithSameUrl =
-            await RemoteMCPServerResource.findByUrl(auth, url);
-          name = `${name} (${existingServersWithSameUrl.length + 1})`;
+          const uuid = generateRandomModelSId();
+          name = `${name} #${uuid.substring(0, 4).toLowerCase()}`;
         }
 
         const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {

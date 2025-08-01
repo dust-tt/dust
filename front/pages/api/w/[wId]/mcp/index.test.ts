@@ -150,11 +150,8 @@ describe("POST /api/w/[wId]/mcp/", () => {
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(201);
-      expect(res._getJSONData()).toMatchObject({
-        server: {
-          name: "Test Server (2)",
-        },
-      });
+      const responseData = res._getJSONData();
+      expect(responseData.server.name).toContain("Test Server #");
     }
   );
 });
