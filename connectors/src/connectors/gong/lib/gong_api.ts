@@ -309,14 +309,12 @@ export class GongClient {
       return {
         users: users.users,
         nextPageCursor: users.records.cursor,
-        totalRecords: users.records.totalRecords,
       };
     } catch (err) {
       if (isNotFoundError(err)) {
         return {
           users: [],
           nextPageCursor: null,
-          totalRecords: 0,
         };
       }
 

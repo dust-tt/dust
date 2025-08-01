@@ -234,7 +234,6 @@ export async function gongListAndSaveUsersActivity({
   const gongClient = await getGongClient(connector);
 
   let pageCursor = null;
-
   do {
     const { users, nextPageCursor } = await gongClient.getUsers({
       pageCursor,
