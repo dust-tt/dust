@@ -243,23 +243,11 @@ export async function gongListAndSaveUsersActivity({
   const gongClient = await getGongClient(connector);
 
   let pageCursor = null;
-  let processedUsers = 0;
-  let totalUsers: number | null = null;
 
   do {
-    const { users, nextPageCursor, totalRecords } = await gongClient.getUsers({
+    const { users, nextPageCursor } = await gongClient.getUsers({
       pageCursor,
     });
-
-    // Update totalUsers from API response if not set yet
-    totalUsers = totalUsers ?? totalRecords;
-    processedUsers += users.length;
-
-    // Report sync progress for users
-    if (totalUsers && totalUsers > 0) {
-      const progressMessage = `Synchronizing ${processedUsers}/${totalUsers} users`;
-      await reportInitialSyncProgress(connectorId, progressMessage);
-    }
 
     await GongUserResource.batchCreate(
       connector,
