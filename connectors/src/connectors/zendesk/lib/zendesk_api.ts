@@ -20,12 +20,14 @@ import { statsDClient } from "@connectors/logger/withlogging";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
+import { cacheWithRedisBatched } from "@connectors/types";
 import { removeNulls } from "@connectors/types/shared/utils/general";
 
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
 const ZENDESK_TICKET_PAGE_SIZE = 300;
 const ZENDESK_COMMENT_PAGE_SIZE = 100;
+const ORGANIZATION_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 function extractMetadataFromZendeskUrl(url: string): {
   subdomain: string;
@@ -528,8 +530,8 @@ export async function getZendeskTicketCount({
 }
 
 /**
- * Fetches multiple organizations at once from the Zendesk API.
- * May run multiple queries, more precisely we need organizationCount // 100 + 1 API calls.
+ * Fetches multiple organizations using the generic individual caching helper.
+ * Only fetches organizations that are not already cached.
  */
 export async function listZendeskOrganizations({
   accessToken,
@@ -540,17 +542,67 @@ export async function listZendeskOrganizations({
   brandSubdomain: string;
   organizationIds: number[];
 }): Promise<ZendeskFetchedOrganization[]> {
-  const users: ZendeskFetchedOrganization[] = [];
-  // we can fetch at most 100 organizations at once: https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#show-many-organizations
-  for (const chunk of _.chunk(organizationIds, 100)) {
-    const parameter = `ids=${encodeURIComponent(chunk.join(","))}`;
-    const response = await fetchFromZendeskWithRetries({
-      url: `https://${brandSubdomain}.zendesk.com/api/v2/organizations/show_many?${parameter}`,
-      accessToken,
-    });
-    users.push(...response.organizations);
+  if (organizationIds.length === 0) {
+    return [];
   }
-  return users;
+
+  const totalRequested = organizationIds.length;
+  let cacheHits = 0;
+
+  return cacheWithRedisBatched<ZendeskFetchedOrganization, number>({
+    items: organizationIds,
+    keyResolver: (organizationId) =>
+      `zendesk:org:${brandSubdomain}:${organizationId}`,
+    fetchMissing: async (missingOrgIds: number[]) => {
+      cacheHits = totalRequested - missingOrgIds.length;
+
+      // Log cache performance
+      if (totalRequested > 0) {
+        logger.info(
+          {
+            brandSubdomain,
+            totalRequested,
+            cacheHits,
+            cacheMisses: missingOrgIds.length,
+            hitRate: ((cacheHits / totalRequested) * 100).toFixed(1),
+          },
+          "[Zendesk] Organization cache performance"
+        );
+      }
+
+      const fetchedOrgMap = new Map<
+        number,
+        ZendeskFetchedOrganization | null
+      >();
+
+      // Fetch using efficient batch API
+      for (const chunk of _.chunk(missingOrgIds, 100)) {
+        const parameter = `ids=${encodeURIComponent(chunk.join(","))}`;
+        const response = await fetchFromZendeskWithRetries({
+          url: `https://${brandSubdomain}.zendesk.com/api/v2/organizations/show_many?${parameter}`,
+          accessToken,
+        });
+
+        // Create map for quick lookup of fetched organizations
+        const chunkFetchedOrgMap = new Map<
+          number,
+          ZendeskFetchedOrganization
+        >();
+        for (const org of response.organizations) {
+          chunkFetchedOrgMap.set(org.id, org);
+        }
+
+        // Add each organization to the result map (or null if not found)
+        for (const orgId of chunk) {
+          const organization = chunkFetchedOrgMap.get(orgId);
+          fetchedOrgMap.set(orgId, organization || null);
+        }
+      }
+
+      return fetchedOrgMap;
+    },
+    ttlMs: ORGANIZATION_CACHE_TTL_MS,
+  });
 }
 
 /**

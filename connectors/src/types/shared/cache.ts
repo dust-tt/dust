@@ -128,3 +128,89 @@ function unlock(key: string) {
     unlockFn();
   }
 }
+
+/**
+ * Fetches items with individual Redis caching. Only fetches items that aren't cached.
+ * Similar to cacheWithRedis but caches each item individually for better cache reuse.
+ */
+export async function cacheWithRedisBatched<T, K>({
+  items,
+  keyResolver,
+  fetchMissing,
+  ttlMs,
+  redisUri,
+}: {
+  items: K[];
+  keyResolver: (item: K) => string;
+  fetchMissing: (missingItems: K[]) => Promise<Map<K, T | null>>;
+  ttlMs: number;
+  redisUri?: string;
+}): Promise<T[]> {
+  if (items.length === 0) {
+    return [];
+  }
+  if (ttlMs > 60 * 60 * 24 * 1000) {
+    throw new Error("ttlMs should be less than 24 hours");
+  }
+
+  const REDIS_URI = redisUri || process.env.REDIS_CACHE_URI;
+  if (!REDIS_URI) {
+    throw new Error("REDIS_CACHE_URI is not set");
+  }
+
+  const redisCli = await redisClient({
+    origin: "cache_with_redis",
+    redisUri: REDIS_URI,
+  });
+
+  try {
+    const results: T[] = [];
+    const itemsToFetch: K[] = [];
+
+    // Bulk cache check
+    const cacheKeys = items.map(keyResolver);
+    const cachedValues = await redisCli.mGet(cacheKeys);
+
+    // Separate cached from missing items
+    items.forEach((item, i) => {
+      const cachedValue = cachedValues[i];
+      if (!cachedValue) {
+        itemsToFetch.push(item);
+        return;
+      }
+
+      try {
+        const cachedItem = JSON.parse(cachedValue) as T | null;
+        if (cachedItem) {
+          results.push(cachedItem);
+        }
+        // Note: null values (non-existent items) are cached but not added to results
+      } catch {
+        // If JSON parsing fails, treat as cache miss
+        itemsToFetch.push(item);
+      }
+    });
+
+    // Fetch and cache missing items
+    if (itemsToFetch.length > 0) {
+      const fetchedItemMap = await fetchMissing(itemsToFetch);
+
+      // Cache all fetched items and add existing ones to results
+      await Promise.all(
+        itemsToFetch.map(async (item) => {
+          const fetchedItem = fetchedItemMap.get(item);
+          await redisCli.set(keyResolver(item), JSON.stringify(fetchedItem), {
+            PX: ttlMs,
+          });
+          if (fetchedItem) {
+            results.push(fetchedItem);
+          }
+        })
+      );
+    }
+
+    return results;
+  } finally {
+    await redisCli.quit();
+  }
+}
