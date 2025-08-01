@@ -5,9 +5,8 @@ import type { Transaction } from "sequelize";
 import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
+  getAgentConfiguration,
   getAgentConfigurations,
-  getFullAgentConfiguration,
-  getLightAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -677,11 +676,18 @@ export async function postUserMessage(
         `Agent message row not found for agent message ${agentMessage.agentMessageId}`
       );
 
+      const agentConfiguration = await getAgentConfiguration(auth, {
+        agentId: agentMessage.configuration.sId,
+        variant: "full",
+      });
+
+      assert(
+        agentConfiguration,
+        "Unreachable: could not find detailed configuration for agent"
+      );
+
       const inMemoryData = {
-        agentConfiguration: await getFullAgentConfiguration(
-          auth,
-          agentMessage.configuration
-        ),
+        agentConfiguration,
         conversation: enrichedConversation,
         userMessage,
         agentMessage,
@@ -816,9 +822,12 @@ export async function editUserMessage(
 
   const results = await Promise.all([
     Promise.all(
-      mentions.filter(isAgentMention).map((mention) => {
-        return getLightAgentConfiguration(auth, mention.configurationId);
-      })
+      mentions.filter(isAgentMention).map((mention) =>
+        getAgentConfiguration(auth, {
+          agentId: mention.configurationId,
+          variant: "light",
+        })
+      )
     ),
     ConversationResource.upsertParticipation(auth, conversation),
   ]);
@@ -1118,11 +1127,18 @@ export async function editUserMessage(
         `Agent message row not found for agent message ${agentMessage.agentMessageId}`
       );
 
+      const agentConfiguration = await getAgentConfiguration(auth, {
+        agentId: agentMessage.configuration.sId,
+        variant: "full",
+      });
+
+      assert(
+        agentConfiguration,
+        "Unreachable: could not find detailed configuration for agent"
+      );
+
       const inMemoryData = {
-        agentConfiguration: await getFullAgentConfiguration(
-          auth,
-          agentMessage.configuration
-        ),
+        agentConfiguration,
         conversation: enrichedConversation,
         userMessage,
         agentMessage,
@@ -1339,11 +1355,19 @@ export async function retryAgentMessage(
     ...conversation,
     content: newContent,
   };
+
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: agentMessage.configuration.sId,
+    variant: "full",
+  });
+
+  assert(
+    agentConfiguration,
+    "Unreachable: could not find detailed configuration for agent"
+  );
+
   const inMemoryData = {
-    agentConfiguration: await getFullAgentConfiguration(
-      auth,
-      agentMessage.configuration
-    ),
+    agentConfiguration,
     conversation: enrichedConversation,
     userMessage,
     agentMessage,

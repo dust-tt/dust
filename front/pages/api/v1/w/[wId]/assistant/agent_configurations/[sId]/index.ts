@@ -3,7 +3,7 @@ import { PatchAgentConfigurationRequestSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
-import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -121,7 +121,10 @@ async function handler(
     });
   }
 
-  const agentConfiguration = await getLightAgentConfiguration(auth, sId);
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: sId,
+    variant: "light",
+  });
 
   if (!agentConfiguration) {
     return apiError(req, res, {
