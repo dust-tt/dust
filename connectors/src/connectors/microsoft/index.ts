@@ -58,8 +58,8 @@ import type {
   ConnectorPermission,
   ContentNode,
   ContentNodesViewType,
+  DataSourceConfig,
 } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
 
 export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   readonly provider: ConnectorProvider = "microsoft";
@@ -224,8 +224,12 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     const isTablesView = viewType === "table";
     if (filterPermission === "read" || isTablesView) {
       if (!parentInternalId) {
-        const nodes = await MicrosoftNodeResource.fetchNodesWithoutParents(
-          this.connectorId
+        const roots = await MicrosoftRootResource.listRootsByConnectorId(
+          connector.id
+        );
+        const nodes = await MicrosoftNodeResource.fetchByInternalIds(
+          this.connectorId,
+          roots.map((r) => r.internalId)
         );
         return new Ok(
           nodes.map((node) => getMicrosoftNodeAsContentNode(node, isTablesView))
