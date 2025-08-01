@@ -13,6 +13,7 @@ export class RemoteMCPServerToolMetadataModel extends WorkspaceAwareModel<Remote
   declare remoteMCPServerId: ForeignKey<RemoteMCPServerModel["id"]>;
   declare toolName: string;
   declare permission: MCPToolStakeLevelType;
+  declare enabled: boolean;
 }
 
 RemoteMCPServerToolMetadataModel.init(
@@ -42,6 +43,11 @@ RemoteMCPServerToolMetadataModel.init(
     permission: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    enabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
     },
   },
   {

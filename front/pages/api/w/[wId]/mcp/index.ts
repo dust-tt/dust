@@ -235,6 +235,7 @@ async function handler(
               remoteMCPServerId: newRemoteMCPServer.id,
               toolName,
               permission: stakeLevel,
+              enabled: true,
             });
           }
         }

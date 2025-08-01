@@ -9,16 +9,19 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { assertNever } from "@app/types";
 
-export type GetMCPServerToolsPermissionsResponseBody = {
-  permissions: {
-    [toolId: string]: MCPToolStakeLevelType;
+export type GetMCPServerToolsSettingsResponseBody = {
+  toolsSettings: {
+    [toolId: string]: {
+      permission: MCPToolStakeLevelType;
+      enabled: boolean;
+    };
   };
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<GetMCPServerToolsPermissionsResponseBody>
+    WithAPIErrorResponse<GetMCPServerToolsSettingsResponseBody>
   >,
   auth: Authenticator
 ): Promise<void> {
@@ -50,21 +53,32 @@ async function handler(
       const { serverType, id } = getServerTypeAndIdFromSId(serverId);
       switch (serverType) {
         case "internal":
-          return res.status(200).json({ permissions: {} });
+          return res.status(200).json({ toolsSettings: {} });
         case "remote":
           const resources =
             await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id);
 
-          const permissions = resources.reduce(
-            (acc: { [key: string]: MCPToolStakeLevelType }, resource) => {
-              acc[resource.toolName] = resource.permission;
+          const toolsSettings = resources.reduce(
+            (
+              acc: {
+                [key: string]: {
+                  permission: MCPToolStakeLevelType;
+                  enabled: boolean;
+                };
+              },
+              resource
+            ) => {
+              acc[resource.toolName] = {
+                permission: resource.permission,
+                enabled: resource.enabled,
+              };
               return acc;
             },
             {}
           );
 
           return res.status(200).json({
-            permissions,
+            toolsSettings,
           });
         default:
           assertNever(serverType);

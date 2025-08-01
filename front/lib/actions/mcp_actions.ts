@@ -838,6 +838,19 @@ async function listToolsForServerSideMCPServer(
         },
         {}
       );
+
+      // Filter out tools that are not enabled.
+      const toolsEnabled = metadata.reduce<Record<string, boolean>>(
+        (acc, metadata) => {
+          acc[metadata.toolName] = metadata.enabled;
+          return acc;
+        },
+        {}
+      );
+      allToolsRaw = allToolsRaw.filter((tool) => {
+        return !toolsEnabled[tool.name] || toolsEnabled[tool.name];
+      });
+
       break;
     }
     default:
