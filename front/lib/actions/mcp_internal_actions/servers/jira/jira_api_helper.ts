@@ -314,8 +314,12 @@ export async function searchIssues(
     );
   }
 
-  const { nextPageToken, sortBy, maxResults = SEARCH_MAX_RESULTS } = options || {};
-  
+  const {
+    nextPageToken,
+    sortBy,
+    maxResults = SEARCH_MAX_RESULTS,
+  } = options || {};
+
   const jql = createJQLFromSearchFilters(filters, sortBy);
 
   const requestBody: z.infer<typeof JiraSearchRequestSchema> = {
