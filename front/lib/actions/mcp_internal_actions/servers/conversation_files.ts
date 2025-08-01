@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { computeTextByteSize } from "@app/lib/actions/action_output_limits";
 import {
   DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
@@ -27,6 +28,9 @@ import type {
   TextContent,
 } from "@app/types";
 import { Err, isImageContent, isTextContent, Ok } from "@app/types";
+
+const MAX_FILE_SIZE_FOR_GREP = 20 * 1024 * 1024; // 20MB.
+const MAX_FILE_SIZE_FOR_INCLUDE = 1024 * 1024; // 1MB.
 
 /**
  * MCP server for handling conversation file operations.
@@ -92,6 +96,15 @@ function createServer(
       );
 
       if (isTextContent(content)) {
+        const textByteSize = computeTextByteSize(content.text);
+        if (textByteSize > MAX_FILE_SIZE_FOR_INCLUDE) {
+          return makeMCPToolTextError(
+            `File ${title} is too large (${(textByteSize / 1024 / 1024).toFixed(2)}MB) to include in the conversation. ` +
+              `Maximum supported size is ${MAX_FILE_SIZE_FOR_INCLUDE / 1024 / 1024}MB. ` +
+              `Consider using cat to read smaller portions of the file.`
+          );
+        }
+
         return {
           isError: false,
           content: [
@@ -240,6 +253,16 @@ function createServer(
 
       // Apply grep filter if provided.
       if (grep) {
+        // Check if the grep pattern is too large.
+        const grepByteSize = computeTextByteSize(grep);
+        if (grepByteSize > MAX_FILE_SIZE_FOR_GREP) {
+          return makeMCPToolTextError(
+            `Grep pattern is too large (${(grepByteSize / 1024 / 1024).toFixed(2)}MB) to apply grep filtering. ` +
+              `Maximum supported size is ${MAX_FILE_SIZE_FOR_GREP / 1024 / 1024}MB. ` +
+              `Consider using offset/limit to read smaller portions of the file.`
+          );
+        }
+
         try {
           const regex = new RegExp(grep, "gm");
           const lines = text.split("\n");

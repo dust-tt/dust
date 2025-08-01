@@ -1,7 +1,7 @@
 import { Err, isSupportedImageContentType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-import { MAX_RESOURCE_CONTENT_SIZE } from "@app/lib/actions/mcp_actions";
+import { MAX_RESOURCE_CONTENT_SIZE } from "@app/lib/actions/action_output_limits";
 import {
   isBlobResource,
   isSearchQueryResourceType,
