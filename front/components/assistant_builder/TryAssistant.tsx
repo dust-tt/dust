@@ -175,7 +175,6 @@ export function useTryAssistantCore({
   );
   const sendNotification = useSendNotification();
 
-  // Use SWR hook to get conversation with real-time updates
   const { conversation: swrConversation } = useConversation({
     conversationId: conversationId || "",
     workspaceId: owner.sId,
@@ -238,7 +237,6 @@ export function useTryAssistantCore({
         user,
         messageData,
         visibility: "test",
-        title: `Trying @${currentAssistant?.name}`,
       });
       if (result.isOk()) {
         setConversationId(result.value.sId);

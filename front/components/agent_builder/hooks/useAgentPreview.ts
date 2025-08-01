@@ -210,8 +210,6 @@ export function useDraftConversation({
 
   const conversation = swrConversation || null;
 
-  const conversationTitle = `Trying @${draftAgent?.name || "your agent"}`;
-
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
@@ -257,7 +255,6 @@ export function useDraftConversation({
         user,
         messageData,
         visibility: "test",
-        title: conversationTitle,
       });
 
       if (result.isOk()) {
