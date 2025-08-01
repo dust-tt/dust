@@ -10,6 +10,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
+import { isGlobalAgentId } from "@app/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
@@ -20,7 +21,6 @@ import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
-import { isGlobalAgentId } from "@app/types";
 
 export type RunAgentAsynchronousArgs = {
   agentMessageId: string;
