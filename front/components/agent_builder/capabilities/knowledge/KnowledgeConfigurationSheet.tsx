@@ -34,7 +34,6 @@ import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServe
 import type {
   CapabilityFormData,
   ConfigurationSheetPageId,
-  KnowledgeServerName,
 } from "@app/components/agent_builder/types";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
@@ -49,7 +48,6 @@ import { DataSourceBuilderSelector } from "@app/components/data_source_view/Data
 import type { DataSourceViewSelectionConfigurations } from "@app/types";
 
 interface KnowledgeConfigurationSheetProps {
-  capability?: KnowledgeServerName | null;
   onSave: (action: AgentBuilderAction) => void;
   onClose: () => void;
   onOpen?: () => void;
@@ -58,7 +56,6 @@ interface KnowledgeConfigurationSheetProps {
 }
 
 export function KnowledgeConfigurationSheet({
-  capability,
   onSave,
   onClose,
   onOpen,
@@ -66,9 +63,6 @@ export function KnowledgeConfigurationSheet({
   open,
 }: KnowledgeConfigurationSheetProps) {
   const [config, setConfig] = useState<CapabilityConfig | null>(() => {
-    if (capability) {
-      return CAPABILITY_CONFIGS[capability];
-    }
     if (action && isSupportedAgentBuilderAction(action)) {
       const serverName = ACTION_TYPE_TO_MCP_SERVER_MAP[action.type];
       return serverName && isKnowledgeServerName(serverName)
