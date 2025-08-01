@@ -2,6 +2,7 @@ import { useCallback } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
+import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 
 export function useZendeskOrganizationTagFilters({
@@ -18,7 +19,7 @@ export function useZendeskOrganizationTagFilters({
     mutateConfig: mutateIncludedTags,
     isResourcesLoading: loadingIncluded,
   } = useConnectorConfig({
-    configKey: "zendeskOrganizationTagsToInclude",
+    configKey: ZENDESK_CONFIG_KEYS.ORGANIZATION_TAGS_TO_INCLUDE,
     dataSource,
     owner,
   });
@@ -28,7 +29,7 @@ export function useZendeskOrganizationTagFilters({
     mutateConfig: mutateExcludedTags,
     isResourcesLoading: loadingExcluded,
   } = useConnectorConfig({
-    configKey: "zendeskOrganizationTagsToExclude",
+    configKey: ZENDESK_CONFIG_KEYS.ORGANIZATION_TAGS_TO_EXCLUDE,
     dataSource,
     owner,
   });
@@ -41,8 +42,8 @@ export function useZendeskOrganizationTagFilters({
       try {
         const configKey =
           type === "include"
-            ? "zendeskOrganizationTagsToInclude"
-            : "zendeskOrganizationTagsToExclude";
+            ? ZENDESK_CONFIG_KEYS.ORGANIZATION_TAGS_TO_INCLUDE
+            : ZENDESK_CONFIG_KEYS.ORGANIZATION_TAGS_TO_EXCLUDE;
         const currentTags = type === "include" ? includedTags : excludedTags;
 
         if (currentTags.includes(tag)) {
@@ -108,8 +109,8 @@ export function useZendeskOrganizationTagFilters({
       try {
         const configKey =
           type === "include"
-            ? "zendeskOrganizationTagsToInclude"
-            : "zendeskOrganizationTagsToExclude";
+            ? ZENDESK_CONFIG_KEYS.ORGANIZATION_TAGS_TO_INCLUDE
+            : ZENDESK_CONFIG_KEYS.ORGANIZATION_TAGS_TO_EXCLUDE;
         const currentTags = type === "include" ? includedTags : excludedTags;
 
         if (!currentTags.includes(tag)) {

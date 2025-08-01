@@ -2,6 +2,7 @@ import { useCallback } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
+import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 
 export function useZendeskTicketTagFilters({
@@ -18,7 +19,7 @@ export function useZendeskTicketTagFilters({
     mutateConfig: mutateIncludedTags,
     isResourcesLoading: loadingIncluded,
   } = useConnectorConfig({
-    configKey: "zendeskTicketTagsToInclude",
+    configKey: ZENDESK_CONFIG_KEYS.TICKET_TAGS_TO_INCLUDE,
     dataSource,
     owner,
   });
@@ -28,7 +29,7 @@ export function useZendeskTicketTagFilters({
     mutateConfig: mutateExcludedTags,
     isResourcesLoading: loadingExcluded,
   } = useConnectorConfig({
-    configKey: "zendeskTicketTagsToExclude",
+    configKey: ZENDESK_CONFIG_KEYS.TICKET_TAGS_TO_EXCLUDE,
     dataSource,
     owner,
   });
@@ -41,8 +42,8 @@ export function useZendeskTicketTagFilters({
       try {
         const configKey =
           type === "include"
-            ? "zendeskTicketTagsToInclude"
-            : "zendeskTicketTagsToExclude";
+            ? ZENDESK_CONFIG_KEYS.TICKET_TAGS_TO_INCLUDE
+            : ZENDESK_CONFIG_KEYS.TICKET_TAGS_TO_EXCLUDE;
         const currentTags = type === "include" ? includedTags : excludedTags;
 
         if (currentTags.includes(tag)) {
@@ -108,8 +109,8 @@ export function useZendeskTicketTagFilters({
       try {
         const configKey =
           type === "include"
-            ? "zendeskTicketTagsToInclude"
-            : "zendeskTicketTagsToExclude";
+            ? ZENDESK_CONFIG_KEYS.TICKET_TAGS_TO_INCLUDE
+            : ZENDESK_CONFIG_KEYS.TICKET_TAGS_TO_EXCLUDE;
         const currentTags = type === "include" ? includedTags : excludedTags;
 
         if (!currentTags.includes(tag)) {

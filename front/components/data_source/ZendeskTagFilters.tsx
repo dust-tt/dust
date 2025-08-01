@@ -51,21 +51,13 @@ export function ZendeskTagFilters({
       return;
     }
 
-    try {
-      await addTag(inputValue.trim(), activeTab);
-      setInputValue("");
-      setIsEditing(false);
-    } catch (error) {
-      // Error is handled by the hook with user notifications
-    }
+    await addTag(inputValue.trim(), activeTab);
+    setInputValue("");
+    setIsEditing(false);
   };
 
   const handleRemoveTag = async (tag: string, type: "include" | "exclude") => {
-    try {
-      await removeTag(tag, type);
-    } catch (error) {
-      // Error is handled by the hook with user notifications
-    }
+    await removeTag(tag, type);
   };
 
   const handleEdit = () => {
@@ -214,7 +206,7 @@ export function ZendeskTagFilters({
           )}
 
           <p className="mt-2 text-xs text-muted-foreground">
-            Enter one tag at a time. Exclude tags take precedence over include
+            Enter one tag at a time. Excluded tags take precedence over included
             tags.
           </p>
         </div>
