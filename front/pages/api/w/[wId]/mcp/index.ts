@@ -21,6 +21,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -128,21 +129,6 @@ async function handler(
           });
         }
 
-        const existingServer = await RemoteMCPServerResource.findByUrl(
-          auth,
-          url
-        );
-
-        if (existingServer) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "A server with this URL already exists",
-            },
-          });
-        }
-
         // Default to the shared secret if it exists.
         let bearerToken = sharedSecret || null;
         let authorization: AuthorizationInfo | null = null;
@@ -197,10 +183,22 @@ async function handler(
           (config) => config.url === url
         );
 
+        let name = defaultConfig?.name || metadata.name;
+
+        const existingServer = await RemoteMCPServerResource.findByName(
+          auth,
+          name
+        );
+
+        if (existingServer) {
+          const uuid = generateRandomModelSId();
+          name = `${name} #${uuid.substring(0, 4).toLowerCase()}`;
+        }
+
         const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
           workspaceId: auth.getNonNullableWorkspace().id,
           url: url,
-          cachedName: defaultConfig?.name || metadata.name,
+          cachedName: name,
           cachedDescription: defaultConfig?.description || metadata.description,
           cachedTools: metadata.tools,
           icon:
@@ -300,7 +298,7 @@ async function handler(
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: "A server with this URL already exists",
+              message: "This internal tool has already been added",
             },
           });
         }
