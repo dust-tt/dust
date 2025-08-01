@@ -96,13 +96,11 @@ export async function gongSyncTranscriptsActivity({
   forceResync,
   pageCursor,
   processedRecords = 0,
-  totalRecords = null,
 }: {
   forceResync: boolean;
   connectorId: ModelId;
   pageCursor: string | null;
   processedRecords?: number;
-  totalRecords?: number | null;
 }) {
   const connector = await fetchGongConnector({ connectorId });
   const configuration = await fetchGongConfiguration(connector);
@@ -117,22 +115,17 @@ export async function gongSyncTranscriptsActivity({
 
   const gongClient = await getGongClient(connector);
 
-  const {
-    transcripts,
-    nextPageCursor,
-    totalRecords: apiTotalRecords,
-  } = await gongClient.getTranscripts({
-    startTimestamp: configuration.getSyncStartTimestamp(),
-    pageCursor,
-  });
+  const { transcripts, nextPageCursor, totalRecords } =
+    await gongClient.getTranscripts({
+      startTimestamp: configuration.getSyncStartTimestamp(),
+      pageCursor,
+    });
 
-  // Update totalRecords from API response if not set yet
-  const currentTotalRecords = totalRecords ?? apiTotalRecords;
   const currentProcessedRecords = processedRecords + transcripts.length;
 
   // Report sync progress
-  if (currentTotalRecords && currentTotalRecords > 0) {
-    const progressMessage = `Synchronizing ${currentProcessedRecords}/${currentTotalRecords} transcripts`;
+  if (totalRecords > 0) {
+    const progressMessage = `Synchronizing ${currentProcessedRecords}/${totalRecords} transcripts`;
     await reportInitialSyncProgress(connectorId, progressMessage);
   }
 
@@ -161,7 +154,6 @@ export async function gongSyncTranscriptsActivity({
     return {
       nextPageCursor,
       processedRecords: currentProcessedRecords,
-      totalRecords: currentTotalRecords,
     };
   }
 
@@ -229,7 +221,6 @@ export async function gongSyncTranscriptsActivity({
   return {
     nextPageCursor,
     processedRecords: currentProcessedRecords,
-    totalRecords: currentTotalRecords,
   };
 }
 
