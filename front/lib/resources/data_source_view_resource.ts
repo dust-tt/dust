@@ -17,6 +17,7 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -652,15 +653,44 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     // Mark all content fragments that reference this data source view as expired.
     await this.expireContentFragments(auth, transaction);
 
-    // Delete agent configurations elements pointing to this data source view.
-    await AgentDataSourceConfiguration.destroy({
-      where: {
-        dataSourceViewId: this.id,
-      },
-      transaction,
-    });
+    const agentDataSourceConfigurations =
+      await AgentDataSourceConfiguration.findAll({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          dataSourceViewId: this.id,
+        },
+      });
+
+    // Delete associated MCP server configurations.
+    if (agentDataSourceConfigurations.length > 0) {
+      await AgentMCPServerConfiguration.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: {
+            [Op.in]: removeNulls(
+              agentDataSourceConfigurations.map(
+                (a) => a.mcpServerConfigurationId
+              )
+            ),
+          },
+        },
+        transaction,
+      });
+
+      await AgentDataSourceConfiguration.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: {
+            [Op.in]: agentDataSourceConfigurations.map((a) => a.id),
+          },
+        },
+        transaction,
+      });
+    }
+
     await AgentTablesQueryConfigurationTable.destroy({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceViewId: this.id,
       },
     });
