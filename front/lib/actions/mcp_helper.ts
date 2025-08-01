@@ -102,9 +102,6 @@ export function getMcpServerViewDisplayName(
   view: MCPServerViewType,
   action?: AssistantBuilderMCPConfiguration | AgentBuilderAction
 ) {
-  if (view.name) {
-    return view.name;
-  }
   return getMcpServerDisplayName(view.server, action);
 }
 

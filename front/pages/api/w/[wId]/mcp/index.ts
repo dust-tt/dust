@@ -190,7 +190,9 @@ async function handler(
         );
 
         if (existingServer) {
-          name = `${name} (2)`;
+          const existingServersWithSameUrl =
+            await RemoteMCPServerResource.findByUrl(auth, url);
+          name = `${name} (${existingServersWithSameUrl.length + 1})`;
         }
 
         const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
