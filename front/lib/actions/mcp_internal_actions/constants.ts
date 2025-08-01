@@ -363,10 +363,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   outlook: {
     id: 24,
     availability: "manual",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("outlook_tool");
-    },
-    isPreview: true,
     tools_stakes: {
       get_messages: "never_ask",
       get_drafts: "never_ask",
@@ -378,10 +374,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   outlook_calendar: {
     id: 25,
     availability: "manual",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("outlook_tool");
-    },
-    isPreview: true,
     tools_stakes: {
       list_calendars: "never_ask",
       list_events: "never_ask",

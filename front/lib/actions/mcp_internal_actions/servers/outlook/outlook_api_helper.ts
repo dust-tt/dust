@@ -24,7 +24,7 @@ export const OutlookEventSchema = z.object({
   subject: z.string().optional(),
   body: z
     .object({
-      contentType: z.enum(["text", "html"]),
+      contentType: z.string().default("text"),
       content: z.string(),
     })
     .optional(),
@@ -49,12 +49,7 @@ export const OutlookEventSchema = z.object({
           name: z.string().optional(),
         }),
         status: z.object({
-          response: z.enum([
-            "none",
-            "accepted",
-            "declined",
-            "tentativelyAccepted",
-          ]),
+          response: z.string().default("none"),
           time: z.string().optional(),
         }),
       })
@@ -70,13 +65,9 @@ export const OutlookEventSchema = z.object({
     .optional(),
   isAllDay: z.boolean().optional(),
   isCancelled: z.boolean().optional(),
-  importance: z.enum(["low", "normal", "high"]).optional(),
-  sensitivity: z
-    .enum(["normal", "personal", "private", "confidential"])
-    .optional(),
-  showAs: z
-    .enum(["free", "tentative", "busy", "oof", "workingElsewhere", "unknown"])
-    .optional(),
+  importance: z.string().optional(),
+  sensitivity: z.string().optional(),
+  showAs: z.string().optional(),
   recurrence: z.any().optional(),
 });
 
