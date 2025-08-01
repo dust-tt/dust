@@ -3,8 +3,11 @@ import { z } from "zod";
 // Search filter constants and types
 export const SEARCH_MAX_RESULTS = 20;
 
-export const SUPPORTED_OPERATORS = ["=", "<", ">", "<=", ">="] as const;
+export const SUPPORTED_OPERATORS = ["=", "<", ">", "<=", ">=", "!="] as const;
 export type SupportedOperator = (typeof SUPPORTED_OPERATORS)[number];
+
+export const SORT_DIRECTIONS = ["ASC", "DESC"] as const;
+export type SortDirection = (typeof SORT_DIRECTIONS)[number];
 
 export const FIELD_MAPPINGS = {
   assignee: { jqlField: "assignee" },
@@ -39,6 +42,61 @@ export interface SearchFilter {
   customFieldName?: string;
   operator?: SupportedOperator;
 }
+
+// Get regular field names (excluding customField)
+const regularFieldNames = SEARCH_FILTER_FIELDS.filter(
+  (field) => field !== "customField"
+) as [string, ...string[]];
+
+const baseFilterSchema = z.object({
+  value: z.string().describe("The value to search for"),
+  operator: z
+    .enum(SUPPORTED_OPERATORS)
+    .optional()
+    .describe(
+      `Operator for comparison. Supported operators: ${SUPPORTED_OPERATORS.join(", ")}. Only supported for date fields like 'dueDate', 'created', 'resolved'. For dates, use format '2023-07-03' or relative format like '-25d', '7d', '2w', '1M', etc.`
+    ),
+  fuzzy: z
+    .boolean()
+    .optional()
+    .describe(
+      "Use fuzzy search (~) for partial/similar matches instead of exact match (=). Only supported for 'summary' field. Use fuzzy when: searching for partial text, handling typos, finding related terms. Use exact when: looking for specific titles, precise matching needed."
+    ),
+});
+
+const customFieldFilterSchema = baseFilterSchema.extend({
+  field: z.literal("customField"),
+  customFieldName: z
+    .string()
+    .describe(
+      "The name of the custom field to search (e.g., 'Story Points', 'Epic Link')."
+    ),
+});
+
+const regularFieldFilterSchema = baseFilterSchema.extend({
+  field: z
+    .enum(regularFieldNames)
+    .describe(
+      `The field to filter by. Must be one of: ${regularFieldNames.join(", ")}.`
+    ),
+});
+
+export const JiraSearchFilterSchema = z.discriminatedUnion("field", [
+  customFieldFilterSchema,
+  regularFieldFilterSchema,
+]);
+
+// Sort schema using existing FIELD_MAPPINGS
+export const JiraSortSchema = z.object({
+  field: z
+    .enum(SEARCH_FILTER_FIELDS as [SearchFilterField, ...SearchFilterField[]])
+    .describe(
+      `The field to sort by. Must be one of: ${SEARCH_FILTER_FIELDS.join(", ")}.`
+    ),
+  direction: z
+    .enum(SORT_DIRECTIONS)
+    .describe(`Sort direction. Must be one of: ${SORT_DIRECTIONS.join(", ")}.`),
+});
 
 // Jira entity schemas - shared field definitions
 export const JiraIssueFieldsSchema = z

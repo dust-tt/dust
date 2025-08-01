@@ -1,6 +1,7 @@
 import type {
   SearchFilter,
   SearchFilterField,
+  SortDirection,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import { FIELD_MAPPINGS } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 
@@ -19,26 +20,35 @@ export const escapeJQLValue = (value: string): string => {
   return value;
 };
 
-export function createJQLFromSearchFilters(filters: SearchFilter[]): string {
+export function createJQLFromSearchFilters(
+  filters: SearchFilter[],
+  sortBy?: { field: SearchFilterField; direction: SortDirection }
+): string {
   const jqlConditions = filters.map((filter) => {
     const fieldMapping = FIELD_MAPPINGS[filter.field as SearchFilterField];
-    
+
     let jqlField: string;
-    
-    if (fieldMapping && "isCustomField" in fieldMapping && fieldMapping.isCustomField) {
+
+    if (
+      fieldMapping &&
+      "isCustomField" in fieldMapping &&
+      fieldMapping.isCustomField
+    ) {
       // For custom fields, use the customFieldName parameter
-      if (filter.customFieldName) {
-        jqlField = `"${filter.customFieldName}"`;
-      } else {
-        throw new Error("customFieldName is required when using customField");
-      }
+      // Zod validation ensures customFieldName is present when field is 'customField'
+      jqlField = `"${filter.customFieldName}"`;
     } else {
       jqlField = fieldMapping.jqlField;
     }
-    
+
     // Determine the operator to use
     let operator: string;
-    if (filter.operator && fieldMapping && "supportsOperators" in fieldMapping && fieldMapping.supportsOperators) {
+    if (
+      filter.operator &&
+      fieldMapping &&
+      "supportsOperators" in fieldMapping &&
+      fieldMapping.supportsOperators
+    ) {
       // Use the provided operator for fields that support it (like dueDate)
       operator = filter.operator;
     } else if (filter.fuzzy && "supportsFuzzy" in fieldMapping) {
@@ -48,10 +58,26 @@ export function createJQLFromSearchFilters(filters: SearchFilter[]): string {
       // Default to exact match
       operator = "=";
     }
-    
+
     return `${jqlField} ${operator} ${escapeJQLValue(filter.value)}`;
   });
 
-  const jql = jqlConditions.length > 0 ? jqlConditions.join(" AND ") : "*";
+  let jql = jqlConditions.length > 0 ? jqlConditions.join(" AND ") : "*";
+  
+  // Add ORDER BY clause if sorting is specified
+  if (sortBy) {
+    const fieldMapping = FIELD_MAPPINGS[sortBy.field as SearchFilterField];
+    let sortField: string;
+    
+    if (fieldMapping && "isCustomField" in fieldMapping && fieldMapping.isCustomField) {
+      // For custom fields, we'd need the custom field name, but for now just use the field name
+      sortField = sortBy.field;
+    } else {
+      sortField = fieldMapping.jqlField;
+    }
+    
+    jql += ` ORDER BY ${sortField} ${sortBy.direction}`;
+  }
+  
   return jql;
 }

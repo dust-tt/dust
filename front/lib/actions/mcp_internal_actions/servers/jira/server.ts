@@ -22,8 +22,8 @@ import {
 import {
   JiraCreateIssueLinkRequestSchema,
   JiraCreateIssueRequestSchema,
-  SEARCH_FILTER_FIELDS,
-  SUPPORTED_OPERATORS,
+  JiraSearchFilterSchema,
+  JiraSortSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
   makeMCPToolJSONSuccess,
@@ -50,15 +50,12 @@ const createServer = (): McpServer => {
       You have access to the following tools: get_issue, get_projects, get_project, get_transitions, create_comment, get_issues, get_issue_types, get_issue_fields, get_connection_info, transition_issue, create_issue, update_issue, create_issue_link, delete_issue_link, get_issue_link_types.
 
       # General Workflow for JIRA Data:
-      1.  **List Objects:** When using custom fields, always use \`get_issue_fields\` to find the field name.
-      2.  **Describe Object:** Use \`get_issue_types\` and \`get_issue_fields\` with the specific issue typename to get its detailed metadata. This will show you all available fields, their exact names, data types, and information about relationships (child relationships are particularly important for subqueries).
+      0.  **Authenticate:** Use \`get_connection_info\` to authenticate with JIRA if you are not authenticated ("No access token found").
+      1.  **Describe Object:** Use \`get_issue_types\` and \`get_issue_fields\` with the specific issue typename to get its detailed metadata. This will show you all available fields, their exact names, data types, and information about relationships (child relationships are particularly important for subqueries).
       3.  **Execute Read Query:** Use \`get_issues\` to retrieve data using JQL. Construct your JQL queries based on the information obtained from \`get_issue_types\` to ensure you are using correct field and relationship names.
 
-      # execute_read_query
-      You can use it to execute SOQL read queries on JIRA. Queries can be used to retrieve or discover data, never to write data.
-
       **Best Practices for Querying:**
-      1.  **Discover Object Structure First:** ALWAYS use \`get_issue_fields\` to understand an object's fields and relationships before writing complex queries. Alternatively, for a quick field list directly in a query, use \`get_issues\` .
+      1.  **Discover Object Structure First:** Use \`get_issue_fields\` to understand an object's fields and relationships before writing complex queries. Alternatively, for a quick field list directly in a query, use \`get_issues\` .
       2.  **Verify Field and Relationship Names:** If you encounter JIRA 400 errors suggesting that the field or relationship does not exist, use \`get_issue_types\` for the relevant object(s) to confirm the exact names and their availability.
     `,
   });
@@ -236,55 +233,27 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_issues",
-    "Search issues using one or more filters (e.g., status, priority, labels, assignee, customField, dueDate, created, resolved). Use exact matching by default, or fuzzy matching for approximate/partial matches on summary field. For custom fields, use field 'customField' with customFieldName parameter. For date fields (dueDate, created, resolved), use operator parameter with '<', '>', '=', etc. and date format '2023-07-03' or relative '-25d', '7d', '2w', '1M', etc. When referring to the user, use the get_connection_info tool. When referring to unknown fields, use the get_issue_fields or get_issue_types tool to discover the field names.",
+    "Search issues using one or more filters (e.g., status, priority, labels, assignee, customField, dueDate, created, resolved). Use exact matching by default, or fuzzy matching for approximate/partial matches on summary field. For custom fields, use field 'customField' with customFieldName parameter. For date fields (dueDate, created, resolved), use operator parameter with '<', '>', '=', etc. and date format '2023-07-03' or relative '-25d', '7d', '2w', '1M', etc. Results can be sorted using the sortBy parameter with field and direction (ASC/DESC). When referring to the user, use the get_connection_info tool. When referring to unknown fields, use the get_issue_fields or get_issue_types tool to discover the field names.",
     {
       filters: z
-        .array(
-          z.object({
-            field: z
-              .string()
-              .describe(
-                `The field to filter by. Must be one of: ${SEARCH_FILTER_FIELDS.join(
-                  ", "
-                )}.`
-              ),
-            value: z.string().describe("The value to search for"),
-            fuzzy: z
-              .boolean()
-              .optional()
-              .describe(
-                "Use fuzzy search (~) for partial/similar matches instead of exact match (=). Only supported for 'summary' field. Use fuzzy when: searching for partial text, handling typos, finding related terms. Use exact when: looking for specific titles, precise matching needed."
-              ),
-            customFieldName: z
-              .string()
-              .optional()
-              .describe(
-                "Required when field is 'customField'. The name of the custom field to search (e.g., 'Story Points', 'Epic Link')."
-              ),
-            operator: z
-              .enum(SUPPORTED_OPERATORS)
-              .optional()
-              .describe(
-                `Operator for comparison. Supported operators: ${SUPPORTED_OPERATORS.join(", ")}. Only supported for date fields like 'dueDate', 'created', 'resolved'. For dates, use format '2023-07-03' or relative format like '-25d', '7d', '2w', '1M', etc.`
-              ),
-          })
-        )
+        .array(JiraSearchFilterSchema)
         .min(1)
         .describe("Array of search filters to apply (all must match)"),
+      sortBy: JiraSortSchema.optional().describe(
+        "Optional sorting configuration for results"
+      ),
       nextPageToken: z
         .string()
         .optional()
         .describe("Token for next page of results (for pagination)"),
     },
-    async ({ filters, nextPageToken }, { authInfo }) => {
+    async ({ filters, sortBy, nextPageToken }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await searchIssues(
-            baseUrl,
-            accessToken,
-            filters,
-            nextPageToken
-          );
+          const result = await searchIssues(baseUrl, accessToken, filters, {
+            nextPageToken,
+            sortBy,
+          });
           if (result.isErr()) {
             return makeMCPToolTextError(
               `Error searching issues: ${result.error}`
