@@ -660,7 +660,7 @@ export class DustAPI {
   }) {
     const res = await this.request({
       method: "POST",
-      path: "assistant/agent_configurations/create",
+      path: "assistant/generic_agents",
       body: {
         name,
         description,

@@ -40,10 +40,10 @@ function assistantHandleIsValid(handle: string) {
 
 /**
  * @swagger
- * /api/v1/w/{wId}/assistant/agent_configurations/create:
+ * /api/v1/w/{wId}/assistant/generic_agents:
  *   post:
- *     summary: Create agent with default tools
- *     description: Create a new agent configuration with default tools. Only accessible via system API keys and requires agent_management feature flag. Optionally create a sub-agent with the main agent having a run_agent tool to call it.
+ *     summary: Create generic agent
+ *     description: Create a new generic agent with default tools (web search and data source search). Only accessible via system API keys and requires agent_management feature flag. Optionally create a sub-agent with the main agent having a run_agent tool to call it.
  *     tags:
  *       - Agents
  *     parameters:
