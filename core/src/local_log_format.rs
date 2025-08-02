@@ -1,6 +1,9 @@
-use tracing_subscriber::{fmt::{format::Writer, FormatFields, FormatEvent}, field::Visit};
-use tracing::Event;
 use std::{fmt, sync::LazyLock, time::Instant};
+use tracing::Event;
+use tracing_subscriber::{
+    field::Visit,
+    fmt::{format::Writer, FormatEvent, FormatFields},
+};
 
 /// Start time for uptime calculation
 static START_TIME: LazyLock<Instant> = LazyLock::new(Instant::now);
@@ -46,9 +49,6 @@ impl<'writer> LocalDevFieldVisitor<'writer> {
 
 impl<'writer> Visit for LocalDevFieldVisitor<'writer> {
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn fmt::Debug) {
-        if field.name() == "timestamp" {
-            return;
-        }
         if self.result.is_ok() {
             if field.name() == "message" {
                 self.result = write!(self.writer, "{:?} ", value);
@@ -74,33 +74,35 @@ where
         event: &Event<'_>,
     ) -> fmt::Result {
         let meta = event.metadata();
-        
+
         // Write timestamp and level using uptime with colors
         let uptime = START_TIME.elapsed();
         let level_str = match *meta.level() {
-            tracing::Level::ERROR => "\x1b[31mERROR\x1b[0m",  // Red
-            tracing::Level::WARN => "\x1b[33mWARN\x1b[0m",    // Yellow
-            tracing::Level::INFO => "\x1b[32mINFO\x1b[0m",    // Green
-            tracing::Level::DEBUG => "\x1b[34mDEBUG\x1b[0m",  // Blue
-            tracing::Level::TRACE => "\x1b[35mTRACE\x1b[0m",  // Purple
+            tracing::Level::ERROR => "\x1b[31mERROR\x1b[0m", // Red
+            tracing::Level::WARN => "\x1b[33mWARN\x1b[0m",   // Yellow
+            tracing::Level::INFO => "\x1b[32mINFO\x1b[0m",   // Green
+            tracing::Level::DEBUG => "\x1b[34mDEBUG\x1b[0m", // Blue
+            tracing::Level::TRACE => "\x1b[35mTRACE\x1b[0m", // Purple
         };
-        write!(writer, "\x1b[90m{:>12.9}s\x1b[0m {} ", 
-               uptime.as_secs_f64(),
-               level_str)?;
-        
+        write!(
+            writer,
+            "\x1b[90m{:>12.9}s\x1b[0m {} ",
+            uptime.as_secs_f64(),
+            level_str
+        )?;
+
         // Write fields (message and others)
         ctx.field_format().format_fields(writer.by_ref(), event)?;
-        
+
         // Write thread name and location at the end in grey
         if let Some(thread_name) = std::thread::current().name() {
             write!(writer, "\x1b[90mon {} \x1b[0m", thread_name)?;
         }
-        
+
         if let (Some(file), Some(line)) = (meta.file(), meta.line()) {
             write!(writer, "\x1b[90mat {}:{}\x1b[0m", file, line)?;
         }
-        
+
         writeln!(writer)
     }
 }
-
