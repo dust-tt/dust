@@ -3,7 +3,10 @@ import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerViewDisplayName,
+  mcpServerViewSortingFn,
+} from "@app/lib/actions/mcp_helper";
 import {
   getMcpServerDisplayName,
   mcpServersSortingFn,
@@ -23,6 +26,7 @@ import type { CreateMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp";
 import type {
   DeleteMCPServerResponseBody,
   GetMCPServerResponseBody,
+  PatchMCPServerBody,
   PatchMCPServerResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/[serverId]";
 import type { SyncMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/sync";
@@ -37,6 +41,10 @@ import type {
 } from "@app/pages/api/w/[wId]/mcp/connections/[connectionType]";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/pages/api/w/[wId]/mcp/discover_oauth_metadata";
 import type { GetMCPServerViewsListResponseBody } from "@app/pages/api/w/[wId]/mcp/views";
+import type {
+  PatchMCPServerViewBody,
+  PatchMCPServerViewResponseBody,
+} from "@app/pages/api/w/[wId]/mcp/views/[viewId]";
 import type { GetMCPServerViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views";
 import type { GetMCPServerViewsNotActivatedResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views/not_activated";
 import type {
@@ -440,34 +448,27 @@ export function useSyncRemoteMCPServer(
  */
 export function useUpdateMCPServer(
   owner: LightWorkspaceType,
-  serverId: string
+  // Using the view to get the proper name/description
+  mcpServerView: MCPServerViewType
 ) {
   const sendNotification = useSendNotification();
   const { mutateMCPServer } = useMCPServer({
     disabled: true,
     owner,
-    serverId,
+    serverId: mcpServerView.server.sId,
   });
 
   const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
-  const updateServer = async (
-    data:
-      | {
-          name: string;
-          icon: string;
-          description: string;
-          sharedSecret?: string;
-        }
-      | {
-          oAuthUseCase: MCPOAuthUseCase;
-        }
-  ): Promise<boolean> => {
-    const response = await fetch(`/api/w/${owner.sId}/mcp/${serverId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
+  const updateServer = async (data: PatchMCPServerBody): Promise<boolean> => {
+    const response = await fetch(
+      `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }
+    );
 
     if (!response.ok) {
       const body = await response.json();
@@ -491,11 +492,10 @@ export function useUpdateMCPServer(
       return false;
     }
 
-    const server = result.server;
     sendNotification({
-      title: `${getMcpServerDisplayName(server)} updated`,
+      title: `${getMcpServerViewDisplayName(mcpServerView)} updated`,
       type: "success",
-      description: `${getMcpServerDisplayName(server)} has been successfully updated.`,
+      description: `${getMcpServerViewDisplayName(mcpServerView)} has been successfully updated.`,
     });
 
     void mutateMCPServer();
@@ -504,6 +504,71 @@ export function useUpdateMCPServer(
   };
 
   return { updateServer };
+}
+
+/**
+ * Hook to update an MCP serverView
+ */
+export function useUpdateMCPServerView(
+  owner: LightWorkspaceType,
+  mcpServerView: MCPServerViewType
+) {
+  const sendNotification = useSendNotification();
+  const { mutateMCPServer } = useMCPServer({
+    disabled: true,
+    owner,
+    serverId: mcpServerView.server.sId,
+  });
+
+  const { mutate } = useMutateMCPServersViewsForAdmin(owner);
+
+  const updateServerView = async (
+    data: PatchMCPServerViewBody
+  ): Promise<boolean> => {
+    const response = await fetch(
+      `/api/w/${owner.sId}/mcp/views/${mcpServerView.sId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }
+    );
+
+    if (!response.ok) {
+      const body = await response.json();
+      sendNotification({
+        title: `Error updating server`,
+        type: "error",
+        description: body.error?.message || "An error occurred",
+      });
+
+      return false;
+    }
+
+    const result: WithAPIErrorResponse<PatchMCPServerViewResponseBody> =
+      await response.json();
+    if (isAPIErrorResponse(result)) {
+      sendNotification({
+        title: `Error updating server`,
+        type: "error",
+        description: result.error?.message || "An error occurred",
+      });
+      return false;
+    }
+
+    const serverView = result.serverView;
+    sendNotification({
+      title: `${getMcpServerViewDisplayName(serverView)} updated`,
+      type: "success",
+      description: `${getMcpServerViewDisplayName(serverView)} has been successfully updated.`,
+    });
+
+    void mutateMCPServer();
+    void mutate();
+    return true;
+  };
+
+  return { updateServerView };
 }
 
 export function useMCPServerConnections({

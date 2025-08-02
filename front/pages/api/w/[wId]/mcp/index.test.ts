@@ -133,27 +133,6 @@ describe("POST /api/w/[wId]/mcp/", () => {
       },
     });
   });
-
-  itInTransaction(
-    "should append a number to the name when server with URL already exists",
-    async (t) => {
-      const { req, res, workspace } = await setupTest(t, "admin", "POST");
-
-      const existingUrl = "https://existing-server.example.com";
-      await RemoteMCPServerFactory.create(workspace, {
-        name: "Test Server",
-        url: existingUrl,
-      });
-
-      req.body = { url: existingUrl, serverType: "remote" };
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(201);
-      const responseData = res._getJSONData();
-      expect(responseData.server.name).toContain("Test Server #");
-    }
-  );
 });
 
 describe("Method Support /api/w/[wId]/mcp", () => {

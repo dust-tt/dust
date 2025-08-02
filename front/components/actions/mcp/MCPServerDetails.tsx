@@ -74,9 +74,7 @@ export function MCPServerDetails({
             <VisuallyHidden>
               <SheetTitle />
             </VisuallyHidden>
-            {mcpServerView && (
-              <MCPActionHeader mcpServer={mcpServerView.server} />
-            )}
+            {mcpServerView && <MCPActionHeader mcpServerView={mcpServerView} />}
 
             <Tabs value={selectedTab}>
               <TabsList border={false}>

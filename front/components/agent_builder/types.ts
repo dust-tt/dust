@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
+import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { SupportedModel, WhitelistableFeature } from "@app/types";
@@ -298,12 +299,14 @@ export function getDefaultMCPAction(
       jsonSchema: null,
       _jsonSchemaString: null,
     },
-    name: mcpServerView?.server.name ?? "",
+    name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
     description:
       requirements.requiresDataSourceConfiguration ||
       requirements.requiresTableConfiguration
         ? ""
-        : mcpServerView?.server.description ?? "",
+        : mcpServerView
+          ? getMcpServerViewDescription(mcpServerView)
+          : "",
     noConfigurationRequired: requirements.noRequirement,
   };
 }
