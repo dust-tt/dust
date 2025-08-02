@@ -17,7 +17,6 @@ const PatchMCPServerBodySchema = z
   .object({
     icon: z.string(),
   })
-
   .or(
     z.object({
       sharedSecret: z.string(),
@@ -131,25 +130,18 @@ async function handler(
       }
 
       const { serverType } = getServerTypeAndIdFromSId(serverId);
-      let server:
-        | InternalMCPServerInMemoryResource
-        | RemoteMCPServerResource
-        | null = null;
-      switch (serverType) {
-        case "internal": {
-          server = await InternalMCPServerInMemoryResource.fetchById(
-            auth,
-            serverId
-          );
-          break;
-        }
-        case "remote": {
-          server = await RemoteMCPServerResource.fetchById(auth, serverId);
-          break;
-        }
-        default:
-          assertNever(serverType);
+
+      if (serverType !== "remote") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Internal MCP servers cannot be updated.",
+          },
+        });
       }
+
+      const server = await RemoteMCPServerResource.fetchById(auth, serverId);
 
       if (!server) {
         return apiError(req, res, {

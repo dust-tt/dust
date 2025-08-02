@@ -444,7 +444,7 @@ export function useSyncRemoteMCPServer(
 }
 
 /**
- * Hook to update a MCP server
+ * Hook to update an MCP server
  */
 export function useUpdateMCPServer(
   owner: LightWorkspaceType,
@@ -507,7 +507,7 @@ export function useUpdateMCPServer(
 }
 
 /**
- * Hook to update a MCP serverView
+ * Hook to update an MCP serverView
  */
 export function useUpdateMCPServerView(
   owner: LightWorkspaceType,

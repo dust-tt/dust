@@ -16,9 +16,3 @@ FROM
     "public"."remote_mcp_servers" rms
 WHERE
     mcp_server_views."remoteMCPServerId" = rms.id;
-
-ALTER TABLE "public"."remote_mcp_servers"
-DROP COLUMN "name";
-
-ALTER TABLE "public"."remote_mcp_servers"
-DROP COLUMN "description";

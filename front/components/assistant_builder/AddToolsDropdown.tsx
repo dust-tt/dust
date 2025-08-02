@@ -115,7 +115,7 @@ export function AddToolsDropdown({
       nonDefaultMCPActions.filter(
         (tool) =>
           tool.label.toLowerCase().includes(text.toLowerCase()) ||
-          tool.description?.toLowerCase().includes(text.toLowerCase())
+          tool.description.toLowerCase().includes(text.toLowerCase())
       )
     );
     setFilteredMCPServerViews(
