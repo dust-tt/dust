@@ -32,12 +32,12 @@ const createServer = (
 
   server.tool(
     "create_agent",
-    "Create a new agent configuration with basic settings",
+    "Create a new agent.",
     {
       name: z
         .string()
         .describe(
-          "The name of the agent (must be unique in the workspace). Only letters, numbers, underscores (_) and hyphens (-) are allowed. Maximum 30 characters."
+          "The name of the agent (must be unique). Only letters, numbers, underscores (_) and hyphens (-) are allowed. Maximum 30 characters."
         ),
       description: z
         .string()
