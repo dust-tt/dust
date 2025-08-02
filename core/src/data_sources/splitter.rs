@@ -1,5 +1,4 @@
 use crate::data_sources::data_source::Section;
-use crate::info;
 use crate::providers::embedder::Embedder;
 use crate::providers::provider::{provider, ProviderID};
 use crate::run::Credentials;
@@ -12,6 +11,7 @@ use std::collections::HashSet;
 use std::fmt;
 use std::{cmp, str::FromStr};
 use tokio::try_join;
+use tracing::info;
 
 #[derive(Debug, Clone)]
 pub struct TokenizedText {

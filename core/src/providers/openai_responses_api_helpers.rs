@@ -1,6 +1,5 @@
 use std::{io::prelude::*, time::Duration};
 
-use crate::info;
 use crate::{
     providers::{llm::LLMTokenUsage, provider::ProviderID},
     utils,
@@ -15,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
+use tracing::info;
 
 use super::{
     chat_messages::{

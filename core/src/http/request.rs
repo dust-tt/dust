@@ -1,4 +1,3 @@
-use crate::info;
 use crate::stores::store::Store;
 use crate::utils;
 use crate::{cached_request::CachedRequest, project::Project};
@@ -9,6 +8,7 @@ use reqwest::{header, Method};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{io::prelude::*, str::FromStr};
+use tracing::info;
 
 use super::network::NetworkUtils;
 use super::proxy_client::create_untrusted_egress_client_builder;

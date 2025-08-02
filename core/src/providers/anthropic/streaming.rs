@@ -1,4 +1,3 @@
-use crate::error;
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions};
 use anyhow::{anyhow, Result};
 use eventsource_client as es;
@@ -9,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
+use tracing::error;
 
 use super::types::{
     AnthropicChatMessageRole, AnthropicError, AnthropicResponseContent, ChatResponse,

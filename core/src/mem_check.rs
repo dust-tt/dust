@@ -1,4 +1,4 @@
-use crate::info;
+use tracing::info;
 use tikv_jemalloc_ctl::{epoch, stats};
 
 // Methods to help debug memory usage
