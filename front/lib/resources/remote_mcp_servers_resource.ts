@@ -154,20 +154,6 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     return this.baseFetch(auth);
   }
 
-  /**
-   * Find remote MCP servers by URL within the authenticated workspace.
-   * Note: Multiple servers with the same URL can exist per workspace,
-   * as users may configure the same remote server with different settings
-   * (e.g., different authentication methods, use cases, or permissions).
-   */
-  static async findByUrl(auth: Authenticator, url: string) {
-    return this.baseFetch(auth, {
-      where: {
-        url,
-      },
-    });
-  }
-
   // Admin operations - don't use in non-temporal code.
   static async dangerouslyListAllServersIds({
     firstId,
