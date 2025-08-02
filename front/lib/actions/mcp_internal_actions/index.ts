@@ -12,6 +12,23 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 
+export const isEnabledForWorkspace = async (
+  auth: Authenticator,
+  name: InternalMCPServerNameType
+): Promise<boolean> => {
+  const mcpServer = INTERNAL_MCP_SERVERS[name];
+
+  // If the server has a restriction, check if the restrictions are met.
+  if (mcpServer.isRestricted) {
+    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    const plan = auth.getNonNullablePlan();
+    return !mcpServer.isRestricted({ plan, featureFlags });
+  }
+
+  // If the server has no restriction, it is available by default.
+  return true;
+};
+
 export const connectToInternalMCPServer = async (
   mcpServerId: string,
   transport: InMemoryWithAuthTransport,
@@ -35,21 +52,4 @@ export const connectToInternalMCPServer = async (
   await server.connect(transport);
 
   return server;
-};
-
-export const isEnabledForWorkspace = async (
-  auth: Authenticator,
-  name: InternalMCPServerNameType
-): Promise<boolean> => {
-  const mcpServer = INTERNAL_MCP_SERVERS[name];
-
-  // If the server has a restriction, check if the restrictions are met.
-  if (mcpServer.isRestricted) {
-    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-    const plan = auth.getNonNullablePlan();
-    return !mcpServer.isRestricted({ plan, featureFlags });
-  }
-
-  // If the server has no restriction, it is available by default.
-  return true;
 };

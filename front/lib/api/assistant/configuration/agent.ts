@@ -590,6 +590,31 @@ export async function createAgentConfiguration(
   }
 }
 
+// Helper function to clean up created agents on error
+async function cleanupAgentsOnError(
+  auth: Authenticator,
+  mainAgentId: string | null,
+  subAgentId: string | null
+): Promise<void> {
+  try {
+    if (mainAgentId) {
+      await archiveAgentConfiguration(auth, mainAgentId);
+    }
+    if (subAgentId) {
+      await archiveAgentConfiguration(auth, subAgentId);
+    }
+  } catch (error) {
+    logger.error(
+      {
+        error,
+        mainAgentId,
+        subAgentId,
+      },
+      "Failed to cleanup agents after error"
+    );
+  }
+}
+
 export async function createGenericAgentConfigurationWithDefaultTools(
   auth: Authenticator,
   {
@@ -643,6 +668,7 @@ export async function createGenericAgentConfigurationWithDefaultTools(
   }
 
   const agentConfiguration = result.value;
+  let subAgentId: string | null = null;
 
   const [webSearchMCPServerView, searchMCPServerView] = await Promise.all([
     MCPServerViewResource.getMCPServerViewForAutoInternalTool(
@@ -653,9 +679,11 @@ export async function createGenericAgentConfigurationWithDefaultTools(
   ]);
 
   if (!webSearchMCPServerView) {
+    await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
     return new Err(new Error("Could not find web search MCP server view"));
   }
   if (!searchMCPServerView) {
+    await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
     return new Err(new Error("Could not find search MCP server view"));
   }
 
@@ -679,6 +707,7 @@ export async function createGenericAgentConfigurationWithDefaultTools(
   );
 
   if (webSearchResult.isErr()) {
+    await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
     return new Err(
       new Error("Could not create web search action configuration")
     );
@@ -712,6 +741,7 @@ export async function createGenericAgentConfigurationWithDefaultTools(
     );
 
     if (searchResult.isErr()) {
+      await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
       return new Err(new Error("Could not create search action configuration"));
     }
   }
@@ -719,23 +749,25 @@ export async function createGenericAgentConfigurationWithDefaultTools(
   // Create sub-agent if requested
   if (subAgent) {
     // Create the sub-agent recursively (without passing subAgent to prevent infinite recursion)
-    const subAgentResult = await createGenericAgentConfigurationWithDefaultTools(
-      auth,
-      {
+    const subAgentResult =
+      await createGenericAgentConfigurationWithDefaultTools(auth, {
         name: subAgent.name,
         description: subAgent.description,
         instructions: subAgent.instructions,
         pictureUrl: subAgent.pictureUrl,
         model,
         // Note: we don't pass subAgent here, which prevents infinite recursion
-      }
-    );
+      });
 
     if (subAgentResult.isErr()) {
+      await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
       return new Err(
         new Error(`Failed to create sub-agent: ${subAgentResult.error.message}`)
       );
     }
+
+    const subAgentConfiguration = subAgentResult.value;
+    subAgentId = subAgentConfiguration.sId;
 
     // Get the run_agent MCP server view
     const runAgentMCPServerView =
@@ -745,6 +777,7 @@ export async function createGenericAgentConfigurationWithDefaultTools(
       );
 
     if (!runAgentMCPServerView) {
+      await cleanupAgentsOnError(auth, agentConfiguration.sId, subAgentId);
       return new Err(new Error("Could not find run_agent MCP server view"));
     }
 
@@ -769,6 +802,7 @@ export async function createGenericAgentConfigurationWithDefaultTools(
     );
 
     if (runAgentActionResult.isErr()) {
+      await cleanupAgentsOnError(auth, agentConfiguration.sId, subAgentId);
       return new Err(
         new Error("Could not create run_agent action configuration")
       );
@@ -784,6 +818,7 @@ export async function createGenericAgentConfigurationWithDefaultTools(
     );
 
   if (!queryTablesV2View) {
+    await cleanupAgentsOnError(auth, agentConfiguration.sId, subAgentId);
     return new Err(new Error("Could not find query_tables_v2 MCP server view"));
   }
 
@@ -859,6 +894,7 @@ export async function createGenericAgentConfigurationWithDefaultTools(
           "Failed to create query tool for data warehouse"
         );
 
+        await cleanupAgentsOnError(auth, agentConfiguration.sId, subAgentId);
         return new Err(
           new Error(
             `Failed to create query tool for data warehouse "${dsView.dataSource.name}"`
