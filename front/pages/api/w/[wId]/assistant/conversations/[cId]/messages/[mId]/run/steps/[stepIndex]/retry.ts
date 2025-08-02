@@ -5,9 +5,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { retryAgentMessageFromStep } from "@app/lib/api/assistant/conversation/retry_from_step";
+import { canReadMessage } from "@app/lib/api/assistant/messages";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
   AgentMessageType,
@@ -15,7 +16,7 @@ import type {
   UserMessageType,
   WithAPIErrorResponse,
 } from "@app/types";
-import { isString, Ok } from "@app/types";
+import { isString } from "@app/types";
 
 const ConversationsMessagesRunStepsRetrySchema = t.type({
   retryBlockedToolsOnly: t.boolean,
@@ -116,6 +117,16 @@ async function handler(
   }
   const agentMessage = messageAnyType;
 
+  if (!canReadMessage(auth, agentMessage)) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The message to retry is not accessible.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "POST":
       const bodyValidation = ConversationsMessagesRunStepsRetrySchema.decode(
@@ -131,19 +142,14 @@ async function handler(
           },
         });
       }
-      logger.info("endpoint called", { cId, mId, agentMessage });
-      // TODO(DURABLE-AGENTS 2025-07-21): Use step index, version and retryBlockedToolsOnly.
-      // const result = await launchAgentLoopWorkflow();
-      const result = new Ok({});
+      const result = await retryAgentMessageFromStep(auth, {
+        conversation,
+        message: agentMessage,
+        startStep: stepIndex,
+      });
 
       if (result.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to launch workflow",
-          },
-        });
+        return apiError(req, res, result.error);
       }
 
       return res.status(200).json({});
