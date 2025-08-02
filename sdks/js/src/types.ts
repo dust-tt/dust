@@ -623,6 +623,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "workos"
   | "workos_user_provisioning"
   | "xai_feature"
+  | "agent_management_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1583,6 +1584,30 @@ export const GetAgentConfigurationsResponseSchema = z.object({
 
 export type GetAgentConfigurationsResponseType = z.infer<
   typeof GetAgentConfigurationsResponseSchema
+>;
+
+export const CreateAgentConfigurationWithDefaultsRequestSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  instructions: z.string(),
+  emoji: z.string().optional(),
+  pictureUrl: z.string().optional(),
+  subAgentName: z.string().optional(),
+  subAgentDescription: z.string().optional(),
+  subAgentInstructions: z.string().optional(),
+  subAgentEmoji: z.string().optional(),
+});
+
+export type CreateAgentConfigurationWithDefaultsRequestType = z.infer<
+  typeof CreateAgentConfigurationWithDefaultsRequestSchema
+>;
+
+export const CreateAgentConfigurationWithDefaultsResponseSchema = z.object({
+  agentConfiguration: LightAgentConfigurationSchema,
+});
+
+export type CreateAgentConfigurationWithDefaultsResponseType = z.infer<
+  typeof CreateAgentConfigurationWithDefaultsResponseSchema
 >;
 
 export const PostContentFragmentResponseSchema = z.object({

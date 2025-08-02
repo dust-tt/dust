@@ -103,3 +103,26 @@ export const categorizeAgentErrorMessage = (error: {
     publicMessage: `Error running agent: [${error.code}] ${error.message}`,
   };
 };
+
+/**
+ * Get a user-friendly error message from a conversation render error.
+ *
+ * Only use-case so far is when the context window is exceeded.
+ */
+export const categorizeConversationRenderErrorMessage = (error: {
+  message: string;
+}): {
+  category: "context_window_exceeded";
+  errorTitle: string;
+  publicMessage: string;
+} | null => {
+  if (error.message.includes("Context window exceeded")) {
+    return {
+      category: "context_window_exceeded",
+      errorTitle: CONTEXT_WINDOW_EXCEEDED_TITLE,
+      publicMessage: CONTEXT_WINDOW_EXCEEDED_MESSAGE,
+    };
+  }
+
+  return null;
+};

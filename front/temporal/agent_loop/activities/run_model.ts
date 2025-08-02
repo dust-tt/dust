@@ -14,12 +14,15 @@ import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
-import { categorizeAgentErrorMessage } from "@app/lib/api/assistant/agent_errors";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import {
+  categorizeAgentErrorMessage,
+  categorizeConversationRenderErrorMessage,
+} from "@app/lib/api/assistant/errors";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
@@ -301,6 +304,21 @@ export async function runModelActivity({
   });
 
   if (modelConversationRes.isErr()) {
+    const categorizedError = categorizeConversationRenderErrorMessage(
+      modelConversationRes.error
+    );
+    if (categorizedError) {
+      await publishAgentError({
+        code: "conversation_render_error",
+        message: categorizedError.publicMessage,
+        metadata: {
+          category: categorizedError.category,
+          errorTitle: categorizedError.errorTitle,
+        },
+      });
+      return null;
+    }
+
     await publishAgentError({
       code: "conversation_render_error",
       message: `Error rendering conversation for model: ${modelConversationRes.error.message}`,
