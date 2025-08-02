@@ -168,5 +168,6 @@ pub mod api_keys;
 
 pub mod open_telemetry;
 pub mod local_log_format;
+pub mod otel_log_format;
 
 pub mod mem_check;

@@ -1,7 +1,7 @@
 use crate::local_log_format::{LocalDevEventFormatter, LocalDevFields};
+use crate::otel_log_format::EnrichedOtelLayer;
 use init_tracing_opentelemetry::Error;
 use opentelemetry::trace::TracerProvider;
-use opentelemetry_appender_tracing::layer;
 use opentelemetry_otlp::LogExporter;
 use opentelemetry_sdk::logs::SdkLoggerProvider;
 use opentelemetry_sdk::trace::{SdkTracerProvider, Tracer};
@@ -215,10 +215,12 @@ pub fn init_subscribers_and_loglevel(log_directives: &str) -> Result<TracingGuar
             .add_directive("tonic=off".parse().expect("valid filter directive"))
             .add_directive("h2=off".parse().expect("valid filter directive"))
             .add_directive("reqwest=off".parse().expect("valid filter directive")); 
-        let otel_layer = layer::OpenTelemetryTracingBridge::new(&provider).with_filter(filter_otel);
+        let otel_layer = EnrichedOtelLayer::new(&provider).with_filter(filter_otel);
 
         let subscriber = tracing_subscriber::registry()
-            .with(JsonStorageLayer)
+            .with(layer)  // OTEL trace layer first
+            .with(JsonStorageLayer)  // Store span fields
+            .with(otel_layer)  // Our enriched OTEL layer - should come AFTER JsonStorageLayer
             .with(
                 BunyanFormattingLayer::new("dust_api".into(), std::io::stdout)
                     .skip_fields(vec!["file", "line", "target"].into_iter())
@@ -232,8 +234,6 @@ pub fn init_subscribers_and_loglevel(log_directives: &str) -> Result<TracingGuar
                         !(name == "[HTTP REQUEST - START]" || name == "[HTTP REQUEST - END]")
                     })),
             )
-            .with(otel_layer)
-            .with(layer)
             .with(build_level_filter_layer(log_directives)?);
         tracing::subscriber::set_global_default(subscriber)?;
         Ok(guard)
