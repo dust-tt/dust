@@ -50,7 +50,7 @@ RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
         npx --yes @datadog/datadog-ci sourcemaps upload ./.next \
         --minified-path-prefix=/_next/ \
         --repository-url=https://github.com/dust-tt/dust \
-        --project-path=front \
+        --project-path=front-browser \
         --release-version=$COMMIT_HASH \
         --service=$NEXT_PUBLIC_DATADOG_SERVICE && \
         find .next -type f -name "*.map" -print -delete; \
