@@ -1,5 +1,8 @@
 -- Migration created on Aug 02, 2025
 -- Copy over the name and description from the remote MCP server to the MCP server view if they were changed
+ALTER TABLE "public"."mcp_server_views"
+ALTER COLUMN "description" TYPE TEXT;
+
 UPDATE "public"."mcp_server_views"
 SET
     name = CASE
