@@ -8,6 +8,7 @@ use tracing::{info, level_filters::LevelFilter, Subscriber};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{filter::EnvFilter, layer::SubscriberExt, registry::LookupSpan, Layer};
+use crate::local_log_format::{LocalDevFields, LocalDevEventFormatter};
 
 /// Macro versions for structured logging with timestamps
 ///
@@ -87,15 +88,11 @@ fn build_logger_text<S>() -> Box<dyn Layer<S> + Send + Sync + 'static>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-    use tracing_subscriber::fmt::format::FmtSpan;
     if cfg!(debug_assertions) {
         Box::new(
             tracing_subscriber::fmt::layer()
-                .pretty()
-                .with_line_number(true)
-                .with_thread_names(true)
-                .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
-                .with_timer(tracing_subscriber::fmt::time::uptime()),
+                .event_format(LocalDevEventFormatter)
+                .fmt_fields(LocalDevFields::new()),
         )
     } else {
         Box::new(
