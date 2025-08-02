@@ -590,31 +590,6 @@ export async function createAgentConfiguration(
   }
 }
 
-// Helper function to clean up created agents on error
-async function cleanupAgentsOnError(
-  auth: Authenticator,
-  mainAgentId: string | null,
-  subAgentId: string | null
-): Promise<void> {
-  try {
-    if (mainAgentId) {
-      await archiveAgentConfiguration(auth, mainAgentId);
-    }
-    if (subAgentId) {
-      await archiveAgentConfiguration(auth, subAgentId);
-    }
-  } catch (error) {
-    logger.error(
-      {
-        error,
-        mainAgentId,
-        subAgentId,
-      },
-      "Failed to cleanup agents after error"
-    );
-  }
-}
-
 export async function createGenericAgentConfigurationWithDefaultTools(
   auth: Authenticator,
   {
@@ -646,6 +621,30 @@ export async function createGenericAgentConfigurationWithDefaultTools(
   const user = auth.user();
   if (!user) {
     return new Err(new Error("Unexpected `auth` without `user`."));
+  }
+
+  async function cleanupAgentsOnError(
+    auth: Authenticator,
+    mainAgentId: string | null,
+    subAgentId: string | null
+  ): Promise<void> {
+    try {
+      if (mainAgentId) {
+        await archiveAgentConfiguration(auth, mainAgentId);
+      }
+      if (subAgentId) {
+        await archiveAgentConfiguration(auth, subAgentId);
+      }
+    } catch (error) {
+      logger.error(
+        {
+          error,
+          mainAgentId,
+          subAgentId,
+        },
+        "Failed to cleanup agents after error"
+      );
+    }
   }
 
   const result = await createAgentConfiguration(auth, {
@@ -720,8 +719,8 @@ export async function createGenericAgentConfigurationWithDefaultTools(
       auth,
       {
         type: "mcp_server_configuration",
-        name: "search_all_data_sources",
-        description: "Search across workspace data sources",
+        name: "data_sources_file_system",
+        description: "Browse all workspace data sources as a file system.",
         mcpServerViewId: searchMCPServerView.sId,
         dataSources: dataSourceViews.map((dsView) => ({
           dataSourceViewId: dsView.sId,
@@ -810,7 +809,7 @@ export async function createGenericAgentConfigurationWithDefaultTools(
         {
           type: "mcp_server_configuration",
           name: `query_${dsView.dataSource.name}_data_warehouse`,
-          description: `All of the tables available in the "${dsView.dataSource.name}" ${warehouseType} data warehouse`,
+          description: `Query any of the tables available in the "${dsView.dataSource.name}" ${warehouseType} data warehouse.`,
           mcpServerViewId: queryTablesV2View.sId,
           dataSources: null,
           reasoningModel: null,
@@ -884,7 +883,7 @@ export async function createGenericAgentConfigurationWithDefaultTools(
       {
         type: "mcp_server_configuration",
         name: `run_${subAgentResult.value.name}`,
-        description: `Run the ${subAgentResult.value.name} sub-agent`,
+        description: `Run the ${subAgentResult.value.name} sub-agent. The sub-agent has access to the same tools as the main agent, except for the ability to spawn sub-agents.`,
         mcpServerViewId: runAgentMCPServerView.sId,
         dataSources: null,
         reasoningModel: null,
