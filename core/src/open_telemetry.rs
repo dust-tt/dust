@@ -1,3 +1,4 @@
+use crate::local_log_format::{LocalDevEventFormatter, LocalDevFields};
 use init_tracing_opentelemetry::Error;
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_appender_tracing::layer;
@@ -8,7 +9,6 @@ use tracing::{info, level_filters::LevelFilter, Subscriber};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{filter::EnvFilter, layer::SubscriberExt, registry::LookupSpan, Layer};
-use crate::local_log_format::{LocalDevFields, LocalDevEventFormatter};
 
 /// Macro versions for structured logging with timestamps
 ///
@@ -226,8 +226,7 @@ pub fn init_subscribers_and_loglevel(log_directives: &str) -> Result<TracingGuar
             )
             .with(otel_layer)
             .with(layer)
-            .with(build_level_filter_layer(log_directives)?)
-            .with(build_logger_text());
+            .with(build_level_filter_layer(log_directives)?);
         tracing::subscriber::set_global_default(subscriber)?;
         Ok(guard)
     } else {
