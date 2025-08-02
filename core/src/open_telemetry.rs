@@ -211,10 +211,10 @@ pub fn init_subscribers_and_loglevel(log_directives: &str) -> Result<TracingGuar
         // Note: This filtering will also drop logs from these components even when
         // they are used outside of the OTLP Exporter.
         let filter_otel = EnvFilter::new("info")
-            .add_directive("hyper=off".parse().unwrap())
-            .add_directive("tonic=off".parse().unwrap())
-            .add_directive("h2=off".parse().unwrap())
-            .add_directive("reqwest=off".parse().unwrap());
+            .add_directive("hyper=off".parse().expect("valid filter directive"))
+            .add_directive("tonic=off".parse().expect("valid filter directive"))
+            .add_directive("h2=off".parse().expect("valid filter directive"))
+            .add_directive("reqwest=off".parse().expect("valid filter directive")); 
         let otel_layer = layer::OpenTelemetryTracingBridge::new(&provider).with_filter(filter_otel);
 
         let subscriber = tracing_subscriber::registry()
@@ -222,7 +222,15 @@ pub fn init_subscribers_and_loglevel(log_directives: &str) -> Result<TracingGuar
             .with(
                 BunyanFormattingLayer::new("dust_api".into(), std::io::stdout)
                     .skip_fields(vec!["file", "line", "target"].into_iter())
-                    .unwrap(),
+                    .expect("valid field skip configuration")
+                    .with_filter(tracing_subscriber::filter::filter_fn(|metadata| {
+                        // Filter out HTTP REQUEST START/END span lifecycle events
+                        // but keep EVENT logs and other regular logs
+                        let name = metadata.name();
+
+                        // Skip span lifecycle events with exact matches
+                        !(name == "[HTTP REQUEST - START]" || name == "[HTTP REQUEST - END]")
+                    })),
             )
             .with(otel_layer)
             .with(layer)
