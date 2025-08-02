@@ -53,8 +53,6 @@ export type MCPServerType = {
 
 export type RemoteMCPServerType = MCPServerType & {
   url?: string;
-  cachedName?: string;
-  cachedDescription?: string | null;
   sharedSecret?: string | null;
   lastSyncAt?: Date | null;
   lastError?: string | null;

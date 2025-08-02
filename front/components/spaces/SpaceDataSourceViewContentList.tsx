@@ -310,10 +310,12 @@ export const SpaceDataSourceViewContentList = ({
     [resetPagination, setViewType, viewType]
   );
 
+  const sortingAsString = useMemo(() => JSON.stringify(sorting), [sorting]);
+
   // Reset pagination when sorting changes
   useEffect(() => {
     resetPagination();
-  }, [JSON.stringify(sorting), resetPagination]);
+  }, [sortingAsString, resetPagination]);
 
   const { setIsSearchDisabled } = useContext(SpaceSearchContext);
 

@@ -11,16 +11,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
-  getMcpServerDisplayName,
+  getMcpServerViewDisplayName,
   getServerTypeAndIdFromSId,
   isRemoteMCPServerType,
 } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
-import type { MCPServerType } from "@app/lib/api/mcp";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useCreateMCPServerConnection,
   useDiscoverOAuthMetadata,
-  useUpdateMCPServer,
+  useUpdateMCPServerView,
 } from "@app/lib/swr/mcp_servers";
 import type {
   MCPOAuthUseCase,
@@ -31,7 +31,7 @@ import { OAUTH_PROVIDER_NAMES, setupOAuthConnection } from "@app/types";
 
 type ConnectMCPServerDialogProps = {
   owner: WorkspaceType;
-  mcpServer: MCPServerType | null;
+  mcpServerView: MCPServerViewType;
   setIsLoading: (isCreating: boolean) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
@@ -39,7 +39,7 @@ type ConnectMCPServerDialogProps = {
 
 export function ConnectMCPServerDialog({
   owner,
-  mcpServer,
+  mcpServerView,
   setIsLoading: setExternalIsLoading,
   isOpen = false,
   setIsOpen,
@@ -62,29 +62,26 @@ export function ConnectMCPServerDialog({
     connectionType: "workspace",
   });
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
-  const { updateServer } = useUpdateMCPServer(owner, mcpServer?.sId ?? "");
+  const { updateServerView } = useUpdateMCPServerView(owner, mcpServerView);
 
   const serverType = useMemo(
-    () =>
-      mcpServer
-        ? getServerTypeAndIdFromSId(mcpServer.sId).serverType
-        : "internal",
-    [mcpServer]
+    () => getServerTypeAndIdFromSId(mcpServerView.server.sId).serverType,
+    [mcpServerView]
   );
 
   useEffect(() => {
     const discoverOAuth = async () => {
-      if (isOpen && mcpServer) {
+      if (isOpen && mcpServerView) {
         if (serverType === "internal") {
-          setAuthorization(mcpServer.authorization);
+          setAuthorization(mcpServerView.server.authorization);
         } else if (
-          isRemoteMCPServerType(mcpServer) &&
-          mcpServer.url &&
+          isRemoteMCPServerType(mcpServerView.server) &&
+          mcpServerView.server.url &&
           !remoteMCPServerOAuthDiscoveryDone
         ) {
           setIsLoading(true);
           const discoverOAuthMetadataRes = await discoverOAuthMetadata(
-            mcpServer.url
+            mcpServerView.server.url
           );
 
           if (
@@ -103,7 +100,7 @@ export function ConnectMCPServerDialog({
             sendNotification({
               type: "error",
               title: "Failed to discover OAuth metadata for MCP server",
-              description: `${discoverOAuthMetadataRes.error.message} (${mcpServer.url})`,
+              description: `${discoverOAuthMetadataRes.error.message} (${mcpServerView.server.url})`,
             });
           }
         }
@@ -115,7 +112,7 @@ export function ConnectMCPServerDialog({
 
     void discoverOAuth();
   }, [
-    mcpServer,
+    mcpServerView,
     isOpen,
     serverType,
     remoteMCPServerOAuthDiscoveryDone,
@@ -133,8 +130,8 @@ export function ConnectMCPServerDialog({
   }, [setExternalIsLoading]);
 
   const handleSave = async () => {
-    if (!mcpServer) {
-      throw new Error("MCP server is null while trying to connect");
+    if (!mcpServerView) {
+      throw new Error("MCP server view is null while trying to connect");
     }
 
     if (!authorization) {
@@ -172,12 +169,12 @@ export function ConnectMCPServerDialog({
     // Then associate connection.
     await createMCPServerConnection({
       connectionId: cRes.value.connection_id,
-      mcpServer: mcpServer,
+      mcpServer: mcpServerView.server,
       provider: authorization.provider,
     });
 
     // And update the oAuthUseCase for the MCP server.
-    await updateServer({
+    await updateServerView({
       oAuthUseCase: useCase,
     });
 
@@ -198,7 +195,7 @@ export function ConnectMCPServerDialog({
       <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>
-            Connect {mcpServer ? getMcpServerDisplayName(mcpServer) : ""}
+            Connect {getMcpServerViewDisplayName(mcpServerView)}
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>
@@ -210,7 +207,9 @@ export function ConnectMCPServerDialog({
               authCredentials={authCredentials}
               setAuthCredentials={setAuthCredentials}
               setIsFormValid={setIsFormValid}
-              documentationUrl={mcpServer?.documentationUrl ?? undefined}
+              documentationUrl={
+                mcpServerView.server?.documentationUrl ?? undefined
+              }
             />
           )}
         </DialogContainer>
