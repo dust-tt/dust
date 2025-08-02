@@ -18,8 +18,10 @@ import {
   enrichAgentConfigurations,
   isSelfHostedImageWithValidContentType,
 } from "@app/lib/api/assistant/configuration/helpers";
+import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
+import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import {
@@ -30,6 +32,7 @@ import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -47,6 +50,7 @@ import type {
   UserType,
 } from "@app/types";
 import {
+  CoreAPI,
   Err,
   isAdmin,
   isBuilder,
@@ -702,6 +706,99 @@ export async function createGenericAgentConfigurationWithDefaultTools(
 
     if (searchResult.isErr()) {
       return new Err(new Error("Could not create search action configuration"));
+    }
+  }
+
+  // Add query_tables_v2 tools for data warehouses in global space
+  // First check if query_tables_v2 is available (requires exploded_tables_query feature flag)
+  const queryTablesV2View =
+    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+      auth,
+      "query_tables_v2"
+    );
+
+  if (!queryTablesV2View) {
+    return new Err(new Error("Could not find query_tables_v2 MCP server view"));
+  }
+
+  // Get global space
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+  // Get all data sources in global space
+  const globalDataSourceViews = await DataSourceViewResource.listBySpace(
+    auth,
+    globalSpace
+  );
+
+  // Add query_tables_v2 tools for data warehouses in global space..
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  for (const dsView of globalDataSourceViews) {
+    if (
+      !(
+        dsView.dataSource.connectorProvider === "snowflake" ||
+        dsView.dataSource.connectorProvider === "bigquery"
+      ) ||
+      !dsView.dataSource.connectorId
+    ) {
+      continue;
+    }
+
+    const tablesRes = await coreAPI.getTables({
+      projectId: dsView.dataSource.dustAPIProjectId,
+      dataSourceId: dsView.dataSource.connectorId,
+    });
+
+    if (tablesRes.isOk() && tablesRes.value.tables.length > 0) {
+      const warehouseType =
+        dsView.dataSource.connectorProvider === "snowflake"
+          ? "Snowflake"
+          : "BigQuery";
+
+      // Create table configurations
+      const tableConfigs: TableDataSourceConfiguration[] =
+        tablesRes.value.tables.map((table) => ({
+          workspaceId: owner.sId,
+          dataSourceViewId: dsView.sId,
+          tableId: table.table_id,
+        }));
+
+      // Create MCP server configuration for this data warehouse
+      const queryResult = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "mcp_server_configuration",
+          name: `query_${dsView.dataSource.name}_data_warehouse`,
+          description: `All of the tables available in the "${dsView.dataSource.name}" ${warehouseType} data warehouse`,
+          mcpServerViewId: queryTablesV2View.sId,
+          dataSources: null,
+          reasoningModel: null,
+          tables: tableConfigs,
+          childAgentId: null,
+          additionalConfiguration: {},
+          dustAppConfiguration: null,
+          timeFrame: null,
+          jsonSchema: null,
+        } as ServerSideMCPServerConfigurationType,
+        agentConfiguration
+      );
+
+      if (queryResult.isErr()) {
+        // Log error but continue with other data warehouses
+        logger.error(
+          {
+            error: queryResult.error,
+            dataSourceName: dsView.dataSource.name,
+            workspaceId: owner.sId,
+          },
+          "Failed to create query tool for data warehouse"
+        );
+
+        return new Err(
+          new Error(
+            `Failed to create query tool for data warehouse "${dsView.dataSource.name}"`
+          )
+        );
+      }
     }
   }
 

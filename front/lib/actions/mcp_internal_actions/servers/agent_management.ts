@@ -141,7 +141,11 @@ const createServer = (
       const agentUrl = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/builder/assistants/${agent.sId}`;
 
       return makeMCPToolTextSuccess({
-        message: `Successfully created agent "${name}" (ID: ${agent.sId}).\n\nThe agent has been created.\n\nView and edit it at: ${agentUrl}`,
+        message:
+          `Successfully created agent "${name}" (ID: ${agent.sId}).\n\n` +
+          `The agent has been created with:\n- Web search and browse tools\n` +
+          `- Search across workspace data sources\n- Query tools for any data warehouses in the global space\n\n` +
+          `View and edit it at: ${agentUrl}`,
       });
     }
   );
