@@ -598,12 +598,19 @@ export async function createGenericAgentConfigurationWithDefaultTools(
     instructions,
     pictureUrl,
     model,
+    subAgent,
   }: {
     name: string;
     description: string;
     instructions: string;
     pictureUrl: string;
     model: AgentModelConfigurationType;
+    subAgent?: {
+      name: string;
+      description: string;
+      instructions: string;
+      pictureUrl: string;
+    };
   }
 ): Promise<Result<LightAgentConfigurationType, Error>> {
   const owner = auth.workspace();
@@ -706,6 +713,65 @@ export async function createGenericAgentConfigurationWithDefaultTools(
 
     if (searchResult.isErr()) {
       return new Err(new Error("Could not create search action configuration"));
+    }
+  }
+
+  // Create sub-agent if requested
+  if (subAgent) {
+    // Create the sub-agent recursively (without passing subAgent to prevent infinite recursion)
+    const subAgentResult = await createGenericAgentConfigurationWithDefaultTools(
+      auth,
+      {
+        name: subAgent.name,
+        description: subAgent.description,
+        instructions: subAgent.instructions,
+        pictureUrl: subAgent.pictureUrl,
+        model,
+        // Note: we don't pass subAgent here, which prevents infinite recursion
+      }
+    );
+
+    if (subAgentResult.isErr()) {
+      return new Err(
+        new Error(`Failed to create sub-agent: ${subAgentResult.error.message}`)
+      );
+    }
+
+    // Get the run_agent MCP server view
+    const runAgentMCPServerView =
+      await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+        auth,
+        "run_agent"
+      );
+
+    if (!runAgentMCPServerView) {
+      return new Err(new Error("Could not find run_agent MCP server view"));
+    }
+
+    // Add run_agent tool to the main agent
+    const runAgentActionResult = await createAgentActionConfiguration(
+      auth,
+      {
+        type: "mcp_server_configuration",
+        name: `run_${subAgentResult.value.name}`,
+        description: `Run the ${subAgentResult.value.name} sub-agent`,
+        mcpServerViewId: runAgentMCPServerView.sId,
+        dataSources: null,
+        reasoningModel: null,
+        tables: null,
+        childAgentId: subAgentResult.value.sId,
+        additionalConfiguration: {},
+        dustAppConfiguration: null,
+        timeFrame: null,
+        jsonSchema: null,
+      } as ServerSideMCPServerConfigurationType,
+      agentConfiguration
+    );
+
+    if (runAgentActionResult.isErr()) {
+      return new Err(
+        new Error("Could not create run_agent action configuration")
+      );
     }
   }
 

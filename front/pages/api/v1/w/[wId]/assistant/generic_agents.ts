@@ -11,13 +11,10 @@ import {
   buildSelectedEmojiType,
   makeUrlForEmojiAndBackground,
 } from "@app/components/assistant_builder/avatar_picker/utils";
-import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import { createGenericAgentConfigurationWithDefaultTools } from "@app/lib/api/assistant/configuration/agent";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { getLargeWhitelistedModel } from "@app/types";
@@ -293,9 +290,8 @@ async function handler(
         }
       }
 
-      let subAgentConfiguration: LightAgentConfigurationType | null = null;
-
-      // Create a sub-agent if requested.
+      // Prepare sub-agent configuration if requested
+      let subAgentConfig = undefined;
       if (subAgentInstructions) {
         if (!assistantHandleIsValid(subAgentName!)) {
           return apiError(req, res, {
@@ -327,29 +323,15 @@ async function handler(
             "https://dust.tt/static/systemavatar/dust_avatar_full.png";
         }
 
-        const subAgentResult =
-          await createGenericAgentConfigurationWithDefaultTools(auth, {
-            name: subAgentName!,
-            description: subAgentDescription!,
-            instructions: subAgentInstructions,
-            pictureUrl: subAgentPictureUrl,
-            model: agentModel,
-          });
-
-        if (subAgentResult.isErr()) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: `Failed to create sub-agent: ${subAgentResult.error.message}`,
-            },
-          });
-        }
-
-        subAgentConfiguration = subAgentResult.value;
+        subAgentConfig = {
+          name: subAgentName!,
+          description: subAgentDescription!,
+          instructions: subAgentInstructions,
+          pictureUrl: subAgentPictureUrl,
+        };
       }
 
-      // Create the main agent.
+      // Create the main agent (which will also create the sub-agent if configured)
       const result = await createGenericAgentConfigurationWithDefaultTools(
         auth,
         {
@@ -358,6 +340,7 @@ async function handler(
           instructions,
           pictureUrl: finalPictureUrl,
           model: agentModel,
+          subAgent: subAgentConfig,
         }
       );
 
@@ -371,58 +354,8 @@ async function handler(
         });
       }
 
-      const mainAgentConfiguration = result.value;
-
-      // If we created a sub-agent, add the run_agent tool to the main agent
-      if (subAgentConfiguration) {
-        const runAgentMCPServerView =
-          await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-            auth,
-            "run_agent"
-          );
-
-        if (!runAgentMCPServerView) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "Could not find run_agent MCP server view",
-            },
-          });
-        }
-
-        const runAgentResult = await createAgentActionConfiguration(
-          auth,
-          {
-            type: "mcp_server_configuration",
-            name: `run_${subAgentConfiguration.name}`,
-            description: `Run the ${subAgentConfiguration.name} sub-agent`,
-            mcpServerViewId: runAgentMCPServerView.sId,
-            dataSources: null,
-            reasoningModel: null,
-            tables: null,
-            childAgentId: subAgentConfiguration.sId,
-            additionalConfiguration: {},
-            dustAppConfiguration: null,
-            timeFrame: null,
-            jsonSchema: null,
-          } as ServerSideMCPServerConfigurationType,
-          mainAgentConfiguration
-        );
-
-        if (runAgentResult.isErr()) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "Could not create run_agent action configuration",
-            },
-          });
-        }
-      }
-
       return res.status(200).json({
-        agentConfiguration: mainAgentConfiguration,
+        agentConfiguration: result.value,
       });
     }
 
