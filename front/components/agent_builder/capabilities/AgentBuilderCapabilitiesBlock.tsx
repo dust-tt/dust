@@ -7,6 +7,7 @@ import {
   Page,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 import type { FieldArrayWithId } from "react-hook-form";
 import { useFieldArray } from "react-hook-form";
@@ -184,6 +185,15 @@ function filterSelectableViews(
   });
 }
 
+const BACKGROUND_IMAGE_PATH = "/static/IconBar.svg";
+const BACKGROUND_IMAGE_STYLE_PROPS = {
+  backgroundImage: `url("${BACKGROUND_IMAGE_PATH}")`,
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "center 20px",
+  backgroundSize: "auto 60px",
+  paddingTop: "100px",
+};
+
 export function AgentBuilderCapabilitiesBlock() {
   const { fields, remove, append, update } = useFieldArray<
     AgentBuilderFormData,
@@ -284,12 +294,16 @@ export function AgentBuilderCapabilitiesBlock() {
         </div>
       </div>
       <div className="flex-1">
-        {fields.length === 0 ? (
+        {isMCPServerViewsLoading ? (
+          <div className="flex h-40 w-full items-center justify-center">
+            <Spinner />
+          </div>
+        ) : fields.length === 0 ? (
           <EmptyCTA
-            message="No tools added yet. Add knowledge and tools to enhance your agent's capabilities."
             action={
               <div className="flex items-center gap-2">{dropdownButtons}</div>
             }
+            style={BACKGROUND_IMAGE_STYLE_PROPS}
           />
         ) : (
           <CardGrid>
