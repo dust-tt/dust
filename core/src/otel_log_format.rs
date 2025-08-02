@@ -1,23 +1,21 @@
 use opentelemetry::logs::{AnyValue, LogRecord, Logger, LoggerProvider};
 use opentelemetry::{Key, Context};
 use opentelemetry::trace::TraceContextExt;
-use opentelemetry_appender_tracing::layer;
 use opentelemetry_sdk::logs::SdkLoggerProvider;
 use std::collections::HashMap;
 use tracing_subscriber::{registry::LookupSpan, Layer};
 
-/// Custom OTEL layer that enriches logs with JsonStorageLayer data
-/// This approach reuses as much of the standard OTEL layer logic as possible,
-/// only adding the span context enrichment on top
+/// Custom OTEL layer that enriches logs with JsonStorageLayer data and adds timestamps
+/// This approach reuses standard OTEL layer logic but adds:
+/// 1. Span context enrichment (http.route, user_agent, etc.)
+/// 2. Timestamp attributes (to solve Datadog Agent batching issues)
 pub struct EnrichedOtelLayer {
-    inner: layer::OpenTelemetryTracingBridge<SdkLoggerProvider, opentelemetry_sdk::logs::SdkLogger>,
     logger_provider: SdkLoggerProvider,
 }
 
 impl EnrichedOtelLayer {
     pub fn new(provider: &SdkLoggerProvider) -> Self {
         Self {
-            inner: layer::OpenTelemetryTracingBridge::new(provider),
             logger_provider: provider.clone(),
         }
     }
@@ -36,21 +34,16 @@ where
     S: tracing::Subscriber + for<'lookup> LookupSpan<'lookup>,
 {
     fn on_event(&self, event: &tracing::Event<'_>, ctx: tracing_subscriber::layer::Context<'_, S>) {
-        // Check if we have span context to enrich with
-        if let Some(span) = ctx.lookup_current() {
+        // Always create enriched logs (for timestamp + any available span context)
+        let extracted_fields = if let Some(span) = ctx.lookup_current() {
             let extensions = span.extensions();
-            let extracted_fields = extract_span_fields(&extensions);
-            
-            // If we have span context fields, create an enriched log
-            // Otherwise, fall back to the standard OTEL layer
-            if !extracted_fields.is_empty() {
-                self.create_enriched_otel_log(event, &extracted_fields);
-                return;
-            }
-        }
+            extract_span_fields(&extensions)
+        } else {
+            HashMap::new()
+        };
         
-        // Fallback: use standard OTEL layer processing
-        self.inner.on_event(event, ctx);
+        // Always use our enriched log creation to ensure timestamp is added
+        self.create_enriched_otel_log(event, &extracted_fields);
     }
 }
 
@@ -106,6 +99,16 @@ impl EnrichedOtelLayer {
                 log_record.add_attribute(Key::new(key.clone()), AnyValue::from(value.clone()));
             }
         }
+
+        // === ENHANCEMENT: Add timestamp to solve Datadog Agent batching issue ===
+        // When using Datadog Agent (instead of full OTLP Collector), logs in a batch
+        // get the same timestamp (batch flush time) instead of individual creation times.
+        // Adding timestamp as an attribute ensures proper chronological ordering.
+        let timestamp_millis = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_else(|_| std::time::Duration::from_secs(0))
+            .as_millis();
+        log_record.add_attribute(Key::new("timestamp"), AnyValue::from(timestamp_millis.to_string()));
 
         // === REUSE: Standard OTEL layer log emission ===
         logger.emit(log_record);
