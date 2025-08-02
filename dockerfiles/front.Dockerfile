@@ -47,14 +47,8 @@ RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
     if [ -n "$DATADOG_API_KEY" ]; then \
         DATADOG_SITE=datadoghq.eu \
         DATADOG_API_KEY=$DATADOG_API_KEY \
-        npx --yes @datadog/datadog-ci sourcemaps upload ./.next/static \
-        --minified-path-prefix=/_next/static/ \
-        --repository-url=https://github.com/dust-tt/dust \
-        --project-path=front-browser \
-        --release-version=$COMMIT_HASH \
-        --service=$NEXT_PUBLIC_DATADOG_SERVICE && \
-        npx --yes @datadog/datadog-ci sourcemaps upload ./.next/server \
-        --minified-path-prefix=/ \
+        npx --yes @datadog/datadog-ci sourcemaps upload ./.next \
+        --minified-path-prefix=/_next/ \
         --repository-url=https://github.com/dust-tt/dust \
         --project-path=front \
         --release-version=$COMMIT_HASH \
