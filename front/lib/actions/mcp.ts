@@ -68,7 +68,6 @@ export type BaseMCPServerConfigurationType = {
   type: "mcp_server_configuration";
 
   name: string;
-  mcpServerName: string | null;
 
   description: string | null;
   icon?: CustomServerIconType | InternalAllowedIconType;
