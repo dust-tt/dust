@@ -1,3 +1,4 @@
+import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentChildAgentConfiguration,
@@ -110,6 +111,7 @@ async function main() {
 
   await ConversationModel.sync({ alter: true });
   await ConversationParticipantModel.sync({ alter: true });
+  await ConversationMCPServerViewModel.sync({ alter: true });
 
   await DataSourceModel.sync({ alter: true });
   await DataSourceViewModel.sync({ alter: true });

@@ -10,6 +10,7 @@ import InputBarContainer, {
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { DustError } from "@app/lib/error";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
@@ -182,6 +183,26 @@ export function AssistantInputBar({
       }
     };
   }, []);
+
+  // Tools selection
+  const [selectedMCPServerViews, setSelectedMCPServerViews] = useState<
+    MCPServerViewType[]
+  >([]);
+
+  const handleMCPServerViewSelect = (serverView: MCPServerViewType) => {
+    setSelectedMCPServerViews((prev) => {
+      if (prev.find((sv) => sv.sId === serverView.sId)) {
+        return prev;
+      }
+      return [...prev, serverView];
+    });
+  };
+
+  const handleMCPServerViewDeselect = (serverView: MCPServerViewType) => {
+    setSelectedMCPServerViews((prev) =>
+      prev.filter((sv) => sv.sId !== serverView.sId)
+    );
+  };
 
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
@@ -371,6 +392,9 @@ export function AssistantInputBar({
                 }
                 onNodeSelect={handleNodesAttachmentSelect}
                 onNodeUnselect={handleNodesAttachmentRemove}
+                selectedMCPServerViews={selectedMCPServerViews}
+                onMCPServerViewSelect={handleMCPServerViewSelect}
+                onMCPServerViewDeselect={handleMCPServerViewDeselect}
                 attachedNodes={attachedNodes}
               />
             </div>
