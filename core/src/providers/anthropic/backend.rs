@@ -1,9 +1,10 @@
 use crate::run::Credentials;
-use crate::{gcp_auth::get_gcp_access_token, info};
+use crate::{gcp_auth::get_gcp_access_token};
 use anyhow::{anyhow, Result};
 use hyper::Uri;
 use reqwest::header::HeaderMap;
 use serde_json::{json, Value};
+use tracing::info;
 use std::str::FromStr;
 
 #[async_trait::async_trait]

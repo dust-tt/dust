@@ -1,4 +1,3 @@
-use crate::error;
 use crate::{
     http::proxy_client::create_untrusted_egress_client_builder,
     oauth::{
@@ -12,6 +11,7 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use tracing::error;
 
 pub struct SalesforceConnectionProvider {}
 

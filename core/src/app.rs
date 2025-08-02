@@ -8,7 +8,6 @@ use crate::run::{
 };
 use crate::stores::store::Store;
 use crate::utils;
-use crate::{error, info};
 use crate::{DustParser, Rule};
 use anyhow::{anyhow, Result};
 use futures::StreamExt;
@@ -21,6 +20,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::{self as stream};
+use tracing::{error, info};
 
 /// An App is a collection of versioned Blocks.
 ///

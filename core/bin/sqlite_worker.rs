@@ -17,7 +17,7 @@ use dust::{
     },
     utils::{self, error_response, APIResponse},
 };
-use dust::{error, info};
+use tracing::{error, info};
 use hyper::StatusCode;
 use lazy_static::lazy_static;
 use reqwest::Method;

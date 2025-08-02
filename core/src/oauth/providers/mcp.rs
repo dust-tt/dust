@@ -1,4 +1,3 @@
-use crate::{error, info};
 use crate::{
     http::proxy_client::create_untrusted_egress_client_builder,
     oauth::{
@@ -14,6 +13,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
+use tracing::{error, info};
 
 use super::utils::ProviderHttpRequestError;
 
