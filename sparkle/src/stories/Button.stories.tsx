@@ -120,6 +120,13 @@ const ButtonBySize = ({
         label="Button with href"
         href="hello"
       />
+      <Button
+        size={size}
+        variant="primary"
+        label="Disabled button with href"
+        href="hello"
+        disabled
+      />
     </div>
     <div className="s-flex s-items-center s-gap-4">
       <Button size={size} label="Button" isLoading />
@@ -140,10 +147,29 @@ const ButtonBySize = ({
 
 export const Gallery: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
-      <ButtonBySize size="xs" />
-      <ButtonBySize size="sm" />
-      <ButtonBySize size="md" />
+    <div className="s-flex s-flex-col s-gap-6">
+      <div className="s-flex s-flex-col s-gap-4">
+        <ButtonBySize size="xs" />
+        <ButtonBySize size="sm" />
+        <ButtonBySize size="md" />
+      </div>
+      <Separator />
+      <div>
+        <h3 className="mb-3 s-text-primary dark:s-text-primary-50">
+          With tooltip
+        </h3>
+        <div className="s-flex s-gap-4">
+          <Button label="Button" tooltip="Hello" />
+          <Button label="Disabled button" tooltip="Hello" disabled />
+          <Button label="Button with href" tooltip="Hello" href="hello" />
+          <Button
+            label="Disabled button with href (won't work)"
+            tooltip="Hello"
+            href="hello"
+            disabled
+          />
+        </div>
+      </div>
     </div>
   ),
 };
