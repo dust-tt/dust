@@ -1,3 +1,4 @@
+import { cva } from "class-variance-authority";
 import * as React from "react";
 
 import { Button, Icon } from "@sparkle/components";
@@ -13,6 +14,29 @@ import {
   DialogTrigger,
 } from "@sparkle/components/Dialog";
 import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/app";
+import { cn } from "@sparkle/lib/utils";
+
+const MULTI_PAGE_DIALOG_SIZES = ["md", "lg", "xl"] as const;
+type MultiPageDialogSizeType = (typeof MULTI_PAGE_DIALOG_SIZES)[number];
+
+const multiPageDialogSizeClasses: Record<MultiPageDialogSizeType, string> = {
+  md: "s-h-100 s-max-h-screen",
+  lg: "s-h-125 s-max-h-screen",
+  xl: "s-h-150 s-max-h-screen",
+};
+
+const multiPageDialogHeightVariants = cva("", {
+  variants: {
+    size: multiPageDialogSizeClasses,
+  },
+  defaultVariants: {
+    size: "md",
+  },
+});
+
+const multiPageDialogLayoutVariants = cva(
+  cn("s-flex s-flex-col s-h-full s-overflow-hidden")
+);
 
 interface MultiPageDialogPage {
   id: string;
@@ -26,7 +50,7 @@ interface MultiPageDialogProps {
   pages: MultiPageDialogPage[];
   currentPageId: string;
   onPageChange: (pageId: string) => void;
-  size?: React.ComponentProps<typeof DialogContent>["size"];
+  size?: MultiPageDialogSizeType;
   trapFocusScope?: boolean;
   isAlertDialog?: boolean;
   showNavigation?: boolean;
@@ -104,97 +128,106 @@ const MultiPageDialogContent = React.forwardRef<
         size={size}
         trapFocusScope={trapFocusScope}
         isAlertDialog={isAlertDialog}
-        className={className}
+        className={cn(multiPageDialogHeightVariants({ size }), className)}
         {...props}
       >
-        <DialogHeader hideButton={true}>
-          <div className="s-flex s-items-center s-justify-between s-pr-8">
-            <div className="s-flex s-items-center s-gap-3">
-              {showNavigation && (
-                <div className="s-flex s-items-center s-gap-1">
-                  <Button
-                    icon={ChevronLeftIcon}
-                    variant="ghost"
-                    size="sm"
-                    disabled={!hasPrevious}
-                    onClick={handlePrevious}
-                    tooltip={hasPrevious ? "Previous page" : undefined}
-                  />
-                  <Button
-                    icon={ChevronRightIcon}
-                    variant="ghost"
-                    size="sm"
-                    disabled={nextButtonDisabled}
-                    onClick={handleNext}
-                    tooltip={hasNext && !disableNext ? "Next page" : undefined}
-                  />
+        <div className={cn(multiPageDialogLayoutVariants())}>
+          <DialogHeader hideButton={true} className="s-flex-none">
+            <div className="s-flex s-items-center s-justify-between s-pr-8">
+              <div className="s-flex s-items-center s-gap-3">
+                {showNavigation && (
+                  <div className="s-flex s-items-center s-gap-1">
+                    <Button
+                      icon={ChevronLeftIcon}
+                      variant="ghost"
+                      size="sm"
+                      disabled={!hasPrevious}
+                      onClick={handlePrevious}
+                      tooltip={hasPrevious ? "Previous page" : undefined}
+                    />
+                    <Button
+                      icon={ChevronRightIcon}
+                      variant="ghost"
+                      size="sm"
+                      disabled={nextButtonDisabled}
+                      onClick={handleNext}
+                      tooltip={
+                        hasNext && !disableNext ? "Next page" : undefined
+                      }
+                    />
+                  </div>
+                )}
+                <div className="s-flex s-items-center s-gap-2">
+                  {currentPage.icon && (
+                    <Icon
+                      visual={currentPage.icon}
+                      size="lg"
+                      className="s-text-foreground"
+                    />
+                  )}
+                  <div>
+                    <DialogTitle>{currentPage.title}</DialogTitle>
+                    {currentPage.description && (
+                      <DialogDescription>
+                        {currentPage.description}
+                      </DialogDescription>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {showNavigation && pages.length > 1 && (
+                <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  {currentPageIndex + 1} / {pages.length}
                 </div>
               )}
-              <div className="s-flex s-items-center s-gap-2">
-                {currentPage.icon && (
-                  <Icon
-                    visual={currentPage.icon}
-                    size="lg"
-                    className="s-text-foreground"
-                  />
-                )}
-                <div>
-                  <DialogTitle>{currentPage.title}</DialogTitle>
-                  {currentPage.description && (
-                    <DialogDescription>
-                      {currentPage.description}
-                    </DialogDescription>
-                  )}
-                </div>
-              </div>
             </div>
-            {showNavigation && pages.length > 1 && (
-              <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                {currentPageIndex + 1} / {pages.length}
-              </div>
-            )}
+          </DialogHeader>
+
+          <div className="s-min-h-0 s-flex-1 s-overflow-hidden">
+            <DialogContainer className="s-h-full">
+              {currentPage.content}
+            </DialogContainer>
           </div>
-        </DialogHeader>
 
-        <DialogContainer>{currentPage.content}</DialogContainer>
-
-        <DialogFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-            size: "sm",
-          }}
-          rightButtonProps={
-            showNavigation && pages.length > 1 && hasPrevious
-              ? {
-                  label: "Previous",
-                  variant: "outline",
-                  size: "sm",
-                  onClick: handlePrevious,
-                }
-              : undefined
-          }
-        >
-          {showNavigation && pages.length > 1 && hasNext && (
-            <Button
-              label="Next"
-              variant="outline"
-              size="sm"
-              disabled={disableNext}
-              onClick={handleNext}
-            />
-          )}
-          {showNavigation && pages.length > 1 && !hasNext && onSave && (
-            <Button
-              label="Save changes"
-              variant="primary"
-              size="sm"
-              disabled={disableSave}
-              onClick={onSave}
-            />
-          )}
-          {footerContent}
-        </DialogFooter>
+          <DialogFooter
+            className="s-flex-none"
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              size: "sm",
+            }}
+            rightButtonProps={
+              showNavigation && pages.length > 1 && hasPrevious
+                ? {
+                    label: "Previous",
+                    variant: "outline",
+                    size: "sm",
+                    onClick: handlePrevious,
+                  }
+                : undefined
+            }
+          >
+            {showNavigation && pages.length > 1 && hasNext && (
+              <Button
+                label="Next"
+                variant="outline"
+                size="sm"
+                disabled={disableNext}
+                onClick={handleNext}
+              />
+            )}
+            {showNavigation && pages.length > 1 && !hasNext && onSave && (
+              <Button
+                label="Save changes"
+                variant="primary"
+                size="sm"
+                disabled={disableSave}
+                onClick={onSave}
+              />
+            )}
+            {footerContent}
+          </DialogFooter>
+        </div>
       </DialogContent>
     );
   }

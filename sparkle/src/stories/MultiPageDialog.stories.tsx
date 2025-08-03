@@ -131,7 +131,7 @@ const MultiPageDialogDemo = () => {
         pages={samplePages}
         currentPageId={currentPageId}
         onPageChange={setCurrentPageId}
-        size="lg"
+        size="xl"
         onSave={handleSave}
       />
     </MultiPageDialog>
@@ -201,7 +201,7 @@ export const InteractiveContent: Story = {
                 <Button
                   label="Continue to File Selection"
                   variant="primary"
-                  size="sm"
+                  size="md"
                   disabled={!formData.name || !formData.email}
                   onClick={() => setCurrentPageId("step2")}
                 />
@@ -259,7 +259,7 @@ export const InteractiveContent: Story = {
                 <Button
                   label="Continue to Settings"
                   variant="primary"
-                  size="sm"
+                  size="md"
                   onClick={() => setCurrentPageId("step3")}
                 />
               </div>
@@ -461,86 +461,6 @@ export const WithConditionalNavigation: Story = {
               This is a footer content
             </div>
           }
-        />
-      </MultiPageDialog>
-    );
-  },
-};
-
-export const AlertDialogStyle: Story = {
-  render: () => {
-    const [currentPageId, setCurrentPageId] = useState("confirm");
-    const [confirmationText, setConfirmationText] = useState("");
-
-    const handleSave = () => {
-      alert("Account deleted successfully!");
-    };
-
-    const alertPages: MultiPageDialogPage[] = [
-      {
-        id: "confirm",
-        title: "Delete Account",
-        description: "This action cannot be undone",
-        content: (
-          <div className="s-space-y-4">
-            <div>
-              <h3 className="s-mb-2 s-text-lg s-font-semibold s-text-red-600">
-                Are you absolutely sure?
-              </h3>
-              <p className="s-text-sm s-text-muted-foreground">
-                This will permanently delete your account and remove all your data from our servers.
-              </p>
-            </div>
-            <div className="s-rounded-md s-bg-red-50 s-p-3">
-              <p className="s-text-sm s-text-red-800">
-                Warning: This action is irreversible. All your data will be lost forever.
-              </p>
-            </div>
-          </div>
-        ),
-      },
-      {
-        id: "final-confirm",
-        title: "Final Confirmation",
-        description: "Type DELETE to confirm",
-        content: (
-          <div className="s-space-y-4">
-            <div>
-              <h3 className="s-mb-2 s-text-lg s-font-semibold">
-                Type DELETE to confirm
-              </h3>
-              <p className="s-text-sm s-text-muted-foreground">
-                To proceed with account deletion, please type "DELETE" in the field below.
-              </p>
-            </div>
-            <div className="s-space-y-2">
-              <label className="s-text-sm s-font-medium">Confirmation</label>
-              <input
-                type="text"
-                className="s-mt-1 s-w-full s-rounded-md s-border s-px-3 s-py-2"
-                placeholder="Type DELETE"
-                value={confirmationText}
-                onChange={(e) => setConfirmationText(e.target.value)}
-              />
-            </div>
-          </div>
-        ),
-      },
-    ];
-
-    return (
-      <MultiPageDialog>
-        <MultiPageDialogTrigger asChild>
-          <Button label="Delete Account" variant="warning" />
-        </MultiPageDialogTrigger>
-        <MultiPageDialogContent
-          pages={alertPages}
-          currentPageId={currentPageId}
-          onPageChange={setCurrentPageId}
-          size="md"
-          isAlertDialog={true}
-          onSave={handleSave}
-          disableSave={confirmationText !== "DELETE"}
         />
       </MultiPageDialog>
     );
