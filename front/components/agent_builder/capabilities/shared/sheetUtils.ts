@@ -23,7 +23,7 @@ export function getDataSourceConfigurations(
     isIncludeDataAction(action) ||
     isExtractDataAction(action)
   ) {
-    return action.configuration.dataSourceConfigurations;
+    return action.configuration.dataSourceConfigurations as DataSourceViewSelectionConfigurations // TODO fix type;
   }
 
   return {};

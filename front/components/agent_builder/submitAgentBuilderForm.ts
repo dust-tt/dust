@@ -24,9 +24,14 @@ import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 function convertDataSourceConfigurations(
-  dataSourceConfigurations: DataSourceViewSelectionConfigurations,
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations | null,
   owner: WorkspaceType
 ) {
+  // TODO: fix type, it should not be null.
+  if (dataSourceConfigurations === null) {
+    return [];
+  }
+
   return Object.values(dataSourceConfigurations).map((config) => ({
     dataSourceViewId: config.dataSourceView.sId,
     workspaceId: owner.sId,
@@ -77,7 +82,7 @@ function convertSearchActionToMCPConfiguration(
   owner: WorkspaceType
 ): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
   const dataSources = convertDataSourceConfigurations(
-    searchAction.configuration.dataSourceConfigurations,
+    searchAction.configuration.dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type,
     owner
   );
 
@@ -85,7 +90,7 @@ function convertSearchActionToMCPConfiguration(
     type: "mcp_server_configuration",
     mcpServerViewId: searchMCPServerView.sId,
     name: searchAction.name,
-    description: searchAction.description,
+    description: searchAction.description || null,
     dataSources,
     tables: null,
     childAgentId: null,
@@ -126,7 +131,7 @@ function convertIncludeDataActionToMCPConfiguration(
   owner: WorkspaceType
 ): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
   const dataSources = convertDataSourceConfigurations(
-    includeDataAction.configuration.dataSourceConfigurations,
+    includeDataAction.configuration.dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type,
     owner
   );
 
@@ -158,7 +163,7 @@ function convertExtractDataActionToMCPConfiguration(
   owner: WorkspaceType
 ): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
   const dataSources = convertDataSourceConfigurations(
-    extractDataAction.configuration.dataSourceConfigurations,
+    extractDataAction.configuration.dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type,
     owner
   );
 
@@ -228,16 +233,18 @@ export async function submitAgentBuilderForm({
               mcpServerViewId: action.configuration.mcpServerViewId,
               name: action.name,
               description: action.description,
-              dataSources: action.configuration.dataSourceConfigurations
+              dataSources: action.configuration.dataSourceConfigurations !== null
                 ? convertDataSourceConfigurations(
-                    action.configuration.dataSourceConfigurations,
+                    action.configuration.dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type 
                     owner
                   )
                 : null,
-              tables: processTableSelection(
-                action.configuration.tablesConfigurations,
-                owner
-              ),
+              tables: action.configuration.tablesConfigurations !== null 
+                ? processTableSelection(
+                    action.configuration.tablesConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type 
+                    owner
+                  )
+                : null,
               childAgentId: action.configuration.childAgentId,
               reasoningModel: action.configuration.reasoningModel,
               timeFrame: action.configuration.timeFrame,
