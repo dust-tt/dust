@@ -166,6 +166,8 @@ pub mod oauth {
 
 pub mod api_keys;
 
+pub mod local_log_format;
 pub mod open_telemetry;
+pub mod otel_log_format;
 
 pub mod mem_check;
