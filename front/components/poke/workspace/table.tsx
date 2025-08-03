@@ -8,6 +8,7 @@ import {
   PokeTableCellWithCopy,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import config from "@app/lib/api/config";
 import { useWorkOSDSyncStatus } from "@app/lib/swr/workos";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type {
@@ -87,6 +88,20 @@ export function WorkspaceInfoTable({
                 >
                   Metabase
                 </Link>
+              </PokeTableCell>
+            </PokeTableRow>
+            <PokeTableRow>
+              <PokeTableCell>WorkOS dashboard</PokeTableCell>
+              <PokeTableCell>
+                {owner.workOSOrganizationId && (
+                  <Link
+                    href={`https://dashboard.workos.com/${config.getWorkOSEnvironmentId()}/organizations/${owner.workOSOrganizationId}`}
+                    target="_blank"
+                    className="text-xs text-highlight-400"
+                  >
+                    Dashboard
+                  </Link>
+                )}
               </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
