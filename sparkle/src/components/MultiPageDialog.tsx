@@ -1,5 +1,6 @@
 import { cva } from "class-variance-authority";
 import * as React from "react";
+import { useState } from "react";
 
 import { Button, Icon } from "@sparkle/components";
 import {
@@ -96,20 +97,34 @@ const MultiPageDialogContent = React.forwardRef<
     );
     const currentPage = pages[currentPageIndex];
 
+    const [isTransitioning, setIsTransitioning] = useState(false);
+    const [transitionDirection, setTransitionDirection] = useState<
+      "next" | "prev"
+    >("next");
+
     const handlePrevious = (
       e: React.MouseEvent<HTMLButtonElement, MouseEvent>
     ) => {
       e.preventDefault();
-      if (currentPageIndex > 0) {
-        onPageChange(pages[currentPageIndex - 1].id);
+      if (currentPageIndex > 0 && !isTransitioning) {
+        setTransitionDirection("prev");
+        setIsTransitioning(true);
+        setTimeout(() => {
+          onPageChange(pages[currentPageIndex - 1].id);
+          setTimeout(() => setIsTransitioning(false), 50);
+        }, 150);
       }
     };
 
     const handleNext = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
       e.preventDefault();
-
-      if (currentPageIndex < pages.length - 1) {
-        onPageChange(pages[currentPageIndex + 1].id);
+      if (currentPageIndex < pages.length - 1 && !isTransitioning) {
+        setTransitionDirection("next");
+        setIsTransitioning(true);
+        setTimeout(() => {
+          onPageChange(pages[currentPageIndex + 1].id);
+          setTimeout(() => setIsTransitioning(false), 50);
+        }, 150);
       }
     };
 
@@ -120,7 +135,8 @@ const MultiPageDialogContent = React.forwardRef<
 
     const hasPrevious = currentPageIndex > 0;
     const hasNext = currentPageIndex < pages.length - 1;
-    const nextButtonDisabled = disableNext || !hasNext;
+    const nextButtonDisabled = disableNext || !hasNext || isTransitioning;
+    const prevButtonDisabled = !hasPrevious || isTransitioning;
 
     return (
       <DialogContent
@@ -141,9 +157,13 @@ const MultiPageDialogContent = React.forwardRef<
                       icon={ChevronLeftIcon}
                       variant="ghost"
                       size="sm"
-                      disabled={!hasPrevious}
+                      disabled={prevButtonDisabled}
                       onClick={handlePrevious}
-                      tooltip={hasPrevious ? "Previous page" : undefined}
+                      tooltip={
+                        hasPrevious && !isTransitioning
+                          ? "Previous page"
+                          : undefined
+                      }
                     />
                     <Button
                       icon={ChevronRightIcon}
@@ -152,12 +172,26 @@ const MultiPageDialogContent = React.forwardRef<
                       disabled={nextButtonDisabled}
                       onClick={handleNext}
                       tooltip={
-                        hasNext && !disableNext ? "Next page" : undefined
+                        hasNext && !disableNext && !isTransitioning
+                          ? "Next page"
+                          : undefined
                       }
                     />
                   </div>
                 )}
-                <div className="s-flex s-items-center s-gap-2">
+                <div
+                  className={cn(
+                    "s-flex s-items-center s-gap-2 s-transition-all s-duration-200 s-ease-out",
+                    {
+                      "s-transform s-opacity-0": isTransitioning,
+                      "s-translate-x-1":
+                        isTransitioning && transitionDirection === "next",
+                      "s--translate-x-1":
+                        isTransitioning && transitionDirection === "prev",
+                      "s-translate-x-0 s-opacity-100": !isTransitioning,
+                    }
+                  )}
+                >
                   {currentPage.icon && (
                     <Icon
                       visual={currentPage.icon}
@@ -184,7 +218,19 @@ const MultiPageDialogContent = React.forwardRef<
           </DialogHeader>
 
           <div className="s-min-h-0 s-flex-1 s-overflow-hidden">
-            <DialogContainer className="s-h-full">
+            <DialogContainer
+              className={cn(
+                "s-h-full s-transition-all s-duration-200 s-ease-out",
+                {
+                  "s-transform s-opacity-0": isTransitioning,
+                  "s-translate-x-2":
+                    isTransitioning && transitionDirection === "next",
+                  "s--translate-x-2":
+                    isTransitioning && transitionDirection === "prev",
+                  "s-translate-x-0 s-opacity-100": !isTransitioning,
+                }
+              )}
+            >
               {currentPage.content}
             </DialogContainer>
           </div>
@@ -202,6 +248,7 @@ const MultiPageDialogContent = React.forwardRef<
                     label: "Previous",
                     variant: "outline",
                     size: "sm",
+                    disabled: isTransitioning,
                     onClick: handlePrevious,
                   }
                 : undefined
@@ -212,7 +259,7 @@ const MultiPageDialogContent = React.forwardRef<
                 label="Next"
                 variant="outline"
                 size="sm"
-                disabled={disableNext}
+                disabled={disableNext || isTransitioning}
                 onClick={handleNext}
               />
             )}
@@ -221,7 +268,7 @@ const MultiPageDialogContent = React.forwardRef<
                 label="Save changes"
                 variant="primary"
                 size="sm"
-                disabled={disableSave}
+                disabled={disableSave || isTransitioning}
                 onClick={onSave}
               />
             )}
