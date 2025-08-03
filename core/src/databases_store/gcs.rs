@@ -82,7 +82,19 @@ impl GoogleCloudStorageDatabasesStore {
             bucket: Self::get_bucket()?,
             bucket_csv_path: Self::get_csv_storage_file_path(table),
         };
-        csv.parse().await
+        match csv.parse().await {
+            Ok(rows) => Ok(rows),
+            Err(e) => match e {
+                cloud_storage::Error::Google(GoogleErrorResponse {
+                    error: ErrorList { code: 404, .. },
+                    ..
+                }) => {
+                    // Treat a non-existing file as an empty table.
+                    Ok(Vec::new())
+                }
+                e => Err(e)?,
+            },
+        }
     }
 
     pub async fn write_rows_to_csv(
