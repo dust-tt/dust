@@ -45,16 +45,13 @@ RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
     FRONT_DATABASE_URI="sqlite:foo.sqlite" \
     npm run build && \
     if [ -n "$DATADOG_API_KEY" ]; then \
-        DATADOG_SITE=datadoghq.eu \
-        DATADOG_API_KEY=$DATADOG_API_KEY \
+        export DATADOG_SITE=datadoghq.eu DATADOG_API_KEY=$DATADOG_API_KEY; \
         npx --yes @datadog/datadog-ci sourcemaps upload ./.next/static \
         --minified-path-prefix=/_next/static/ \
         --repository-url=https://github.com/dust-tt/dust \
         --project-path=front-browser \
         --release-version=$COMMIT_HASH \
         --service=$NEXT_PUBLIC_DATADOG_SERVICE && \
-        DATADOG_SITE=datadoghq.eu \
-        DATADOG_API_KEY=$DATADOG_API_KEY \
         npx --yes @datadog/datadog-ci sourcemaps upload ./.next/server \
         --minified-path-prefix=/ \
         --repository-url=https://github.com/dust-tt/dust \
