@@ -32,8 +32,9 @@ export function shouldSyncTicket(
   configuration: ZendeskConfigurationResource,
   {
     brandId,
-    organizationTags,
-  }: { brandId?: number; organizationTags: string[] }
+    organizationTags = [],
+    ticketTags = [],
+  }: { brandId?: number; organizationTags?: string[]; ticketTags?: string[] }
 ): boolean {
   if (ticket.status === "deleted") {
     return false;
@@ -48,10 +49,11 @@ export function shouldSyncTicket(
     return false;
   }
 
-  // If we enforce an inclusion rule on tags, we must have at least one of the
+  // If we enforce an inclusion rule on organization tags, all tickets must have at least one of the
   // mandatory tags.
   if (
     configuration.organizationTagsToInclude &&
+    configuration.organizationTagsToInclude.length > 0 &&
     !configuration.organizationTagsToInclude.some((mandatoryTag) =>
       organizationTags.includes(mandatoryTag)
     )
@@ -59,12 +61,37 @@ export function shouldSyncTicket(
     return false;
   }
 
-  // If we enforce an exclusion rule on tags, we must not have any of the
+  // If we enforce an exclusion rule on organization tags, we must not have any of the
   // excluded tags.
   if (
     configuration.organizationTagsToExclude &&
+    configuration.organizationTagsToExclude.length > 0 &&
     configuration.organizationTagsToExclude.some((prohibitedTag) =>
       organizationTags.includes(prohibitedTag)
+    )
+  ) {
+    return false;
+  }
+
+  // If we enforce an inclusion rule on ticket tags, we must have at least one of the
+  // mandatory tags.
+  if (
+    configuration.ticketTagsToInclude &&
+    configuration.ticketTagsToInclude.length > 0 &&
+    !configuration.ticketTagsToInclude.some((mandatoryTag) =>
+      ticketTags.includes(mandatoryTag)
+    )
+  ) {
+    return false;
+  }
+
+  // If we enforce an exclusion rule on ticket tags, we must not have any of the
+  // excluded tags.
+  if (
+    configuration.ticketTagsToExclude &&
+    configuration.ticketTagsToExclude.length > 0 &&
+    configuration.ticketTagsToExclude.some((prohibitedTag) =>
+      ticketTags.includes(prohibitedTag)
     )
   ) {
     return false;

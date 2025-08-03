@@ -11,12 +11,11 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createOrUpdateUser, fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import type { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { getSignUpUrl } from "@app/lib/signup";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { LightWorkspaceType, WithAPIErrorResponse } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
@@ -39,12 +38,14 @@ async function handler(
   }
 
   const { inviteToken, wId } = req.query;
-  const targetWorkspaceId = typeof wId === "string" ? wId : undefined;
-  // Auth0 flow augments token with a claim for workspace id linked to the enterprise connection.
-
   const { isSSO, workspaceId } = session;
 
-  let targetWorkspace: WorkspaceModel | null = null;
+  // Use the workspaceId from the query if it exists, otherwise use the workspaceId from the workos session.
+  const targetWorkspaceId = typeof wId === "string" ? wId : workspaceId;
+
+  let targetWorkspace: LightWorkspaceType | null = null;
+  let targetFlow: "joined" | null = null;
+
   // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an `inviteToken`,
   // meaning the user is going through the invite by email flow.
   const membershipInviteRes =
@@ -96,7 +97,7 @@ async function handler(
       user,
       workspaceId
     );
-    if (flow) {
+    if (flow === "unauthorized") {
       // Only happen if the workspace associated with workOSOrganizationId is not found.
       res.redirect(
         `/api/auth/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
@@ -105,6 +106,7 @@ async function handler(
     }
 
     targetWorkspace = workspace;
+    targetFlow = flow;
   } else {
     if (userCreated) {
       // When user is just created, check whether they have a pending invitation. If they do, it is
@@ -156,12 +158,13 @@ async function handler(
     }
 
     const { flow, workspace } = result.value;
-    if (flow) {
+    if (flow === "no-auto-join" || flow === "revoked") {
       res.redirect(`/no-workspace?flow=${flow}`);
       return;
     }
 
     targetWorkspace = workspace;
+    targetFlow = flow;
   }
 
   const u = await getUserFromSession(session);
@@ -172,7 +175,7 @@ async function handler(
 
   await user.recordLoginActivity();
 
-  if (targetWorkspace) {
+  if (targetWorkspace && targetFlow === "joined") {
     // For users joining a workspace from trying to access a conversation, we redirect to this
     // conversation after signing in.
     if (req.query.join === "true" && req.query.cId) {
@@ -183,7 +186,9 @@ async function handler(
     return;
   }
 
-  res.redirect(`/w/${u.workspaces[0].sId}`);
+  res.redirect(
+    `/w/${targetWorkspace ? targetWorkspace.sId : u.workspaces[0].sId}`
+  );
 
   return;
 }

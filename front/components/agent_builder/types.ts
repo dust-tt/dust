@@ -6,6 +6,7 @@ import type { agentBuilderFormSchema } from "@app/components/agent_builder/Agent
 import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/formValidation";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
+import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { SupportedModel, WhitelistableFeature } from "@app/types";
@@ -296,12 +297,14 @@ export function getDefaultMCPAction(
     id: uniqueId(),
     type: "MCP",
     configuration,
-    name: mcpServerView?.server.name ?? "",
+    name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
     description:
       requirements.requiresDataSourceConfiguration ||
       requirements.requiresTableConfiguration
         ? ""
-        : mcpServerView?.server.description ?? "",
+        : mcpServerView
+          ? getMcpServerViewDescription(mcpServerView)
+          : "",
     noConfigurationRequired: requirements.noRequirement,
   };
 }

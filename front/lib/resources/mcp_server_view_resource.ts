@@ -427,6 +427,29 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return new Ok(affectedCount);
   }
 
+  public async updateNameAndDescription(
+    auth: Authenticator,
+    name?: string,
+    description?: string
+  ): Promise<Result<number, DustError<"unauthorized">>> {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Not allowed to update name and description."
+        )
+      );
+    }
+
+    const [affectedCount] = await this.update({
+      name,
+      description,
+      editedAt: new Date(),
+      editedByUserId: auth.getNonNullableUser().id,
+    });
+    return new Ok(affectedCount);
+  }
+
   // Deletion.
 
   protected async softDelete(
@@ -684,8 +707,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return {
       id: this.id,
       sId: this.sId,
-      name: null,
-      description: null,
+      name: this.name,
+      description: this.description,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,

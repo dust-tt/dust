@@ -683,6 +683,7 @@ export async function syncZendeskTicketBatchActivity({
     return shouldSyncTicket(t, configuration, {
       brandId,
       organizationTags,
+      ticketTags: t.tags,
     });
   });
 

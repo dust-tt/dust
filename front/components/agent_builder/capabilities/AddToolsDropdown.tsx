@@ -28,7 +28,10 @@ import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
@@ -143,8 +146,10 @@ export function AddToolsDropdown({
     setSearchText(text);
     const searchTerm = text.toLowerCase();
     setFilteredServerViews(
-      [...defaultMCPServerViews, ...nonDefaultMCPServerViews].filter((view) =>
-        view.label.toLowerCase().includes(searchTerm)
+      [...defaultMCPServerViews, ...nonDefaultMCPServerViews].filter(
+        (view) =>
+          view.label.toLowerCase().includes(searchTerm) ||
+          view.description?.toLowerCase().includes(searchTerm)
       )
     );
 
@@ -293,7 +298,7 @@ function MCPDropdownMenuItem({
       truncateText
       icon={getAvatar(view.server)}
       label={getMcpServerViewDisplayName(view)}
-      description={view.server.description}
+      description={getMcpServerViewDescription(view)}
       onClick={() => onClick(view)}
       disabled={
         view.serverType === "remote" &&

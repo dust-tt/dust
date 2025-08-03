@@ -330,13 +330,17 @@ export async function* tryCallMCPTool(
         if (jsonContent?.type === "text") {
           try {
             const parsed = JSON.parse(jsonContent.text);
-            if (parsed?.__dust_auth_required) {
+            if (
+              parsed?.__dust_auth_required &&
+              connectionParamsRes.value.type === "mcpServerId" &&
+              connectionParamsRes.value.oAuthUseCase === "personal_actions"
+            ) {
               const authReq = parsed.__dust_auth_required;
               yield {
                 type: "result",
                 result: new Err(
                   new MCPServerPersonalAuthenticationRequiredError(
-                    authReq.mcpServerId,
+                    connectionParamsRes.value.mcpServerId,
                     authReq.provider
                   )
                 ),

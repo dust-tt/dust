@@ -159,12 +159,12 @@ export async function fetchMCPServerActionConfigurations(
         id: config.id,
         sId: config.sId,
         type: "mcp_server_configuration",
-        name: config.name ?? serverName,
+        // Name will be either set from the agent config itself (user defined), from the mcp server view (user defined), or from the server itself (fetched from the metadata).
+        name: config.name ?? mcpServerView?.name ?? serverName,
         description: config.singleToolDescriptionOverride ?? serverDescription,
         icon: serverIcon,
         mcpServerViewId: mcpServerView?.sId ?? "",
         internalMCPServerId: config.internalMCPServerId,
-        mcpServerName: serverName,
         dataSources: dataSourceConfigurations.map(
           renderDataSourceConfiguration
         ),

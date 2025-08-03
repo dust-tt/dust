@@ -10,6 +10,7 @@ import {
   DEFAULT_DATA_VISUALIZATION_NAME,
   DEFAULT_MCP_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
@@ -253,12 +254,14 @@ export function getDefaultMCPServerActionConfiguration(
       jsonSchema: null,
       _jsonSchemaString: null,
     },
-    name: mcpServerView?.server.name ?? "",
+    name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
     description:
       requirements.requiresDataSourceConfiguration ||
       requirements.requiresTableConfiguration
         ? ""
-        : mcpServerView?.server.description ?? "",
+        : mcpServerView
+          ? getMcpServerViewDescription(mcpServerView)
+          : "",
     noConfigurationRequired: requirements.noRequirement,
   };
 }

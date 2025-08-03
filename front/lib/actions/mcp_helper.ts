@@ -98,10 +98,17 @@ export function isRemoteMCPServerType(
   return serverType === "remote";
 }
 
+export function getMcpServerViewDescription(view: MCPServerViewType): string {
+  return view.description ?? view.server.description;
+}
+
 export function getMcpServerViewDisplayName(
   view: MCPServerViewType,
   action?: AssistantBuilderMCPConfiguration | AgentBuilderAction
 ) {
+  if (view.name) {
+    return asDisplayName(view.name);
+  }
   return getMcpServerDisplayName(view.server, action);
 }
 
