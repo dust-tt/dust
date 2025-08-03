@@ -120,21 +120,22 @@ export function UserMenu({
           <>
             <DropdownMenuLabel label="Workspace" />
             <DropdownMenuRadioGroup value={owner.name}>
-              {user.organizations.map((org) => (
-                <DropdownMenuRadioItem
-                  key={org.id}
-                  value={org.name}
-                  onClick={async () => {
-                    if (org.externalId !== owner.sId) {
-                      await router.push(
-                        `/api/workos/login?organizationId=${org.id}`
-                      );
-                    }
-                  }}
-                >
-                  {org.name}
-                </DropdownMenuRadioItem>
-              ))}
+              {user.organizations &&
+                user.organizations.map((org) => (
+                  <DropdownMenuRadioItem
+                    key={org.id}
+                    value={org.name}
+                    onClick={async () => {
+                      if (org.externalId !== owner.sId) {
+                        await router.push(
+                          `/api/workos/login?organizationId=${org.id}`
+                        );
+                      }
+                    }}
+                  >
+                    {org.name}
+                  </DropdownMenuRadioItem>
+                ))}
             </DropdownMenuRadioGroup>
           </>
         )}

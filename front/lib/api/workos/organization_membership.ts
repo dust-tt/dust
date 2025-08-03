@@ -1,5 +1,5 @@
+import { getWorkOS } from "@app/lib/api/workos/client";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { getWorkOS } from "./client";
 
 export async function fetchWorkOSOrganizationMembershipsForUserIdAndOrgId(
   userId: string,

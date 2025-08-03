@@ -107,7 +107,7 @@ export type UserTypeWithWorkspace = UserType & {
 
 export type UserTypeWithWorkspaces = UserType & {
   workspaces: WorkspaceType[];
-  organizations: Organization[];
+  organizations?: Organization[];
   origin?: MembershipOriginType;
 };
 
