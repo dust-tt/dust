@@ -60,17 +60,18 @@ const tagsFilterSchema = z
   })
   .nullable();
 
-const dataSourceViewSelectionConfigurationSchema = z.object({
-  dataSourceView: z.custom<DataSourceViewType>(),
-  selectedResources: z.array(z.custom<DataSourceViewContentNode>()),
-  isSelectAll: z.boolean(),
-  tagsFilter: tagsFilterSchema,
-});
+const dataSourceViewSelectionConfigurationSchema = z
+  .object({
+    dataSourceView: z.custom<DataSourceViewType>(),
+    selectedResources: z.array(z.custom<DataSourceViewContentNode>()),
+    isSelectAll: z.boolean(),
+    tagsFilter: tagsFilterSchema,
+  })
+  .nullable();
 
-export const dataSourceConfigurationSchema = z.record(
-  z.string(),
-  dataSourceViewSelectionConfigurationSchema
-);
+export const dataSourceConfigurationSchema = z
+  .record(z.string(), dataSourceViewSelectionConfigurationSchema)
+  .nullable();
 
 const searchActionConfigurationSchema = z.object({
   type: z.literal("SEARCH"),
@@ -141,8 +142,8 @@ export const reasoningModelSchema = z
 
 const mcpServerConfigurationSchema = z.object({
   mcpServerViewId: mcpServerViewIdSchema,
-  dataSourceConfigurations: dataSourceConfigurationSchema.nullable(),
-  tablesConfigurations: dataSourceConfigurationSchema.nullable(),
+  dataSourceConfigurations: dataSourceConfigurationSchema,
+  tablesConfigurations: dataSourceConfigurationSchema,
   childAgentId: childAgentIdSchema,
   reasoningModel: reasoningModelSchema,
   timeFrame: mcpTimeFrameSchema,
