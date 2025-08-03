@@ -3,7 +3,6 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::info;
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use futures::future::try_join_all;
@@ -12,6 +11,7 @@ use rslock::LockManager;
 use serde::de::Error;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tracing::{info, warn};
 
 use crate::databases::table_upserts_background_worker::{
     TableUpsertActivityData, REDIS_CLIENT, REDIS_LOCK_TTL_SECONDS, REDIS_TABLE_UPSERT_HASH_NAME,
@@ -957,7 +957,7 @@ impl Row {
                     }) {
                         Ok(result) => result.ok(),
                         Err(e) => {
-                            crate::warn!("Panic while parsing date '{}': {:?}", trimmed, e);
+                            warn!("Panic while parsing date '{}': {:?}", trimmed, e);
                             None
                         }
                     };
