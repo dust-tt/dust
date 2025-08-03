@@ -21,9 +21,8 @@ import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/sh
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
-import { DataSourceViewsProvider } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
-import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -37,7 +36,8 @@ interface MCPConfigurationSheetProps {
   getAgentInstructions: () => string;
 }
 
-// This sheet if for any MCP tools without datasource selection required.
+// This sheet is for any MCP tools without datasource selection required,
+// until we refactor KnowledgeConfigurationSheet.
 export function MCPConfigurationSheet({
   selectedAction,
   onSave,
@@ -45,8 +45,6 @@ export function MCPConfigurationSheet({
   onClose,
   getAgentInstructions,
 }: MCPConfigurationSheetProps) {
-  const { owner } = useAgentBuilderContext();
-
   const handleClose = () => {
     onClose();
   };
@@ -64,14 +62,12 @@ export function MCPConfigurationSheet({
         }
       }}
     >
-      <DataSourceViewsProvider owner={owner}>
-        <MCPConfigurationSheetContent
-          action={selectedAction}
-          onClose={handleClose}
-          onSave={onSave}
-          getAgentInstructions={getAgentInstructions}
-        />
-      </DataSourceViewsProvider>
+      <MCPConfigurationSheetContent
+        action={selectedAction}
+        onClose={handleClose}
+        onSave={onSave}
+        getAgentInstructions={getAgentInstructions}
+      />
     </Sheet>
   );
 }

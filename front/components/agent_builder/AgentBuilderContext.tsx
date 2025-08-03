@@ -4,8 +4,6 @@ import { DataSourceViewsProvider } from "@app/components/agent_builder/DataSourc
 import { MCPServerViewsProvider } from "@app/components/agent_builder/MCPServerViewsContext";
 import { PreviewPanelProvider } from "@app/components/agent_builder/PreviewPanelContext";
 import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
-import { MCPServerViewsProvider as MCPServerViewsProviderToBeRemoved } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
-import { SpacesProvider as SpacesProviderToBeRemoved } from "@app/components/assistant_builder/contexts/SpacesContext";
 import type { UserType, WorkspaceType } from "@app/types";
 
 type AgentBuilderContextType = {
@@ -38,15 +36,11 @@ export function AgentBuilderProvider({
     >
       <PreviewPanelProvider>
         <SpacesProvider owner={owner}>
-          <SpacesProviderToBeRemoved owner={owner}>
-            <MCPServerViewsProvider owner={owner}>
-              <MCPServerViewsProviderToBeRemoved owner={owner}>
-                <DataSourceViewsProvider owner={owner}>
-                  {children}
-                </DataSourceViewsProvider>
-              </MCPServerViewsProviderToBeRemoved>
-            </MCPServerViewsProvider>
-          </SpacesProviderToBeRemoved>
+          <MCPServerViewsProvider owner={owner}>
+            <DataSourceViewsProvider owner={owner}>
+              {children}
+            </DataSourceViewsProvider>
+          </MCPServerViewsProvider>
         </SpacesProvider>
       </PreviewPanelProvider>
     </AgentBuilderContext.Provider>
