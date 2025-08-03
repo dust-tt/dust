@@ -55,6 +55,7 @@ interface MultiPageDialogProps {
   trapFocusScope?: boolean;
   isAlertDialog?: boolean;
   showNavigation?: boolean;
+  showHeaderNavigation?: boolean;
   footerContent?: React.ReactNode;
   onSave?: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
   className?: string;
@@ -83,6 +84,7 @@ const MultiPageDialogContent = React.forwardRef<
       trapFocusScope,
       isAlertDialog,
       showNavigation = true,
+      showHeaderNavigation = true,
       footerContent,
       onSave,
       className,
@@ -151,7 +153,7 @@ const MultiPageDialogContent = React.forwardRef<
           <DialogHeader hideButton={true} className="s-flex-none">
             <div className="s-flex s-items-center s-justify-between s-pr-8">
               <div className="s-flex s-items-center s-gap-3">
-                {showNavigation && (
+                {showNavigation && showHeaderNavigation && (
                   <div className="s-flex s-items-center s-gap-1">
                     <Button
                       icon={ChevronLeftIcon}
