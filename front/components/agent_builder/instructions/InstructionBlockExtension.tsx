@@ -9,10 +9,8 @@ import {
 } from "@tiptap/react";
 import React from "react";
 
-export type InstructionBlockType = "info" | "approach" | "tools";
-
 export interface InstructionBlockAttributes {
-  type: InstructionBlockType;
+  type: string;
 }
 
 declare module "@tiptap/core" {
@@ -21,19 +19,13 @@ declare module "@tiptap/core" {
       setInstructionBlock: (
         attributes: InstructionBlockAttributes
       ) => ReturnType;
-      insertInstructionBlock: (type: InstructionBlockType) => ReturnType;
+      insertInstructionBlock: (type: string) => ReturnType;
     };
   }
 }
 
 const InstructionBlockComponent: React.FC<NodeViewProps> = ({ node }) => {
   const { type } = node.attrs as InstructionBlockAttributes;
-
-  const labels: Record<InstructionBlockType, string> = {
-    info: "INFO",
-    approach: "APPROACH",
-    tools: "TOOLS",
-  };
 
   return (
     <NodeViewWrapper className="my-4">
@@ -43,7 +35,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({ node }) => {
             className="select-none text-sm font-semibold uppercase tracking-wider text-muted-foreground"
             contentEditable={false}
           >
-            {labels[type]}
+            {type.toUpperCase()}
           </span>
         </div>
         <div className="min-h-[3rem] rounded border border-border/50 bg-background p-3">
@@ -65,11 +57,9 @@ export const InstructionBlockExtension =
     addAttributes() {
       return {
         type: {
-          default: "info" as InstructionBlockType,
+          default: "info",
           parseHTML: (element) =>
-            (element.getAttribute(
-              "data-instruction-type"
-            ) as InstructionBlockType) || "info",
+            element.getAttribute("data-instruction-type") || "info",
           renderHTML: (attributes) => ({
             "data-instruction-type": attributes.type,
           }),
@@ -81,18 +71,6 @@ export const InstructionBlockExtension =
       return [
         {
           tag: "div[data-type='instruction-block']",
-        },
-        {
-          tag: "info",
-          getAttrs: () => ({ type: "info" }),
-        },
-        {
-          tag: "approach",
-          getAttrs: () => ({ type: "approach" }),
-        },
-        {
-          tag: "tools",
-          getAttrs: () => ({ type: "tools" }),
         },
       ];
     },
@@ -132,9 +110,9 @@ export const InstructionBlockExtension =
     addInputRules() {
       return [
         new InputRule({
-          find: /<(INFO|APPROACH|TOOLS)>$/,
+          find: /<(\w+)>$/,
           handler: ({ range, match, commands }) => {
-            const type = match[1].toLowerCase() as InstructionBlockType;
+            const type = match[1].toLowerCase();
 
             commands.insertContentAt(
               { from: range.from, to: range.to },
@@ -166,13 +144,13 @@ export const InstructionBlockExtension =
                 return;
               }
 
-              const regex = /<(INFO|APPROACH|TOOLS)>([\s\S]*?)<\/\1>/g;
+              const regex = /<(\w+)>([\s\S]*?)<\/\1>/g;
               let match;
 
               while ((match = regex.exec(node.text)) !== null) {
                 const matchStart = pos + match.index;
                 const matchEnd = matchStart + match[0].length;
-                const type = match[1].toLowerCase() as InstructionBlockType;
+                const type = match[1].toLowerCase();
                 const content = match[2].trim();
 
                 // Create paragraph nodes from content

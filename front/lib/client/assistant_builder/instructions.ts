@@ -47,7 +47,7 @@ export function plainTextFromTipTapContent(root: JSONContent): string {
 
 function parseInstructionBlocks(text: string): JSONContent[] {
   const content: JSONContent[] = [];
-  const instructionBlockRegex = /<(INFO|APPROACH|TOOLS)>([\s\S]*?)<\/\1>/gi;
+  const instructionBlockRegex = /<(\w+)>([\s\S]*?)<\/\1>/gi;
   let lastIndex = 0;
   let match;
 
@@ -65,7 +65,7 @@ function parseInstructionBlocks(text: string): JSONContent[] {
     }
 
     // Add the instruction block
-    const type = match[1].toLowerCase() as "info" | "approach" | "tools";
+    const type = match[1].toLowerCase();
     const blockContent = match[2].trim();
 
     // Parse content inside the block as paragraphs
