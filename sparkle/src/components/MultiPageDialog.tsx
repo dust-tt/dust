@@ -2,11 +2,10 @@ import { cva } from "class-variance-authority";
 import * as React from "react";
 import { useState } from "react";
 
-import { Button, Icon } from "@sparkle/components";
+import { Button, Icon, ScrollArea } from "@sparkle/components";
 import {
   Dialog,
   DialogClose,
-  DialogContainer,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -55,6 +54,7 @@ interface MultiPageDialogProps {
   trapFocusScope?: boolean;
   isAlertDialog?: boolean;
   showNavigation?: boolean;
+  showHeaderNavigation?: boolean;
   footerContent?: React.ReactNode;
   onSave?: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
   className?: string;
@@ -83,6 +83,7 @@ const MultiPageDialogContent = React.forwardRef<
       trapFocusScope,
       isAlertDialog,
       showNavigation = true,
+      showHeaderNavigation = true,
       footerContent,
       onSave,
       className,
@@ -151,7 +152,7 @@ const MultiPageDialogContent = React.forwardRef<
           <DialogHeader hideButton={true} className="s-flex-none">
             <div className="s-flex s-items-center s-justify-between s-pr-8">
               <div className="s-flex s-items-center s-gap-3">
-                {showNavigation && (
+                {showNavigation && showHeaderNavigation && (
                   <div className="s-flex s-items-center s-gap-1">
                     <Button
                       icon={ChevronLeftIcon}
@@ -218,7 +219,7 @@ const MultiPageDialogContent = React.forwardRef<
           </DialogHeader>
 
           <div className="s-min-h-0 s-flex-1 s-overflow-hidden">
-            <DialogContainer
+            <ScrollArea
               className={cn(
                 "s-h-full s-transition-all s-duration-200 s-ease-out",
                 {
@@ -231,8 +232,10 @@ const MultiPageDialogContent = React.forwardRef<
                 }
               )}
             >
-              {currentPage.content}
-            </DialogContainer>
+              <div className="s-flex s-flex-col s-gap-2 s-px-5 s-py-4">
+                {currentPage.content}
+              </div>
+            </ScrollArea>
           </div>
 
           <DialogFooter
