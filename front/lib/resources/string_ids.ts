@@ -88,7 +88,7 @@ export function makeSId(
   return sId;
 }
 
-function getIdsFromSId(sId: string): Result<
+export function getIdsFromSId(sId: string): Result<
   {
     workspaceModelId: ModelId;
     resourceModelId: ModelId;

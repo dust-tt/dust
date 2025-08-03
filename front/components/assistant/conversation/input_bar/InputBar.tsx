@@ -14,7 +14,11 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { DustError } from "@app/lib/error";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
-import { useConversation } from "@app/lib/swr/conversations";
+import {
+  useAddDeleteConversationTool,
+  useConversation,
+  useConversationTools,
+} from "@app/lib/swr/conversations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 import type {
@@ -39,7 +43,8 @@ interface AssistantInputBarProps {
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragments: ContentFragmentsType
+    contentFragments: ContentFragmentsType,
+    selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
@@ -185,23 +190,38 @@ export function AssistantInputBar({
   }, []);
 
   // Tools selection
-  const [selectedMCPServerViews, setSelectedMCPServerViews] = useState<
-    MCPServerViewType[]
+
+  const [selectedMCPServerViewIds, setSelectedMCPServerViewIds] = useState<
+    string[]
   >([]);
 
+  const { conversationTools } = useConversationTools({
+    conversationId,
+    workspaceId: owner.sId,
+  });
+
+  // The truth is in the conversationTools, we need to update the selectedMCPServerViewIds when the conversationTools change.
+  useEffect(() => {
+    setSelectedMCPServerViewIds(conversationTools.map((tool) => tool.sId));
+  }, [conversationTools]);
+
+  const { addTool, deleteTool } = useAddDeleteConversationTool({
+    conversationId,
+    workspaceId: owner.sId,
+  });
+
   const handleMCPServerViewSelect = (serverView: MCPServerViewType) => {
-    setSelectedMCPServerViews((prev) => {
-      if (prev.find((sv) => sv.sId === serverView.sId)) {
-        return prev;
-      }
-      return [...prev, serverView];
-    });
+    // Optimistic update
+    setSelectedMCPServerViewIds((prev) => [...prev, serverView.sId]);
+    void addTool(serverView.sId);
   };
 
   const handleMCPServerViewDeselect = (serverView: MCPServerViewType) => {
-    setSelectedMCPServerViews((prev) =>
-      prev.filter((sv) => sv.sId !== serverView.sId)
+    // Optimistic update
+    setSelectedMCPServerViewIds((prev) =>
+      prev.filter((sv) => sv !== serverView.sId)
     );
+    void deleteTool(serverView.sId);
   };
 
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
@@ -228,15 +248,22 @@ export function AssistantInputBar({
       setLoading(true);
       setDisableSendButton(true);
 
-      const r = await onSubmit(markdown, mentions, {
-        uploaded: fileUploaderService.getFileBlobs().map((cf) => {
-          return {
-            title: cf.filename,
-            fileId: cf.fileId,
-          };
-        }),
-        contentNodes: attachedNodes,
-      });
+      const r = await onSubmit(
+        markdown,
+        mentions,
+        {
+          uploaded: fileUploaderService.getFileBlobs().map((cf) => {
+            return {
+              title: cf.filename,
+              fileId: cf.fileId,
+            };
+          }),
+          contentNodes: attachedNodes,
+        },
+        // Only send the selectedMCPServerViewIds if we are creating a new conversation.
+        // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
+        selectedMCPServerViewIds
+      );
 
       setLoading(false);
       setDisableSendButton(false);
@@ -392,7 +419,7 @@ export function AssistantInputBar({
                 }
                 onNodeSelect={handleNodesAttachmentSelect}
                 onNodeUnselect={handleNodesAttachmentRemove}
-                selectedMCPServerViews={selectedMCPServerViews}
+                selectedMCPServerViewIds={selectedMCPServerViewIds}
                 onMCPServerViewSelect={handleMCPServerViewSelect}
                 onMCPServerViewDeselect={handleMCPServerViewDeselect}
                 attachedNodes={attachedNodes}
@@ -418,7 +445,8 @@ export function FixedAssistantInputBar({
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragments: ContentFragmentsType
+    contentFragments: ContentFragmentsType,
+    selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
   stickyMentions?: AgentMention[];
   conversationId: string | null;

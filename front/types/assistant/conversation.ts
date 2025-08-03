@@ -220,17 +220,6 @@ export type ConversationType = ConversationWithoutContentType & {
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
 };
 
-export type UserParticipant = {
-  username: string;
-  fullName: string | null;
-  pictureUrl: string | null;
-};
-export type AgentParticipant = {
-  configurationId: string;
-  name: string;
-  pictureUrl: string | null;
-};
-
 export type ParticipantActionType = "posted" | "reacted" | "subscribed";
 
 /**
@@ -250,8 +239,8 @@ export interface UserParticipantType {
 }
 
 export interface ConversationParticipantsType {
-  agents: AgentParticipant[];
-  users: UserParticipant[];
+  agents: AgentParticipantType[];
+  users: UserParticipantType[];
 }
 
 export const CONVERSATION_ERROR_TYPES = [
@@ -324,4 +313,16 @@ export type ConversationTitleEvent = {
   type: "conversation_title";
   created: number;
   title: string;
+};
+
+export type ConversationMCPServerViewType = {
+  id: ModelId;
+  sId: string;
+  workspaceId: ModelId;
+  conversationId: ModelId;
+  mcpServerViewId: ModelId;
+  userId: ModelId;
+  enabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 };

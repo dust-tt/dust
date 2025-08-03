@@ -111,7 +111,6 @@ async function main() {
 
   await ConversationModel.sync({ alter: true });
   await ConversationParticipantModel.sync({ alter: true });
-  await ConversationMCPServerViewModel.sync({ alter: true });
 
   await DataSourceModel.sync({ alter: true });
   await DataSourceViewModel.sync({ alter: true });
@@ -139,6 +138,8 @@ async function main() {
   await MCPServerViewModel.sync({ alter: true });
   await MCPServerConnection.sync({ alter: true });
   await RemoteMCPServerToolMetadataModel.sync({ alter: true });
+
+  await ConversationMCPServerViewModel.sync({ alter: true });
 
   await AgentMCPServerConfiguration.sync({ alter: true });
   await AgentTablesQueryConfigurationTable.sync({ alter: true });

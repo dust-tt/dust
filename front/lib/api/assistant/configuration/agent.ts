@@ -173,8 +173,11 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
 > {
   return tracer.trace("getAgentConfigurations", async () => {
     const owner = auth.workspace();
-    if (!owner || !auth.isUser()) {
+    if (!owner) {
       throw new Error("Unexpected `auth` without `workspace`.");
+    }
+    if (!auth.isUser()) {
+      throw new Error("Unexpected `auth` without `user`.");
     }
 
     const globalAgentIds = agentIds.filter(isGlobalAgentId);

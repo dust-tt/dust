@@ -603,6 +603,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "index_private_slack_channel"
   | "interactive_content_server"
   | "jira_tool"
+  | "jit_tools"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"

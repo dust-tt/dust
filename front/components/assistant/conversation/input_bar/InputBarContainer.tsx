@@ -33,6 +33,7 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -68,7 +69,7 @@ export interface InputBarContainerProps {
   attachedNodes: DataSourceViewContentNode[];
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
   onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
-  selectedMCPServerViews: MCPServerViewType[];
+  selectedMCPServerViewIds: string[];
 }
 
 const InputBarContainer = ({
@@ -87,8 +88,9 @@ const InputBarContainer = ({
   attachedNodes,
   onMCPServerViewSelect,
   onMCPServerViewDeselect,
-  selectedMCPServerViews,
+  selectedMCPServerViewIds,
 }: InputBarContainerProps) => {
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const [isExpanded, setIsExpanded] = useState(false);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
@@ -272,10 +274,10 @@ const InputBarContainer = ({
 
       <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-3 pr-3 sm:flex-col sm:border-0">
         <div className="flex items-center py-0 sm:py-3.5">
-          {actions.includes("tools") && (
+          {actions.includes("tools") && featureFlags.includes("jit_tools") && (
             <ToolsPicker
               owner={owner}
-              selectedMCPServerViews={selectedMCPServerViews}
+              selectedMCPServerViewIds={selectedMCPServerViewIds}
               onSelect={onMCPServerViewSelect}
               onDeselect={onMCPServerViewDeselect}
             />

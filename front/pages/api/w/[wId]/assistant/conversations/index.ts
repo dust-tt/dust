@@ -13,6 +13,7 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { ConversationMCPServerViewResource } from "@app/lib/resources/conversation_mcp_server_view_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
@@ -170,6 +171,31 @@ async function handler(
       }
 
       if (message) {
+        // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
+        if (
+          message.context.selectedMCPServerViewIds &&
+          featureFlags.includes("jit_tools")
+        ) {
+          const r =
+            await ConversationMCPServerViewResource.upsertByConversationAndMCPServerViewIds(
+              auth,
+              {
+                conversation,
+                mcpServerViewIds: message.context.selectedMCPServerViewIds,
+                enabled: true,
+              }
+            );
+          if (r.isErr()) {
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: "Failed to add MCP server views to conversation",
+              },
+            });
+          }
+        }
+
         // If a message was provided we do await for the message to be created before returning the
         // conversation along with the message.
         const messageRes = await postUserMessage(auth, {

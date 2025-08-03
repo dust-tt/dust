@@ -409,6 +409,33 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
   }
 
+  static async getMCPServerViewForGlobalSpace(
+    auth: Authenticator,
+    mcpServerId: string
+  ): Promise<MCPServerViewResource | null> {
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+    if (serverType === "internal") {
+      const views = await this.baseFetch(auth, {
+        where: {
+          serverType: "internal",
+          internalMCPServerId: mcpServerId,
+          vaultId: globalSpace.id,
+        },
+      });
+      return views[0] ?? null;
+    } else {
+      const views = await this.baseFetch(auth, {
+        where: {
+          serverType: "remote",
+          remoteMCPServerId: id,
+          vaultId: globalSpace.id,
+        },
+      });
+      return views[0] ?? null;
+    }
+  }
+
   public async updateOAuthUseCase(
     auth: Authenticator,
     oAuthUseCase: MCPOAuthUseCase

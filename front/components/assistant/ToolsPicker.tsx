@@ -27,7 +27,7 @@ import type { WorkspaceType } from "@app/types";
 
 interface ToolsPickerProps {
   owner: WorkspaceType;
-  selectedMCPServerViews: MCPServerViewType[];
+  selectedMCPServerViewIds: string[];
   onSelect: (serverView: MCPServerViewType) => void;
   onDeselect: (serverView: MCPServerViewType) => void;
   isLoading?: boolean;
@@ -35,7 +35,7 @@ interface ToolsPickerProps {
 
 export function ToolsPicker({
   owner,
-  selectedMCPServerViews,
+  selectedMCPServerViewIds,
   onSelect,
   onDeselect,
   isLoading = false,
@@ -44,13 +44,17 @@ export function ToolsPicker({
   const [isOpen, setIsOpen] = useState(false);
 
   const { spaces } = useSpaces({ workspaceId: owner.sId });
+  const globalSpaces = useMemo(
+    () => spaces.filter((s) => s.kind === "global"),
+    [spaces]
+  );
   const { serverViews: autoServerViews } = useInternalMCPServerViewsFromSpaces(
     owner,
-    spaces
+    globalSpaces
   );
   const { serverViews: manualServerViews } = useRemoteMCPServerViewsFromSpaces(
     owner,
-    spaces
+    globalSpaces
   );
 
   const filteredServerViews = useMemo(() => {
@@ -85,6 +89,7 @@ export function ToolsPicker({
           size={"xs"}
           tooltip="Tools"
           disabled={isLoading}
+          isSelect
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -100,7 +105,14 @@ export function ToolsPicker({
               onChange={setSearchText}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && filteredServerViews.length > 0) {
-                  //TODO: Implement tool selection
+                  const isSelected = selectedMCPServerViewIds.includes(
+                    filteredServerViews[0].sId
+                  );
+                  if (isSelected) {
+                    onDeselect(filteredServerViews[0]);
+                  } else {
+                    onSelect(filteredServerViews[0]);
+                  }
                   setSearchText("");
                   setIsOpen(false);
                 }
@@ -112,25 +124,23 @@ export function ToolsPicker({
       >
         {filteredServerViews.length > 0 ? (
           filteredServerViews.sort(mcpServerViewSortingFn).map((v) => {
-            const isSelected = !!selectedMCPServerViews.find(
-              (sv) => sv.sId === v.sId
-            );
+            const isSelected = selectedMCPServerViewIds.includes(v.sId);
             return (
               <DropdownMenuCheckboxItem
-                key={`assistant-picker-${v.sId}`}
+                key={`tools-picker-${v.sId}`}
                 icon={() => getAvatar(v.server, "xs")}
                 label={getMcpServerViewDisplayName(v)}
                 description={getMcpServerViewDescription(v)}
                 truncateText
                 checked={isSelected}
-                onClick={() => {
+                onClick={(e) => {
                   if (isSelected) {
                     onDeselect(v);
                   } else {
                     onSelect(v);
                   }
-                  setSearchText("");
-                  setIsOpen(false);
+                  e.stopPropagation();
+                  e.preventDefault();
                 }}
               />
             );

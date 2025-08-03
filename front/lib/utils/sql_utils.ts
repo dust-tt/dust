@@ -39,7 +39,7 @@ export function getInsertSQL(model: any, data: any) {
 
 function getCurrentTransaction(): Transaction | null {
   // We use CLS in tests to isolate tests in separate transactions.
-  // Transactions are created in itInTransaction and used implicitely by Sequelize thanks to CLS.
+  // Transactions are created in the global beforeEach and used implicitely by Sequelize thanks to CLS.
   // This return the current transaction in CLS.
   return (Sequelize as any)._cls?.get("transaction") || null;
 }
@@ -61,7 +61,7 @@ export async function withTransaction<T>(
   // Create new transaction if no transaction in CLS.
   if (process.env.NODE_ENV === "test") {
     throw new Error(
-      "No transaction provided and no transaction in CLS while running tests, this should not happen. Action: make sure to use it() in tests instead of it(), also you might want to avoid using beforeXXX() and afterXXX()."
+      "No transaction provided and no transaction in CLS while running tests, this should not happen."
     );
   }
 
