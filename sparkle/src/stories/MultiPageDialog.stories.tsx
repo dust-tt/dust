@@ -466,3 +466,127 @@ export const WithConditionalNavigation: Story = {
     );
   },
 };
+
+export const ScrollableContent: Story = {
+  render: () => {
+    const [currentPageId, setCurrentPageId] = useState("long-form");
+
+    const handleSave = () => {
+      alert("Long form submitted!");
+    };
+
+    const scrollablePages: MultiPageDialogPage[] = [
+      {
+        id: "long-form",
+        title: "Long Form Content",
+        description: "This page demonstrates scrollable content",
+        icon: DocumentTextIcon,
+        content: (
+          <div className="s-space-y-6">
+            <div>
+              <h3 className="s-mb-2 s-text-lg s-font-semibold">
+                Terms and Conditions
+              </h3>
+              <p className="s-text-sm s-text-muted-foreground">
+                This page contains a lot of content to demonstrate scrolling
+                functionality. The content should be scrollable within the
+                dialog area.
+              </p>
+            </div>
+
+            {Array.from({ length: 15 }, (_, i) => (
+              <div key={i} className="s-space-y-3">
+                <h4 className="s-text-md s-font-semibold">Section {i + 1}</h4>
+                <p className="s-text-sm s-text-muted-foreground">
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed
+                  do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+                  Ut enim ad minim veniam, quis nostrud exercitation ullamco
+                  laboris nisi ut aliquip ex ea commodo consequat. Duis aute
+                  irure dolor in reprehenderit in voluptate velit esse cillum
+                  dolore eu fugiat nulla pariatur.
+                </p>
+                <div className="s-space-y-2">
+                  <div>
+                    <label className="s-text-sm s-font-medium">
+                      Field {i + 1}
+                    </label>
+                    <input
+                      type="text"
+                      className="s-mt-1 s-w-full s-rounded-md s-border s-px-3 s-py-2"
+                      placeholder={`Enter value for field ${i + 1}`}
+                    />
+                  </div>
+                  {i % 3 === 0 && (
+                    <div>
+                      <label className="s-text-sm s-font-medium">
+                        Additional Notes
+                      </label>
+                      <textarea
+                        className="s-mt-1 s-w-full s-rounded-md s-border s-px-3 s-py-2"
+                        placeholder="Add any additional notes here..."
+                        rows={3}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            <div className="s-rounded-md s-border s-bg-blue-50 s-p-4">
+              <h4 className="s-mb-2 s-text-sm s-font-semibold s-text-blue-900">
+                Scroll Test Complete
+              </h4>
+              <p className="s-text-xs s-text-blue-700">
+                If you can see this message, the scrolling functionality is
+                working correctly! The dialog maintains its fixed height while
+                allowing the content to scroll.
+              </p>
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: "summary",
+        title: "Summary",
+        description: "Review your information",
+        icon: Cog6ToothIcon,
+        content: (
+          <div className="s-space-y-4">
+            <div>
+              <h3 className="s-mb-2 s-text-lg s-font-semibold">Form Summary</h3>
+              <p className="s-text-sm s-text-muted-foreground">
+                Thank you for testing the scrollable content functionality.
+              </p>
+            </div>
+            <div className="s-rounded-md s-border s-bg-green-50 s-p-3">
+              <p className="s-text-sm s-text-green-700">
+                ✓ Scrolling functionality verified
+              </p>
+              <p className="s-text-sm s-text-green-700">
+                ✓ Fixed dialog height maintained
+              </p>
+              <p className="s-text-sm s-text-green-700">
+                ✓ Content overflow handled properly
+              </p>
+            </div>
+          </div>
+        ),
+      },
+    ];
+
+    return (
+      <MultiPageDialog>
+        <MultiPageDialogTrigger asChild>
+          <Button label="Open Scrollable Content Dialog" />
+        </MultiPageDialogTrigger>
+        <MultiPageDialogContent
+          pages={scrollablePages}
+          currentPageId={currentPageId}
+          onPageChange={setCurrentPageId}
+          size="lg"
+          onSave={handleSave}
+        />
+      </MultiPageDialog>
+    );
+  },
+};

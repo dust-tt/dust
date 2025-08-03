@@ -2,11 +2,10 @@ import { cva } from "class-variance-authority";
 import * as React from "react";
 import { useState } from "react";
 
-import { Button, Icon } from "@sparkle/components";
+import { Button, Icon, ScrollArea } from "@sparkle/components";
 import {
   Dialog,
   DialogClose,
-  DialogContainer,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -220,7 +219,7 @@ const MultiPageDialogContent = React.forwardRef<
           </DialogHeader>
 
           <div className="s-min-h-0 s-flex-1 s-overflow-hidden">
-            <DialogContainer
+            <ScrollArea
               className={cn(
                 "s-h-full s-transition-all s-duration-200 s-ease-out",
                 {
@@ -233,8 +232,10 @@ const MultiPageDialogContent = React.forwardRef<
                 }
               )}
             >
-              {currentPage.content}
-            </DialogContainer>
+              <div className="s-flex s-flex-col s-gap-2 s-px-5 s-py-4">
+                {currentPage.content}
+              </div>
+            </ScrollArea>
           </div>
 
           <DialogFooter
