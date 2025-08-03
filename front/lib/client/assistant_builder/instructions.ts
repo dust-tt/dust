@@ -1,4 +1,10 @@
 import type { JSONContent } from "@tiptap/react";
+import {
+  parseInstructionBlockMatches,
+  createInstructionBlockNode,
+  textToParagraphNodes,
+  splitTextAroundBlocks,
+} from "@app/lib/client/assistant_builder/instructionBlockUtils";
 
 function serializeNodeToText(node: JSONContent): string {
   if (node.type === "instructionBlock") {
@@ -47,57 +53,19 @@ export function plainTextFromTipTapContent(root: JSONContent): string {
 
 function parseInstructionBlocks(text: string): JSONContent[] {
   const content: JSONContent[] = [];
-  const instructionBlockRegex = /<(\w+)>([\s\S]*?)<\/\1>/gi;
-  let lastIndex = 0;
-  let match;
+  const segments = splitTextAroundBlocks(text);
 
-  while ((match = instructionBlockRegex.exec(text)) !== null) {
-    // Add content before the instruction block as regular paragraphs
-    const beforeBlock = text.slice(lastIndex, match.index).trim();
-    if (beforeBlock) {
-      const lines = beforeBlock.split("\n");
-      content.push(
-        ...lines.map((l) => ({
-          type: "paragraph",
-          content: l.trim() ? [{ type: "text", text: l.trim() }] : [],
-        }))
-      );
+  segments.forEach((segment) => {
+    if (segment.type === 'text') {
+      // Add text as paragraphs
+      const paragraphs = textToParagraphNodes(segment.content);
+      content.push(...paragraphs);
+    } else if (segment.type === 'block' && segment.blockType) {
+      // Add instruction block
+      const blockNode = createInstructionBlockNode(segment.blockType, segment.content);
+      content.push(blockNode);
     }
-
-    // Add the instruction block
-    const type = match[1].toLowerCase();
-    const blockContent = match[2].trim();
-
-    // Parse content inside the block as paragraphs
-    const blockLines = blockContent.split("\n");
-    const blockParagraphs = blockLines.map((l) => ({
-      type: "paragraph",
-      content: l.trim() ? [{ type: "text", text: l.trim() }] : [],
-    }));
-
-    content.push({
-      type: "instructionBlock",
-      attrs: { type },
-      content:
-        blockParagraphs.length > 0
-          ? blockParagraphs
-          : [{ type: "paragraph", content: [] }],
-    });
-
-    lastIndex = instructionBlockRegex.lastIndex;
-  }
-
-  // Add remaining content as regular paragraphs
-  const remainingText = text.slice(lastIndex).trim();
-  if (remainingText) {
-    const lines = remainingText.split("\n");
-    content.push(
-      ...lines.map((l) => ({
-        type: "paragraph",
-        content: l.trim() ? [{ type: "text", text: l.trim() }] : [],
-      }))
-    );
-  }
+  });
 
   return content;
 }
