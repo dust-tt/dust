@@ -26,6 +26,7 @@ import { useRouter } from "next/router";
 import { useMemo } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { forceUserRole, showDebugTools } from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
@@ -50,6 +51,7 @@ export function UserMenu({
   });
 
   const sendNotification = useSendNotification();
+  const { setNavigationSelection } = usePersistedNavigationSelection();
 
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "builder" | "admin") => {
@@ -126,7 +128,10 @@ export function UserMenu({
                     key={org.id}
                     value={org.name}
                     onClick={async () => {
-                      if (org.externalId !== owner.sId) {
+                      if (org.externalId && org.externalId !== owner.sId) {
+                        await setNavigationSelection({
+                          lastWorkspaceId: org.externalId,
+                        });
                         await router.push(
                           `/api/workos/login?organizationId=${org.id}`
                         );
