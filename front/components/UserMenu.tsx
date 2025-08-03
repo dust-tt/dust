@@ -26,7 +26,6 @@ import { useRouter } from "next/router";
 import { useMemo } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { forceUserRole, showDebugTools } from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
@@ -51,7 +50,6 @@ export function UserMenu({
   });
 
   const sendNotification = useSendNotification();
-  const { setNavigationSelection } = usePersistedNavigationSelection();
 
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "builder" | "admin") => {
@@ -78,9 +76,7 @@ export function UserMenu({
 
   // Check if user has multiple workspaces
   const hasMultipleWorkspaces = useMemo(() => {
-    return (
-      "workspaces" in user && user.workspaces && user.workspaces.length > 1
-    );
+    return user.organizations && user.organizations.length > 1;
   }, [user]);
 
   return (
@@ -124,25 +120,21 @@ export function UserMenu({
           <>
             <DropdownMenuLabel label="Workspace" />
             <DropdownMenuRadioGroup value={owner.name}>
-              {"workspaces" in user &&
-                user.workspaces.map((w) => (
-                  <DropdownMenuRadioItem
-                    key={w.sId}
-                    value={w.name}
-                    onClick={async () => {
-                      await setNavigationSelection({
-                        lastWorkspaceId: w.sId,
-                      });
-                      if (w.id !== owner.id) {
-                        await router
-                          .push(`/w/${w.sId}/assistant/new`)
-                          .then(() => router.reload());
-                      }
-                    }}
-                  >
-                    {w.name}
-                  </DropdownMenuRadioItem>
-                ))}
+              {user.organizations.map((org) => (
+                <DropdownMenuRadioItem
+                  key={org.id}
+                  value={org.name}
+                  onClick={async () => {
+                    if (org.externalId !== owner.sId) {
+                      await router.push(
+                        `/api/workos/login?organizationId=${org.id}`
+                      );
+                    }
+                  }}
+                >
+                  {org.name}
+                </DropdownMenuRadioItem>
+              ))}
             </DropdownMenuRadioGroup>
           </>
         )}

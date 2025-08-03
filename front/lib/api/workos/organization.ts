@@ -59,7 +59,7 @@ export async function getOrCreateWorkOSOrganization(
     let organization = organizationRes.value;
     if (!organization) {
       organization = await getWorkOS().organizations.createOrganization({
-        name: `${workspace.name} - ${workspace.sId}`,
+        name: workspace.name,
         externalId: workspace.sId,
         metadata: {
           region: config.getCurrentRegion(),
@@ -213,7 +213,7 @@ export async function updateWorkOSOrganizationName(
     return new Ok(undefined);
   }
 
-  const newName = `${workspace.name} - ${workspace.sId}`;
+  const newName = workspace.name;
 
   if (organization.name === newName) {
     return new Ok(undefined);
