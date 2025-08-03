@@ -8,6 +8,9 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import React from "react";
+import { Slice, Fragment } from "@tiptap/pm/model";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import type { EditorView } from "@tiptap/pm/view";
 
 export interface InstructionBlockAttributes {
   type: string;
@@ -131,6 +134,96 @@ export const InstructionBlockExtension =
       return [
         new Plugin({
           key: new PluginKey("instructionBlockAutoConvert"),
+          props: {
+            handlePaste: (
+              view: EditorView,
+              event: ClipboardEvent,
+              slice: Slice
+            ) => {
+              const { state } = view;
+              const { schema, tr } = state;
+
+              // Get the text content from the slice
+              const textContent = slice.content.textBetween(
+                0,
+                slice.content.size,
+                "\n",
+                "\n"
+              );
+
+              // Check if there are any XML tags
+              const regex = /<(\w+)>([\s\S]*?)<\/\1>/g;
+              if (!regex.test(textContent)) {
+                return false; // Let default paste behavior handle it
+              }
+
+              // Parse the content and create nodes
+              const nodes: ProseMirrorNode[] = [];
+              let lastIndex = 0;
+              let match;
+
+              regex.lastIndex = 0; // Reset regex
+              while ((match = regex.exec(textContent)) !== null) {
+                // Add text before the XML tag as paragraphs
+                if (match.index > lastIndex) {
+                  const beforeText = textContent.slice(lastIndex, match.index);
+                  const lines = beforeText
+                    .split("\n")
+                    .filter((line) => line.trim());
+                  lines.forEach((line) => {
+                    nodes.push(
+                      schema.nodes.paragraph.create({}, [schema.text(line)])
+                    );
+                  });
+                }
+
+                // Process the XML tag
+                const type = match[1].toLowerCase();
+                const content = match[2].trim();
+
+                // Create paragraph nodes from content
+                const paragraphs = content.split("\n").map((line) => {
+                  const trimmedLine = line.trim();
+                  return schema.nodes.paragraph.create(
+                    {},
+                    trimmedLine ? [schema.text(trimmedLine)] : []
+                  );
+                });
+
+                const blockContent =
+                  paragraphs.length > 0
+                    ? paragraphs
+                    : [schema.nodes.paragraph.create()];
+
+                nodes.push(this.type.create({ type }, blockContent));
+
+                lastIndex = match.index + match[0].length;
+              }
+
+              // Add remaining text
+              if (lastIndex < textContent.length) {
+                const remainingText = textContent.slice(lastIndex);
+                const lines = remainingText
+                  .split("\n")
+                  .filter((line) => line.trim());
+                lines.forEach((line) => {
+                  nodes.push(
+                    schema.nodes.paragraph.create({}, [schema.text(line)])
+                  );
+                });
+              }
+
+              // Insert the nodes
+              const { from } = state.selection;
+              nodes.forEach((node, index) => {
+                const pos = tr.mapping.map(from);
+                tr.insert(pos, node);
+              });
+
+              view.dispatch(tr);
+              return true; // We handled the paste
+            },
+          },
           appendTransaction: (transactions, oldState, newState) => {
             if (!transactions.some((tr) => tr.docChanged)) {
               return null;
