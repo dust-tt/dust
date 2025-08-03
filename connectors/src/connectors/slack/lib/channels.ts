@@ -273,7 +273,9 @@ export const getChannels = cacheWithRedis(
   _getChannelsUncached,
   (slackClient, connectorId, joinedOnly) =>
     `slack-channels-${connectorId}-${joinedOnly}`,
-  5 * 60 * 1000
+  {
+    ttlMs: 5 * 60 * 1000,
+  }
 );
 
 async function _getChannelsUncached(
@@ -457,39 +459,6 @@ export async function migrateChannelsFromLegacyBotToNewBot(
       },
       "Migrating channel"
     );
-
-    // Surround with try/catch as the new scope might not always be available.
-    try {
-      // Leave the channel but keep it in the database as it's still use to be indexed.
-      const channelId = channel.id;
-
-      const res = await withSlackErrorHandling(() =>
-        slackClient.conversations.leave({
-          channel: channelId,
-        })
-      );
-
-      if (res.ok) {
-        childLogger.info(
-          {
-            channelId: channel.id,
-          },
-          "Left channel"
-        );
-      }
-
-      if (res.error) {
-        childLogger.error(
-          { error: res.error, channelId: channel.id },
-          "Could not leave channel"
-        );
-      }
-    } catch (error) {
-      childLogger.error(
-        { error, channelId: channel.id },
-        "Could not leave channel"
-      );
-    }
 
     // Join the new bot to the channel.
     const joinRes = await joinChannel(slackBotConnector.id, channel.id);

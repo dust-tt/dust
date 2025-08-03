@@ -12,25 +12,44 @@ import React from "react";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
-interface AddKnowledgeDropdownProps {
+interface MCPServerViewsKnowledgeDropdownProps {
   mcpServerViewsWithKnowledge: (MCPServerViewType & { label: string })[];
   onItemClick: (serverName: string) => void;
   isMCPServerViewsLoading: boolean;
+  selectedServerName?: string | null;
 }
 
-export function AddKnowledgeDropdown({
+export function MCPServerViewsKnowledgeDropdown({
   mcpServerViewsWithKnowledge = [],
   onItemClick,
   isMCPServerViewsLoading,
-}: AddKnowledgeDropdownProps) {
+  selectedServerName,
+}: MCPServerViewsKnowledgeDropdownProps) {
   const handleDropdownItemClick = (view: MCPServerViewType) => {
     onItemClick(view.server.name);
   };
 
+  const selectedView = selectedServerName
+    ? mcpServerViewsWithKnowledge.find(
+        (view) => view.server.name === selectedServerName
+      )
+    : null;
+
+  const icon =
+    selectedView && getAvatar(selectedView.server, "sm")
+      ? () => getAvatar(selectedView.server, "xs")
+      : BookOpenIcon;
+
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button label="Add knowledge" size="sm" icon={BookOpenIcon} isSelect />
+        <Button
+          variant="outline"
+          label={selectedView ? selectedView.label : "Select knowledge type"}
+          size="md"
+          icon={icon}
+          isSelect
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="md-w-100 w-80">
         {isMCPServerViewsLoading && (

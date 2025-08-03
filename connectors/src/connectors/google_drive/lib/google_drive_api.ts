@@ -66,7 +66,9 @@ const cachedGetGoogleDriveObject = cacheWithRedis<
   ({ driveObjectId, cacheKey }) => {
     return `${cacheKey.connectorId}:${driveObjectId}:${cacheKey.ts}`;
   },
-  60 * 10 * 1000
+  {
+    ttlMs: 60 * 10 * 1000,
+  }
 );
 
 export async function getGoogleDriveObject({

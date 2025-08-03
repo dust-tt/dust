@@ -293,9 +293,14 @@ export function useDraftConversation({
     }
   };
 
+  const resetConversation = useCallback(() => {
+    setConversation(null);
+  }, []);
+
   return {
     conversation,
     setConversation,
     handleSubmit,
+    resetConversation,
   };
 }

@@ -257,6 +257,7 @@ const Header = () => {
     <Head>
       <title>Accelerate your entire organization with custom AI agents</title>
       <link rel="shortcut icon" href="/static/favicon.png" />
+      <link rel="icon" type="image/png" href="/static/favicon.png" />
       <link
         rel="preload"
         href="/static/fonts/Geist-Regular.woff2"

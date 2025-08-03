@@ -270,11 +270,16 @@ export function useTryAssistantCore({
     setStickyMentions([{ configurationId: assistant?.sId as string }]);
   }, [assistant]);
 
+  const resetConversation = useCallback(() => {
+    setConversation(null);
+  }, []);
+
   return {
     stickyMentions,
     setStickyMentions,
     conversation,
     setConversation,
     handleSubmit,
+    resetConversation,
   };
 }

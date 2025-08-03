@@ -26,8 +26,11 @@ import type {
   PatchMCPServerResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/[serverId]";
 import type { SyncMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/sync";
-import type { GetMCPServerToolsPermissionsResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/tools";
-import type { PatchMCPServerToolsPermissionsResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/tools/[toolName]";
+import type { GetMCPServerToolsSettingsResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/tools";
+import type {
+  PatchMCPServerToolsPermissionsResponseBody,
+  UpdateMCPToolSettingsBodyType,
+} from "@app/pages/api/w/[wId]/mcp/[serverId]/tools/[toolName]";
 import type {
   GetConnectionsResponseBody,
   PostConnectionResponseBody,
@@ -667,79 +670,85 @@ export function useDeleteMCPServerConnection({
   return { deleteMCPServerConnection };
 }
 
-export function useMCPServerToolsPermissions({
+export function useMCPServerToolsSettings({
   owner,
   serverId,
 }: {
   owner: LightWorkspaceType;
   serverId: string;
 }) {
-  const toolsFetcher: Fetcher<GetMCPServerToolsPermissionsResponseBody> =
-    fetcher;
+  const toolsFetcher: Fetcher<GetMCPServerToolsSettingsResponseBody> = fetcher;
 
   const url = `/api/w/${owner.sId}/mcp/${serverId}/tools`;
 
   const { data, error, mutate } = useSWRWithDefaults(url, toolsFetcher);
 
-  const toolsPermissions = useMemo(
-    () => (data ? data.permissions : {}),
-    [data]
-  );
+  const toolsSettings = useMemo(() => (data ? data.toolsSettings : {}), [data]);
 
   return {
-    toolsPermissions,
-    isToolsPermissionsLoading: !error && !data,
-    isToolsPermissionsError: error,
-    mutateToolsPermissions: mutate,
+    toolsSettings,
+    isToolsSettingsLoading: !error && !data,
+    isToolsSettingsError: error,
+    mutateToolsSettings: mutate,
   };
 }
 
-export function useUpdateMCPServerToolsPermissions({
+export function useUpdateMCPServerToolsSettings({
   owner,
   serverId,
 }: {
   owner: LightWorkspaceType;
   serverId: string;
 }) {
-  const { mutateToolsPermissions } = useMCPServerToolsPermissions({
-    owner,
-    serverId,
-  });
+  const { mutateToolsSettings: mutateToolsSettings } =
+    useMCPServerToolsSettings({
+      owner,
+      serverId,
+    });
 
   const sendNotification = useSendNotification();
 
-  const updateToolPermission = async ({
+  const updateToolSettings = async ({
     toolName,
     permission,
+    enabled,
   }: {
     toolName: string;
     permission: MCPToolStakeLevelType;
+    enabled: boolean;
   }): Promise<PatchMCPServerToolsPermissionsResponseBody> => {
+    const body: UpdateMCPToolSettingsBodyType = {
+      permission,
+      enabled,
+    };
     const response = await fetch(
       `/api/w/${owner.sId}/mcp/${serverId}/tools/${toolName}`,
       {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ permission }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
       }
     );
-
     if (!response.ok) {
       const body = await response.json();
-      throw new Error(body.error?.message || "Failed to update permission");
+      throw new Error(
+        body.error?.message || "Failed to update MCP tool settings"
+      );
     }
 
     sendNotification({
       type: "success",
-      title: "Permission updated",
-      description: `The permission for ${toolName} has been updated.`,
+      title: "Settings updated",
+      description: `The settings for ${toolName} have been updated.`,
     });
 
-    void mutateToolsPermissions();
+    void mutateToolsSettings();
     return response.json();
   };
 
-  return { updateToolPermission };
+  return { updateToolSettings };
 }
 
 export function useCreatePersonalConnection(owner: LightWorkspaceType) {
@@ -856,6 +865,8 @@ const getOptimisticDataForCreate = (
             {
               id: -1, // The ID is not known at optimistic data creation time.
               sId: "global",
+              name: null,
+              description: null,
               createdAt: Date.now(),
               updatedAt: Date.now(),
               serverType: "internal" as const,

@@ -49,6 +49,7 @@ export async function renderConversationForModel(
     allowedTokenCount,
     excludeActions,
     excludeImages,
+    checkMissingActions = true,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -57,6 +58,7 @@ export async function renderConversationForModel(
     allowedTokenCount: number;
     excludeActions?: boolean;
     excludeImages?: boolean;
+    checkMissingActions?: boolean;
   }
 ): Promise<
   Result<
@@ -80,6 +82,7 @@ export async function renderConversationForModel(
         message: m,
         workspaceId: conversation.owner.sId,
         conversationId: conversation.sId,
+        checkMissingActions,
       });
 
       if (excludeActions) {
@@ -328,11 +331,13 @@ async function getSteps(
     message,
     workspaceId,
     conversationId,
+    checkMissingActions,
   }: {
     model: ModelConfigurationType;
     message: AgentMessageType;
     workspaceId: string;
     conversationId: string;
+    checkMissingActions: boolean;
   }
 ): Promise<Step[]> {
   const supportedModel = getSupportedModelConfig(model);
@@ -404,27 +409,30 @@ async function getSteps(
         for (const action of actions) {
           functionResultByCallId[action.call.id] = action.result;
         }
-        for (const content of step.contents) {
-          if (content.type === "function_call") {
-            const functionCall = content.value;
-            if (!functionResultByCallId[functionCall.id]) {
-              logger.warn(
-                {
-                  workspaceId,
-                  conversationId,
-                  agentMessageId: message.sId,
-                },
-                "Unexpected state, agent message step with no action for function call"
-              );
-              actions.push({
-                call: functionCall,
-                result: {
-                  role: "function",
-                  name: functionCall.name,
-                  function_call_id: functionCall.id,
-                  content: "Error: tool execution failed",
-                },
-              });
+        if (checkMissingActions) {
+          for (const content of step.contents) {
+            if (content.type === "function_call") {
+              const functionCall = content.value;
+              if (!functionResultByCallId[functionCall.id]) {
+                logger.warn(
+                  {
+                    workspaceId,
+                    conversationId,
+                    agentMessageId: message.sId,
+                    functionCallId: functionCall.id,
+                  },
+                  "Unexpected state, agent message step with no action for function call"
+                );
+                actions.push({
+                  call: functionCall,
+                  result: {
+                    role: "function",
+                    name: functionCall.name,
+                    function_call_id: functionCall.id,
+                    content: "Error: tool execution failed",
+                  },
+                });
+              }
             }
           }
         }

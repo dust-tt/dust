@@ -15,19 +15,15 @@ import type {
   AgentBuilderDataVizAction,
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities/AddKnowledgeDropdown";
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import { MCPConfigurationSheet } from "@app/components/agent_builder/capabilities/mcp/MCPConfigurationSheet";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
-import type {
-  AgentBuilderAction,
-  KnowledgeServerName,
-} from "@app/components/agent_builder/types";
+import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
   isDefaultActionName,
-  isKnowledgeServerName,
+  isSupportedAgentBuilderAction,
 } from "@app/components/agent_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
@@ -37,7 +33,6 @@ import {
   MCP_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import logger from "@app/logger/logger";
 import { asDisplayName } from "@app/types";
 
 function actionIcon(
@@ -200,7 +195,6 @@ export function AgentBuilderCapabilitiesBlock() {
   });
 
   const {
-    mcpServerViewsWithKnowledge,
     defaultMCPServerViews,
     nonDefaultMCPServerViews,
     isMCPServerViewsLoading,
@@ -210,7 +204,10 @@ export function AgentBuilderCapabilitiesBlock() {
     index: number;
   } | null>(null);
 
-  const [openSheet, setOpenSheet] = useState<KnowledgeServerName | null>(null);
+  const [isKnowledgeSheetOpen, setIsKnowledgeSheetOpen] = useState(false);
+
+  // TODO: Open single sheet for selected MCP action.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedAction, setSelectedAction] =
     useState<AgentBuilderAction | null>(null);
 
@@ -242,45 +239,30 @@ export function AgentBuilderCapabilitiesBlock() {
 
   const handleActionEdit = (action: AgentBuilderAction, index: number) => {
     setEditingAction({ action, index });
+    if (isSupportedAgentBuilderAction(action)) {
+      setIsKnowledgeSheetOpen(true);
+    }
 
-    switch (action.type) {
-      case "SEARCH":
-        setOpenSheet("search");
-        break;
-      case "INCLUDE_DATA":
-        setOpenSheet("include_data");
-        break;
-      case "EXTRACT_DATA":
-        setOpenSheet("extract_data");
-        break;
-      case "MCP":
-        setSelectedAction(action);
-        break;
+    if (action.type === "MCP") {
+      setSelectedAction(action);
     }
   };
 
   const handleCloseSheet = () => {
-    setOpenSheet(null);
     setEditingAction(null);
-  };
-
-  const handleKnowledgeAdd = (serverName: string) => {
-    setEditingAction(null);
-    if (isKnowledgeServerName(serverName)) {
-      setOpenSheet(serverName);
-    } else {
-      logger.warn({ serverName }, "Unknown knowledge server");
-    }
+    setIsKnowledgeSheetOpen(false);
   };
 
   const getAgentInstructions = () => getValues("instructions");
 
   const dropdownButtons = (
     <>
-      <AddKnowledgeDropdown
-        mcpServerViewsWithKnowledge={mcpServerViewsWithKnowledge}
-        onItemClick={handleKnowledgeAdd}
-        isMCPServerViewsLoading={isMCPServerViewsLoading}
+      <KnowledgeConfigurationSheet
+        onClose={handleCloseSheet}
+        onOpen={() => setIsKnowledgeSheetOpen(true)}
+        onSave={handleEditSave}
+        action={editingAction?.action}
+        open={isKnowledgeSheetOpen}
       />
       <AddToolsDropdown
         tools={fields}
@@ -339,15 +321,6 @@ export function AgentBuilderCapabilitiesBlock() {
           </CardGrid>
         )}
       </div>
-
-      <KnowledgeConfigurationSheet
-        capability={openSheet}
-        isOpen={openSheet !== null}
-        onClose={handleCloseSheet}
-        onSave={handleEditSave}
-        action={editingAction?.action}
-      />
-
       <MCPConfigurationSheet
         selectedAction={selectedAction}
         isOpen={selectedAction !== null}

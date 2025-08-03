@@ -18,10 +18,12 @@ export async function generatePlainTextFile(
     title,
     conversationId,
     content,
+    snippet,
   }: {
     title: string;
     conversationId: string;
     content: string;
+    snippet?: string;
   }
 ): Promise<FileResource> {
   const workspace = auth.getNonNullableWorkspace();
@@ -37,6 +39,7 @@ export async function generatePlainTextFile(
     useCaseMetadata: {
       conversationId,
     },
+    snippet,
   });
 
   await processAndStoreFile(auth, {

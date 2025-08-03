@@ -1,15 +1,45 @@
 import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import type {
+  DataSourceViewContentNode,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
 } from "@app/types";
 
 /**
+ * Creates a placeholder DataSourceViewContentNode with minimal information.
+ * The actual content node data will be resolved on the backend when this
+ * configuration is used.
+ */
+function getPlaceholderResource(
+  nodeId: string,
+  parentId: string | null,
+  dataSourceView: DataSourceViewType
+): DataSourceViewContentNode {
+  return {
+    internalId: nodeId,
+    parentInternalId: parentId,
+    parentInternalIds: parentId ? [parentId] : null,
+    parentTitle: null,
+    title: nodeId,
+    type: "document",
+    mimeType: "application/octet-stream",
+    lastUpdatedAt: null,
+    expandable: false,
+    permission: "read",
+    providerVisibility: null,
+    sourceUrl: null,
+    preventSelection: false,
+    dataSourceView,
+  };
+}
+
+/**
  * Transforms DataSourceBuilderTreeType to DataSourceViewSelectionConfigurations
  *
  * This creates a simplified transformation that works with the path structure
- * used in the tree. Since we don't have access to all nodes at save time,
- * we create placeholder configurations that will be properly resolved on the backend.
+ * used in the tree. For paths that represent full data source selections,
+ * we set isSelectAll=true. For specific node selections, we create minimal
+ * resource entries that will be expanded on the backend.
  */
 export function transformTreeToSelectionConfigurations(
   tree: DataSourceBuilderTreeType,
@@ -17,10 +47,11 @@ export function transformTreeToSelectionConfigurations(
 ): DataSourceViewSelectionConfigurations {
   const configurations: DataSourceViewSelectionConfigurations = {};
 
-  // Create a map for efficient lookup
   const dataSourceViewMap = new Map(
     dataSourceViews.map((dsv) => [dsv.sId, dsv])
   );
+
+  const existingResourcesMap = new Map<string, Set<string>>();
 
   // Parse the tree paths to extract data source configurations
   for (const path of tree.in) {
@@ -29,15 +60,22 @@ export function transformTreeToSelectionConfigurations(
       continue;
     }
 
-    // Find the data source view ID in the path
-    const dsvIdIndex = parts.findIndex(isDataSourceViewId);
+    // Find the data source view ID in the path - optimize with early break
+    let dsvIdIndex = -1;
+    let dsvId = "";
+    for (let i = 1; i < parts.length; i++) {
+      if (isDataSourceViewId(parts[i])) {
+        dsvIdIndex = i;
+        dsvId = parts[i];
+        break;
+      }
+    }
+
     if (dsvIdIndex === -1) {
       continue;
     }
 
-    const dsvId = parts[dsvIdIndex];
     const dataSourceView = dataSourceViewMap.get(dsvId);
-
     if (!dataSourceView || dataSourceView.spaceId !== parts[1]) {
       continue;
     }
@@ -45,6 +83,7 @@ export function transformTreeToSelectionConfigurations(
     // Check if this is a full data source selection or specific nodes
     const isFullDataSource = dsvIdIndex === parts.length - 1;
 
+    // Initialize configuration if not exists
     if (!configurations[dataSourceView.sId]) {
       configurations[dataSourceView.sId] = {
         dataSourceView,
@@ -52,11 +91,28 @@ export function transformTreeToSelectionConfigurations(
         isSelectAll: isFullDataSource,
         tagsFilter: null,
       };
+      existingResourcesMap.set(dataSourceView.sId, new Set<string>());
     }
 
-    // If it's not a full data source selection, mark as partial
-    if (!isFullDataSource && !configurations[dataSourceView.sId].isSelectAll) {
+    // If it's not a full data source selection, extract the selected nodes
+    if (!isFullDataSource) {
       configurations[dataSourceView.sId].isSelectAll = false;
+
+      // Extract node information from the path
+      const nodeIds = parts.slice(dsvIdIndex + 1);
+      if (nodeIds.length > 0) {
+        const nodeId = nodeIds[nodeIds.length - 1]; // Last part is the selected node
+        const parentId =
+          nodeIds.length > 1 ? nodeIds[nodeIds.length - 2] : null;
+
+        const existingResources = existingResourcesMap.get(dataSourceView.sId)!;
+        if (!existingResources.has(nodeId)) {
+          existingResources.add(nodeId);
+          configurations[dataSourceView.sId].selectedResources.push(
+            getPlaceholderResource(nodeId, parentId, dataSourceView)
+          );
+        }
+      }
     }
   }
 

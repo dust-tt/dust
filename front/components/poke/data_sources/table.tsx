@@ -25,11 +25,9 @@ export function DataSourceDataTable({ owner }: DataSourceDataTableProps) {
       owner={owner}
       useSWRHook={usePokeDataSources}
     >
-      {(data, mutate) => (
+      {(data) => (
         <PokeDataTable
-          columns={makeColumnsForDataSources(owner, async () => {
-            await mutate();
-          })}
+          columns={makeColumnsForDataSources(owner)}
           data={prepareDataSourceForDisplay(data)}
         />
       )}

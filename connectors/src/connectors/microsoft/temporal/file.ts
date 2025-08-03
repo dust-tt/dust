@@ -474,7 +474,9 @@ const getParentId = cacheWithRedis(
   },
   (connectorId, internalId, startSyncTs) =>
     `microsoft-${connectorId}-parent-${internalId}-syncms-${startSyncTs}`,
-  PARENT_SYNC_CACHE_TTL_MS
+  {
+    ttlMs: PARENT_SYNC_CACHE_TTL_MS,
+  }
 );
 
 export async function deleteFolder({

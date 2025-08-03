@@ -96,7 +96,7 @@ export interface ZendeskFetchedTicket {
   group_id: number;
   has_incidents: boolean;
   id: number;
-  organization_id: number;
+  organization_id: number | null;
   priority: string;
   problem_id: number;
   raw_subject: string;
@@ -177,4 +177,21 @@ export interface ZendeskFetchedUser {
   updated_at: string; // ISO 8601 date string
   url: string;
   verified: boolean;
+}
+
+export interface ZendeskFetchedOrganization {
+  id: number;
+  url: string;
+  external_id: string;
+  name: string;
+  domain_names: string[];
+  created_at: string;
+  details: string;
+  shared_comments: boolean;
+  shared_tickets: boolean;
+  tags: string[];
+  group_id: number | null;
+  notes: string | null;
+  organization_fields: Record<string, string | number | boolean>;
+  shared_brand_assets: boolean;
 }

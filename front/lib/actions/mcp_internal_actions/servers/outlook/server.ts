@@ -8,38 +8,42 @@ import {
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
-interface OutlookEmailAddress {
-  address: string;
-  name?: string;
-}
+const OutlookEmailAddressSchema = z.object({
+  address: z.string(),
+  name: z.string().optional(),
+});
 
-interface OutlookRecipient {
-  emailAddress: OutlookEmailAddress;
-}
+const OutlookRecipientSchema = z.object({
+  emailAddress: OutlookEmailAddressSchema,
+});
 
-interface OutlookMessage {
-  id: string;
-  conversationId?: string;
-  subject?: string;
-  bodyPreview?: string;
-  importance?: string;
-  receivedDateTime?: string;
-  sentDateTime?: string;
-  hasAttachments?: boolean;
-  isDraft?: boolean;
-  isRead?: boolean;
-  from?: OutlookRecipient;
-  toRecipients?: OutlookRecipient[];
-  ccRecipients?: OutlookRecipient[];
-  bccRecipients?: OutlookRecipient[];
-  body?: {
-    contentType: "text" | "html";
-    content: string;
-  };
-  parentFolderId?: string;
-  conversationIndex?: string;
-  internetMessageId?: string;
-}
+const OutlookMessageSchema = z.object({
+  id: z.string(),
+  conversationId: z.string().optional(),
+  subject: z.string().optional(),
+  bodyPreview: z.string().optional(),
+  importance: z.string().optional(),
+  receivedDateTime: z.string().optional(),
+  sentDateTime: z.string().optional(),
+  hasAttachments: z.boolean().optional(),
+  isDraft: z.boolean().optional(),
+  isRead: z.boolean().optional(),
+  from: OutlookRecipientSchema.optional(),
+  toRecipients: z.array(OutlookRecipientSchema).optional(),
+  ccRecipients: z.array(OutlookRecipientSchema).optional(),
+  bccRecipients: z.array(OutlookRecipientSchema).optional(),
+  body: z
+    .object({
+      contentType: z.string().default("text"),
+      content: z.string(),
+    })
+    .optional(),
+  parentFolderId: z.string().optional(),
+  conversationIndex: z.string().optional(),
+  internetMessageId: z.string().optional(),
+});
+
+type OutlookMessage = z.infer<typeof OutlookMessageSchema>;
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "outlook",
@@ -216,11 +220,12 @@ const createServer = (): McpServer => {
         .describe("The email addresses to BCC"),
       subject: z.string().describe("The subject line of the email"),
       contentType: z
-        .enum(["text", "html"])
+        .string()
+        .default("text")
         .describe("The content type of the email (text or html)."),
       body: z.string().describe("The body of the email"),
       importance: z
-        .enum(["low", "normal", "high"])
+        .string()
         .optional()
         .describe("The importance level of the email"),
     },
@@ -333,7 +338,7 @@ const createServer = (): McpServer => {
       messageId: z.string().describe("The ID of the message to reply to"),
       body: z.string().describe("The body of the reply email"),
       contentType: z
-        .enum(["text", "html"])
+        .string()
         .optional()
         .describe(
           "The content type of the email (text or html). Defaults to html."
