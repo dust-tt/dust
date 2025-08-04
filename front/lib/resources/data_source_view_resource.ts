@@ -23,7 +23,6 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
@@ -35,6 +34,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   ConversationType,
@@ -129,7 +129,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     editedByUser?: UserResource | null,
     transaction?: Transaction
   ) {
-    const createDataSourceAndView = async (t: Transaction) => {
+    return withTransaction(async (t: Transaction) => {
       const dataSource = await DataSourceResource.makeNew(
         blob,
         space,
@@ -142,13 +142,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         editedByUser?.toJSON(),
         t
       );
-    };
-
-    if (transaction) {
-      return createDataSourceAndView(transaction);
-    }
-
-    return frontSequelize.transaction(createDataSourceAndView);
+    }, transaction);
   }
 
   static async createViewInSpaceFromDataSource(
