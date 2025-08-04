@@ -230,19 +230,27 @@ export const ADFMarkSchema = z.object({
   attrs: z.record(z.any()).optional(),
 });
 
+export type ADFMark = z.infer<typeof ADFMarkSchema>;
+
 export const ADFTextNodeSchema = z.object({
   type: z.literal("text"),
   text: z.string(),
   marks: z.array(ADFMarkSchema).optional(),
 });
 
+export type ADFTextNode = z.infer<typeof ADFTextNodeSchema>;
+
 export const ADFHardBreakNodeSchema = z.object({
   type: z.literal("hardBreak"),
 });
 
+export type ADFHardBreakNode = z.infer<typeof ADFHardBreakNodeSchema>;
+
 export const ADFRuleNodeSchema = z.object({
   type: z.literal("rule"),
 });
+
+export type ADFRuleNode = z.infer<typeof ADFRuleNodeSchema>;
 
 // Base content node with recursive structure
 export const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
@@ -292,11 +300,15 @@ export const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
   ])
 );
 
+export type ADFContentNode = z.infer<typeof ADFContentNodeSchema>;
+
 export const ADFDocumentSchema = z.object({
   type: z.literal("doc"),
   version: z.literal(1),
   content: z.array(ADFContentNodeSchema).optional(),
 });
+
+export type ADFDocument = z.infer<typeof ADFDocumentSchema>;
 
 export const JiraCreateIssueRequestSchema = JiraIssueFieldsSchema.partial({
   description: true,
@@ -445,6 +457,8 @@ export const JiraUserSchema = z.object({
   active: z.boolean(),
 });
 
+export type JiraUser = z.infer<typeof JiraUserSchema>;
+
 export const JiraUsersSearchResultSchema = z.array(JiraUserSchema);
 
 // JIRA Comment schema (defined after ADF schemas to avoid circular dependency)
@@ -473,10 +487,3 @@ export type JiraIssueLinkType = z.infer<typeof JiraIssueLinkTypeSchema>;
 export type JiraCreateIssueLinkRequest = z.infer<
   typeof JiraCreateIssueLinkRequestSchema
 >;
-export type JiraUser = z.infer<typeof JiraUserSchema>;
-export type ADFDocument = z.infer<typeof ADFDocumentSchema>;
-export type ADFContentNode = z.infer<typeof ADFContentNodeSchema>;
-export type ADFTextNode = z.infer<typeof ADFTextNodeSchema>;
-export type ADFMark = z.infer<typeof ADFMarkSchema>;
-export type ADFHardBreakNode = z.infer<typeof ADFHardBreakNodeSchema>;
-export type ADFRuleNode = z.infer<typeof ADFRuleNodeSchema>;
