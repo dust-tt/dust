@@ -5,7 +5,6 @@ struct LoginView: View {
   @Binding var workspaceIdInput: String
   @Binding var showingError: Bool
   @Binding var errorMessage: String
-  @Binding var showingSuccess: Bool
   let onLogin: () -> Void
   let onCancel: () -> Void
 
@@ -48,11 +47,6 @@ struct LoginView: View {
     } message: {
       Text(errorMessage)
     }
-    .alert("Login Successful", isPresented: $showingSuccess) {
-      Button("OK") {}
-    } message: {
-      Text("Successfully logged in to Dust!")
-    }
   }
 }
 
@@ -62,7 +56,6 @@ struct LoginView: View {
     workspaceIdInput: .constant(""),
     showingError: .constant(false),
     errorMessage: .constant(""),
-    showingSuccess: .constant(false),
     onLogin: {},
     onCancel: {}
   )

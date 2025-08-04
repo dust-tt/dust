@@ -10,7 +10,7 @@ struct ContentView: View {
   @State private var isSetupComplete = false
   @State private var showingLoginError = false
   @State private var loginErrorMessage = ""
-  @State private var showingLoginSuccess = false
+  @State private var showLoginSuccessMessage = false
 
   var body: some View {
     VStack(spacing: 8) {
@@ -38,10 +38,17 @@ struct ContentView: View {
       Divider()
 
       if isLoggedIn {
-        Label("Logged in", systemImage: "checkmark.circle.fill")
-          .font(.caption)
-          .foregroundColor(.green)
-          .labelStyle(.titleAndIcon)
+        if showLoginSuccessMessage {
+          Label("Login successful!", systemImage: "checkmark.circle.fill")
+            .font(.caption)
+            .foregroundColor(.green)
+            .labelStyle(.titleAndIcon)
+        } else {
+          Label("Logged in", systemImage: "checkmark.circle.fill")
+            .font(.caption)
+            .foregroundColor(.green)
+            .labelStyle(.titleAndIcon)
+        }
 
         if isSetupComplete {
           if let folder = UserDefaultsManager.shared.loadSelectedFolder() {
@@ -137,8 +144,7 @@ struct ContentView: View {
 
     // Validate API key format
     guard apiKeyInput.hasPrefix("sk-") else {
-      loginErrorMessage =
-        "Invalid API key format. API keys must start with 'sk-'"
+      loginErrorMessage = "Invalid API key format"
       showingLoginError = true
       completion(false)
       return
@@ -151,7 +157,7 @@ struct ContentView: View {
           apiKey: apiKeyInput,
           workspaceId: workspaceIdInput
         )
-        
+
         // If we get here, credentials are valid - save them
         await MainActor.run {
           if UserDefaultsManager.shared.saveAPIKey(apiKeyInput)
@@ -165,11 +171,16 @@ struct ContentView: View {
             apiKeyInput = ""
             workspaceIdInput = ""
             checkSetupStatus()
-            showingLoginSuccess = true
+            showLoginSuccessMessage = true
             print("Credentials validated and saved successfully")
             completion(true)
+
+            // Hide success message after 3 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+              showLoginSuccessMessage = false
+            }
           } else {
-            loginErrorMessage = "Failed to save credentials. Please try again."
+            loginErrorMessage = "Failed to save credentials"
             showingLoginError = true
             completion(false)
           }
@@ -177,9 +188,9 @@ struct ContentView: View {
       } catch {
         await MainActor.run {
           if let dustError = error as? DustAPIError {
-            loginErrorMessage = dustError.localizedDescription
+            loginErrorMessage = dustError.message
           } else {
-            loginErrorMessage = "Failed to validate credentials: \(error.localizedDescription)"
+            loginErrorMessage = "Login failed"
           }
           showingLoginError = true
           completion(false)
@@ -214,7 +225,6 @@ struct ContentView: View {
         workspaceIdInput: $workspaceIdInput,
         showingError: $showingLoginError,
         errorMessage: $loginErrorMessage,
-        showingSuccess: $showingLoginSuccess,
         onLogin: {
           login { success in
             if success {

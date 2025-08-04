@@ -49,23 +49,19 @@ struct DustAPIError: Error, LocalizedError {
   let statusCode: Int?
 
   var errorDescription: String? {
-    if let statusCode = statusCode {
-      return "Dust API Error (\(statusCode)): \(message)"
-    } else {
-      return "Dust API Error: \(message)"
-    }
+    return message
   }
 
   static let invalidCredentials = DustAPIError(
-    message: "Invalid API key or workspace ID",
+    message: "Invalid credentials",
     statusCode: 401
   )
   static let networkError = DustAPIError(
-    message: "Network connection failed",
+    message: "Connection failed",
     statusCode: nil
   )
   static let decodingError = DustAPIError(
-    message: "Failed to parse API response",
+    message: "Invalid response",
     statusCode: nil
   )
 }
