@@ -269,7 +269,7 @@ export type ConfigurationSheetPageId =
   (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
 
 export type ConfigurationPagePageId =
-  (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
+  (typeof CONFIGURATION_DIALOG_PAGE_IDS)[keyof typeof CONFIGURATION_DIALOG_PAGE_IDS];
 
 // Zod validation schema for data source configuration - defines the contract/shape
 export const dataSourceConfigurationSchema = z.object({

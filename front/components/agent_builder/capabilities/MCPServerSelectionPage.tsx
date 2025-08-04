@@ -1,4 +1,4 @@
-import { BookOpenIcon, Card, Icon, Spinner } from "@dust-tt/sparkle";
+import { Avatar, BookOpenIcon, Card, Icon } from "@dust-tt/sparkle";
 import { ActionIcons } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { TrashIcon } from "@dust-tt/sparkle";
@@ -7,9 +7,11 @@ import { SearchInput } from "@dust-tt/sparkle";
 import React from "react";
 
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
+import type { ActionSpecification } from "@app/components/agent_builder/types";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { isCustomServerIconType } from "@app/lib/actions/mcp_icons";
 import { InternalActionIcons } from "@app/lib/actions/mcp_icons";
+import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { MCPServerViewTypeType } from "@app/lib/api/mcp";
 
@@ -28,43 +30,73 @@ const McpServerViewTypeMatch: Record<
 
 interface MCPServerSelectionPageProps {
   mcpServerViews: MCPServerViewTypeWithLabel[];
-  onItemClick: (serverName: string) => void;
-  isMCPServerViewsLoading: boolean;
+  onItemClick: (mcpServerView: MCPServerViewType) => void;
   selectedServers: MCPServerViewType[];
+  dataVisualization?: ActionSpecification | null;
+  onDataVisualizationClick?: () => void;
 }
 
 export function MCPServerSelectionPage({
   mcpServerViews = [],
   onItemClick,
-  isMCPServerViewsLoading,
   selectedServers,
+  dataVisualization,
+  onDataVisualizationClick,
 }: MCPServerSelectionPageProps) {
   const [filteredServerViews, setFilteredServerViews] =
     React.useState<MCPServerViewTypeWithLabel[]>(mcpServerViews);
+  const [showDataVisualization, setShowDataVisualization] =
+    React.useState(true);
+
+  React.useEffect(() => {
+    setFilteredServerViews(mcpServerViews);
+  }, [mcpServerViews]);
   const [filter, setFilter] = React.useState<McpToolsFilterType>("All tools");
   const [searchTerm, setSearchTerm] = React.useState("");
 
-  if (isMCPServerViewsLoading) {
-    return (
-      <div className="flex h-40 w-full items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
+  const applyFiltersAndSearch = (
+    newFilter?: string,
+    newSearchTerm?: string
+  ) => {
+    const filterToUse = newFilter ?? filter;
+    const searchToUse = newSearchTerm ?? searchTerm;
+    const serverTypeMatch = McpServerViewTypeMatch[filterToUse];
 
-  const handleFilterClick = (filter: string) => {
-    setFilter(filter);
-    const m = McpServerViewTypeMatch[filter];
-    setFilteredServerViews(
-      mcpServerViews.filter((v) => m.includes(v.serverType))
+    let filtered = mcpServerViews.filter((v) =>
+      serverTypeMatch.includes(v.serverType)
     );
+
+    if (searchToUse.trim()) {
+      const searchTermLower = searchToUse.toLowerCase();
+      filtered = filtered.filter(
+        (view) =>
+          view.label.toLowerCase().includes(searchTermLower) ||
+          view.description?.toLowerCase().includes(searchTermLower) ||
+          view.name?.toLowerCase().includes(searchTermLower)
+      );
+
+      setShowDataVisualization(
+        dataVisualization?.label.toLowerCase().includes(searchTermLower) ||
+          dataVisualization?.description
+            ?.toLowerCase()
+            .includes(searchTermLower) ||
+          false
+      );
+    } else {
+      setShowDataVisualization(true);
+    }
+
+    setFilteredServerViews(filtered);
+  };
+
+  const handleFilterClick = (newFilter: string) => {
+    setFilter(newFilter);
+    applyFiltersAndSearch(newFilter);
   };
 
   const handleSearchTermChange = (term: string) => {
     setSearchTerm(term);
-    setFilteredServerViews(
-      mcpServerViews.filter((v) => v.name?.startsWith(term))
-    );
+    applyFiltersAndSearch(undefined, term);
   };
 
   return (
@@ -87,6 +119,38 @@ export function MCPServerSelectionPage({
       </div>
       <h2 className="text-lg font-semibold">Capabilities</h2>
       <div className="grid grid-cols-2 gap-4">
+        {dataVisualization &&
+          onDataVisualizationClick &&
+          showDataVisualization && (
+            <Card
+              key="data-visualization"
+              variant="primary"
+              onClick={onDataVisualizationClick}
+            >
+              <div className="flex w-full flex-col gap-1 text-sm">
+                <div className="mb-2 flex items-center gap-2">
+                  <Avatar
+                    icon={DATA_VISUALIZATION_SPECIFICATION.dropDownIcon}
+                    size="sm"
+                  />
+                  <span className="text-sm font-medium">
+                    {dataVisualization.label}
+                  </span>
+                </div>
+                <div className="line-clamp-2 w-full text-xs text-gray-600">
+                  {dataVisualization.description}
+                </div>
+                <div>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    icon={PlusIcon}
+                    label="Add"
+                  />
+                </div>
+              </div>
+            </Card>
+          )}
         {filteredServerViews.map((view) => {
           const isSelected = selectedServers
             .map((s) => s.name)
@@ -96,7 +160,7 @@ export function MCPServerSelectionPage({
             <Card
               key={view.id}
               variant={isSelected ? "secondary" : "primary"}
-              onClick={() => onItemClick(view.server.name)}
+              onClick={() => onItemClick(view)}
             >
               <div className="flex w-full flex-col gap-1 text-sm">
                 <div className="mb-2 flex items-center gap-2">

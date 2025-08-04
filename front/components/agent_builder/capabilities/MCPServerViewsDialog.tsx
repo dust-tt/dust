@@ -3,9 +3,11 @@ import { Button } from "@dust-tt/sparkle";
 import { LightbulbIcon } from "@dust-tt/sparkle";
 import { MultiPageDialog, MultiPageDialogTrigger } from "@dust-tt/sparkle";
 import { MultiPageDialogContent } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import is from "@sindresorhus/is";
 import { uniqueId } from "lodash";
 import { useState } from "react";
+import React from "react";
 import type { FieldArrayWithId } from "react-hook-form";
 import type { UseFieldArrayAppend } from "react-hook-form";
 
@@ -56,15 +58,9 @@ export function MCPServerViewsDialog({
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
 
-  const [searchText, setSearchText] = useState("");
-  const [filteredServerViews, setFilteredServerViews] = useState([
-    ...defaultMCPServerViews,
-    ...nonDefaultMCPServerViews,
-  ]);
   const [currentPageId, setCurrentPageId] = useState<ConfigurationPagePageId>(
     CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION
   );
-  const [filteredDataViz, setFilteredDataViz] = useState(dataVisualization);
 
   const { spaces } = useSpacesContext();
 
@@ -134,36 +130,6 @@ export function MCPServerViewsDialog({
     }
   }
 
-  function onChangeSearchText(text: string) {
-    setSearchText(text);
-    const searchTerm = text.toLowerCase();
-    setFilteredServerViews(
-      [...defaultMCPServerViews, ...nonDefaultMCPServerViews].filter(
-        (view) =>
-          view.label.toLowerCase().includes(searchTerm) ||
-          view.description?.toLowerCase().includes(searchTerm)
-      )
-    );
-
-    setFilteredDataViz(() =>
-      dataVisualization?.label.toLowerCase().includes(searchTerm)
-        ? dataVisualization
-        : null
-    );
-  }
-
-  function onOpenChange(open: boolean) {
-    if (!open) {
-      // Delay slightly to avoid flickering when the dropdown is closed.
-      // TODO: use onAnimationEnd to avoid this hack.
-      setTimeout(() => {
-        setSearchText("");
-        setFilteredServerViews([]);
-        setFilteredDataViz(null);
-      }, 200);
-    }
-  }
-
   const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, CONFIGURATION_DIALOG_PAGE_IDS)) {
       setCurrentPageId(pageId);
@@ -176,12 +142,20 @@ export function MCPServerViewsDialog({
       title: "Add tools",
       description: "",
       icon: undefined,
-      content: (
+      content: isMCPServerViewsLoading ? (
+        <div className="flex h-40 w-full items-center justify-center">
+          <Spinner />
+        </div>
+      ) : (
         <MCPServerSelectionPage
-          isMCPServerViewsLoading={isMCPServerViewsLoading}
-          mcpServerViews={filteredServerViews}
-          onItemClick={() => console.log("")}
+          mcpServerViews={[
+            ...defaultMCPServerViews,
+            ...nonDefaultMCPServerViews,
+          ]}
+          onItemClick={onClickMCPServer}
           selectedServers={[]}
+          dataVisualization={dataVisualization}
+          onDataVisualizationClick={onClickDataVisualization}
         />
       ),
     },
@@ -196,7 +170,7 @@ export function MCPServerViewsDialog({
         showNavigation={false}
         size="xl"
         pages={pages}
-        currentPageId={CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION}
+        currentPageId={currentPageId}
         onPageChange={handlePageChange}
       />
     </MultiPageDialog>
