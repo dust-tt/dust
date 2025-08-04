@@ -114,6 +114,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   async_loop: {
     description: "Asynchronous loop for conversation processing",
   },
+  agent_management_tool: {
+    description: "MCP tool for creating and managing agent configurations",
+  },
 } as const;
 
 export const WHITELISTABLE_FEATURES = Object.keys(

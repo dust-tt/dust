@@ -10,6 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import { MCPAgentManagementActionDetails } from "@app/components/actions/mcp/details/MCPAgentManagementActionDetails";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
 import {
   DataSourceNodeContentDetails,
@@ -26,6 +27,7 @@ import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constant
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getOutputText,
+  isAgentCreationResultResourceType,
   isBrowseResultResourceType,
   isDataSourceNodeContentType,
   isDataSourceNodeListType,
@@ -53,6 +55,7 @@ export interface MCPActionDetailsProps {
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
   defaultOpen: boolean;
+  messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
 }
 
 export function MCPActionDetails(props: MCPActionDetailsProps) {
@@ -71,6 +74,9 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   const isRunAgent =
     props.action.output?.some(isRunAgentResultResourceType) ||
     isRunAgentProgressOutput(props.lastNotification?.data.output);
+  const isAgentCreation = props.action.output?.some(
+    isAgentCreationResultResourceType
+  );
 
   // TODO(mcp): rationalize the display of results for MCP to remove the need for specific checks.
   // Hack to find out whether the output comes from the reasoning tool, links back to the TODO above.
@@ -140,6 +146,8 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     return <MCPExtractActionDetails {...props} />;
   } else if (isRunAgent) {
     return <MCPRunAgentActionDetails {...props} />;
+  } else if (isAgentCreation) {
+    return <MCPAgentManagementActionDetails {...props} />;
   } else {
     return <GenericActionDetails {...props} />;
   }
