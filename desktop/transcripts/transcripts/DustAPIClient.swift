@@ -113,7 +113,7 @@ class DustAPIClient {
       )
       // Filter to only return manual data sources (where connectorProvider is null)
       return dataSourceViewsResponse.dataSourceViews.filter {
-        $0.isManualDataSource
+        $0.isFolder
       }
 
     } catch let error as DustAPIError {
