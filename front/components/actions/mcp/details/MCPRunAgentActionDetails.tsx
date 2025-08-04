@@ -6,11 +6,12 @@ import {
   RobotIcon,
 } from "@dust-tt/sparkle";
 import { ExternalLinkIcon } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
 import {
+  isRunAgentChainOfThoughtProgressOutput,
   isRunAgentProgressOutput,
   isRunAgentQueryResourceType,
   isRunAgentResultResourceType,
@@ -37,18 +38,22 @@ export function MCPRunAgentActionDetails({
       if (isRunAgentProgressOutput(lastNotification.data.output)) {
         return lastNotification.data.output.childAgentId;
       }
+      if (
+        isRunAgentChainOfThoughtProgressOutput(lastNotification.data.output)
+      ) {
+        return lastNotification.data.output.childAgentId;
+      }
     }
     return null;
   }, [queryResource, lastNotification]);
 
-  const query = useMemo(() => {
+  const [query, setQuery] = useState<string | null>(null);
+  useEffect(() => {
     if (queryResource) {
-      return queryResource.resource.text;
+      setQuery(queryResource.resource.text);
+    } else if (isRunAgentProgressOutput(lastNotification?.data.output)) {
+      setQuery(lastNotification.data.output.query);
     }
-    if (isRunAgentProgressOutput(lastNotification?.data.output)) {
-      return lastNotification.data.output.query;
-    }
-    return null;
   }, [queryResource, lastNotification]);
 
   const response = useMemo(() => {
@@ -59,11 +64,14 @@ export function MCPRunAgentActionDetails({
   }, [resultResource]);
 
   const chainOfThought = useMemo(() => {
-    if (resultResource) {
-      return resultResource.resource.chainOfThought || null;
+    if (resultResource && resultResource.resource.chainOfThought) {
+      return resultResource.resource.chainOfThought;
+    }
+    if (isRunAgentChainOfThoughtProgressOutput(lastNotification?.data.output)) {
+      return lastNotification.data.output.chainOfThought;
     }
     return null;
-  }, [resultResource]);
+  }, [resultResource, lastNotification]);
 
   const { agentConfiguration: childAgent } = useAgentConfiguration({
     workspaceId: owner.sId,
@@ -77,11 +85,18 @@ export function MCPRunAgentActionDetails({
     return true;
   }, [resultResource]);
 
+  const isStreamingChainOfThought = useMemo(() => {
+    return isBusy && chainOfThought !== null;
+  }, [isBusy, chainOfThought]);
+
   const conversationUrl = useMemo(() => {
     if (resultResource) {
       return resultResource.resource.uri;
     }
     if (isRunAgentProgressOutput(lastNotification?.data.output)) {
+      return `/w/${owner.sId}/assistant/${lastNotification.data.output.conversationId}`;
+    }
+    if (isRunAgentChainOfThoughtProgressOutput(lastNotification?.data.output)) {
       return `/w/${owner.sId}/assistant/${lastNotification.data.output.conversationId}`;
     }
     return null;
@@ -122,7 +137,7 @@ export function MCPRunAgentActionDetails({
               >
                 <Markdown
                   content={chainOfThought}
-                  isStreaming={false}
+                  isStreaming={isStreamingChainOfThought}
                   forcedTextSize="text-sm"
                   textColor="text-muted-foreground"
                   isLastMessage={false}
