@@ -16,7 +16,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { getLargeWhitelistedModel } from "@app/types";
 
-export const CreateAgentConfigurationWithDefaultsRequestSchema = t.type({
+export const CreateGenericAgentRequestSchema = t.type({
   name: t.string,
   description: t.string,
   instructions: t.string,
@@ -33,82 +33,7 @@ function assistantHandleIsValid(handle: string) {
 }
 
 /**
- * @swagger
- * /api/v1/w/{wId}/assistant/generic_agents:
- *   post:
- *     summary: Create generic agent
- *     description: Create a new generic agent with default tools (web search and data source search). Only accessible via system API keys and requires agent_management feature flag. Optionally create a sub-agent with the main agent having a run_agent tool to call it.
- *     tags:
- *       - Agents
- *     parameters:
- *       - in: path
- *         name: wId
- *         required: true
- *         description: ID of the workspace
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *               - description
- *               - instructions
- *             properties:
- *               name:
- *                 type: string
- *                 description: The name of the agent (without @). Only letters, numbers, underscores (_) and hyphens (-) are allowed. Maximum 30 characters.
- *               description:
- *                 type: string
- *                 description: A brief description of what the agent does
- *               instructions:
- *                 type: string
- *                 description: The prompt/instructions that define the agent's behavior
- *               emoji:
- *                 type: string
- *                 description: An emoji character to use as the agent's avatar (e.g., '🤖'). Mutually exclusive with pictureUrl.
- *               pictureUrl:
- *                 type: string
- *                 description: URL of an image to use as the agent's avatar. Mutually exclusive with emoji.
- *               subAgentName:
- *                 type: string
- *                 description: The name of the sub-agent to create. If subAgentInstructions is provided, this field is required.
- *               subAgentDescription:
- *                 type: string
- *                 description: A brief description of what the sub-agent does. If subAgentInstructions is provided, this field is required.
- *               subAgentInstructions:
- *                 type: string
- *                 description: The prompt/instructions that define the sub-agent's behavior. If provided, subAgentName and subAgentDescription are required.
- *               subAgentEmoji:
- *                 type: string
- *                 description: An emoji character to use as the sub-agent's avatar (e.g., '🤔'). Defaults to '🤖' if not provided.
- *     security:
- *       - BearerAuth: []
- *     responses:
- *       200:
- *         description: Successfully created agent configuration(s). If sub-agent parameters were provided, both the sub-agent and main agent are created, with the main agent having a run_agent tool configured to call the sub-agent.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 agentConfiguration:
- *                   $ref: '#/components/schemas/LightAgentConfiguration'
- *       400:
- *         description: Bad Request. Invalid parameters or validation failed. Common errors include missing required sub-agent fields when subAgentInstructions is provided.
- *       401:
- *         description: Unauthorized. Invalid or missing authentication token.
- *       403:
- *         description: Forbidden. Not a system API key or missing agent_management feature flag.
- *       404:
- *         description: Workspace not found.
- *       405:
- *         description: Method not supported. Only POST is expected.
- *       500:
- *         description: Internal Server Error.
+ * @ignoreswagger
  */
 
 async function handler(
@@ -154,8 +79,7 @@ async function handler(
         });
       }
 
-      const bodyValidation =
-        CreateAgentConfigurationWithDefaultsRequestSchema.decode(req.body);
+      const bodyValidation = CreateGenericAgentRequestSchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
