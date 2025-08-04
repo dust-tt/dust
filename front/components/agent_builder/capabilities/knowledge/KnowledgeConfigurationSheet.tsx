@@ -1,12 +1,12 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
-  ContextItem,
+  BookOpenIcon,
+  Button,
   MultiPageSheet,
   MultiPageSheetContent,
   ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
-import { BookOpenIcon } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { uniqueId } from "lodash";
 import { useEffect, useMemo, useState } from "react";
@@ -18,6 +18,10 @@ import {
 } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { KnowledgeFooter } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeFooter";
+import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
+import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/knowledge/shared/JsonSchemaSection";
 import {
   transformSelectionConfigurationsToTree,
   transformTreeToSelectionConfigurations,
@@ -41,6 +45,7 @@ import {
   CONFIGURATION_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
+import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
 import {
   getMcpServerViewDescription,
@@ -70,7 +75,20 @@ export function KnowledgeConfigurationSheet({
   mcpServerViews,
   getAgentInstructions,
 }: KnowledgeConfigurationSheetProps) {
-  const open = action !== null;
+  const { spaces, isSpacesLoading } = useSpacesContext();
+  const [config, setConfig] = useState<CapabilityConfig | null>(() => {
+    if (action && isSupportedAgentBuilderAction(action)) {
+      const serverName = ACTION_TYPE_TO_MCP_SERVER_MAP[action.type];
+      return serverName && isKnowledgeServerName(serverName)
+        ? CAPABILITY_CONFIGS[serverName]
+        : null;
+    }
+    return CAPABILITY_CONFIGS["search"];
+  });
+
+  const handleClose = () => {
+    onClose();
+  };
 
   const handleSave = (
     formData: CapabilityFormData,
@@ -156,15 +174,29 @@ export function KnowledgeConfigurationSheet({
     }
   };
 
+  if (isSpacesLoading) {
+    return (
+      <div>
+        <Spinner />
+      </div>
+    );
+  }
+
   return (
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
       <FormProvider {...formMethods}>
-        <KnowledgeConfigurationSheetContent
-          onSave={handleSave}
-          open={open}
-          getAgentInstructions={getAgentInstructions}
-          isEditing={isEditing}
-        />
+        <DataSourceBuilderProvider
+          control={formMethods.control}
+          spaces={spaces}
+        >
+          <KnowledgeConfigurationSheetContent
+            config={config}
+            setConfig={setConfig}
+            action={action}
+            onSave={handleSave}
+            isOpen={open}
+          />
+        </DataSourceBuilderProvider>
       </FormProvider>
     </MultiPageSheet>
   );
@@ -222,7 +254,6 @@ function KnowledgeConfigurationSheetContent({
 
   const { owner } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
-  const { spaces } = useSpacesContext();
   const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
@@ -308,9 +339,7 @@ function KnowledgeConfigurationSheetContent({
         <div className="space-y-4">
           <ScrollArea>
             <DataSourceBuilderSelector
-              control={control}
               dataSourceViews={supportedDataSourceViews}
-              allowedSpaces={spaces}
               owner={owner}
               viewType={viewType}
             />
@@ -356,14 +385,8 @@ function KnowledgeConfigurationSheetContent({
         onSave(formData, dataSourceConfigurations);
       })}
       size="xl"
-      showHeaderNavigation={false}
-      disableNext={
-        currentPageId === CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION
-          ? !hasMCPServerSelection
-          : currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION
-            ? !hasSourceSelection
-            : false
-      }
+      showNavigation
+      footerContent={<KnowledgeFooter control={control} />}
     />
   );
 }

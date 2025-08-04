@@ -1,3 +1,7 @@
+import type { Control } from "react-hook-form";
+import { useController } from "react-hook-form";
+
+import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { dataSourceConfigurationSchema } from "@app/components/agent_builder/types";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { AssistantTemplateListType } from "@app/pages/api/templates";
@@ -34,4 +38,12 @@ export function validateDataSourceConfiguration(
   } catch (error) {
     return new Err(normalizeError(error));
   }
+}
+
+export function useSourcesFormController({
+  control,
+}: {
+  control: Control<CapabilityFormData>;
+}) {
+  return useController({ control, name: "sources" });
 }
