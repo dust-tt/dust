@@ -807,7 +807,6 @@ const NotificationRunAgentChainOfThoughtSchema = z.object({
   type: z.literal("run_agent_chain_of_thought"),
   childAgentId: z.string(),
   conversationId: z.string(),
-  query: z.string(),
   chainOfThought: z.string(),
 });
 

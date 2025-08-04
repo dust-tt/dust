@@ -6,7 +6,7 @@ import {
   RobotIcon,
 } from "@dust-tt/sparkle";
 import { ExternalLinkIcon } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
@@ -38,26 +38,22 @@ export function MCPRunAgentActionDetails({
       if (isRunAgentProgressOutput(lastNotification.data.output)) {
         return lastNotification.data.output.childAgentId;
       }
-      if (isRunAgentChainOfThoughtProgressOutput(lastNotification.data.output)) {
+      if (
+        isRunAgentChainOfThoughtProgressOutput(lastNotification.data.output)
+      ) {
         return lastNotification.data.output.childAgentId;
       }
     }
     return null;
   }, [queryResource, lastNotification]);
 
-  const query = useMemo(() => {
-    // Always prefer the queryResource if available (from action.output)
+  const [query, setQuery] = useState<string | null>(null);
+  useEffect(() => {
     if (queryResource) {
-      return queryResource.resource.text;
+      setQuery(queryResource.resource.text);
+    } else if (isRunAgentProgressOutput(lastNotification?.data.output)) {
+      setQuery(lastNotification.data.output.query);
     }
-    // Fall back to notification data if no queryResource yet
-    if (isRunAgentProgressOutput(lastNotification?.data.output)) {
-      return lastNotification.data.output.query;
-    }
-    if (isRunAgentChainOfThoughtProgressOutput(lastNotification?.data.output)) {
-      return lastNotification.data.output.query;
-    }
-    return null;
   }, [queryResource, lastNotification]);
 
   const response = useMemo(() => {
@@ -68,11 +64,9 @@ export function MCPRunAgentActionDetails({
   }, [resultResource]);
 
   const chainOfThought = useMemo(() => {
-    // Priority 1: Final result chain of thought (complete)
     if (resultResource && resultResource.resource.chainOfThought) {
       return resultResource.resource.chainOfThought;
     }
-    // Priority 2: Streaming chain of thought from notifications
     if (isRunAgentChainOfThoughtProgressOutput(lastNotification?.data.output)) {
       return lastNotification.data.output.chainOfThought;
     }

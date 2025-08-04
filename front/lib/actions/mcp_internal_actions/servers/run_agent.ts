@@ -276,7 +276,6 @@ export default async function createServer(
             // Separate content based on classification
             if (event.classification === "chain_of_thought") {
               chainOfThought += event.text;
-              // Stream chain of thought as a notification
               const notification: MCPProgressNotificationType = {
                 method: "notifications/progress",
                 params: {
@@ -289,14 +288,13 @@ export default async function createServer(
                       type: "run_agent_chain_of_thought",
                       childAgentId: childAgentId,
                       conversationId: conversation.sId,
-                      query: query,
                       chainOfThought: chainOfThought,
                     },
                   },
                 },
               };
               if (sendNotification) {
-                sendNotification(notification);
+                await sendNotification(notification);
               }
             } else if (event.classification === "tokens") {
               finalContent += event.text;
@@ -307,7 +305,6 @@ export default async function createServer(
             ) {
               // For closing chain of thought delimiters, add a newline
               chainOfThought += "\n";
-              // Send updated notification with the newline
               const notification: MCPProgressNotificationType = {
                 method: "notifications/progress",
                 params: {
@@ -320,14 +317,13 @@ export default async function createServer(
                       type: "run_agent_chain_of_thought",
                       childAgentId: childAgentId,
                       conversationId: conversation.sId,
-                      query: query,
                       chainOfThought: chainOfThought,
                     },
                   },
                 },
               };
               if (sendNotification) {
-                sendNotification(notification);
+                await sendNotification(notification);
               }
             }
           } else if (event.type === "agent_error") {
