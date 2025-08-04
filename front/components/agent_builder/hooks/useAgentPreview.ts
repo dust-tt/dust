@@ -13,6 +13,7 @@ import { useMCPServerViewsContext } from "@app/components/assistant_builder/cont
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
+import { useConversation } from "@app/lib/swr/conversations";
 import { useUser } from "@app/lib/swr/user";
 import type {
   AgentMention,
@@ -197,11 +198,17 @@ export function useDraftConversation({
   const { user } = useUser();
   const sendNotification = useSendNotification();
 
-  const [conversation, setConversation] = useState<ConversationType | null>(
-    null
-  );
+  const [conversationId, setConversationId] = useState<string | null>(null);
 
-  const conversationTitle = `Trying @${draftAgent?.name || "your agent"}`;
+  const { conversation: swrConversation } = useConversation({
+    conversationId: conversationId || "",
+    workspaceId: owner.sId,
+    options: {
+      disabled: !conversationId,
+    },
+  });
+
+  const conversation = swrConversation || null;
 
   const handleSubmit = async (
     input: string,
@@ -248,11 +255,10 @@ export function useDraftConversation({
         user,
         messageData,
         visibility: "test",
-        title: conversationTitle,
       });
 
       if (result.isOk()) {
-        setConversation(result.value);
+        setConversationId(result.value.sId);
         return new Ok(undefined);
       }
 
@@ -296,6 +302,10 @@ export function useDraftConversation({
   const resetConversation = useCallback(() => {
     setConversation(null);
   }, []);
+
+  const setConversation = (newConversation: ConversationType | null) => {
+    setConversationId(newConversation?.sId || null);
+  };
 
   return {
     conversation,
