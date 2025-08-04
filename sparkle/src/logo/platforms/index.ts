@@ -10,6 +10,7 @@ export { default as DriveLogo } from "./Drive";
 export { default as FigmaLogo } from "./Figma";
 export { default as FireworksLogo } from "./Fireworks";
 export { default as FreshdeskLogo } from "./Freshdesk";
+export { default as FreshserviceLogo } from "./Freshservice";
 export { default as GcalLogo } from "./Gcal";
 export { default as GeminiLogo } from "./Gemini";
 export { default as GithubLogo } from "./Github";
