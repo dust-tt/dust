@@ -149,7 +149,10 @@ async function handler(
       });
 
       if (result.isErr()) {
-        return apiError(req, res, result.error);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: result.error,
+        });
       }
 
       return res.status(200).json({});

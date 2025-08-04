@@ -5,7 +5,7 @@ import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import type {
   AgentMessageType,
   AgentMessageWithRankType,
-  APIErrorWithStatusCode,
+  APIError,
   ConversationType,
   Result,
 } from "@app/types";
@@ -22,18 +22,15 @@ export async function retryAgentMessageFromStep(
     agentMessage: AgentMessageType;
     startStep: number;
   }
-): Promise<Result<AgentMessageWithRankType, APIErrorWithStatusCode>> {
+): Promise<Result<AgentMessageWithRankType, APIError>> {
   // First, find the array of the parent message in conversation.content.
   const parentMessageIndex = conversation.content.findIndex((messages) => {
     return messages.some((m) => m.sId === agentMessage.parentMessageId);
   });
   if (parentMessageIndex === -1) {
     return new Err({
-      status_code: 400,
-      api_error: {
-        type: "message_not_found",
-        message: `Parent message ${agentMessage.parentMessageId} not found in conversation`,
-      },
+      type: "message_not_found",
+      message: `Parent message ${agentMessage.parentMessageId} not found in conversation`,
     });
   }
 
@@ -43,11 +40,8 @@ export async function retryAgentMessageFromStep(
     ];
   if (!isUserMessageType(userMessage)) {
     return new Err({
-      status_code: 400,
-      api_error: {
-        type: "message_not_found",
-        message: "Parent message must be a user message",
-      },
+      type: "message_not_found",
+      message: "Parent message must be a user message",
     });
   }
 
@@ -67,28 +61,18 @@ export async function retryAgentMessageFromStep(
   });
   if (!messageRow) {
     return new Err({
-      status_code: 400,
-      api_error: {
-        type: "message_not_found",
-        message: `Message row ${agentMessage.id} not found`,
-      },
+      type: "message_not_found",
+      message: `Message row ${agentMessage.id} not found`,
     });
   }
 
-  // we need to refetch by why?
-  const agentMessageRow = await AgentMessage.findOne({
-    where: {
-      id: agentMessage.agentMessageId,
-      workspaceId: conversation.owner.id,
-    },
-  });
+  const agentMessageRow = await AgentMessage.findByPk(
+    agentMessage.agentMessageId
+  );
   if (!agentMessageRow) {
     return new Err({
-      status_code: 400,
-      api_error: {
-        type: "message_not_found",
-        message: `Agent message row ${agentMessage.id} not found`,
-      },
+      type: "message_not_found",
+      message: `Agent message row ${agentMessage.id} not found`,
     });
   }
 
