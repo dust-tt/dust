@@ -19,7 +19,7 @@ import { ParagraphExtension } from "@app/components/assistant/conversation/input
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
-} from "@app/lib/client/assistant_builder/instructions";
+} from "@app/lib/client/agent_builder/instructions";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightAgentConfigurationType } from "@app/types";
 
