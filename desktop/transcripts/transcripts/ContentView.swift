@@ -5,6 +5,11 @@ struct ContentView: View {
     
     var body: some View {
         VStack(spacing: 8) {
+            Image("DustLogo")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(height: 32)
+        
             Button(action: startRecording) {
                 HStack {
                     Image(systemName: "record.circle")
