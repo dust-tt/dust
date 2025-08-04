@@ -37,14 +37,10 @@ struct ContentView: View {
       Divider()
 
       if isLoggedIn {
-        HStack(spacing: 4) {
-          Image(systemName: "checkmark.circle.fill")
-            .foregroundColor(.green)
-            .font(.caption)
-          Text("Logged in")
-            .font(.caption)
-            .fixedSize()
-        }
+        Label("Logged in", systemImage: "checkmark.circle.fill")
+          .font(.caption)
+          .foregroundColor(.green)
+          .labelStyle(.titleAndIcon)
 
         if isSetupComplete {
           if let folder = UserDefaultsManager.shared.loadSelectedFolder() {
@@ -77,7 +73,7 @@ struct ContentView: View {
       }
     }
     .padding()
-    .frame(minWidth: 250)
+    .frame(minWidth: 350)
     .onAppear {
       checkLoginStatus()
       checkSetupStatus()
@@ -95,7 +91,7 @@ struct ContentView: View {
       if !hasPermission {
         hasPermission = await audioRecorder.requestPermission()
       }
-      
+
       if hasPermission {
         await MainActor.run {
           audioRecorder.startRecording()
