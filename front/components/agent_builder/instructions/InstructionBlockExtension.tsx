@@ -18,7 +18,7 @@ import {
   OPENING_TAG_REGEX,
   parseInstructionBlockMatches,
   splitTextAroundBlocks,
-} from "@app/lib/client/assistant_builder/instructionBlockUtils";
+} from "@app/lib/client/agent_builder/instructionBlockUtils";
 
 export interface InstructionBlockAttributes {
   type: string;
