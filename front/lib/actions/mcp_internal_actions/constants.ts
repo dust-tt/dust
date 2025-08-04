@@ -342,6 +342,7 @@ export const INTERNAL_MCP_SERVERS: Record<
       get_issue_fields: "never_ask",
       get_connection_info: "never_ask",
       get_issue_link_types: "never_ask",
+      get_users: "never_ask",
 
       // Update operations - low stakes
       create_comment: "low",
