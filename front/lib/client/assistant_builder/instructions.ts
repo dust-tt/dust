@@ -1,9 +1,9 @@
 import type { JSONContent } from "@tiptap/react";
+
 import {
-  parseInstructionBlockMatches,
   createInstructionBlockNode,
-  textToParagraphNodes,
   splitTextAroundBlocks,
+  textToParagraphNodes,
 } from "@app/lib/client/assistant_builder/instructionBlockUtils";
 
 function serializeNodeToText(node: JSONContent): string {
@@ -56,13 +56,16 @@ function parseInstructionBlocks(text: string): JSONContent[] {
   const segments = splitTextAroundBlocks(text);
 
   segments.forEach((segment) => {
-    if (segment.type === 'text') {
+    if (segment.type === "text") {
       // Add text as paragraphs
       const paragraphs = textToParagraphNodes(segment.content);
       content.push(...paragraphs);
-    } else if (segment.type === 'block' && segment.blockType) {
+    } else if (segment.type === "block" && segment.blockType) {
       // Add instruction block
-      const blockNode = createInstructionBlockNode(segment.blockType, segment.content);
+      const blockNode = createInstructionBlockNode(
+        segment.blockType,
+        segment.content
+      );
       content.push(blockNode);
     }
   });

@@ -1,4 +1,5 @@
 import type { Node as ProseMirrorNode, Schema } from "@tiptap/pm/model";
+import { NodeType } from "@tiptap/pm/model";
 import type { JSONContent } from "@tiptap/react";
 
 /**
@@ -25,9 +26,14 @@ export interface InstructionBlockMatch {
 /**
  * Parse instruction block matches from text
  */
-export function parseInstructionBlockMatches(text: string): InstructionBlockMatch[] {
+export function parseInstructionBlockMatches(
+  text: string
+): InstructionBlockMatch[] {
   const matches: InstructionBlockMatch[] = [];
-  const regex = new RegExp(INSTRUCTION_BLOCK_REGEX.source, INSTRUCTION_BLOCK_REGEX.flags);
+  const regex = new RegExp(
+    INSTRUCTION_BLOCK_REGEX.source,
+    INSTRUCTION_BLOCK_REGEX.flags
+  );
   let match;
 
   while ((match = regex.exec(text)) !== null) {
@@ -57,7 +63,10 @@ export function textToParagraphNodes(content: string): JSONContent[] {
 /**
  * Convert text content to ProseMirror paragraph nodes
  */
-export function textToProseMirrorParagraphs(content: string, schema: Schema): ProseMirrorNode[] {
+export function textToProseMirrorParagraphs(
+  content: string,
+  schema: Schema
+): ProseMirrorNode[] {
   const lines = content.split("\n");
   return lines.map((line) => {
     const trimmedLine = line.trim();
@@ -71,9 +80,13 @@ export function textToProseMirrorParagraphs(content: string, schema: Schema): Pr
 /**
  * Create instruction block JSONContent
  */
-export function createInstructionBlockNode(type: string, content: string): JSONContent {
+export function createInstructionBlockNode(
+  type: string,
+  content: string
+): JSONContent {
   const paragraphs = textToParagraphNodes(content);
-  const blockContent = paragraphs.length > 0 ? paragraphs : [{ type: "paragraph", content: [] }];
+  const blockContent =
+    paragraphs.length > 0 ? paragraphs : [{ type: "paragraph", content: [] }];
 
   return {
     type: "instructionBlock",
@@ -86,14 +99,15 @@ export function createInstructionBlockNode(type: string, content: string): JSONC
  * Create ProseMirror instruction block node
  */
 export function createProseMirrorInstructionBlock(
-  type: string, 
-  content: string, 
-  nodeType: any, 
+  type: string,
+  content: string,
+  nodeType: NodeType,
   schema: Schema
 ): ProseMirrorNode {
   const paragraphs = textToProseMirrorParagraphs(content, schema);
-  const blockContent = paragraphs.length > 0 ? paragraphs : [schema.nodes.paragraph.create()];
-  
+  const blockContent =
+    paragraphs.length > 0 ? paragraphs : [schema.nodes.paragraph.create()];
+
   return nodeType.create({ type }, blockContent);
 }
 
@@ -114,7 +128,7 @@ export function splitTextAroundBlocks(text: string): Array<{
     start: number;
     end: number;
   }> = [];
-  
+
   const matches = parseInstructionBlockMatches(text);
   let lastIndex = 0;
 

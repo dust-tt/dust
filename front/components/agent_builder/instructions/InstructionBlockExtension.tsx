@@ -43,14 +43,14 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({ node }) => {
       <div className="rounded-lg border border-border bg-muted-background p-4">
         <div className="mb-3">
           <span
-            className="select-none text-sm font-semibold uppercase tracking-wider text-muted-foreground"
+            className="text-sm font-semibold text-muted-foreground"
             contentEditable={false}
           >
             {type.toUpperCase()}
           </span>
         </div>
-        <div className="min-h-[3rem] rounded border border-border/50 bg-background p-3">
-          <NodeViewContent className="prose prose-sm max-w-none outline-none" />
+        <div className="min-h-12 rounded border border-border/50 bg-background p-3">
+          <NodeViewContent className="prose prose-sm" />
         </div>
       </div>
     </NodeViewWrapper>
@@ -63,7 +63,6 @@ export const InstructionBlockExtension =
     group: "block",
     content: "block+",
     defining: true,
-    draggable: true,
 
     addAttributes() {
       return {
