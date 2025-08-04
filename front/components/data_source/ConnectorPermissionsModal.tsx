@@ -628,10 +628,9 @@ export function ConnectorPermissionsModal({
     return node.parentInternalIds ?? [];
   };
 
+  // Helper function to toggle all resource selections
   const toggleAllResources = () => {
-    const newSelectedState = !treeResources.every(
-      (resource) => selectedNodes[resource.internalId]?.isSelected === true
-    );
+    const newSelectedState = !isAllSelected;
     const updates = Object.fromEntries(
       treeResources.map((resource) => [
         resource.internalId,
@@ -640,6 +639,15 @@ export function ConnectorPermissionsModal({
     );
     setSelectedNodes((prev) => ({ ...prev, ...updates }));
   };
+
+  const isAllSelected = useMemo(
+    () =>
+      treeResources.length > 0 &&
+      treeResources.every(
+        (resource) => selectedNodes[resource.internalId]?.isSelected === true
+      ),
+    [treeResources, selectedNodes]
+  );
 
   const initialTreeSelectionModel = useMemo(
     () =>
@@ -891,31 +899,25 @@ export function ConnectorPermissionsModal({
                   )}
                   {!connectorConfiguration.isResourceSelectionDisabled && (
                     <>
-                      <div className="heading-xl p-1">
-                        {connectorConfiguration.selectLabel}
-                      </div>
-                      {canUpdatePermissions &&
-                        !isResourcesLoading &&
-                        treeResources.length > 0 && (
-                          <div className="mb-2 flex items-center justify-end px-1">
+                      <div className="flex items-center justify-between p-1">
+                        <div className="heading-xl">
+                          {connectorConfiguration.selectLabel}
+                        </div>
+                        {canUpdatePermissions &&
+                          !isResourcesLoading &&
+                          treeResources.length > 0 && (
                             <Button
                               variant="ghost"
                               size="sm"
                               className="text-xs"
                               label={
-                                treeResources.every(
-                                  (resource) =>
-                                    selectedNodes[resource.internalId]
-                                      ?.isSelected === true
-                                )
-                                  ? "Unselect All"
-                                  : "Select All"
+                                isAllSelected ? "Unselect All" : "Select All"
                               }
                               icon={ListCheckIcon}
                               onClick={toggleAllResources}
                             />
-                          </div>
-                        )}
+                          )}
+                      </div>
                       <ContentNodeTree
                         isTitleFilterEnabled={
                           connectorConfiguration.isTitleFilterEnabled
