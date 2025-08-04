@@ -6,6 +6,8 @@ struct ContentView: View {
   @State private var isLoggedIn = false
   @State private var showingLoginDialog = false
   @State private var apiKeyInput = ""
+  @State private var showingLoginError = false
+  @State private var loginErrorMessage = ""
 
   var body: some View {
     VStack(spacing: 8) {
@@ -33,12 +35,14 @@ struct ContentView: View {
       Divider()
 
       if isLoggedIn {
-        HStack {
+        HStack(spacing: 4) {
           Image(systemName: "checkmark.circle.fill")
             .foregroundColor(.green)
+            .font(.caption)
           Text("Logged in")
             .font(.caption)
         }
+        .fixedSize()
 
         Button("Logout") {
           logout()
@@ -58,6 +62,7 @@ struct ContentView: View {
       }
     }
     .padding()
+    .frame(minWidth: 200)
     .onAppear {
       requestMicrophonePermission()
       checkLoginStatus()
@@ -80,31 +85,39 @@ struct ContentView: View {
     if let url = audioRecorder.recordingURL {
       print("Recording saved to: \(url)")
       // TODO: Upload to Dust API using stored API key
-      if let apiKey = KeychainManager.shared.loadAPIKey() {
+      if let apiKey = UserDefaultsManager.shared.loadAPIKey() {
         print("API Key available for upload: \(apiKey.prefix(10))...")
       }
     }
   }
 
   private func checkLoginStatus() {
-    isLoggedIn = KeychainManager.shared.hasAPIKey()
+    isLoggedIn = UserDefaultsManager.shared.hasAPIKey()
   }
 
   private func login() {
     guard !apiKeyInput.isEmpty else { return }
 
-    if KeychainManager.shared.saveAPIKey(apiKeyInput) {
+    // Validate API key format
+    guard apiKeyInput.hasPrefix("sk-") else {
+      loginErrorMessage = "Invalid API key format."
+      showingLoginError = true
+      return
+    }
+
+    if UserDefaultsManager.shared.saveAPIKey(apiKeyInput) {
       isLoggedIn = true
       apiKeyInput = ""
       showingLoginDialog = false
       print("API key saved successfully")
     } else {
-      print("Failed to save API key")
+      loginErrorMessage = "Failed to save API key. Please try again."
+      showingLoginError = true
     }
   }
 
   private func logout() {
-    if KeychainManager.shared.deleteAPIKey() {
+    if UserDefaultsManager.shared.deleteAPIKey() {
       isLoggedIn = false
       print("Logged out successfully")
     } else {
@@ -123,9 +136,13 @@ struct ContentView: View {
     loginWindow.contentView = NSHostingView(
       rootView: LoginView(
         apiKeyInput: $apiKeyInput,
+        showingError: $showingLoginError,
+        errorMessage: $loginErrorMessage,
         onLogin: {
           login()
-          loginWindow.close()
+          if !showingLoginError {
+            loginWindow.close()
+          }
         },
         onCancel: {
           apiKeyInput = ""
