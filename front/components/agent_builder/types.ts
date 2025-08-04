@@ -261,7 +261,14 @@ export const CONFIGURATION_SHEET_PAGE_IDS = {
   CONFIGURATION: "configuration",
 } as const;
 
+export const CONFIGURATION_DIALOG_PAGE_IDS = {
+  TOOL_SELECTION: "tool-selection",
+};
+
 export type ConfigurationSheetPageId =
+  (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
+
+export type ConfigurationPagePageId =
   (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
 
 // Zod validation schema for data source configuration - defines the contract/shape
