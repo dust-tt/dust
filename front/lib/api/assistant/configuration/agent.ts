@@ -777,6 +777,7 @@ export async function createGenericAgentConfigurationWithDefaultTools(
     const tablesRes = await coreAPI.getTables({
       projectId: dsView.dataSource.dustAPIProjectId,
       dataSourceId: dsView.dataSource.dustAPIDataSourceId,
+      viewFilter: dsView.toViewFilter(),
     });
 
     if (tablesRes.isErr()) {
