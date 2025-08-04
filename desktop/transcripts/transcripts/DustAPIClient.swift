@@ -8,10 +8,7 @@ class DustAPIClient {
   }
   private let session = URLSession.shared
 
-  private init() {
-    print("DustAPIClient initialized for \(AppConfig.environment) environment")
-    print("Base URL: \(baseURL)")
-  }
+  private init() {}
 
   // MARK: - Authentication
 

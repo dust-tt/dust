@@ -10,17 +10,27 @@ struct DustSpace: Codable, Identifiable {
     var id: String { sId }
 }
 
-struct DustDataSourceView: Codable, Identifiable {
+struct DustDataSource: Codable {
     let sId: String
     let name: String
     let description: String?
     let connectorProvider: String?
+}
+
+struct DustDataSourceView: Codable, Identifiable {
+    let sId: String
+    let dataSource: DustDataSource
+    let category: String?
     
     var id: String { sId }
     
+    // Use the dataSource name and connectorProvider
+    var name: String { dataSource.name }
+    var connectorProvider: String? { dataSource.connectorProvider }
+    
     // Only show data source views where connectorProvider is null
     var isManualDataSource: Bool {
-        return connectorProvider == nil
+        return dataSource.connectorProvider == nil
     }
 }
 
