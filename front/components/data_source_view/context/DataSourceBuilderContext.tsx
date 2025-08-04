@@ -38,9 +38,9 @@ import {
   useReducer,
 } from "react";
 import type { Control } from "react-hook-form";
-import { useController } from "react-hook-form";
 
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
+import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import type {
   DataSourceBuilderTreeType,
   NavigationHistoryEntryType,
@@ -60,7 +60,6 @@ import type {
 import { assertNever } from "@app/types";
 
 type StateType = {
-  spaces: SpaceType[];
   sources: DataSourceBuilderTreeType;
   /**
    * Shape is `[root, space, category, ...node]`
@@ -210,9 +209,8 @@ export function DataSourceBuilderProvider({
   children: React.ReactNode;
   control: Control<CapabilityFormData>;
 }) {
-  const { field } = useController({ control, name: "sources" });
+  const { field } = useSourcesFormController({ control });
   const [state, dispatch] = useReducer(dataSourceBuilderReducer, {
-    spaces,
     sources: {
       in: [],
       notIn: [],
@@ -266,7 +264,7 @@ export function DataSourceBuilderProvider({
 
   const nonCompanySpacesSelected = useMemo(() => {
     return new Set(
-      state.spaces
+      spaces
         .filter(
           (space) =>
             space.kind !== "global" &&
@@ -274,7 +272,7 @@ export function DataSourceBuilderProvider({
         )
         .map((s) => s.sId)
     );
-  }, [state.spaces, state.sources]);
+  }, [spaces, state.sources]);
 
   const isRowSelectable: DataSourceBuilderState["isRowSelectable"] =
     useCallback(

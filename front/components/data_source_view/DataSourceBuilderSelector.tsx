@@ -1,14 +1,9 @@
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
-import { Breadcrumbs, SearchInput, Spinner } from "@dust-tt/sparkle";
+import { Breadcrumbs, SearchInput } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
-import type { Control } from "react-hook-form";
 
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
-import type { CapabilityFormData } from "@app/components/agent_builder/types";
-import {
-  DataSourceBuilderProvider,
-  useDataSourceBuilderContext,
-} from "@app/components/data_source_view/context/DataSourceBuilderContext";
+import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import {
   findCategoryFromNavigationHistory,
@@ -24,42 +19,21 @@ import type {
   ContentNodesViewType,
   DataSourceViewType,
   LightWorkspaceType,
-  SpaceType,
 } from "@app/types";
 
 type DataSourceBuilderSelectorProps = {
-  allowedSpaces?: SpaceType[];
   owner: LightWorkspaceType;
   dataSourceViews: DataSourceViewType[];
   viewType: ContentNodesViewType;
-  control: Control<CapabilityFormData>;
 };
 
 export const DataSourceBuilderSelector = ({
-  control,
-  ...props
-}: DataSourceBuilderSelectorProps) => {
-  const { spaces, isSpacesLoading } = useSpacesContext();
-
-  if (isSpacesLoading) {
-    return <Spinner />;
-  }
-
-  return (
-    <DataSourceBuilderProvider control={control} spaces={spaces}>
-      <DataSourceBuilderSelectorContent {...props} />
-    </DataSourceBuilderProvider>
-  );
-};
-
-export const DataSourceBuilderSelectorContent = ({
-  allowedSpaces,
   dataSourceViews,
   owner,
   viewType,
-}: Omit<DataSourceBuilderSelectorProps, "control">) => {
+}: DataSourceBuilderSelectorProps) => {
+  const { spaces } = useSpacesContext();
   const {
-    spaces,
     navigationHistory,
     navigateTo,
     setSpaceEntry,
@@ -114,7 +88,7 @@ export const DataSourceBuilderSelectorContent = ({
       {currentNavigationEntry.type === "root" ? (
         <DataSourceSpaceSelector
           spaces={filteredSpaces}
-          allowedSpaces={allowedSpaces}
+          allowedSpaces={spaces}
           onSelectSpace={setSpaceEntry}
         />
       ) : (

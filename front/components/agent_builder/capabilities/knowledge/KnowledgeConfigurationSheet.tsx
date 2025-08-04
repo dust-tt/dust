@@ -1,12 +1,13 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
+  BookOpenIcon,
+  Button,
   MultiPageSheet,
   MultiPageSheetContent,
   MultiPageSheetTrigger,
   ScrollArea,
+  Spinner,
 } from "@dust-tt/sparkle";
-import { Button } from "@dust-tt/sparkle";
-import { BookOpenIcon } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -18,6 +19,7 @@ import {
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { KnowledgeFooter } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeFooter";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/knowledge/shared/JsonSchemaSection";
 import {
@@ -49,6 +51,7 @@ import {
   isSupportedAgentBuilderAction,
 } from "@app/components/agent_builder/types";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
+import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
 import type { DataSourceViewSelectionConfigurations } from "@app/types";
 
@@ -67,6 +70,7 @@ export function KnowledgeConfigurationSheet({
   action,
   open,
 }: KnowledgeConfigurationSheetProps) {
+  const { spaces, isSpacesLoading } = useSpacesContext();
   const [config, setConfig] = useState<CapabilityConfig | null>(() => {
     if (action && isSupportedAgentBuilderAction(action)) {
       const serverName = ACTION_TYPE_TO_MCP_SERVER_MAP[action.type];
@@ -134,6 +138,14 @@ export function KnowledgeConfigurationSheet({
     }
   };
 
+  if (isSpacesLoading) {
+    return (
+      <div>
+        <Spinner />
+      </div>
+    );
+  }
+
   return (
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
       <MultiPageSheetTrigger asChild>
@@ -144,13 +156,18 @@ export function KnowledgeConfigurationSheet({
         />
       </MultiPageSheetTrigger>
       <FormProvider {...formMethods}>
-        <KnowledgeConfigurationSheetContent
-          config={config}
-          setConfig={setConfig}
-          action={action}
-          onSave={handleSave}
-          isOpen={open}
-        />
+        <DataSourceBuilderProvider
+          control={formMethods.control}
+          spaces={spaces}
+        >
+          <KnowledgeConfigurationSheetContent
+            config={config}
+            setConfig={setConfig}
+            action={action}
+            onSave={handleSave}
+            isOpen={open}
+          />
+        </DataSourceBuilderProvider>
       </FormProvider>
     </MultiPageSheet>
   );
@@ -178,7 +195,6 @@ function KnowledgeConfigurationSheetContent({
   const { control, handleSubmit } = useFormContext<CapabilityFormData>();
   const { owner } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
-  const { spaces } = useSpacesContext();
   const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
@@ -240,9 +256,7 @@ function KnowledgeConfigurationSheetContent({
         <div className="space-y-4">
           <ScrollArea>
             <DataSourceBuilderSelector
-              control={control}
               dataSourceViews={supportedDataSourceViews}
-              allowedSpaces={spaces}
               owner={owner}
               viewType="document"
             />
@@ -328,6 +342,7 @@ function KnowledgeConfigurationSheetContent({
       })}
       size="xl"
       showNavigation
+      footerContent={<KnowledgeFooter control={control} />}
     />
   );
 }
