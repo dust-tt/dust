@@ -51,7 +51,7 @@ struct DustDataSourceViewsResponse: Codable {
 struct DustTranscriptUploadResponse: Codable {
   let dataSource: DustDataSource
   let document: DustDocument
-  
+
   enum CodingKeys: String, CodingKey {
     case dataSource = "data_source"
     case document
