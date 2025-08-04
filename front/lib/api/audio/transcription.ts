@@ -1,6 +1,5 @@
 import OpenAI from "openai";
 
-import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
@@ -28,14 +27,21 @@ export async function transcribeAudioFile(
   // Get the file as a buffer.
   // TODO(VOICE 2025-08-05): This is a hack to get the file as a buffer. Find more robust streaming
   // solution.
-  const fileContent = await getFileContent(auth, fileResource, "original");
-  if (!fileContent) {
-    throw new Error("File content not found");
-  }
+  const readStream = fileResource.getReadStream({
+    auth,
+    version: "original",
+  });
 
-  const audioBuffer = Buffer.from(fileContent);
+  // Convert stream to buffer.
+  const chunks: Buffer[] = [];
+  for await (const chunk of readStream) {
+    chunks.push(chunk);
+  }
+  const audioBuffer = Buffer.concat(chunks);
 
   // Create a File-like object for OpenAI.
+  // TODO(VOICE 2025-08-05): This is a hack to get the file as a buffer. Find more robust streaming
+  // solution.
   const file = new File([audioBuffer], fileResource.fileName, {
     type: "audio/mp4",
   });

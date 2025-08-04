@@ -46,7 +46,7 @@ export async function upsertAudioTranscriptionActivity(upsertQueueId: string) {
       },
       upsertContext: upsertDocument.upsertContext || null,
       title: upsertDocument.title,
-      mimeType: upsertDocument.mimeType,
+      mimeType: "text/plain",
     },
   });
 
