@@ -8,7 +8,7 @@ import {
   buildSelectedEmojiType,
   makeUrlForEmojiAndBackground,
 } from "@app/components/assistant_builder/avatar_picker/utils";
-import { createGenericAgentConfigurationWithDefaultTools } from "@app/lib/api/assistant/configuration/agent";
+import { createGenericAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -225,17 +225,14 @@ async function handler(
       }
 
       // Create the main agent (which will also create the sub-agent if configured)
-      const result = await createGenericAgentConfigurationWithDefaultTools(
-        auth,
-        {
-          name,
-          description,
-          instructions,
-          pictureUrl: agentPictureUrl,
-          model: agentModel,
-          subAgent: subAgentConfig,
-        }
-      );
+      const result = await createGenericAgentConfiguration(auth, {
+        name,
+        description,
+        instructions,
+        pictureUrl: agentPictureUrl,
+        model: agentModel,
+        subAgent: subAgentConfig,
+      });
 
       if (result.isErr()) {
         return apiError(req, res, {

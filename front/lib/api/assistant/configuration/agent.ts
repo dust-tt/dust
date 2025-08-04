@@ -591,7 +591,7 @@ export async function createAgentConfiguration(
   }
 }
 
-export async function createGenericAgentConfigurationWithDefaultTools(
+export async function createGenericAgentConfiguration(
   auth: Authenticator,
   {
     name,
@@ -854,16 +854,13 @@ export async function createGenericAgentConfigurationWithDefaultTools(
     return new Ok({ agentConfiguration });
   }
 
-  const subAgentResult = await createGenericAgentConfigurationWithDefaultTools(
-    auth,
-    {
-      name: subAgent.name,
-      description: subAgent.description,
-      instructions: subAgent.instructions,
-      pictureUrl: subAgent.pictureUrl,
-      model,
-    }
-  );
+  const subAgentResult = await createGenericAgentConfiguration(auth, {
+    name: subAgent.name,
+    description: subAgent.description,
+    instructions: subAgent.instructions,
+    pictureUrl: subAgent.pictureUrl,
+    model,
+  });
 
   if (subAgentResult.isErr()) {
     await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
