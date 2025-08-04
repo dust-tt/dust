@@ -13,6 +13,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderInstructionsAutoCompleteExtension } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsAutoCompleteExtension";
 import { AgentInstructionDiffExtension } from "@app/components/agent_builder/instructions/AgentInstructionDiffExtension";
+import { InstructionBlockExtension } from "@app/components/agent_builder/instructions/InstructionBlockExtension";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import {
@@ -111,6 +112,7 @@ export function AgentBuilderInstructionsEditor({
       Text,
       ParagraphExtension,
       History,
+      InstructionBlockExtension,
       AgentInstructionDiffExtension,
       CharacterCount.configure({
         limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
