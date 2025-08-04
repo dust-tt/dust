@@ -119,7 +119,7 @@ const createServer = (
         logger
       );
 
-      const result = await api.createAgentConfigurationWithDefaults({
+      const result = await api.createGenericAgentConfiguration({
         name,
         description,
         instructions,

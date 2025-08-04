@@ -1585,7 +1585,7 @@ export type GetAgentConfigurationsResponseType = z.infer<
   typeof GetAgentConfigurationsResponseSchema
 >;
 
-export const CreateAgentConfigurationWithDefaultsRequestSchema = z.object({
+export const CreateGenericAgentConfigurationRequestSchema = z.object({
   name: z.string(),
   description: z.string(),
   instructions: z.string(),
@@ -1598,16 +1598,16 @@ export const CreateAgentConfigurationWithDefaultsRequestSchema = z.object({
 });
 
 export type CreateAgentConfigurationWithDefaultsRequestType = z.infer<
-  typeof CreateAgentConfigurationWithDefaultsRequestSchema
+  typeof CreateGenericAgentConfigurationRequestSchema
 >;
 
-export const CreateAgentConfigurationWithDefaultsResponseSchema = z.object({
+export const CreateGenericAgentConfigurationResponseSchema = z.object({
   agentConfiguration: LightAgentConfigurationSchema,
   subAgentConfiguration: LightAgentConfigurationSchema.optional(),
 });
 
-export type CreateAgentConfigurationWithDefaultsResponseType = z.infer<
-  typeof CreateAgentConfigurationWithDefaultsResponseSchema
+export type CreateGenericAgentConfigurationResponseType = z.infer<
+  typeof CreateGenericAgentConfigurationResponseSchema
 >;
 
 export const PostContentFragmentResponseSchema = z.object({

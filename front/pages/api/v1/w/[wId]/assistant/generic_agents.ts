@@ -1,4 +1,4 @@
-import type { CreateAgentConfigurationWithDefaultsResponseType } from "@dust-tt/client";
+import type { CreateGenericAgentConfigurationResponseType } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -39,7 +39,7 @@ function assistantHandleIsValid(handle: string) {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<CreateAgentConfigurationWithDefaultsResponseType>
+    WithAPIErrorResponse<CreateGenericAgentConfigurationResponseType>
   >,
   auth: Authenticator
 ): Promise<void> {

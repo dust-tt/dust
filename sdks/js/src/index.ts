@@ -49,8 +49,8 @@ import {
   APIErrorSchema,
   AppsCheckResponseSchema,
   CancelMessageGenerationResponseSchema,
-  CreateAgentConfigurationWithDefaultsResponseSchema,
   CreateConversationResponseSchema,
+  CreateGenericAgentConfigurationResponseSchema,
   DataSourceViewResponseSchema,
   DeleteFolderResponseSchema,
   Err,
@@ -637,7 +637,7 @@ export class DustAPI {
     return new Ok(r.value.contentFragment);
   }
 
-  async createAgentConfigurationWithDefaults({
+  async createGenericAgentConfiguration({
     name,
     description,
     instructions,
@@ -675,7 +675,7 @@ export class DustAPI {
     });
 
     const r = await this._resultFromResponse(
-      CreateAgentConfigurationWithDefaultsResponseSchema,
+      CreateGenericAgentConfigurationResponseSchema,
       res
     );
     if (r.isErr()) {
