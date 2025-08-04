@@ -88,6 +88,11 @@ type DataSourceBuilderState = StateType & {
   removeNode: (rowId: string) => void;
 
   /**
+   * Remove a specific row, but need to include its full path.
+   */
+  removeNodeWithPath: (path: string) => void;
+
+  /**
    * Remove the current navigationHistory entry
    * Used for the select all of the current page in the table
    */
@@ -243,6 +248,14 @@ export function DataSourceBuilderProvider({
     [field, state.navigationHistory]
   );
 
+  const removeNodeWithPath: DataSourceBuilderState["removeNodeWithPath"] =
+    useCallback(
+      (path) => {
+        field.onChange(removeNodeFromTree(field.value, path.split(".")));
+      },
+      [field]
+    );
+
   const removeCurrentNavigationEntry: DataSourceBuilderState["removeCurrentNavigationEntry"] =
     useCallback(() => {
       const nodePath = computeNavigationPath(state.navigationHistory);
@@ -331,6 +344,7 @@ export function DataSourceBuilderProvider({
       selectNode,
       selectCurrentNavigationEntry,
       removeNode,
+      removeNodeWithPath,
       removeCurrentNavigationEntry,
       isRowSelected,
       isRowSelectable,
@@ -349,6 +363,7 @@ export function DataSourceBuilderProvider({
       navigateTo,
       removeCurrentNavigationEntry,
       removeNode,
+      removeNodeWithPath,
       selectCurrentNavigationEntry,
       selectNode,
       setCategoryEntry,

@@ -39,6 +39,10 @@ export function validateDataSourceConfiguration(
   }
 }
 
+/**
+ * Helper hook to access the `sources`.
+ * As a single `useController` can be use to access a given attribute.
+ */
 export function useSourcesFormController() {
   return useController<CapabilityFormData, "sources">({ name: "sources" });
 }
