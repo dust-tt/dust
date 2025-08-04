@@ -38,10 +38,13 @@ export const getRefs = () => {
 export function citationMetaPrompt() {
   return (
     "## CITING DOCUMENTS\n" +
-    "To cite documents or web pages retrieved with a 3-character REFERENCE, " +
-    "use the markdown directive :cite[REFERENCE] " +
-    "(eg :cite[xxx] or :cite[xxx,xxx] but not :cite[xxx][xxx]). " +
-    "Ensure citations are placed as close as possible to the related information."
+    "You MUST cite ALL information retrieved from documents or web pages. Citations are critical for transparency and verification.\n" +
+    "- Use the markdown directive :cite[REFERENCE] with 3-character references (eg :cite[xxx] or :cite[xxx,yyy])\n" +
+    "- ALWAYS cite when using specific facts, data, quotes, or ideas from retrieved content\n" +
+    "- Place citations IMMEDIATELY after the relevant information, NOT at the end of sentences or paragraphs\n" +
+    "- Never group all citations at the end of your response - integrate them throughout\n" +
+    "- If synthesizing information from multiple sources, cite all relevant sources\n" +
+    "- Example: 'The revenue increased by 25% :cite[abc] in Q3, while costs decreased by 10% :cite[def].'"
   );
 }
 
