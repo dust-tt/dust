@@ -373,6 +373,9 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_draft: "low",
       delete_draft: "low",
       create_reply_draft: "low",
+      get_contacts: "never_ask",
+      create_contact: "high",
+      update_contact: "high",
     },
   },
   outlook_calendar: {
