@@ -276,6 +276,28 @@ export default async function createServer(
             // Separate content based on classification
             if (event.classification === "chain_of_thought") {
               chainOfThought += event.text;
+              // Stream chain of thought as a notification
+              const notification: MCPProgressNotificationType = {
+                method: "notifications/progress",
+                params: {
+                  progress: 0,
+                  total: 1,
+                  progressToken: 0,
+                  data: {
+                    label: "Agent thinking...",
+                    output: {
+                      type: "run_agent_chain_of_thought",
+                      childAgentId: childAgentId,
+                      conversationId: conversation.sId,
+                      query: query,
+                      chainOfThought: chainOfThought,
+                    },
+                  },
+                },
+              };
+              if (sendNotification) {
+                sendNotification(notification);
+              }
             } else if (event.classification === "tokens") {
               finalContent += event.text;
             } else if (
@@ -285,6 +307,28 @@ export default async function createServer(
             ) {
               // For closing chain of thought delimiters, add a newline
               chainOfThought += "\n";
+              // Send updated notification with the newline
+              const notification: MCPProgressNotificationType = {
+                method: "notifications/progress",
+                params: {
+                  progress: 0,
+                  total: 1,
+                  progressToken: 0,
+                  data: {
+                    label: "Agent thinking...",
+                    output: {
+                      type: "run_agent_chain_of_thought",
+                      childAgentId: childAgentId,
+                      conversationId: conversation.sId,
+                      query: query,
+                      chainOfThought: chainOfThought,
+                    },
+                  },
+                },
+              };
+              if (sendNotification) {
+                sendNotification(notification);
+              }
             }
           } else if (event.type === "agent_error") {
             const errorMessage = `Agent error: ${event.error.message}`;

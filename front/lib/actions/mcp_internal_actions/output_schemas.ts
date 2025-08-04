@@ -803,11 +803,34 @@ export function isRunAgentProgressOutput(
   );
 }
 
+const NotificationRunAgentChainOfThoughtSchema = z.object({
+  type: z.literal("run_agent_chain_of_thought"),
+  childAgentId: z.string(),
+  conversationId: z.string(),
+  query: z.string(),
+  chainOfThought: z.string(),
+});
+
+type RunAgentChainOfThoughtProgressOutput = z.infer<
+  typeof NotificationRunAgentChainOfThoughtSchema
+>;
+
+export function isRunAgentChainOfThoughtProgressOutput(
+  output: ProgressNotificationOutput
+): output is RunAgentChainOfThoughtProgressOutput {
+  return (
+    output !== undefined &&
+    output.type === "run_agent_chain_of_thought" &&
+    "chainOfThought" in output
+  );
+}
+
 export const ProgressNotificationOutputSchema = z
   .union([
     NotificationImageContentSchema,
     NotificationInteractiveFileContentSchema,
     NotificationRunAgentContentSchema,
+    NotificationRunAgentChainOfThoughtSchema,
     NotificationTextContentSchema,
     NotificationToolApproveBubbleUpContentSchema,
   ])

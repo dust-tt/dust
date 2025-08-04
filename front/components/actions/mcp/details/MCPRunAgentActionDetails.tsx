@@ -11,6 +11,7 @@ import { useMemo } from "react";
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
 import {
+  isRunAgentChainOfThoughtProgressOutput,
   isRunAgentProgressOutput,
   isRunAgentQueryResourceType,
   isRunAgentResultResourceType,
@@ -37,15 +38,23 @@ export function MCPRunAgentActionDetails({
       if (isRunAgentProgressOutput(lastNotification.data.output)) {
         return lastNotification.data.output.childAgentId;
       }
+      if (isRunAgentChainOfThoughtProgressOutput(lastNotification.data.output)) {
+        return lastNotification.data.output.childAgentId;
+      }
     }
     return null;
   }, [queryResource, lastNotification]);
 
   const query = useMemo(() => {
+    // Always prefer the queryResource if available (from action.output)
     if (queryResource) {
       return queryResource.resource.text;
     }
+    // Fall back to notification data if no queryResource yet
     if (isRunAgentProgressOutput(lastNotification?.data.output)) {
+      return lastNotification.data.output.query;
+    }
+    if (isRunAgentChainOfThoughtProgressOutput(lastNotification?.data.output)) {
       return lastNotification.data.output.query;
     }
     return null;
@@ -59,11 +68,16 @@ export function MCPRunAgentActionDetails({
   }, [resultResource]);
 
   const chainOfThought = useMemo(() => {
-    if (resultResource) {
-      return resultResource.resource.chainOfThought || null;
+    // Priority 1: Final result chain of thought (complete)
+    if (resultResource && resultResource.resource.chainOfThought) {
+      return resultResource.resource.chainOfThought;
+    }
+    // Priority 2: Streaming chain of thought from notifications
+    if (isRunAgentChainOfThoughtProgressOutput(lastNotification?.data.output)) {
+      return lastNotification.data.output.chainOfThought;
     }
     return null;
-  }, [resultResource]);
+  }, [resultResource, lastNotification]);
 
   const { agentConfiguration: childAgent } = useAgentConfiguration({
     workspaceId: owner.sId,
@@ -77,11 +91,18 @@ export function MCPRunAgentActionDetails({
     return true;
   }, [resultResource]);
 
+  const isStreamingChainOfThought = useMemo(() => {
+    return isBusy && chainOfThought !== null;
+  }, [isBusy, chainOfThought]);
+
   const conversationUrl = useMemo(() => {
     if (resultResource) {
       return resultResource.resource.uri;
     }
     if (isRunAgentProgressOutput(lastNotification?.data.output)) {
+      return `/w/${owner.sId}/assistant/${lastNotification.data.output.conversationId}`;
+    }
+    if (isRunAgentChainOfThoughtProgressOutput(lastNotification?.data.output)) {
       return `/w/${owner.sId}/assistant/${lastNotification.data.output.conversationId}`;
     }
     return null;
@@ -122,7 +143,7 @@ export function MCPRunAgentActionDetails({
               >
                 <Markdown
                   content={chainOfThought}
-                  isStreaming={false}
+                  isStreaming={isStreamingChainOfThought}
                   forcedTextSize="text-sm"
                   textColor="text-muted-foreground"
                   isLastMessage={false}
