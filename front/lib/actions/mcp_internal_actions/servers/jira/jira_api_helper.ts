@@ -515,10 +515,15 @@ export async function createIssue(
   issueData: z.infer<typeof JiraCreateIssueRequestSchema>
 ): Promise<Result<z.infer<typeof JiraIssueSchema>, JiraErrorResult>> {
   // Process fields to convert strings to ADF for textarea fields only
-  const processedFields: typeof issueData & Record<string, unknown> = { ...issueData };
+  const processedFields: typeof issueData & Record<string, unknown> = {
+    ...issueData,
+  };
 
   // Convert description from string to ADF if it's a string
-  if (processedFields.description && typeof processedFields.description === "string") {
+  if (
+    processedFields.description &&
+    typeof processedFields.description === "string"
+  ) {
     processedFields.description = textToADF(processedFields.description);
   }
 
@@ -563,10 +568,15 @@ export async function updateIssue(
   Result<{ issueKey: string; browseUrl?: string } | null, JiraErrorResult>
 > {
   // Process fields to convert strings to ADF for textarea fields only
-  const processedFields: typeof updateData & Record<string, unknown> = { ...updateData };
+  const processedFields: typeof updateData & Record<string, unknown> = {
+    ...updateData,
+  };
 
   // Convert description from string to ADF if it's a string
-  if (processedFields.description && typeof processedFields.description === "string") {
+  if (
+    processedFields.description &&
+    typeof processedFields.description === "string"
+  ) {
     processedFields.description = textToADF(processedFields.description);
   }
 
