@@ -74,7 +74,9 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   const isRunAgent =
     props.action.output?.some(isRunAgentResultResourceType) ||
     isRunAgentProgressOutput(props.lastNotification?.data.output);
-  const isAgentCreation = props.action.output?.some(isAgentCreationResultResourceType);
+  const isAgentCreation = props.action.output?.some(
+    isAgentCreationResultResourceType
+  );
 
   // TODO(mcp): rationalize the display of results for MCP to remove the need for specific checks.
   // Hack to find out whether the output comes from the reasoning tool, links back to the TODO above.

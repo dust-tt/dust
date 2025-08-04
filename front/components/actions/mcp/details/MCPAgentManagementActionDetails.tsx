@@ -172,7 +172,9 @@ export function MCPAgentManagementActionDetails({
                   contentChildren={
                     <div className="mt-2">
                       <ContentMessage variant="primary" size="sm">
-                        <Markdown content={action.params.sub_agent_instructions} />
+                        <Markdown
+                          content={action.params.sub_agent_instructions}
+                        />
                       </ContentMessage>
                     </div>
                   }
