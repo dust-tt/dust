@@ -185,10 +185,7 @@ export function KnowledgeConfigurationSheet({
   return (
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
       <FormProvider {...formMethods}>
-        <DataSourceBuilderProvider
-          control={formMethods.control}
-          spaces={spaces}
-        >
+        <DataSourceBuilderProvider spaces={spaces}>
           <KnowledgeConfigurationSheetContent
             config={config}
             setConfig={setConfig}
@@ -386,7 +383,7 @@ function KnowledgeConfigurationSheetContent({
       })}
       size="xl"
       showNavigation
-      footerContent={<KnowledgeFooter control={control} />}
+      footerContent={<KnowledgeFooter />}
     />
   );
 }
