@@ -35,18 +35,24 @@ export function shouldSyncTicket(
     organizationTags = [],
     ticketTags = [],
   }: { brandId?: number; organizationTags?: string[]; ticketTags?: string[] }
-): boolean {
+): { shouldSync: false; reason: string } | { shouldSync: true; reason: null } {
   if (ticket.status === "deleted") {
-    return false;
+    return { shouldSync: false, reason: "Ticket is deleted." };
   }
   if (
     !configuration.syncUnresolvedTickets &&
     !["closed", "solved"].includes(ticket.status)
   ) {
-    return false;
+    return {
+      shouldSync: false,
+      reason: `Ticket is not resolved, status: ${ticket.status}.`,
+    };
   }
   if (brandId && brandId !== ticket.brand_id) {
-    return false;
+    return {
+      shouldSync: false,
+      reason: `Ticket does not belong to the brand, ticket brand: ${ticket.brand_id}, expected: ${brandId}.`,
+    };
   }
 
   // If we enforce an inclusion rule on organization tags, all tickets must have at least one of the
@@ -58,7 +64,10 @@ export function shouldSyncTicket(
       organizationTags.includes(mandatoryTag)
     )
   ) {
-    return false;
+    return {
+      shouldSync: false,
+      reason: "Ticket does not match any of the required organization tags.",
+    };
   }
 
   // If we enforce an exclusion rule on organization tags, we must not have any of the
@@ -70,7 +79,10 @@ export function shouldSyncTicket(
       organizationTags.includes(prohibitedTag)
     )
   ) {
-    return false;
+    return {
+      shouldSync: false,
+      reason: "Ticket contains prohibited organization tags.",
+    };
   }
 
   // If we enforce an inclusion rule on ticket tags, we must have at least one of the
@@ -82,7 +94,10 @@ export function shouldSyncTicket(
       ticketTags.includes(mandatoryTag)
     )
   ) {
-    return false;
+    return {
+      shouldSync: false,
+      reason: "Ticket does not match any of the required tags.",
+    };
   }
 
   // If we enforce an exclusion rule on ticket tags, we must not have any of the
@@ -94,11 +109,11 @@ export function shouldSyncTicket(
       ticketTags.includes(prohibitedTag)
     )
   ) {
-    return false;
+    return { shouldSync: false, reason: "Ticket contains prohibited tags." };
   }
 
   // All checks passed.
-  return true;
+  return { shouldSync: true, reason: null };
 }
 
 export function extractMetadataFromDocumentUrl(ticketUrl: string): {

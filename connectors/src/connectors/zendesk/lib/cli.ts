@@ -45,6 +45,7 @@ import type {
   ZendeskGetRetentionPeriodResponseType,
   ZendeskOrganizationTagResponseType,
 } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
 
 function getTagsArgs(args: ZendeskCommandType["args"]) {
   const tag = args.tag;
@@ -81,7 +82,7 @@ async function checkTicketShouldBeSynced(
   logger: Logger
 ) {
   if (!ticket) {
-    return false;
+    return { shouldSync: false, reason: "Ticket not found" };
   }
 
   let organizationTags: string[] = [];
@@ -232,7 +233,10 @@ export const zendesk = async ({
         } catch (e) {
           return {
             ticket: null,
-            shouldSyncTicket: false,
+            shouldSyncTicket: {
+              shouldSync: false,
+              reason: `Error getting ticket metadata: ${normalizeError(e).message}`,
+            },
             isTicketOnDb: false,
           };
         }
