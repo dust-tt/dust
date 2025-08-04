@@ -2,10 +2,13 @@ import {
   ActionRobotIcon,
   Avatar,
   Button,
+  CollapsibleComponent,
   ContentMessage,
   ExternalLinkIcon,
   Markdown,
 } from "@dust-tt/sparkle";
+import { useEffect, useRef } from "react";
+import { useSWRConfig } from "swr";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
@@ -14,8 +17,36 @@ import { isAgentCreationResultResourceType } from "@app/lib/actions/mcp_internal
 export function MCPAgentManagementActionDetails({
   action,
   defaultOpen,
+  owner,
+  messageStatus,
 }: MCPActionDetailsProps) {
   const creationResult = action.output?.find(isAgentCreationResultResourceType);
+  const { mutate } = useSWRConfig();
+  const hasRefreshed = useRef(false);
+
+  // Refresh agent list when:
+  // 1. We have a successful creation result
+  // 2. The message is still streaming (status === "created")
+  // 3. We haven't refreshed yet (to avoid multiple refreshes)
+  useEffect(() => {
+    if (
+      creationResult &&
+      !hasRefreshed.current &&
+      messageStatus === "created"
+    ) {
+      hasRefreshed.current = true;
+
+      // Refresh agent configurations with different views
+      // These are the common patterns used in the app for fetching agents
+      void mutate(
+        (key) =>
+          typeof key === "string" &&
+          key.startsWith(`/api/w/${owner.sId}/assistant/agent_configurations`),
+        undefined,
+        { revalidate: true }
+      );
+    }
+  }, [creationResult, messageStatus, mutate, owner.sId]);
 
   if (!creationResult) {
     // Fallback to showing the raw output if no structured data
@@ -75,6 +106,23 @@ export function MCPAgentManagementActionDetails({
             </ul>
           </div>
 
+          {typeof action.params.instructions === "string" ? (
+            <CollapsibleComponent
+              triggerChildren={
+                <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                  Instructions
+                </span>
+              }
+              contentChildren={
+                <div className="mt-2">
+                  <ContentMessage variant="primary" size="sm">
+                    <Markdown content={action.params.instructions} />
+                  </ContentMessage>
+                </div>
+              }
+            />
+          ) : null}
+
           <Button
             icon={ExternalLinkIcon}
             label="View Agent"
@@ -113,6 +161,23 @@ export function MCPAgentManagementActionDetails({
                   tool. It has access to the same tools as the main agent.
                 </p>
               </div>
+
+              {typeof action.params.sub_agent_instructions === "string" ? (
+                <CollapsibleComponent
+                  triggerChildren={
+                    <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                      Instructions
+                    </span>
+                  }
+                  contentChildren={
+                    <div className="mt-2">
+                      <ContentMessage variant="primary" size="sm">
+                        <Markdown content={action.params.sub_agent_instructions} />
+                      </ContentMessage>
+                    </div>
+                  }
+                />
+              ) : null}
 
               <Button
                 icon={ExternalLinkIcon}

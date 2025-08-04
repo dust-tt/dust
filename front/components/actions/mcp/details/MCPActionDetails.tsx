@@ -55,6 +55,7 @@ export interface MCPActionDetailsProps {
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
   defaultOpen: boolean;
+  messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
 }
 
 export function MCPActionDetails(props: MCPActionDetailsProps) {
