@@ -43,17 +43,41 @@ const OutlookMessageSchema = z.object({
   internetMessageId: z.string().optional(),
 });
 
+const OutlookContactSchema = z.object({
+  id: z.string(),
+  displayName: z.string().optional(),
+  givenName: z.string().optional(),
+  surname: z.string().optional(),
+  emailAddresses: z
+    .array(
+      z.object({
+        address: z.string(),
+        name: z.string().optional(),
+      })
+    )
+    .optional(),
+  businessPhones: z.array(z.string()).optional(),
+  homePhones: z.array(z.string()).optional(),
+  mobilePhone: z.string().optional(),
+  jobTitle: z.string().optional(),
+  companyName: z.string().optional(),
+  department: z.string().optional(),
+  officeLocation: z.string().optional(),
+});
+
 type OutlookMessage = z.infer<typeof OutlookMessageSchema>;
+type OutlookContact = z.infer<typeof OutlookContactSchema>;
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "outlook",
   version: "1.0.0",
-  description: "Outlook tools for reading emails and managing email drafts.",
+  description:
+    "Outlook tools for reading emails, managing email drafts, and managing contacts.",
   authorization: {
     provider: "microsoft_tools" as const,
     supported_use_cases: ["personal_actions"] as const,
     scope:
-      "Mail.ReadWrite Mail.ReadWrite.Shared User.Read offline_access" as const,
+      "Mail.ReadWrite Mail.ReadWrite.Shared Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read offline_access" as const,
   },
   icon: "OutlookLogo",
   documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
@@ -95,7 +119,7 @@ const createServer = (): McpServer => {
 
       const params = new URLSearchParams();
       params.append("$top", Math.min(top, 100).toString());
-      
+
       if (search) {
         params.append("$search", `"${search}"`);
       } else {
@@ -150,9 +174,7 @@ const createServer = (): McpServer => {
       top: z
         .number()
         .optional()
-        .describe(
-          "Maximum number of drafts to return (default: 10, max: 100)"
-        ),
+        .describe("Maximum number of drafts to return (default: 10, max: 100)"),
       skip: z
         .number()
         .optional()
@@ -439,6 +461,308 @@ const createServer = (): McpServer => {
           originalMessageId: messageId,
           subject: result.subject,
         },
+      });
+    }
+  );
+
+  server.tool(
+    "get_contacts",
+    "Get contacts from Outlook. Supports search queries to filter contacts.",
+    {
+      search: z
+        .string()
+        .optional()
+        .describe(
+          'Search query to filter contacts. Examples: "name:John", "company:Microsoft". Leave empty to get recent contacts.'
+        ),
+      top: z
+        .number()
+        .optional()
+        .describe(
+          "Maximum number of contacts to return (default: 20, max: 100)"
+        ),
+      skip: z
+        .number()
+        .optional()
+        .describe("Number of contacts to skip for pagination."),
+      select: z
+        .array(z.string())
+        .optional()
+        .describe("Fields to include in the response."),
+    },
+    async ({ search, top = 20, skip = 0, select }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return makeMCPToolTextError("Authentication required");
+      }
+
+      const params = new URLSearchParams();
+      params.append("$top", Math.min(top, 100).toString());
+
+      if (search) {
+        params.append("$search", `"${search}"`);
+      } else {
+        params.append("$skip", skip.toString());
+      }
+
+      if (select && select.length > 0) {
+        params.append("$select", select.join(","));
+      } else {
+        params.append(
+          "$select",
+          "id,displayName,givenName,surname,emailAddresses,businessPhones,homePhones,mobilePhone,jobTitle,companyName,department,officeLocation"
+        );
+      }
+
+      const response = await fetchFromOutlook(
+        `/me/contacts?${params.toString()}`,
+        accessToken,
+        { method: "GET" }
+      );
+
+      if (!response.ok) {
+        const errorText = await getErrorText(response);
+        return makeMCPToolTextError(
+          `Failed to get contacts: ${response.status} ${response.statusText} - ${errorText}`
+        );
+      }
+
+      const result = await response.json();
+
+      return makeMCPToolJSONSuccess({
+        message: "Contacts fetched successfully",
+        result: {
+          contacts: (result.value || []) as OutlookContact[],
+          nextLink: result["@odata.nextLink"],
+          totalCount: result["@odata.count"],
+        },
+      });
+    }
+  );
+
+  server.tool(
+    "create_contact",
+    "Create a new contact in Outlook.",
+    {
+      displayName: z.string().describe("Display name of the contact"),
+      givenName: z.string().optional().describe("First name of the contact"),
+      surname: z.string().optional().describe("Last name of the contact"),
+      emailAddresses: z
+        .array(
+          z.object({
+            address: z.string(),
+            name: z.string().optional(),
+          })
+        )
+        .optional()
+        .describe("Email addresses for the contact"),
+      businessPhones: z
+        .array(z.string())
+        .optional()
+        .describe("Business phone numbers"),
+      homePhones: z.array(z.string()).optional().describe("Home phone numbers"),
+      mobilePhone: z.string().optional().describe("Mobile phone number"),
+      jobTitle: z.string().optional().describe("Job title"),
+      companyName: z.string().optional().describe("Company name"),
+      department: z.string().optional().describe("Department"),
+      officeLocation: z.string().optional().describe("Office location"),
+    },
+    async (
+      {
+        displayName,
+        givenName,
+        surname,
+        emailAddresses,
+        businessPhones,
+        homePhones,
+        mobilePhone,
+        jobTitle,
+        companyName,
+        department,
+        officeLocation,
+      },
+      { authInfo }
+    ) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return makeMCPToolTextError("Authentication required");
+      }
+
+      const contact: any = {
+        displayName,
+      };
+
+      if (givenName) {
+        contact.givenName = givenName;
+      }
+      if (surname) {
+        contact.surname = surname;
+      }
+      if (emailAddresses) {
+        contact.emailAddresses = emailAddresses;
+      }
+      if (businessPhones) {
+        contact.businessPhones = businessPhones;
+      }
+      if (homePhones) {
+        contact.homePhones = homePhones;
+      }
+      if (mobilePhone) {
+        contact.mobilePhone = mobilePhone;
+      }
+      if (jobTitle) {
+        contact.jobTitle = jobTitle;
+      }
+      if (companyName) {
+        contact.companyName = companyName;
+      }
+      if (department) {
+        contact.department = department;
+      }
+      if (officeLocation) {
+        contact.officeLocation = officeLocation;
+      }
+
+      const response = await fetchFromOutlook("/me/contacts", accessToken, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(contact),
+      });
+
+      if (!response.ok) {
+        const errorText = await getErrorText(response);
+        return makeMCPToolTextError(
+          `Failed to create contact: ${response.status} ${response.statusText} - ${errorText}`
+        );
+      }
+
+      const result = await response.json();
+
+      return makeMCPToolJSONSuccess({
+        message: "Contact created successfully",
+        result: result as OutlookContact,
+      });
+    }
+  );
+
+  server.tool(
+    "update_contact",
+    "Update an existing contact in Outlook.",
+    {
+      contactId: z.string().describe("ID of the contact to update"),
+      displayName: z
+        .string()
+        .optional()
+        .describe("Display name of the contact"),
+      givenName: z.string().optional().describe("First name of the contact"),
+      surname: z.string().optional().describe("Last name of the contact"),
+      emailAddresses: z
+        .array(
+          z.object({
+            address: z.string(),
+            name: z.string().optional(),
+          })
+        )
+        .optional()
+        .describe("Email addresses for the contact"),
+      businessPhones: z
+        .array(z.string())
+        .optional()
+        .describe("Business phone numbers"),
+      homePhones: z.array(z.string()).optional().describe("Home phone numbers"),
+      mobilePhone: z.string().optional().describe("Mobile phone number"),
+      jobTitle: z.string().optional().describe("Job title"),
+      companyName: z.string().optional().describe("Company name"),
+      department: z.string().optional().describe("Department"),
+      officeLocation: z.string().optional().describe("Office location"),
+    },
+    async (
+      {
+        contactId,
+        displayName,
+        givenName,
+        surname,
+        emailAddresses,
+        businessPhones,
+        homePhones,
+        mobilePhone,
+        jobTitle,
+        companyName,
+        department,
+        officeLocation,
+      },
+      { authInfo }
+    ) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return makeMCPToolTextError("Authentication required");
+      }
+
+      const contact: any = {};
+
+      if (displayName) {
+        contact.displayName = displayName;
+      }
+      if (givenName) {
+        contact.givenName = givenName;
+      }
+      if (surname) {
+        contact.surname = surname;
+      }
+      if (emailAddresses) {
+        contact.emailAddresses = emailAddresses;
+      }
+      if (businessPhones) {
+        contact.businessPhones = businessPhones;
+      }
+      if (homePhones) {
+        contact.homePhones = homePhones;
+      }
+      if (mobilePhone) {
+        contact.mobilePhone = mobilePhone;
+      }
+      if (jobTitle) {
+        contact.jobTitle = jobTitle;
+      }
+      if (companyName) {
+        contact.companyName = companyName;
+      }
+      if (department) {
+        contact.department = department;
+      }
+      if (officeLocation) {
+        contact.officeLocation = officeLocation;
+      }
+
+      const response = await fetchFromOutlook(
+        `/me/contacts/${contactId}`,
+        accessToken,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(contact),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await getErrorText(response);
+        if (response.status === 404) {
+          return makeMCPToolTextError(`Contact not found: ${contactId}`);
+        }
+        return makeMCPToolTextError(
+          `Failed to update contact: ${response.status} ${response.statusText} - ${errorText}`
+        );
+      }
+
+      const result = await response.json();
+
+      return makeMCPToolJSONSuccess({
+        message: "Contact updated successfully",
+        result: result as OutlookContact,
       });
     }
   );
