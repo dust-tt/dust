@@ -25,8 +25,7 @@ class AudioRecorder: ObservableObject {
             AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
             AVSampleRateKey: 8000,
             AVNumberOfChannelsKey: 1,
-            AVEncoderAudioQualityKey: AVAudioQuality.low.rawValue,
-            AVEncoderBitRateKey: 32000
+            AVEncoderAudioQualityKey: AVAudioQuality.low.rawValue
         ] as [String: Any]
         
         do {
