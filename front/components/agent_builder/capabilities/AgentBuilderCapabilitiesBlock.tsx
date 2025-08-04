@@ -16,9 +16,9 @@ import type {
   AgentBuilderDataVizAction,
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import { MCPConfigurationSheet } from "@app/components/agent_builder/capabilities/mcp/MCPConfigurationSheet";
+import { MCPServerViewsDialog } from "@app/components/agent_builder/capabilities/MCPServerViewsDialog";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
@@ -69,7 +69,7 @@ function actionDisplayName(
 }
 
 // TODO: Merge this with ActionCard.
-function MCPActionCard({
+export function MCPActionCard({
   action,
   onRemove,
   onEdit,
@@ -274,7 +274,7 @@ export function AgentBuilderCapabilitiesBlock() {
         action={editingAction?.action}
         open={isKnowledgeSheetOpen}
       />
-      <AddToolsDropdown
+      <MCPServerViewsDialog
         tools={fields}
         addTools={append}
         defaultMCPServerViews={selectableDefaultMCPServerViews}
