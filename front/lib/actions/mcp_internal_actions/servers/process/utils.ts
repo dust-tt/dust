@@ -1,7 +1,7 @@
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 
 /**

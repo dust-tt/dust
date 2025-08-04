@@ -10,6 +10,7 @@ import {
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   ConfigurableToolInputSchemas,
@@ -24,7 +25,6 @@ import {
   getDataSourceConfiguration,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
@@ -42,7 +42,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -50,6 +49,7 @@ import type {
   TimeFrame,
   UserMessageType,
 } from "@app/types";
+import { Err, Ok } from "@app/types";
 import { isUserMessageType, timeFrameFromNow } from "@app/types";
 
 import { applyDataSourceFilters, getExtractFileTitle } from "./utils";
@@ -170,34 +170,32 @@ function makeExtractInformationFromDocumentsTool(
         }
       );
       if (res.isErr()) {
-        return processToolError({
-          conversation,
-          errorMessage: "Error running extract data action",
-          errorDetails: res.error.message,
-        });
+        return new Err(
+          new MCPError(
+            `Error running extract data action: ${res.error.message}`
+          )
+        );
       }
 
       // Event stream loop
       let outputs: ProcessActionOutputsType | null = null;
       for await (const event of res.value.eventStream) {
         if (event.type === "error") {
-          return processToolError({
-            conversation,
-            errorMessage: "Error running extract data action",
-            errorDetails:
-              event.content.message ?? "Unknown error from event stream.",
-          });
+          return new Err(
+            new MCPError(
+              `"Error running extract data action": ${event.content.message ?? "Unknown error from event stream."}`
+            )
+          );
         }
 
         if (event.type === "block_execution") {
           const e = event.content.execution[0][0];
           if (e.error) {
-            return processToolError({
-              conversation,
-              errorMessage: "Error running extract data action",
-              errorDetails:
-                e.error ?? "An unknown error occurred during block execution.",
-            });
+            return new Err(
+              new MCPError(
+                `"Error running extract data action": ${e.error ?? "An unknown error occurred during block execution."}`
+              )
+            );
           }
 
           if (event.content.block_name === "OUTPUT" && e.value) {
@@ -222,7 +220,7 @@ function makeExtractInformationFromDocumentsTool(
         file: jsonFile,
       });
 
-      return processToolOutput;
+      return new Ok(processToolOutput);
     }
   );
 }
@@ -492,30 +490,6 @@ async function getPromptForProcessDustApp({
   });
 }
 
-function processToolError({
-  conversation,
-  errorMessage,
-  errorDetails,
-}: {
-  conversation: ConversationType;
-  errorMessage: string;
-  errorDetails: string;
-}) {
-  logger.error(
-    {
-      workspaceId: conversation.owner.sId,
-      conversationId: conversation.sId,
-      error: errorDetails,
-    },
-    "Error running process"
-  );
-  return makeMCPToolTextError(`${errorMessage}: ${errorDetails}`, {
-    created: Date.now(),
-    workspaceId: conversation.owner.sId,
-    conversationId: conversation.sId,
-  });
-}
-
 async function generateProcessToolOutput({
   auth,
   conversation,
@@ -560,30 +534,27 @@ async function generateProcessToolOutput({
 
   return {
     jsonFile,
-    processToolOutput: {
-      isError: false,
-      content: [
-        {
-          type: "resource" as const,
-          resource: {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_QUERY,
-            text: `Extracted from ${outputs?.total_documents} documents over ${timeFrameAsString}.\nObjective: ${objective}`,
-            uri: "",
-          },
+    processToolOutput: [
+      {
+        type: "resource" as const,
+        resource: {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_QUERY,
+          text: `Extracted from ${outputs?.total_documents} documents over ${timeFrameAsString}.\nObjective: ${objective}`,
+          uri: "",
         },
-        {
-          type: "resource" as const,
-          resource: {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT,
-            text: extractResult,
-            uri: jsonFile.getPublicUrl(auth),
-            fileId: generatedFile.fileId,
-            title: generatedFile.title,
-            contentType: generatedFile.contentType,
-            snippet: generatedFile.snippet,
-          },
+      },
+      {
+        type: "resource" as const,
+        resource: {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT,
+          text: extractResult,
+          uri: jsonFile.getPublicUrl(auth),
+          fileId: generatedFile.fileId,
+          title: generatedFile.title,
+          contentType: generatedFile.contentType,
+          snippet: generatedFile.snippet,
         },
-      ],
-    },
+      },
+    ],
   };
 }

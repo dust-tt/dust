@@ -4,7 +4,7 @@ import * as reporter from "io-ts-reporters";
 import { NumberFromString, withFallback } from "io-ts-types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -92,11 +92,10 @@ async function handler(
       }
 
       // Verify the agent exists and user has access
-      const agentConfiguration = await getAgentConfiguration(
-        auth,
+      const agentConfiguration = await getAgentConfiguration(auth, {
         agentId,
-        "light"
-      );
+        variant: "light",
+      });
       if (!agentConfiguration) {
         return apiError(req, res, {
           status_code: 404,

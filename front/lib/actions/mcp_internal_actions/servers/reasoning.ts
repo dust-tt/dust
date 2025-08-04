@@ -215,6 +215,7 @@ async function* runReasoning(
     tools: "",
     allowedTokenCount: supportedModel.contextSize - REASONING_GENERATION_TOKENS,
     excludeImages: true,
+    checkMissingActions: false,
   });
   if (renderedConversationRes.isErr()) {
     yield {

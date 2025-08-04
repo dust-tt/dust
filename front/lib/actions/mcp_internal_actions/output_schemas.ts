@@ -813,3 +813,35 @@ export function isTextContent(
 ): content is { type: "text"; text: string } {
   return content.type === "text";
 }
+
+export function isResourceContentWithText(
+  content: CallToolResult["content"][number]
+): content is {
+  type: "resource";
+  resource: {
+    [x: string]: unknown;
+    text: string;
+    uri: string;
+    mimeType?: string | undefined;
+  };
+} {
+  return (
+    content.type === "resource" &&
+    typeof content.resource === "object" &&
+    content.resource !== null &&
+    "text" in content.resource &&
+    typeof (content.resource as any).text === "string"
+  );
+}
+
+export const getOutputText = (
+  output: CallToolResult["content"][number]
+): string => {
+  if (isTextContent(output)) {
+    return output.text;
+  }
+  if (isResourceContentWithText(output)) {
+    return output.resource.text;
+  }
+  return "";
+};

@@ -163,7 +163,7 @@ export function TagsSection() {
 
   return (
     <div className="flex h-full flex-col gap-4">
-      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
+      <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
         Tags
       </label>
       <TagsSelector

@@ -7,7 +7,7 @@ import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
@@ -77,7 +77,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     context.query
   );
   if (duplicate) {
-    configuration = await getAgentConfiguration(auth, duplicate, "full");
+    configuration = await getAgentConfiguration(auth, {
+      agentId: duplicate,
+      variant: "full",
+    });
 
     if (!configuration) {
       return {

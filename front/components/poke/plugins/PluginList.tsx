@@ -1,4 +1,4 @@
-import { Input, ScrollArea, Tooltip } from "@dust-tt/sparkle";
+import { Input, Tooltip } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 
 import { RunPluginDialog } from "@app/components/poke/plugins/RunPluginDialog";
@@ -84,7 +84,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
         </div>
       </div>
 
-      <ScrollArea className="h-80">
+      <div>
         {filteredPlugins.length === 0 ? (
           <div className="flex h-full items-center justify-center text-gray-500">
             {searchQuery.trim() ? (
@@ -118,7 +118,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
               ))}
           </div>
         )}
-      </ScrollArea>
+      </div>
       {selectedPlugin && (
         <RunPluginDialog
           onClose={handleDialogClose}

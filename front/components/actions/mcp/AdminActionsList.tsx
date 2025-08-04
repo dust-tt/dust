@@ -14,6 +14,7 @@ import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHea
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import {
   getMcpServerDisplayName,
+  getMcpServerViewDescription,
   getMcpServerViewDisplayName,
   mcpServersSortingFn,
 } from "@app/lib/actions/mcp_helper";
@@ -56,7 +57,9 @@ const NameCell = ({ row }: { row: RowData }) => {
               : getMcpServerDisplayName(mcpServer)}
           </div>
           <div className="truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
-            {mcpServer.description}
+            {mcpServerView
+              ? getMcpServerViewDescription(mcpServerView)
+              : mcpServer.description}
           </div>
         </div>
 

@@ -36,6 +36,7 @@ import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { RestoreAssistantDialog } from "@app/components/assistant/RestoreAssistantDialog";
 import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
 import { MembersList } from "@app/components/members/MembersList";
+import { isMCPConfigurationForAgentMemory } from "@app/lib/actions/types/guards";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useEditors, useUpdateEditors } from "@app/lib/swr/editors";
 import type {
@@ -253,7 +254,7 @@ export function AssistantDetails({
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const showEditorsTabs = assistantId != null && !isGlobalAgent;
   const showAgentMemory = !!agentConfiguration?.actions.find(
-    (a) => a.mcpServerName === "agent_memory"
+    isMCPConfigurationForAgentMemory
   );
 
   const showPerformanceTabs =

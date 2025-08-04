@@ -193,9 +193,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         serverType,
         internalMCPServerId: serverType === "internal" ? mcpServerId : null,
         remoteMCPServerId: serverType === "remote" ? id : null,
-        // Always copy the oAuthUseCase from the system view to the custom view.
+        // Always copy the oAuthUseCase, name and description from the system view to the custom view.
         // This way, it's always available on the MCP server view without having to fetch the system view.
         oAuthUseCase: systemView.oAuthUseCase,
+        name: systemView.name,
+        description: systemView.description,
       },
       space,
       auth.user() ?? undefined,
@@ -419,6 +421,29 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
     const [affectedCount] = await this.update({
       oAuthUseCase,
+      editedAt: new Date(),
+      editedByUserId: auth.getNonNullableUser().id,
+    });
+    return new Ok(affectedCount);
+  }
+
+  public async updateNameAndDescription(
+    auth: Authenticator,
+    name?: string,
+    description?: string
+  ): Promise<Result<number, DustError<"unauthorized">>> {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Not allowed to update name and description."
+        )
+      );
+    }
+
+    const [affectedCount] = await this.update({
+      name,
+      description,
       editedAt: new Date(),
       editedByUserId: auth.getNonNullableUser().id,
     });
@@ -682,6 +707,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return {
       id: this.id,
       sId: this.sId,
+      name: this.name,
+      description: this.description,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,

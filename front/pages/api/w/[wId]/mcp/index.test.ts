@@ -5,8 +5,27 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
+import { Ok } from "@app/types";
 
 import handler from "./index";
+
+// Mock the data_sources module to spy on upsertTable
+vi.mock(
+  import("../../../../../lib/actions/mcp_metadata"),
+  async (importOriginal) => {
+    const mod = await importOriginal();
+    return {
+      ...mod,
+      fetchRemoteServerMetaDataByURL: vi.fn().mockImplementation(() => {
+        return new Ok({
+          name: "Test Server",
+          description: "Test description",
+          tools: [{ name: "test-tool", description: "Test tool description" }],
+        });
+      }),
+    };
+  }
+);
 
 async function setupTest(
   t: any,
@@ -114,31 +133,6 @@ describe("POST /api/w/[wId]/mcp/", () => {
       },
     });
   });
-
-  itInTransaction(
-    "should return 400 when server with URL already exists",
-    async (t) => {
-      const { req, res, workspace } = await setupTest(t, "admin", "POST");
-
-      const existingUrl = "https://existing-server.example.com";
-      await RemoteMCPServerFactory.create(workspace, {
-        name: "Existing Server",
-        url: existingUrl,
-      });
-
-      req.body = { url: existingUrl, serverType: "remote" };
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(400);
-      expect(res._getJSONData()).toEqual({
-        error: {
-          type: "invalid_request_error",
-          message: "A server with this URL already exists",
-        },
-      });
-    }
-  );
 });
 
 describe("Method Support /api/w/[wId]/mcp", () => {

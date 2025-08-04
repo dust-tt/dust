@@ -73,7 +73,6 @@ export async function streamConversationToSlack(
   await postSlackMessageUpdate(
     {
       messageUpdate: {
-        isComplete: false,
         isThinking: true,
         assistantName,
         agentConfigurations,
@@ -133,7 +132,6 @@ async function streamAgentAnswerToSlack(
         await postSlackMessageUpdate(
           {
             messageUpdate: {
-              isComplete: false,
               isThinking: true,
               assistantName,
               agentConfigurations,
@@ -231,7 +229,6 @@ async function streamAgentAnswerToSlack(
         }
         await postSlackMessageUpdate({
           messageUpdate: {
-            isComplete: false,
             text: slackContent,
             assistantName,
             agentConfigurations,
@@ -256,7 +253,6 @@ async function streamAgentAnswerToSlack(
         await postSlackMessageUpdate(
           {
             messageUpdate: {
-              isComplete: true,
               text: slackContent,
               assistantName,
               agentConfigurations,

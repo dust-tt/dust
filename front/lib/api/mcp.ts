@@ -53,8 +53,6 @@ export type MCPServerType = {
 
 export type RemoteMCPServerType = MCPServerType & {
   url?: string;
-  cachedName?: string;
-  cachedDescription?: string | null;
   sharedSecret?: string | null;
   lastSyncAt?: Date | null;
   lastError?: string | null;
@@ -64,6 +62,8 @@ export type RemoteMCPServerType = MCPServerType & {
 export interface MCPServerViewType {
   id: ModelId;
   sId: string;
+  name: string | null; // Can be null if the user did not set a custom name.
+  description: string | null; // Can be null if the user did not set a custom description.
   createdAt: number;
   updatedAt: number;
   spaceId: string;

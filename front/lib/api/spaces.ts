@@ -5,7 +5,7 @@ import { hardDeleteApp } from "@app/lib/api/apps";
 import {
   getAgentConfigurations,
   updateAgentRequestedGroupIds,
-} from "@app/lib/api/assistant/configuration";
+} from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -143,12 +143,11 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       await concurrentExecutor(
         agentIds,
         async (agentId) => {
-          const [agentConfig] = await getAgentConfigurations({
-            auth,
-            agentsGetView: { agentIds: [agentId] },
+          const agentConfigs = await getAgentConfigurations(auth, {
+            agentIds: [agentId],
             variant: "full",
-            dangerouslySkipPermissionFiltering: true,
           });
+          const [agentConfig] = agentConfigs;
 
           // Get the required group IDs from the agent's actions
           const requestedGroupIds =

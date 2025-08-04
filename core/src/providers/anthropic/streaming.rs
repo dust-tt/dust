@@ -11,8 +11,8 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::types::{
-    AnthropicChatMessageRole, AnthropicError, AnthropicResponseContent, ChatResponse, StopReason,
-    ToolUse, Usage,
+    AnthropicChatMessageRole, AnthropicError, AnthropicResponseContent, ChatResponse,
+    RedactedThinkingContent, StopReason, ThinkingContent, ToolUse, Usage,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -34,7 +34,7 @@ impl TryFrom<StreamChatResponse> for ChatResponse {
             .into_iter()
             .map(|content| match content {
                 StreamContent::AnthropicStreamContent(content) => {
-                    Ok(Some(AnthropicResponseContent::Text { text: content.text }))
+                    Ok(AnthropicResponseContent::Text { text: content.text })
                 }
                 StreamContent::AnthropicStreamToolUse(tool_use) => {
                     let input_json = match tool_use.input {
@@ -47,20 +47,25 @@ impl TryFrom<StreamChatResponse> for ChatResponse {
                         input => input,
                     };
 
-                    Ok(Some(AnthropicResponseContent::ToolUse(ToolUse {
+                    Ok(AnthropicResponseContent::ToolUse(ToolUse {
                         id: tool_use.id,
                         name: tool_use.name,
                         input: input_json,
-                    })))
+                    }))
                 }
-                // Ignore thinking-related content.
-                StreamContent::AnthropicStreamThinking(_)
-                | StreamContent::AnthropicStreamRedactedThinking(_) => Ok(None),
+                StreamContent::AnthropicStreamThinking(thinking) => {
+                    Ok(AnthropicResponseContent::Thinking(ThinkingContent {
+                        thinking: thinking.thinking,
+                        signature: thinking.signature,
+                    }))
+                }
+                StreamContent::AnthropicStreamRedactedThinking(redacted) => Ok(
+                    AnthropicResponseContent::RedactedThinking(RedactedThinkingContent {
+                        data: redacted.data,
+                    }),
+                ),
             })
-            .collect::<Result<Vec<Option<AnthropicResponseContent>>, anyhow::Error>>()?
-            .into_iter()
-            .filter_map(|c| c)
-            .collect::<Vec<AnthropicResponseContent>>();
+            .collect::<Result<Vec<AnthropicResponseContent>, anyhow::Error>>()?;
 
         Ok(ChatResponse {
             id: cr.id,
@@ -262,9 +267,28 @@ pub async fn handle_streaming_response(
                                                     },
                                                 }));
                                             }
-                                            StreamContent::AnthropicStreamThinking(_)
-                                            | StreamContent::AnthropicStreamRedactedThinking(_) => {
-                                                // Ignore thinking and redacted thinking events.
+                                            StreamContent::AnthropicStreamThinking(thinking) => {
+                                                send_event(json!({
+                                                    "type": "reasoning_tokens",
+                                                    "content": {
+                                                        "text": thinking.thinking,
+                                                    }
+                                                }));
+                                            }
+                                            StreamContent::AnthropicStreamRedactedThinking(
+                                                redacted,
+                                            ) => {
+                                                // For redacted thinking, we still send a reasoning_item event
+                                                let metadata = json!({
+                                                    "id": format!("redacted_thinking_{}", uuid::Uuid::new_v4().to_string()),
+                                                    "encrypted_content": redacted.data,
+                                                });
+                                                send_event(json!({
+                                                    "type": "reasoning_item",
+                                                    "content": {
+                                                        "metadata": metadata.to_string()
+                                                    }
+                                                }));
                                             }
                                         }
                                     }
@@ -309,11 +333,27 @@ pub async fn handle_streaming_response(
                                                 }
                                             }
 
-                                            (StreamContentDelta::AnthropicStreamThinkingDelta(_),
-                                                StreamContent::AnthropicStreamThinking(_)) | (StreamContentDelta::AnthropicStreamRedactedThinkingDelta(_),
-                                                StreamContent::AnthropicStreamRedactedThinking(_)) | (StreamContentDelta::AnthropicStreamSignatureDelta(_),
-                                                StreamContent::AnthropicStreamThinking(_)) => {
-                                                // Ignore thinking-related events.
+                                            (StreamContentDelta::AnthropicStreamThinkingDelta(delta),
+                                                StreamContent::AnthropicStreamThinking(thinking)) => {
+                                                thinking.thinking.push_str(&delta.thinking);
+                                                if delta.thinking.len() > 0 {
+                                                    send_event(json!({
+                                                        "type": "reasoning_tokens",
+                                                        "content": {
+                                                            "text": delta.thinking,
+                                                        }
+                                                    }));
+                                                }
+                                            }
+                                            (StreamContentDelta::AnthropicStreamRedactedThinkingDelta(delta),
+                                                StreamContent::AnthropicStreamRedactedThinking(redacted)) => {
+                                                redacted.data.push_str(&delta.data);
+                                                // We don't send incremental events for redacted thinking
+                                            }
+                                            (StreamContentDelta::AnthropicStreamSignatureDelta(delta),
+                                                StreamContent::AnthropicStreamThinking(thinking)) => {
+                                                thinking.signature.push_str(&delta.signature);
+                                                // We don't send incremental events for signatures
                                             }
 
 
@@ -339,6 +379,54 @@ pub async fn handle_streaming_response(
                                             }
                                         },
                                     },
+                                }
+                            }
+                            "content_block_stop" => {
+                                let event: StreamContentBlockStop =
+                                    serde_json::from_str(event.data.as_str()).map_err(|e| {
+                                        anyhow!(
+                                            "Error parsing response from Anthropic: {:?} {:?}",
+                                            e,
+                                            event.data
+                                        )
+                                    })?;
+
+                                match final_response.as_mut() {
+                                    None => {
+                                        return Err(anyhow!(
+                                            "Error streaming from Anthropic: missing `message_start`"
+                                        ));
+                                    }
+                                    Some(response) => {
+                                        if let Some(content) =
+                                            response.content.get(event.index as usize)
+                                        {
+                                            match content {
+                                                StreamContent::AnthropicStreamThinking(
+                                                    thinking,
+                                                ) => {
+                                                    let metadata = json!({
+                                                        "id": format!("thinking_{}", uuid::Uuid::new_v4().to_string()),
+                                                        "encrypted_content": thinking.signature.clone(),
+                                                    });
+                                                    send_event(json!({
+                                                        "type": "reasoning_item",
+                                                        "content": {
+                                                            "metadata": metadata.to_string()
+                                                        }
+                                                    }));
+                                                }
+                                                StreamContent::AnthropicStreamRedactedThinking(
+                                                    _,
+                                                ) => {
+                                                    // Already sent reasoning_item event when we received the content_block_start
+                                                }
+                                                _ => {
+                                                    // Nothing to do for other content types
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                             "message_delta" => {

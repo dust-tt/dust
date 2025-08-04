@@ -9,6 +9,11 @@ import assert from "assert";
 import EventEmitter from "events";
 import type { JSONSchema7 } from "json-schema";
 
+import {
+  calculateContentSize,
+  getMaxSize,
+  isValidContentSize,
+} from "@app/lib/actions/action_output_limits";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
@@ -95,10 +100,6 @@ function isEmptyInputSchema(schema: JSONSchema7): boolean {
 }
 
 const MAX_TOOL_NAME_LENGTH = 64;
-
-const MAX_TEXT_CONTENT_SIZE = 2 * 1024 * 1024;
-const MAX_IMAGE_CONTENT_SIZE = 2 * 1024 * 1024;
-const MAX_RESOURCE_CONTENT_SIZE = 10 * 1024 * 1024;
 
 export const TOOL_NAME_SEPARATOR = "__";
 
@@ -329,13 +330,17 @@ export async function* tryCallMCPTool(
         if (jsonContent?.type === "text") {
           try {
             const parsed = JSON.parse(jsonContent.text);
-            if (parsed?.__dust_auth_required) {
+            if (
+              parsed?.__dust_auth_required &&
+              connectionParamsRes.value.type === "mcpServerId" &&
+              connectionParamsRes.value.oAuthUseCase === "personal_actions"
+            ) {
               const authReq = parsed.__dust_auth_required;
               yield {
                 type: "result",
                 result: new Err(
                   new MCPServerPersonalAuthenticationRequiredError(
-                    authReq.mcpServerId,
+                    connectionParamsRes.value.mcpServerId,
                     authReq.provider
                   )
                 ),
@@ -371,14 +376,6 @@ export async function* tryCallMCPTool(
       };
     }
 
-    const isValidContentSize = (
-      content: CallToolResult["content"]
-    ): boolean => {
-      return !content.some(
-        (item) => calculateContentSize(item) > getMaxSize(item)
-      );
-    };
-
     const generateContentMetadata = (
       content: CallToolResult["content"]
     ): {
@@ -398,43 +395,6 @@ export async function* tryCallMCPTool(
         }
       }
       return result;
-    };
-
-    const getMaxSize = (item: CallToolResult["content"][number]) => {
-      switch (item.type) {
-        case "text":
-          return MAX_TEXT_CONTENT_SIZE;
-        case "image":
-          return MAX_IMAGE_CONTENT_SIZE;
-        case "resource":
-          return MAX_RESOURCE_CONTENT_SIZE;
-        default:
-          return 1 * 1024 * 1024; // 1MB default
-      }
-    };
-
-    const calculateContentSize = (
-      item: CallToolResult["content"][number]
-    ): number => {
-      switch (item.type) {
-        case "text":
-          return item.text.length * 2;
-        case "image":
-          return Math.ceil((item.data.length * 3) / 4);
-        case "resource":
-          if (
-            "blob" in item.resource &&
-            item.resource.blob &&
-            typeof item.resource.blob === "string"
-          ) {
-            return Math.ceil((item.resource.blob.length * 3) / 4);
-          }
-          return 0;
-        case "audio":
-          return item.data.length;
-        default:
-          return 0;
-      }
     };
 
     const serverType = (() => {
@@ -595,7 +555,7 @@ export async function tryListMCPTools(
     ...agentLoopListToolsContext.agentConfiguration.actions,
     ...(agentLoopListToolsContext.clientSideActionConfigurations ?? []),
     ...(jitServers ?? []),
-  ].filter(isMCPServerConfiguration);
+  ];
 
   // Discover all tools exposed by all available MCP servers.
   const results = await concurrentExecutor(
@@ -821,6 +781,19 @@ async function listToolsForServerSideMCPServer(
         },
         {}
       );
+
+      // Filter out tools that are not enabled.
+      const toolsEnabled = metadata.reduce<Record<string, boolean>>(
+        (acc, metadata) => {
+          acc[metadata.toolName] = metadata.enabled;
+          return acc;
+        },
+        {}
+      );
+      allToolsRaw = allToolsRaw.filter((tool) => {
+        return !toolsEnabled[tool.name] || toolsEnabled[tool.name];
+      });
+
       break;
     }
     default:

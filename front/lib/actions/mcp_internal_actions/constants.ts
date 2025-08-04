@@ -32,6 +32,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "missing_action_catcher",
   "monday",
   "notion",
+  "outlook",
   "primitive_types_debugger",
   "query_tables",
   "query_tables_v2",
@@ -43,6 +44,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "think",
   "web_search_&_browse",
   "google_calendar",
+  "outlook_calendar",
   "slack",
   "agent_memory",
 ] as const;
@@ -357,6 +359,38 @@ export const INTERNAL_MCP_SERVERS: Record<
       return !featureFlags.includes("interactive_content_server");
     },
     isPreview: true,
+  },
+  outlook: {
+    id: 24,
+    availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("outlook_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      get_messages: "never_ask",
+      get_drafts: "never_ask",
+      create_draft: "low",
+      delete_draft: "low",
+      create_reply_draft: "low",
+    },
+  },
+  outlook_calendar: {
+    id: 25,
+    availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("outlook_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      list_calendars: "never_ask",
+      list_events: "never_ask",
+      get_event: "never_ask",
+      create_event: "low",
+      update_event: "low",
+      delete_event: "low",
+      check_availability: "never_ask",
+    },
   },
   search: {
     id: 1006,

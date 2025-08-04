@@ -39,7 +39,9 @@ async function getBotUserId(
 export const getBotUserIdMemoized = cacheWithRedis(
   getBotUserId,
   (slackClient, connectorId) => connectorId.toString(),
-  60 * 10 * 1000
+  {
+    ttlMs: 60 * 10 * 1000,
+  }
 );
 
 export async function getUserName(
@@ -158,7 +160,9 @@ async function getBotName({
 export const getBotNameMemoized = cacheWithRedis(
   getBotName,
   ({ botId, connectorId }) => `slack-bot-name-${connectorId}-${botId}`,
-  BOT_NAME_CACHE_TTL
+  {
+    ttlMs: BOT_NAME_CACHE_TTL,
+  }
 );
 
 export async function isWhitelistedBotOrWorkflow(

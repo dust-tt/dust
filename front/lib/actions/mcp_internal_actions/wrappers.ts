@@ -1,27 +1,22 @@
 import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type {
   CallToolResult,
-  EmbeddedResource,
   ServerNotification,
   ServerRequest,
 } from "@modelcontextprotocol/sdk/types.js";
 
-import { isExecuteTablesQueryErrorResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { MCPError } from "@app/lib/actions/mcp_errors";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
-import { removeNulls } from "@app/types";
+import type { Result } from "@app/types";
 
-function isKnownErrorResource(
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: { text: "string" } & EmbeddedResource["resource"];
-} {
-  return isExecuteTablesQueryErrorResourceType(outputBlock);
-}
-
+/**
+ * Wraps a tool callback with logging and monitoring.
+ * The tool callback is expected to return a `Result<CallToolResult["content"], MCPError>`,
+ * Errors are caught and logged unless not tracked, and the error is returned as a text content.
+ */
 export function withToolLogging<T>(
   auth: Authenticator,
   {
@@ -34,8 +29,11 @@ export function withToolLogging<T>(
   toolCallback: (
     params: T,
     extra: RequestHandlerExtra<ServerRequest, ServerNotification>
-  ) => Promise<CallToolResult>
-) {
+  ) => Promise<Result<CallToolResult["content"], MCPError>>
+): (
+  params: T,
+  extra: RequestHandlerExtra<ServerRequest, ServerNotification>
+) => Promise<CallToolResult> {
   return async (
     params: T,
     extra: RequestHandlerExtra<ServerRequest, ServerNotification>
@@ -84,36 +82,36 @@ export function withToolLogging<T>(
 
     const result = await toolCallback(params, extra);
 
-    if (result.isError) {
-      statsDClient.increment("use_tools_error.count", 1, [
-        "error_type:run_error",
-        ...tags,
-      ]);
+    // When we get an Err, we monitor it if tracked and return it as a text content.
+    if (result.isErr()) {
+      if (result.error.tracked) {
+        statsDClient.increment("use_tools_error.count", 1, [
+          "error_type:run_error",
+          ...tags,
+        ]);
 
-      // Only process text content and known error resources, other resources may be huge.
-      const error = removeNulls(
-        result.content.map((c) =>
-          c.type === "text"
-            ? c.text
-            : isKnownErrorResource(c)
-              ? c.resource.text
-              : null
-        )
-      ).join("\n");
-
-      logger.error(
-        {
-          error,
-          ...loggerArgs,
-        },
-        "Tool execution error"
-      );
-      return result;
+        logger.error(
+          {
+            error: result.error.message,
+            ...loggerArgs,
+          },
+          "Tool execution error"
+        );
+      }
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: result.error.message,
+          },
+        ],
+      };
     }
 
     const elapsed = performance.now() - startTime;
     statsDClient.distribution("run_tool.duration.distribution", elapsed, tags);
 
-    return result;
+    return { isError: false, content: result.value };
   };
 }

@@ -24,7 +24,7 @@ const CONTENT_MESSAGE_SIZES = ["sm", "md", "lg"] as const;
 type ContentMessageSizeType = (typeof CONTENT_MESSAGE_SIZES)[number];
 
 const contentMessageVariants = cva(
-  "s-flex s-flex-col s-gap-1 s-rounded-2xl s-p-4 s-border",
+  "s-flex s-flex-col s-gap-1 s-rounded-xl s-py-4 s-px-5 s-border",
   {
     variants: {
       variant: {

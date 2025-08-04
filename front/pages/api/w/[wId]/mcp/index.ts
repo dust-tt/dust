@@ -128,21 +128,6 @@ async function handler(
           });
         }
 
-        const existingServer = await RemoteMCPServerResource.findByUrl(
-          auth,
-          url
-        );
-
-        if (existingServer) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "A server with this URL already exists",
-            },
-          });
-        }
-
         // Default to the shared secret if it exists.
         let bearerToken = sharedSecret || null;
         let authorization: AuthorizationInfo | null = null;
@@ -197,10 +182,12 @@ async function handler(
           (config) => config.url === url
         );
 
+        const name = defaultConfig?.name || metadata.name;
+
         const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
           workspaceId: auth.getNonNullableWorkspace().id,
           url: url,
-          cachedName: defaultConfig?.name || metadata.name,
+          cachedName: name,
           cachedDescription: defaultConfig?.description || metadata.description,
           cachedTools: metadata.tools,
           icon:
@@ -235,6 +222,7 @@ async function handler(
               remoteMCPServerId: newRemoteMCPServer.id,
               toolName,
               permission: stakeLevel,
+              enabled: true,
             });
           }
         }
@@ -299,7 +287,7 @@ async function handler(
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: "A server with this URL already exists",
+              message: "This internal tool has already been added",
             },
           });
         }

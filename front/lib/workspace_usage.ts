@@ -330,13 +330,14 @@ export async function getUserUsageData(
 ): Promise<string> {
   const wId = workspace.id;
 
-  const userMessages = await getFrontReplicaDbConnection().transaction(
+  const allUserMessages = await getFrontReplicaDbConnection().transaction(
     async (t) => {
       return Message.findAll({
         attributes: [
           "userMessage.userId",
           "userMessage.userContextFullName",
           "userMessage.userContextEmail",
+          "userMessage.userContextOrigin",
           [Sequelize.fn("COUNT", Sequelize.col("userMessage.id")), "count"],
           [
             Sequelize.cast(
@@ -373,9 +374,6 @@ export async function getUserUsageData(
               userId: {
                 [Op.not]: null,
               },
-              userContextOrigin: {
-                [Op.not]: "run_agent",
-              },
             },
           },
           {
@@ -392,6 +390,7 @@ export async function getUserUsageData(
           "userMessage.userId",
           "userMessage.userContextFullName",
           "userMessage.userContextEmail",
+          "userMessage.userContextOrigin",
         ],
         order: [["count", "DESC"]],
         raw: true,
@@ -399,6 +398,16 @@ export async function getUserUsageData(
       });
     }
   );
+
+  // Filter out agent messages (userContextOrigin === "run_agent")
+  // Since agents always have userContextOrigin="run_agent" and humans have
+  // other values, they form separate grouped records. Filtering post-GROUP BY
+  // produces identical results to a database WHERE clause but reduces DB load.
+  const userMessages = allUserMessages.filter((message) => {
+    const origin = (message as unknown as { userContextOrigin: string })
+      .userContextOrigin;
+    return origin !== "run_agent";
+  });
 
   const userGroupsMap = await getUserGroupMemberships(wId, startDate, endDate);
 

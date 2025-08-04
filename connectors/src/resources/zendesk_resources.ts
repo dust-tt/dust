@@ -100,9 +100,136 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
 
       subdomain: this.subdomain,
       retentionPeriodDays: this.retentionPeriodDays,
+      syncUnresolvedTickets: this.syncUnresolvedTickets,
+      hideCustomerDetails: this.hideCustomerDetails,
+      organizationTagsToInclude: this.organizationTagsToInclude,
+      organizationTagsToExclude: this.organizationTagsToExclude,
+      ticketTagsToInclude: this.ticketTagsToInclude,
+      ticketTagsToExclude: this.ticketTagsToExclude,
 
       connectorId: this.connectorId,
     };
+  }
+
+  enforcesOrganizationTagConstraint(): boolean {
+    return (
+      (this.organizationTagsToInclude !== null &&
+        this.organizationTagsToInclude.length > 0) ||
+      (this.organizationTagsToExclude !== null &&
+        this.organizationTagsToExclude.length > 0)
+    );
+  }
+
+  async addOrganizationTag({
+    tag,
+    includeOrExclude,
+  }: {
+    tag: string;
+    includeOrExclude: "include" | "exclude";
+  }): Promise<{ wasAdded: boolean; message: string }> {
+    const column =
+      includeOrExclude === "include"
+        ? "organizationTagsToInclude"
+        : "organizationTagsToExclude";
+
+    const currentTags = this.organizationTagsToInclude || [];
+    if (currentTags.includes(tag)) {
+      return {
+        wasAdded: false,
+        message: `Tag "${tag}" already exists in ${column}`,
+      };
+    }
+
+    const newTags = [...currentTags, tag];
+    await this.update({ [column]: newTags });
+
+    return { wasAdded: true, message: `Added tag "${tag}" to ${column}` };
+  }
+
+  async removeOrganizationTag({
+    tag,
+    includeOrExclude,
+  }: {
+    tag: string;
+    includeOrExclude: "include" | "exclude";
+  }): Promise<{ wasRemoved: boolean; message: string }> {
+    const column =
+      includeOrExclude === "include"
+        ? "organizationTagsToInclude"
+        : "organizationTagsToExclude";
+
+    const currentTags = this.organizationTagsToInclude || [];
+    if (!currentTags.includes(tag)) {
+      return {
+        wasRemoved: false,
+        message: `Tag "${tag}" does not exist in ${column}`,
+      };
+    }
+
+    const newTags = currentTags.filter((t) => t !== tag);
+    await this.update({ [column]: newTags });
+
+    return { wasRemoved: true, message: `Removed tag "${tag}" from ${column}` };
+  }
+
+  async addTicketTag({
+    tag,
+    includeOrExclude,
+  }: {
+    tag: string;
+    includeOrExclude: "include" | "exclude";
+  }): Promise<{ wasAdded: boolean; message: string }> {
+    const column =
+      includeOrExclude === "include"
+        ? "ticketTagsToInclude"
+        : "ticketTagsToExclude";
+
+    const currentTags =
+      includeOrExclude === "include"
+        ? this.ticketTagsToInclude || []
+        : this.ticketTagsToExclude || [];
+
+    if (currentTags.includes(tag)) {
+      return {
+        wasAdded: false,
+        message: `Tag "${tag}" already exists in ${column}`,
+      };
+    }
+
+    const newTags = [...currentTags, tag];
+    await this.update({ [column]: newTags });
+
+    return { wasAdded: true, message: `Added tag "${tag}" to ${column}` };
+  }
+
+  async removeTicketTag({
+    tag,
+    includeOrExclude,
+  }: {
+    tag: string;
+    includeOrExclude: "include" | "exclude";
+  }): Promise<{ wasRemoved: boolean; message: string }> {
+    const column =
+      includeOrExclude === "include"
+        ? "ticketTagsToInclude"
+        : "ticketTagsToExclude";
+
+    const currentTags =
+      includeOrExclude === "include"
+        ? this.ticketTagsToInclude || []
+        : this.ticketTagsToExclude || [];
+
+    if (!currentTags.includes(tag)) {
+      return {
+        wasRemoved: false,
+        message: `Tag "${tag}" does not exist in ${column}`,
+      };
+    }
+
+    const newTags = currentTags.filter((t) => t !== tag);
+    await this.update({ [column]: newTags });
+
+    return { wasRemoved: true, message: `Removed tag "${tag}" from ${column}` };
   }
 }
 

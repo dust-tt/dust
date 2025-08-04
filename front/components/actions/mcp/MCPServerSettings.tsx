@@ -79,7 +79,7 @@ export function MCPServerSettings({
     <>
       <ConnectMCPServerDialog
         owner={owner}
-        mcpServer={mcpServerView.server}
+        mcpServerView={mcpServerView}
         setIsLoading={setIsLoading}
         isOpen={isConnectDialogOpen}
         setIsOpen={setIsConnectDialogOpen}

@@ -123,7 +123,9 @@ export const getParents = cacheWithRedis(
     return `${connectorId}:${pageOrDbId}:${memoizationKey}`;
   },
   // parents should be stable over the maximum time if memoized (almost a day).
-  23 * 60 * 60 * 1000
+  {
+    ttlMs: 23 * 60 * 60 * 1000,
+  }
 );
 
 export async function updateAllParentsFields(

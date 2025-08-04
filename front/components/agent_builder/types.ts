@@ -3,7 +3,9 @@ import { uniqueId } from "lodash";
 import { z } from "zod";
 
 import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
+import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { SupportedModel, WhitelistableFeature } from "@app/types";
@@ -33,6 +35,11 @@ export type ExtractDataAgentBuilderAction = Extract<
   { type: "EXTRACT_DATA" }
 >;
 
+export type QueryTablesAgentBuilderAction = Extract<
+  AgentBuilderAction,
+  { type: "QUERY_TABLES" }
+>;
+
 export type SearchActionConfiguration =
   SearchAgentBuilderAction["configuration"];
 
@@ -45,11 +52,15 @@ export type IncludeDataActionConfiguration =
 export type ExtractDataActionConfiguration =
   ExtractDataAgentBuilderAction["configuration"];
 
+export type QueryTablesActionConfiguration =
+  QueryTablesAgentBuilderAction["configuration"];
+
 export type AgentBuilderActionConfiguration =
   | SearchActionConfiguration
   | DataVisualizationActionConfiguration
   | IncludeDataActionConfiguration
-  | ExtractDataActionConfiguration;
+  | ExtractDataActionConfiguration
+  | QueryTablesActionConfiguration;
 
 // Type guards
 export function isSearchAction(
@@ -76,12 +87,28 @@ export function isExtractDataAction(
   return action.type === "EXTRACT_DATA";
 }
 
+export type SupportedAgentBuilderAction =
+  | SearchAgentBuilderAction
+  | IncludeDataAgentBuilderAction
+  | ExtractDataAgentBuilderAction
+  | QueryTablesAgentBuilderAction;
+
+export function isSupportedAgentBuilderAction(
+  action: AgentBuilderAction
+): action is SupportedAgentBuilderAction {
+  return (
+    action.type === "SEARCH" ||
+    action.type === "INCLUDE_DATA" ||
+    action.type === "EXTRACT_DATA" ||
+    action.type === "QUERY_TABLES"
+  );
+}
+
 // MCP server names that map to agent builder actions
 export const AGENT_BUILDER_MCP_SERVERS = [
   "extract_data",
   "search",
   "include_data",
-  "extract_data",
   "query_tables",
 ] as const;
 export type AgentBuilderMCPServerName =
@@ -103,6 +130,16 @@ export const MCP_SERVER_TO_ACTION_TYPE_MAP: Record<
   search: "SEARCH",
   include_data: "INCLUDE_DATA",
   query_tables: "QUERY_TABLES",
+} as const;
+
+export const ACTION_TYPE_TO_MCP_SERVER_MAP: Record<
+  SupportedAgentBuilderActionType,
+  AgentBuilderMCPServerName
+> = {
+  EXTRACT_DATA: "extract_data",
+  SEARCH: "search",
+  INCLUDE_DATA: "include_data",
+  QUERY_TABLES: "query_tables",
 } as const;
 
 // Legacy alias for backward compatibility
@@ -160,6 +197,12 @@ export const DESCRIPTION_MAX_LENGTH = 800;
 
 // TODO: use mcpFormSchema for all tools.
 export const capabilityFormSchema = z.object({
+  sources: dataSourceBuilderTreeType.refine(
+    (val) => {
+      return val.in.length > 0;
+    },
+    { message: "You must select at least on data sources" }
+  ),
   description: z
     .string()
     .min(1, "Description is required")
@@ -256,12 +299,14 @@ export function getDefaultMCPAction(
       jsonSchema: null,
       _jsonSchemaString: null,
     },
-    name: mcpServerView?.server.name ?? "",
+    name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
     description:
       requirements.requiresDataSourceConfiguration ||
       requirements.requiresTableConfiguration
         ? ""
-        : mcpServerView?.server.description ?? "",
+        : mcpServerView
+          ? getMcpServerViewDescription(mcpServerView)
+          : "",
     noConfigurationRequired: requirements.noRequirement,
   };
 }

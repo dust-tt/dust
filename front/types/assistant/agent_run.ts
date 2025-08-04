@@ -5,7 +5,7 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
@@ -20,6 +20,7 @@ import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
+import { isGlobalAgentId } from "@app/types";
 
 export type RunAgentAsynchronousArgs = {
   agentMessageId: string;
@@ -133,11 +134,14 @@ export async function getRunAgentData(
   }
 
   // Fetch the agent configuration as we need the full version of the agent configuration.
-  const agentConfiguration = await getAgentConfiguration(
-    auth,
-    agentMessage.configuration.sId,
-    "full"
-  );
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: agentMessage.configuration.sId,
+    // We do define agentMessage.configuration.version for global agent, ignoring this value here.
+    agentVersion: isGlobalAgentId(agentMessage.configuration.sId)
+      ? undefined
+      : agentMessage.configuration.version,
+    variant: "full",
+  });
   if (!agentConfiguration) {
     return new Err(new Error("Agent configuration not found"));
   }

@@ -12,8 +12,10 @@ import {
   isServerSideMCPServerConfiguration,
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import type {
+  DataSourceConfiguration,
+  TableDataSourceConfiguration,
+} from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";

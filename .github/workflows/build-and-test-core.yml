@@ -2,27 +2,54 @@ name: Lint & Build & Test (core)
 
 on:
   push:
-    paths:
-      - core/**
-      - .github/workflows/build-and-test-core.yml
+  workflow_dispatch:
 
 permissions:
   contents: read
   pull-requests: write
 
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      core-changed: ${{ steps.changes.outputs.core }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for relevant changes
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          base: ${{ github.event.repository.default_branch }}
+          filters: |
+            core:
+              - 'core/**'
+              - '.github/workflows/build-and-test-core.yml'
+
+      - name: Workflow Decision Summary
+        run: |
+          echo "🔍 Workflow Decision: ${{ steps.changes.outputs.core == 'true' && 'RUNNING TESTS' || 'SKIPPING TESTS' }}"
+          if [ "${{ steps.changes.outputs.core }}" == "true" ]; then
+            echo "✅ Core changes detected vs ${{ github.event.repository.default_branch }} - running tests"
+          else
+            echo "⏭️ No core changes vs ${{ github.event.repository.default_branch }} - skipping tests"
+          fi
+
   test:
     runs-on: ubuntu-latest
+    needs: check-changes
+    if: needs.check-changes.outputs.core-changed == 'true'
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Install minimal stable
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           components: cargo, rustfmt, rust-std, rustc
-
-      - name: checkout
-        uses: actions/checkout@v3
 
       - name: Install Redis
         uses: chenjuneking/redis-setup-action@v1

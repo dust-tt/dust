@@ -49,6 +49,9 @@ import {
   removeNulls,
 } from "@app/types";
 
+export const ADMIN_GROUP_NAME = "dust-admins";
+export const BUILDER_GROUP_NAME = "dust-builders";
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -1339,6 +1342,32 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   isProvisioned(): boolean {
     return this.kind === "provisioned";
+  }
+
+  /**
+   * Checks if dust-builders and dust-admins groups exist and are actively provisioned
+   * in the workspace. This indicates that role management should be restricted in the UI.
+   */
+  static async listRoleProvisioningGroupsForWorkspace(
+    auth: Authenticator
+  ): Promise<GroupResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    // Check if workspace has WorkOS organization ID (required for provisioning)
+    if (!owner.workOSOrganizationId) {
+      return [];
+    }
+
+    const provisionedGroups = await this.baseFetch(auth, {
+      where: {
+        kind: "provisioned",
+        name: {
+          [Op.in]: [ADMIN_GROUP_NAME, BUILDER_GROUP_NAME],
+        },
+      },
+    });
+
+    return provisionedGroups;
   }
 
   /**

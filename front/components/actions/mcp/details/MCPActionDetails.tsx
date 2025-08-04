@@ -2,10 +2,11 @@ import {
   ActionDocumentTextIcon,
   ClockIcon,
   cn,
-  CodeBlock,
   CollapsibleComponent,
+  ContentMessage,
   GlobeAltIcon,
   MagnifyingGlassIcon,
+  Markdown,
 } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
@@ -24,6 +25,7 @@ import type { MCPActionType } from "@app/lib/actions/mcp";
 import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
+  getOutputText,
   isBrowseResultResourceType,
   isDataSourceNodeContentType,
   isDataSourceNodeListType,
@@ -33,13 +35,16 @@ import {
   isGetDatabaseSchemaMarkerResourceType,
   isIncludeResultResourceType,
   isReasoningSuccessOutput,
+  isResourceContentWithText,
   isRunAgentProgressOutput,
   isRunAgentResultResourceType,
   isSearchResultResourceType,
   isSqlQueryOutput,
+  isTextContent,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
+import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
 import { isSupportedImageContentType } from "@app/types";
 
@@ -145,6 +150,11 @@ export function GenericActionDetails({
   action,
   defaultOpen,
 }: MCPActionDetailsProps) {
+  const inputs =
+    Object.keys(action.params).length > 0
+      ? JSON.stringify(action.params, undefined, 2)
+      : null;
+
   return (
     <ActionDetailsWrapper
       actionName={action.functionCallName ?? "Calling MCP Server"}
@@ -165,9 +175,7 @@ export function GenericActionDetails({
             </div>
           }
           contentChildren={
-            <CodeBlock wrapLongLines className="language-json">
-              {JSON.stringify(action.params, undefined, 2) ?? ""}
-            </CodeBlock>
+            <RenderToolItemMarkdown text={inputs} type="input" />
           }
         />
 
@@ -185,16 +193,19 @@ export function GenericActionDetails({
               </div>
             }
             contentChildren={
-              <CodeBlock wrapLongLines>
+              <div className="flex flex-col gap-2">
                 {action.output
                   .filter(
-                    (o) => o.text || (o.type === "resource" && o.resource.text)
+                    (o) => isTextContent(o) || isResourceContentWithText(o)
                   )
-                  .map(
-                    (o) => o.text || (o.type === "resource" && o.resource.text)
-                  )
-                  .join("\n")}
-              </CodeBlock>
+                  .map((o, index) => (
+                    <RenderToolItemMarkdown
+                      key={index}
+                      text={getOutputText(o)}
+                      type="output"
+                    />
+                  ))}
+              </div>
             }
           />
         )}
@@ -234,3 +245,28 @@ export function GenericActionDetails({
     </ActionDetailsWrapper>
   );
 }
+
+const RenderToolItemMarkdown = ({
+  text,
+  type,
+}: {
+  text: string | null;
+  type: "input" | "output";
+}) => {
+  if (!text) {
+    text =
+      type === "input"
+        ? "*The tool was called with no specified inputs.*"
+        : "*The tool completed with no output.*";
+  }
+
+  if (isValidJSON(text)) {
+    return <Markdown content={`\`\`\`json\n${text}\n\`\`\``} />;
+  }
+
+  return (
+    <ContentMessage variant="primary" size="lg">
+      <Markdown content={text} />
+    </ContentMessage>
+  );
+};

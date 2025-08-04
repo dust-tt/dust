@@ -64,6 +64,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gemini-2.0-flash"
   | "gemini-2.0-flash-lite"
   | "gemini-2.5-pro-preview-03-25"
+  | "gemini-2.5-pro"
   | "gemini-2.0-flash-exp" // DEPRECATED
   | "gemini-2.0-flash-lite-preview-02-05" // DEPRECATED
   | "gemini-2.0-pro-exp-02-05" // DEPRECATED
@@ -613,6 +614,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_o1_mini_feature"
+  | "outlook_tool"
   | "pro_plan_salesforce_connector"
   | "salesforce_synced_queries"
   | "salesforce_tool"

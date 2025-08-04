@@ -1,3 +1,5 @@
+import assert from "assert";
+
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import {
   deleteTicket,
@@ -10,6 +12,7 @@ import {
   fetchZendeskCategory,
   fetchZendeskSection,
   fetchZendeskUser,
+  getOrganizationTagMapForTickets,
   getZendeskBrandSubdomain,
   listRecentlyUpdatedArticles,
   listZendeskTicketComments,
@@ -296,6 +299,14 @@ export async function syncZendeskTicketUpdateBatchActivity({
         ],
       });
 
+  let organizationTagsMap = new Map<number, string[]>();
+  if (configuration.enforcesOrganizationTagConstraint()) {
+    organizationTagsMap = await getOrganizationTagMapForTickets(tickets, {
+      accessToken,
+      brandSubdomain,
+    });
+  }
+
   await concurrentExecutor(
     tickets,
     async (ticket) => {
@@ -307,7 +318,25 @@ export async function syncZendeskTicketUpdateBatchActivity({
           dataSourceConfig,
           loggerArgs,
         });
-      } else if (shouldSyncTicket(ticket, configuration, { brandId })) {
+      }
+
+      let organizationTags: string[] = [];
+      if (
+        ticket.organization_id &&
+        configuration.enforcesOrganizationTagConstraint()
+      ) {
+        const mapValue = organizationTagsMap.get(ticket.organization_id);
+        assert(mapValue, "Organization tags not found.");
+        organizationTags = mapValue;
+      }
+
+      if (
+        shouldSyncTicket(ticket, configuration, {
+          brandId,
+          organizationTags,
+          ticketTags: ticket.tags,
+        })
+      ) {
         const comments = commentsPerTicket[ticket.id];
         if (!comments) {
           throw new Error(

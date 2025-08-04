@@ -13,7 +13,11 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
-import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
+import {
+  reportInitialSyncProgress,
+  syncStarted,
+  syncSucceeded,
+} from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GongConfigurationResource } from "@connectors/resources/gong_resources";
@@ -91,10 +95,12 @@ export async function gongSyncTranscriptsActivity({
   connectorId,
   forceResync,
   pageCursor,
+  currentRecordCount = 0,
 }: {
   forceResync: boolean;
   connectorId: ModelId;
   pageCursor: string | null;
+  currentRecordCount?: number;
 }) {
   const connector = await fetchGongConnector({ connectorId });
   const configuration = await fetchGongConfiguration(connector);
@@ -109,17 +115,28 @@ export async function gongSyncTranscriptsActivity({
 
   const gongClient = await getGongClient(connector);
 
-  const { transcripts, nextPageCursor } = await gongClient.getTranscripts({
-    startTimestamp: configuration.getSyncStartTimestamp(),
-    pageCursor,
-  });
+  const { transcripts, nextPageCursor, totalRecords } =
+    await gongClient.getTranscripts({
+      startTimestamp: configuration.getSyncStartTimestamp(),
+      pageCursor,
+    });
+
+  const processedRecords = transcripts.length;
+
+  if (totalRecords > 0) {
+    const progressMessage = `${processedRecords + currentRecordCount + 1}/${totalRecords} transcripts`;
+    await reportInitialSyncProgress(connectorId, progressMessage);
+  }
 
   if (transcripts.length === 0) {
     logger.info(
       { ...loggerArgs, pageCursor },
       "[Gong] No more transcripts found."
     );
-    return { nextPageCursor: null };
+    return {
+      nextPageCursor: null,
+      processedRecords,
+    };
   }
 
   const transcriptsInDb = await GongTranscriptResource.fetchByCallIds(
@@ -136,7 +153,10 @@ export async function gongSyncTranscriptsActivity({
   }
   if (transcriptsToSync.length === 0) {
     logger.info({ ...loggerArgs }, "[Gong] All transcripts are already in DB.");
-    return { nextPageCursor };
+    return {
+      nextPageCursor,
+      processedRecords,
+    };
   }
 
   const callsMetadata = await getTranscriptsMetadata({
@@ -200,7 +220,10 @@ export async function gongSyncTranscriptsActivity({
     { concurrency: 10 }
   );
 
-  return { nextPageCursor };
+  return {
+    nextPageCursor,
+    processedRecords,
+  };
 }
 
 // Users.
