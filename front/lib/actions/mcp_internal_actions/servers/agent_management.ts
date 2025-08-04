@@ -136,7 +136,7 @@ const createServer = (
         );
       }
 
-      const agent = result.value;
+      const { agentConfiguration: agent, subAgentConfiguration } = result.value;
       const agentUrl = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/builder/assistants/${agent.sId}`;
 
       // Prepare the structured output resource
@@ -151,16 +151,15 @@ const createServer = (
           pictureUrl: agent.pictureUrl,
           url: agentUrl,
         },
-        subAgent:
-          sub_agent_name && sub_agent_instructions
-            ? {
-                id: `${agent.sId}_sub`, // We don't have the actual sub-agent ID from the API response
-                name: sub_agent_name,
-                description: sub_agent_description || "",
-                pictureUrl: agent.pictureUrl, // We'll use the same as main for now
-                url: agentUrl, // Both agents can be viewed at the same URL
-              }
-            : undefined,
+        subAgent: subAgentConfiguration
+          ? {
+              id: subAgentConfiguration.sId,
+              name: subAgentConfiguration.name,
+              description: subAgentConfiguration.description,
+              pictureUrl: subAgentConfiguration.pictureUrl,
+              url: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/builder/assistants/${subAgentConfiguration.sId}`,
+            }
+          : undefined,
       };
 
       // Return both structured data and a text message

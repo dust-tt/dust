@@ -681,7 +681,7 @@ export class DustAPI {
     if (r.isErr()) {
       return r;
     }
-    return new Ok(r.value.agentConfiguration);
+    return new Ok(r.value);
   }
 
   // When creating a conversation with a user message, the API returns only after the user message

@@ -1603,6 +1603,7 @@ export type CreateAgentConfigurationWithDefaultsRequestType = z.infer<
 
 export const CreateAgentConfigurationWithDefaultsResponseSchema = z.object({
   agentConfiguration: LightAgentConfigurationSchema,
+  subAgentConfiguration: LightAgentConfigurationSchema.optional(),
 });
 
 export type CreateAgentConfigurationWithDefaultsResponseType = z.infer<

@@ -612,7 +612,15 @@ export async function createGenericAgentConfigurationWithDefaultTools(
       pictureUrl: string;
     };
   }
-): Promise<Result<LightAgentConfigurationType, Error>> {
+): Promise<
+  Result<
+    {
+      agentConfiguration: LightAgentConfigurationType;
+      subAgentConfiguration?: LightAgentConfigurationType;
+    },
+    Error
+  >
+> {
   const owner = auth.workspace();
   if (!owner) {
     return new Err(new Error("Unexpected `auth` without `workspace`."));
@@ -845,68 +853,68 @@ export async function createGenericAgentConfigurationWithDefaultTools(
   }
 
   if (!subAgent) {
-    return new Ok(agentConfiguration);
+    return new Ok({ agentConfiguration });
   }
 
-  if (subAgent) {
-    const subAgentResult =
-      await createGenericAgentConfigurationWithDefaultTools(auth, {
-        name: subAgent.name,
-        description: subAgent.description,
-        instructions: subAgent.instructions,
-        pictureUrl: subAgent.pictureUrl,
-        model,
-      });
-
-    if (subAgentResult.isErr()) {
-      await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
-      return new Err(
-        new Error(`Failed to create sub-agent: ${subAgentResult.error.message}`)
-      );
+  const subAgentResult = await createGenericAgentConfigurationWithDefaultTools(
+    auth,
+    {
+      name: subAgent.name,
+      description: subAgent.description,
+      instructions: subAgent.instructions,
+      pictureUrl: subAgent.pictureUrl,
+      model,
     }
+  );
 
-    const subAgentConfiguration = subAgentResult.value;
-    const subAgentId = subAgentConfiguration.sId;
+  if (subAgentResult.isErr()) {
+    await cleanupAgentsOnError(auth, agentConfiguration.sId, null);
+    return new Err(
+      new Error(`Failed to create sub-agent: ${subAgentResult.error.message}`)
+    );
+  }
 
-    const runAgentMCPServerView =
-      await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-        auth,
-        "run_agent"
-      );
+  const subAgentConfiguration = subAgentResult.value.agentConfiguration;
+  const subAgentId = subAgentConfiguration.sId;
 
-    if (!runAgentMCPServerView) {
-      await cleanupAgentsOnError(auth, agentConfiguration.sId, subAgentId);
-      return new Err(new Error("Could not find run_agent MCP server view"));
-    }
-
-    const runAgentActionResult = await createAgentActionConfiguration(
+  const runAgentMCPServerView =
+    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      {
-        type: "mcp_server_configuration",
-        name: `run_${subAgentResult.value.name}`,
-        description: `Run the ${subAgentResult.value.name} sub-agent. The sub-agent has access to the same tools as the main agent, except for the ability to spawn sub-agents.`,
-        mcpServerViewId: runAgentMCPServerView.sId,
-        dataSources: null,
-        reasoningModel: null,
-        tables: null,
-        childAgentId: subAgentResult.value.sId,
-        additionalConfiguration: {},
-        dustAppConfiguration: null,
-        timeFrame: null,
-        jsonSchema: null,
-      } as ServerSideMCPServerConfigurationType,
-      agentConfiguration
+      "run_agent"
     );
 
-    if (runAgentActionResult.isErr()) {
-      await cleanupAgentsOnError(auth, agentConfiguration.sId, subAgentId);
-      return new Err(
-        new Error("Could not create run_agent action configuration")
-      );
-    }
+  if (!runAgentMCPServerView) {
+    await cleanupAgentsOnError(auth, agentConfiguration.sId, subAgentId);
+    return new Err(new Error("Could not find run_agent MCP server view"));
   }
 
-  return new Ok(agentConfiguration);
+  const runAgentActionResult = await createAgentActionConfiguration(
+    auth,
+    {
+      type: "mcp_server_configuration",
+      name: `run_${subAgentConfiguration.name}`,
+      description: `Run the ${subAgentConfiguration.name} sub-agent. The sub-agent has access to the same tools as the main agent, except for the ability to spawn sub-agents.`,
+      mcpServerViewId: runAgentMCPServerView.sId,
+      dataSources: null,
+      reasoningModel: null,
+      tables: null,
+      childAgentId: subAgentConfiguration.sId,
+      additionalConfiguration: {},
+      dustAppConfiguration: null,
+      timeFrame: null,
+      jsonSchema: null,
+    } as ServerSideMCPServerConfigurationType,
+    agentConfiguration
+  );
+
+  if (runAgentActionResult.isErr()) {
+    await cleanupAgentsOnError(auth, agentConfiguration.sId, subAgentId);
+    return new Err(
+      new Error("Could not create run_agent action configuration")
+    );
+  }
+
+  return new Ok({ agentConfiguration, subAgentConfiguration });
 }
 
 export async function archiveAgentConfiguration(

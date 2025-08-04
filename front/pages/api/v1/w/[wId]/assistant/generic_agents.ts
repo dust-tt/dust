@@ -276,7 +276,8 @@ async function handler(
       }
 
       return res.status(200).json({
-        agentConfiguration: result.value,
+        agentConfiguration: result.value.agentConfiguration,
+        subAgentConfiguration: result.value.subAgentConfiguration,
       });
     }
 
