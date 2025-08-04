@@ -1,7 +1,8 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var isRecording = false
+    @StateObject private var audioRecorder = AudioRecorder()
+    @State private var hasPermission = false
     
     var body: some View {
         VStack(spacing: 8) {
@@ -16,7 +17,7 @@ struct ContentView: View {
                     Text("Start Recording")
                 }
             }
-            .disabled(isRecording)
+            .disabled(audioRecorder.isRecording || !hasPermission)
             
             Button(action: stopRecording) {
                 HStack {
@@ -24,7 +25,7 @@ struct ContentView: View {
                     Text("Stop Recording")
                 }
             }
-            .disabled(!isRecording)
+            .disabled(!audioRecorder.isRecording)
 
             
             Divider()
@@ -34,16 +35,28 @@ struct ContentView: View {
             }
         }
         .padding()
+        .onAppear {
+            requestMicrophonePermission()
+        }
+    }
+    
+    private func requestMicrophonePermission() {
+        Task {
+            hasPermission = await audioRecorder.requestPermission()
+        }
     }
     
     private func startRecording() {
-        isRecording = true
-        // Recording implementation will go here
+        audioRecorder.startRecording()
     }
     
     private func stopRecording() {
-        isRecording = false
-        // Stop recording implementation will go here
+        audioRecorder.stopRecording()
+        
+        if let url = audioRecorder.recordingURL {
+            print("Recording saved to: \(url)")
+            // Handle the recorded file here
+        }
     }
 }
 
