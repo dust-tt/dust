@@ -123,12 +123,12 @@ export function UserMenu({
         {hasMultipleWorkspaces && (
           <>
             <DropdownMenuLabel label="Workspace" />
-            <DropdownMenuRadioGroup value={owner.name}>
+            <DropdownMenuRadioGroup value={owner.sId}>
               {"workspaces" in user &&
                 user.workspaces.map((w) => (
                   <DropdownMenuRadioItem
                     key={w.sId}
-                    value={w.name}
+                    value={w.sId}
                     onClick={async () => {
                       await setNavigationSelection({
                         lastWorkspaceId: w.sId,
