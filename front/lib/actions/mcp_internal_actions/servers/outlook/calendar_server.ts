@@ -15,7 +15,8 @@ const serverInfo: InternalMCPServerDefinitionType = {
   authorization: {
     provider: "microsoft_tools" as const,
     supported_use_cases: ["personal_actions"] as const,
-    scope: "Calendars.ReadWrite Calendars.ReadWrite.Shared User.Read" as const,
+    scope:
+      "Calendars.ReadWrite Calendars.ReadWrite.Shared User.Read offline_access" as const,
   },
   icon: "OutlookLogo",
   documentationUrl: "https://docs.dust.tt/docs/outlook-calendar-tool-setup",

@@ -52,7 +52,8 @@ const serverInfo: InternalMCPServerDefinitionType = {
   authorization: {
     provider: "microsoft_tools" as const,
     supported_use_cases: ["personal_actions"] as const,
-    scope: "Mail.ReadWrite Mail.ReadWrite.Shared User.Read" as const,
+    scope:
+      "Mail.ReadWrite Mail.ReadWrite.Shared User.Read offline_access" as const,
   },
   icon: "OutlookLogo",
   documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
@@ -94,10 +95,11 @@ const createServer = (): McpServer => {
 
       const params = new URLSearchParams();
       params.append("$top", Math.min(top, 100).toString());
-      params.append("$skip", skip.toString());
-
+      
       if (search) {
         params.append("$search", `"${search}"`);
+      } else {
+        params.append("$skip", skip.toString());
       }
 
       if (select && select.length > 0) {
@@ -159,10 +161,11 @@ const createServer = (): McpServer => {
       const params = new URLSearchParams();
       params.append("$filter", "isDraft eq true");
       params.append("$top", "50");
-      params.append("$skip", skip.toString());
 
       if (search) {
         params.append("$search", `"${search}"`);
+      } else {
+        params.append("$skip", skip.toString());
       }
 
       const response = await fetchFromOutlook(
