@@ -37,7 +37,7 @@ export default function WorkspacePicker({
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuRadioGroup value={workspace.name}>
+          <DropdownMenuRadioGroup value={workspace.sId}>
             {user.workspaces.map((w) => {
               return (
                 <DropdownMenuRadioItem
@@ -46,7 +46,7 @@ export default function WorkspacePicker({
                     await setNavigationSelection({ lastWorkspaceId: w.sId });
                     void onWorkspaceUpdate(w);
                   }}
-                  value={w.name}
+                  value={w.sId}
                 >
                   {w.name}
                 </DropdownMenuRadioItem>
