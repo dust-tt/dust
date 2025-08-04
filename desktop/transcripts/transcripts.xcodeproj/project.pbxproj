@@ -6,10 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		52BD7F322E40DA16001E7DA1 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 52BD7F312E40DA16001E7DA1 /* Info.plist */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXContainerItemProxy section */
 		52BD7F132E40BD3A001E7DA1 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -31,7 +27,6 @@
 		52BD7F042E40BD38001E7DA1 /* transcripts.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = transcripts.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		52BD7F122E40BD3A001E7DA1 /* transcriptsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = transcriptsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		52BD7F1C2E40BD3A001E7DA1 /* transcriptsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = transcriptsUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		52BD7F312E40DA16001E7DA1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -80,7 +75,6 @@
 		52BD7EFB2E40BD38001E7DA1 = {
 			isa = PBXGroup;
 			children = (
-				52BD7F312E40DA16001E7DA1 /* Info.plist */,
 				52BD7F062E40BD38001E7DA1 /* transcripts */,
 				52BD7F152E40BD3A001E7DA1 /* transcriptsTests */,
 				52BD7F1F2E40BD3A001E7DA1 /* transcriptsUITests */,
@@ -218,7 +212,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				52BD7F322E40DA16001E7DA1 /* Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
