@@ -42,6 +42,19 @@ struct DustDataSourceViewsResponse: Codable {
   let dataSourceViews: [DustDataSourceView]
 }
 
+struct DustTranscriptUploadResponse: Codable {
+  let dataSource: DustDataSource
+  let document: DustDocument
+}
+
+struct DustDocument: Codable {
+  let documentId: String
+
+  enum CodingKeys: String, CodingKey {
+    case documentId = "document_id"
+  }
+}
+
 // MARK: - API Error Models
 
 struct DustAPIError: Error, LocalizedError {

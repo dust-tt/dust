@@ -113,17 +113,58 @@ struct ContentView: View {
 
     if let url = audioRecorder.recordingURL {
       print("Recording saved to: \(url)")
-      // TODO: Upload to Dust API using stored credentials
+
+      // Upload to Dust API using stored credentials
       if let apiKey = UserDefaultsManager.shared.loadAPIKey(),
         let workspaceId = UserDefaultsManager.shared.loadWorkspaceId(),
         let selectedFolder = UserDefaultsManager.shared.loadSelectedFolder()
       {
-        print("Credentials available for upload:")
-        print("  API Key: \(apiKey.prefix(10))...")
-        print("  Workspace ID: \(workspaceId)")
-        print("  Selected Folder: \(selectedFolder.displayName)")
-        print("  Space ID: \(selectedFolder.spaceId)")
-        print("  Data Source View ID: \(selectedFolder.dataSourceViewId)")
+        uploadTranscript(
+          audioFileURL: url,
+          apiKey: apiKey,
+          workspaceId: workspaceId,
+          spaceId: selectedFolder.spaceId,
+          dataSourceId: selectedFolder.dataSourceId
+        )
+      } else {
+        print("Missing credentials or folder selection for upload")
+      }
+    }
+  }
+
+  private func uploadTranscript(
+    audioFileURL: URL,
+    apiKey: String,
+    workspaceId: String,
+    spaceId: String,
+    dataSourceId: String
+  ) {
+    Task {
+      do {
+        // Generate a unique document ID based on timestamp
+        let documentId = "recording_\(Date().timeIntervalSince1970)"
+
+        print("Uploading transcript to Dust...")
+        let response = try await DustAPIClient.shared.uploadTranscript(
+          apiKey: apiKey,
+          workspaceId: workspaceId,
+          spaceId: spaceId,
+          dataSourceId: dataSourceId,
+          documentId: documentId,
+          audioFileURL: audioFileURL
+        )
+
+        await MainActor.run {
+          print("Transcript uploaded successfully!")
+          print("Document ID: \(response.document.documentId)")
+        }
+      } catch {
+        await MainActor.run {
+          print("Failed to upload transcript: \(error.localizedDescription)")
+          if let dustError = error as? DustAPIError {
+            print("Dust API Error: \(dustError.message)")
+          }
+        }
       }
     }
   }

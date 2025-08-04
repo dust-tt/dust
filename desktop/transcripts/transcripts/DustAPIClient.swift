@@ -126,6 +126,103 @@ class DustAPIClient {
     }
   }
 
+  // MARK: - Transcript Upload
+
+  func uploadTranscript(
+    apiKey: String,
+    workspaceId: String,
+    spaceId: String,
+    dataSourceId: String,
+    documentId: String,
+    audioFileURL: URL
+  ) async throws -> DustTranscriptUploadResponse {
+    let urlString =
+      "\(baseURL)/w/\(workspaceId)/spaces/\(spaceId)/data_sources/\(dataSourceId)/documents/\(documentId)/transcript"
+    guard let url = URL(string: urlString) else {
+      throw DustAPIError(message: "Invalid URL: \(urlString)", statusCode: nil)
+    }
+
+    // Check file exists and get file data
+    guard FileManager.default.fileExists(atPath: audioFileURL.path) else {
+      throw DustAPIError(message: "Audio file not found", statusCode: nil)
+    }
+
+    let audioData: Data
+    do {
+      audioData = try Data(contentsOf: audioFileURL)
+    } catch {
+      throw DustAPIError(message: "Failed to read audio file", statusCode: nil)
+    }
+
+    // Check file size (25MB limit)
+    let maxSize = 25 * 1024 * 1024
+    guard audioData.count <= maxSize else {
+      throw DustAPIError(message: "File too large (max 25MB)", statusCode: nil)
+    }
+
+    // Create multipart form data
+    let boundary = UUID().uuidString
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+    request.setValue(
+      "multipart/form-data; boundary=\(boundary)",
+      forHTTPHeaderField: "Content-Type"
+    )
+
+    var body = Data()
+
+    // Add audio file
+    body.append("--\(boundary)\r\n".data(using: .utf8)!)
+    body.append(
+      "Content-Disposition: form-data; name=\"audio\"; filename=\"\(audioFileURL.lastPathComponent)\"\r\n"
+        .data(using: .utf8)!
+    )
+    body.append("Content-Type: audio/mp4\r\n\r\n".data(using: .utf8)!)
+    body.append(audioData)
+    body.append("\r\n".data(using: .utf8)!)
+
+    // Close boundary
+    body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+
+    request.httpBody = body
+
+    do {
+      let (data, response) = try await session.data(for: request)
+
+      guard let httpResponse = response as? HTTPURLResponse else {
+        throw DustAPIError.networkError
+      }
+
+      guard httpResponse.statusCode == 200 else {
+        if httpResponse.statusCode == 401 {
+          throw DustAPIError.invalidCredentials
+        }
+        if httpResponse.statusCode == 429 {
+          throw DustAPIError(message: "Rate limit exceeded", statusCode: 429)
+        }
+        throw DustAPIError(
+          message: "Upload failed",
+          statusCode: httpResponse.statusCode
+        )
+      }
+
+      let uploadResponse = try JSONDecoder().decode(
+        DustTranscriptUploadResponse.self,
+        from: data
+      )
+      return uploadResponse
+
+    } catch let error as DustAPIError {
+      throw error
+    } catch {
+      if error is DecodingError {
+        throw DustAPIError.decodingError
+      }
+      throw DustAPIError.networkError
+    }
+  }
+
   // MARK: - Combined Operations
 
   func fetchAvailableFolders(apiKey: String, workspaceId: String) async throws
