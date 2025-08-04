@@ -38,7 +38,6 @@ import {
   isIncludeResultResourceType,
   isReasoningSuccessOutput,
   isResourceContentWithText,
-  isRunAgentChainOfThoughtProgressOutput,
   isRunAgentProgressOutput,
   isRunAgentResultResourceType,
   isSearchResultResourceType,
@@ -74,8 +73,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   const isExtract = props.action.output?.some(isExtractResultResourceType);
   const isRunAgent =
     props.action.output?.some(isRunAgentResultResourceType) ||
-    isRunAgentProgressOutput(props.lastNotification?.data.output) ||
-    isRunAgentChainOfThoughtProgressOutput(props.lastNotification?.data.output);
+    isRunAgentProgressOutput(props.lastNotification?.data.output);
   const isAgentCreation = props.action.output?.some(
     isAgentCreationResultResourceType
   );

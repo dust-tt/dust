@@ -298,6 +298,26 @@ export default async function createServer(
               }
             } else if (event.classification === "tokens") {
               finalContent += event.text;
+              const notification: MCPProgressNotificationType = {
+                method: "notifications/progress",
+                params: {
+                  progress: 0,
+                  total: 1,
+                  progressToken: 0,
+                  data: {
+                    label: "Agent responding...",
+                    output: {
+                      type: "run_agent_generation_tokens",
+                      childAgentId: childAgentId,
+                      conversationId: conversation.sId,
+                      text: finalContent,
+                    },
+                  },
+                },
+              };
+              if (sendNotification) {
+                await sendNotification(notification);
+              }
             } else if (
               event.classification === "closing_delimiter" &&
               event.delimiterClassification === "chain_of_thought" &&
