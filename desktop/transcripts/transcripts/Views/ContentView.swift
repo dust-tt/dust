@@ -111,29 +111,37 @@ struct ContentView: View {
   private func stopRecording() {
     audioRecorder.stopRecording()
 
-    if let url = audioRecorder.recordingURL {
-      print("Recording saved to: \(url)")
+    // Wait a moment for the recording data to be processed
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+      if let recordingData = audioRecorder.recordingData,
+         let recordingId = audioRecorder.recordingId {
+        print("Recording completed: \(recordingData.count) bytes")
 
-      // Upload to Dust API using stored credentials
-      if let apiKey = UserDefaultsManager.shared.loadAPIKey(),
-        let workspaceId = UserDefaultsManager.shared.loadWorkspaceId(),
-        let selectedFolder = UserDefaultsManager.shared.loadSelectedFolder()
-      {
-        uploadTranscript(
-          audioFileURL: url,
-          apiKey: apiKey,
-          workspaceId: workspaceId,
-          spaceId: selectedFolder.spaceId,
-          dataSourceId: selectedFolder.dataSourceId
-        )
+        // Upload to Dust API using stored credentials
+        if let apiKey = UserDefaultsManager.shared.loadAPIKey(),
+          let workspaceId = UserDefaultsManager.shared.loadWorkspaceId(),
+          let selectedFolder = UserDefaultsManager.shared.loadSelectedFolder()
+        {
+          uploadTranscript(
+            audioData: recordingData,
+            documentId: recordingId,
+            apiKey: apiKey,
+            workspaceId: workspaceId,
+            spaceId: selectedFolder.spaceId,
+            dataSourceId: selectedFolder.dataSourceId
+          )
+        } else {
+          print("Missing credentials or folder selection for upload")
+        }
       } else {
-        print("Missing credentials or folder selection for upload")
+        print("No recording data available")
       }
     }
   }
 
   private func uploadTranscript(
-    audioFileURL: URL,
+    audioData: Data,
+    documentId: String,
     apiKey: String,
     workspaceId: String,
     spaceId: String,
@@ -141,9 +149,6 @@ struct ContentView: View {
   ) {
     Task {
       do {
-        // Extract document ID from filename (remove .m4a extension)
-        let filename = audioFileURL.lastPathComponent
-        let documentId = filename.replacingOccurrences(of: ".m4a", with: "")
 
         print("Uploading transcript to Dust...")
         let response = try await DustAPIClient.shared.uploadTranscript(
@@ -152,7 +157,7 @@ struct ContentView: View {
           spaceId: spaceId,
           dataSourceId: dataSourceId,
           documentId: documentId,
-          audioFileURL: audioFileURL
+          audioData: audioData
         )
 
         await MainActor.run {

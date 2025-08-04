@@ -3,9 +3,11 @@ import Foundation
 
 class AudioRecorder: ObservableObject {
   private var audioRecorder: AVAudioRecorder?
+  private var tempURL: URL?
 
   @Published var isRecording = false
-  @Published var recordingURL: URL?
+  @Published var recordingData: Data?
+  @Published var recordingId: String?
 
   func requestPermission() async -> Bool {
     await withCheckedContinuation { continuation in
@@ -18,13 +20,13 @@ class AudioRecorder: ObservableObject {
   func startRecording() {
     guard !isRecording else { return }
 
-    let documentsPath = FileManager.default.urls(
-      for: .documentDirectory,
-      in: .userDomainMask
-    )[0]
-    let audioFilename = documentsPath.appendingPathComponent(
-      "recording_\(Int(Date().timeIntervalSince1970)).m4a"
-    )
+    // Generate unique ID for this recording
+    let recordingTimestamp = Int(Date().timeIntervalSince1970)
+    recordingId = "recording_\(recordingTimestamp)"
+
+    // Create temporary file URL for AVAudioRecorder
+    let tempDir = FileManager.default.temporaryDirectory
+    tempURL = tempDir.appendingPathComponent("\(recordingId!).m4a")
 
     let settings =
       [
@@ -36,13 +38,13 @@ class AudioRecorder: ObservableObject {
 
     do {
       audioRecorder = try AVAudioRecorder(
-        url: audioFilename,
+        url: tempURL!,
         settings: settings
       )
       audioRecorder?.record()
 
       isRecording = true
-      recordingURL = audioFilename
+      recordingData = nil  // Clear any previous data
     } catch {
       print("Failed to start recording: \(error)")
     }
@@ -53,7 +55,24 @@ class AudioRecorder: ObservableObject {
 
     audioRecorder?.stop()
     audioRecorder = nil
-
     isRecording = false
+
+    // Load the audio data into memory and clean up temp file
+    if let tempURL = tempURL {
+      do {
+        recordingData = try Data(contentsOf: tempURL)
+        // Clean up temporary file
+        try FileManager.default.removeItem(at: tempURL)
+        print(
+          "Recording loaded into memory (\(recordingData?.count ?? 0) bytes)"
+        )
+      } catch {
+        print("Failed to load recording data: \(error)")
+        recordingData = nil
+        recordingId = nil
+      }
+    }
+
+    tempURL = nil
   }
 }

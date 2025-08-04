@@ -134,7 +134,7 @@ class DustAPIClient {
     spaceId: String,
     dataSourceId: String,
     documentId: String,
-    audioFileURL: URL
+    audioData: Data
   ) async throws -> DustTranscriptUploadResponse {
     let urlString =
       "\(baseURL)/w/\(workspaceId)/spaces/\(spaceId)/data_sources/\(dataSourceId)/documents/\(documentId)/transcript"
@@ -142,22 +142,14 @@ class DustAPIClient {
       throw DustAPIError(message: "Invalid URL: \(urlString)", statusCode: nil)
     }
 
-    // Check file exists and get file data
-    guard FileManager.default.fileExists(atPath: audioFileURL.path) else {
-      throw DustAPIError(message: "Audio file not found", statusCode: nil)
-    }
-
-    let audioData: Data
-    do {
-      audioData = try Data(contentsOf: audioFileURL)
-    } catch {
-      throw DustAPIError(message: "Failed to read audio file", statusCode: nil)
-    }
-
     // Check file size (25MB limit)
     let maxSize = 25 * 1024 * 1024
     guard audioData.count <= maxSize else {
       throw DustAPIError(message: "File too large (max 25MB)", statusCode: nil)
+    }
+
+    guard !audioData.isEmpty else {
+      throw DustAPIError(message: "Audio data is empty", statusCode: nil)
     }
 
     // Create multipart form data
@@ -175,7 +167,7 @@ class DustAPIClient {
     // Add audio file
     body.append("--\(boundary)\r\n".data(using: .utf8)!)
     body.append(
-      "Content-Disposition: form-data; name=\"audio\"; filename=\"\(audioFileURL.lastPathComponent)\"\r\n"
+      "Content-Disposition: form-data; name=\"audio\"; filename=\"\(documentId).m4a\"\r\n"
         .data(using: .utf8)!
     )
     body.append("Content-Type: audio/mp4\r\n\r\n".data(using: .utf8)!)
