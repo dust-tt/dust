@@ -13,12 +13,12 @@ import { useDataSourceBuilderContext } from "@app/components/data_source_view/co
 import { pluralize } from "@app/types";
 
 export function KnowledgeFooter() {
-  const [isOpen, setOpen] = useState(false);
-  const { removeNode } = useDataSourceBuilderContext();
+  const [isOpen, setOpen] = useState(true);
+  const { removeNodeWithPath } = useDataSourceBuilderContext();
 
   const { field } = useSourcesFormController();
 
-  if (!field.value.in) {
+  if (field.value.in.length <= 0) {
     return <></>;
   }
 
@@ -32,23 +32,25 @@ export function KnowledgeFooter() {
           </span>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <ContextItem.List className="rounded-xl bg-muted px-1.5 py-2 dark:bg-muted-night">
-            {field.value.in.map((path) => (
-              <ContextItem
-                key={path}
-                title={path}
-                visual={<ContextItem.Visual visual={GithubLogo} />}
-                action={
-                  <Checkbox
-                    checked
-                    onCheckedChange={() => removeNode(path.split(".")[-1])}
-                  />
-                }
-              >
-                <span className="text-xs">{path}</span>
-              </ContextItem>
-            ))}
-          </ContextItem.List>
+          <div className="rounded-xl bg-muted dark:bg-muted-night">
+            <ContextItem.List className="max-h-[183px] overflow-x-scroll">
+              {field.value.in.map((path) => (
+                <ContextItem
+                  key={path}
+                  title={path}
+                  visual={<ContextItem.Visual visual={GithubLogo} />}
+                  action={
+                    <Checkbox
+                      checked
+                      onCheckedChange={() => removeNodeWithPath(path)}
+                    />
+                  }
+                >
+                  <span className="text-xs">{path}</span>
+                </ContextItem>
+              ))}
+            </ContextItem.List>
+          </div>
         </CollapsibleContent>
       </Collapsible>
     </div>
