@@ -97,9 +97,6 @@ export async function retryAgentMessageFromStep(
     rank: messageRow.rank,
   };
 
-  // reset agentMessage content
-  agentMessage.content = "";
-
   const inMemoryData = {
     agentConfiguration: await getFullAgentConfiguration(
       auth,
@@ -107,7 +104,10 @@ export async function retryAgentMessageFromStep(
     ),
     conversation,
     userMessage,
-    agentMessage,
+    agentMessage: {
+      ...agentMessage,
+      content: "", // reset agentMessage content
+    },
     agentMessageRow,
   };
 
