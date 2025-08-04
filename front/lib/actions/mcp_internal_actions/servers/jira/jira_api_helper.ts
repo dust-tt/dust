@@ -23,6 +23,7 @@ import type {
   SortDirection,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
+  ADFDocumentSchema,
   JiraCommentSchema,
   JiraCreateMetaSchema,
   JiraIssueLinkTypeSchema,
@@ -42,6 +43,11 @@ import {
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
+
+// Type guard to check if a value is an ADFDocument
+function isADFDocument(value: unknown): value is ADFDocument {
+  return ADFDocumentSchema.safeParse(value).success;
+}
 
 // Generic helper to handle errors consistently
 function handleResults<T>(
@@ -254,10 +260,17 @@ export async function createComment(
     value: string;
   }
 ): Promise<Result<z.infer<typeof JiraCommentSchema> | null, JiraErrorResult>> {
-  const adfBody =
-    typeof commentBody === "string"
-      ? textToADF(commentBody)
-      : (commentBody as ADFDocument);
+  let adfBody: ADFDocument;
+
+  if (typeof commentBody === "string") {
+    adfBody = textToADF(commentBody);
+  } else if (isADFDocument(commentBody)) {
+    adfBody = commentBody;
+  } else {
+    return new Err(
+      "Invalid comment body: must be a string or valid ADF document"
+    );
+  }
 
   const requestBody: z.infer<typeof JiraCreateCommentRequestSchema> = {
     body: {
@@ -502,21 +515,17 @@ export async function createIssue(
   issueData: z.infer<typeof JiraCreateIssueRequestSchema>
 ): Promise<Result<z.infer<typeof JiraIssueSchema>, JiraErrorResult>> {
   // Process fields to convert strings to ADF for textarea fields only
-  const processedFields: Record<string, any> = {};
+  const processedFields: typeof issueData & Record<string, unknown> = { ...issueData };
 
-  for (const [fieldKey, fieldValue] of Object.entries(issueData)) {
-    if (fieldKey === "description" && typeof fieldValue === "string") {
-      // Convert description from string to ADF if it's a string
+  // Convert description from string to ADF if it's a string
+  if (processedFields.description && typeof processedFields.description === "string") {
+    processedFields.description = textToADF(processedFields.description);
+  }
+
+  // Convert custom fields from string to ADF if they're strings
+  for (const [fieldKey, fieldValue] of Object.entries(processedFields)) {
+    if (fieldKey.startsWith("customfield_") && typeof fieldValue === "string") {
       processedFields[fieldKey] = textToADF(fieldValue);
-    } else if (
-      fieldKey.startsWith("customfield_") &&
-      typeof fieldValue === "string"
-    ) {
-      // Convert custom fields from string to ADF if they're strings
-      processedFields[fieldKey] = textToADF(fieldValue);
-    } else {
-      // Keep all other fields as-is (summary, priority, assignee, etc.)
-      processedFields[fieldKey] = fieldValue;
     }
   }
 
@@ -554,21 +563,17 @@ export async function updateIssue(
   Result<{ issueKey: string; browseUrl?: string } | null, JiraErrorResult>
 > {
   // Process fields to convert strings to ADF for textarea fields only
-  const processedFields: Record<string, any> = {};
+  const processedFields: typeof updateData & Record<string, unknown> = { ...updateData };
 
-  for (const [fieldKey, fieldValue] of Object.entries(updateData)) {
-    if (fieldKey === "description" && typeof fieldValue === "string") {
-      // Convert description from string to ADF if it's a string
+  // Convert description from string to ADF if it's a string
+  if (processedFields.description && typeof processedFields.description === "string") {
+    processedFields.description = textToADF(processedFields.description);
+  }
+
+  // Convert custom fields from string to ADF if they're strings
+  for (const [fieldKey, fieldValue] of Object.entries(processedFields)) {
+    if (fieldKey.startsWith("customfield_") && typeof fieldValue === "string") {
       processedFields[fieldKey] = textToADF(fieldValue);
-    } else if (
-      fieldKey.startsWith("customfield_") &&
-      typeof fieldValue === "string"
-    ) {
-      // Convert custom fields from string to ADF if they're strings
-      processedFields[fieldKey] = textToADF(fieldValue);
-    } else {
-      // Keep all other fields as-is (summary, priority, assignee, etc.)
-      processedFields[fieldKey] = fieldValue;
     }
   }
 
@@ -613,15 +618,18 @@ export async function createIssueLink(
   accessToken: string,
   linkData: z.infer<typeof JiraCreateIssueLinkRequestSchema>
 ): Promise<Result<void, JiraErrorResult>> {
-  const requestBody = { ...linkData };
+  const requestBody: Record<string, any> = { ...linkData };
 
-  // If there's a comment, transform it to JIRA document format
+  // If there's a comment, transform it to JIRA document format using ADF helper
   if (
     requestBody.comment?.body &&
     typeof requestBody.comment.body === "string"
   ) {
     const commentText = requestBody.comment.body;
-    (requestBody.comment as any).body = textToADF(commentText);
+    requestBody.comment = {
+      ...requestBody.comment,
+      body: textToADF(commentText),
+    };
   }
 
   const result = await jiraApiCall(
