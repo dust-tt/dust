@@ -10,6 +10,7 @@ struct ContentView: View {
   @State private var isSetupComplete = false
   @State private var showingLoginError = false
   @State private var loginErrorMessage = ""
+  @State private var showingLoginSuccess = false
 
   var body: some View {
     VStack(spacing: 8) {
@@ -155,6 +156,7 @@ struct ContentView: View {
       apiKeyInput = ""
       workspaceIdInput = ""
       checkSetupStatus()
+      showingLoginSuccess = true
       print("Credentials saved successfully")
       completion(true)
     } else {
@@ -190,6 +192,7 @@ struct ContentView: View {
         workspaceIdInput: $workspaceIdInput,
         showingError: $showingLoginError,
         errorMessage: $loginErrorMessage,
+        showingSuccess: $showingLoginSuccess,
         onLogin: {
           login { success in
             if success {
