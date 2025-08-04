@@ -1,11 +1,10 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import {
-  makeMCPToolTextError,
-  makeMCPToolTextSuccess,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import type { AgentCreationResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import apiConfig from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
@@ -140,13 +139,49 @@ const createServer = (
       const agent = result.value;
       const agentUrl = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/builder/assistants/${agent.sId}`;
 
-      return makeMCPToolTextSuccess({
-        message:
-          `Successfully created agent "${name}" (ID: ${agent.sId}).\n\n` +
-          `The agent has been created with:\n- Web search and browse tools\n` +
-          `- Search across workspace data sources\n- Query tools for any data warehouses in the global space\n\n` +
-          `View and edit it at: ${agentUrl}`,
-      });
+      // Prepare the structured output resource
+      const agentCreationResource: AgentCreationResultResourceType = {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_CREATION_RESULT,
+        text: `Created agent: ${name}`,
+        uri: agentUrl,
+        mainAgent: {
+          id: agent.sId,
+          name: name,
+          description: description,
+          pictureUrl: agent.pictureUrl,
+          url: agentUrl,
+        },
+        subAgent:
+          sub_agent_name && sub_agent_instructions
+            ? {
+                id: `${agent.sId}_sub`, // We don't have the actual sub-agent ID from the API response
+                name: sub_agent_name,
+                description: sub_agent_description || "",
+                pictureUrl: agent.pictureUrl, // We'll use the same as main for now
+                url: agentUrl, // Both agents can be viewed at the same URL
+              }
+            : undefined,
+      };
+
+      // Return both structured data and a text message
+      return {
+        isError: false,
+        content: [
+          {
+            type: "resource" as const,
+            resource: agentCreationResource,
+          },
+          {
+            type: "text" as const,
+            text:
+              `Successfully created agent "${name}" (ID: ${agent.sId}).\n\n` +
+              `The agent has been created with:\n- Web search and browse tools\n` +
+              `- Search across workspace data sources\n- Query tools for any data warehouses in the global space` +
+              (sub_agent_name ? `\n- Run @${sub_agent_name} sub-agent` : "") +
+              `\n\nView and edit it at: ${agentUrl}`,
+          },
+        ],
+      };
     }
   );
 
