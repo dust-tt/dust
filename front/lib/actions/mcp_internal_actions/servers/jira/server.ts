@@ -15,6 +15,7 @@ import {
   getProjects,
   getTransitions,
   searchIssues,
+  searchUsers,
   transitionIssue,
   updateIssue,
   withAuth,
@@ -24,6 +25,7 @@ import {
   JiraCreateIssueRequestSchema,
   JiraSearchFilterSchema,
   JiraSortSchema,
+  SEARCH_USERS_MAX_RESULTS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
   makeMCPToolJSONSuccess,
@@ -47,7 +49,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 const createServer = (): McpServer => {
   const server = new McpServer(serverInfo, {
     instructions: `
-      You have access to the following tools: get_issue, get_projects, get_project, get_transitions, create_comment, get_issues, get_issue_types, get_issue_fields, get_connection_info, transition_issue, create_issue, update_issue, create_issue_link, delete_issue_link, get_issue_link_types.
+      You have access to the following tools: get_issue, get_projects, get_project, get_transitions, create_comment, get_issues, get_issue_types, get_issue_fields, get_connection_info, transition_issue, create_issue, update_issue, create_issue_link, delete_issue_link, get_issue_link_types, get_users.
 
       # General Workflow for JIRA Data:
       0.  **Authenticate:** Use \`get_connection_info\` to authenticate with JIRA if you are not authenticated ("No access token found").
@@ -564,6 +566,64 @@ const createServer = (): McpServer => {
           return makeMCPToolJSONSuccess({
             message: "Issue link types retrieved successfully",
             result: result.value,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_users",
+    "Search for JIRA users by email address or display name. Useful for finding user account IDs for assignments, mentions, or other user-related operations.",
+    {
+      query: z
+        .string()
+        .describe(
+          "Search query - can be email address or display name (e.g., 'john.doe@company.com' or 'John Doe')"
+        ),
+      maxResults: z
+        .number()
+        .min(1)
+        .max(SEARCH_USERS_MAX_RESULTS)
+        .optional()
+        .default(SEARCH_USERS_MAX_RESULTS)
+        .describe(
+          `Maximum number of users to return (default: ${SEARCH_USERS_MAX_RESULTS}, max: ${SEARCH_USERS_MAX_RESULTS})`
+        ),
+    },
+    async ({ query, maxResults = SEARCH_USERS_MAX_RESULTS }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await searchUsers(
+            baseUrl,
+            accessToken,
+            query,
+            maxResults
+          );
+          if (result.isErr()) {
+            return makeMCPToolTextError(
+              `Error searching users: ${result.error}`
+            );
+          }
+
+          // Construct the exact URL that was queried
+          const params = new URLSearchParams({
+            query,
+            maxResults: maxResults.toString(),
+          });
+          const queryUrl = `${baseUrl}/rest/api/3/users/search?${params.toString()}`;
+
+          const message =
+            result.value.length === 0
+              ? "No users found matching the search query"
+              : `Found ${result.value.length} user(s) matching the search query`;
+          return makeMCPToolJSONSuccess({
+            message,
+            result: {
+              users: result.value,
+              queryUrl,
+            },
           });
         },
         authInfo,
