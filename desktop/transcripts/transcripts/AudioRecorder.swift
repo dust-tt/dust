@@ -23,9 +23,10 @@ class AudioRecorder: ObservableObject {
         
         let settings = [
             AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-            AVSampleRateKey: 16000,
+            AVSampleRateKey: 8000,
             AVNumberOfChannelsKey: 1,
-            AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue
+            AVEncoderAudioQualityKey: AVAudioQuality.low.rawValue,
+            AVEncoderBitRateKey: 32000
         ] as [String: Any]
         
         do {
