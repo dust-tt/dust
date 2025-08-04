@@ -144,25 +144,47 @@ struct ContentView: View {
       return
     }
 
-    // Save credentials directly
-    if UserDefaultsManager.shared.saveAPIKey(apiKeyInput)
-      && UserDefaultsManager.shared.saveCredentials(
-        apiKey: apiKeyInput,
-        workspaceId: workspaceIdInput,
-        folderId: ""
-      )
-    {
-      isLoggedIn = true
-      apiKeyInput = ""
-      workspaceIdInput = ""
-      checkSetupStatus()
-      showingLoginSuccess = true
-      print("Credentials saved successfully")
-      completion(true)
-    } else {
-      loginErrorMessage = "Failed to save credentials. Please try again."
-      showingLoginError = true
-      completion(false)
+    // Validate credentials by calling the API
+    Task {
+      do {
+        _ = try await DustAPIClient.shared.fetchSpaces(
+          apiKey: apiKeyInput,
+          workspaceId: workspaceIdInput
+        )
+        
+        // If we get here, credentials are valid - save them
+        await MainActor.run {
+          if UserDefaultsManager.shared.saveAPIKey(apiKeyInput)
+            && UserDefaultsManager.shared.saveCredentials(
+              apiKey: apiKeyInput,
+              workspaceId: workspaceIdInput,
+              folderId: ""
+            )
+          {
+            isLoggedIn = true
+            apiKeyInput = ""
+            workspaceIdInput = ""
+            checkSetupStatus()
+            showingLoginSuccess = true
+            print("Credentials validated and saved successfully")
+            completion(true)
+          } else {
+            loginErrorMessage = "Failed to save credentials. Please try again."
+            showingLoginError = true
+            completion(false)
+          }
+        }
+      } catch {
+        await MainActor.run {
+          if let dustError = error as? DustAPIError {
+            loginErrorMessage = dustError.localizedDescription
+          } else {
+            loginErrorMessage = "Failed to validate credentials: \(error.localizedDescription)"
+          }
+          showingLoginError = true
+          completion(false)
+        }
+      }
     }
   }
 
