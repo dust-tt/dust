@@ -22,6 +22,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   // Fetch session explicitly as this page redirects logged in users to our home page.
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
+  const organizationId = session?.organizationId;
 
   const { inviteToken } = context.query;
 
@@ -51,6 +52,15 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       user.workspaces.find((w) => w.sId === selection.lastWorkspaceId)
     ) {
       url = `/w/${selection.lastWorkspaceId}`;
+    }
+
+    if (organizationId) {
+      const workspace = user.organizations?.find(
+        (o) => o.id === organizationId
+      );
+      if (workspace) {
+        url = `/w/${workspace.externalId}`;
+      }
     }
 
     // This allows linking to the workspace subscription page from the documentation.
