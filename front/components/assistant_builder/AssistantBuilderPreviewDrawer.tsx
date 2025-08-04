@@ -220,7 +220,7 @@ export default function AssistantBuilderRightPanel({
                   <GenerationContextProvider>
                     <div className="flex h-full flex-col">
                       {conversation && (
-                        <div className="flex items-center justify-between px-4 py-3">
+                        <div className="flex items-center justify-between py-3">
                           <h2 className="font-semibold text-foreground dark:text-foreground-night">
                             {conversation.title}
                           </h2>
