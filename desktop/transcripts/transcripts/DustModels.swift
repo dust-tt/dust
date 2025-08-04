@@ -11,10 +11,16 @@ struct DustSpace: Codable, Identifiable {
 }
 
 struct DustDataSource: Codable {
+  let id: Int?
   let sId: String
+  let createdAt: Int?
   let name: String
   let description: String?
+  let dustAPIProjectId: String?
+  let dustAPIDataSourceId: String?
+  let connectorId: String?
   let connectorProvider: String?
+  let assistantDefaultSelected: Bool?
 }
 
 struct DustDataSourceView: Codable, Identifiable {
@@ -45,6 +51,11 @@ struct DustDataSourceViewsResponse: Codable {
 struct DustTranscriptUploadResponse: Codable {
   let dataSource: DustDataSource
   let document: DustDocument
+  
+  enum CodingKeys: String, CodingKey {
+    case dataSource = "data_source"
+    case document
+  }
 }
 
 struct DustDocument: Codable {
