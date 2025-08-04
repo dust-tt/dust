@@ -13,6 +13,7 @@ import {
   DialogTrigger,
   Hoverable,
   Icon,
+  ListCheckIcon,
   LockIcon,
   Page,
   Sheet,
@@ -604,6 +605,7 @@ export function ConnectorPermissionsModal({
     [owner, dataSource]
   );
 
+  const { resources: treeResources } = useResourcesHook(null);
   const { resources: allSelectedResources, isResourcesLoading } =
     useConnectorPermissions({
       owner,
@@ -624,6 +626,19 @@ export function ConnectorPermissionsModal({
       return [node.parentInternalId];
     }
     return node.parentInternalIds ?? [];
+  };
+
+  const toggleAllResources = () => {
+    const newSelectedState = !treeResources.every(
+      (resource) => selectedNodes[resource.internalId]?.isSelected === true
+    );
+    const updates = Object.fromEntries(
+      treeResources.map((resource) => [
+        resource.internalId,
+        { isSelected: newSelectedState, node: resource, parents: [] },
+      ])
+    );
+    setSelectedNodes((prev) => ({ ...prev, ...updates }));
   };
 
   const initialTreeSelectionModel = useMemo(
@@ -879,6 +894,28 @@ export function ConnectorPermissionsModal({
                       <div className="heading-xl p-1">
                         {connectorConfiguration.selectLabel}
                       </div>
+                      {canUpdatePermissions &&
+                        !isResourcesLoading &&
+                        treeResources.length > 0 && (
+                          <div className="mb-2 flex items-center justify-end px-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs"
+                              label={
+                                treeResources.every(
+                                  (resource) =>
+                                    selectedNodes[resource.internalId]
+                                      ?.isSelected === true
+                                )
+                                  ? "Unselect All"
+                                  : "Select All"
+                              }
+                              icon={ListCheckIcon}
+                              onClick={toggleAllResources}
+                            />
+                          </div>
+                        )}
                       <ContentNodeTree
                         isTitleFilterEnabled={
                           connectorConfiguration.isTitleFilterEnabled
