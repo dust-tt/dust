@@ -10,6 +10,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
+import type { Result } from "@app/types";
 import { Err, OAuthAPI, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
@@ -68,7 +69,7 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
     }
   ): Promise<ExtraConfigType> {
     if (useCase === "personal_actions") {
-      // For personal actions we fetch the hub_id (portal ID) of the admin-setup to enforce 
+      // For personal actions we fetch the hub_id (portal ID) of the admin-setup to enforce
       // the user connects to the same HubSpot portal as configured by the admin.
       const { mcp_server_id, ...restConfig } = extraConfig;
 
@@ -126,13 +127,13 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
     return Object.keys(extraConfig).length === 0;
   }
 
-  checkConnectionValidPostFinalize(connection: OAuthConnectionType) {
-    // If a specific HubSpot hub_id (portal ID) was requested, we need to check that 
+  checkConnectionValidPostFinalize(
+    connection: OAuthConnectionType
+  ): Result<void, { message: string }> {
+    // If a specific HubSpot hub_id (portal ID) was requested, we need to check that
     // the connected hub_id matches the admin-configured one.
     if ("requested_hub_id" in connection.metadata) {
-      if (
-        connection.metadata.hub_id === connection.metadata.requested_hub_id
-      ) {
+      if (connection.metadata.hub_id === connection.metadata.requested_hub_id) {
         return new Ok(undefined);
       }
       return new Err({
