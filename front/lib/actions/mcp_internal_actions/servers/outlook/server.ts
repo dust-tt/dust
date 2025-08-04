@@ -139,7 +139,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_drafts",
-    "Get all draft emails from Outlook.",
+    "Get draft emails from Outlook. Returns a limited number of drafts by default to avoid overwhelming responses.",
     {
       search: z
         .string()
@@ -147,12 +147,18 @@ const createServer = (): McpServer => {
         .describe(
           'Search query to filter drafts. Examples: "subject:meeting", "to:someone@example.com".'
         ),
+      top: z
+        .number()
+        .optional()
+        .describe(
+          "Maximum number of drafts to return (default: 10, max: 100)"
+        ),
       skip: z
         .number()
         .optional()
         .describe("Number of drafts to skip for pagination."),
     },
-    async ({ search, skip = 0 }, { authInfo }) => {
+    async ({ search, top = 10, skip = 0 }, { authInfo }) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return makeMCPToolTextError("Authentication required");
@@ -160,7 +166,7 @@ const createServer = (): McpServer => {
 
       const params = new URLSearchParams();
       params.append("$filter", "isDraft eq true");
-      params.append("$top", "50");
+      params.append("$top", Math.min(top, 100).toString());
 
       if (search) {
         params.append("$search", `"${search}"`);
