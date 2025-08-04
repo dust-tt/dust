@@ -15,16 +15,14 @@ export async function retryAgentMessageFromStep(
   auth: Authenticator,
   {
     conversation,
-    message,
+    agentMessage,
     startStep,
   }: {
     conversation: ConversationType;
-    message: AgentMessageType;
+    agentMessage: AgentMessageType;
     startStep: number;
   }
 ): Promise<Result<AgentMessageWithRankType, APIErrorWithStatusCode>> {
-  const agentMessage = message;
-
   // First, find the array of the parent message in conversation.content.
   const parentMessageIndex = conversation.content.findIndex((messages) => {
     return messages.some((m) => m.sId === agentMessage.parentMessageId);
@@ -80,7 +78,7 @@ export async function retryAgentMessageFromStep(
   // we need to refetch by why?
   const agentMessageRow = await AgentMessage.findOne({
     where: {
-      id: message.agentMessageId,
+      id: agentMessage.agentMessageId,
       workspaceId: conversation.owner.id,
     },
   });

@@ -144,7 +144,7 @@ async function handler(
       }
       const result = await retryAgentMessageFromStep(auth, {
         conversation,
-        message: agentMessage,
+        agentMessage,
         startStep: stepIndex,
       });
 
