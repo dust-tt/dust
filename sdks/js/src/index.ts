@@ -50,6 +50,7 @@ import {
   AppsCheckResponseSchema,
   CancelMessageGenerationResponseSchema,
   CreateConversationResponseSchema,
+  CreateGenericAgentConfigurationResponseSchema,
   DataSourceViewResponseSchema,
   DeleteFolderResponseSchema,
   Err,
@@ -634,6 +635,50 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.contentFragment);
+  }
+
+  async createGenericAgentConfiguration({
+    name,
+    description,
+    instructions,
+    emoji,
+    subAgentName,
+    subAgentDescription,
+    subAgentInstructions,
+    subAgentEmoji,
+  }: {
+    name: string;
+    description: string;
+    instructions: string;
+    emoji?: string;
+    subAgentName?: string;
+    subAgentDescription?: string;
+    subAgentInstructions?: string;
+    subAgentEmoji?: string;
+  }) {
+    const res = await this.request({
+      method: "POST",
+      path: "assistant/generic_agents",
+      body: {
+        name,
+        description,
+        instructions,
+        emoji,
+        subAgentName,
+        subAgentDescription,
+        subAgentInstructions,
+        subAgentEmoji,
+      },
+    });
+
+    const r = await this._resultFromResponse(
+      CreateGenericAgentConfigurationResponseSchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value);
   }
 
   // When creating a conversation with a user message, the API returns only after the user message

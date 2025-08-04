@@ -499,6 +499,46 @@ export const isRunAgentQueryResourceType = (
   );
 };
 
+// Agent creation results.
+
+export const AgentCreationResultResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_CREATION_RESULT),
+  text: z.string(), // Required by MCP SDK
+  uri: z.string(),
+  mainAgent: z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string(),
+    pictureUrl: z.string(),
+    url: z.string(),
+  }),
+  subAgent: z.optional(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      description: z.string(),
+      pictureUrl: z.string(),
+      url: z.string(),
+    })
+  ),
+});
+
+export type AgentCreationResultResourceType = z.infer<
+  typeof AgentCreationResultResourceSchema
+>;
+
+export const isAgentCreationResultResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: AgentCreationResultResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    AgentCreationResultResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 export const RunAgentResultResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT),
   conversationId: z.string(),
