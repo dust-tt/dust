@@ -2,6 +2,8 @@ import SwiftUI
 
 struct LoginView: View {
   @Binding var apiKeyInput: String
+  @Binding var showingError: Bool
+  @Binding var errorMessage: String
   let onLogin: () -> Void
   let onCancel: () -> Void
 
@@ -32,9 +34,14 @@ struct LoginView: View {
       }
     }
     .frame(width: 400, height: 200)
+    .alert("Login Error", isPresented: $showingError) {
+      Button("OK") { }
+    } message: {
+      Text(errorMessage)
+    }
   }
 }
 
 #Preview {
-  LoginView(apiKeyInput: .constant(""), onLogin: {}, onCancel: {})
+  LoginView(apiKeyInput: .constant(""), showingError: .constant(false), errorMessage: .constant(""), onLogin: {}, onCancel: {})
 }
