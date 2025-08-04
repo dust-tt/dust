@@ -23,7 +23,7 @@ class AudioRecorder: ObservableObject {
       in: .userDomainMask
     )[0]
     let audioFilename = documentsPath.appendingPathComponent(
-      "recording_\(Date().timeIntervalSince1970).m4a"
+      "recording_\(Int(Date().timeIntervalSince1970)).m4a"
     )
 
     let settings =

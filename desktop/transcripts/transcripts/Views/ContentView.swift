@@ -141,8 +141,9 @@ struct ContentView: View {
   ) {
     Task {
       do {
-        // Generate a unique document ID based on timestamp
-        let documentId = "recording_\(Date().timeIntervalSince1970)"
+        // Extract document ID from filename (remove .m4a extension)
+        let filename = audioFileURL.lastPathComponent
+        let documentId = filename.replacingOccurrences(of: ".m4a", with: "")
 
         print("Uploading transcript to Dust...")
         let response = try await DustAPIClient.shared.uploadTranscript(
