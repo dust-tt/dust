@@ -21,7 +21,6 @@ export const CreateGenericAgentRequestSchema = t.type({
   description: t.string,
   instructions: t.string,
   emoji: t.union([t.string, t.undefined]),
-  pictureUrl: t.union([t.string, t.undefined]),
   subAgentName: t.union([t.string, t.undefined]),
   subAgentDescription: t.union([t.string, t.undefined]),
   subAgentInstructions: t.union([t.string, t.undefined]),
@@ -30,6 +29,27 @@ export const CreateGenericAgentRequestSchema = t.type({
 
 function assistantHandleIsValid(handle: string) {
   return /^[a-zA-Z0-9_-]{1,30}$/.test(handle);
+}
+
+function getAgentPictureUrl(
+  emoji: string | undefined,
+  backgroundColor: `bg-${string}`
+): string {
+  const selectedEmoji = emoji || "🤖";
+  const emojiData = buildSelectedEmojiType(selectedEmoji);
+
+  if (emojiData) {
+    return makeUrlForEmojiAndBackground(
+      {
+        id: emojiData.id,
+        unified: emojiData.unified,
+        native: emojiData.native,
+      },
+      backgroundColor
+    );
+  } else {
+    return "https://dust.tt/static/systemavatar/dust_avatar_full.png";
+  }
 }
 
 /**
@@ -96,23 +116,11 @@ async function handler(
         description,
         instructions,
         emoji,
-        pictureUrl,
         subAgentName,
         subAgentDescription,
         subAgentInstructions,
         subAgentEmoji,
       } = bodyValidation.right;
-
-      if (emoji && pictureUrl) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "Cannot specify both emoji and pictureUrl. Please provide only one.",
-          },
-        });
-      }
 
       if (subAgentInstructions) {
         if (!subAgentName || subAgentName.trim() === "") {
@@ -187,28 +195,7 @@ async function handler(
         reasoningEffort: model.defaultReasoningEffort,
       };
 
-      let finalPictureUrl: string;
-
-      if (pictureUrl) {
-        finalPictureUrl = pictureUrl;
-      } else {
-        const selectedEmoji = emoji || "🤖";
-        const emojiData = buildSelectedEmojiType(selectedEmoji);
-
-        if (emojiData) {
-          finalPictureUrl = makeUrlForEmojiAndBackground(
-            {
-              id: emojiData.id,
-              unified: emojiData.unified,
-              native: emojiData.native,
-            },
-            "bg-blue-200"
-          );
-        } else {
-          finalPictureUrl =
-            "https://dust.tt/static/systemavatar/dust_avatar_full.png";
-        }
-      }
+      const agentPictureUrl = getAgentPictureUrl(emoji, "bg-blue-200");
 
       // Prepare sub-agent configuration if requested
       let subAgentConfig = undefined;
@@ -224,24 +211,10 @@ async function handler(
           });
         }
 
-        // Build sub-agent avatar URL
-        let subAgentPictureUrl: string;
-        const selectedSubAgentEmoji = subAgentEmoji || "🤖";
-        const subAgentEmojiData = buildSelectedEmojiType(selectedSubAgentEmoji);
-
-        if (subAgentEmojiData) {
-          subAgentPictureUrl = makeUrlForEmojiAndBackground(
-            {
-              id: subAgentEmojiData.id,
-              unified: subAgentEmojiData.unified,
-              native: subAgentEmojiData.native,
-            },
-            "bg-green-200"
-          );
-        } else {
-          subAgentPictureUrl =
-            "https://dust.tt/static/systemavatar/dust_avatar_full.png";
-        }
+        const subAgentPictureUrl = getAgentPictureUrl(
+          subAgentEmoji,
+          "bg-green-200"
+        );
 
         subAgentConfig = {
           name: subAgentName!,
@@ -258,7 +231,7 @@ async function handler(
           name,
           description,
           instructions,
-          pictureUrl: finalPictureUrl,
+          pictureUrl: agentPictureUrl,
           model: agentModel,
           subAgent: subAgentConfig,
         }

@@ -1590,7 +1590,6 @@ export const CreateGenericAgentConfigurationRequestSchema = z.object({
   description: z.string(),
   instructions: z.string(),
   emoji: z.string().optional(),
-  pictureUrl: z.string().optional(),
   subAgentName: z.string().optional(),
   subAgentDescription: z.string().optional(),
   subAgentInstructions: z.string().optional(),

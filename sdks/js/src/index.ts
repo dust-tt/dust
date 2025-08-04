@@ -642,7 +642,6 @@ export class DustAPI {
     description,
     instructions,
     emoji,
-    pictureUrl,
     subAgentName,
     subAgentDescription,
     subAgentInstructions,
@@ -652,7 +651,6 @@ export class DustAPI {
     description: string;
     instructions: string;
     emoji?: string;
-    pictureUrl?: string;
     subAgentName?: string;
     subAgentDescription?: string;
     subAgentInstructions?: string;
@@ -666,7 +664,6 @@ export class DustAPI {
         description,
         instructions,
         emoji,
-        pictureUrl,
         subAgentName,
         subAgentDescription,
         subAgentInstructions,
