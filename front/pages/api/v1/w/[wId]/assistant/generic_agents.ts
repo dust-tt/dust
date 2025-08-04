@@ -137,7 +137,6 @@ async function handler(
         }
       }
 
-      // Validate agent name - no cleaning, just validation
       if (!name || name === "") {
         return apiError(req, res, {
           status_code: 400,

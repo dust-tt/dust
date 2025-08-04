@@ -23,6 +23,7 @@ import { getGlobalAgents } from "@app/lib/api/assistant/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
+import { isRemoteDatabase } from "@app/lib/data_sources";
 import type { DustError } from "@app/lib/error";
 import {
   AgentConfiguration,
@@ -773,10 +774,7 @@ export async function createGenericAgentConfigurationWithDefaultTools(
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   for (const dsView of globalDataSourceViews) {
     if (
-      !(
-        dsView.dataSource.connectorProvider === "snowflake" ||
-        dsView.dataSource.connectorProvider === "bigquery"
-      ) ||
+      !isRemoteDatabase(dsView.dataSource) ||
       !dsView.dataSource.connectorId
     ) {
       continue;
