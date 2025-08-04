@@ -25,7 +25,7 @@ struct ContentView: View {
           Text("Start Recording")
         }
       }
-      .disabled(audioRecorder.isRecording || !isLoggedIn)
+      .disabled(audioRecorder.isRecording || !isLoggedIn || !isSetupComplete)
 
       Button(action: stopRecording) {
         HStack {
