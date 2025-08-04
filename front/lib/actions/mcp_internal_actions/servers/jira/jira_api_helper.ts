@@ -4,8 +4,12 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import { createJQLFromSearchFilters } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
+import {
+  createJQLFromSearchFilters,
+  textToADF,
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
 import type {
+  ADFDocument,
   JiraConnectionInfoSchema,
   JiraCreateCommentRequestSchema,
   JiraCreateIssueLinkRequestSchema,
@@ -244,27 +248,22 @@ export async function createComment(
   baseUrl: string,
   accessToken: string,
   issueKey: string,
-  commentBody: string,
+  commentBody: string | ADFDocument,
   visibility?: {
     type: "group" | "role";
     value: string;
   }
 ): Promise<Result<z.infer<typeof JiraCommentSchema> | null, JiraErrorResult>> {
+  const adfBody =
+    typeof commentBody === "string"
+      ? textToADF(commentBody)
+      : (commentBody as ADFDocument);
+
   const requestBody: z.infer<typeof JiraCreateCommentRequestSchema> = {
     body: {
-      type: "doc",
-      version: 1,
-      content: [
-        {
-          type: "paragraph",
-          content: [
-            {
-              type: "text",
-              text: commentBody,
-            },
-          ],
-        },
-      ],
+      type: adfBody.type,
+      version: adfBody.version,
+      content: adfBody.content || [],
     },
   };
   if (visibility) {
@@ -502,6 +501,25 @@ export async function createIssue(
   accessToken: string,
   issueData: z.infer<typeof JiraCreateIssueRequestSchema>
 ): Promise<Result<z.infer<typeof JiraIssueSchema>, JiraErrorResult>> {
+  // Process fields to convert strings to ADF for textarea fields only
+  const processedFields: Record<string, any> = {};
+
+  for (const [fieldKey, fieldValue] of Object.entries(issueData)) {
+    if (fieldKey === "description" && typeof fieldValue === "string") {
+      // Convert description from string to ADF if it's a string
+      processedFields[fieldKey] = textToADF(fieldValue);
+    } else if (
+      fieldKey.startsWith("customfield_") &&
+      typeof fieldValue === "string"
+    ) {
+      // Convert custom fields from string to ADF if they're strings
+      processedFields[fieldKey] = textToADF(fieldValue);
+    } else {
+      // Keep all other fields as-is (summary, priority, assignee, etc.)
+      processedFields[fieldKey] = fieldValue;
+    }
+  }
+
   const result = await jiraApiCall(
     {
       endpoint: "/rest/api/3/issue",
@@ -510,7 +528,7 @@ export async function createIssue(
     JiraIssueSchema,
     {
       method: "POST",
-      body: { fields: issueData },
+      body: { fields: processedFields },
       baseUrl,
     }
   );
@@ -535,6 +553,25 @@ export async function updateIssue(
 ): Promise<
   Result<{ issueKey: string; browseUrl?: string } | null, JiraErrorResult>
 > {
+  // Process fields to convert strings to ADF for textarea fields only
+  const processedFields: Record<string, any> = {};
+
+  for (const [fieldKey, fieldValue] of Object.entries(updateData)) {
+    if (fieldKey === "description" && typeof fieldValue === "string") {
+      // Convert description from string to ADF if it's a string
+      processedFields[fieldKey] = textToADF(fieldValue);
+    } else if (
+      fieldKey.startsWith("customfield_") &&
+      typeof fieldValue === "string"
+    ) {
+      // Convert custom fields from string to ADF if they're strings
+      processedFields[fieldKey] = textToADF(fieldValue);
+    } else {
+      // Keep all other fields as-is (summary, priority, assignee, etc.)
+      processedFields[fieldKey] = fieldValue;
+    }
+  }
+
   const result = await jiraApiCall(
     {
       endpoint: `/rest/api/3/issue/${issueKey}`,
@@ -543,7 +580,7 @@ export async function updateIssue(
     z.void(),
     {
       method: "PUT",
-      body: { fields: updateData },
+      body: { fields: processedFields },
       baseUrl,
     }
   );
@@ -584,21 +621,7 @@ export async function createIssueLink(
     typeof requestBody.comment.body === "string"
   ) {
     const commentText = requestBody.comment.body;
-    (requestBody.comment as any).body = {
-      type: "doc",
-      version: 1,
-      content: [
-        {
-          type: "paragraph",
-          content: [
-            {
-              type: "text",
-              text: commentText,
-            },
-          ],
-        },
-      ],
-    };
+    (requestBody.comment as any).body = textToADF(commentText);
   }
 
   const result = await jiraApiCall(
