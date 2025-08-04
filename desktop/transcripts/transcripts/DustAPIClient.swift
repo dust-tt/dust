@@ -15,9 +15,9 @@ class DustAPIClient {
   private func createAuthenticatedRequest(
     for url: URL,
     apiKey: String,
-    workspaceId: String
+    workspaceId: String? = nil
   ) -> URLRequest {
-    var request = URLRequest(url: url
+    var request = URLRequest(url: url)
     request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.setValue("application/json", forHTTPHeaderField: "Accept")

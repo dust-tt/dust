@@ -13,9 +13,11 @@ struct LoginView: View {
       Text("Login to Dust")
         .font(.headline)
 
-      Text("Please enter your Dust credentials to enable transcription features.")
-        .font(.caption)
-        .multilineTextAlignment(.center)
+      Text(
+        "Please enter your Dust credentials to enable transcription features."
+      )
+      .font(.caption)
+      .multilineTextAlignment(.center)
 
       VStack(spacing: 10) {
         SecureField("API Key (starts with sk-)", text: $apiKeyInput)
@@ -41,7 +43,7 @@ struct LoginView: View {
     }
     .frame(width: 400, height: 220)
     .alert("Login Error", isPresented: $showingError) {
-      Button("OK") { }
+      Button("OK") {}
     } message: {
       Text(errorMessage)
     }
@@ -49,5 +51,12 @@ struct LoginView: View {
 }
 
 #Preview {
-  LoginView(apiKeyInput: .constant(""), workspaceIdInput: .constant(""), showingError: .constant(false), errorMessage: .constant(""), onLogin: {}, onCancel: {})
+  LoginView(
+    apiKeyInput: .constant(""),
+    workspaceIdInput: .constant(""),
+    showingError: .constant(false),
+    errorMessage: .constant(""),
+    onLogin: {},
+    onCancel: {}
+  )
 }
