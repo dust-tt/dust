@@ -1,11 +1,11 @@
-import { Avatar, BookOpenIcon, Card, Icon } from "@dust-tt/sparkle";
+import { Avatar, BookOpenIcon, Card, Chip, Icon } from "@dust-tt/sparkle";
 import { ActionIcons } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
-import { TrashIcon } from "@dust-tt/sparkle";
 import { PlusIcon } from "@dust-tt/sparkle";
 import { SearchInput } from "@dust-tt/sparkle";
 import React from "react";
 
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/MCPServerViewsDialog";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { ActionSpecification } from "@app/components/agent_builder/types";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
@@ -31,17 +31,19 @@ const McpServerViewTypeMatch: Record<
 interface MCPServerSelectionPageProps {
   mcpServerViews: MCPServerViewTypeWithLabel[];
   onItemClick: (mcpServerView: MCPServerViewType) => void;
-  selectedServers: MCPServerViewType[];
   dataVisualization?: ActionSpecification | null;
   onDataVisualizationClick?: () => void;
+  selectedToolsInDialog?: SelectedTool[];
+  onRemoveSelectedTool?: (tool: SelectedTool) => void;
 }
 
 export function MCPServerSelectionPage({
   mcpServerViews = [],
   onItemClick,
-  selectedServers,
   dataVisualization,
   onDataVisualizationClick,
+  selectedToolsInDialog = [],
+  onRemoveSelectedTool,
 }: MCPServerSelectionPageProps) {
   const [filteredServerViews, setFilteredServerViews] =
     React.useState<MCPServerViewTypeWithLabel[]>(mcpServerViews);
@@ -99,6 +101,10 @@ export function MCPServerSelectionPage({
     applyFiltersAndSearch(undefined, term);
   };
 
+  const isDataVisualizationSelected = selectedToolsInDialog.some(
+    (tool) => tool.type === "DATA_VISUALIZATION"
+  );
+
   return (
     <div className="space-y-4">
       <SearchInput
@@ -125,7 +131,12 @@ export function MCPServerSelectionPage({
             <Card
               key="data-visualization"
               variant="primary"
-              onClick={onDataVisualizationClick}
+              disabled={isDataVisualizationSelected}
+              onClick={
+                isDataVisualizationSelected
+                  ? undefined
+                  : onDataVisualizationClick
+              }
             >
               <div className="flex w-full flex-col gap-1 text-sm">
                 <div className="mb-2 flex items-center gap-2">
@@ -136,31 +147,37 @@ export function MCPServerSelectionPage({
                   <span className="text-sm font-medium">
                     {dataVisualization.label}
                   </span>
+                  {isDataVisualizationSelected && (
+                    <Chip size="xs" color="green" label="ADDED" />
+                  )}
                 </div>
                 <div className="line-clamp-2 w-full text-xs text-gray-600">
                   {dataVisualization.description}
                 </div>
                 <div>
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    icon={PlusIcon}
-                    label="Add"
-                  />
+                  {!isDataVisualizationSelected && (
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      icon={PlusIcon}
+                      label="Add"
+                    />
+                  )}
                 </div>
               </div>
             </Card>
           )}
         {filteredServerViews.map((view) => {
-          const isSelected = selectedServers
-            .map((s) => s.name)
-            .includes(view.server.name);
+          const isSelectedInDialog = selectedToolsInDialog.some(
+            (tool) => tool.type === "MCP" && tool.view.sId === view.sId
+          );
 
           return (
             <Card
               key={view.id}
-              variant={isSelected ? "secondary" : "primary"}
-              onClick={() => onItemClick(view)}
+              variant={isSelectedInDialog ? "secondary" : "primary"}
+              onClick={isSelectedInDialog ? undefined : () => onItemClick(view)}
+              disabled={isSelectedInDialog}
             >
               <div className="flex w-full flex-col gap-1 text-sm">
                 <div className="mb-2 flex items-center gap-2">
@@ -173,23 +190,54 @@ export function MCPServerSelectionPage({
                     size="sm"
                   />
                   <span className="text-sm font-medium">{view.label}</span>
+                  {isSelectedInDialog && (
+                    <Chip size="xs" color="green" label="ADDED" />
+                  )}
                 </div>
                 <div className="line-clamp-2 w-full text-xs text-gray-600">
                   {getMcpServerViewDescription(view)}
                 </div>
                 <div>
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    icon={isSelected ? TrashIcon : PlusIcon}
-                    label={isSelected ? "Remove" : "Add"}
-                  />
+                  {!isSelectedInDialog && (
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      icon={PlusIcon}
+                      label="Add"
+                    />
+                  )}
                 </div>
               </div>
             </Card>
           );
         })}
       </div>
+
+      {selectedToolsInDialog.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold">Added tools</h2>
+          <div className="flex flex-wrap gap-2">
+            {selectedToolsInDialog.map((tool, index) => (
+              <Chip
+                key={index}
+                label={
+                  tool.type === "DATA_VISUALIZATION"
+                    ? dataVisualization?.label || ""
+                    : tool.type === "MCP"
+                      ? tool.view.name || tool.view.server.name
+                      : ""
+                }
+                onRemove={
+                  onRemoveSelectedTool
+                    ? () => onRemoveSelectedTool(tool)
+                    : undefined
+                }
+                size="sm"
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
