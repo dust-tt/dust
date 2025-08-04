@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 // Search filter constants and types
-export const SEARCH_MAX_RESULTS = 20;
+export const SEARCH_ISSUES_MAX_RESULTS = 20;
+export const SEARCH_USERS_MAX_RESULTS = 200;
 
 export const SUPPORTED_OPERATORS = ["=", "<", ">", "<=", ">=", "!="] as const;
 export type SupportedOperator = (typeof SUPPORTED_OPERATORS)[number];
@@ -356,6 +357,16 @@ export const JiraIssueTypeSchema = z.object({
   subtask: z.boolean().optional(),
 });
 
+export const JiraUserSchema = z.object({
+  accountId: z.string(),
+  displayName: z.string(),
+  emailAddress: z.string().optional(),
+  accountType: z.string(),
+  active: z.boolean(),
+});
+
+export const JiraUsersSearchResultSchema = z.array(JiraUserSchema);
+
 // Inferred types
 export type JiraSearchResult = z.infer<typeof JiraSearchResultSchema>;
 export type JiraErrorResult = string;
@@ -373,3 +384,4 @@ export type JiraIssueLinkType = z.infer<typeof JiraIssueLinkTypeSchema>;
 export type JiraCreateIssueLinkRequest = z.infer<
   typeof JiraCreateIssueLinkRequestSchema
 >;
+export type JiraUser = z.infer<typeof JiraUserSchema>;
