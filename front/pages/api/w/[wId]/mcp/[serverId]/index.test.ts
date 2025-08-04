@@ -1,17 +1,15 @@
 import type { RequestMethod } from "node-mocks-http";
-import { describe, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
 
 async function setupTest(
-  t: any,
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
@@ -21,7 +19,7 @@ async function setupTest(
       method,
     });
 
-  const space = await SpaceFactory.system(workspace, t);
+  const space = await SpaceFactory.system(workspace);
 
   // Set up common query parameters
   req.query.wId = workspace.sId;
@@ -31,8 +29,8 @@ async function setupTest(
 }
 
 describe("GET /api/w/[wId]/mcp/[serverId]", () => {
-  itInTransaction("should return server details", async (t) => {
-    const { req, res, workspace } = await setupTest(t);
+  it("should return server details", async () => {
+    const { req, res, workspace } = await setupTest();
 
     const server = await RemoteMCPServerFactory.create(workspace);
     req.query.serverId = server.sId;
@@ -45,8 +43,8 @@ describe("GET /api/w/[wId]/mcp/[serverId]", () => {
     expect(responseData).toHaveProperty("server");
   });
 
-  itInTransaction("should return 404 when server doesn't exist", async (t) => {
-    const { req, res, workspace } = await setupTest(t);
+  it("should return 404 when server doesn't exist", async () => {
+    const { req, res, workspace } = await setupTest();
     req.query.serverId = makeSId("remote_mcp_server", {
       id: 1000,
       workspaceId: workspace.id,
@@ -65,27 +63,24 @@ describe("GET /api/w/[wId]/mcp/[serverId]", () => {
 });
 
 describe("PATCH /api/w/[wId]/mcp/[serverId]", () => {
-  itInTransaction(
-    "should return 400 when no update fields are provided",
-    async (t) => {
-      const { req, res, workspace } = await setupTest(t, "admin", "PATCH");
+  it("should return 400 when no update fields are provided", async () => {
+    const { req, res, workspace } = await setupTest("admin", "PATCH");
 
-      const server = await RemoteMCPServerFactory.create(workspace);
-      req.query.serverId = server.sId;
-      req.body = {};
+    const server = await RemoteMCPServerFactory.create(workspace);
+    req.query.serverId = server.sId;
+    req.body = {};
 
-      await handler(req, res);
+    await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(400);
-      const responseData = res._getJSONData();
-      expect(responseData.error.message).toContain("Validation error:");
-    }
-  );
+    expect(res._getStatusCode()).toBe(400);
+    const responseData = res._getJSONData();
+    expect(responseData.error.message).toContain("Validation error:");
+  });
 });
 
 describe("DELETE /api/w/[wId]/mcp/[serverId]", () => {
-  itInTransaction("should delete a server when admin", async (t) => {
-    const { req, res, workspace } = await setupTest(t, "admin", "DELETE");
+  it("should delete a server when admin", async () => {
+    const { req, res, workspace } = await setupTest("admin", "DELETE");
 
     const server = await RemoteMCPServerFactory.create(workspace);
     req.query.serverId = server.sId;
@@ -107,8 +102,8 @@ describe("DELETE /api/w/[wId]/mcp/[serverId]", () => {
 });
 
 describe("DELETE /api/w/[wId]/mcp/[serverId]", () => {
-  itInTransaction("should fail to delete a server when user", async (t) => {
-    const { req, res, workspace } = await setupTest(t, "user", "DELETE");
+  it("should fail to delete a server when user", async () => {
+    const { req, res, workspace } = await setupTest("user", "DELETE");
 
     const server = await RemoteMCPServerFactory.create(workspace);
     req.query.serverId = server.sId;
@@ -130,8 +125,8 @@ describe("DELETE /api/w/[wId]/mcp/[serverId]", () => {
 });
 
 describe("Method Support /api/w/[wId]/mcp/[serverId]", () => {
-  itInTransaction("supports GET, PATCH, and DELETE methods", async (t) => {
-    const { req, res, workspace, space } = await setupTest(t, "admin", "PUT");
+  it("supports GET, PATCH, and DELETE methods", async () => {
+    const { req, res, workspace, space } = await setupTest("admin", "PUT");
 
     const server = await RemoteMCPServerFactory.create(workspace, space);
     req.query.serverId = server.sId;

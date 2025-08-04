@@ -59,5 +59,11 @@ export async function withTransaction<T>(
   }
 
   // Create new transaction if no transaction in CLS.
+  if (process.env.NODE_ENV === "test") {
+    throw new Error(
+      "No transaction provided and no transaction in CLS while running tests, this should not happen. Action: make sure to use it() in tests instead of it(), also you might want to avoid using beforeXXX() and afterXXX()."
+    );
+  }
+
   return frontSequelize.transaction(fn);
 }

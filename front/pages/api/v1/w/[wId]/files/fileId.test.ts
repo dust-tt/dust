@@ -1,11 +1,9 @@
 import type { RequestMethod } from "node-mocks-http";
-import type { Transaction } from "sequelize";
-import { beforeEach, describe, expect, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FileResource } from "@app/lib/resources/file_resource";
 import handler from "@app/pages/api/v1/w/[wId]/files/[fileId]";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 vi.mock("@app/lib/resources/file_resource", () => ({
   FileResource: {
@@ -78,7 +76,6 @@ const mockGetReadStream = vi.fn().mockReturnValue({
 });
 
 async function setupTest(
-  t: Transaction,
   options: {
     method?: RequestMethod;
     fileExists?: boolean;
@@ -168,8 +165,8 @@ describe("GET /api/v1/w/[wId]/files/[fileId]", () => {
     vi.clearAllMocks();
   });
 
-  itInTransaction("should return 404 for non-existent file", async (t) => {
-    const { req, res } = await setupTest(t, { fileExists: false });
+  it("should return 404 for non-existent file", async () => {
+    const { req, res } = await setupTest({ fileExists: false });
 
     await handler(req, res);
     expect(res._getStatusCode()).toBe(404);
@@ -181,21 +178,18 @@ describe("GET /api/v1/w/[wId]/files/[fileId]", () => {
     });
   });
 
-  itInTransaction(
-    "should allow API key to view file for GET request",
-    async (t) => {
-      const { req, res } = await setupTest(t, {
-        isBuilder: false,
-      });
+  it("should allow API key to view file for GET request", async () => {
+    const { req, res } = await setupTest({
+      isBuilder: false,
+    });
 
-      req.query.action = "download"; // Set action to download to trigger getSignedUrlForDownload
+    req.query.action = "download"; // Set action to download to trigger getSignedUrlForDownload
 
-      await handler(req, res);
-      expect(res._getStatusCode()).toBe(302); // Should redirect to the signed URL
-      expect(res._getRedirectUrl()).toBe("http://signed-url.example");
-      expect(mockGetSignedUrlForDownload).toHaveBeenCalledTimes(1);
-    }
-  );
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(302); // Should redirect to the signed URL
+    expect(res._getRedirectUrl()).toBe("http://signed-url.example");
+    expect(mockGetSignedUrlForDownload).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("POST /api/v1/w/[wId]/files/[fileId]", () => {
@@ -203,84 +197,72 @@ describe("POST /api/v1/w/[wId]/files/[fileId]", () => {
     vi.clearAllMocks();
   });
 
-  itInTransaction(
-    "should return error for non-supported use cases for non-system keys",
-    async (t) => {
-      // Setup with default API key (not system key) and POST method for a non-conversation file
-      const { req, res } = await setupTest(t, {
-        method: "POST",
-        systemKey: false,
-        isBuilder: false,
-        useCase: "folders_document",
-        useCaseMetadata: { spaceId: "test-space-id" },
-      });
+  it("should return error for non-supported use cases for non-system keys", async () => {
+    // Setup with default API key (not system key) and POST method for a non-conversation file
+    const { req, res } = await setupTest({
+      method: "POST",
+      systemKey: false,
+      isBuilder: false,
+      useCase: "folders_document",
+      useCaseMetadata: { spaceId: "test-space-id" },
+    });
 
-      await handler(req, res);
+    await handler(req, res);
 
-      // For folders_document, the endpoint first checks if it's a supported use case (which it isn't)
-      // So it returns a 400 error about unsupported use case before even checking builder permissions
-      expect(res._getStatusCode()).toBe(400);
-      expect(res._getJSONData().error).toEqual({
-        type: "invalid_request_error",
-        message: "The file use case is not supported by the API.",
-      });
-    }
-  );
+    // For folders_document, the endpoint first checks if it's a supported use case (which it isn't)
+    // So it returns a 400 error about unsupported use case before even checking builder permissions
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error).toEqual({
+      type: "invalid_request_error",
+      message: "The file use case is not supported by the API.",
+    });
+  });
 
-  itInTransaction(
-    "should return 403 without builder permissions on non-conversation files",
-    async (t) => {
-      // Setup with system key (bypasses use case check) but not builder permissions
-      const { req, res } = await setupTest(t, {
-        method: "POST",
-        systemKey: true,
-        isBuilder: false, // Explicitly set builder to false even though system key
-        useCase: "folders_document",
-        useCaseMetadata: { spaceId: "test-space-id" },
-      });
+  it("should return 403 without builder permissions on non-conversation files", async () => {
+    // Setup with system key (bypasses use case check) but not builder permissions
+    const { req, res } = await setupTest({
+      method: "POST",
+      systemKey: true,
+      isBuilder: false, // Explicitly set builder to false even though system key
+      useCase: "folders_document",
+      useCaseMetadata: { spaceId: "test-space-id" },
+    });
 
-      await handler(req, res);
-      expect(res._getStatusCode()).toBe(403);
-      expect(res._getJSONData()).toEqual({
-        error: {
-          type: "workspace_auth_error",
-          message:
-            "Only users that are `builders` for the current workspace can modify files.",
-        },
-      });
-    }
-  );
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users that are `builders` for the current workspace can modify files.",
+      },
+    });
+  });
 
-  itInTransaction(
-    "should allow non-builder to modify conversation files",
-    async (t) => {
-      // Setup with a non-builder key but for a conversation file
-      const { req, res } = await setupTest(t, {
-        method: "POST",
-        systemKey: false,
-        isBuilder: false,
-        useCase: "conversation",
-      });
+  it("should allow non-builder to modify conversation files", async () => {
+    // Setup with a non-builder key but for a conversation file
+    const { req, res } = await setupTest({
+      method: "POST",
+      systemKey: false,
+      isBuilder: false,
+      useCase: "conversation",
+    });
 
-      await handler(req, res);
-      expect(res._getStatusCode()).toBe(200);
-    }
-  );
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+  });
 
-  itInTransaction(
-    "should allow system API key to modify any file",
-    async (t) => {
-      // Use system key which has builder permissions
-      const { req, res } = await setupTest(t, {
-        method: "POST",
-        systemKey: true,
-        isBuilder: true,
-      });
+  it("should allow system API key to modify any file", async () => {
+    // Use system key which has builder permissions
+    const { req, res } = await setupTest({
+      method: "POST",
+      systemKey: true,
+      isBuilder: true,
+    });
 
-      await handler(req, res);
-      expect(res._getStatusCode()).toBe(200);
-    }
-  );
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+  });
 });
 
 describe("DELETE /api/v1/w/[wId]/files/[fileId]", () => {
@@ -288,92 +270,80 @@ describe("DELETE /api/v1/w/[wId]/files/[fileId]", () => {
     vi.clearAllMocks();
   });
 
-  itInTransaction(
-    "should return error for non-supported use cases for non-system keys",
-    async (t) => {
-      // Setup with default API key (not system key) and DELETE method for a non-conversation file
-      const { req, res } = await setupTest(t, {
-        method: "DELETE",
-        systemKey: false,
-        isBuilder: false,
-        useCase: "folders_document",
-        useCaseMetadata: { spaceId: "test-space-id" },
-      });
+  it("should return error for non-supported use cases for non-system keys", async () => {
+    // Setup with default API key (not system key) and DELETE method for a non-conversation file
+    const { req, res } = await setupTest({
+      method: "DELETE",
+      systemKey: false,
+      isBuilder: false,
+      useCase: "folders_document",
+      useCaseMetadata: { spaceId: "test-space-id" },
+    });
 
-      await handler(req, res);
+    await handler(req, res);
 
-      // For folders_document, the endpoint first checks if it's a supported use case (which it isn't)
-      // So it returns a 400 error about unsupported use case before even checking builder permissions
-      expect(res._getStatusCode()).toBe(400);
-      expect(res._getJSONData().error).toEqual({
-        type: "invalid_request_error",
-        message: "The file use case is not supported by the API.",
-      });
-    }
-  );
+    // For folders_document, the endpoint first checks if it's a supported use case (which it isn't)
+    // So it returns a 400 error about unsupported use case before even checking builder permissions
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error).toEqual({
+      type: "invalid_request_error",
+      message: "The file use case is not supported by the API.",
+    });
+  });
 
-  itInTransaction(
-    "should return 403 when using system key without builder permissions",
-    async (t) => {
-      // Setup with system key (bypasses use case check) but not builder permissions
-      const { req, res } = await setupTest(t, {
-        method: "DELETE",
-        systemKey: true,
-        isBuilder: false, // Explicitly set builder to false even though system key
-        useCase: "folders_document",
-        useCaseMetadata: { spaceId: "test-space-id" },
-      });
+  it("should return 403 when using system key without builder permissions", async () => {
+    // Setup with system key (bypasses use case check) but not builder permissions
+    const { req, res } = await setupTest({
+      method: "DELETE",
+      systemKey: true,
+      isBuilder: false, // Explicitly set builder to false even though system key
+      useCase: "folders_document",
+      useCaseMetadata: { spaceId: "test-space-id" },
+    });
 
-      await handler(req, res);
-      expect(res._getStatusCode()).toBe(403);
-      expect(res._getJSONData()).toEqual({
-        error: {
-          type: "workspace_auth_error",
-          message:
-            "Only users that are `builders` for the current workspace can delete files.",
-        },
-      });
-    }
-  );
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users that are `builders` for the current workspace can delete files.",
+      },
+    });
+  });
 
-  itInTransaction(
-    "should allow non-builder to delete conversation files",
-    async (t) => {
-      // Setup with a non-builder key but for a conversation file
-      const { req, res } = await setupTest(t, {
-        method: "DELETE",
-        systemKey: false,
-        isBuilder: false,
-        useCase: "conversation",
-      });
+  it("should allow non-builder to delete conversation files", async () => {
+    // Setup with a non-builder key but for a conversation file
+    const { req, res } = await setupTest({
+      method: "DELETE",
+      systemKey: false,
+      isBuilder: false,
+      useCase: "conversation",
+    });
 
-      await handler(req, res);
-      expect(res._getStatusCode()).toBe(204);
-      expect(mockDelete).toHaveBeenCalledTimes(1);
-    }
-  );
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(204);
+    expect(mockDelete).toHaveBeenCalledTimes(1);
+  });
 
-  itInTransaction(
-    "should allow system API key to delete any file",
-    async (t) => {
-      // Use system key which has builder permissions
-      const { req, res } = await setupTest(t, {
-        method: "DELETE",
-        systemKey: true,
-        isBuilder: true,
-      });
+  it("should allow system API key to delete any file", async () => {
+    // Use system key which has builder permissions
+    const { req, res } = await setupTest({
+      method: "DELETE",
+      systemKey: true,
+      isBuilder: true,
+    });
 
-      await handler(req, res);
-      expect(res._getStatusCode()).toBe(204);
-      expect(mockDelete).toHaveBeenCalledTimes(1);
-    }
-  );
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(204);
+    expect(mockDelete).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("Method Support /api/v1/w/[wId]/files/[fileId]", () => {
-  itInTransaction("should return 405 for unsupported methods", async (t) => {
+  it("should return 405 for unsupported methods", async () => {
     for (const method of ["PUT", "PATCH"] as const) {
-      const { req, res } = await setupTest(t, { method });
+      const { req, res } = await setupTest({ method });
 
       await handler(req, res);
 
