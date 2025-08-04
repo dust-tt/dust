@@ -1,5 +1,5 @@
 import type { Node as ProseMirrorNode, Schema } from "@tiptap/pm/model";
-import { NodeType } from "@tiptap/pm/model";
+import type { NodeType } from "@tiptap/pm/model";
 import type { JSONContent } from "@tiptap/react";
 
 /**

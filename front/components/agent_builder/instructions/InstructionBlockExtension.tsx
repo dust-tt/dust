@@ -41,14 +41,12 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({ node }) => {
   return (
     <NodeViewWrapper className="my-4">
       <div className="rounded-lg border border-border bg-muted-background p-4">
-        <div className="mb-3">
-          <span
-            className="text-sm font-semibold text-muted-foreground"
-            contentEditable={false}
-          >
-            {type.toUpperCase()}
-          </span>
-        </div>
+        <span
+          className="text-sm font-semibold text-muted-foreground"
+          contentEditable={false}
+        >
+          {type.toUpperCase()}
+        </span>
         <div className="min-h-12 rounded border border-border/50 bg-background p-3">
           <NodeViewContent className="prose prose-sm" />
         </div>
