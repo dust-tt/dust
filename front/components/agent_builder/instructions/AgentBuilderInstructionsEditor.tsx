@@ -5,6 +5,7 @@ import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { cva } from "class-variance-authority";
+import { ListItem } from "@tiptap/extension-list-item";
 import React, { useEffect, useMemo } from "react";
 import { useController, useWatch } from "react-hook-form";
 
@@ -105,6 +106,7 @@ export function AgentBuilderInstructionsEditor({
 
   const extensions = useMemo(() => {
     const baseExtensions = [
+      ListItem,
       Document,
       Text,
       ParagraphExtension,
