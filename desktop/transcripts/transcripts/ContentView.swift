@@ -24,7 +24,7 @@ struct ContentView: View {
           Text("Start Recording")
         }
       }
-      .disabled(audioRecorder.isRecording)
+      .disabled(audioRecorder.isRecording || !isLoggedIn)
 
       Button(action: stopRecording) {
         HStack {
@@ -54,7 +54,6 @@ struct ContentView: View {
           }
           .font(.caption)
         }
-        .fixedSize()
 
         Button("Logout") {
           logout()
@@ -129,18 +128,22 @@ struct ContentView: View {
     isSetupComplete = UserDefaultsManager.shared.hasCompleteSetup()
   }
 
-  private func login() {
-    guard !apiKeyInput.isEmpty, !workspaceIdInput.isEmpty else { return }
+  private func login(completion: @escaping (Bool) -> Void = { _ in }) {
+    guard !apiKeyInput.isEmpty, !workspaceIdInput.isEmpty else {
+      completion(false)
+      return
+    }
 
     // Validate API key format
     guard apiKeyInput.hasPrefix("sk-") else {
       loginErrorMessage =
         "Invalid API key format. API keys must start with 'sk-'"
       showingLoginError = true
+      completion(false)
       return
     }
 
-    // Save only API key and workspace ID for now
+    // Save credentials directly
     if UserDefaultsManager.shared.saveAPIKey(apiKeyInput)
       && UserDefaultsManager.shared.saveCredentials(
         apiKey: apiKeyInput,
@@ -151,12 +154,13 @@ struct ContentView: View {
       isLoggedIn = true
       apiKeyInput = ""
       workspaceIdInput = ""
-      showingLoginDialog = false
-      checkSetupStatus()  // Check if setup is still complete
+      checkSetupStatus()
       print("Credentials saved successfully")
+      completion(true)
     } else {
       loginErrorMessage = "Failed to save credentials. Please try again."
       showingLoginError = true
+      completion(false)
     }
   }
 
@@ -187,9 +191,10 @@ struct ContentView: View {
         showingError: $showingLoginError,
         errorMessage: $loginErrorMessage,
         onLogin: {
-          login()
-          if !showingLoginError {
-            loginWindow.close()
+          login { success in
+            if success {
+              loginWindow.close()
+            }
           }
         },
         onCancel: {
