@@ -24,7 +24,7 @@ struct ContentView: View {
           Text("Start Recording")
         }
       }
-      .disabled(audioRecorder.isRecording || !hasPermission)
+      .disabled(audioRecorder.isRecording)
 
       Button(action: stopRecording) {
         HStack {
@@ -79,7 +79,6 @@ struct ContentView: View {
     .padding()
     .frame(minWidth: 250)
     .onAppear {
-      requestMicrophonePermission()
       checkLoginStatus()
       checkSetupStatus()
     }
@@ -92,7 +91,17 @@ struct ContentView: View {
   }
 
   private func startRecording() {
-    audioRecorder.startRecording()
+    Task {
+      if !hasPermission {
+        hasPermission = await audioRecorder.requestPermission()
+      }
+      
+      if hasPermission {
+        await MainActor.run {
+          audioRecorder.startRecording()
+        }
+      }
+    }
   }
 
   private func stopRecording() {
@@ -102,8 +111,9 @@ struct ContentView: View {
       print("Recording saved to: \(url)")
       // TODO: Upload to Dust API using stored credentials
       if let apiKey = UserDefaultsManager.shared.loadAPIKey(),
-         let workspaceId = UserDefaultsManager.shared.loadWorkspaceId(),
-         let selectedFolder = UserDefaultsManager.shared.loadSelectedFolder() {
+        let workspaceId = UserDefaultsManager.shared.loadWorkspaceId(),
+        let selectedFolder = UserDefaultsManager.shared.loadSelectedFolder()
+      {
         print("Credentials available for upload:")
         print("  API Key: \(apiKey.prefix(10))...")
         print("  Workspace ID: \(workspaceId)")
@@ -117,7 +127,7 @@ struct ContentView: View {
   private func checkLoginStatus() {
     isLoggedIn = UserDefaultsManager.shared.hasCompleteCredentials()
   }
-  
+
   private func checkSetupStatus() {
     isSetupComplete = UserDefaultsManager.shared.hasCompleteSetup()
   }
@@ -127,19 +137,25 @@ struct ContentView: View {
 
     // Validate API key format
     guard apiKeyInput.hasPrefix("sk-") else {
-      loginErrorMessage = "Invalid API key format. API keys must start with 'sk-'"
+      loginErrorMessage =
+        "Invalid API key format. API keys must start with 'sk-'"
       showingLoginError = true
       return
     }
 
     // Save only API key and workspace ID for now
-    if UserDefaultsManager.shared.saveAPIKey(apiKeyInput) && 
-       UserDefaultsManager.shared.saveCredentials(apiKey: apiKeyInput, workspaceId: workspaceIdInput, folderId: "") {
+    if UserDefaultsManager.shared.saveAPIKey(apiKeyInput)
+      && UserDefaultsManager.shared.saveCredentials(
+        apiKey: apiKeyInput,
+        workspaceId: workspaceIdInput,
+        folderId: ""
+      )
+    {
       isLoggedIn = true
       apiKeyInput = ""
       workspaceIdInput = ""
       showingLoginDialog = false
-      checkSetupStatus() // Check if setup is still complete
+      checkSetupStatus()  // Check if setup is still complete
       print("Credentials saved successfully")
     } else {
       loginErrorMessage = "Failed to save credentials. Please try again."
@@ -148,8 +164,9 @@ struct ContentView: View {
   }
 
   private func logout() {
-    if UserDefaultsManager.shared.deleteCredentials() && 
-       UserDefaultsManager.shared.deleteSelectedFolder() {
+    if UserDefaultsManager.shared.deleteCredentials()
+      && UserDefaultsManager.shared.deleteSelectedFolder()
+    {
       isLoggedIn = false
       isSetupComplete = false
       print("Logged out successfully")
@@ -189,14 +206,15 @@ struct ContentView: View {
     loginWindow.makeKeyAndOrderFront(nil)
     loginWindow.orderFrontRegardless()
   }
-  
+
   private func openSetupWindow() {
     guard let apiKey = UserDefaultsManager.shared.loadAPIKey(),
-          let workspaceId = UserDefaultsManager.shared.loadWorkspaceId() else {
+      let workspaceId = UserDefaultsManager.shared.loadWorkspaceId()
+    else {
       print("Missing credentials for setup")
       return
     }
-    
+
     let setupWindow = NSWindow(
       contentRect: NSRect(x: 0, y: 0, width: 450, height: 280),
       styleMask: [.titled, .closable],
