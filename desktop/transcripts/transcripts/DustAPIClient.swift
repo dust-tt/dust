@@ -249,7 +249,7 @@ class DustAPIClient {
             name: dataSourceView.name,
             spaceName: space.name,
             spaceId: space.sId,
-            dataSourceViewId: dataSourceView.sId
+            dataSourceId: dataSourceView.dataSource.sId
           )
         }
 

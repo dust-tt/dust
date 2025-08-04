@@ -86,7 +86,7 @@ struct DustFolder: Identifiable, Hashable, Codable {
   let name: String
   let spaceName: String
   let spaceId: String
-  let dataSourceViewId: String
+  let dataSourceId: String
 
   var displayName: String {
     return "\(spaceName) / \(name)"
