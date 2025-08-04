@@ -156,10 +156,7 @@ export function KnowledgeConfigurationSheet({
         />
       </MultiPageSheetTrigger>
       <FormProvider {...formMethods}>
-        <DataSourceBuilderProvider
-          control={formMethods.control}
-          spaces={spaces}
-        >
+        <DataSourceBuilderProvider spaces={spaces}>
           <KnowledgeConfigurationSheetContent
             config={config}
             setConfig={setConfig}
@@ -192,7 +189,7 @@ function KnowledgeConfigurationSheetContent({
   onSave,
   isOpen,
 }: KnowledgeConfigurationSheetContentProps) {
-  const { control, handleSubmit } = useFormContext<CapabilityFormData>();
+  const { handleSubmit } = useFormContext<CapabilityFormData>();
   const { owner } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
@@ -342,7 +339,7 @@ function KnowledgeConfigurationSheetContent({
       })}
       size="xl"
       showNavigation
-      footerContent={<KnowledgeFooter control={control} />}
+      footerContent={<KnowledgeFooter />}
     />
   );
 }

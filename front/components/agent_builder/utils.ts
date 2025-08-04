@@ -1,4 +1,3 @@
-import type { Control } from "react-hook-form";
 import { useController } from "react-hook-form";
 
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
@@ -40,10 +39,6 @@ export function validateDataSourceConfiguration(
   }
 }
 
-export function useSourcesFormController({
-  control,
-}: {
-  control: Control<CapabilityFormData>;
-}) {
-  return useController({ control, name: "sources" });
+export function useSourcesFormController() {
+  return useController<CapabilityFormData, "sources">({ name: "sources" });
 }

@@ -7,22 +7,20 @@ import {
   GithubLogo,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-import type { Control } from "react-hook-form";
 
-import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { pluralize } from "@app/types";
 
-export function KnowledgeFooter({
-  control,
-}: {
-  control: Control<CapabilityFormData>;
-}) {
+export function KnowledgeFooter() {
   const [isOpen, setOpen] = useState(false);
   const { removeNode } = useDataSourceBuilderContext();
 
-  const { field } = useSourcesFormController({ control });
+  const { field } = useSourcesFormController();
+
+  if (!field.value.in) {
+    return <></>;
+  }
 
   return (
     <div className="px-4 py-5">

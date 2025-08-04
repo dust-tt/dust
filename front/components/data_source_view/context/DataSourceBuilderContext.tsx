@@ -37,9 +37,7 @@ import {
   useMemo,
   useReducer,
 } from "react";
-import type { Control } from "react-hook-form";
 
-import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import type {
   DataSourceBuilderTreeType,
@@ -203,13 +201,11 @@ function dataSourceBuilderReducer(
 export function DataSourceBuilderProvider({
   spaces,
   children,
-  control,
 }: {
   spaces: SpaceType[];
   children: React.ReactNode;
-  control: Control<CapabilityFormData>;
 }) {
-  const { field } = useSourcesFormController({ control });
+  const { field } = useSourcesFormController();
   const [state, dispatch] = useReducer(dataSourceBuilderReducer, {
     sources: {
       in: [],
