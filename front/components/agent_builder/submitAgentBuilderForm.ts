@@ -54,9 +54,7 @@ function convertDataSourceConfigurations(
 }
 
 function processTableSelection(
-  tablesConfigurations:
-    | DataSourceViewSelectionConfigurations
-    | null,
+  tablesConfigurations: DataSourceViewSelectionConfigurations | null,
   owner: WorkspaceType
 ): TableDataSourceConfiguration[] | null {
   if (!tablesConfigurations || Object.keys(tablesConfigurations).length === 0) {
@@ -82,7 +80,8 @@ function convertSearchActionToMCPConfiguration(
   owner: WorkspaceType
 ): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
   const dataSources = convertDataSourceConfigurations(
-    searchAction.configuration.dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type,
+    searchAction.configuration
+      .dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type,
     owner
   );
 
@@ -131,7 +130,8 @@ function convertIncludeDataActionToMCPConfiguration(
   owner: WorkspaceType
 ): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
   const dataSources = convertDataSourceConfigurations(
-    includeDataAction.configuration.dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type,
+    includeDataAction.configuration
+      .dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type,
     owner
   );
 
@@ -163,7 +163,8 @@ function convertExtractDataActionToMCPConfiguration(
   owner: WorkspaceType
 ): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
   const dataSources = convertDataSourceConfigurations(
-    extractDataAction.configuration.dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type,
+    extractDataAction.configuration
+      .dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type,
     owner
   );
 
@@ -233,18 +234,22 @@ export async function submitAgentBuilderForm({
               mcpServerViewId: action.configuration.mcpServerViewId,
               name: action.name,
               description: action.description,
-              dataSources: action.configuration.dataSourceConfigurations !== null
-                ? convertDataSourceConfigurations(
-                    action.configuration.dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type 
-                    owner
-                  )
-                : null,
-              tables: action.configuration.tablesConfigurations !== null 
-                ? processTableSelection(
-                    action.configuration.tablesConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type 
-                    owner
-                  )
-                : null,
+              dataSources:
+                action.configuration.dataSourceConfigurations !== null
+                  ? convertDataSourceConfigurations(
+                      action.configuration
+                        .dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type
+                      owner
+                    )
+                  : null,
+              tables:
+                action.configuration.tablesConfigurations !== null
+                  ? processTableSelection(
+                      action.configuration
+                        .tablesConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type
+                      owner
+                    )
+                  : null,
               childAgentId: action.configuration.childAgentId,
               reasoningModel: action.configuration.reasoningModel,
               timeFrame: action.configuration.timeFrame,

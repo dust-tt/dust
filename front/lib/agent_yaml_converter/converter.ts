@@ -147,7 +147,8 @@ export class AgentYAMLConverter {
               type: "SEARCH",
               configuration: {
                 data_sources: this.convertDataSourceConfigurations(
-                  action.configuration.dataSourceConfigurations as DataSourceViewSelectionConfigurations // TODO fix type
+                  action.configuration
+                    .dataSourceConfigurations as DataSourceViewSelectionConfigurations // TODO fix type
                 ),
               },
             });
@@ -167,7 +168,8 @@ export class AgentYAMLConverter {
               type: "INCLUDE_DATA",
               configuration: {
                 data_sources: this.convertDataSourceConfigurations(
-                  action.configuration.dataSourceConfigurations as DataSourceViewSelectionConfigurations // TODO fix type
+                  action.configuration
+                    .dataSourceConfigurations as DataSourceViewSelectionConfigurations // TODO fix type
                 ),
                 time_frame: action.configuration.timeFrame,
               },
@@ -180,7 +182,8 @@ export class AgentYAMLConverter {
               type: "EXTRACT_DATA",
               configuration: {
                 data_sources: this.convertDataSourceConfigurations(
-                  action.configuration.dataSourceConfigurations as DataSourceViewSelectionConfigurations // TODO fix type
+                  action.configuration
+                    .dataSourceConfigurations as DataSourceViewSelectionConfigurations // TODO fix type
                 ),
                 time_frame: action.configuration.timeFrame,
                 json_schema: action.configuration.jsonSchema,
@@ -194,7 +197,8 @@ export class AgentYAMLConverter {
               type: "QUERY_TABLES",
               configuration: {
                 data_sources: this.convertDataSourceConfigurations(
-                  action.configuration.dataSourceConfigurations as DataSourceViewSelectionConfigurations // TODO fix type
+                  action.configuration
+                    .dataSourceConfigurations as DataSourceViewSelectionConfigurations // TODO fix type
                 ),
                 time_frame: action.configuration.timeFrame,
               },

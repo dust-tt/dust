@@ -16,7 +16,7 @@ import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_action
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
-// TODO: This is too complex, is there any better way to validate the form? 
+// TODO: This is too complex, is there any better way to validate the form?
 const getConfigurationSchema = (requirements: MCPServerRequirements | null) => {
   const baseFields = {
     mcpServerViewId: mcpServerViewIdSchema,
@@ -82,35 +82,25 @@ const getConfigurationSchema = (requirements: MCPServerRequirements | null) => {
       .refine(
         (additionalConfig) => {
           for (const key of requirements.requiredStrings) {
-            if (
-              !additionalConfig[key] 
-            ) {
+            if (!additionalConfig[key]) {
               return false;
             }
           }
 
           for (const key of requirements.requiredNumbers) {
-            if (
-              additionalConfig[key] === undefined
-            ) {
+            if (additionalConfig[key] === undefined) {
               return false;
             }
           }
 
           for (const key of requirements.requiredBooleans) {
-            if (
-              additionalConfig[key] === undefined
-            ) {
+            if (additionalConfig[key] === undefined) {
               return false;
             }
           }
 
-          for (const [key] of Object.entries(
-            requirements.requiredEnums
-          )) {
-            if (
-              !additionalConfig[key]
-            ) {
+          for (const [key] of Object.entries(requirements.requiredEnums)) {
+            if (!additionalConfig[key]) {
               return false;
             }
           }
