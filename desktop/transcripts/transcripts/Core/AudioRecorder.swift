@@ -23,7 +23,7 @@ class AudioRecorder: ObservableObject {
     let recordingTimestamp = Int(Date().timeIntervalSince1970)
     recordingId = "\(AudioSettings.recordingPrefix)\(recordingTimestamp)"
 
-    // Create temporary file URL for AVAudioRecorder.
+    // Create temporary file URL.
     let tempDir = FileManager.default.temporaryDirectory
     tempURL = tempDir.appendingPathComponent(
       "\(recordingId!)\(AudioSettings.audioFileExtension)"
@@ -38,11 +38,10 @@ class AudioRecorder: ObservableObject {
       ] as [String: Any]
 
     do {
-      audioRecorder = try AVAudioRecorder(
-        url: tempURL!,
-        settings: settings
-      )
-      audioRecorder?.record()
+      audioRecorder = try AVAudioRecorder(url: tempURL!, settings: settings)
+      audioRecorder?.isMeteringEnabled = false  // Disable metering to reduce overhead
+
+      audioRecorder.record()
 
       isRecording = true
       recordingData = nil
