@@ -1,6 +1,7 @@
 {
   "images" : [
     {
+      "filename" : "LogoSquare.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -28,6 +29,7 @@
       "size" : "1024x1024"
     },
     {
+      "filename" : "16.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "16x16"
@@ -48,6 +50,7 @@
       "size" : "32x32"
     },
     {
+      "filename" : "128.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "128x128"
@@ -58,6 +61,7 @@
       "size" : "128x128"
     },
     {
+      "filename" : "256.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "256x256"
