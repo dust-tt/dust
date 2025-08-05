@@ -4,6 +4,7 @@ import {
   Citation,
   CitationGrid,
   CitationIcons,
+  CitationIndex,
   CitationTitle,
   ContentMessage,
   Markdown,
@@ -69,7 +70,6 @@ export function MCPRunAgentActionDetails({
   const [activeReferences, setActiveReferences] = useState<
     { index: number; document: MarkdownCitation }[]
   >([]);
-  const activeReferencesMap = useState<Map<string, number>>(new Map())[0];
 
   useEffect(() => {
     if (queryResource) {
@@ -150,22 +150,9 @@ export function MCPRunAgentActionDetails({
   }, [resultResource, isDark]);
 
   const updateActiveReferences = (doc: MarkdownCitation, index: number) => {
-    const key = `${doc.title}-${doc.href}`;
-    if (!activeReferencesMap.has(key)) {
-      activeReferencesMap.set(key, index);
-      setActiveReferences((prev) => {
-        const existingIndex = prev.findIndex(
-          (ref) =>
-            ref.document.title === doc.title && ref.document.href === doc.href
-        );
-        if (existingIndex === -1) {
-          return [...prev, { index, document: doc }];
-        } else {
-          const updated = [...prev];
-          updated[existingIndex] = { index, document: doc };
-          return updated;
-        }
-      });
+    const existingIndex = activeReferences.find((r) => r.index === index);
+    if (!existingIndex) {
+      setActiveReferences([...activeReferences, { index, document: doc }]);
     }
   };
   const additionalMarkdownPlugins: PluggableList = useMemo(
@@ -258,7 +245,10 @@ export function MCPRunAgentActionDetails({
                             }
                             tooltip={document.description || document.title}
                           >
-                            <CitationIcons>{document.icon}</CitationIcons>
+                            <CitationIcons>
+                              <CitationIndex>{index}</CitationIndex>
+                              {document.icon}
+                            </CitationIcons>
                             <CitationTitle>{document.title}</CitationTitle>
                           </Citation>
                         ))}
