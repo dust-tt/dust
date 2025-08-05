@@ -62,11 +62,6 @@ class UserDefaultsManager {
     }
   }
 
-  func deleteSelectedFolder() -> Bool {
-    UserDefaults.standard.removeObject(forKey: selectedFolderKey)
-    return true
-  }
-
   func hasCompleteCredentials() -> Bool {
     guard let apiKey = loadAPIKey(), !apiKey.isEmpty,
       let workspaceId = loadWorkspaceId(), !workspaceId.isEmpty
@@ -78,19 +73,5 @@ class UserDefaultsManager {
 
   func hasCompleteSetup() -> Bool {
     return hasCompleteCredentials() && loadSelectedFolder() != nil
-  }
-
-  func saveAPIKey(_ apiKey: String) -> Bool {
-    UserDefaults.standard.set(apiKey, forKey: apiKeyKey)
-    return true
-  }
-
-  func deleteAPIKey() -> Bool {
-    UserDefaults.standard.removeObject(forKey: apiKeyKey)
-    return true
-  }
-
-  func hasAPIKey() -> Bool {
-    return loadAPIKey() != nil && !loadAPIKey()!.isEmpty
   }
 }

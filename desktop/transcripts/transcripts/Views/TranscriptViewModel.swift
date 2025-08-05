@@ -41,13 +41,11 @@ class TranscriptViewModel: ObservableObject {
         )
 
         // If we get here, credentials are valid, we save them.
-        if UserDefaultsManager.shared.saveAPIKey(apiKeyInput)
-          && UserDefaultsManager.shared.saveCredentials(
-            apiKey: apiKeyInput,
-            workspaceId: workspaceIdInput,
-            folderId: ""
-          )
-        {
+        if UserDefaultsManager.shared.saveCredentials(
+          apiKey: apiKeyInput,
+          workspaceId: workspaceIdInput,
+          folderId: ""
+        ) {
           isLoggedIn = true
           apiKeyInput = ""
           workspaceIdInput = ""
@@ -78,9 +76,7 @@ class TranscriptViewModel: ObservableObject {
   }
 
   func logout() {
-    if UserDefaultsManager.shared.deleteCredentials()
-      && UserDefaultsManager.shared.deleteSelectedFolder()
-    {
+    if UserDefaultsManager.shared.deleteCredentials() {
       isLoggedIn = false
       isSetupComplete = false
       print("Logged out successfully")
