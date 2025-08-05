@@ -1,4 +1,3 @@
-import type { ContentNodesViewType } from "@dust-tt/client";
 import {
   ActionIncludeIcon,
   ActionScanIcon,
@@ -6,26 +5,14 @@ import {
   TableIcon,
 } from "@dust-tt/sparkle";
 
-import type {
-  AgentBuilderAction,
-  CapabilityFormData,
-  KnowledgeServerName,
-} from "@app/components/agent_builder/types";
 import { DESCRIPTION_MAX_LENGTH } from "@app/components/agent_builder/types";
-import type { DataSourceViewSelectionConfigurations } from "@app/types";
 
 export interface CapabilityConfig {
-  name: KnowledgeServerName;
   title: string;
   description: string;
   icon: React.ComponentType;
-  viewType: ContentNodesViewType;
-  actionType: AgentBuilderAction["type"];
-  actionName: string;
   configPageTitle: string;
   configPageDescription: string;
-  hasTimeFrame: boolean;
-  hasJsonSchema: boolean;
   descriptionConfig: {
     title: string;
     description: string;
@@ -35,20 +22,14 @@ export interface CapabilityConfig {
   };
 }
 
-export const CAPABILITY_CONFIGS: Record<KnowledgeServerName, CapabilityConfig> =
+export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> =
   {
     search: {
-      name: "search",
       title: "Select Data Sources",
       description: "Choose which data sources to search",
       icon: MagnifyingGlassIcon,
-      viewType: "document",
-      actionType: "SEARCH",
-      actionName: "Search",
       configPageTitle: "Configure Search",
       configPageDescription: "Describe what you want to search for",
-      hasTimeFrame: false,
-      hasJsonSchema: false,
       descriptionConfig: {
         title: "Search Description",
         description:
@@ -59,17 +40,11 @@ export const CAPABILITY_CONFIGS: Record<KnowledgeServerName, CapabilityConfig> =
       },
     },
     include_data: {
-      name: "include_data",
       title: "Select Data Sources",
       description: "Choose which data sources to include data from",
       icon: ActionIncludeIcon,
-      viewType: "document",
-      actionType: "INCLUDE_DATA",
-      actionName: "Include Data",
       configPageTitle: "Configure Include Data",
       configPageDescription: "Set time range and describe what data to include",
-      hasTimeFrame: true,
-      hasJsonSchema: false,
       descriptionConfig: {
         title: "Data Description",
         description:
@@ -81,18 +56,12 @@ export const CAPABILITY_CONFIGS: Record<KnowledgeServerName, CapabilityConfig> =
       },
     },
     extract_data: {
-      name: "extract_data",
       title: "Data Sources",
       description: "Choose which data sources to extract data from",
       icon: ActionScanIcon,
-      viewType: "document",
-      actionType: "EXTRACT_DATA",
-      actionName: "Extract Data",
       configPageTitle: "Configure Extract Data",
       configPageDescription:
         "Set extraction parameters and describe what data to extract",
-      hasTimeFrame: true,
-      hasJsonSchema: true,
       descriptionConfig: {
         title: "What's the data?",
         description:
@@ -102,18 +71,12 @@ export const CAPABILITY_CONFIGS: Record<KnowledgeServerName, CapabilityConfig> =
       },
     },
     query_tables: {
-      name: "query_tables",
       title: "Select Tables",
       description: "Choose which tables to query from your data sources",
       icon: TableIcon,
-      viewType: "table",
-      actionType: "SEARCH",
-      actionName: "Query Tables",
       configPageTitle: "Configure Query Tables",
       configPageDescription:
         "Describe how you want to query the selected tables",
-      hasTimeFrame: false,
-      hasJsonSchema: false,
       descriptionConfig: {
         title: "Query Description",
         description:
@@ -125,65 +88,3 @@ export const CAPABILITY_CONFIGS: Record<KnowledgeServerName, CapabilityConfig> =
     },
   };
 
-export function generateActionFromFormData({
-  config,
-  formData,
-  dataSourceConfigurations,
-  actionId,
-}: {
-  config: CapabilityConfig;
-  formData: CapabilityFormData;
-  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
-  actionId?: string;
-}) {
-  let newAction: AgentBuilderAction;
-
-  switch (config.actionType) {
-    case "SEARCH":
-      newAction = {
-        id: actionId || `${config.name}_${Date.now()}`,
-        type: "SEARCH",
-        name: config.actionName,
-        description: formData.description,
-        configuration: {
-          type: "SEARCH",
-          dataSourceConfigurations,
-        },
-        noConfigurationRequired: false,
-      };
-      break;
-    case "INCLUDE_DATA":
-      newAction = {
-        id: actionId || `include_data_${Date.now()}`,
-        type: "INCLUDE_DATA",
-        name: config.actionName,
-        description: formData.description,
-        configuration: {
-          type: "INCLUDE_DATA",
-          dataSourceConfigurations,
-          timeFrame: formData.timeFrame,
-        },
-        noConfigurationRequired: false,
-      };
-      break;
-    case "EXTRACT_DATA":
-      newAction = {
-        id: actionId || `extract_data_${Date.now()}`,
-        type: "EXTRACT_DATA",
-        name: config.actionName,
-        description: formData.description,
-        configuration: {
-          type: "EXTRACT_DATA",
-          dataSourceConfigurations,
-          timeFrame: formData.timeFrame,
-          jsonSchema: formData.jsonSchema,
-        },
-        noConfigurationRequired: false,
-      };
-      break;
-    default:
-      return;
-  }
-
-  return newAction;
-}
