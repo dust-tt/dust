@@ -53,45 +53,65 @@ struct ContentView: View {
               Text("Folder: \(folder.name)")
                 .font(.caption2)
                 .foregroundColor(.secondary)
-              Button("Change Folder") {
-                openSetupWindow()
+              Button(action: openSetupWindow) {
+                HStack {
+                  Image(systemName: "arrow.triangle.2.circlepath")
+                  Text("Change Folder")
+                }
               }
               .font(.caption2)
             }
           }
         } else {
-          Button("Setup Folder") {
-            openSetupWindow()
+          Button(action: openSetupWindow) {
+            HStack {
+              Image(systemName: "folder.badge.gearshape")
+              Text("Setup Folder")
+            }
           }
           .font(.caption)
         }
 
-        Button("Logout") {
-          viewModel.logout()
+        Button(action: { viewModel.logout() }) {
+          Text("Logout")
         }
         .font(.caption)
       } else {
-        Button("Login") {
+        Button(action: {
           print("Login button clicked")
           openLoginWindow()
+        }) {
+          HStack {
+            Image(systemName: "person.circle")
+            Text("Login")
+          }
         }
       }
 
       Divider()
-      
-      Button("Select Audio Device") {
-        openAudioDeviceSelection()
+
+      Button(action: openCallRecordingSetup) {
+        HStack {
+          Text("Select devices")
+        }
       }
       .font(.caption2)
-      
-      Button("Audio Setup Help") {
-        openAudioSetupHelp()
+
+      Button(action: openAudioSetupHelp) {
+        HStack {
+          Image(systemName: "questionmark.circle")
+          Text("Audio Setup Help")
+        }
       }
       .font(.caption2)
       .foregroundColor(.secondary)
 
-      Button("Quit") {
+      Button(action: {
+        // Clean up any aggregate devices before quitting
+        AudioAggregateManager.shared.cleanupAggregateDevice()
         NSApplication.shared.terminate(nil)
+      }) {
+        Text("Quit")
       }
     }
     .padding()
@@ -212,35 +232,39 @@ struct ContentView: View {
     setupWindow.makeKeyAndOrderFront(nil)
     setupWindow.orderFrontRegardless()
   }
-  
-  private func openAudioDeviceSelection() {
-    let deviceWindow = NSWindow(
-      contentRect: NSRect(x: 0, y: 0, width: 470, height: 370),
+
+  private func openCallRecordingSetup() {
+    let setupWindow = NSWindow(
+      contentRect: NSRect(x: 0, y: 0, width: 520, height: 570),
       styleMask: [.titled, .closable],
       backing: .buffered,
       defer: false
     )
-    deviceWindow.title = "Select Audio Input Device"
-    deviceWindow.contentView = NSHostingView(
-      rootView: AudioDeviceSelectionView(
-        onDeviceSelected: { device in
-          if AudioDeviceManager.shared.setDefaultInputDevice(device) {
-            print("Selected audio device: \(device.name)")
+    setupWindow.title = "Call Recording Setup"
+    setupWindow.contentView = NSHostingView(
+      rootView: CallRecordingSetupView(
+        onSetupComplete: { aggregateDevice in
+          if AudioDeviceManager.shared.setDefaultInputDevice(aggregateDevice) {
+            print(
+              "Successfully created and selected call recording setup: \(aggregateDevice.name)"
+            )
           } else {
-            print("Failed to set audio device: \(device.name)")
+            print(
+              "Created aggregate device but failed to set as default: \(aggregateDevice.name)"
+            )
           }
-          deviceWindow.close()
+          setupWindow.close()
         },
         onCancel: {
-          deviceWindow.close()
+          setupWindow.close()
         }
       )
     )
-    deviceWindow.center()
-    deviceWindow.makeKeyAndOrderFront(nil)
-    deviceWindow.orderFrontRegardless()
+    setupWindow.center()
+    setupWindow.makeKeyAndOrderFront(nil)
+    setupWindow.orderFrontRegardless()
   }
-  
+
   private func openAudioSetupHelp() {
     let helpWindow = NSWindow(
       contentRect: NSRect(x: 0, y: 0, width: 570, height: 620),

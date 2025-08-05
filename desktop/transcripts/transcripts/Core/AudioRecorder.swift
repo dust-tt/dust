@@ -82,7 +82,21 @@ class AudioRecorder: ObservableObject {
       ] as [String: Any]
     )
 
-    // Install tap on input node without connecting to output to prevent monitoring.
+    // Check if the selected input device is an aggregate device
+    let currentInputDevice = AudioDeviceManager.shared.getCurrentInputDevice()
+    let isAggregateDevice = currentInputDevice?.name.contains("Aggregate") == true ||
+                           currentInputDevice?.name.contains("Recording") == true ||
+                           currentInputDevice?.channelCount ?? 0 > 2
+
+    if isAggregateDevice {
+      print("Detected potential aggregate device: \(currentInputDevice?.name ?? "Unknown")")
+      print("This should capture both input and output audio")
+    } else {
+      print("Standard input device detected: \(currentInputDevice?.name ?? "Unknown")")
+      print("This will only capture microphone audio. For call recording, create an aggregate device.")
+    }
+
+    // Install tap on input node - will capture whatever the input device provides
     inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) {
       [weak self] buffer, _ in
       guard let self = self, let audioFile = self.audioFile else { return }
@@ -95,7 +109,7 @@ class AudioRecorder: ObservableObject {
     }
 
     audioEngine.prepare()
-    print("Audio engine configured for input capture only - no monitoring")
+    print("Audio engine configured for input capture from: \(currentInputDevice?.name ?? "Default")")
   }
 
   private func cleanup() {
