@@ -51,13 +51,13 @@ export const EnqueueUpsertTable = t.type({
   sourceUrl: t.union([t.string, t.undefined, t.null]),
 });
 
-const EnqueueUpsertAudioTranscription = t.type({
+export const EnqueueUpsertAudioTranscription = t.type({
   dataSourceId: t.string,
   documentId: t.string,
   fileId: t.string,
   parentId: t.union([t.string, t.null, t.undefined]),
   parents: t.union([t.array(t.string), t.null]),
-  sourceUrl: t.union([t.string, t.undefined, t.null]),
+  sourceUrl: t.union([t.string, t.null]),
   tags: t.union([t.array(t.string), t.null]),
   timestamp: t.union([t.number, t.null]),
   title: t.string,
@@ -192,7 +192,7 @@ async function enqueueUpsert({
   | {
       upsertItem: EnqueueUpsertAudioTranscriptionType;
       upsertQueueId: string;
-      launchWorkflowFn: typeof launchAudioTranscriptionWorkflow;
+      launchWorkflowFn: typeof launchUpsertAudioTranscriptionWorkflow;
     }): Promise<Result<string, Error>> {
   const now = Date.now();
 

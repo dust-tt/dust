@@ -28,9 +28,6 @@ export async function upsertDocumentWorkflow(
   await upsertDocumentActivity(upsertQueueId, enqueueTimestamp);
 }
 
-export async function upsertAudioTranscriptionWorkflow(
-  upsertQueueId: string,
-  enqueueTimestamp: number
-) {
-  await upsertAudioTranscriptionActivity(upsertQueueId, enqueueTimestamp);
+export async function upsertAudioTranscriptionWorkflow(upsertQueueId: string) {
+  await upsertAudioTranscriptionActivity(upsertQueueId);
 }

@@ -56,12 +56,10 @@ export async function launchUpsertDocumentWorkflow({
 
 export async function launchUpsertAudioTranscriptionWorkflow({
   dataSourceId,
-  enqueueTimestamp,
   upsertQueueId,
   workspaceId,
 }: {
   dataSourceId: string;
-  enqueueTimestamp: number;
   upsertQueueId: string;
   workspaceId: string;
 }): Promise<Result<string, Error>> {
@@ -71,7 +69,7 @@ export async function launchUpsertAudioTranscriptionWorkflow({
 
   try {
     await client.workflow.start(upsertAudioTranscriptionWorkflow, {
-      args: [upsertQueueId, enqueueTimestamp],
+      args: [upsertQueueId],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       memo: {

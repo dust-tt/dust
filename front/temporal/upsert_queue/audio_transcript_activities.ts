@@ -1,9 +1,14 @@
 import { Storage } from "@google-cloud/storage";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
 
 import { transcribeAudioFile } from "@app/lib/api/audio/transcription";
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { enqueueUpsertDocument } from "@app/lib/upsert_queue";
+import {
+  EnqueueUpsertAudioTranscription,
+  enqueueUpsertDocument,
+} from "@app/lib/upsert_queue";
 import config from "@app/temporal/config";
 
 export async function upsertAudioTranscriptionActivity(upsertQueueId: string) {
@@ -13,11 +18,20 @@ export async function upsertAudioTranscriptionActivity(upsertQueueId: string) {
 
   const upsertDocument = JSON.parse(content.toString());
 
-  const fileId = upsertDocument.fileId;
+  const itemValidation = EnqueueUpsertAudioTranscription.decode(upsertDocument);
 
-  const auth = await Authenticator.internalAdminForWorkspace(
-    upsertDocument.workspaceId
-  );
+  if (isLeft(itemValidation)) {
+    const pathErrorDocument = reporter.formatValidationErrors(
+      itemValidation.left
+    );
+    throw new Error(
+      `Invalid upsertQueue audio transcription: ${pathErrorDocument}`
+    );
+  }
+
+  const { fileId, workspaceId } = itemValidation.right;
+
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const fileResource = await FileResource.fetchById(auth, fileId);
   if (!fileResource) {
     throw new Error("File not found");
@@ -30,22 +44,16 @@ export async function upsertAudioTranscriptionActivity(upsertQueueId: string) {
 
   const enqueueRes = await enqueueUpsertDocument({
     upsertDocument: {
-      workspaceId: upsertDocument.workspaceId,
-      dataSourceId: upsertDocument.dataSourceId,
-      documentId: upsertDocument.documentId,
-      tags: upsertDocument.tags,
-      parentId: upsertDocument.parentId || null,
-      parents: upsertDocument.parents || [upsertDocument.documentId],
-      timestamp: upsertDocument.timestamp,
-      sourceUrl: upsertDocument.sourceUrl,
+      ...itemValidation.right,
+      upsertContext: {
+        sync_type: "batch",
+      },
       section: {
         prefix: null,
         // TODO(VOICE 2025-08-05): Do a proper chunking of the transcript.
         content: transcriptResult.value,
         sections: [],
       },
-      upsertContext: upsertDocument.upsertContext || null,
-      title: upsertDocument.title,
       mimeType: "text/plain",
     },
   });

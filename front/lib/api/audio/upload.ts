@@ -1,4 +1,4 @@
-import type { File } from "formidable";
+import type { Fields, File } from "formidable";
 import { IncomingForm } from "formidable";
 import type { IncomingMessage } from "http";
 import type { Writable } from "stream";
@@ -16,7 +16,7 @@ export const parseUploadAudioRequest = async (
   writableStream: Writable
 ): Promise<
   Result<
-    File,
+    { file: File; fields: Fields },
     Omit<DustError, "code"> & {
       code:
         | "internal_server_error"
@@ -39,7 +39,6 @@ export const parseUploadAudioRequest = async (
       filter: (part) => {
         // Only accept M4A files in the "audio" field.
         if (part.name === "audio") {
-          console.log("part.mimetype", part.mimetype);
           return SUPPORTED_AUDIO_FORMATS.includes(part.mimetype || "");
         }
 
@@ -48,7 +47,7 @@ export const parseUploadAudioRequest = async (
       },
     });
 
-    const [, files] = await form.parse(req);
+    const [fields, files] = await form.parse(req);
 
     const maybeFiles = files.audio;
     if (!maybeFiles || maybeFiles.length === 0) {
@@ -59,7 +58,20 @@ export const parseUploadAudioRequest = async (
       });
     }
 
-    return new Ok(maybeFiles[0]);
+    // Form values are arrays by default, convert to strings.
+    const processedFields: Record<string, string> = {};
+    for (const [key, value] of Object.entries(fields)) {
+      if (Array.isArray(value)) {
+        processedFields[key] = value[0] || "";
+      } else {
+        processedFields[key] = value || "";
+      }
+    }
+
+    return new Ok({
+      file: maybeFiles[0],
+      fields: processedFields,
+    });
   } catch (error) {
     if (error instanceof Error) {
       if (error.message.startsWith("options.maxTotalFileSize")) {

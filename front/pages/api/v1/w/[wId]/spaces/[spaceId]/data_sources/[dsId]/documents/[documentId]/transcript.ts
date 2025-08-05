@@ -1,5 +1,7 @@
 import type { UpsertDocumentResponseType } from "@dust-tt/client";
+import { PostDataSourceDocumentTranscriptRequestSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import {
   MAX_AUDIO_SIZE_MB,
@@ -9,12 +11,13 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { enqueueUpsertAudioTranscription } from "@app/lib/upsert_queue";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { validateUrl } from "@app/types";
 
 export const config = {
   api: {
@@ -42,7 +45,7 @@ async function handler(
     });
   }
 
-  const { documentId, dsId } = req.query;
+  const { documentId, dsId, spaceId } = req.query;
   if (typeof documentId !== "string" || typeof dsId !== "string") {
     return apiError(req, res, {
       status_code: 400,
@@ -54,16 +57,6 @@ async function handler(
   }
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
-
-  let { spaceId } = req.query;
-  if (typeof spaceId !== "string") {
-    if (auth.isSystemKey()) {
-      spaceId = dataSource?.space.sId;
-    } else {
-      spaceId = (await SpaceResource.fetchWorkspaceGlobalSpace(auth)).sId;
-    }
-  }
-
   if (
     !dataSource ||
     dataSource.space.sId !== spaceId ||
@@ -130,10 +123,9 @@ async function handler(
 
   // Create FileResource for the audio upload
   const fileRes = await FileResource.makeNew({
-    blob: null,
     contentType: "audio/mp4",
     fileName: `audio-${documentId}.m4a`,
-    fileSize: 0,
+    fileSize: 0, // Will be updated after upload
     useCase: "audio_transcription",
     workspaceId: owner.id,
   });
@@ -155,23 +147,95 @@ async function handler(
     });
   }
 
+  const { file: audioFile, fields } = uploadResult.value;
+
+  // Update FileResource with actual file size.
+  await fileRes.updateFileSize(audioFile.size);
+
+  logger.info(
+    {
+      fileName: audioFile.originalFilename,
+      fileSize: audioFile.size,
+      mimeType: audioFile.mimetype,
+      documentId,
+      fileId: fileRes.sId,
+    },
+    "Audio file uploaded successfully"
+  );
+
+  const r = PostDataSourceDocumentTranscriptRequestSchema.safeParse(fields);
+  if (r.error) {
+    // Clean up uploaded file on validation error
+    await fileRes.delete(auth);
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: fromError(r.error).toString(),
+      },
+    });
+  }
+
+  const { data: body } = r;
+
+  let sourceUrl: string | null = null;
+  if (body.source_url) {
+    const { valid: isSourceUrlValid, standardized: standardizedSourceUrl } =
+      validateUrl(body.source_url);
+
+    if (!isSourceUrlValid) {
+      // Clean up uploaded file on validation error
+      await fileRes.delete(auth);
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Invalid request body, `source_url` if provided must be a valid URL.",
+        },
+      });
+    }
+    sourceUrl = standardizedSourceUrl;
+  }
+
+  // TODO(VOICE 2025-08-05): Add data source quota check.
+
+  const tags = body.tags ?? [];
+  const titleInTags = tags
+    .find((t) => t.startsWith("title:"))
+    ?.substring(6)
+    ?.trim();
+
+  // Use titleInTags if no title is provided.
+  const title =
+    body.title?.trim() ||
+    titleInTags ||
+    audioFile.originalFilename ||
+    `Audio transcript - ${documentId}`;
+
+  if (!titleInTags) {
+    tags.push(`title:${title}`);
+  }
+
   // Enqueue document for transcription.
   const enqueueRes = await enqueueUpsertAudioTranscription({
     upsertAudioTranscription: {
       workspaceId: owner.sId,
       dataSourceId: dataSource.sId,
       documentId,
-      tags: [`title:Audio Transcription - ${documentId}`],
+      tags,
       parentId: null,
       parents: [documentId],
-      timestamp: null,
-      sourceUrl: null,
-      title: `Audio Transcription - ${documentId}`,
+      timestamp: cleanTimestamp(body.timestamp),
+      sourceUrl,
+      title,
       fileId: fileRes.sId,
     },
   });
 
   if (enqueueRes.isErr()) {
+    // Clean up uploaded file on enqueue error
+    await fileRes.delete(auth);
     return apiError(
       req,
       res,

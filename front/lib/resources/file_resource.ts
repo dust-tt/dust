@@ -358,6 +358,10 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
+  async updateFileSize(fileSize: number) {
+    return this.update({ fileSize });
+  }
+
   // Use-case logic
 
   isUpsertUseCase(): boolean {
