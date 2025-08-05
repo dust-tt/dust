@@ -9,7 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { uniqueId } from "lodash";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import React from "react";
 import type { UseFieldArrayAppend } from "react-hook-form";
 import { useForm } from "react-hook-form";
@@ -17,10 +17,10 @@ import { useForm } from "react-hook-form";
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
-  AgentBuilderAction,
   AgentBuilderFormData,
   MCPFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getMCPConfigurationFormSchema } from "@app/components/agent_builder/capabilities/mcp/formValidation";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/MCPServerSelectionPage";
@@ -31,6 +31,7 @@ import { TimeFrameSection } from "@app/components/agent_builder/capabilities/sha
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type {
   ActionSpecification,
+  AgentBuilderAction,
   ConfigurationPagePageId,
 } from "@app/components/agent_builder/types";
 import {
@@ -63,6 +64,29 @@ export type DialogMode =
   | { type: "add" }
   | { type: "edit"; action: AgentBuilderAction; index: number }
   | { type: "info"; action: AgentBuilderAction };
+
+// Create a proper type for MCP actions
+type MCPActionWithConfiguration = {
+  type: "MCP";
+  id: string;
+  name: string;
+  description: string;
+  noConfigurationRequired?: boolean;
+  configuration: MCPServerConfigurationType;
+};
+
+// Type guard to check if an action is an MCP action with proper configuration
+function isMCPActionWithConfiguration(
+  action: AgentBuilderAction
+): action is MCPActionWithConfiguration {
+  return (
+    action.type === "MCP" &&
+    action.configuration !== null &&
+    typeof action.configuration === "object" &&
+    typeof action.configuration === "object" &&
+    "mcpServerViewId" in action.configuration
+  );
+}
 
 interface MCPServerViewsDialogProps {
   addTools: UseFieldArrayAppend<AgentBuilderFormData, "actions">;
@@ -123,14 +147,13 @@ export function MCPServerViewsDialog({
 
       // Set MCP server view for edit mode
       if (
-        mode.action.type === "MCP" &&
-        mode.action.configuration &&
-        "mcpServerViewId" in mode.action.configuration &&
+        isMCPActionWithConfiguration(mode.action) &&
         allMcpServerViews.length > 0
       ) {
+        // TypeScript type narrowing limitation: need assertion after type guard
+        const mcpAction = mode.action as MCPActionWithConfiguration;
         const mcpServerView = allMcpServerViews.find(
-          (view) =>
-            view.sId === (mode.action.configuration as any).mcpServerViewId
+          (view) => view.sId === mcpAction.configuration.mcpServerViewId
         );
         if (mcpServerView) {
           setConfigurationMCPServerView(mcpServerView);
@@ -143,14 +166,13 @@ export function MCPServerViewsDialog({
 
       // Set MCP server view for info mode
       if (
-        mode.action.type === "MCP" &&
-        mode.action.configuration &&
-        "mcpServerViewId" in mode.action.configuration &&
+        isMCPActionWithConfiguration(mode.action) &&
         allMcpServerViews.length > 0
       ) {
+        // TypeScript type narrowing limitation: need assertion after type guard
+        const mcpAction = mode.action as MCPActionWithConfiguration;
         const mcpServerView = allMcpServerViews.find(
-          (view) =>
-            view.sId === (mode.action.configuration as any).mcpServerViewId
+          (view) => view.sId === mcpAction.configuration.mcpServerViewId
         );
         if (mcpServerView) {
           setInfoMCPServerView(mcpServerView);
@@ -265,7 +287,34 @@ export function MCPServerViewsDialog({
     toggleToolSelection(tool);
   }
 
-  const handleAddSelectedTools = () => {
+  const handleAddSelectedTools = useCallback(async () => {
+    // Validate any configured tools before adding
+    for (const tool of selectedToolsInDialog) {
+      if (tool.type === "MCP" && tool.configuredAction) {
+        // This tool was configured - validate its configuration
+        const requirements = getMCPServerRequirements(tool.view);
+        if (!requirements.noRequirement) {
+          // Get the form schema for validation
+          const toolSchema = getMCPConfigurationFormSchema(tool.view);
+          try {
+            toolSchema.parse({
+              name: tool.configuredAction.name,
+              description: tool.configuredAction.description,
+              configuration: tool.configuredAction.configuration,
+            });
+          } catch (error) {
+            sendNotification({
+              title: "Configuration validation failed",
+              description: `Tool "${tool.view.name}" has invalid configuration. Please reconfigure it.`,
+              type: "error",
+            });
+            return;
+          }
+        }
+      }
+    }
+
+    // All validations passed, add the tools
     selectedToolsInDialog.forEach((tool) => {
       if (tool.type === "DATA_VISUALIZATION") {
         addTools({
@@ -285,7 +334,7 @@ export function MCPServerViewsDialog({
 
     // Clear selected tools after adding
     setSelectedToolsInDialog([]);
-  };
+  }, [selectedToolsInDialog, addTools, sendNotification]);
 
   // Configuration form logic
   const mcpServerView = configurationMCPServerView;
@@ -296,7 +345,8 @@ export function MCPServerViewsDialog({
   );
 
   const form = useForm<MCPFormData>({
-    ...(formSchema && { resolver: zodResolver(formSchema) }),
+    resolver: formSchema ? zodResolver(formSchema) : undefined,
+    mode: "onChange", // Enable real-time validation
     defaultValues:
       configurationTool?.type === "MCP"
         ? {
@@ -322,13 +372,14 @@ export function MCPServerViewsDialog({
           },
   });
 
-  const requirements = mcpServerView
-    ? getMCPServerRequirements(mcpServerView)
-    : null;
+  const requirements = useMemo(
+    () => (mcpServerView ? getMCPServerRequirements(mcpServerView) : null),
+    [mcpServerView]
+  );
 
   // Reset form when configurationTool changes
   React.useEffect(() => {
-    if (configurationTool?.type === "MCP" && mcpServerView) {
+    if (configurationTool?.type === "MCP" && mcpServerView && formSchema) {
       const formValues = {
         name: configurationTool.name ?? "",
         description: configurationTool.description ?? "",
@@ -336,7 +387,7 @@ export function MCPServerViewsDialog({
       };
       form.reset(formValues);
     }
-  }, [configurationTool, mcpServerView, form]);
+  }, [configurationTool, mcpServerView, formSchema, form]);
 
   const handleBackToSelection = () => {
     setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
@@ -449,7 +500,7 @@ export function MCPServerViewsDialog({
     }
   };
 
-  const handleConfigurationSave = async () => {
+  const handleConfigurationSave = useCallback(async () => {
     if (!configurationTool || !form || !mcpServerView) {
       return;
     }
@@ -458,21 +509,36 @@ export function MCPServerViewsDialog({
       const isValid = await form.trigger();
       if (!isValid) {
         const errors = form.formState.errors;
-        console.log("Form errors:", errors);
+        console.error("Form validation errors:", errors);
+
+        const firstErrorPath = Object.keys(errors)[0];
+        const firstError = firstErrorPath
+          ? errors[firstErrorPath as keyof typeof errors]
+          : null;
+        const errorMessage =
+          firstError?.message ||
+          "Please check the form for errors and try again.";
+
         sendNotification({
           title: "Form validation failed",
-          description: "Please check the form for errors and try again.",
+          description: errorMessage,
           type: "error",
         });
         return;
       }
 
       const formData = form.getValues();
+
+      // Ensure we're working with an MCP action
+      if (configurationTool.type !== "MCP") {
+        throw new Error("Expected MCP action for configuration save");
+      }
+
       const configuredAction: AgentBuilderAction = {
         ...configurationTool,
         name: formData.name,
         description: formData.description,
-        configuration: formData.configuration as any,
+        configuration: formData.configuration,
       };
 
       if (mode?.type === "edit" && onActionUpdate) {
@@ -537,7 +603,20 @@ export function MCPServerViewsDialog({
         type: "error",
       });
     }
-  };
+  }, [
+    configurationTool,
+    form,
+    mcpServerView,
+    mode,
+    onActionUpdate,
+    onModeChange,
+    sendNotification,
+    setCurrentPageId,
+    setConfigurationMCPServerView,
+    setConfigurationTool,
+    setIsOpen,
+    setSelectedToolsInDialog,
+  ]);
 
   const getFooterButtons = () => {
     const isToolSelectionPage =
@@ -560,8 +639,8 @@ export function MCPServerViewsDialog({
               : "Add tools",
           variant: "primary" as const,
           disabled: selectedToolsInDialog.length === 0,
-          onClick: () => {
-            handleAddSelectedTools();
+          onClick: async () => {
+            await handleAddSelectedTools();
             setIsOpen(false);
           },
         },
