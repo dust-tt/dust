@@ -78,7 +78,7 @@ export function KnowledgeConfigurationSheet({
       ? { dataSourceConfigurations: dataSourceConfigurations }
       : { tablesConfigurations: dataSourceConfigurations };
 
-    const newAction = {
+    const newAction: AgentBuilderAction = {
       id: uniqueId(),
       type: "MCP",
       name,
@@ -89,10 +89,8 @@ export function KnowledgeConfigurationSheet({
       },
     };
 
-    if (newAction) {
-      onSave(newAction);
-      onClose();
-    }
+    onSave(newAction);
+    onClose();
   };
 
   // Memoize default values based on action (React Hook Form best practice)

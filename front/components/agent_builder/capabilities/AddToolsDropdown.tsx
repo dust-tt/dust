@@ -144,7 +144,7 @@ export function AddToolsDropdown({
     if (requirement.noRequirement) {
       addTools(action);
     } else {
-      setSelectedAction(action);
+      setSelectedAction({ action, index: null });
     }
   }
 
