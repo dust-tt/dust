@@ -20,11 +20,10 @@ class AudioRecorder: ObservableObject {
   func startRecording() {
     guard !isRecording else { return }
 
-    // Generate unique ID for this recording
     let recordingTimestamp = Int(Date().timeIntervalSince1970)
     recordingId = "\(AudioSettings.recordingPrefix)\(recordingTimestamp)"
 
-    // Create temporary file URL for AVAudioRecorder
+    // Create temporary file URL for AVAudioRecorder.
     let tempDir = FileManager.default.temporaryDirectory
     tempURL = tempDir.appendingPathComponent(
       "\(recordingId!)\(AudioSettings.audioFileExtension)"
@@ -46,7 +45,7 @@ class AudioRecorder: ObservableObject {
       audioRecorder?.record()
 
       isRecording = true
-      recordingData = nil  // Clear any previous data
+      recordingData = nil
     } catch {
       print("Failed to start recording: \(error)")
     }
@@ -59,11 +58,9 @@ class AudioRecorder: ObservableObject {
     audioRecorder = nil
     isRecording = false
 
-    // Load the audio data into memory and clean up temp file
     if let tempURL = tempURL {
       do {
         recordingData = try Data(contentsOf: tempURL)
-        // Clean up temporary file
         try FileManager.default.removeItem(at: tempURL)
         print(
           "Recording loaded into memory (\(recordingData?.count ?? 0) bytes)"

@@ -80,7 +80,6 @@ class UserDefaultsManager {
     return hasCompleteCredentials() && loadSelectedFolder() != nil
   }
 
-  // Legacy methods for backward compatibility
   func saveAPIKey(_ apiKey: String) -> Bool {
     UserDefaults.standard.set(apiKey, forKey: apiKeyKey)
     return true

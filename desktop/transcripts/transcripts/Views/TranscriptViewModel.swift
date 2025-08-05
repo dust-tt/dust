@@ -25,7 +25,6 @@ class TranscriptViewModel: ObservableObject {
       return
     }
 
-    // Validate API key format
     guard apiKeyInput.hasPrefix("sk-") else {
       loginErrorMessage = "Invalid API key format"
       showingLoginError = true
@@ -33,7 +32,7 @@ class TranscriptViewModel: ObservableObject {
       return
     }
 
-    // Validate credentials by calling the API
+    // Validate credentials by calling the API (using the /spaces endpoint).
     Task {
       do {
         _ = try await DustAPIClient.shared.fetchSpaces(
@@ -41,7 +40,7 @@ class TranscriptViewModel: ObservableObject {
           workspaceId: workspaceIdInput
         )
 
-        // If we get here, credentials are valid - save them
+        // If we get here, credentials are valid, we save them.
         if UserDefaultsManager.shared.saveAPIKey(apiKeyInput)
           && UserDefaultsManager.shared.saveCredentials(
             apiKey: apiKeyInput,
@@ -57,8 +56,8 @@ class TranscriptViewModel: ObservableObject {
           print("Credentials validated and saved successfully")
           completion(true)
 
-          // Hide success message after delay
-          DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+          // Hide success message after some delay.
+          DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             self.showLoginSuccessMessage = false
           }
         } else {

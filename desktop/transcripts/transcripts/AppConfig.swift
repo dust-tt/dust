@@ -1,7 +1,6 @@
 import Foundation
 
-struct AppConfig {
-  // Set this to true for local development
+struct AppConfig 
   static let isDevelopment = true
 
   static var dustBaseURL: String {

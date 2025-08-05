@@ -30,11 +30,9 @@ struct DustDataSourceView: Codable, Identifiable {
 
   var id: String { sId }
 
-  // Use the dataSource name and connectorProvider
   var name: String { dataSource.name }
   var connectorProvider: String? { dataSource.connectorProvider }
 
-  // Only show data source views where connectorProvider is null
   var isFolder: Bool {
     return dataSource.connectorProvider == nil
   }

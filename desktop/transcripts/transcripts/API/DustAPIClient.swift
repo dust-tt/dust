@@ -24,15 +24,46 @@ class DustAPIClient {
     return request
   }
 
+  private func handleAPIResponse(
+    data: Data,
+    response: URLResponse,
+    errorMessage: String = "Request failed"
+  ) throws -> Data {
+    guard let httpResponse = response as? HTTPURLResponse else {
+      throw DustAPIError.networkError
+    }
+
+    switch httpResponse.statusCode {
+    case 200:
+      return data
+    case 401:
+      throw DustAPIError.invalidCredentials
+    case 429:
+      throw DustAPIError(message: "Rate limit exceeded", statusCode: 429)
+    default:
+      throw DustAPIError(
+        message: errorMessage,
+        statusCode: httpResponse.statusCode
+      )
+    }
+  }
+
+  // MARK: - URL Building
+
+  private func buildAPIURL(path: String) throws -> URL {
+    let urlString = "\(baseURL)/api/v1/\(path)"
+    guard let url = URL(string: urlString) else {
+      throw DustAPIError(message: "Invalid URL: \(urlString)", statusCode: nil)
+    }
+    return url
+  }
+
   // MARK: - API Calls
 
   func fetchSpaces(apiKey: String, workspaceId: String) async throws
     -> [DustSpace]
   {
-    let urlString = "\(baseURL)/api/v1/w/\(workspaceId)/spaces"
-    guard let url = URL(string: urlString) else {
-      throw DustAPIError(message: "Invalid URL: \(urlString)", statusCode: nil)
-    }
+    let url = try buildAPIURL(path: "w/\(workspaceId)/spaces")
 
     let request = createAuthenticatedRequest(
       for: url,
@@ -42,24 +73,11 @@ class DustAPIClient {
 
     do {
       let (data, response) = try await session.data(for: request)
-
-      guard let httpResponse = response as? HTTPURLResponse else {
-        throw DustAPIError.networkError
-      }
-
-      guard httpResponse.statusCode == 200 else {
-        if httpResponse.statusCode == 401 {
-          throw DustAPIError.invalidCredentials
-        }
-        throw DustAPIError(
-          message: "HTTP \(httpResponse.statusCode)",
-          statusCode: httpResponse.statusCode
-        )
-      }
+      let validatedData = try handleAPIResponse(data: data, response: response)
 
       let spacesResponse = try JSONDecoder().decode(
         DustSpacesResponse.self,
-        from: data
+        from: validatedData
       )
       return spacesResponse.spaces
 
@@ -78,11 +96,9 @@ class DustAPIClient {
     workspaceId: String,
     spaceId: String
   ) async throws -> [DustDataSourceView] {
-    let urlString =
-      "\(baseURL)/api/v1/w/\(workspaceId)/spaces/\(spaceId)/data_source_views"
-    guard let url = URL(string: urlString) else {
-      throw DustAPIError(message: "Invalid URL: \(urlString)", statusCode: nil)
-    }
+    let url = try buildAPIURL(
+      path: "w/\(workspaceId)/spaces/\(spaceId)/data_source_views"
+    )
 
     let request = createAuthenticatedRequest(
       for: url,
@@ -92,26 +108,13 @@ class DustAPIClient {
 
     do {
       let (data, response) = try await session.data(for: request)
-
-      guard let httpResponse = response as? HTTPURLResponse else {
-        throw DustAPIError.networkError
-      }
-
-      guard httpResponse.statusCode == 200 else {
-        if httpResponse.statusCode == 401 {
-          throw DustAPIError.invalidCredentials
-        }
-        throw DustAPIError(
-          message: "HTTP \(httpResponse.statusCode)",
-          statusCode: httpResponse.statusCode
-        )
-      }
+      let validatedData = try handleAPIResponse(data: data, response: response)
 
       let dataSourceViewsResponse = try JSONDecoder().decode(
         DustDataSourceViewsResponse.self,
-        from: data
+        from: validatedData
       )
-      // Filter to only return manual data sources (where connectorProvider is null)
+      // Filter to only return static data sources.
       return dataSourceViewsResponse.dataSourceViews.filter {
         $0.isFolder
       }
@@ -136,15 +139,12 @@ class DustAPIClient {
     documentId: String,
     audioData: Data
   ) async throws -> DustTranscriptUploadResponse {
-    let urlString =
-      "\(baseURL)/api/v1/w/\(workspaceId)/spaces/\(spaceId)/data_sources/\(dataSourceId)/documents/\(documentId)/transcript"
-    guard let url = URL(string: urlString) else {
-      throw DustAPIError(message: "Invalid URL: \(urlString)", statusCode: nil)
-    }
+    let url = try buildAPIURL(
+      path:
+        "w/\(workspaceId)/spaces/\(spaceId)/data_sources/\(dataSourceId)/documents/\(documentId)/transcript"
+    )
 
-    // Check file size (25MB limit)
-    let maxSize = 25 * 1024 * 1024
-    guard audioData.count <= maxSize else {
+    guard audioData.count <= AudioSettings.maxAudioFileSize else {
       throw DustAPIError(message: "File too large (max 25MB)", statusCode: nil)
     }
 
@@ -152,7 +152,7 @@ class DustAPIClient {
       throw DustAPIError(message: "Audio data is empty", statusCode: nil)
     }
 
-    // Create multipart form data
+    // Create multipart form data.
     let boundary = UUID().uuidString
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
@@ -164,44 +164,32 @@ class DustAPIClient {
 
     var body = Data()
 
-    // Add audio file
+    // Add audio file.
     body.append("--\(boundary)\r\n".data(using: .utf8)!)
     body.append(
-      "Content-Disposition: form-data; name=\"audio\"; filename=\"\(documentId).m4a\"\r\n"
+      "Content-Disposition: form-data; name=\"audio\"; filename=\"\(documentId)\(AudioSettings.audioFileExtension)\"\r\n"
         .data(using: .utf8)!
     )
     body.append("Content-Type: audio/mp4\r\n\r\n".data(using: .utf8)!)
     body.append(audioData)
     body.append("\r\n".data(using: .utf8)!)
 
-    // Close boundary
+    // Close boundary.
     body.append("--\(boundary)--\r\n".data(using: .utf8)!)
 
     request.httpBody = body
 
     do {
       let (data, response) = try await session.data(for: request)
-
-      guard let httpResponse = response as? HTTPURLResponse else {
-        throw DustAPIError.networkError
-      }
-
-      guard httpResponse.statusCode == 200 else {
-        if httpResponse.statusCode == 401 {
-          throw DustAPIError.invalidCredentials
-        }
-        if httpResponse.statusCode == 429 {
-          throw DustAPIError(message: "Rate limit exceeded", statusCode: 429)
-        }
-        throw DustAPIError(
-          message: "Upload failed",
-          statusCode: httpResponse.statusCode
-        )
-      }
+      let validatedData = try handleAPIResponse(
+        data: data,
+        response: response,
+        errorMessage: "Upload failed"
+      )
 
       let uploadResponse = try JSONDecoder().decode(
         DustTranscriptUploadResponse.self,
-        from: data
+        from: validatedData
       )
       return uploadResponse
 
@@ -220,12 +208,10 @@ class DustAPIClient {
   func fetchAvailableFolders(apiKey: String, workspaceId: String) async throws
     -> [DustFolder]
   {
-    // First, fetch all spaces
     let spaces = try await fetchSpaces(apiKey: apiKey, workspaceId: workspaceId)
 
     var folders: [DustFolder] = []
 
-    // For each space, fetch its data source views
     for space in spaces {
       do {
         let dataSourceViews = try await fetchDataSourceViews(
@@ -234,7 +220,7 @@ class DustAPIClient {
           spaceId: space.sId
         )
 
-        // Convert data source views to folders
+        // Convert data source views to folders (our own kind with only the stuff we need).
         let spaceFolders = dataSourceViews.map { dataSourceView in
           DustFolder(
             id: "\(space.sId)/\(dataSourceView.sId)",
@@ -247,7 +233,6 @@ class DustAPIClient {
 
         folders.append(contentsOf: spaceFolders)
       } catch {
-        // Log error but continue with other spaces
         print(
           "Failed to fetch data source views for space \(space.name): \(error)"
         )
