@@ -233,7 +233,6 @@ function MCPConfigurationForm({
       {requirements.mayRequireJsonSchemaConfiguration && (
         <JsonSchemaSection
           owner={owner}
-          fieldName="configuration.jsonSchema"
           agentInstructions={agentInstructions}
         />
       )}
