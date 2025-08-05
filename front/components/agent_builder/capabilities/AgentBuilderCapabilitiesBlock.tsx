@@ -23,14 +23,13 @@ import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/M
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
+  getDefaultMCPAction,
   isDefaultActionName,
-  isSupportedAgentBuilderAction,
 } from "@app/components/agent_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
   DATA_VISUALIZATION_SPECIFICATION,
-  getActionSpecification,
   MCP_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -68,7 +67,6 @@ function actionDisplayName(
   }`;
 }
 
-// TODO: Merge this with ActionCard.
 function MCPActionCard({
   action,
   onRemove,
@@ -120,50 +118,6 @@ function MCPActionCard({
   );
 }
 
-function ActionCard({
-  action,
-  onRemove,
-  onEdit,
-}: {
-  action: AgentBuilderAction;
-  onRemove: () => void;
-  onEdit?: () => void;
-}) {
-  const spec = getActionSpecification(action.type);
-
-  if (!spec) {
-    return null;
-  }
-
-  return (
-    <Card
-      variant="primary"
-      className="max-h-40"
-      onClick={onEdit}
-      action={
-        <CardActionButton
-          size="mini"
-          icon={XMarkIcon}
-          onClick={(e: Event) => {
-            onRemove();
-            e.stopPropagation();
-          }}
-        />
-      }
-    >
-      <div className="flex w-full flex-col gap-2 text-sm">
-        <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          <Avatar icon={spec.cardIcon} size="xs" />
-          <div className="w-full truncate">{action.name}</div>
-        </div>
-        <div className="line-clamp-4 text-muted-foreground dark:text-muted-foreground-night">
-          <p>{action.description}</p>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 const dataVisualizationAction = {
   type: "DATA_VISUALIZATION",
   ...DATA_VISUALIZATION_SPECIFICATION,
@@ -196,6 +150,12 @@ const BACKGROUND_IMAGE_STYLE_PROPS = {
 };
 
 export function AgentBuilderCapabilitiesBlock() {
+  const [selectedAction, setSelectedAction] = useState<{
+    action: AgentBuilderAction;
+    index: number | null;
+  } | null>(null);
+  const [isKnowledgeSheetOpen, setIsKnowledgeSheetOpen] = useState(false);
+
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { fields, remove, append, update } = useFieldArray<
     AgentBuilderFormData,
@@ -207,19 +167,9 @@ export function AgentBuilderCapabilitiesBlock() {
   const {
     defaultMCPServerViews,
     nonDefaultMCPServerViews,
+    mcpServerViewsWithKnowledge,
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
-  const [editingAction, setEditingAction] = useState<{
-    action: AgentBuilderAction;
-    index: number;
-  } | null>(null);
-
-  const [isKnowledgeSheetOpen, setIsKnowledgeSheetOpen] = useState(false);
-
-  // TODO: Open single sheet for selected MCP action.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [selectedAction, setSelectedAction] =
-    useState<AgentBuilderAction | null>(null);
 
   // TODO: Add logic for reasoning.
   const selectableDefaultMCPServerViews = useMemo(
@@ -238,41 +188,61 @@ export function AgentBuilderCapabilitiesBlock() {
     ? null
     : dataVisualizationAction;
 
+  // fixme
   const handleEditSave = (updatedAction: AgentBuilderAction) => {
-    if (editingAction) {
-      update(editingAction.index, updatedAction);
+    if (selectedAction && selectedAction.index !== null) {
+      update(selectedAction.index, updatedAction);
     } else {
       append(updatedAction);
     }
-    setEditingAction(null);
+    setSelectedAction(null);
   };
 
+  // fixme
   const handleActionEdit = (action: AgentBuilderAction, index: number) => {
-    setEditingAction({ action, index });
-    if (isSupportedAgentBuilderAction(action)) {
+    if (
+      action.configuration.dataSourceConfigurations ||
+      action.configuration.tablesConfigurations
+    ) {
       setIsKnowledgeSheetOpen(true);
     }
 
-    if (action.type === "MCP") {
-      setSelectedAction(action);
-    }
+    setSelectedAction({ action, index });
   };
 
   const handleCloseSheet = () => {
-    setEditingAction(null);
+    setSelectedAction(null);
     setIsKnowledgeSheetOpen(false);
   };
 
   const getAgentInstructions = () => getValues("instructions");
 
+  const onClickKnowledge = () => {
+    setIsKnowledgeSheetOpen(true);
+
+    // We don't know which action will be selected so we will create a generic MCP action.
+    const action = getDefaultMCPAction();
+
+    setSelectedAction({
+      action: {
+        ...action,
+        noConfigurationRequired: false, // it's always required for knowledge
+      },
+      index: null,
+    });
+  };
+
   const dropdownButtons = (
     <>
       <KnowledgeConfigurationSheet
         onClose={handleCloseSheet}
-        onOpen={() => setIsKnowledgeSheetOpen(true)}
+        onClickKnowledge={onClickKnowledge}
         onSave={handleEditSave}
-        action={editingAction?.action}
+        action={selectedAction?.action ?? null}
+        isEditing={selectedAction ? selectedAction.index !== null : false}
         open={isKnowledgeSheetOpen}
+        mcpServerViews={mcpServerViewsWithKnowledge}
+        getAgentInstructions={getAgentInstructions}
       />
       <AddToolsDropdown
         tools={fields}
@@ -315,41 +285,30 @@ export function AgentBuilderCapabilitiesBlock() {
           />
         ) : (
           <CardGrid>
-            {fields.map((field, index) =>
-              field.type === "MCP" ? (
-                <MCPActionCard
-                  key={field.id}
-                  action={field}
-                  onRemove={() => remove(index)}
-                  onEdit={() => handleActionEdit(field, index)}
-                />
-              ) : (
-                <ActionCard
-                  key={field.id}
-                  action={field}
-                  onRemove={() => remove(index)}
-                  onEdit={() => handleActionEdit(field, index)}
-                />
-              )
-            )}
+            {fields.map((field, index) => (
+              <MCPActionCard
+                key={field.id}
+                action={field}
+                onRemove={() => remove(index)}
+                onEdit={() => handleActionEdit(field, index)}
+              />
+            ))}
           </CardGrid>
         )}
       </div>
       <MCPConfigurationSheet
-        selectedAction={selectedAction}
+        selectedAction={selectedAction?.action}
         isOpen={selectedAction !== null}
         onClose={() => {
           setSelectedAction(null);
-          setEditingAction(null);
         }}
         onSave={(action) => {
-          if (editingAction && selectedAction) {
-            update(editingAction.index, action);
+          if (selectedAction) {
+            update(selectedAction.index, action);
           } else {
             append(action);
           }
           setSelectedAction(null);
-          setEditingAction(null);
         }}
         getAgentInstructions={getAgentInstructions}
       />

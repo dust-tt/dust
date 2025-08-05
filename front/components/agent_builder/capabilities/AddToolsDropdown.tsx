@@ -46,7 +46,10 @@ interface AddToolsDropdownProps {
   tools: FieldArrayWithId<AgentBuilderFormData, "actions", "id">[];
   addTools: UseFieldArrayAppend<AgentBuilderFormData, "actions">;
   setSelectedAction: React.Dispatch<
-    React.SetStateAction<AgentBuilderAction | null>
+    React.SetStateAction<{
+      action: AgentBuilderAction;
+      index: number | null;
+    } | null>
   >;
   defaultMCPServerViews: MCPServerViewTypeWithLabel[];
   nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];
@@ -119,16 +122,19 @@ export function AddToolsDropdown({
         ) ?? reasoningModels[0];
 
       setSelectedAction({
-        ...action,
-        configuration: {
-          ...action.configuration,
-          reasoningModel: {
-            modelId: defaultReasoningModel.modelId,
-            providerId: defaultReasoningModel.providerId,
-            temperature: null,
-            reasoningEffort: null,
+        action: {
+          ...action,
+          configuration: {
+            ...action.configuration,
+            reasoningModel: {
+              modelId: defaultReasoningModel.modelId,
+              providerId: defaultReasoningModel.providerId,
+              temperature: null,
+              reasoningEffort: null,
+            },
           },
         },
+        index: null,
       });
       return;
     }

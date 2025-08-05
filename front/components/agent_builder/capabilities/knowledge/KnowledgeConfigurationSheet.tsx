@@ -8,6 +8,7 @@ import {
 import { Button } from "@dust-tt/sparkle";
 import { BookOpenIcon } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { uniqueId } from "lodash";
 import { useEffect, useMemo, useState } from "react";
 import {
   FormProvider,
@@ -17,23 +18,17 @@ import {
 } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
-import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/knowledge/shared/JsonSchemaSection";
 import {
-  getDataSourceTree,
-  getJsonSchema,
-  getTimeFrame,
-  isValidPage,
-} from "@app/components/agent_builder/capabilities/knowledge/shared/sheetUtils";
-import { TimeFrameSection } from "@app/components/agent_builder/capabilities/knowledge/shared/TimeFrameSection";
-import { transformTreeToSelectionConfigurations } from "@app/components/agent_builder/capabilities/knowledge/transformations";
-import type { CapabilityConfig } from "@app/components/agent_builder/capabilities/knowledge/utils";
-import {
-  CAPABILITY_CONFIGS,
-  generateActionFromFormData,
-} from "@app/components/agent_builder/capabilities/knowledge/utils";
+  transformSelectionConfigurationsToTree,
+  transformTreeToSelectionConfigurations,
+} from "@app/components/agent_builder/capabilities/knowledge/transformations";
+import { CAPABILITY_CONFIGS } from "@app/components/agent_builder/capabilities/knowledge/utils";
+import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/formValidation";
 import { MCPServerViewsKnowledgeDropdown } from "@app/components/agent_builder/capabilities/MCPServerViewsKnowledgeDropdown";
+import { DescriptionSection } from "@app/components/agent_builder/capabilities/shared/DescriptionSection";
+import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
+import { isValidPage } from "@app/components/agent_builder/capabilities/shared/sheetUtils";
+import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type {
@@ -42,75 +37,91 @@ import type {
 } from "@app/components/agent_builder/types";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
-  ACTION_TYPE_TO_MCP_SERVER_MAP,
   capabilityFormSchema,
   CONFIGURATION_SHEET_PAGE_IDS,
-  isKnowledgeServerName,
-  isSupportedAgentBuilderAction,
 } from "@app/components/agent_builder/types";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { DataSourceViewSelectionConfigurations } from "@app/types";
 
 interface KnowledgeConfigurationSheetProps {
   onSave: (action: AgentBuilderAction) => void;
   onClose: () => void;
-  onOpen?: () => void;
-  action?: AgentBuilderAction;
+  onClickKnowledge: () => void;
+  action: AgentBuilderAction | null;
+  isEditing: boolean;
   open: boolean;
+  mcpServerViews: MCPServerViewType[];
+  getAgentInstructions: () => string;
 }
 
 export function KnowledgeConfigurationSheet({
   onSave,
   onClose,
-  onOpen,
+  onClickKnowledge,
   action,
+  isEditing,
   open,
+  mcpServerViews,
+  getAgentInstructions,
 }: KnowledgeConfigurationSheetProps) {
-  const [config, setConfig] = useState<CapabilityConfig | null>(() => {
-    if (action && isSupportedAgentBuilderAction(action)) {
-      const serverName = ACTION_TYPE_TO_MCP_SERVER_MAP[action.type];
-      return serverName && isKnowledgeServerName(serverName)
-        ? CAPABILITY_CONFIGS[serverName]
-        : null;
-    }
-    return CAPABILITY_CONFIGS["search"];
-  });
-
-  const handleClose = () => {
-    onClose();
-  };
-
   const handleSave = (
     formData: CapabilityFormData,
-    dataSourceConfigurations: DataSourceViewSelectionConfigurations,
-    configToUse: CapabilityConfig
+    dataSourceConfigurations: DataSourceViewSelectionConfigurations
   ) => {
-    const newAction = generateActionFromFormData({
-      config: configToUse,
-      formData,
-      dataSourceConfigurations,
-      actionId: action?.id,
-    });
+    const { name, description, configuration, mcpServerView } = formData;
+    const requirements = getMCPServerRequirements(mcpServerView);
+
+    const datasource = requirements.requiresDataSourceConfiguration
+      ? { dataSourceConfigurations: dataSourceConfigurations }
+      : { tablesConfigurations: dataSourceConfigurations };
+
+    const newAction = {
+      id: uniqueId(),
+      type: "MCP",
+      name,
+      description,
+      configuration: {
+        ...configuration,
+        ...datasource,
+      },
+    };
 
     if (newAction) {
       onSave(newAction);
-      handleClose();
+      onClose();
     }
   };
 
   // Memoize default values based on action (React Hook Form best practice)
   const defaultValues = useMemo(() => {
+    const dataSourceConfigurations =
+      action?.configuration.dataSourceConfigurations;
+
     const dataSourceTree =
-      action && open ? getDataSourceTree(action) : { in: [], notIn: [] };
+      dataSourceConfigurations && dataSourceConfigurations !== null && open
+        ? transformSelectionConfigurationsToTree(dataSourceConfigurations)
+        : { in: [], notIn: [] };
+
+    const selectedMCPServerView =
+      isEditing && action && action.type === "MCP"
+        ? mcpServerViews.find(
+            (mcpServerView) =>
+              mcpServerView.sId === action.configuration.mcpServerViewId
+          )
+        : mcpServerViews.find((view) => view.server.name === "search"); // select search as default
 
     return {
       sources: dataSourceTree,
       description: action?.description ?? "",
-      timeFrame: getTimeFrame(action),
-      jsonSchema: getJsonSchema(action),
+      configuration:
+        action?.configuration ?? getDefaultConfiguration(selectedMCPServerView),
+      mcpServerView: selectedMCPServerView ?? null,
+      name: selectedMCPServerView?.server.name,
     };
-  }, [action, open]);
+  }, [action, open, mcpServerViews, isEditing]);
 
   const formMethods = useForm<CapabilityFormData>({
     resolver: zodResolver(capabilityFormSchema),
@@ -124,13 +135,13 @@ export function KnowledgeConfigurationSheet({
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      handleClose();
+      onClose();
     }
   };
 
   const handleTriggerClick = () => {
-    if (!open && onOpen) {
-      onOpen();
+    if (!open) {
+      onClickKnowledge();
     }
   };
 
@@ -145,11 +156,11 @@ export function KnowledgeConfigurationSheet({
       </MultiPageSheetTrigger>
       <FormProvider {...formMethods}>
         <KnowledgeConfigurationSheetContent
-          config={config}
-          setConfig={setConfig}
           action={action}
           onSave={handleSave}
           isOpen={open}
+          getAgentInstructions={getAgentInstructions}
+          isEditing={isEditing}
         />
       </FormProvider>
     </MultiPageSheet>
@@ -157,65 +168,74 @@ export function KnowledgeConfigurationSheet({
 }
 
 interface KnowledgeConfigurationSheetContentProps {
-  config: CapabilityConfig | null;
-  setConfig: (config: CapabilityConfig | null) => void;
-  action?: AgentBuilderAction;
+  action: CapabilityFormData | null;
   onSave: (
     formData: CapabilityFormData,
-    dataSourceConfigurations: DataSourceViewSelectionConfigurations,
-    configToUse: CapabilityConfig
+    dataSourceConfigurations: DataSourceViewSelectionConfigurations
   ) => void;
   isOpen: boolean;
+  getAgentInstructions: () => string;
+  isEditing: boolean;
 }
 
 function KnowledgeConfigurationSheetContent({
   action,
-  config,
-  setConfig,
   onSave,
   isOpen,
+  getAgentInstructions,
+  isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
-  const { control, handleSubmit } = useFormContext<CapabilityFormData>();
+  const { control, handleSubmit, setValue, formState } =
+    useFormContext<CapabilityFormData>();
+
+  console.log("formState", formState.errors);
+
+  const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
+    name: "mcpServerView",
+  });
+  const sources = useWatch<CapabilityFormData, "sources">({
+    name: "sources",
+  });
+
+  const hasSourceSelection = sources.in.length > 0 || sources.notIn.length > 0;
+
+  const config = useMemo(() => {
+    if (mcpServerView !== null) {
+      return CAPABILITY_CONFIGS[mcpServerView.server.name ?? ""];
+    }
+    return null;
+  }, [mcpServerView]);
+
+  const requirements = useMemo(() => {
+    return getMCPServerRequirements(mcpServerView);
+  }, [mcpServerView]);
+
   const { owner } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { spaces } = useSpacesContext();
   const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
-  const instructions = useWatch<AgentBuilderFormData, "instructions">({
-    name: "instructions",
-  });
+  const agentInstructions = getAgentInstructions();
 
-  const initialPageId =
-    action && isSupportedAgentBuilderAction(action)
-      ? CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION
-      : CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
+  const initialPageId = isEditing
+    ? CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION
+    : CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
 
   const [currentPageId, setCurrentPageId] =
     useState<ConfigurationSheetPageId>(initialPageId);
 
   useEffect(() => {
-    if (action && isSupportedAgentBuilderAction(action)) {
-      setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION);
-      const serverName = ACTION_TYPE_TO_MCP_SERVER_MAP[action.type];
-      setSelectedMCPServerName(serverName);
-      if (serverName && isKnowledgeServerName(serverName)) {
-        setConfig(CAPABILITY_CONFIGS[serverName]);
-      }
-    } else if (!isOpen) {
+    if (!isOpen) {
       setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
-      setSelectedMCPServerName("search");
-      setConfig(CAPABILITY_CONFIGS["search"]);
-    }
-  }, [action, isOpen, setConfig]);
 
-  const [selectedMCPServerName, setSelectedMCPServerName] = useState<
-    string | null
-  >(
-    action && isSupportedAgentBuilderAction(action)
-      ? ACTION_TYPE_TO_MCP_SERVER_MAP[action.type]
-      : "search"
-  );
+      return;
+    }
+
+    if (isEditing) {
+      setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION);
+    }
+  }, [isEditing, isOpen]);
 
   const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
@@ -223,11 +243,10 @@ function KnowledgeConfigurationSheetContent({
     }
   };
 
-  const handleMCPServerSelection = (serverName: string) => {
-    setSelectedMCPServerName(serverName);
-    if (isKnowledgeServerName(serverName)) {
-      setConfig(CAPABILITY_CONFIGS[serverName]);
-    }
+  const handleMCPServerSelection = (mcpServerView: MCPServerViewType) => {
+    setValue("mcpServerView", mcpServerView);
+    setValue("name", mcpServerView.name ?? mcpServerView.server.name ?? "");
+    setValue("configuration.mcpServerViewId", mcpServerView.sId);
   };
 
   const pages: MultiPageSheetPage[] = [
@@ -272,39 +291,33 @@ function KnowledgeConfigurationSheetContent({
                 mcpServerViewsWithKnowledge={mcpServerViewsWithKnowledge}
                 onItemClick={handleMCPServerSelection}
                 isMCPServerViewsLoading={isMCPServerViewsLoading}
-                selectedServerName={selectedMCPServerName}
+                selectedMcpServerView={mcpServerView}
               />
             </div>
           </div>
 
           {/* Configuration Section - Only show when MCP server is selected */}
-          {selectedMCPServerName && config && (
+          {
             <>
               <hr className="border-gray-200" />
               <div className="space-y-6">
-                <h3 className="text-lg font-semibold">Configuration</h3>
-                {config.hasTimeFrame && (
-                  <TimeFrameSection
-                    actionType={
-                      config.name === "extract_data" ? "extract" : "include"
-                    }
-                  />
+                {requirements.mayRequireTimeFrameConfiguration && (
+                  <TimeFrameSection actionType="extract" />
                 )}
-                {config.hasJsonSchema && (
+
+                {requirements.mayRequireJsonSchemaConfiguration && (
                   <JsonSchemaSection
-                    initialSchemaString={
-                      action && getJsonSchema(action)
-                        ? JSON.stringify(getJsonSchema(action), null, 2)
-                        : null
-                    }
-                    agentInstructions={instructions}
                     owner={owner}
+                    agentInstructions={agentInstructions}
                   />
                 )}
-                <DescriptionSection {...config.descriptionConfig} />
+
+                {config && (
+                  <DescriptionSection {...config?.descriptionConfig} />
+                )}
               </div>
             </>
-          )}
+          }
         </div>
       ),
     },
@@ -316,18 +329,17 @@ function KnowledgeConfigurationSheetContent({
       currentPageId={currentPageId}
       onPageChange={handlePageChange}
       onSave={handleSubmit((formData) => {
-        if (!config) {
-          return;
-        }
         // Transform the tree structure to selection configurations
         const dataSourceConfigurations = transformTreeToSelectionConfigurations(
           formData.sources,
           supportedDataSourceViews
         );
-        onSave(formData, dataSourceConfigurations, config);
+
+        onSave(formData, dataSourceConfigurations);
       })}
       size="xl"
       showNavigation
+      disableNext={!hasSourceSelection}
     />
   );
 }
