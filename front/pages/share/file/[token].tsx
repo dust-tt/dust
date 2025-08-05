@@ -1,10 +1,6 @@
 import Head from "next/head";
 
 import { PublicInteractiveContentContainer } from "@app/components/assistant/conversation/content/PublicInteractiveContentContainer";
-import {
-  checkWorkspaceShareAccess,
-  hasAccessToSharedFile,
-} from "@app/lib/api/files/share_utils";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
