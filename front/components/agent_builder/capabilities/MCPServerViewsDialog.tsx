@@ -16,7 +16,10 @@ import { useForm } from "react-hook-form";
 
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData, MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  AgentBuilderFormData,
+  MCPFormData,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
@@ -33,10 +36,16 @@ import type {
   AgentBuilderAction,
   ConfigurationPagePageId,
 } from "@app/components/agent_builder/types";
-import { CONFIGURATION_DIALOG_PAGE_IDS, getDefaultMCPAction } from "@app/components/agent_builder/types";
+import {
+  CONFIGURATION_DIALOG_PAGE_IDS,
+  getDefaultMCPAction,
+} from "@app/components/agent_builder/types";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { DEFAULT_DATA_VISUALIZATION_DESCRIPTION, DEFAULT_DATA_VISUALIZATION_NAME } from "@app/lib/actions/constants";
+import {
+  DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
+  DEFAULT_DATA_VISUALIZATION_NAME,
+} from "@app/lib/actions/constants";
 import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -559,7 +568,15 @@ export function MCPServerViewsDialog({
         type: "error",
       });
     }
-  }, [configurationTool, form, mcpServerView, mode, onActionUpdate, sendNotification, onModeChange]);
+  }, [
+    configurationTool,
+    form,
+    mcpServerView,
+    mode,
+    onActionUpdate,
+    sendNotification,
+    onModeChange,
+  ]);
 
   const getFooterButtons = () => {
     const isToolSelectionPage =
