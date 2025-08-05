@@ -53,7 +53,7 @@ RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
         --release-version=$COMMIT_HASH \
         --service=$NEXT_PUBLIC_DATADOG_SERVICE-browser && \
         npx --yes @datadog/datadog-ci sourcemaps upload ./.next/server \
-        --minified-path-prefix=/ \
+        --minified-path-prefix=/app/.next/server/ \
         --repository-url=https://github.com/dust-tt/dust \
         --project-path=front \
         --release-version=$COMMIT_HASH \
