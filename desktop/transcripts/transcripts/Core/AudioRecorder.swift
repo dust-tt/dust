@@ -90,10 +90,8 @@ class AudioRecorder: ObservableObject {
 
     if isAggregateDevice {
       print("Detected potential aggregate device: \(currentInputDevice?.name ?? "Unknown")")
-      print("This should capture both input and output audio")
     } else {
       print("Standard input device detected: \(currentInputDevice?.name ?? "Unknown")")
-      print("This will only capture microphone audio. For call recording, create an aggregate device.")
     }
 
     // Install tap on input node - will capture whatever the input device provides

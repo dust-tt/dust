@@ -240,7 +240,7 @@ struct ContentView: View {
       backing: .buffered,
       defer: false
     )
-    setupWindow.title = "Call Recording Setup"
+    setupWindow.title = "Audio Device Setup"
     setupWindow.contentView = NSHostingView(
       rootView: CallRecordingSetupView(
         onSetupComplete: { aggregateDevice in

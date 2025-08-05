@@ -14,7 +14,7 @@ struct CallRecordingSetupView: View {
 
   var body: some View {
     VStack(spacing: 20) {
-      Text("Call Recording Setup")
+      Text("Select Audio Devices")
         .font(.title2)
         .bold()
 
@@ -80,7 +80,7 @@ struct CallRecordingSetupView: View {
         }
         .keyboardShortcut(.cancelAction)
 
-        Button("Create Call Recording Setup") {
+        Button("Apply Settings") {
           setRecordingDevice()
         }
         .keyboardShortcut(.defaultAction)
