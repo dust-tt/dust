@@ -37,7 +37,7 @@ export function TablesFilesystemBrowseDetails({
             <span className="font-medium">Browsing:</span> {nodeId}
           </div>
         )}
-        
+
         <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           {text}
         </div>
@@ -50,7 +50,7 @@ export function TablesFilesystemBrowseDetails({
               const isSchema = node.mimeType.includes("schema");
               const isDatabase = node.mimeType.includes("database");
               const isWarehouse = node.mimeType.includes("warehouse");
-              
+
               return (
                 <Citation
                   key={index}
@@ -63,13 +63,21 @@ export function TablesFilesystemBrowseDetails({
                     node.lastUpdatedAt ? ` • ${node.lastUpdatedAt}` : ""
                   }`}
                 >
-                  <CitationIcons>
-                    <Icon visual={IconComponent} />
-                    {(isTable || isSchema || isDatabase || isWarehouse) && (
-                      <Icon visual={TableIcon} size="xs" />
-                    )}
-                  </CitationIcons>
-                  <CitationTitle>{node.title}</CitationTitle>
+                  <div className="flex gap-2">
+                    <CitationIcons>
+                      <Icon visual={IconComponent} />
+                      {(isTable || isSchema || isDatabase || isWarehouse) && (
+                        <Icon visual={TableIcon} size="xs" />
+                      )}
+                    </CitationIcons>
+                    <CitationTitle>{node.title}</CitationTitle>
+                  </div>
+
+                  {node.parentTitle && (
+                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                      {node.parentTitle}
+                    </span>
+                  )}
                 </Citation>
               );
             })}
