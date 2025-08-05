@@ -14,10 +14,12 @@ use regex::Regex;
 use std::env;
 
 lazy_static! {
-    static ref OAUTH_FRESHSERVICE_CLIENT_ID: String = env::var("OAUTH_FRESHSERVICE_CLIENT_ID").unwrap();
+    static ref OAUTH_FRESHSERVICE_CLIENT_ID: String =
+        env::var("OAUTH_FRESHSERVICE_CLIENT_ID").unwrap();
     static ref OAUTH_FRESHSERVICE_CLIENT_SECRET: String =
         env::var("OAUTH_FRESHSERVICE_CLIENT_SECRET").unwrap();
-    static ref FRESHSERVICE_DOMAIN_RE: Regex = Regex::new(r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.myfreshworks\.com$").unwrap();
+    static ref FRESHSERVICE_DOMAIN_RE: Regex =
+        Regex::new(r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.myfreshworks\.com$").unwrap();
 }
 
 pub struct FreshserviceConnectionProvider {}
@@ -59,7 +61,10 @@ impl Provider for FreshserviceConnectionProvider {
 
         let auth_header = format!(
             "Basic {}",
-            general_purpose::STANDARD.encode(format!("{}:{}", *OAUTH_FRESHSERVICE_CLIENT_ID, *OAUTH_FRESHSERVICE_CLIENT_SECRET))
+            general_purpose::STANDARD.encode(format!(
+                "{}:{}",
+                *OAUTH_FRESHSERVICE_CLIENT_ID, *OAUTH_FRESHSERVICE_CLIENT_SECRET
+            ))
         );
 
         let req = self
@@ -89,12 +94,10 @@ impl Provider for FreshserviceConnectionProvider {
             ),
             refresh_token: result["refresh_token"].as_str().map(|s| s.to_string()),
             raw_json: result,
-            extra_metadata: Some(serde_json::Map::from_iter([
-                (
-                    "instance_url".to_string(),
-                    serde_json::Value::String(domain.to_string()),
-                ),
-            ])),
+            extra_metadata: Some(serde_json::Map::from_iter([(
+                "instance_url".to_string(),
+                serde_json::Value::String(domain.to_string()),
+            )])),
         })
     }
 
@@ -124,7 +127,10 @@ impl Provider for FreshserviceConnectionProvider {
 
         let auth_header = format!(
             "Basic {}",
-            general_purpose::STANDARD.encode(format!("{}:{}", *OAUTH_FRESHSERVICE_CLIENT_ID, *OAUTH_FRESHSERVICE_CLIENT_SECRET))
+            general_purpose::STANDARD.encode(format!(
+                "{}:{}",
+                *OAUTH_FRESHSERVICE_CLIENT_ID, *OAUTH_FRESHSERVICE_CLIENT_SECRET
+            ))
         );
 
         let req = self
