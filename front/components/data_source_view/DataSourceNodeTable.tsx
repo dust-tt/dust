@@ -36,7 +36,7 @@ interface DataSourceNodeTableProps {
   isCategoryLoading?: boolean;
 }
 
-interface NodeRowData {
+interface NodeRowData extends DataSourceViewContentNode {
   id: string;
   title: string;
   onClick?: () => void;
@@ -132,28 +132,30 @@ export function DataSourceNodeTable({
             isDark,
           });
 
+          const contentNode: DataSourceViewContentNode = {
+            internalId: dsv.sId,
+            title: getDataSourceNameFromView(dsv),
+            dataSourceView: dsv,
+            expandable: true,
+            parentInternalIds: null,
+            type: "folder",
+            mimeType: "application/vnd.dust.folder",
+            parentTitle: null,
+            lastUpdatedAt: null,
+            parentInternalId: null,
+            permission: "read",
+            sourceUrl: null,
+            providerVisibility: null,
+          };
+
           return {
+            ...contentNode,
             id: dsv.sId,
             internalId: dsv.sId,
             title: dsv.dataSource.name,
             icon: <Icon visual={logo} />,
             parentTitle: null,
             onClick: () => {
-              const contentNode: DataSourceViewContentNode = {
-                internalId: dsv.sId,
-                title: getDataSourceNameFromView(dsv),
-                dataSourceView: dsv,
-                expandable: true,
-                parentInternalIds: null,
-                type: "folder",
-                mimeType: "application/vnd.dust.folder",
-                parentTitle: null,
-                lastUpdatedAt: null,
-                parentInternalId: null,
-                permission: "read",
-                sourceUrl: null,
-                providerVisibility: null,
-              };
               onNavigate(contentNode);
             },
           };
@@ -203,12 +205,7 @@ export function DataSourceNodeTable({
               onClick={(event) => event.stopPropagation()}
               onCheckedChange={(state) => {
                 // When clicking a partial checkbox, select all
-                if (selectionState === "partial") {
-                  selectCurrentNavigationEntry();
-                  return;
-                }
-
-                if (state) {
+                if (selectionState === "partial" || state) {
                   selectCurrentNavigationEntry();
                 } else {
                   removeCurrentNavigationEntry();
@@ -230,15 +227,10 @@ export function DataSourceNodeTable({
                 onClick={(event) => event.stopPropagation()}
                 onCheckedChange={(state) => {
                   // When clicking a partial checkbox, select all
-                  if (selectionState === "partial") {
-                    selectNode(row.original.id);
-                    return;
-                  }
-
-                  if (state) {
-                    selectNode(row.original.id);
+                  if (selectionState === "partial" || state) {
+                    selectNode({ type: "node", node: row.original });
                   } else {
-                    removeNode(row.original.id);
+                    removeNode(row.original.id, row.original.title);
                   }
                 }}
               />
@@ -308,6 +300,7 @@ function getTableRows(
 ): NodeRowData[] {
   return nodes.map((node) => {
     return {
+      ...node,
       id: node.internalId,
       title: node.title,
       icon: (

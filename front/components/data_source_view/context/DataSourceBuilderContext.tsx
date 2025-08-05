@@ -47,7 +47,10 @@ import type {
 import {
   addNodeToTree,
   computeNavigationPath,
+  computeNavigationReadablePath,
+  getLastNavigationHistoryEntryId,
   isNodeSelected,
+  navigationHistoryEntryTitle,
   removeNodeFromTree,
 } from "@app/components/data_source_view/context/utils";
 import type {
@@ -72,7 +75,7 @@ type DataSourceBuilderState = StateType & {
    * Total path is deduced from the current navigationHistory state.
    * You just have to put the row id of the source you want to select.
    */
-  selectNode: (rowId: string) => void;
+  selectNode: (entry: NavigationHistoryEntryType) => void;
 
   /*
    * Select current navigationHistory entry.
@@ -85,12 +88,12 @@ type DataSourceBuilderState = StateType & {
    * Total path is deduced from the current navigationHistory state.
    * You just have to put the row id of the source you want to select.
    */
-  removeNode: (rowId: string) => void;
+  removeNode: (rowId: string, name: string) => void;
 
   /**
    * Remove a specific row, but need to include its full path.
    */
-  removeNodeWithPath: (path: string) => void;
+  removeNodeWithPath: (path: string, name: string) => void;
 
   /**
    * Remove the current navigationHistory entry
@@ -220,13 +223,19 @@ export function DataSourceBuilderProvider({
   });
 
   const selectNode: DataSourceBuilderState["selectNode"] = useCallback(
-    (rowId) => {
+    (entry) => {
       const nodePath = computeNavigationPath(state.navigationHistory);
-      if (rowId) {
-        nodePath.push(rowId);
+      if (entry) {
+        nodePath.push(getLastNavigationHistoryEntryId(entry));
       }
 
-      field.onChange(addNodeToTree(field.value, nodePath));
+      field.onChange(
+        addNodeToTree(field.value, {
+          path: nodePath,
+          name: navigationHistoryEntryTitle(entry),
+          readablePath: computeNavigationReadablePath(state.navigationHistory),
+        })
+      );
     },
     [field, state.navigationHistory]
   );
@@ -234,32 +243,71 @@ export function DataSourceBuilderProvider({
   const selectCurrentNavigationEntry: DataSourceBuilderState["selectCurrentNavigationEntry"] =
     useCallback(() => {
       const nodePath = computeNavigationPath(state.navigationHistory);
-      field.onChange(addNodeToTree(field.value, nodePath));
+      const lastEntryId =
+        state.navigationHistory[state.navigationHistory.length - 1];
+      const lastEntry = navigationHistoryEntryTitle(lastEntryId);
+
+      const isFirstNode =
+        state.navigationHistory[state.navigationHistory.length - 2].type !==
+        "node";
+
+      field.onChange(
+        addNodeToTree(field.value, {
+          path: nodePath,
+          name: lastEntry,
+          readablePath: computeNavigationReadablePath(
+            state.navigationHistory.slice(0, isFirstNode ? -2 : -1)
+          ),
+        })
+      );
     }, [field, state.navigationHistory]);
 
   const removeNode: DataSourceBuilderState["removeNode"] = useCallback(
-    (rowId) => {
+    (rowId, name) => {
       const nodePath = computeNavigationPath(state.navigationHistory);
       if (rowId) {
         nodePath.push(rowId);
       }
-      field.onChange(removeNodeFromTree(field.value, nodePath));
+      field.onChange(
+        removeNodeFromTree(field.value, {
+          path: nodePath,
+          name,
+          readablePath: computeNavigationReadablePath(state.navigationHistory),
+        })
+      );
     },
     [field, state.navigationHistory]
   );
 
   const removeNodeWithPath: DataSourceBuilderState["removeNodeWithPath"] =
     useCallback(
-      (path) => {
-        field.onChange(removeNodeFromTree(field.value, path.split(".")));
+      (path, name) => {
+        field.onChange(
+          removeNodeFromTree(field.value, {
+            path: path.split("."),
+            name,
+            readablePath: computeNavigationReadablePath(
+              state.navigationHistory
+            ),
+          })
+        );
       },
-      [field]
+      [field, state.navigationHistory]
     );
 
   const removeCurrentNavigationEntry: DataSourceBuilderState["removeCurrentNavigationEntry"] =
     useCallback(() => {
       const nodePath = computeNavigationPath(state.navigationHistory);
-      field.onChange(removeNodeFromTree(field.value, nodePath));
+      const lastEntry = navigationHistoryEntryTitle(
+        state.navigationHistory[state.navigationHistory.length - 1]
+      );
+      field.onChange(
+        removeNodeFromTree(field.value, {
+          path: nodePath,
+          name: lastEntry,
+          readablePath: computeNavigationReadablePath(state.navigationHistory),
+        })
+      );
     }, [field, state.navigationHistory]);
 
   const isRowSelected: DataSourceBuilderState["isRowSelected"] = useCallback(

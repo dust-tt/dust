@@ -6,9 +6,18 @@ import type {
   SpaceType,
 } from "@app/types";
 
+const dataSourceBuilderTreeItemType = z.object({
+  name: z.string(),
+  path: z.string(),
+  readablePath: z.string(),
+});
+export type DataSourceBuilderTreeItemType = z.infer<
+  typeof dataSourceBuilderTreeItemType
+>;
+
 export const dataSourceBuilderTreeType = z.object({
-  in: z.string().array(),
-  notIn: z.string().array(),
+  in: dataSourceBuilderTreeItemType.array(),
+  notIn: dataSourceBuilderTreeItemType.array(),
 });
 export type DataSourceBuilderTreeType = z.infer<
   typeof dataSourceBuilderTreeType

@@ -1,8 +1,10 @@
 import type {
+  DataSourceBuilderTreeItemType,
   DataSourceBuilderTreeType,
   NavigationHistoryEntryType,
   NodeSelectionState,
 } from "@app/components/data_source_view/context/types";
+import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import type {
   DataSourceViewCategoryWithoutApps,
   DataSourceViewContentNode,
@@ -31,17 +33,22 @@ function isParentOrSamePath(parentPath: string, childPath: string): boolean {
  */
 export function addNodeToTree(
   tree: DataSourceBuilderTreeType,
-  path: string[]
+  item: {
+    path: string[];
+    name: string;
+    readablePath: string;
+  }
 ): DataSourceBuilderTreeType {
-  const pathStr = pathToString(path);
+  const pathStr = pathToString(item.path);
   const pathPrefix = getPathPrefix(pathStr);
 
-  const hasParentInclusion = tree.in.some((inPath) =>
+  const hasParentInclusion = tree.in.some(({ path: inPath }) =>
     isParentOrSamePath(inPath, pathStr)
   );
 
   const newNotIn = tree.notIn.filter(
-    (notInPath) => notInPath !== pathStr && !notInPath.startsWith(pathPrefix)
+    ({ path: notInPath }) =>
+      notInPath !== pathStr && !notInPath.startsWith(pathPrefix)
   );
 
   if (hasParentInclusion) {
@@ -51,21 +58,24 @@ export function addNodeToTree(
     };
   }
 
-  if (tree.notIn.includes(pathStr)) {
+  if (tree.notIn.map((el) => el.path).includes(pathStr)) {
     return {
       in: tree.in,
       notIn: newNotIn,
     };
   }
 
-  if (tree.in.includes(pathStr)) {
+  if (tree.in.map((el) => el.path).includes(pathStr)) {
     return {
       in: tree.in,
       notIn: newNotIn,
     };
   }
 
-  const newIn = [...tree.in, pathStr];
+  const newIn = [
+    ...tree.in,
+    { path: pathStr, name: item.name, readablePath: item.readablePath },
+  ];
 
   return {
     in: newIn,
@@ -82,21 +92,25 @@ export function addNodeToTree(
  */
 export function removeNodeFromTree(
   tree: DataSourceBuilderTreeType,
-  path: string[]
+  item: {
+    path: string[];
+    name: string;
+    readablePath: string;
+  }
 ): DataSourceBuilderTreeType {
-  const pathStr = pathToString(path);
+  const pathStr = pathToString(item.path);
   const pathPrefix = getPathPrefix(pathStr);
 
   let hasParentExclusion = false;
   let hasChildExclusions = false;
-  const newNotIn: string[] = [];
+  const newNotIn: DataSourceBuilderTreeItemType[] = [];
 
   for (const notInPath of tree.notIn) {
-    if (isParentOrSamePath(notInPath, pathStr)) {
+    if (isParentOrSamePath(notInPath.path, pathStr)) {
       hasParentExclusion = true;
     }
 
-    if (!notInPath.startsWith(pathPrefix)) {
+    if (!notInPath.path.startsWith(pathPrefix)) {
       newNotIn.push(notInPath);
     } else {
       hasChildExclusions = true;
@@ -104,16 +118,16 @@ export function removeNodeFromTree(
   }
 
   const newIn = tree.in.filter(
-    (inPath) => inPath !== pathStr && !inPath.startsWith(pathPrefix)
+    ({ path: inPath }) => inPath !== pathStr && !inPath.startsWith(pathPrefix)
   );
 
-  const hasChildInclusions = tree.in.some((inPath) =>
+  const hasChildInclusions = tree.in.some(({ path: inPath }) =>
     inPath.startsWith(pathPrefix)
   );
 
-  const removedExactPath = tree.in.includes(pathStr);
+  const removedExactPath = tree.in.map((el) => el.path).includes(pathStr);
 
-  const hasParentInclusion = tree.in.some((inPath) =>
+  const hasParentInclusion = tree.in.some(({ path: inPath }) =>
     isParentOrSamePath(inPath, pathStr)
   );
 
@@ -132,7 +146,11 @@ export function removeNodeFromTree(
     (hasChildExclusions && !hasParentInclusion) ||
     (hasParentInclusion && !hasChildInclusions && !removedExactPath)
   ) {
-    newNotIn.push(pathStr);
+    newNotIn.push({
+      path: pathStr,
+      name: item.name,
+      readablePath: item.readablePath,
+    });
   }
 
   return {
@@ -160,11 +178,11 @@ export function isNodeSelected(
   let hasChildExclusions = false;
 
   for (const notInPath of tree.notIn) {
-    if (isParentOrSamePath(notInPath, pathStr)) {
+    if (isParentOrSamePath(notInPath.path, pathStr)) {
       return false;
     }
 
-    if (notInPath.startsWith(pathPrefix)) {
+    if (notInPath.path.startsWith(pathPrefix)) {
       hasChildExclusions = true;
     }
   }
@@ -173,11 +191,11 @@ export function isNodeSelected(
   let hasChildInclusions = false;
 
   for (const inPath of tree.in) {
-    if (isParentOrSamePath(inPath, pathStr)) {
+    if (isParentOrSamePath(inPath.path, pathStr)) {
       isIncluded = true;
     }
 
-    if (inPath.startsWith(pathPrefix)) {
+    if (inPath.path.startsWith(pathPrefix)) {
       hasChildInclusions = true;
     }
   }
@@ -191,21 +209,60 @@ export function isNodeSelected(
       : false;
 }
 
+export function getLastNavigationHistoryEntryId(
+  entry: NavigationHistoryEntryType
+): string {
+  switch (entry.type) {
+    case "root":
+      return "root";
+    case "space":
+      return entry.space.sId;
+    case "category":
+      return entry.category;
+    case "node":
+      return entry.node.internalId;
+  }
+}
+
 export function computeNavigationPath(
   navigationHistory: NavigationHistoryEntryType[]
 ): string[] {
-  return navigationHistory.map((entry) => {
-    switch (entry.type) {
-      case "root":
-        return "root";
-      case "space":
-        return entry.space.sId;
-      case "category":
-        return entry.category;
-      case "node":
-        return entry.node.internalId;
-    }
-  });
+  return navigationHistory.map((entry) =>
+    getLastNavigationHistoryEntryId(entry)
+  );
+}
+
+/**
+ * Compute the human readable path only for node.
+ * e.g: Projects/Work/John
+ */
+export function computeNavigationReadablePath(
+  navigationHistory: NavigationHistoryEntryType[]
+): string {
+  return navigationHistory
+    .reduce((acc, entry) => {
+      if (entry.type === "node") {
+        acc.push(entry.node.title);
+      }
+
+      return acc;
+    }, [] as string[])
+    .join("/");
+}
+
+export function navigationHistoryEntryTitle(
+  entry: NavigationHistoryEntryType
+): string {
+  switch (entry.type) {
+    case "root":
+      return "root";
+    case "space":
+      return entry.space.name;
+    case "category":
+      return CATEGORY_DETAILS[entry.category].label;
+    case "node":
+      return entry.node.title;
+  }
 }
 
 export function findSpaceFromNavigationHistory(
