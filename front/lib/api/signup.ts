@@ -317,7 +317,7 @@ export async function handleRegularSignupFlow(
     }
 
     return new Ok({ flow: "joined", workspace: lightWorkspace });
-  } else if (!targetWorkspace) {
+  } else if (!targetWorkspace && !targetWorkspaceId) {
     const workspace = await createWorkspace(session);
     const lightWorkspace = renderLightWorkspaceType({ workspace });
     await createAndLogMembership({
