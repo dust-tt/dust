@@ -31,7 +31,7 @@ export async function getSpaceHierarchy(
   // relationships in-app, minimizing database interactions.
   // If needed we could move the same approach as Notion and cache the results in Redis.
   const allPages = await ConfluencePage.findAll({
-    attributes: ["pageId", "parentId"],
+    attributes: ["pageId", "parentId", "parentType"],
     where: {
       connectorId,
       spaceId,
@@ -39,7 +39,7 @@ export async function getSpaceHierarchy(
   });
 
   const allFolders = await ConfluenceFolder.findAll({
-    attributes: ["folderId", "parentId"],
+    attributes: ["folderId", "parentId", "parentType"],
     where: {
       connectorId,
       spaceId,

@@ -689,13 +689,11 @@ async function confluenceCheckAndUpsertSingleFolderActivity({
   }
 
   let parents: [string, string, ...string[]];
-  if (folder.parentId) {
+  if (folder.parentId && folder.parentType) {
     // Exact parent Ids will be computed after all entity imports within the space have been completed.
     parents = [
       makeFolderInternalId(folder.id),
-      folder.parentType === "page"
-        ? makePageInternalId(folder.parentId)
-        : makeFolderInternalId(folder.parentId),
+      makeEntityInternalId(folder.parentType, folder.parentId),
       HiddenContentNodeParentId,
     ];
   } else {
@@ -1048,7 +1046,7 @@ export async function confluenceUpdateEntitiesParentIdsActivity(
   const connector = await fetchConfluenceConnector(connectorId);
 
   const pages = await ConfluencePage.findAll({
-    attributes: ["id", "pageId", "parentId", "spaceId"],
+    attributes: ["id", "pageId", "parentId", "parentType", "spaceId"],
     where: {
       connectorId,
       spaceId,
@@ -1057,7 +1055,14 @@ export async function confluenceUpdateEntitiesParentIdsActivity(
   });
 
   const folders = await ConfluenceFolder.findAll({
-    attributes: ["id", "folderId", "parentId", "spaceId"],
+    attributes: [
+      "id",
+      "folderId",
+      "parentId",
+      "parentType",
+      "spaceId",
+      "title",
+    ],
     where: {
       connectorId,
       spaceId,
@@ -1126,7 +1131,7 @@ export async function confluenceUpdateEntitiesParentIdsActivity(
     }
   );
 
-  logger.info({ connectorId }, "Done updating pages parent ids.");
+  logger.info({ connectorId }, "Done updating entities parent ids.");
 }
 
 export async function confluenceRemoveUnvisitedEntitiesActivity({
