@@ -12,6 +12,7 @@ import {
   BaseConnectorManager,
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
+import { autoReadChannel } from "@connectors/connectors/slack/auto_read_channel";
 import { getBotEnabled } from "@connectors/connectors/slack/bot";
 import {
   getChannels,
@@ -518,7 +519,46 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           );
         }
 
-        return slackConfig.setAutoReadChannelPatterns(autoReadChannelPatterns);
+        const res = await slackConfig.setAutoReadChannelPatterns(
+          autoReadChannelPatterns
+        );
+
+        if (res.isErr()) {
+          return res;
+        }
+
+        // Check matching channels.
+        const slackClient = await getSlackClient(connector.id);
+
+        // Fetch all channels from Slack
+        const allChannels = await getChannels(slackClient, connector.id, false);
+        const results = [];
+        for (const channel of allChannels) {
+          if (!channel.id || !channel.name) {
+            continue;
+          }
+
+          try {
+            results.push(
+              await autoReadChannel(
+                slackConfig.slackTeamId,
+                logger,
+                channel.id,
+                connector.type as "slack" | "slack_bot"
+              )
+            );
+          } catch (error) {
+            results.push(new Err(normalizeError(error)));
+          }
+        }
+
+        for (const result of results) {
+          if (result.isErr()) {
+            return result;
+          }
+        }
+
+        return res;
       }
 
       case "restrictedSpaceAgentsEnabled": {
