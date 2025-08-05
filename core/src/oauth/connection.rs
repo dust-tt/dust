@@ -15,7 +15,6 @@ use crate::oauth::{
 };
 use crate::utils;
 use crate::utils::ParseError;
-use crate::{error, info};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
@@ -24,6 +23,7 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::time::Duration;
 use std::{env, fmt};
+use tracing::{error, info};
 
 use super::{credential::Credential, providers::utils::ProviderHttpRequestError};
 

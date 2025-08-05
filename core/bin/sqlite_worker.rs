@@ -17,7 +17,6 @@ use dust::{
     },
     utils::{self, error_response, APIResponse},
 };
-use dust::{error, info};
 use hyper::StatusCode;
 use lazy_static::lazy_static;
 use reqwest::Method;
@@ -37,6 +36,7 @@ use tokio::{
     net::TcpListener,
     signal::unix::{signal, SignalKind},
 };
+use tracing::{error, info};
 
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
