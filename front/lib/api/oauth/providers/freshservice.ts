@@ -7,11 +7,8 @@ import {
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import {
-  isValidFreshserviceDomain,
-  type OAuthConnectionType,
-  type OAuthUseCase,
-} from "@app/types/oauth/lib";
+import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import { isValidFreshserviceDomain } from "@app/types/oauth/lib";
 
 export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
@@ -45,14 +42,14 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
       "freshservice.tickets.time_entries.view",
       "freshservice.tickets.view",
     ];
-    
+
     // Get domain from connection metadata
     const freshworksDomain = connection.metadata.instance_url;
-    
+
     if (!isValidFreshserviceDomain(freshworksDomain)) {
       throw new Error("Invalid Freshservice domain");
     }
-    
+
     return (
       `https://${freshworksDomain}/org/oauth/v2/authorize` +
       `?response_type=code` +
@@ -78,7 +75,7 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
         return isValidFreshserviceDomain(extraConfig.instance_url);
       }
     }
-    
+
     // For other use cases, domain is required
     if (Object.keys(extraConfig).length !== 1) {
       return false;

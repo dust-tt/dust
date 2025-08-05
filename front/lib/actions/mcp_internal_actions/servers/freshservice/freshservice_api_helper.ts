@@ -104,11 +104,14 @@ export interface FreshserviceListResponse<T> {
 
 // Error codes
 export const FRESHSERVICE_ERROR_MESSAGES = {
-  AUTHENTICATION_REQUIRED: "Authentication required. Please connect your Freshservice account.",
+  AUTHENTICATION_REQUIRED:
+    "Authentication required. Please connect your Freshservice account.",
   DOMAIN_NOT_CONFIGURED: "Freshservice domain not configured.",
   TICKET_NOT_FOUND: "Ticket not found.",
   REQUESTER_NOT_FOUND: "Requester not found.",
-  INVALID_PRIORITY: "Invalid priority. Must be 1 (Low), 2 (Medium), 3 (High), or 4 (Urgent).",
-  INVALID_STATUS: "Invalid status. Must be 2 (Open), 3 (Pending), 4 (Resolved), or 5 (Closed).",
+  INVALID_PRIORITY:
+    "Invalid priority. Must be 1 (Low), 2 (Medium), 3 (High), or 4 (Urgent).",
+  INVALID_STATUS:
+    "Invalid status. Must be 2 (Open), 3 (Pending), 4 (Resolved), or 5 (Closed).",
   API_ERROR: "API request failed",
 };
