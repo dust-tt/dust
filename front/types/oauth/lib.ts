@@ -155,7 +155,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
           instance_url: {
             label: "Freshworks Organization URL",
             value: undefined,
-            helpMessage: "Your Freshworks organization URL (e.g., yourcompany.myfreshworks.com)",
+            helpMessage: "Your Freshworks organization URL for OAuth (e.g., yourcompany.myfreshworks.com). API calls will automatically use the corresponding Freshservice domain.",
             validator: isValidFreshserviceDomain,
           },
         };

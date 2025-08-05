@@ -56,14 +56,31 @@ const createServer = (): McpServer => {
     }
   };
 
+  // Helper function to convert OAuth domain to API domain
+  const getApiDomain = (oauthDomain: string): string => {
+    // Convert dust-tt.myfreshworks.com -> dust-tt.freshservice.com
+    if (oauthDomain.endsWith('.myfreshworks.com')) {
+      return oauthDomain.replace('.myfreshworks.com', '.freshservice.com');
+    }
+    // If it's already a freshservice.com domain, use it as-is
+    if (oauthDomain.endsWith('.freshservice.com')) {
+      return oauthDomain;
+    }
+    // Fallback: assume it's the subdomain and add .freshservice.com
+    return `${oauthDomain}.freshservice.com`;
+  };
+
   // Helper function to make API requests
   const apiRequest = async (
     accessToken: string,
-    domain: string,
+    oauthDomain: string,
     endpoint: string,
     options: RequestInit = {}
   ) => {
-    const response = await fetch(`https://${domain}/api/v2/${endpoint}`, {
+    const apiDomain = getApiDomain(oauthDomain);
+    const url = `https://${apiDomain}/api/v2/${endpoint}`;
+
+    const response = await fetch(url, {
       ...options,
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -286,12 +303,24 @@ const createServer = (): McpServer => {
         action: async (accessToken, domain) => {
           const updateData: any = {};
 
-          if (subject) updateData.subject = subject;
-          if (description) updateData.description = description;
-          if (priority) updateData.priority = parseInt(priority);
-          if (status) updateData.status = parseInt(status);
-          if (tags) updateData.tags = tags;
-          if (custom_fields) updateData.custom_fields = custom_fields;
+          if (subject) {
+            updateData.subject = subject;
+          }
+          if (description) {
+            updateData.description = description;
+          }
+          if (priority) {
+            updateData.priority = parseInt(priority);
+          }
+          if (status) {
+            updateData.status = parseInt(status);
+          }
+          if (tags) {
+            updateData.tags = tags;
+          }
+          if (custom_fields) {
+            updateData.custom_fields = custom_fields;
+          }
 
           const result = await apiRequest(
             accessToken,
