@@ -22,17 +22,19 @@ class AudioRecorder: ObservableObject {
 
     // Generate unique ID for this recording
     let recordingTimestamp = Int(Date().timeIntervalSince1970)
-    recordingId = "recording_\(recordingTimestamp)"
+    recordingId = "\(AudioSettings.recordingPrefix)\(recordingTimestamp)"
 
     // Create temporary file URL for AVAudioRecorder
     let tempDir = FileManager.default.temporaryDirectory
-    tempURL = tempDir.appendingPathComponent("\(recordingId!).m4a")
+    tempURL = tempDir.appendingPathComponent(
+      "\(recordingId!)\(AudioSettings.audioFileExtension)"
+    )
 
     let settings =
       [
         AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-        AVSampleRateKey: 8000,
-        AVNumberOfChannelsKey: 1,
+        AVSampleRateKey: AudioSettings.audioSampleRate,
+        AVNumberOfChannelsKey: AudioSettings.audioChannels,
         AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue,
       ] as [String: Any]
 

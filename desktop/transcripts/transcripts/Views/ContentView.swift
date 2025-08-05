@@ -2,15 +2,9 @@ import SwiftUI
 
 struct ContentView: View {
   @StateObject private var audioRecorder = AudioRecorder()
+  @StateObject private var viewModel = TranscriptViewModel()
   @State private var hasPermission = false
-  @State private var isLoggedIn = false
   @State private var showingLoginDialog = false
-  @State private var apiKeyInput = ""
-  @State private var workspaceIdInput = ""
-  @State private var isSetupComplete = false
-  @State private var showingLoginError = false
-  @State private var loginErrorMessage = ""
-  @State private var showLoginSuccessMessage = false
 
   var body: some View {
     VStack(spacing: 8) {
@@ -25,7 +19,10 @@ struct ContentView: View {
           Text("Start Recording")
         }
       }
-      .disabled(audioRecorder.isRecording || !isLoggedIn || !isSetupComplete)
+      .disabled(
+        audioRecorder.isRecording || !viewModel.isLoggedIn
+          || !viewModel.isSetupComplete
+      )
 
       Button(action: stopRecording) {
         HStack {
@@ -37,8 +34,8 @@ struct ContentView: View {
 
       Divider()
 
-      if isLoggedIn {
-        if showLoginSuccessMessage {
+      if viewModel.isLoggedIn {
+        if viewModel.showLoginSuccessMessage {
           Label("Login successful!", systemImage: "checkmark.circle.fill")
             .font(.caption)
             .foregroundColor(.green)
@@ -50,7 +47,7 @@ struct ContentView: View {
             .labelStyle(.titleAndIcon)
         }
 
-        if isSetupComplete {
+        if viewModel.isSetupComplete {
           if let folder = UserDefaultsManager.shared.loadSelectedFolder() {
             Text("Folder: \(folder.name)")
               .font(.caption2)
@@ -64,7 +61,7 @@ struct ContentView: View {
         }
 
         Button("Logout") {
-          logout()
+          viewModel.logout()
         }
         .font(.caption)
       } else {
@@ -83,8 +80,8 @@ struct ContentView: View {
     .padding()
     .frame(minWidth: 350)
     .onAppear {
-      checkLoginStatus()
-      checkSetupStatus()
+      viewModel.checkLoginStatus()
+      viewModel.checkSetupStatus()
     }
   }
 
@@ -112,150 +109,20 @@ struct ContentView: View {
     audioRecorder.stopRecording()
 
     // Wait a moment for the recording data to be processed
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-      if let recordingData = audioRecorder.recordingData,
+    DispatchQueue.main.asyncAfter(
+      deadline: .now() + AudioSettings.recordingDataProcessingDelay
+    ) {
+      guard let recordingData = audioRecorder.recordingData,
         let recordingId = audioRecorder.recordingId
-      {
-        print("Recording completed: \(recordingData.count) bytes")
-
-        // Upload to Dust API using stored credentials
-        if let apiKey = UserDefaultsManager.shared.loadAPIKey(),
-          let workspaceId = UserDefaultsManager.shared.loadWorkspaceId(),
-          let selectedFolder = UserDefaultsManager.shared.loadSelectedFolder()
-        {
-          uploadTranscript(
-            audioData: recordingData,
-            documentId: recordingId,
-            apiKey: apiKey,
-            workspaceId: workspaceId,
-            spaceId: selectedFolder.spaceId,
-            dataSourceId: selectedFolder.dataSourceId
-          )
-        } else {
-          print("Missing credentials or folder selection for upload")
-        }
-      } else {
+      else {
         print("No recording data available")
+        return
       }
-    }
-  }
 
-  private func uploadTranscript(
-    audioData: Data,
-    documentId: String,
-    apiKey: String,
-    workspaceId: String,
-    spaceId: String,
-    dataSourceId: String
-  ) {
-    Task {
-      do {
-
-        print("Uploading transcript to Dust...")
-        let response = try await DustAPIClient.shared.uploadTranscript(
-          apiKey: apiKey,
-          workspaceId: workspaceId,
-          spaceId: spaceId,
-          dataSourceId: dataSourceId,
-          documentId: documentId,
-          audioData: audioData
-        )
-
-        await MainActor.run {
-          print("Transcript uploaded successfully!")
-          print("Document ID: \(response.document.documentId)")
-        }
-      } catch {
-        await MainActor.run {
-          print("Failed to upload transcript: \(error.localizedDescription)")
-          if let dustError = error as? DustAPIError {
-            print("Dust API Error: \(dustError.message)")
-          }
-        }
-      }
-    }
-  }
-
-  private func checkLoginStatus() {
-    isLoggedIn = UserDefaultsManager.shared.hasCompleteCredentials()
-  }
-
-  private func checkSetupStatus() {
-    isSetupComplete = UserDefaultsManager.shared.hasCompleteSetup()
-  }
-
-  private func login(completion: @escaping (Bool) -> Void = { _ in }) {
-    guard !apiKeyInput.isEmpty, !workspaceIdInput.isEmpty else {
-      completion(false)
-      return
-    }
-
-    // Validate API key format
-    guard apiKeyInput.hasPrefix("sk-") else {
-      loginErrorMessage = "Invalid API key format"
-      showingLoginError = true
-      completion(false)
-      return
-    }
-
-    // Validate credentials by calling the API
-    Task {
-      do {
-        _ = try await DustAPIClient.shared.fetchSpaces(
-          apiKey: apiKeyInput,
-          workspaceId: workspaceIdInput
-        )
-
-        // If we get here, credentials are valid - save them
-        await MainActor.run {
-          if UserDefaultsManager.shared.saveAPIKey(apiKeyInput)
-            && UserDefaultsManager.shared.saveCredentials(
-              apiKey: apiKeyInput,
-              workspaceId: workspaceIdInput,
-              folderId: ""
-            )
-          {
-            isLoggedIn = true
-            apiKeyInput = ""
-            workspaceIdInput = ""
-            checkSetupStatus()
-            showLoginSuccessMessage = true
-            print("Credentials validated and saved successfully")
-            completion(true)
-
-            // Hide success message after 3 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-              showLoginSuccessMessage = false
-            }
-          } else {
-            loginErrorMessage = "Failed to save credentials"
-            showingLoginError = true
-            completion(false)
-          }
-        }
-      } catch {
-        await MainActor.run {
-          if let dustError = error as? DustAPIError {
-            loginErrorMessage = dustError.message
-          } else {
-            loginErrorMessage = "Login failed"
-          }
-          showingLoginError = true
-          completion(false)
-        }
-      }
-    }
-  }
-
-  private func logout() {
-    if UserDefaultsManager.shared.deleteCredentials()
-      && UserDefaultsManager.shared.deleteSelectedFolder()
-    {
-      isLoggedIn = false
-      isSetupComplete = false
-      print("Logged out successfully")
-    } else {
-      print("Failed to logout")
+      viewModel.handleRecordingCompletion(
+        recordingData: recordingData,
+        recordingId: recordingId
+      )
     }
   }
 
@@ -269,20 +136,20 @@ struct ContentView: View {
     loginWindow.title = "Login to Dust"
     loginWindow.contentView = NSHostingView(
       rootView: LoginView(
-        apiKeyInput: $apiKeyInput,
-        workspaceIdInput: $workspaceIdInput,
-        showingError: $showingLoginError,
-        errorMessage: $loginErrorMessage,
+        apiKeyInput: $viewModel.apiKeyInput,
+        workspaceIdInput: $viewModel.workspaceIdInput,
+        showingError: $viewModel.showingLoginError,
+        errorMessage: $viewModel.loginErrorMessage,
         onLogin: {
-          login { success in
+          viewModel.login { success in
             if success {
               loginWindow.close()
             }
           }
         },
         onCancel: {
-          apiKeyInput = ""
-          workspaceIdInput = ""
+          viewModel.apiKeyInput = ""
+          viewModel.workspaceIdInput = ""
           loginWindow.close()
         }
       )
@@ -313,7 +180,7 @@ struct ContentView: View {
         workspaceId: workspaceId,
         onFolderSelected: { folder in
           if UserDefaultsManager.shared.saveSelectedFolder(folder) {
-            isSetupComplete = true
+            viewModel.isSetupComplete = true
             print("Selected folder: \(folder.displayName)")
           }
           setupWindow.close()
