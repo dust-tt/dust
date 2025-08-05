@@ -1,4 +1,9 @@
-import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
+import uniqBy from "lodash/uniqBy";
+
+import type {
+  DataSourceBuilderTreeItemType,
+  DataSourceBuilderTreeType,
+} from "@app/components/data_source_view/context/types";
 import type {
   DataSourceViewContentNode,
   DataSourceViewSelectionConfigurations,
@@ -55,7 +60,7 @@ export function transformTreeToSelectionConfigurations(
 
   // Parse the tree paths to extract data source configurations
   for (const path of tree.in) {
-    const parts = path.split(".");
+    const parts = path.path.split(".");
     if (parts.length < 2 || parts[0] !== "root") {
       continue;
     }
@@ -130,8 +135,8 @@ export function transformTreeToSelectionConfigurations(
 export function transformSelectionConfigurationsToTree(
   configurations: DataSourceViewSelectionConfigurations
 ): DataSourceBuilderTreeType {
-  const inPaths: string[] = [];
-  const notInPaths: string[] = [];
+  const inPaths: DataSourceBuilderTreeItemType[] = [];
+  const notInPaths: DataSourceBuilderTreeItemType[] = [];
 
   for (const config of Object.values(configurations)) {
     const { dataSourceView } = config;
@@ -139,7 +144,7 @@ export function transformSelectionConfigurationsToTree(
 
     if (config.isSelectAll) {
       // If all nodes are selected, just add the data source path
-      inPaths.push(baseParts.join("."));
+      inPaths.push(baseParts);
     } else if (config.selectedResources.length > 0) {
       // Group selected resources by parent for efficient processing
       const resourcesByParent = new Map<
@@ -158,9 +163,14 @@ export function transformSelectionConfigurationsToTree(
       for (const [parentId, nodes] of resourcesByParent) {
         for (const node of nodes) {
           const pathParts = parentId
-            ? [...baseParts, parentId, node.internalId]
-            : [...baseParts, node.internalId];
-          inPaths.push(pathParts.join("."));
+            ? [...baseParts.path, parentId, node.internalId]
+            : [...baseParts.path, node.internalId];
+
+          inPaths.push({
+            path: pathParts.join("."),
+            name: node.title,
+            readablePath: "",
+          });
         }
       }
     }
@@ -175,13 +185,16 @@ export function transformSelectionConfigurationsToTree(
 /**
  * Removes duplicate paths and paths that are already covered by parent paths
  */
-function deduplicatePaths(paths: string[]): string[] {
-  const uniquePaths = [...new Set(paths)];
+function deduplicatePaths(
+  paths: DataSourceBuilderTreeItemType[]
+): DataSourceBuilderTreeItemType[] {
+  const uniquePaths = uniqBy(paths, (el) => el.path);
 
   // Remove paths that are covered by parent paths
   return uniquePaths.filter((path) => {
     return !uniquePaths.some(
-      (otherPath) => otherPath !== path && path.startsWith(otherPath + ".")
+      (otherPath) =>
+        otherPath !== path && path.path.startsWith(otherPath.path + ".")
     );
   });
 }
@@ -196,7 +209,9 @@ function isDataSourceViewId(segment: string): boolean {
 /**
  * Builds a navigation path for a data source view
  */
-function buildDataSourcePath(dataSourceView: DataSourceViewType): string[] {
+function buildDataSourcePath(
+  dataSourceView: DataSourceViewType
+): DataSourceBuilderTreeItemType {
   const parts = ["root", dataSourceView.spaceId];
 
   if (dataSourceView.category) {
@@ -204,5 +219,9 @@ function buildDataSourcePath(dataSourceView: DataSourceViewType): string[] {
   }
 
   parts.push(dataSourceView.sId);
-  return parts;
+  return {
+    path: parts.join("."),
+    name: dataSourceView.dataSource.name,
+    readablePath: "",
+  };
 }
