@@ -16,10 +16,7 @@ import { useForm } from "react-hook-form";
 
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type {
-  AgentBuilderFormData,
-  MCPFormData,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData, MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
@@ -36,16 +33,10 @@ import type {
   AgentBuilderAction,
   ConfigurationPagePageId,
 } from "@app/components/agent_builder/types";
-import {
-  CONFIGURATION_DIALOG_PAGE_IDS,
-  getDefaultMCPAction,
-} from "@app/components/agent_builder/types";
+import { CONFIGURATION_DIALOG_PAGE_IDS, getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
-import {
-  DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-  DEFAULT_DATA_VISUALIZATION_NAME,
-} from "@app/lib/actions/constants";
+import { DEFAULT_DATA_VISUALIZATION_DESCRIPTION, DEFAULT_DATA_VISUALIZATION_NAME } from "@app/lib/actions/constants";
 import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -67,24 +58,18 @@ export type DialogMode =
   | { type: "edit"; action: AgentBuilderAction; index: number }
   | { type: "info"; action: AgentBuilderAction };
 
-// Create a proper type for MCP actions
-type MCPActionWithConfiguration = {
+type MCPActionWithConfiguration = AgentBuilderAction & {
   type: "MCP";
-  id: string;
-  name: string;
-  description: string;
-  noConfigurationRequired?: boolean;
   configuration: MCPServerConfigurationType;
 };
 
-// Type guard to check if an action is an MCP action with proper configuration
 function isMCPActionWithConfiguration(
   action: AgentBuilderAction
 ): action is MCPActionWithConfiguration {
   return (
     action.type === "MCP" &&
     action.configuration !== null &&
-    typeof action.configuration === "object" &&
+    action.configuration !== undefined &&
     typeof action.configuration === "object" &&
     "mcpServerViewId" in action.configuration
   );
@@ -93,8 +78,8 @@ function isMCPActionWithConfiguration(
 interface MCPServerViewsDialogProps {
   addTools: UseFieldArrayAppend<AgentBuilderFormData, "actions">;
   dataVisualization: ActionSpecification | null;
-  mode?: DialogMode;
-  onModeChange?: (mode: DialogMode | undefined) => void;
+  mode: DialogMode | null;
+  onModeChange: (mode: DialogMode | null) => void;
   onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
 }
 
@@ -115,14 +100,15 @@ export function MCPServerViewsDialog({
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
 
-  const isEditMode = mode?.type === "edit";
-  const isInfoMode = mode?.type === "info";
+  const isEditMode = !!mode && mode.type === "edit";
+  const isInfoMode = !!mode && mode.type === "info";
   const isAddMode = !mode || mode.type === "add";
 
   const [selectedToolsInDialog, setSelectedToolsInDialog] = useState<
     SelectedTool[]
   >([]);
-  const [isOpen, setIsOpen] = useState(Boolean(mode));
+
+  const [isOpen, setIsOpen] = useState(!!mode);
   const [currentPageId, setCurrentPageId] = useState<ConfigurationPagePageId>(
     isEditMode
       ? CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION
@@ -131,9 +117,7 @@ export function MCPServerViewsDialog({
         : CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION
   );
   const [configurationTool, setConfigurationTool] =
-    useState<AgentBuilderAction | null>(
-      mode?.type === "edit" ? mode.action : null
-    );
+    useState<AgentBuilderAction | null>(isEditMode ? mode.action : null);
 
   const [configurationMCPServerView, setConfigurationMCPServerView] =
     useState<MCPServerViewType | null>(null);
@@ -141,40 +125,36 @@ export function MCPServerViewsDialog({
     useState<MCPServerViewType | null>(null);
 
   React.useEffect(() => {
-    if (mode?.type === "edit") {
+    if (isEditMode) {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION);
       setConfigurationTool(mode.action);
       setSelectedToolsInDialog([]);
       setIsOpen(true);
 
-      // Set MCP server view for edit mode
+      const action = mode.action;
       if (
-        isMCPActionWithConfiguration(mode.action) &&
+        isMCPActionWithConfiguration(action) &&
         allMcpServerViews.length > 0
       ) {
-        // TypeScript type narrowing limitation: need assertion after type guard
-        const mcpAction = mode.action as MCPActionWithConfiguration;
         const mcpServerView = allMcpServerViews.find(
-          (view) => view.sId === mcpAction.configuration.mcpServerViewId
+          (view) => view.sId === action.configuration.mcpServerViewId
         );
         if (mcpServerView) {
           setConfigurationMCPServerView(mcpServerView);
         }
       }
-    } else if (mode?.type === "info") {
+    } else if (mode && mode.type === "info") {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.INFO);
       setSelectedToolsInDialog([]);
       setIsOpen(true);
 
-      // Set MCP server view for info mode
+      const action = mode.action;
       if (
-        isMCPActionWithConfiguration(mode.action) &&
+        isMCPActionWithConfiguration(action) &&
         allMcpServerViews.length > 0
       ) {
-        // TypeScript type narrowing limitation: need assertion after type guard
-        const mcpAction = mode.action as MCPActionWithConfiguration;
         const mcpServerView = allMcpServerViews.find(
-          (view) => view.sId === mcpAction.configuration.mcpServerViewId
+          (view) => view.sId === action.configuration.mcpServerViewId
         );
         if (mcpServerView) {
           setInfoMCPServerView(mcpServerView);
@@ -187,9 +167,8 @@ export function MCPServerViewsDialog({
       setInfoMCPServerView(null);
       setIsOpen(Boolean(mode));
     }
-  }, [mode, allMcpServerViews]);
+  }, [mode, allMcpServerViews, isEditMode]);
 
-  // Filter MCP server views for the selection page (similar to what was done in AgentBuilderCapabilitiesBlock)
   const selectableMcpServerViews = useMemo(() => {
     return [...defaultMCPServerViews, ...nonDefaultMCPServerViews];
   }, [defaultMCPServerViews, nonDefaultMCPServerViews]);
@@ -239,15 +218,13 @@ export function MCPServerViewsDialog({
   };
 
   function onClickMCPServer(mcpServerView: MCPServerViewType) {
-    const tool: SelectedTool = { type: "MCP", view: mcpServerView };
+    const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
     const requirement = getMCPServerRequirements(mcpServerView);
 
-    // If configuration is required, navigate to configuration page
     if (!requirement.noRequirement) {
       const action = getDefaultMCPAction(mcpServerView);
       const isReasoning = requirement.requiresReasoningConfiguration;
 
-      // Handle reasoning configuration
       if (action.type === "MCP" && isReasoning) {
         if (reasoningModels.length === 0) {
           sendNotification({
@@ -328,17 +305,14 @@ export function MCPServerViewsDialog({
           noConfigurationRequired: true,
         });
       } else if (tool.type === "MCP") {
-        // Use the configured action if available, otherwise use default
         const action = tool.configuredAction || getDefaultMCPAction(tool.view);
         addTools(action);
       }
     });
 
-    // Clear selected tools after adding
     setSelectedToolsInDialog([]);
   }, [selectedToolsInDialog, addTools, sendNotification]);
 
-  // Configuration form logic
   const mcpServerView = configurationMCPServerView;
 
   const formSchema = useMemo(
@@ -362,7 +336,7 @@ export function MCPServerViewsDialog({
   // Create stable form instance with conditional resolver
   const form = useForm<MCPFormData>({
     resolver: formSchema ? zodResolver(formSchema) : undefined,
-    mode: "onChange", // Enable real-time validation
+    mode: "onChange",
     defaultValues: defaultFormValues,
     // Prevent form recreation by providing stable shouldUnregister
     shouldUnregister: false,
@@ -379,7 +353,6 @@ export function MCPServerViewsDialog({
     [configurationTool, mcpServerView, isOpen]
   );
 
-  // Optimized form reset with stable dependencies
   React.useEffect(() => {
     resetFormValues(form);
   }, [resetFormValues, form]);
@@ -484,9 +457,7 @@ export function MCPServerViewsDialog({
 
   const handleCancel = () => {
     setIsOpen(false);
-    if (onModeChange) {
-      onModeChange(undefined);
-    }
+    onModeChange(null);
     if (isAddMode) {
       setSelectedToolsInDialog([]);
       setConfigurationTool(null);
@@ -504,8 +475,6 @@ export function MCPServerViewsDialog({
       const isValid = await form.trigger();
       if (!isValid) {
         const errors = form.formState.errors;
-        console.error("Form validation errors:", errors);
-
         const firstErrorPath = Object.keys(errors)[0];
         const firstError = firstErrorPath
           ? errors[firstErrorPath as keyof typeof errors]
@@ -540,13 +509,11 @@ export function MCPServerViewsDialog({
         // Edit mode: save the updated action and close dialog
         onActionUpdate(configuredAction, mode.index);
         setIsOpen(false);
-        if (onModeChange) {
-          onModeChange(undefined);
-        }
+        onModeChange(null);
 
         sendNotification({
           title: "Tool updated successfully",
-          description: `${mcpServerView.name} configuration has been updated.`,
+          description: `${mcpServerView.server.name} configuration has been updated.`,
           type: "success",
         });
       } else {
@@ -582,12 +549,6 @@ export function MCPServerViewsDialog({
         setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
         setConfigurationTool(null);
         setConfigurationMCPServerView(null);
-
-        sendNotification({
-          title: "Tool configured successfully",
-          description: `${mcpServerView.name} has been configured and added to your selection.`,
-          type: "success",
-        });
       }
     } catch (error) {
       console.error("Error in handleConfigurationSave:", error);
@@ -598,17 +559,7 @@ export function MCPServerViewsDialog({
         type: "error",
       });
     }
-  }, [
-    configurationTool,
-    form.trigger,
-    form.formState.errors,
-    form.getValues,
-    mcpServerView,
-    mode,
-    onActionUpdate,
-    onModeChange,
-    sendNotification,
-  ]);
+  }, [configurationTool, form, mcpServerView, mode, onActionUpdate, sendNotification, onModeChange]);
 
   const getFooterButtons = () => {
     const isToolSelectionPage =
@@ -629,7 +580,7 @@ export function MCPServerViewsDialog({
             selectedToolsInDialog.length > 0
               ? `Add ${selectedToolsInDialog.length} tool${selectedToolsInDialog.length > 1 ? "s" : ""}`
               : "Add tools",
-          variant: "primary" as const,
+          variant: "primary",
           disabled: selectedToolsInDialog.length === 0,
           onClick: async () => {
             await handleAddSelectedTools();
@@ -645,31 +596,30 @@ export function MCPServerViewsDialog({
         return {
           leftButton: {
             label: "Cancel",
-            variant: "outline" as const,
+            variant: "outline",
             onClick: handleCancel,
           },
           rightButton: {
             label: "Save Changes",
-            variant: "primary" as const,
+            variant: "primary",
             onClick: handleConfigurationSave,
           },
         };
       } else {
-        // Add mode: Back, Cancel, and Save Configuration buttons
         return {
           leftButton: {
             label: "Back",
-            variant: "outline" as const,
+            variant: "outline",
             onClick: handleBackToSelection,
           },
           centerButton: {
             label: "Cancel",
-            variant: "outline" as const,
+            variant: "outline",
             onClick: handleCancel,
           },
           rightButton: {
             label: "Save Configuration",
-            variant: "primary" as const,
+            variant: "primary",
             onClick: handleConfigurationSave,
           },
         };
@@ -677,11 +627,10 @@ export function MCPServerViewsDialog({
     }
 
     if (isInfoPage) {
-      // Info mode: only Close button
       return {
         rightButton: {
           label: "Close",
-          variant: "primary" as const,
+          variant: "primary",
           onClick: handleCancel,
         },
       };
@@ -698,7 +647,6 @@ export function MCPServerViewsDialog({
       onOpenChange={(open) => {
         setIsOpen(open);
         if (!open && !isEditMode && !isInfoMode) {
-          // Reset state when dialog closes (only in add mode)
           setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
           setConfigurationTool(null);
           setConfigurationMCPServerView(null);

@@ -67,7 +67,7 @@ function actionDisplayName(
 }
 
 // TODO: Merge this with ActionCard.
-export function MCPActionCard({
+function MCPActionCard({
   action,
   onRemove,
   onEdit,
@@ -186,9 +186,7 @@ export function AgentBuilderCapabilitiesBlock() {
 
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
 
-  const [dialogMode, setDialogMode] = useState<DialogMode | undefined>(
-    undefined
-  );
+  const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
 
   const [isKnowledgeSheetOpen, setIsKnowledgeSheetOpen] = useState(false);
   const dataVisualization = fields.some(
@@ -203,21 +201,17 @@ export function AgentBuilderCapabilitiesBlock() {
     } else {
       append(updatedAction);
     }
-    setDialogMode(undefined);
+    setDialogMode(null);
   };
 
   const handleActionEdit = (action: AgentBuilderAction, index: number) => {
     if (action.type === "MCP") {
-      // For MCP actions, check if they are configurable
-      if (action.noConfigurationRequired) {
-        // Non-configurable tool - show info dialog
-        setDialogMode({ type: "info", action });
-      } else {
-        // Configurable tool - show edit dialog
-        setDialogMode({ type: "edit", action, index });
-      }
+      setDialogMode(
+        action.noConfigurationRequired
+          ? { type: "info", action }
+          : { type: "edit", action, index }
+      );
     } else {
-      // For other action types, use normal edit flow
       if (isSupportedAgentBuilderAction(action)) {
         setIsKnowledgeSheetOpen(true);
       }
@@ -225,7 +219,7 @@ export function AgentBuilderCapabilitiesBlock() {
   };
 
   const handleCloseSheet = () => {
-    setDialogMode(undefined);
+    setDialogMode(null);
     setIsKnowledgeSheetOpen(false);
   };
 
@@ -240,7 +234,9 @@ export function AgentBuilderCapabilitiesBlock() {
         onOpen={() => setIsKnowledgeSheetOpen(true)}
         onSave={handleEditSave}
         action={
-          dialogMode?.type === "edit" && dialogMode.action.type !== "MCP"
+          dialogMode &&
+          dialogMode.type === "edit" &&
+          dialogMode.action.type !== "MCP"
             ? dialogMode.action
             : undefined
         }
