@@ -40,7 +40,6 @@ import {
 
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import type {
-  DataSourceBuilderTreeType,
   NavigationHistoryEntryType,
   NodeSelectionState,
 } from "@app/components/data_source_view/context/types";
@@ -60,7 +59,6 @@ import type {
 import { assertNever } from "@app/types";
 
 type StateType = {
-  sources: DataSourceBuilderTreeType;
   /**
    * Shape is `[root, space, category, ...node]`
    * so in this case we can use index to update specific values
@@ -214,10 +212,6 @@ export function DataSourceBuilderProvider({
 }) {
   const { field } = useSourcesFormController();
   const [state, dispatch] = useReducer(dataSourceBuilderReducer, {
-    sources: {
-      in: [],
-      notIn: [],
-    },
     navigationHistory: [{ type: "root" }],
   });
 
@@ -320,11 +314,11 @@ export function DataSourceBuilderProvider({
         .filter(
           (space) =>
             space.kind !== "global" &&
-            isNodeSelected(state.sources, ["root", space.sId])
+            isNodeSelected(field.value, ["root", space.sId])
         )
         .map((s) => s.sId)
     );
-  }, [spaces, state.sources]);
+  }, [field.value, spaces]);
 
   const isRowSelectable: DataSourceBuilderState["isRowSelectable"] =
     useCallback(

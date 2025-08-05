@@ -12,11 +12,11 @@ import type {
 } from "@app/types";
 
 function pathToString(path: string[]): string {
-  return path.join(".");
+  return path.join("/");
 }
 
 function getPathPrefix(pathStr: string): string {
-  return pathStr + ".";
+  return pathStr + "/";
 }
 
 function isParentOrSamePath(parentPath: string, childPath: string): boolean {

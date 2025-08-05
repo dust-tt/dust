@@ -9,6 +9,7 @@ import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
 } from "@app/types";
+import { removeNulls } from "@app/types";
 
 /**
  * Creates a placeholder DataSourceViewContentNode with minimal information.
@@ -23,7 +24,7 @@ function getPlaceholderResource(
   return {
     internalId: nodeId,
     parentInternalId: parentId,
-    parentInternalIds: parentId ? [parentId] : null,
+    parentInternalIds: removeNulls([parentId, nodeId]),
     parentTitle: null,
     title: nodeId,
     type: "document",
@@ -60,7 +61,7 @@ export function transformTreeToSelectionConfigurations(
 
   // Parse the tree paths to extract data source configurations
   for (const path of tree.in) {
-    const parts = path.path.split(".");
+    const parts = path.path.split("/");
     if (parts.length < 2 || parts[0] !== "root") {
       continue;
     }
@@ -163,12 +164,13 @@ export function transformSelectionConfigurationsToTree(
       for (const [parentId, nodes] of resourcesByParent) {
         for (const node of nodes) {
           const pathParts = parentId
-            ? [...baseParts.path, parentId, node.internalId]
-            : [...baseParts.path, node.internalId];
+            ? [baseParts.path, parentId, node.internalId]
+            : [baseParts.path, node.internalId];
 
           inPaths.push({
-            path: pathParts.join("."),
+            path: pathParts.join("/"),
             name: parentId ?? node.title,
+            node,
           });
         }
       }
@@ -193,7 +195,7 @@ function deduplicatePaths(
   return uniquePaths.filter((path) => {
     return !uniquePaths.some(
       (otherPath) =>
-        otherPath !== path && path.path.startsWith(otherPath.path + ".")
+        otherPath !== path && path.path.startsWith(otherPath.path + "/")
     );
   });
 }
@@ -219,7 +221,7 @@ function buildDataSourcePath(
 
   parts.push(dataSourceView.sId);
   return {
-    path: parts.join("."),
+    path: parts.join("/"),
     name: dataSourceView.dataSource.name,
   };
 }
