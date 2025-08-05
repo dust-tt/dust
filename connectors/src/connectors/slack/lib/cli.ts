@@ -27,6 +27,7 @@ import { ConnectorModel } from "@connectors/resources/storage/models/connector_m
 import type {
   AdminSuccessResponseType,
   SlackCommandType,
+  SlackJoinResponseType as SlackJoinResponseType,
 } from "@connectors/types";
 import {
   INTERNAL_MIME_TYPES,
@@ -55,7 +56,9 @@ export async function maybeLaunchSlackSyncWorkflowForChannelId(
 export const slack = async ({
   command,
   args,
-}: SlackCommandType): Promise<AdminSuccessResponseType> => {
+}: SlackCommandType): Promise<
+  AdminSuccessResponseType | SlackJoinResponseType
+> => {
   const logger = topLogger.child({ majorCommand: "slack", command, args });
   switch (command) {
     case "enable-bot": {
@@ -308,7 +311,7 @@ export const slack = async ({
       return { success: true };
     }
 
-    case "auto-join-channels": {
+    case "run-auto-join": {
       // Auto-join channels based on autoReadChannelPatterns configuration
       // Usage: --wId <workspaceId> --providerType <slack|slack_bot>
       // This command fetches all channels from Slack, matches them against
@@ -367,31 +370,11 @@ export const slack = async ({
         "Fetched all channels from Slack"
       );
 
-      // Find channels that match the patterns
-      const matchingChannels = allChannels.filter((channel) => {
-        if (!channel.name) {
-          return false;
-        }
-        return autoReadChannelPatterns.some((pattern) => {
-          const regex = new RegExp(pattern.pattern);
-          return regex.test(channel.name!);
-        });
-      });
-
-      logger.info(
-        {
-          connectorId: connector.id,
-          matchingChannels: matchingChannels.length,
-          patterns: autoReadChannelPatterns.map((p) => p.pattern),
-        },
-        "Found matching channels"
-      );
-
       // Process each matching channel using autoReadChannel
       let processedCount = 0;
       let errorCount = 0;
 
-      for (const channel of matchingChannels) {
+      for (const channel of allChannels) {
         if (!channel.id || !channel.name) {
           continue;
         }
@@ -405,15 +388,17 @@ export const slack = async ({
           );
 
           if (autoReadResult.isOk()) {
-            processedCount++;
-            logger.info(
-              {
-                connectorId: connector.id,
-                channelId: channel.id,
-                channelName: channel.name,
-              },
-              "Successfully processed channel with autoReadChannel"
-            );
+            if (autoReadResult.value) {
+              processedCount++;
+              logger.info(
+                {
+                  connectorId: connector.id,
+                  channelId: channel.id,
+                  channelName: channel.name,
+                },
+                "Successfully processed channel with autoReadChannel"
+              );
+            }
           } else {
             errorCount++;
             logger.error(
@@ -443,14 +428,17 @@ export const slack = async ({
       logger.info(
         {
           connectorId: connector.id,
-          totalMatching: matchingChannels.length,
+          total: allChannels.length,
           processed: processedCount,
           errors: errorCount,
         },
         "Auto-join channel operation completed"
       );
 
-      return { success: true };
+      return {
+        total: allChannels.length,
+        processed: processedCount,
+      };
     }
 
     case "sync-channel-metadata": {

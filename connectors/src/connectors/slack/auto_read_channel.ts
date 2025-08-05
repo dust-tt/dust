@@ -36,7 +36,7 @@ export async function autoReadChannel(
   logger: Logger,
   slackChannelId: string,
   provider: Extract<ConnectorProvider, "slack_bot" | "slack"> = "slack"
-): Promise<Result<undefined, Error>> {
+): Promise<Result<boolean, Error>> {
   const slackConfiguration =
     await SlackConfigurationResource.fetchByTeamId(teamId);
   if (!slackConfiguration) {
@@ -106,7 +106,7 @@ export async function autoReadChannel(
 
     // For slack_bot context, only do the basic channel setup without data source operations
     if (provider === "slack_bot") {
-      return new Ok(undefined);
+      return new Ok(true);
     }
 
     // Slack context: perform full data source operations
@@ -189,7 +189,7 @@ export async function autoReadChannel(
           );
         }
 
-        return new Ok(undefined);
+        return new Ok(true);
       },
       { concurrency: 1 }
     );
@@ -198,7 +198,9 @@ export async function autoReadChannel(
     if (results.some((r) => r.isErr())) {
       return results.find((r) => r.isErr())!;
     }
+
+    return new Ok(true);
   }
 
-  return new Ok(undefined);
+  return new Ok(false);
 }

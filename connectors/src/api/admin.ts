@@ -43,7 +43,7 @@ const whitelistedCommands = [
   },
   {
     majorCommand: "slack",
-    command: "auto-join-channels",
+    command: "run-auto-join",
   },
   {
     majorCommand: "connectors",

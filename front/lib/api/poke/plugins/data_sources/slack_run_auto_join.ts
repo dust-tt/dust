@@ -1,12 +1,15 @@
+import { isLeft } from "fp-ts/lib/Either";
+
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger from "@app/logger/logger";
 import type { AdminCommandType } from "@app/types";
-import { ConnectorsAPI, Err, Ok } from "@app/types";
-export const slackAutoJoinPlugin = createPlugin({
+import { ConnectorsAPI, Err, Ok, SlackJoinResponseSchema } from "@app/types";
+
+export const slackRunAutoJoinPlugin = createPlugin({
   manifest: {
-    id: "slack-autojoin-bot",
-    name: "Run slack auto join",
+    id: "slack-run-auto-join",
+    name: "Run slack auto-join",
     description: "Run auto-join based on the auto-read/join patterns",
     resourceTypes: ["data_sources"],
     args: {},
@@ -37,7 +40,7 @@ export const slackAutoJoinPlugin = createPlugin({
 
     const autoJoinCmd: AdminCommandType = {
       majorCommand: "slack",
-      command: "auto-join-channels",
+      command: "run-auto-join",
       args: {
         wId: owner.sId,
         providerType: resource.connectorProvider,
@@ -51,9 +54,16 @@ export const slackAutoJoinPlugin = createPlugin({
       );
     }
 
+    const decoded = SlackJoinResponseSchema.decode(adminCommandRes.value);
+    if (isLeft(decoded)) {
+      return new Err(new Error("Failed to decode response"));
+    }
+
+    const { total, processed } = decoded.right;
+
     return new Ok({
       display: "text",
-      value: `Channels joined.`,
+      value: `${processed} channels joined out of ${total}.`,
     });
   },
 });
