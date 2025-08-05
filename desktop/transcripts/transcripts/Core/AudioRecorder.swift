@@ -2,7 +2,8 @@ import AVFoundation
 import Foundation
 
 class AudioRecorder: ObservableObject {
-  private var audioRecorder: AVAudioRecorder?
+  private var audioEngine = AVAudioEngine()
+  private var audioFile: AVAudioFile?
   private var tempURL: URL?
 
   @Published var isRecording = false
@@ -23,38 +24,28 @@ class AudioRecorder: ObservableObject {
     let recordingTimestamp = Int(Date().timeIntervalSince1970)
     recordingId = "\(AudioSettings.recordingPrefix)\(recordingTimestamp)"
 
-    // Create temporary file URL.
+    // Create temporary file URL
     let tempDir = FileManager.default.temporaryDirectory
     tempURL = tempDir.appendingPathComponent(
       "\(recordingId!)\(AudioSettings.audioFileExtension)"
     )
 
-    let settings =
-      [
-        AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-        AVSampleRateKey: AudioSettings.audioSampleRate,
-        AVNumberOfChannelsKey: AudioSettings.audioChannels,
-        AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue,
-      ] as [String: Any]
-
     do {
-      audioRecorder = try AVAudioRecorder(url: tempURL!, settings: settings)
-      audioRecorder?.isMeteringEnabled = false  // Disable metering to reduce overhead
-
-      audioRecorder?.record()
+      try setupAudioEngineForSystemCapture()
+      try audioEngine.start()
 
       isRecording = true
       recordingData = nil
     } catch {
       print("Failed to start recording: \(error)")
+      cleanup()
     }
   }
 
   func stopRecording() {
     guard isRecording else { return }
 
-    audioRecorder?.stop()
-    audioRecorder = nil
+    cleanup()
     isRecording = false
 
     if let tempURL = tempURL {
@@ -72,5 +63,49 @@ class AudioRecorder: ObservableObject {
     }
 
     tempURL = nil
+  }
+
+  private func setupAudioEngineForSystemCapture() throws {
+    audioEngine.stop()
+    audioEngine.reset()
+
+    let inputNode = audioEngine.inputNode
+    let inputFormat = inputNode.outputFormat(forBus: 0)
+
+    audioFile = try AVAudioFile(
+      forWriting: tempURL!,
+      settings: [
+        AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+        AVSampleRateKey: Int(inputFormat.sampleRate),
+        AVNumberOfChannelsKey: AudioSettings.audioChannels,
+        AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue,
+      ] as [String: Any]
+    )
+
+    // Install tap on input node without connecting to output to prevent monitoring.
+    inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) {
+      [weak self] buffer, _ in
+      guard let self = self, let audioFile = self.audioFile else { return }
+
+      do {
+        try audioFile.write(from: buffer)
+      } catch {
+        print("Failed to write audio: \(error)")
+      }
+    }
+
+    audioEngine.prepare()
+    print("Audio engine configured for input capture only - no monitoring")
+  }
+
+  private func cleanup() {
+    // Remove taps
+    if audioEngine.inputNode.engine != nil {
+      audioEngine.inputNode.removeTap(onBus: 0)
+    }
+
+    audioEngine.stop()
+    audioEngine.reset()
+    audioFile = nil
   }
 }

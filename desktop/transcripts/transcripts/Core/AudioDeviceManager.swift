@@ -1,0 +1,197 @@
+import AVFoundation
+import CoreAudio
+
+struct AudioDevice {
+  let id: AudioDeviceID
+  let name: String
+  let isInput: Bool
+  let channelCount: Int
+}
+
+class AudioDeviceManager {
+  static let shared = AudioDeviceManager()
+
+  private init() {}
+
+  func getInputDevices() -> [AudioDevice] {
+    var devices: [AudioDevice] = []
+
+    var propertyAddress = AudioObjectPropertyAddress(
+      mSelector: kAudioHardwarePropertyDevices,
+      mScope: kAudioObjectPropertyScopeGlobal,
+      mElement: kAudioObjectPropertyElementMain
+    )
+
+    var dataSize: UInt32 = 0
+    var status = AudioObjectGetPropertyDataSize(
+      AudioObjectID(kAudioObjectSystemObject),
+      &propertyAddress,
+      0,
+      nil,
+      &dataSize
+    )
+
+    guard status == noErr else { return devices }
+
+    let deviceCount = Int(dataSize) / MemoryLayout<AudioDeviceID>.size
+    var deviceIDs = [AudioDeviceID](repeating: 0, count: deviceCount)
+
+    status = AudioObjectGetPropertyData(
+      AudioObjectID(kAudioObjectSystemObject),
+      &propertyAddress,
+      0,
+      nil,
+      &dataSize,
+      &deviceIDs
+    )
+
+    guard status == noErr else { return devices }
+
+    for deviceID in deviceIDs {
+      if let device = getDeviceInfo(deviceID: deviceID), device.isInput {
+        devices.append(device)
+      }
+    }
+
+    return devices
+  }
+
+  private func getDeviceInfo(deviceID: AudioDeviceID) -> AudioDevice? {
+    // Get device name.
+    var propertyAddress = AudioObjectPropertyAddress(
+      mSelector: kAudioDevicePropertyDeviceNameCFString,
+      mScope: kAudioObjectPropertyScopeGlobal,
+      mElement: kAudioObjectPropertyElementMain
+    )
+
+    var dataSize: UInt32 = 0
+    var status = AudioObjectGetPropertyDataSize(
+      deviceID,
+      &propertyAddress,
+      0,
+      nil,
+      &dataSize
+    )
+
+    guard status == noErr else { return nil }
+
+    var deviceName: CFString?
+    status = AudioObjectGetPropertyData(
+      deviceID,
+      &propertyAddress,
+      0,
+      nil,
+      &dataSize,
+      &deviceName
+    )
+
+    guard status == noErr, let name = deviceName as String? else { return nil }
+
+    // Check if device has input streams.
+    propertyAddress.mSelector = kAudioDevicePropertyStreams
+    propertyAddress.mScope = kAudioDevicePropertyScopeInput
+
+    status = AudioObjectGetPropertyDataSize(
+      deviceID,
+      &propertyAddress,
+      0,
+      nil,
+      &dataSize
+    )
+
+    let hasInput = status == noErr && dataSize > 0
+
+    // Get channel count.
+    var channelCount = 0
+    if hasInput {
+      propertyAddress.mSelector = kAudioDevicePropertyStreamConfiguration
+      status = AudioObjectGetPropertyDataSize(
+        deviceID,
+        &propertyAddress,
+        0,
+        nil,
+        &dataSize
+      )
+
+      if status == noErr {
+        let bufferList = UnsafeMutablePointer<AudioBufferList>.allocate(
+          capacity: 1
+        )
+        defer { bufferList.deallocate() }
+
+        status = AudioObjectGetPropertyData(
+          deviceID,
+          &propertyAddress,
+          0,
+          nil,
+          &dataSize,
+          bufferList
+        )
+
+        if status == noErr {
+          channelCount = Int(bufferList.pointee.mBuffers.mNumberChannels)
+        }
+      }
+    }
+
+    return AudioDevice(
+      id: deviceID,
+      name: name,
+      isInput: hasInput,
+      channelCount: channelCount
+    )
+  }
+
+  func setDefaultInputDevice(_ device: AudioDevice) -> Bool {
+    var propertyAddress = AudioObjectPropertyAddress(
+      mSelector: kAudioHardwarePropertyDefaultInputDevice,
+      mScope: kAudioObjectPropertyScopeGlobal,
+      mElement: kAudioObjectPropertyElementMain
+    )
+
+    var deviceID = device.id
+    let status = AudioObjectSetPropertyData(
+      AudioObjectID(kAudioObjectSystemObject),
+      &propertyAddress,
+      0,
+      nil,
+      UInt32(MemoryLayout<AudioDeviceID>.size),
+      &deviceID
+    )
+
+    return status == noErr
+  }
+
+  func getCurrentInputDevice() -> AudioDevice? {
+    var propertyAddress = AudioObjectPropertyAddress(
+      mSelector: kAudioHardwarePropertyDefaultInputDevice,
+      mScope: kAudioObjectPropertyScopeGlobal,
+      mElement: kAudioObjectPropertyElementMain
+    )
+
+    var dataSize: UInt32 = 0
+    var status = AudioObjectGetPropertyDataSize(
+      AudioObjectID(kAudioObjectSystemObject),
+      &propertyAddress,
+      0,
+      nil,
+      &dataSize
+    )
+
+    guard status == noErr else { return nil }
+
+    var deviceID: AudioDeviceID = 0
+    status = AudioObjectGetPropertyData(
+      AudioObjectID(kAudioObjectSystemObject),
+      &propertyAddress,
+      0,
+      nil,
+      &dataSize,
+      &deviceID
+    )
+
+    guard status == noErr else { return nil }
+
+    return getDeviceInfo(deviceID: deviceID)
+  }
+}

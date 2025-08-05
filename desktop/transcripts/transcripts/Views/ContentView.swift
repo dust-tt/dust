@@ -78,6 +78,17 @@ struct ContentView: View {
       }
 
       Divider()
+      
+      Button("Select Audio Device") {
+        openAudioDeviceSelection()
+      }
+      .font(.caption2)
+      
+      Button("Audio Setup Help") {
+        openAudioSetupHelp()
+      }
+      .font(.caption2)
+      .foregroundColor(.secondary)
 
       Button("Quit") {
         NSApplication.shared.terminate(nil)
@@ -200,6 +211,50 @@ struct ContentView: View {
     setupWindow.center()
     setupWindow.makeKeyAndOrderFront(nil)
     setupWindow.orderFrontRegardless()
+  }
+  
+  private func openAudioDeviceSelection() {
+    let deviceWindow = NSWindow(
+      contentRect: NSRect(x: 0, y: 0, width: 470, height: 370),
+      styleMask: [.titled, .closable],
+      backing: .buffered,
+      defer: false
+    )
+    deviceWindow.title = "Select Audio Input Device"
+    deviceWindow.contentView = NSHostingView(
+      rootView: AudioDeviceSelectionView(
+        onDeviceSelected: { device in
+          if AudioDeviceManager.shared.setDefaultInputDevice(device) {
+            print("Selected audio device: \(device.name)")
+          } else {
+            print("Failed to set audio device: \(device.name)")
+          }
+          deviceWindow.close()
+        },
+        onCancel: {
+          deviceWindow.close()
+        }
+      )
+    )
+    deviceWindow.center()
+    deviceWindow.makeKeyAndOrderFront(nil)
+    deviceWindow.orderFrontRegardless()
+  }
+  
+  private func openAudioSetupHelp() {
+    let helpWindow = NSWindow(
+      contentRect: NSRect(x: 0, y: 0, width: 570, height: 620),
+      styleMask: [.titled, .closable, .resizable],
+      backing: .buffered,
+      defer: false
+    )
+    helpWindow.title = "Audio Setup Guide"
+    helpWindow.contentView = NSHostingView(
+      rootView: AudioSetupHelpView()
+    )
+    helpWindow.center()
+    helpWindow.makeKeyAndOrderFront(nil)
+    helpWindow.orderFrontRegardless()
   }
 }
 
