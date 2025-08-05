@@ -45,7 +45,9 @@ where
 /// - `otel::setup=debug` set to debug to log detected resources, configuration read (optional)
 ///
 /// see [Directives syntax](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives)
-pub fn build_level_filter_layer(log_directives: &str) -> Result<EnvFilter, Error> {
+pub fn build_global_filter_with_telemetry_loop_prevention(
+    log_directives: &str,
+) -> Result<EnvFilter, Error> {
     let dirs = if log_directives.is_empty() {
         std::env::var("RUST_LOG")
             .or_else(|_| std::env::var("OTEL_LOG_LEVEL"))
@@ -53,12 +55,31 @@ pub fn build_level_filter_layer(log_directives: &str) -> Result<EnvFilter, Error
     } else {
         log_directives.to_string()
     };
+
+    // Allow OTEL tracing at trace level for span context - we'll filter span lifecycle events at layer level
     let directive_to_allow_otel_trace = "otel::tracing=trace".parse()?;
 
     Ok(EnvFilter::builder()
         .with_default_directive(LevelFilter::INFO.into())
         .parse_lossy(dirs)
-        .add_directive(directive_to_allow_otel_trace))
+        .add_directive(directive_to_allow_otel_trace)
+        // To prevent a telemetry-induced-telemetry loop, OpenTelemetry's own internal
+        // logging is properly suppressed. However, logs emitted by external components
+        // (such as reqwest, tonic, etc.) are not suppressed as they do not propagate
+        // OpenTelemetry context. Until this issue is addressed
+        // (https://github.com/open-telemetry/opentelemetry-rust/issues/2877),
+        // filtering like this is the best way to suppress such logs.
+        //
+        // The filter levels are set as follows:
+        // - Allow `info` level and above by default.
+        // - Completely restrict logs from `hyper`, `tonic`, `h2`, and `reqwest`.
+        //
+        // Note: This filtering will also drop logs from these components even when
+        // they are used outside of the OTLP Exporter.
+        .add_directive("hyper=off".parse().expect("valid filter directive"))
+        .add_directive("tonic=off".parse().expect("valid filter directive"))
+        .add_directive("h2=off".parse().expect("valid filter directive"))
+        .add_directive("reqwest=off".parse().expect("valid filter directive")))
 }
 
 pub fn build_otel_layer<S>() -> Result<(OpenTelemetryLayer<S, Tracer>, TracingGuard), Error>
@@ -104,11 +125,13 @@ pub fn init_subscribers() -> Result<TracingGuard, Error> {
     init_subscribers_and_loglevel("")
 }
 
-/// see [`build_level_filter_layer`] for the syntax of `log_directives`
+/// see [`build_global_filter_with_telemetry_loop_prevention`] for the syntax of `log_directives`
 pub fn init_subscribers_and_loglevel(log_directives: &str) -> Result<TracingGuard, Error> {
     //setup a temporary subscriber to log output during setup
     let subscriber = tracing_subscriber::registry()
-        .with(build_level_filter_layer(log_directives)?)
+        .with(build_global_filter_with_telemetry_loop_prevention(
+            log_directives,
+        )?)
         .with(build_logger_text());
     let _guard = tracing::subscriber::set_default(subscriber);
     info!("init logging & tracing");
@@ -123,25 +146,7 @@ pub fn init_subscribers_and_loglevel(log_directives: &str) -> Result<TracingGuar
         let provider: SdkLoggerProvider = opentelemetry_sdk::logs::SdkLoggerProvider::builder()
             .with_batch_exporter(exporter)
             .build();
-        // To prevent a telemetry-induced-telemetry loop, OpenTelemetry's own internal
-        // logging is properly suppressed. However, logs emitted by external components
-        // (such as reqwest, tonic, etc.) are not suppressed as they do not propagate
-        // OpenTelemetry context. Until this issue is addressed
-        // (https://github.com/open-telemetry/opentelemetry-rust/issues/2877),
-        // filtering like this is the best way to suppress such logs.
-        //
-        // The filter levels are set as follows:
-        // - Allow `info` level and above by default.
-        // - Completely restrict logs from `hyper`, `tonic`, `h2`, and `reqwest`.
-        //
-        // Note: This filtering will also drop logs from these components even when
-        // they are used outside of the OTLP Exporter.
-        let filter_otel = EnvFilter::new("info")
-            .add_directive("hyper=off".parse().expect("valid filter directive"))
-            .add_directive("tonic=off".parse().expect("valid filter directive"))
-            .add_directive("h2=off".parse().expect("valid filter directive"))
-            .add_directive("reqwest=off".parse().expect("valid filter directive"));
-        let otel_layer = EnrichedOtelLayer::new(&provider).with_filter(filter_otel);
+        let otel_layer = EnrichedOtelLayer::new(&provider);
 
         let subscriber = tracing_subscriber::registry()
             .with(layer) // OTEL trace layer first
@@ -151,21 +156,22 @@ pub fn init_subscribers_and_loglevel(log_directives: &str) -> Result<TracingGuar
                 BunyanFormattingLayer::new("dust_api".into(), std::io::stdout)
                     .skip_fields(vec!["file", "line", "target"].into_iter())
                     .expect("valid field skip configuration")
-                    .with_filter(tracing_subscriber::filter::filter_fn(|metadata| {
-                        // Filter out HTTP REQUEST START/END span lifecycle events
-                        // but keep EVENT logs and other regular logs
-                        let name = metadata.name();
-
-                        // Skip span lifecycle events with exact matches
-                        !(name == "[HTTP REQUEST - START]" || name == "[HTTP REQUEST - END]")
-                    })),
+                    .with_filter(
+                        // Only allow INFO and above for the BunyanFormattingLayer
+                        // This should block DEBUG level [HTTP REQUEST - START/END] logs
+                        EnvFilter::new("info"),
+                    ),
             )
-            .with(build_level_filter_layer(log_directives)?);
+            .with(build_global_filter_with_telemetry_loop_prevention(
+                log_directives,
+            )?);
         tracing::subscriber::set_global_default(subscriber)?;
         Ok(guard)
     } else {
         let subscriber = tracing_subscriber::registry()
-            .with(build_level_filter_layer(log_directives)?)
+            .with(build_global_filter_with_telemetry_loop_prevention(
+                log_directives,
+            )?)
             .with(build_logger_text());
         tracing::subscriber::set_global_default(subscriber)?;
         // Create a dummy guard since OTEL layer is disabled
