@@ -41,7 +41,7 @@ class AudioRecorder: ObservableObject {
       audioRecorder = try AVAudioRecorder(url: tempURL!, settings: settings)
       audioRecorder?.isMeteringEnabled = false  // Disable metering to reduce overhead
 
-      audioRecorder.record()
+      audioRecorder?.record()
 
       isRecording = true
       recordingData = nil
