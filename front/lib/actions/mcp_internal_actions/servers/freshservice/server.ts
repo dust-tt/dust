@@ -31,7 +31,7 @@ const createServer = (): McpServer => {
     authInfo,
   }: {
     action: (accessToken: string, domain: string) => Promise<T>;
-    authInfo?: { token?: string; metadata?: Record<string, unknown> };
+    authInfo?: { token?: string; extra?: Record<string, unknown> };
   }): Promise<T> => {
     if (!authInfo?.token) {
       return makeMCPToolTextError(
@@ -39,8 +39,8 @@ const createServer = (): McpServer => {
       ) as T;
     }
 
-    // Extract domain from metadata
-    const domain = authInfo.metadata?.instance_url as string;
+    // Extract domain from extra metadata
+    const domain = authInfo.extra?.instance_url as string;
     if (!domain) {
       return makeMCPToolTextError(
         "Freshworks organization URL not configured. Please reconnect your Freshservice account."
