@@ -111,6 +111,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   outlook_tool: {
     description: "Outlook MCP tool",
   },
+  freshservice_tool: {
+    description: "Freshservice MCP tool",
+  },
   async_loop: {
     description: "Asynchronous loop for conversation processing",
   },

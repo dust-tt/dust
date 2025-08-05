@@ -23,6 +23,7 @@ export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
 
 export const OAUTH_PROVIDERS = [
   "confluence",
+  "freshservice",
   "github",
   "google_drive",
   "gmail",
@@ -42,6 +43,7 @@ export const OAUTH_PROVIDERS = [
 
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
+  freshservice: "Freshservice",
   github: "GitHub",
   gmail: "Gmail",
   google_drive: "Google",
@@ -147,6 +149,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
         return result;
       }
       return null;
+    case "freshservice":
     case "hubspot":
     case "zendesk":
     case "slack":

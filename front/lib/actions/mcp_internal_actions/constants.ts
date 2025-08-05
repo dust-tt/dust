@@ -22,6 +22,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "data_sources_file_system",
   "extract_data",
   "file_generation",
+  "freshservice",
   "interactive_content",
   "github",
   "gmail",
@@ -395,6 +396,35 @@ export const INTERNAL_MCP_SERVERS: Record<
       update_event: "low",
       delete_event: "low",
       check_availability: "never_ask",
+    },
+  },
+  freshservice: {
+    id: 26,
+    availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("freshservice_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      // Read operations - never ask
+      list_tickets: "never_ask",
+      get_ticket: "never_ask",
+      list_departments: "never_ask",
+      list_products: "never_ask",
+      list_oncall_schedules: "never_ask",
+      list_service_items: "never_ask",
+      list_solution_categories: "never_ask",
+      list_solution_articles: "never_ask",
+      list_requesters: "never_ask",
+      get_requester: "never_ask",
+      list_purchase_orders: "never_ask",
+      list_sla_policies: "never_ask",
+
+      // Write operations - low/high stakes
+      create_ticket: "low",
+      add_ticket_note: "low",
+      add_ticket_reply: "low",
+      create_solution_article: "high",
     },
   },
   search: {
