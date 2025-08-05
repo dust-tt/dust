@@ -212,6 +212,9 @@ export function AgentBuilderCapabilitiesBlock() {
     index: number;
   } | null>(null);
 
+  // State for info mode (non-configurable tools)
+  const [infoAction, setInfoAction] = useState<AgentBuilderAction | null>(null);
+
   const [isKnowledgeSheetOpen, setIsKnowledgeSheetOpen] = useState(false);
 
   // TODO: Add logic for reasoning.
@@ -241,9 +244,21 @@ export function AgentBuilderCapabilitiesBlock() {
   };
 
   const handleActionEdit = (action: AgentBuilderAction, index: number) => {
-    setEditingAction({ action, index });
-    if (isSupportedAgentBuilderAction(action)) {
-      setIsKnowledgeSheetOpen(true);
+    if (action.type === "MCP") {
+      // For MCP actions, check if they are configurable
+      if (action.noConfigurationRequired) {
+        // Non-configurable tool - show info dialog
+        setInfoAction(action);
+      } else {
+        // Configurable tool - show edit dialog
+        setEditingAction({ action, index });
+      }
+    } else {
+      // For other action types, use normal edit flow
+      setEditingAction({ action, index });
+      if (isSupportedAgentBuilderAction(action)) {
+        setIsKnowledgeSheetOpen(true);
+      }
     }
   };
 
@@ -259,6 +274,10 @@ export function AgentBuilderCapabilitiesBlock() {
 
   const handleMcpEditCancel = () => {
     setEditingAction(null);
+  };
+
+  const handleInfoActionClose = () => {
+    setInfoAction(null);
   };
 
   const dropdownButtons = (
@@ -286,6 +305,8 @@ export function AgentBuilderCapabilitiesBlock() {
         }
         onEditActionSave={handleMcpEditSave}
         onEditActionCancel={handleMcpEditCancel}
+        infoAction={infoAction}
+        onInfoActionClose={handleInfoActionClose}
       />
     </>
   );

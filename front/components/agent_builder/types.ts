@@ -264,6 +264,7 @@ export const CONFIGURATION_SHEET_PAGE_IDS = {
 export const CONFIGURATION_DIALOG_PAGE_IDS = {
   TOOL_SELECTION: "tool-selection",
   CONFIGURATION: "configuration",
+  INFO: "info",
 };
 
 export type ConfigurationSheetPageId =

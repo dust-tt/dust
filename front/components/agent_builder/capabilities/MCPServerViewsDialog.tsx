@@ -13,7 +13,6 @@ import { useMemo, useState } from "react";
 import React from "react";
 import type { UseFieldArrayAppend } from "react-hook-form";
 import { useForm } from "react-hook-form";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderAction,
@@ -28,15 +27,27 @@ import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/sh
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
-import type { ActionSpecification, ConfigurationPagePageId } from "@app/components/agent_builder/types";
-import { CONFIGURATION_DIALOG_PAGE_IDS, getDefaultMCPAction } from "@app/components/agent_builder/types";
+import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import type {
+  ActionSpecification,
+  ConfigurationPagePageId,
+} from "@app/components/agent_builder/types";
+import {
+  CONFIGURATION_DIALOG_PAGE_IDS,
+  getDefaultMCPAction,
+} from "@app/components/agent_builder/types";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { DEFAULT_DATA_VISUALIZATION_DESCRIPTION, DEFAULT_DATA_VISUALIZATION_NAME } from "@app/lib/actions/constants";
+import {
+  DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
+  DEFAULT_DATA_VISUALIZATION_NAME,
+} from "@app/lib/actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
 import { O4_MINI_MODEL_ID } from "@app/types";
+import { ToolsList } from "@app/components/actions/mcp/ToolsList";
+import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 
 export type SelectedTool =
   | {
@@ -58,6 +69,9 @@ interface MCPServerViewsDialogProps {
   editActionIndex?: number;
   onEditActionSave?: (action: AgentBuilderAction, index: number) => void;
   onEditActionCancel?: () => void;
+  // Info mode props
+  infoAction?: AgentBuilderAction | null;
+  onInfoActionClose?: () => void;
 }
 
 export function MCPServerViewsDialog({
@@ -69,28 +83,36 @@ export function MCPServerViewsDialog({
   editActionIndex,
   onEditActionSave,
   onEditActionCancel,
+  infoAction,
+  onInfoActionClose,
 }: MCPServerViewsDialogProps) {
   const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
+  const { mcpServerViews: allMcpServerViews } = useMCPServerViewsContext();
 
   const isEditMode = Boolean(
     editAction && typeof editActionIndex === "number" && onEditActionSave
   );
+  const isInfoMode = Boolean(infoAction && onInfoActionClose);
 
   const [selectedToolsInDialog, setSelectedToolsInDialog] = useState<
     SelectedTool[]
   >([]);
-  const [isOpen, setIsOpen] = useState(isEditMode);
+  const [isOpen, setIsOpen] = useState(isEditMode || isInfoMode);
   const [currentPageId, setCurrentPageId] = useState<ConfigurationPagePageId>(
     isEditMode
       ? CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION
-      : CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION
+      : isInfoMode
+        ? CONFIGURATION_DIALOG_PAGE_IDS.INFO
+        : CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION
   );
   const [configurationTool, setConfigurationTool] =
     useState<AgentBuilderAction | null>(editAction || null);
 
   const [configurationMCPServerView, setConfigurationMCPServerView] =
+    useState<MCPServerViewType | null>(null);
+  const [infoMCPServerView, setInfoMCPServerView] =
     useState<MCPServerViewType | null>(null);
 
   React.useEffect(() => {
@@ -99,7 +121,7 @@ export function MCPServerViewsDialog({
       setConfigurationTool(editAction);
       setSelectedToolsInDialog([]);
       setIsOpen(true);
-      
+
       // Set MCP server view for edit mode
       if (editAction.type === "MCP" && mcpServerViews.length > 0) {
         const mcpServerView = mcpServerViews.find(
@@ -109,12 +131,34 @@ export function MCPServerViewsDialog({
           setConfigurationMCPServerView(mcpServerView);
         }
       }
-    } else if (!isEditMode) {
+    } else if (isInfoMode && infoAction) {
+      setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.INFO);
+      setSelectedToolsInDialog([]);
+      setIsOpen(true);
+
+      // Set MCP server view for info mode
+      if (infoAction.type === "MCP" && allMcpServerViews.length > 0) {
+        const mcpServerView = allMcpServerViews.find(
+          (view) => view.sId === infoAction.configuration.mcpServerViewId
+        );
+        if (mcpServerView) {
+          setInfoMCPServerView(mcpServerView);
+        }
+      }
+    } else if (!isEditMode && !isInfoMode) {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
       setConfigurationTool(null);
       setConfigurationMCPServerView(null);
+      setInfoMCPServerView(null);
     }
-  }, [isEditMode, editAction, mcpServerViews]);
+  }, [
+    isEditMode,
+    isInfoMode,
+    editAction,
+    infoAction,
+    mcpServerViews,
+    allMcpServerViews,
+  ]);
 
   const toggleToolSelection = (tool: SelectedTool): void => {
     setSelectedToolsInDialog((prev) => {
@@ -354,13 +398,41 @@ export function MCPServerViewsDialog({
           </div>
         ),
     },
+    {
+      id: CONFIGURATION_DIALOG_PAGE_IDS.INFO,
+      title: infoMCPServerView?.name || "Tool Information",
+      description: "",
+      icon: undefined,
+      content: infoMCPServerView ? (
+        <div className="flex h-full flex-col space-y-2">
+          <div className="flex items-center space-x-2 text-base font-medium">
+            {getAvatarFromIcon(infoMCPServerView.server.icon, "sm")}
+            <span className="">{infoMCPServerView.server.name}</span>
+          </div>
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            {infoMCPServerView.server.description}
+          </span>
+          <ToolsList
+            owner={owner}
+            mcpServerView={infoMCPServerView}
+            forcedCanUpdate={false}
+          />
+        </div>
+      ) : (
+        <div className="flex h-40 w-full items-center justify-center">
+          <Spinner />
+        </div>
+      ),
+    },
   ];
 
   const handleCancel = () => {
     setIsOpen(false);
     if (isEditMode && onEditActionCancel) {
       onEditActionCancel();
-    } else if (!isEditMode) {
+    } else if (isInfoMode && onInfoActionClose) {
+      onInfoActionClose();
+    } else if (!isEditMode && !isInfoMode) {
       setSelectedToolsInDialog([]);
       setConfigurationTool(null);
       setConfigurationMCPServerView(null);
@@ -464,6 +536,7 @@ export function MCPServerViewsDialog({
       currentPageId === CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION;
     const isConfigurationPage =
       currentPageId === CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION;
+    const isInfoPage = currentPageId === CONFIGURATION_DIALOG_PAGE_IDS.INFO;
 
     if (isToolSelectionPage) {
       return {
@@ -524,6 +597,17 @@ export function MCPServerViewsDialog({
       }
     }
 
+    if (isInfoPage) {
+      // Info mode: only Close button
+      return {
+        rightButton: {
+          label: "Close",
+          variant: "primary" as const,
+          onClick: handleCancel,
+        },
+      };
+    }
+
     return {};
   };
 
@@ -534,7 +618,7 @@ export function MCPServerViewsDialog({
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
-        if (!open && !isEditMode) {
+        if (!open && !isEditMode && !isInfoMode) {
           // Reset state when dialog closes (only in add mode)
           setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
           setConfigurationTool(null);
@@ -549,6 +633,7 @@ export function MCPServerViewsDialog({
       <MultiPageDialogContent
         showNavigation={
           !isEditMode &&
+          !isInfoMode &&
           currentPageId === CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION
         }
         size="xl"
