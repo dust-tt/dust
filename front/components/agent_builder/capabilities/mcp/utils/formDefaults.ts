@@ -1,5 +1,4 @@
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
