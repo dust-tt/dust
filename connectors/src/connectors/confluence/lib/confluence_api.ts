@@ -2,7 +2,7 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
 import type {
-  ConfluenceSearchPageType,
+  ConfluenceSearchEntityType,
   ConfluenceSpaceType,
 } from "@connectors/connectors/confluence/lib/confluence_client";
 import {
@@ -123,21 +123,45 @@ export async function pageHasReadRestrictions(
   return hasGroupReadPermissions || hasUserReadPermissions;
 }
 
-export interface ConfluencePageRef {
-  hasChildren: boolean;
+interface BaseConfluenceEntityRef {
+  hasFolderChildren: boolean;
+  hasPageChildren: boolean;
   hasReadRestrictions: boolean;
   id: string;
   parentId: string | null;
   version: number;
 }
 
-function getConfluencePageRef(page: ConfluenceSearchPageType) {
+export type ConfluencePageRef = BaseConfluenceEntityRef & {
+  type: "page";
+};
+
+export type ConfluenceFolderRef = BaseConfluenceEntityRef & {
+  type: "folder";
+};
+
+export type ConfluenceEntityRef = ConfluencePageRef | ConfluenceFolderRef;
+
+function getConfluenceEntityRef(
+  page: ConfluenceSearchEntityType
+): ConfluenceEntityRef {
   const hasReadRestrictions =
     page.restrictions.read.restrictions.group.results.length > 0 ||
     page.restrictions.read.restrictions.user.results.length > 0;
 
+  const hasFolderChildren =
+    typeof page.childTypes.folder === "object"
+      ? page.childTypes.folder.value
+      : page.childTypes.folder;
+  const hasPageChildren =
+    typeof page.childTypes.page === "object"
+      ? page.childTypes.page.value
+      : page.childTypes.page;
+
   return {
-    hasChildren: page.childTypes.page.value,
+    hasFolderChildren,
+    hasPageChildren,
+    type: page.type,
     hasReadRestrictions,
     id: page.id,
     // Ancestors is an array of the page's ancestors, starting with the root page.
@@ -146,38 +170,42 @@ function getConfluencePageRef(page: ConfluenceSearchPageType) {
   };
 }
 
-export async function getActiveChildPageRefs(
+export async function getActiveChildEntityRefs(
   client: ConfluenceClient,
   {
     pageCursor,
-    parentPageId,
+    parentEntityId,
     spaceKey,
   }: {
     pageCursor: string | null;
-    parentPageId: string;
+    parentEntityId: string;
     spaceKey: string;
   }
 ) {
-  // Fetch the child pages of the parent page.
-  const { pages: childPages, nextPageCursor } = await client.getChildPages({
-    limit: PAGE_FETCH_LIMIT,
-    pageCursor,
-    parentPageId,
-    spaceKey,
-  });
+  // Fetch the child entities of the parent page.
+  const { entities: childEntities, nextPageCursor } =
+    await client.getChildEntities({
+      limit: PAGE_FETCH_LIMIT,
+      pageCursor,
+      parentEntityId,
+      spaceKey,
+    });
 
-  const activeChildPageIds = childPages
+  console.log(">>>>>", JSON.stringify(childEntities, null, 2));
+
+  const activeChildEntityIds = childEntities
     .filter((p) => p.status === "current")
     .map((p) => p.id);
 
-  if (activeChildPageIds.length === 0) {
-    return { childPageRefs: [], nextPageCursor };
+  if (activeChildEntityIds.length === 0) {
+    return { childEntityRefs: [], nextPageCursor };
   }
 
-  const childPageRefs: ConfluencePageRef[] =
-    childPages.map(getConfluencePageRef);
+  const childEntityRefs: ConfluenceEntityRef[] = childEntities.map(
+    getConfluenceEntityRef
+  );
 
-  return { childPageRefs, nextPageCursor };
+  return { childEntityRefs, nextPageCursor };
 }
 
 export async function bulkFetchConfluencePageRefs(
@@ -199,8 +227,9 @@ export async function bulkFetchConfluencePageRefs(
     limit,
   });
 
-  const pageRefs: ConfluencePageRef[] =
-    pagesWithDetails.results.map(getConfluencePageRef);
+  const pageRefs: ConfluenceEntityRef[] = pagesWithDetails.results.map(
+    getConfluenceEntityRef
+  );
 
   return pageRefs;
 }

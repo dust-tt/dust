@@ -8,7 +8,7 @@ import {
 } from "@temporalio/workflow";
 import { chunk } from "lodash";
 
-import type { ConfluencePageRef } from "@connectors/connectors/confluence/lib/confluence_api";
+import type { ConfluenceEntityRef } from "@connectors/connectors/confluence/lib/confluence_api";
 import type * as activities from "@connectors/connectors/confluence/temporal/activities";
 import type { SpaceBlob } from "@connectors/connectors/confluence/temporal/activities";
 import type { SpaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
@@ -17,21 +17,21 @@ import {
   makeConfluenceRemoveSpacesWorkflowId,
   makeConfluenceRemoveSpaceWorkflowIdFromParentId,
   makeConfluenceSpaceSyncWorkflowIdFromParentId,
-  makeConfluenceSyncTopLevelChildPagesWorkflowIdFromParentId,
+  makeConfluenceSyncTopLevelChildEntitiesWorkflowIdFromParentId,
 } from "@connectors/connectors/confluence/temporal/workflow_ids";
 import type * as syncStatusActivities from "@connectors/lib/sync_status";
 import type { ModelId } from "@connectors/types";
 
 const {
   confluenceGetSpaceBlobActivity,
-  confluenceGetTopLevelPageIdsActivity,
+  confluenceGetTopLevelEntityIdsActivity,
   confluenceRemoveSpaceActivity,
-  confluenceRemoveUnvisitedPagesActivity,
+  confluenceRemoveUnvisitedEntitiesActivity,
   confluenceSaveStartSyncActivity,
   confluenceSaveSuccessSyncActivity,
-  confluenceCheckAndUpsertSinglePageActivity,
-  confluenceUpsertLeafPagesActivity,
-  confluenceGetActiveChildPageRefsActivity,
+  confluenceCheckAndUpsertSingleEntityActivity,
+  confluenceGetActiveChildEntityRefsActivity,
+  confluenceUpsertLeafEntitiesActivity,
   fetchConfluenceSpaceIdsForConnectorActivity,
   confluenceUpsertPageWithFullParentsActivity,
 
@@ -41,14 +41,14 @@ const {
   fetchConfluenceConfigurationActivity,
   confluenceUpsertSpaceFolderActivity,
 
-  fetchAndUpsertRootPagesActivity,
+  fetchAndUpsertRootEntitiesActivity,
 
   getSpaceIdsToSyncActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
   retry: {
-    initialInterval: "60 seconds",
-    backoffCoefficient: 2,
+    initialInterval: "10 seconds",
+    backoffCoefficient: 1,
     maximumInterval: "600 seconds",
   },
 });
@@ -74,7 +74,7 @@ const TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB = 10;
 
 const MAX_LEAF_PAGES_PER_BATCH = 50;
 
-const TOP_LEVEL_PAGE_REFS_CHUNK_SIZE = 100;
+const TOP_LEVEL_ENTITY_REFS_CHUNK_SIZE = 100;
 
 export async function confluenceSyncWorkflow({
   connectorId,
@@ -161,18 +161,18 @@ interface ConfluenceSpaceSyncWorkflowInput {
 }
 
 // Confluence Space Structure:
-// - A single root page defining the space's entry point.
-// - Top level pages directly nested under the root page.
-// Each top-level page can have a hierarchy of any depth.
+// - A single root entity defining the space's entry point.
+// - Top level entities directly nested under the root entity.
+// Each top-level entity can have a hierarchy of any depth.
 // The sync workflow employs DFS, initiating a separate workflow
-// for each top-level page. Refer to `confluenceSyncTopLevelChildPagesWorkflow`
+// for each top-level entity. Refer to `confluenceSyncTopLevelChildEntitiesWorkflow`
 // for implementation details.
 export async function confluenceSpaceSyncWorkflow(
   params: ConfluenceSpaceSyncWorkflowInput
 ) {
   const { connectorId, spaceId } = params;
 
-  const uniqueTopLevelPageRefs = new Map<string, ConfluencePageRef>();
+  const uniqueTopLevelEntityRefs = new Map<string, ConfluenceEntityRef>();
   const visitedAtMs = new Date().getTime();
 
   const wInfo = workflowInfo();
@@ -197,51 +197,51 @@ export async function confluenceSpaceSyncWorkflow(
     baseUrl,
   });
 
-  const allowedRootPageIds = await fetchAndUpsertRootPagesActivity({
+  const allowedRootEntityIds = await fetchAndUpsertRootEntitiesActivity({
     ...params,
     confluenceCloudId,
     space,
     visitedAtMs,
   });
 
-  // Fetch all top-level pages within a specified space. Top-level pages
-  // refer to those directly nested under the space's root pages.
-  for (const allowedRootPageId of allowedRootPageIds) {
+  // Fetch all top-level entities within a specified space. Top-level entities
+  // refer to those directly nested under the space's root entities.
+  for (const allowedRootEntityId of allowedRootEntityIds) {
     let nextPageCursor: string | null = "";
     do {
-      const { topLevelPageRefs, nextPageCursor: nextCursor } =
-        await confluenceGetTopLevelPageIdsActivity({
+      const { topLevelEntityRefs, nextPageCursor: nextCursor } =
+        await confluenceGetTopLevelEntityIdsActivity({
           confluenceCloudId,
           connectorId,
           pageCursor: nextPageCursor,
-          rootPageId: allowedRootPageId,
+          rootEntityId: allowedRootEntityId,
           space,
         });
 
       nextPageCursor = nextCursor; // Prepare for the next iteration.
 
-      topLevelPageRefs.forEach((r) => uniqueTopLevelPageRefs.set(r.id, r));
+      topLevelEntityRefs.forEach((r) => uniqueTopLevelEntityRefs.set(r.id, r));
     } while (nextPageCursor !== null);
   }
 
   const { workflowId, searchAttributes: parentSearchAttributes, memo } = wInfo;
 
-  const uniqueTopLevelPageRefsArray = Array.from(
-    uniqueTopLevelPageRefs.values()
+  const uniqueTopLevelEntityRefsArray = Array.from(
+    uniqueTopLevelEntityRefs.values()
   );
   // For small spaces, process each page individually; for large spaces, chunk them to be
   // conservative.
-  const topLevelPageRefsToProcess =
-    uniqueTopLevelPageRefsArray.length > TOP_LEVEL_PAGE_REFS_CHUNK_SIZE
-      ? chunk(uniqueTopLevelPageRefsArray, TOP_LEVEL_PAGE_REFS_CHUNK_SIZE)
-      : uniqueTopLevelPageRefsArray.map((page) => [page]);
+  const topLevelEntityRefsToProcess =
+    uniqueTopLevelEntityRefsArray.length > TOP_LEVEL_ENTITY_REFS_CHUNK_SIZE
+      ? chunk(uniqueTopLevelEntityRefsArray, TOP_LEVEL_ENTITY_REFS_CHUNK_SIZE)
+      : uniqueTopLevelEntityRefsArray.map((entity) => [entity]);
 
-  for (const pageRefChunk of topLevelPageRefsToProcess) {
-    // Start a new workflow to import the child pages.
-    await executeChild(confluenceSyncTopLevelChildPagesWorkflow, {
-      workflowId: makeConfluenceSyncTopLevelChildPagesWorkflowIdFromParentId(
+  for (const entityRefChunk of topLevelEntityRefsToProcess) {
+    // Start a new workflow to import the child entities.
+    await executeChild(confluenceSyncTopLevelChildEntitiesWorkflow, {
+      workflowId: makeConfluenceSyncTopLevelChildEntitiesWorkflowIdFromParentId(
         workflowId,
-        pageRefChunk[0]?.id ?? ""
+        entityRefChunk[0]?.id ?? ""
       ),
       searchAttributes: parentSearchAttributes,
       args: [
@@ -250,14 +250,14 @@ export async function confluenceSpaceSyncWorkflow(
           space,
           confluenceCloudId,
           visitedAtMs,
-          topLevelPageRefs: pageRefChunk,
+          topLevelEntityRefs: entityRefChunk,
         },
       ],
       memo,
     });
   }
 
-  await confluenceRemoveUnvisitedPagesActivity({
+  await confluenceRemoveUnvisitedEntitiesActivity({
     connectorId,
     lastVisitedAt: visitedAtMs,
     spaceId,
@@ -270,15 +270,15 @@ export async function confluenceSpaceSyncWorkflow(
   );
 }
 
-type StackElement = ConfluencePageRef | { parentId: string; cursor: string };
+type StackElement = ConfluenceEntityRef | { parentId: string; cursor: string };
 
-interface confluenceSyncTopLevelChildPagesWorkflowInput {
+interface confluenceSyncTopLevelChildEntitiesWorkflowInput {
   confluenceCloudId: string;
   connectorId: ModelId;
   forceUpsert: boolean;
   isBatchSync: boolean;
   space: SpaceBlob;
-  topLevelPageRefs: StackElement[];
+  topLevelEntityRefs: StackElement[];
   visitedAtMs: number;
 }
 
@@ -300,25 +300,25 @@ interface confluenceSyncTopLevelChildPagesWorkflowInput {
  * The workflow stops importing child pages if a parent page is restricted.
  * Page restriction checks are performed by `confluenceCheckAndUpsertSinglePageActivity`.
  */
-export async function confluenceSyncTopLevelChildPagesWorkflow(
-  params: confluenceSyncTopLevelChildPagesWorkflowInput
+export async function confluenceSyncTopLevelChildEntitiesWorkflow(
+  params: confluenceSyncTopLevelChildEntitiesWorkflowInput
 ) {
-  const { space, topLevelPageRefs, visitedAtMs } = params;
+  const { space, topLevelEntityRefs, visitedAtMs } = params;
 
   // Step 1: Setup.
-  const stack: StackElement[] = [...topLevelPageRefs];
-  let leafPagesBatch: ConfluencePageRef[] = [];
+  const stack: StackElement[] = [...topLevelEntityRefs];
+  let leafEntitiesBatch: ConfluenceEntityRef[] = [];
 
   // Step 2: Define a helper to "commit" the current batch of leaves.
-  async function flushLeafPagesBatch() {
-    if (leafPagesBatch.length > 0) {
-      await confluenceUpsertLeafPagesActivity({
+  async function flushLeafEntitiesBatch() {
+    if (leafEntitiesBatch.length > 0) {
+      await confluenceUpsertLeafEntitiesActivity({
         ...params,
         space,
-        pageRefs: leafPagesBatch,
+        entityRefs: leafEntitiesBatch,
         visitedAtMs,
       });
-      leafPagesBatch = [];
+      leafEntitiesBatch = [];
     }
   }
 
@@ -328,47 +328,51 @@ export async function confluenceSyncTopLevelChildPagesWorkflow(
       throw new Error("No more pages to parse.");
     }
 
-    // Check if it's a page reference or cursor.
-    const isPageRef = "id" in current;
+    // Check if it's an entity reference or cursor.
+    const isEntityRef = "id" in current;
 
-    // Step 3: If this is a real page and it has no children, buffer it for batch processing.
-    if (isPageRef && !current.hasChildren) {
-      leafPagesBatch.push(current);
+    // Step 3: If this is a real entity and it has no children, buffer it for batch processing.
+    if (
+      isEntityRef &&
+      (!current.hasPageChildren || !current.hasFolderChildren)
+    ) {
+      leafEntitiesBatch.push(current);
 
       // Check if we reached the threshold and, if so, flush the batch.
-      if (leafPagesBatch.length >= MAX_LEAF_PAGES_PER_BATCH) {
-        await flushLeafPagesBatch();
+      if (leafEntitiesBatch.length >= MAX_LEAF_PAGES_PER_BATCH) {
+        await flushLeafEntitiesBatch();
       }
       continue;
     }
 
-    // Step 4: For pages that do have children (or a cursor item), process them normally.
-    if (isPageRef) {
+    // Step 4: For entities that do have children (or a cursor item), process them normally.
+    if (isEntityRef) {
       const successfullyUpsert =
-        await confluenceCheckAndUpsertSinglePageActivity({
+        await confluenceCheckAndUpsertSingleEntityActivity({
           ...params,
           space,
-          pageRef: current,
+          entityRef: current,
           visitedAtMs,
         });
+
       if (!successfullyUpsert) {
         continue;
       }
     }
 
     // Get child pages using either initial empty cursor or saved cursor.
-    const { childPageRefs, nextPageCursor } =
-      await confluenceGetActiveChildPageRefsActivity({
+    const { childEntityRefs, nextPageCursor } =
+      await confluenceGetActiveChildEntityRefsActivity({
         ...params,
-        parentPageId: isPageRef ? current.id : current.parentId,
-        pageCursor: isPageRef ? "" : current.cursor,
+        parentEntityId: isEntityRef ? current.id : current.parentId,
+        pageCursor: isEntityRef ? "" : current.cursor,
       });
 
     // Add children and next cursor if there are more.
-    stack.push(...childPageRefs);
+    stack.push(...childEntityRefs);
     if (nextPageCursor !== null) {
       stack.push({
-        parentId: isPageRef ? current.id : current.parentId,
+        parentId: isEntityRef ? current.id : current.parentId,
         cursor: nextPageCursor,
       });
     }
@@ -380,18 +384,20 @@ export async function confluenceSyncTopLevelChildPagesWorkflow(
         TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB * 1024 * 1024;
     if (
       hasReachedWorkflowLimits &&
-      (stack.length > 0 || childPageRefs.length > 0 || nextPageCursor !== null)
+      (stack.length > 0 ||
+        childEntityRefs.length > 0 ||
+        nextPageCursor !== null)
     ) {
-      await flushLeafPagesBatch();
+      await flushLeafEntitiesBatch();
 
-      await continueAsNew<typeof confluenceSyncTopLevelChildPagesWorkflow>({
+      await continueAsNew<typeof confluenceSyncTopLevelChildEntitiesWorkflow>({
         ...params,
-        topLevelPageRefs: stack,
+        topLevelEntityRefs: stack,
       });
     }
   }
 
-  await flushLeafPagesBatch();
+  await flushLeafEntitiesBatch();
 }
 
 async function startConfluenceRemoveSpaceWorkflow(

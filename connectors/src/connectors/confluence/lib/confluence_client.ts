@@ -1,5 +1,6 @@
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { Headers } from "undici";
 import { fetch as undiciFetch, ProxyAgent } from "undici";
 
@@ -46,6 +47,7 @@ const ConfluencePageCodec = t.intersection([
   t.type({
     createdAt: t.string,
     parentId: t.union([t.string, t.null]),
+    parentType: t.union([t.literal("page"), t.literal("folder")]),
     id: t.string,
     title: t.string,
     spaceId: t.string,
@@ -60,53 +62,83 @@ const ConfluencePageCodec = t.intersection([
   CatchAllCodec,
 ]);
 
-const SearchConfluencePageCodec = t.intersection([
-  t.type({
-    id: t.string,
-    type: t.literal("page"),
-    status: t.string,
-    title: t.string,
+const SearchBaseEntityCodec = t.type({
+  id: t.string,
+  status: t.string,
+  title: t.string,
 
-    // Version info.
-    version: t.type({
-      number: t.number,
-    }),
+  // Version info.
+  version: t.type({
+    number: t.number,
+  }),
 
-    // Restrictions.
-    restrictions: t.type({
-      read: t.type({
-        restrictions: t.type({
-          user: t.type({
-            results: t.array(t.unknown),
-          }),
-          group: t.type({
-            results: t.array(t.unknown),
-          }),
+  // Restrictions.
+  restrictions: t.type({
+    read: t.type({
+      restrictions: t.type({
+        user: t.type({
+          results: t.array(t.unknown),
+        }),
+        group: t.type({
+          results: t.array(t.unknown),
         }),
       }),
     }),
+  }),
 
-    // Children info
+  // Ancestors (parent chain).
+  ancestors: t.array(
+    t.type({
+      id: t.string,
+      type: t.string,
+      title: t.union([t.undefined, t.string]),
+    })
+  ),
+});
+
+const SearchConfluencePageCodec = t.intersection([
+  SearchBaseEntityCodec,
+  t.type({
+    type: t.literal("page"),
     childTypes: t.type({
+      folder: t.type({
+        value: t.boolean,
+      }),
       page: t.type({
         value: t.boolean,
       }),
     }),
-
-    // Ancestors (parent chain)
-    ancestors: t.array(
-      t.type({
-        id: t.string,
-        type: t.string,
-        title: t.union([t.undefined, t.string]),
-      })
-    ),
   }),
+]);
+
+const SearchConfluenceFolderCodec = t.intersection([
+  SearchBaseEntityCodec,
+  t.type({
+    type: t.literal("folder"),
+    childTypes: t.union([
+      t.type({
+        folder: t.boolean,
+        page: t.boolean,
+      }),
+      t.type({
+        folder: t.type({
+          value: t.boolean,
+        }),
+        page: t.type({
+          value: t.boolean,
+        }),
+      }),
+    ]),
+  }),
+]);
+
+const SearchConfluenceEntityCodec = t.intersection([
+  t.union([SearchConfluencePageCodec, SearchConfluenceFolderCodec]),
   CatchAllCodec,
 ]);
 
-export type ConfluenceSearchPageType = t.TypeOf<
-  typeof SearchConfluencePageCodec
+export type ConfluenceSearchEntityType = t.TypeOf<
+  typeof SearchConfluenceEntityCodec
 >;
 
 const ConfluencePageWithBodyCodec = t.intersection([
@@ -131,6 +163,24 @@ const ConfluencePageWithBodyCodec = t.intersection([
 export type ConfluencePageWithBodyType = t.TypeOf<
   typeof ConfluencePageWithBodyCodec
 >;
+
+const ConfluenceFolderCodec = t.intersection([
+  t.type({
+    createdAt: t.string,
+    id: t.string,
+    parentId: t.union([t.string, t.null]),
+    parentType: t.union([t.literal("page"), t.literal("folder")]),
+    title: t.string,
+    version: t.type({
+      number: t.number,
+      createdAt: t.string,
+    }),
+    _links: t.type({
+      tinyui: t.string,
+    }),
+  }),
+  CatchAllCodec,
+]);
 
 const ConfluenceUserProfileCodec = t.intersection([
   t.type({
@@ -485,11 +535,17 @@ export class ConfluenceClient {
     ]);
 
     const responseBody = await response.json();
+
+    console.log(">>>", JSON.stringify(responseBody, null, 2));
     const result = codec.decode(responseBody);
 
     if (isLeft(result)) {
+      console.log(">>> ERROR", reporter.formatValidationErrors(result.left));
       throw new ConfluenceClientError("Response validation failed", {
         type: "validation_error",
+        data: {
+          reason: reporter.formatValidationErrors(result.left),
+        },
       });
     }
 
@@ -623,19 +679,19 @@ export class ConfluenceClient {
     };
   }
 
-  async getChildPages({
+  async getChildEntities({
     limit,
     pageCursor,
-    parentPageId,
+    parentEntityId,
     spaceKey,
   }: {
     limit: number;
     pageCursor: string | null;
-    parentPageId: string;
+    parentEntityId: string;
     spaceKey: string;
   }) {
     // Build CQL query to get pages with specific IDs.
-    const cqlQuery = `type=page AND space="${spaceKey}" AND parent=${parentPageId}`;
+    const cqlQuery = `type IN (page, folder) AND space="${spaceKey}" AND parent=${parentEntityId}`;
 
     const params = new URLSearchParams({
       cql: cqlQuery,
@@ -643,7 +699,8 @@ export class ConfluenceClient {
         "version", // To check if page changed.
         "restrictions.read.restrictions.user", // To check user permissions.
         "restrictions.read.restrictions.group", // To check group permissions.
-        "childTypes.page", // To know if it has children.
+        "childTypes.page", // To know if it has page children.
+        "childTypes.folder", // To know if it has folder children.
         "ancestors", // To get parent info.
       ].join(","),
       limit: limit.toString(),
@@ -656,18 +713,18 @@ export class ConfluenceClient {
     try {
       const res = await this.request(
         `${this.legacyRestApiBaseUrl}/content/search?${params.toString()}`,
-        ConfluencePaginatedResults(SearchConfluencePageCodec)
+        ConfluencePaginatedResults(SearchConfluenceEntityCodec)
       );
 
       return {
         nextPageCursor: extractCursorFromLinks(res._links),
-        pages: res.results,
+        entities: res.results,
       };
     } catch (err) {
       if (err instanceof ConfluenceClientError && err.status === 404) {
         return {
           nextPageCursor: null,
-          pages: [],
+          entities: [],
         };
       }
 
@@ -710,6 +767,56 @@ export class ConfluenceClient {
       ConfluenceSpaceCodec
     );
   }
+
+  // async getRootEntitiesInSpace({
+  //   limit,
+  //   pageCursor,
+  //   spaceKey,
+  // }: {
+  //   limit: number;
+  //   pageCursor: string | null;
+  //   spaceKey: string;
+  // }) {
+  //   const cqlQuery = `type IN (page, folder) AND space="${spaceKey}" AND ancestor=null`;
+
+  //   const params = new URLSearchParams({
+  //     cql: cqlQuery,
+  //     expand: [
+  //       "version", // To check if page changed.
+  //       "restrictions.read.restrictions.user", // To check user permissions.
+  //       "restrictions.read.restrictions.group", // To check group permissions.
+  //       "childTypes.page", // To know if it has page children.
+  //       "childTypes.folder", // To know if it has folder children.
+  //       "ancestors", // To get parent info.
+  //     ].join(","),
+  //     limit: limit.toString(),
+  //   });
+
+  //   if (pageCursor) {
+  //     params.append("cursor", pageCursor);
+  //   }
+
+  //   try {
+  //     const res = await this.request(
+  //       `${this.legacyRestApiBaseUrl}/content/search?${params.toString()}`,
+  //       ConfluencePaginatedResults(SearchConfluenceEntityCodec)
+  //     );
+
+  //     return {
+  //       nextPageCursor: extractCursorFromLinks(res._links),
+  //       entities: res.results,
+  //     };
+  //   } catch (err) {
+  //     if (err instanceof ConfluenceClientError && err.status === 404) {
+  //       return {
+  //         nextPageCursor: null,
+  //         entities: [],
+  //       };
+  //     }
+
+  //     throw err;
+  //   }
+  // }
 
   async getPagesInSpace(
     spaceId: string,
@@ -760,14 +867,15 @@ export class ConfluenceClient {
         "version", // To check if page changed.
         "restrictions.read.restrictions.user", // To check user permissions.
         "restrictions.read.restrictions.group", // To check group permissions.
-        "childTypes.page", // To know if it has children.
+        "childTypes.page", // To know if it has page children.
+        "childTypes.folder", // To know if it has folder children.
         "ancestors", // To get parent info.
       ].join(","),
     });
 
     return this.request(
       `${this.legacyRestApiBaseUrl}/content/search?${params.toString()}`,
-      ConfluencePaginatedResults(SearchConfluencePageCodec)
+      ConfluencePaginatedResults(SearchConfluenceEntityCodec)
     );
   }
 
@@ -790,6 +898,13 @@ export class ConfluenceClient {
 
       throw err;
     }
+  }
+
+  async getFolderById(folderId: string) {
+    return this.request(
+      `${this.restApiBaseUrl}/folders/${folderId}`,
+      ConfluenceFolderCodec
+    );
   }
 
   async getPageReadRestrictions(pageId: string) {

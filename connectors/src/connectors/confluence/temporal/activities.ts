@@ -1,10 +1,15 @@
+import { assertNever } from "@dust-tt/client";
 import { Op } from "sequelize";
 import TurndownService from "turndown";
 
-import type { ConfluencePageRef } from "@connectors/connectors/confluence/lib/confluence_api";
+import type {
+  ConfluenceEntityRef,
+  ConfluenceFolderRef,
+  ConfluencePageRef,
+} from "@connectors/connectors/confluence/lib/confluence_api";
 import {
   bulkFetchConfluencePageRefs,
-  getActiveChildPageRefs,
+  getActiveChildEntityRefs,
   pageHasReadRestrictions,
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluencePageWithBodyType } from "@connectors/connectors/confluence/lib/confluence_client";
@@ -14,7 +19,9 @@ import {
   getSpaceHierarchy,
 } from "@connectors/connectors/confluence/lib/hierarchy";
 import {
+  makeFolderInternalId,
   makePageInternalId,
+  makeParentInternalId,
   makeSpaceInternalId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import { makeConfluenceDocumentUrl } from "@connectors/connectors/confluence/temporal/workflow_ids";
@@ -37,6 +44,7 @@ import {
 } from "@connectors/lib/error";
 import {
   ConfluenceConfiguration,
+  ConfluenceFolder,
   ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
@@ -279,6 +287,31 @@ export async function markPageHasVisited({
   );
 }
 
+export async function markFolderHasVisited({
+  connectorId,
+  folderId,
+  spaceId,
+  visitedAtMs,
+}: {
+  connectorId: ModelId;
+  folderId: string;
+  spaceId: string;
+  visitedAtMs: number;
+}) {
+  await ConfluenceFolder.update(
+    {
+      lastVisitedAt: new Date(visitedAtMs),
+    },
+    {
+      where: {
+        connectorId,
+        folderId,
+        spaceId,
+      },
+    }
+  );
+}
+
 interface ConfluenceUpsertPageInput {
   page: NonNullable<Awaited<ReturnType<ConfluenceClient["getPageById"]>>>;
   spaceName: string;
@@ -384,12 +417,60 @@ async function upsertConfluencePageInDb(
   });
 }
 
-interface ConfluenceCheckAndUpsertSinglePageActivityInput {
+interface ConfluenceCheckAndUpsertSingleEntityActivityInput {
   connectorId: ModelId;
-  isBatchSync: boolean;
-  pageRef: ConfluencePageRef;
-  space: SpaceBlob;
+  entityRef: ConfluenceEntityRef;
   forceUpsert: boolean;
+  isBatchSync: boolean;
+  space: SpaceBlob;
+  visitedAtMs: number;
+}
+
+export async function confluenceCheckAndUpsertSingleEntityActivity({
+  connectorId,
+  entityRef,
+  forceUpsert,
+  isBatchSync,
+  space,
+  visitedAtMs,
+}: ConfluenceCheckAndUpsertSingleEntityActivityInput): Promise<boolean> {
+  const connector = await fetchConfluenceConnector(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  switch (entityRef.type) {
+    case "page":
+      return confluenceCheckAndUpsertSinglePageActivity({
+        connector,
+        dataSourceConfig,
+        pageRef: entityRef,
+        forceUpsert,
+        isBatchSync,
+        space,
+        visitedAtMs,
+      });
+
+    case "folder":
+      return confluenceCheckAndUpsertSingleFolderActivity({
+        connector,
+        dataSourceConfig,
+        folderRef: entityRef,
+        forceUpsert,
+        isBatchSync,
+        space,
+        visitedAtMs,
+      });
+
+    default:
+      assertNever(entityRef);
+  }
+}
+
+interface BaseConfluenceCheckAndUpsertSingleEntityActivityInput {
+  connector: ConnectorResource;
+  dataSourceConfig: DataSourceConfig;
+  forceUpsert: boolean;
+  isBatchSync: boolean;
+  space: SpaceBlob;
   visitedAtMs: number;
 }
 
@@ -398,24 +479,27 @@ interface ConfluenceCheckAndUpsertSinglePageActivityInput {
  * Operates greedily by stopping if the page is restricted or if there is a version match
  * (unless the page was moved, in this case, we have to upsert because the parents have changed).
  */
-export async function confluenceCheckAndUpsertSinglePageActivity({
-  connectorId,
-  isBatchSync,
+async function confluenceCheckAndUpsertSinglePageActivity({
+  connector,
+  dataSourceConfig,
   pageRef,
-  space,
   forceUpsert,
+  isBatchSync,
+  space,
   visitedAtMs,
-}: ConfluenceCheckAndUpsertSinglePageActivityInput) {
-  const connector = await fetchConfluenceConnector(connectorId);
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
+}: BaseConfluenceCheckAndUpsertSingleEntityActivityInput & {
+  pageRef: ConfluencePageRef;
+}) {
   const { id: spaceId, name: spaceName } = space;
+  const { id: entityId } = pageRef;
+
+  const { id: connectorId } = connector;
   const { id: pageId } = pageRef;
 
   const loggerArgs = {
     connectorId,
     dataSourceId: dataSourceConfig.dataSourceId,
-    pageId,
+    entityId,
     spaceId,
     workspaceId: dataSourceConfig.workspaceId,
   };
@@ -489,7 +573,7 @@ export async function confluenceCheckAndUpsertSinglePageActivity({
     // Exact parent Ids will be computed after all page imports within the space have been completed.
     parents = [
       makePageInternalId(page.id),
-      makePageInternalId(page.parentId),
+      makeParentInternalId(page.parentType, page.parentId),
       HiddenContentNodeParentId,
     ];
   } else {
@@ -514,23 +598,155 @@ export async function confluenceCheckAndUpsertSinglePageActivity({
   return true;
 }
 
-type ConfluenceUpsertLeafPagesActivityInput = Omit<
-  ConfluenceCheckAndUpsertSinglePageActivityInput,
-  "pageRef"
+async function confluenceCheckAndUpsertSingleFolderActivity({
+  connector,
+  dataSourceConfig,
+  folderRef,
+  forceUpsert,
+  space,
+  visitedAtMs,
+}: BaseConfluenceCheckAndUpsertSingleEntityActivityInput & {
+  folderRef: ConfluenceFolderRef;
+}) {
+  const { id: spaceId } = space;
+  const { id: folderId } = folderRef;
+
+  const { id: connectorId } = connector;
+
+  const loggerArgs = {
+    connectorId,
+    dataSourceId: dataSourceConfig.dataSourceId,
+    folderId,
+    spaceId,
+    workspaceId: dataSourceConfig.workspaceId,
+  };
+  const localLogger = logger.child(loggerArgs);
+
+  const folderAlreadyInDb = await ConfluenceFolder.findOne({
+    attributes: ["parentId", "skipReason", "version"],
+    where: {
+      connectorId,
+      folderId,
+    },
+  });
+
+  const isFolderSkipped = Boolean(
+    folderAlreadyInDb && folderAlreadyInDb.skipReason !== null
+  );
+  if (isFolderSkipped) {
+    logger.info("Confluence folder skipped.");
+
+    // If a folder is skipped, we skip all its children.
+    return false;
+  }
+
+  const confluenceConfig =
+    await fetchConfluenceConfigurationActivity(connectorId);
+
+  const client = await getConfluenceClient(
+    {
+      cloudId: confluenceConfig.cloudId,
+    },
+    connector
+  );
+
+  // Check restrictions.
+  const { hasReadRestrictions } = folderRef;
+  if (hasReadRestrictions) {
+    localLogger.info("Skipping restricted Confluence folder.");
+    return false;
+  }
+
+  // Check the version.
+  const isSameVersion =
+    folderAlreadyInDb && folderAlreadyInDb.version === folderRef.version;
+
+  // Check whether the folder was moved (the version is not bumped when a folder is moved).
+  const folderWasMoved =
+    folderAlreadyInDb && folderAlreadyInDb.parentId !== folderRef.parentId;
+
+  // Only index in DB if the folder does not exist, has been moved, or we want to upsert.
+  if (isSameVersion && !forceUpsert && !folderWasMoved) {
+    // Simply record that we visited the folder.
+    await markFolderHasVisited({
+      connectorId,
+      folderId,
+      spaceId,
+      visitedAtMs,
+    });
+
+    return true;
+  }
+
+  // There is a small delta between the folder being listed and the folder being imported.
+  // If the folder has been deleted in the meantime, we should ignore it.
+  const folder = await client.getFolderById(folderId);
+  if (!folder) {
+    localLogger.info("Confluence folder not found.");
+    // Return false to skip the child entities.
+    return false;
+  }
+
+  let parents: [string, string, ...string[]];
+  if (folder.parentId) {
+    // Exact parent Ids will be computed after all entity imports within the space have been completed.
+    parents = [
+      makeFolderInternalId(folder.id),
+      folder.parentType === "page"
+        ? makePageInternalId(folder.parentId)
+        : makeFolderInternalId(folder.parentId),
+      HiddenContentNodeParentId,
+    ];
+  } else {
+    // In this case we already have the exact parents: the folder itself and the space.
+    parents = [makeFolderInternalId(folder.id), makeSpaceInternalId(spaceId)];
+  }
+
+  const parentId = parents[1];
+
+  localLogger.info("Upserting Confluence folder.");
+  await upsertDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: makeFolderInternalId(folderId),
+    mimeType: INTERNAL_MIME_TYPES.CONFLUENCE.FOLDER,
+    parentId,
+    parents,
+    sourceUrl: folder._links.tinyui,
+    title: folder.title,
+  });
+
+  localLogger.info("Upserting Confluence folder in DB.");
+  await ConfluenceFolder.upsert({
+    connectorId,
+    externalUrl: folder._links.tinyui,
+    folderId,
+    lastVisitedAt: new Date(visitedAtMs),
+    parentId,
+    spaceId,
+    title: folder.title,
+    version: folder.version.number,
+  });
+
+  return true;
+}
+
+type ConfluenceUpsertLeafEntitiesActivityInput = Omit<
+  ConfluenceCheckAndUpsertSingleEntityActivityInput,
+  "entityRef"
 > & {
-  pageRefs: ConfluencePageRef[];
+  entityRefs: ConfluenceEntityRef[];
 };
 
-export async function confluenceUpsertLeafPagesActivity({
-  pageRefs,
+export async function confluenceUpsertLeafEntitiesActivity({
+  entityRefs,
   ...params
-}: ConfluenceUpsertLeafPagesActivityInput) {
+}: ConfluenceUpsertLeafEntitiesActivityInput) {
   await concurrentExecutor(
-    pageRefs,
-    async (pageRef) => {
-      await confluenceCheckAndUpsertSinglePageActivity({
+    entityRefs,
+    async (entityRef) => {
+      await confluenceCheckAndUpsertSingleEntityActivity({
         ...params,
-        pageRef,
+        entityRef,
       });
     },
     {
@@ -642,15 +858,15 @@ export async function confluenceUpsertPageWithFullParentsActivity({
   return true;
 }
 
-export async function confluenceGetActiveChildPageRefsActivity({
+export async function confluenceGetActiveChildEntityRefsActivity({
   connectorId,
-  parentPageId,
+  parentEntityId,
   confluenceCloudId,
   pageCursor,
   space,
 }: {
   connectorId: ModelId;
-  parentPageId: string;
+  parentEntityId: string;
   confluenceCloudId: string;
   pageCursor: string;
   space: SpaceBlob;
@@ -660,7 +876,7 @@ export async function confluenceGetActiveChildPageRefsActivity({
   const localLogger = logger.child({
     connectorId,
     pageCursor,
-    parentPageId,
+    parentEntityId,
     spaceId,
   });
 
@@ -671,9 +887,9 @@ export async function confluenceGetActiveChildPageRefsActivity({
 
   localLogger.info("Fetching Confluence child pages in space.");
 
-  return getActiveChildPageRefs(client, {
+  return getActiveChildEntityRefs(client, {
     pageCursor,
-    parentPageId,
+    parentEntityId,
     spaceKey,
   });
 }
@@ -681,7 +897,8 @@ export async function confluenceGetActiveChildPageRefsActivity({
 // Confluence has a single main landing page.
 // However, users have the ability to create "orphaned" root pages that don't link from the main landing.
 // It's important to ensure these pages are also imported.
-async function getRootPageRefsActivity({
+// TODO: Update comments.
+async function getRootEntityRefsActivity({
   connectorId,
   confluenceCloudId,
   space,
@@ -702,7 +919,7 @@ async function getRootPageRefsActivity({
     connectorId,
   });
 
-  localLogger.info("Fetching Confluence root page in space.");
+  localLogger.info("Fetching Confluence root entities in space.");
 
   try {
     const { pages: rootPages } = await client.getPagesInSpace(spaceId, "root");
@@ -723,8 +940,8 @@ async function getRootPageRefsActivity({
   }
 }
 
-// Activity to handle fetching, upserting, and filtering root pages.
-export async function fetchAndUpsertRootPagesActivity(params: {
+// Activity to handle fetching, upserting, and filtering root entities.
+export async function fetchAndUpsertRootEntitiesActivity(params: {
   confluenceCloudId: string;
   connectorId: ModelId;
   forceUpsert: boolean;
@@ -734,55 +951,54 @@ export async function fetchAndUpsertRootPagesActivity(params: {
 }): Promise<string[]> {
   const { connectorId, confluenceCloudId, space } = params;
 
-  // Get the root level pages for the space.
-  const rootPageRefs = await getRootPageRefsActivity({
+  // Get the root level entities for the space.
+  const rootEntityRefs = await getRootEntityRefsActivity({
     connectorId,
     confluenceCloudId,
     space,
   });
-  if (rootPageRefs.length === 0) {
+  if (rootEntityRefs.length === 0) {
     return [];
   }
 
-  const allowedRootPageIds: string[] = [];
+  const allowedRootEntityIds: string[] = [];
 
-  // Check and upsert pages, filter allowed ones.
-  for (const rootPageRef of rootPageRefs) {
-    const successfullyUpsert = await confluenceCheckAndUpsertSinglePageActivity(
-      {
+  // Check and upsert entities, filter allowed ones.
+  for (const rootEntityRef of rootEntityRefs) {
+    const successfullyUpsert =
+      await confluenceCheckAndUpsertSingleEntityActivity({
         ...params,
-        pageRef: rootPageRef,
-      }
-    );
+        entityRef: rootEntityRef,
+      });
 
-    // If the page fails the upsert operation, it indicates the page is restricted.
-    // Such pages should not be added to the list of allowed pages.
+    // If the entity fails the upsert operation, it indicates the entity is restricted.
+    // Such entities should not be added to the list of allowed entities.
     if (successfullyUpsert) {
-      allowedRootPageIds.push(rootPageRef.id);
+      allowedRootEntityIds.push(rootEntityRef.id);
     }
   }
 
-  return allowedRootPageIds;
+  return allowedRootEntityIds;
 }
 
-export async function confluenceGetTopLevelPageIdsActivity({
+export async function confluenceGetTopLevelEntityIdsActivity({
   confluenceCloudId,
   connectorId,
   pageCursor,
-  rootPageId,
+  rootEntityId,
   space,
 }: {
   confluenceCloudId: string;
   connectorId: ModelId;
   pageCursor: string | null;
-  rootPageId: string;
+  rootEntityId: string;
   space: SpaceBlob;
 }) {
   const { id: spaceId, key: spaceKey } = space;
 
   const localLogger = logger.child({
     connectorId,
-    rootPageId,
+    rootEntityId,
     spaceId,
   });
 
@@ -793,28 +1009,29 @@ export async function confluenceGetTopLevelPageIdsActivity({
 
   localLogger.info("Fetching Confluence top-level page in space.");
 
-  const { childPageRefs, nextPageCursor } = await getActiveChildPageRefs(
+  const { childEntityRefs, nextPageCursor } = await getActiveChildEntityRefs(
     client,
     {
       pageCursor,
-      parentPageId: rootPageId,
+      parentEntityId: rootEntityId,
       spaceKey,
     }
   );
 
   localLogger.info(
     {
-      topLevelPagesCount: childPageRefs.length,
+      topLevelPagesCount: childEntityRefs.length,
     },
     "Found Confluence top-level pages in space."
   );
 
   return {
-    topLevelPageRefs: childPageRefs,
+    topLevelEntityRefs: childEntityRefs,
     nextPageCursor,
   };
 }
 
+// TODO:
 export async function confluenceUpdatePagesParentIdsActivity(
   connectorId: ModelId,
   spaceId: string,
@@ -873,7 +1090,7 @@ export async function confluenceUpdatePagesParentIdsActivity(
   logger.info({ connectorId }, "Done updating pages parent ids.");
 }
 
-export async function confluenceRemoveUnvisitedPagesActivity({
+export async function confluenceRemoveUnvisitedEntitiesActivity({
   connectorId,
   lastVisitedAt,
   spaceId,
@@ -883,6 +1100,25 @@ export async function confluenceRemoveUnvisitedPagesActivity({
   spaceId: string;
 }) {
   const connector = await fetchConfluenceConnector(connectorId);
+  // TODO: implement this for folders.
+
+  await confluenceRemoveUnvisitedPagesActivity({
+    connector,
+    lastVisitedAt,
+    spaceId,
+  });
+}
+
+async function confluenceRemoveUnvisitedPagesActivity({
+  connector,
+  lastVisitedAt,
+  spaceId,
+}: {
+  connector: ConnectorResource;
+  lastVisitedAt: number;
+  spaceId: string;
+}) {
+  const { id: connectorId } = connector;
 
   const unvisitedPages = await ConfluencePage.findAll({
     attributes: ["pageId"],
