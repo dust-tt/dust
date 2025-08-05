@@ -11,6 +11,7 @@ import {
   Input,
   Label,
   LinkIcon,
+  LoadingBlock,
   LockIcon,
   PopoverContent,
   PopoverRoot,
@@ -38,7 +39,6 @@ function FileSharingDropdown({
   onScopeChange,
   owner,
   disabled = false,
-  isLoading = false,
 }: FileSharingDropdownProps) {
   const scopeOptions: {
     icon: React.ComponentType;
@@ -78,11 +78,12 @@ function FileSharingDropdown({
             size="sm"
             isSelect
             label={selectedOption?.label}
-            icon={isLoading ? Spinner : selectedOption?.icon}
+            icon={selectedOption?.icon}
             disabled={disabled}
+            className="grid w-[17rem] grid-cols-[auto_1fr_auto]"
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-full">
+        <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
           {scopeOptions.map((option) => (
             <DropdownMenuItem
               key={option.value}
@@ -189,28 +190,22 @@ export function ShareInteractiveFilePopover({
                 <Separator />
 
                 {/* Content area with loading state */}
-                {isUpdatingShare ? (
-                  <div className="flex flex-1 items-center justify-center">
-                    <Spinner size="sm" />
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <div className="grow">
-                      <Input
-                        disabled
-                        onClick={(e) => e.currentTarget.select()}
-                        readOnly
-                        value={fileShare?.shareUrl ?? ""}
-                      />
-                    </div>
-                    <IconButton
-                      className="flex-none"
-                      icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-                      tooltip={isCopied ? "Copied!" : "Copy link"}
-                      onClick={handleCopyLink}
+                <div className="flex items-center gap-2">
+                  <div className="grow">
+                    <Input
+                      disabled
+                      onClick={(e) => e.currentTarget.select()}
+                      readOnly
+                      value={fileShare?.shareUrl ?? ""}
                     />
                   </div>
-                )}
+                  <IconButton
+                    className="flex-none"
+                    icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                    tooltip={isCopied ? "Copied!" : "Copy link"}
+                    onClick={handleCopyLink}
+                  />
+                </div>
               </div>
             )}
           </div>
