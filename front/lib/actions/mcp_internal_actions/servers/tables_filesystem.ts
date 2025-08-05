@@ -7,7 +7,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { Ok } from "@app/types";
 
@@ -73,39 +73,47 @@ const createServer = (
         // List all remote databases in the global space
         const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
-        // Get all data sources in the global space
-        const dataSources = await DataSourceResource.listBySpace(
+        // Get all data source views in the global space
+        const dataSourceViews = await DataSourceViewResource.listBySpace(
           auth,
           globalSpace
         );
 
         // Filter to only remote databases
-        const remoteDatabases = dataSources.filter(isRemoteDatabase);
+        const remoteDatabaseViews = dataSourceViews.filter((dsView) =>
+          isRemoteDatabase(dsView.dataSource)
+        );
 
         // Sort if requested
         if (sortBy === "name") {
-          remoteDatabases.sort((a, b) => a.name.localeCompare(b.name));
+          remoteDatabaseViews.sort((a, b) =>
+            a.dataSource.name.localeCompare(b.dataSource.name)
+          );
         } else if (sortBy === "timestamp") {
-          remoteDatabases.sort(
-            (a, b) => b.editedAt.getTime() - a.editedAt.getTime()
+          remoteDatabaseViews.sort(
+            (a, b) =>
+              b.dataSource.editedAt.getTime() - a.dataSource.editedAt.getTime()
           );
         }
 
         // Apply limit (default to 50 if not specified)
         const effectiveLimit = limit || 50;
-        const limitedDatabases = remoteDatabases.slice(0, effectiveLimit);
+        const limitedDatabaseViews = remoteDatabaseViews.slice(
+          0,
+          effectiveLimit
+        );
 
         // Format the response
-        const data = limitedDatabases.map((db) => ({
-          nodeId: `warehouse-${db.sId}`,
-          title: db.name,
+        const data = limitedDatabaseViews.map((dsView) => ({
+          nodeId: `warehouse-${dsView.dataSource.sId}`,
+          title: dsView.dataSource.name,
           path: "", // Warehouses are at the root
           parentTitle: null,
-          lastUpdatedAt: db.editedAt.toISOString(),
+          lastUpdatedAt: dsView.dataSource.editedAt.toISOString(),
           sourceUrl: null,
           mimeType: "warehouse",
           hasChildren: true,
-          connectorProvider: db.connectorProvider,
+          connectorProvider: dsView.dataSource.connectorProvider,
         }));
 
         return new Ok([
@@ -114,10 +122,10 @@ const createServer = (
             resource: {
               mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_LIST,
               uri: "",
-              text: `Found ${remoteDatabases.length} remote database${remoteDatabases.length !== 1 ? "s" : ""} in the global space.`,
+              text: `Found ${remoteDatabaseViews.length} remote database${remoteDatabaseViews.length !== 1 ? "s" : ""} in the global space.`,
               data,
               nextPageCursor: null,
-              resultCount: remoteDatabases.length,
+              resultCount: remoteDatabaseViews.length,
             },
           },
         ]);
