@@ -527,26 +527,55 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           return res;
         }
 
+        const existingAutoReadChannelPatterns = new Set(
+          slackConfig.autoReadChannelPatterns.map((p) => p.pattern)
+        );
+
+        const newAutoReadChannelPatterns = autoReadChannelPatterns.filter(
+          (item) => !existingAutoReadChannelPatterns.has(item.pattern)
+        );
+
+        if (newAutoReadChannelPatterns.length === 0) {
+          return res;
+        }
+
         // Check matching channels.
         const slackClient = await getSlackClient(connector.id);
 
         // Fetch all channels from Slack
         const allChannels = await getChannels(slackClient, connector.id, false);
-        const results = [];
-        for (const channel of allChannels) {
-          if (!channel.id || !channel.name) {
-            continue;
+
+        const results: Result<boolean, Error>[] = [];
+
+        // Filter channels that match any new pattern
+        const matchingChannels = allChannels.filter((channel) => {
+          const channelName = channel.name;
+          if (!channelName) {
+            return false;
           }
 
+          return newAutoReadChannelPatterns.some((pattern) => {
+            try {
+              const regex = new RegExp(pattern.pattern);
+              return regex.test(channelName);
+            } catch (e) {
+              // Skip invalid regex patterns
+              return false;
+            }
+          });
+        });
+        for (const channel of matchingChannels) {
           try {
-            results.push(
-              await autoReadChannel(
-                slackConfig.slackTeamId,
-                logger,
-                channel.id,
-                connector.type as "slack" | "slack_bot"
-              )
-            );
+            if (channel.id) {
+              results.push(
+                await autoReadChannel(
+                  slackConfig.slackTeamId,
+                  logger,
+                  channel.id,
+                  connector.type as "slack" | "slack_bot"
+                )
+              );
+            }
           } catch (error) {
             results.push(new Err(normalizeError(error)));
           }
