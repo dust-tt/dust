@@ -102,6 +102,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   monday_tool: {
     description: "Monday MCP tool",
   },
+  freshservice_tool: {
+    description: "Freshservice MCP tool",
+  },
   async_loop: {
     description: "Asynchronous loop for conversation processing",
   },
