@@ -453,7 +453,7 @@ export function MCPServerViewsDialog({
           <ToolsList
             owner={owner}
             mcpServerView={infoMCPServerView}
-            forcedCanUpdate={false}
+            disableUpdates
           />
         </div>
       ) : (

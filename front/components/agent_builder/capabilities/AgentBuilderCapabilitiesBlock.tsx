@@ -20,10 +20,7 @@ import type { DialogMode } from "@app/components/agent_builder/capabilities/mcp/
 import { MCPServerViewsDialog } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
-import {
-  isDefaultActionName,
-  isSupportedAgentBuilderAction,
-} from "@app/components/agent_builder/types";
+import { isDefaultActionName } from "@app/components/agent_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
@@ -176,6 +173,19 @@ const BACKGROUND_IMAGE_STYLE_PROPS = {
   paddingTop: "100px",
 };
 
+function shouldUseDialog(
+  action: AgentBuilderAction,
+  mcpServerViews: MCPServerViewType[]
+): boolean {
+  if (action.type !== "MCP") {
+    return false;
+  }
+
+  return mcpServerViews.some(
+    (view) => view.sId === action.configuration.mcpServerViewId
+  );
+}
+
 export function AgentBuilderCapabilitiesBlock() {
   const { fields, remove, append, update } = useFieldArray<
     AgentBuilderFormData,
@@ -184,11 +194,23 @@ export function AgentBuilderCapabilitiesBlock() {
     name: "actions",
   });
 
-  const { isMCPServerViewsLoading } = useMCPServerViewsContext();
+  const {
+    defaultMCPServerViews,
+    nonDefaultMCPServerViews,
+    isMCPServerViewsLoading,
+  } = useMCPServerViewsContext();
+  const mcpServerViews = [
+    ...defaultMCPServerViews,
+    ...nonDefaultMCPServerViews,
+  ];
 
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
 
   const [isKnowledgeSheetOpen, setIsKnowledgeSheetOpen] = useState(false);
+  const [knowledgeSheetAction, setKnowledgeSheetAction] = useState<{
+    action: AgentBuilderAction;
+    index: number;
+  } | null>(null);
   const dataVisualization = fields.some(
     (field) => field.type === "DATA_VISUALIZATION"
   )
@@ -198,21 +220,25 @@ export function AgentBuilderCapabilitiesBlock() {
   const handleEditSave = (updatedAction: AgentBuilderAction) => {
     if (dialogMode?.type === "edit") {
       update(dialogMode.index, updatedAction);
+    } else if (knowledgeSheetAction) {
+      update(knowledgeSheetAction.index, updatedAction);
     } else {
       append(updatedAction);
     }
     setDialogMode(null);
+    setKnowledgeSheetAction(null);
   };
 
   const handleActionEdit = (action: AgentBuilderAction, index: number) => {
     if (action.type === "MCP") {
-      setDialogMode(
-        action.noConfigurationRequired
-          ? { type: "info", action }
-          : { type: "edit", action, index }
-      );
-    } else {
-      if (isSupportedAgentBuilderAction(action)) {
+      if (shouldUseDialog(action, mcpServerViews)) {
+        setDialogMode(
+          action.noConfigurationRequired
+            ? { type: "info", action }
+            : { type: "edit", action, index }
+        );
+      } else {
+        setKnowledgeSheetAction({ action, index });
         setIsKnowledgeSheetOpen(true);
       }
     }
@@ -221,6 +247,7 @@ export function AgentBuilderCapabilitiesBlock() {
   const handleCloseSheet = () => {
     setDialogMode(null);
     setIsKnowledgeSheetOpen(false);
+    setKnowledgeSheetAction(null);
   };
 
   const handleMcpActionUpdate = (action: AgentBuilderAction, index: number) => {
@@ -233,13 +260,7 @@ export function AgentBuilderCapabilitiesBlock() {
         onClose={handleCloseSheet}
         onOpen={() => setIsKnowledgeSheetOpen(true)}
         onSave={handleEditSave}
-        action={
-          dialogMode &&
-          dialogMode.type === "edit" &&
-          dialogMode.action.type !== "MCP"
-            ? dialogMode.action
-            : undefined
-        }
+        action={knowledgeSheetAction?.action}
         open={isKnowledgeSheetOpen}
       />
       <MCPServerViewsDialog
