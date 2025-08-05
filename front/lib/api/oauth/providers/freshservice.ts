@@ -79,10 +79,13 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
     if (useCase === "personal_actions" || useCase === "platform_actions") {
-      // For MCP servers, check both mcp_server_id and domains
+      // If we have an mcp_server_id it means the admin already setup the connection and we have
+      // everything we need, otherwise we'll need the instance_url and client_id.
       if (extraConfig.mcp_server_id) {
-        return !!extraConfig.instance_url && !!extraConfig.client_id;
+        return true;
       }
+      // For personal/platform actions without MCP server, still need the standard validation
+      return !!extraConfig.instance_url && !!extraConfig.client_id;
     }
 
     // For other use cases, both domains are required
@@ -91,4 +94,5 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
     }
     return !!extraConfig.instance_url && !!extraConfig.client_id;
   }
+
 }
