@@ -86,7 +86,7 @@ export function ToolsPicker({
         <Button
           icon={BoltIcon}
           variant="ghost-secondary"
-          size={"xs"}
+          size="xs"
           tooltip="Tools"
           disabled={isLoading}
           isSelect

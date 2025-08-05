@@ -91,16 +91,6 @@ async function handler(
       break;
 
     case "POST":
-      if (!req.body || typeof req.body !== "object") {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid request body",
-          },
-        });
-      }
-
       const parseResult = ConversationToolActionRequestSchema.safeParse(
         req.body
       );
