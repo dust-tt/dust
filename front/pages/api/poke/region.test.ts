@@ -1,8 +1,7 @@
-import { describe, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { config } from "@app/lib/api/regions/config";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./region";
 
@@ -18,41 +17,35 @@ vi.mock(import("../../../lib/api/regions/config"), async (importOriginal) => {
 });
 
 describe("GET /api/poke/region", () => {
-  itInTransaction(
-    "returns correct region data when in us-central1",
-    async () => {
-      vi.mocked(config.getCurrentRegion).mockReturnValue("us-central1");
-      const { req, res } = await createPrivateApiMockRequest({
-        isSuperUser: true,
-      });
+  it("returns correct region data when in us-central1", async () => {
+    vi.mocked(config.getCurrentRegion).mockReturnValue("us-central1");
+    const { req, res } = await createPrivateApiMockRequest({
+      isSuperUser: true,
+    });
 
-      await handler(req, res);
+    await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(200);
-      expect(res._getJSONData()).toEqual({
-        region: "us-central1",
-      });
-    }
-  );
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      region: "us-central1",
+    });
+  });
 
-  itInTransaction(
-    "returns correct region data when in europe-west1",
-    async () => {
-      vi.mocked(config.getCurrentRegion).mockReturnValue("europe-west1");
-      const { req, res } = await createPrivateApiMockRequest({
-        isSuperUser: true,
-      });
+  it("returns correct region data when in europe-west1", async () => {
+    vi.mocked(config.getCurrentRegion).mockReturnValue("europe-west1");
+    const { req, res } = await createPrivateApiMockRequest({
+      isSuperUser: true,
+    });
 
-      await handler(req, res);
+    await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(200);
-      expect(res._getJSONData()).toEqual({
-        region: "europe-west1",
-      });
-    }
-  );
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      region: "europe-west1",
+    });
+  });
 
-  itInTransaction("returns 200 when the user is a super user", async () => {
+  it("returns 200 when the user is a super user", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       isSuperUser: true,
     });
@@ -65,7 +58,7 @@ describe("GET /api/poke/region", () => {
     });
   });
 
-  itInTransaction("returns 401 when the user is not a super user", async () => {
+  it("returns 401 when the user is not a super user", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       isSuperUser: false,
     });
@@ -81,7 +74,7 @@ describe("GET /api/poke/region", () => {
     });
   });
 
-  itInTransaction("only supports GET method", async () => {
+  it("only supports GET method", async () => {
     for (const method of ["DELETE", "POST", "PUT", "PATCH"] as const) {
       const { req, res } = await createPrivateApiMockRequest({
         method,

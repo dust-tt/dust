@@ -1,17 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
-import { describe, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { parseQueryString } from "@app/lib/utils/router";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler, { DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT } from "./index";
 
 describe("GET /api/w/[wId]/members", () => {
-  itInTransaction("returns all members for admin", async () => {
+  it("returns all members for admin", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
@@ -41,7 +40,7 @@ describe("GET /api/w/[wId]/members", () => {
     expect(data.nextPageUrl).toBeUndefined();
   });
 
-  itInTransaction("returns 403 for non-admin users", async () => {
+  it("returns 403 for non-admin users", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
@@ -58,7 +57,7 @@ describe("GET /api/w/[wId]/members", () => {
     });
   });
 
-  itInTransaction("returns 403 for builder users", async () => {
+  it("returns 403 for builder users", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "GET",
       role: "builder",
@@ -75,44 +74,41 @@ describe("GET /api/w/[wId]/members", () => {
     });
   });
 
-  itInTransaction(
-    "returns only admin members for admin with admin role query",
-    async () => {
-      const { req, res, workspace } = await createPrivateApiMockRequest({
-        method: "GET",
-        role: "admin",
-      });
+  it("returns only admin members for admin with admin role query", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
 
-      // Create additional members with different roles
-      const users = await Promise.all([
-        UserFactory.basic(),
-        UserFactory.basic(),
-        UserFactory.basic(),
-      ]);
+    // Create additional members with different roles
+    const users = await Promise.all([
+      UserFactory.basic(),
+      UserFactory.basic(),
+      UserFactory.basic(),
+    ]);
 
-      await Promise.all([
-        MembershipFactory.associate(workspace, users[0], { role: "admin" }),
-        MembershipFactory.associate(workspace, users[1], { role: "admin" }),
-        MembershipFactory.associate(workspace, users[2], { role: "user" }),
-      ]);
+    await Promise.all([
+      MembershipFactory.associate(workspace, users[0], { role: "admin" }),
+      MembershipFactory.associate(workspace, users[1], { role: "admin" }),
+      MembershipFactory.associate(workspace, users[2], { role: "user" }),
+    ]);
 
-      // Add admin role query parameter
-      req.query.role = "admin";
+    // Add admin role query parameter
+    req.query.role = "admin";
 
-      await handler(req, res);
+    await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(200);
-      const data = res._getJSONData();
-      expect(data.members).toHaveLength(3); // 2 created admin users + 1 from createPrivateApiMockRequest
-      expect(data.total).toBe(3);
-      expect(data.nextPageUrl).toBeUndefined();
-      data.members.forEach((member: any) => {
-        expect(member.workspaces[0].role).toBe("admin");
-      });
-    }
-  );
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.members).toHaveLength(3); // 2 created admin users + 1 from createPrivateApiMockRequest
+    expect(data.total).toBe(3);
+    expect(data.nextPageUrl).toBeUndefined();
+    data.members.forEach((member: any) => {
+      expect(member.workspaces[0].role).toBe("admin");
+    });
+  });
 
-  itInTransaction("returns 405 for non-GET methods", async () => {
+  it("returns 405 for non-GET methods", async () => {
     for (const method of ["POST", "PUT", "DELETE"] as const) {
       const { req, res } = await createPrivateApiMockRequest({
         method,
@@ -131,7 +127,7 @@ describe("GET /api/w/[wId]/members", () => {
     }
   });
 
-  itInTransaction("handles pagination with default parameters", async () => {
+  it("handles pagination with default parameters", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
@@ -159,41 +155,38 @@ describe("GET /api/w/[wId]/members", () => {
     expect(data.nextPageUrl).toBeDefined();
   });
 
-  itInTransaction(
-    "falls back to default limit if requested limit exceeds maximum",
-    async () => {
-      const { req, res, workspace } = await createPrivateApiMockRequest({
-        method: "GET",
-        role: "admin",
-      });
+  it("falls back to default limit if requested limit exceeds maximum", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
 
-      // Create 200 members (more than max limit of 150)
-      const users = await Promise.all(
-        Array(MAX_PAGE_LIMIT + 49) // +1 from createPrivateApiMockRequest
-          .fill(null)
-          .map(() => UserFactory.basic())
-      );
+    // Create 200 members (more than max limit of 150)
+    const users = await Promise.all(
+      Array(MAX_PAGE_LIMIT + 49) // +1 from createPrivateApiMockRequest
+        .fill(null)
+        .map(() => UserFactory.basic())
+    );
 
-      await Promise.all(
-        users.map((user) =>
-          MembershipFactory.associate(workspace, user, { role: "user" })
-        )
-      );
+    await Promise.all(
+      users.map((user) =>
+        MembershipFactory.associate(workspace, user, { role: "user" })
+      )
+    );
 
-      // Request more than max allowed limit
-      req.query.limit = "200";
+    // Request more than max allowed limit
+    req.query.limit = "200";
 
-      await handler(req, res);
+    await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(200);
-      const data = res._getJSONData();
-      expect(data.total).toBe(MAX_PAGE_LIMIT + 50);
-      expect(data.members).toHaveLength(DEFAULT_PAGE_LIMIT); // Should fall back to default limit
-      expect(data.nextPageUrl).toBeDefined();
-    }
-  );
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.total).toBe(MAX_PAGE_LIMIT + 50);
+    expect(data.members).toHaveLength(DEFAULT_PAGE_LIMIT); // Should fall back to default limit
+    expect(data.nextPageUrl).toBeDefined();
+  });
 
-  itInTransaction("handles custom pagination parameters", async () => {
+  it("handles custom pagination parameters", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
@@ -235,7 +228,7 @@ describe("GET /api/w/[wId]/members", () => {
     }
   });
 
-  itInTransaction("returns correct first and second pages", async () => {
+  it("returns correct first and second pages", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
@@ -304,44 +297,38 @@ describe("GET /api/w/[wId]/members", () => {
     }
   });
 
-  itInTransaction(
-    "returns 200 for invalid pagination limit and fallback",
-    async () => {
-      const { req, res } = await createPrivateApiMockRequest({
-        method: "GET",
-        role: "admin",
-      });
+  it("returns 200 for invalid pagination limit and fallback", async () => {
+    const { req, res } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
 
-      // Test invalid limit
-      req.query.limit = "-1";
+    // Test invalid limit
+    req.query.limit = "-1";
 
-      await handler(req, res);
+    await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(200);
-      expect(res._getJSONData().members).toHaveLength(1);
-    }
-  );
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData().members).toHaveLength(1);
+  });
 
-  itInTransaction(
-    "returns 200 for invalid pagination orderColumn and use ",
-    async () => {
-      const { req, res } = await createPrivateApiMockRequest({
-        method: "GET",
-        role: "admin",
-      });
+  it("returns 200 for invalid pagination orderColumn and use ", async () => {
+    const { req, res } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
 
-      // Test invalid order column
-      req.query.limit = "10";
-      req.query.orderColumn = "invalidColumn";
+    // Test invalid order column
+    req.query.limit = "10";
+    req.query.orderColumn = "invalidColumn";
 
-      await handler(req, res);
+    await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(200);
-      expect(res._getJSONData().members).toHaveLength(1);
-    }
-  );
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData().members).toHaveLength(1);
+  });
 
-  itInTransaction("returns 200 for empty lastValue", async () => {
+  it("returns 200 for empty lastValue", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",

@@ -87,10 +87,9 @@ export async function agentLoopWorkflow({
         }
       );
     } catch (err) {
-      if (err instanceof WorkflowExecutionAlreadyStartedError) {
-        return;
+      if (!(err instanceof WorkflowExecutionAlreadyStartedError)) {
+        throw err;
       }
-      throw err;
     }
   }
 

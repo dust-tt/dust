@@ -6,12 +6,15 @@ import {
   RobotIcon,
 } from "@dust-tt/sparkle";
 import { ExternalLinkIcon } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
 import {
+  isRunAgentChainOfThoughtProgressOutput,
+  isRunAgentGenerationTokensProgressOutput,
   isRunAgentProgressOutput,
+  isRunAgentQueryProgressOutput,
   isRunAgentQueryResourceType,
   isRunAgentResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -34,36 +37,49 @@ export function MCPRunAgentActionDetails({
       return queryResource.resource.childAgentId;
     }
     if (lastNotification) {
-      if (isRunAgentProgressOutput(lastNotification.data.output)) {
-        return lastNotification.data.output.childAgentId;
+      const output = lastNotification.data.output;
+      if (isRunAgentProgressOutput(output)) {
+        return output.childAgentId;
       }
     }
     return null;
   }, [queryResource, lastNotification]);
 
-  const query = useMemo(() => {
+  const [query, setQuery] = useState<string | null>(null);
+  const [streamedChainOfThought, setStreamedChainOfThought] = useState<
+    string | null
+  >(null);
+  const [streamedResponse, setStreamedResponse] = useState<string | null>(null);
+
+  useEffect(() => {
     if (queryResource) {
-      return queryResource.resource.text;
+      setQuery(queryResource.resource.text);
     }
-    if (isRunAgentProgressOutput(lastNotification?.data.output)) {
-      return lastNotification.data.output.query;
+    if (lastNotification?.data.output) {
+      const output = lastNotification.data.output;
+      if (isRunAgentQueryProgressOutput(output) && !query) {
+        setQuery(output.query);
+      } else if (isRunAgentChainOfThoughtProgressOutput(output)) {
+        setStreamedChainOfThought(output.chainOfThought);
+      } else if (isRunAgentGenerationTokensProgressOutput(output)) {
+        setStreamedResponse(output.text);
+      }
     }
-    return null;
-  }, [queryResource, lastNotification]);
+  }, [queryResource, lastNotification, query]);
 
   const response = useMemo(() => {
     if (resultResource) {
       return resultResource.resource.text;
     }
-    return null;
-  }, [resultResource]);
+    return streamedResponse;
+  }, [resultResource, streamedResponse]);
 
   const chainOfThought = useMemo(() => {
-    if (resultResource) {
-      return resultResource.resource.chainOfThought || null;
+    if (resultResource && resultResource.resource.chainOfThought) {
+      return resultResource.resource.chainOfThought;
     }
-    return null;
-  }, [resultResource]);
+    return streamedChainOfThought;
+  }, [resultResource, streamedChainOfThought]);
 
   const { agentConfiguration: childAgent } = useAgentConfiguration({
     workspaceId: owner.sId,
@@ -77,12 +93,21 @@ export function MCPRunAgentActionDetails({
     return true;
   }, [resultResource]);
 
+  const isStreamingChainOfThought = useMemo(() => {
+    return isBusy && chainOfThought !== null && response === null;
+  }, [isBusy, chainOfThought, response]);
+
+  const isStreamingResponse = useMemo(() => {
+    return isBusy && response !== null && !resultResource;
+  }, [isBusy, response, resultResource]);
+
   const conversationUrl = useMemo(() => {
     if (resultResource) {
       return resultResource.resource.uri;
     }
-    if (isRunAgentProgressOutput(lastNotification?.data.output)) {
-      return `/w/${owner.sId}/assistant/${lastNotification.data.output.conversationId}`;
+    const output = lastNotification?.data.output;
+    if (isRunAgentProgressOutput(output)) {
+      return `/w/${owner.sId}/assistant/${output.conversationId}`;
     }
     return null;
   }, [resultResource, lastNotification, owner.sId]);
@@ -122,7 +147,7 @@ export function MCPRunAgentActionDetails({
               >
                 <Markdown
                   content={chainOfThought}
-                  isStreaming={false}
+                  isStreaming={isStreamingChainOfThought}
                   forcedTextSize="text-sm"
                   textColor="text-muted-foreground"
                   isLastMessage={false}
@@ -135,7 +160,7 @@ export function MCPRunAgentActionDetails({
               <ContentMessage title="Response" variant="primary" size="lg">
                 <Markdown
                   content={response}
-                  isStreaming={false}
+                  isStreaming={isStreamingResponse}
                   forcedTextSize="text-sm"
                   textColor="text-muted-foreground"
                   isLastMessage={false}

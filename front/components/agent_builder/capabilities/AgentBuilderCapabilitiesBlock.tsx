@@ -10,7 +10,7 @@ import {
 import { Spinner } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 import type { FieldArrayWithId } from "react-hook-form";
-import { useFieldArray } from "react-hook-form";
+import { useFieldArray, useFormContext } from "react-hook-form";
 
 import type {
   AgentBuilderDataVizAction,
@@ -18,6 +18,7 @@ import type {
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
+import { MCPConfigurationSheet } from "@app/components/agent_builder/capabilities/mcp/MCPConfigurationSheet";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
@@ -195,6 +196,7 @@ const BACKGROUND_IMAGE_STYLE_PROPS = {
 };
 
 export function AgentBuilderCapabilitiesBlock() {
+  const { getValues } = useFormContext<AgentBuilderFormData>();
   const { fields, remove, append, update } = useFieldArray<
     AgentBuilderFormData,
     "actions"
@@ -250,12 +252,18 @@ export function AgentBuilderCapabilitiesBlock() {
     if (isSupportedAgentBuilderAction(action)) {
       setIsKnowledgeSheetOpen(true);
     }
+
+    if (action.type === "MCP") {
+      setSelectedAction(action);
+    }
   };
 
   const handleCloseSheet = () => {
     setEditingAction(null);
     setIsKnowledgeSheetOpen(false);
   };
+
+  const getAgentInstructions = () => getValues("instructions");
 
   const dropdownButtons = (
     <>
@@ -327,6 +335,24 @@ export function AgentBuilderCapabilitiesBlock() {
           </CardGrid>
         )}
       </div>
+      <MCPConfigurationSheet
+        selectedAction={selectedAction}
+        isOpen={selectedAction !== null}
+        onClose={() => {
+          setSelectedAction(null);
+          setEditingAction(null);
+        }}
+        onSave={(action) => {
+          if (editingAction && selectedAction) {
+            update(editingAction.index, action);
+          } else {
+            append(action);
+          }
+          setSelectedAction(null);
+          setEditingAction(null);
+        }}
+        getAgentInstructions={getAgentInstructions}
+      />
     </div>
   );
 }

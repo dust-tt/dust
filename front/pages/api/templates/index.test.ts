@@ -1,9 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
-import { describe, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
 
@@ -18,22 +17,19 @@ vi.mock(import("../../../lib/auth"), async (importOriginal) => {
 });
 
 describe("GET /api/templates", () => {
-  itInTransaction(
-    "returns empty array when no published templates exist",
-    async () => {
-      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-        method: "GET",
-        headers: {},
-      });
+  it("returns empty array when no published templates exist", async () => {
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      headers: {},
+    });
 
-      await handler(req, res);
+    await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(200);
-      expect(res._getJSONData()).toEqual({ templates: [] });
-    }
-  );
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({ templates: [] });
+  });
 
-  itInTransaction("returns only published templates", async () => {
+  it("returns only published templates", async () => {
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
       headers: {},
@@ -61,7 +57,7 @@ describe("GET /api/templates", () => {
     );
   });
 
-  itInTransaction("returns 405 for non-GET methods", async () => {
+  it("returns 405 for non-GET methods", async () => {
     for (const method of ["POST", "PUT", "DELETE", "PATCH"] as const) {
       const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
         method,

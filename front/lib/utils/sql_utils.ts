@@ -1,3 +1,5 @@
+import type { Transaction } from "sequelize";
+import { Sequelize } from "sequelize";
 import { injectReplacements } from "sequelize/lib/utils/sql";
 
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -33,4 +35,35 @@ export function getInsertSQL(model: any, data: any) {
       parameterizedQuery.bind
     );
   }
+}
+
+function getCurrentTransaction(): Transaction | null {
+  // We use CLS in tests to isolate tests in separate transactions.
+  // Transactions are created in itInTransaction and used implicitely by Sequelize thanks to CLS.
+  // This return the current transaction in CLS.
+  return (Sequelize as any)._cls?.get("transaction") || null;
+}
+
+export async function withTransaction<T>(
+  fn: (transaction: Transaction) => Promise<T>,
+  transaction?: Transaction
+): Promise<T> {
+  if (transaction) {
+    return fn(transaction);
+  }
+
+  // Check if there's already a transaction in CLS (see above).
+  const clsTransaction = getCurrentTransaction();
+  if (clsTransaction) {
+    return fn(clsTransaction);
+  }
+
+  // Create new transaction if no transaction in CLS.
+  if (process.env.NODE_ENV === "test") {
+    throw new Error(
+      "No transaction provided and no transaction in CLS while running tests, this should not happen. Action: make sure to use it() in tests instead of it(), also you might want to avoid using beforeXXX() and afterXXX()."
+    );
+  }
+
+  return frontSequelize.transaction(fn);
 }

@@ -1,16 +1,15 @@
 import { faker } from "@faker-js/faker";
 import type { Organization } from "@workos-inc/node";
-import { describe, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import * as workosClient from "@app/lib/api/workos/client";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
 
 describe("GET /api/w/[wId]", () => {
-  itInTransaction("returns 403 when user is not admin", async () => {
+  it("returns 403 when user is not admin", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
@@ -28,7 +27,7 @@ describe("GET /api/w/[wId]", () => {
     });
   });
 
-  itInTransaction("returns the workspace", async () => {
+  it("returns the workspace", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
@@ -47,7 +46,7 @@ describe("GET /api/w/[wId]", () => {
 });
 
 describe("POST /api/w/[wId]", () => {
-  itInTransaction("returns 403 when user is not admin", async () => {
+  it("returns 403 when user is not admin", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
@@ -65,7 +64,7 @@ describe("POST /api/w/[wId]", () => {
     });
   });
 
-  itInTransaction("updates workspace name", async () => {
+  it("updates workspace name", async () => {
     const getOrganizationByExternalIdSpy = vi.fn().mockResolvedValue({
       id: "org_123",
       name: "Old Workspace Name - sId123",
@@ -126,7 +125,7 @@ describe("POST /api/w/[wId]", () => {
     expect(updateOrganizationSpy).toHaveBeenCalled();
   });
 
-  itInTransaction("updates SSO enforcement", async () => {
+  it("updates SSO enforcement", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -147,33 +146,30 @@ describe("POST /api/w/[wId]", () => {
     });
   });
 
-  itInTransaction(
-    "updates whitelisted providers and default embedding provider",
-    async () => {
-      const { req, res, workspace } = await createPrivateApiMockRequest({
-        method: "POST",
-        role: "admin",
-      });
+  it("updates whitelisted providers and default embedding provider", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
 
-      req.body = {
+    req.body = {
+      whiteListedProviders: ["openai", "anthropic"],
+      defaultEmbeddingProvider: "openai",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      workspace: expect.objectContaining({
+        id: workspace.id,
         whiteListedProviders: ["openai", "anthropic"],
         defaultEmbeddingProvider: "openai",
-      };
+      }),
+    });
+  });
 
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      expect(res._getJSONData()).toEqual({
-        workspace: expect.objectContaining({
-          id: workspace.id,
-          whiteListedProviders: ["openai", "anthropic"],
-          defaultEmbeddingProvider: "openai",
-        }),
-      });
-    }
-  );
-
-  itInTransaction("updates domain auto join settings", async () => {
+  it("updates domain auto join settings", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -206,7 +202,7 @@ describe("POST /api/w/[wId]", () => {
     expect(updatedDomain?.domainAutoJoinEnabled).toBe(true);
   });
 
-  itInTransaction("returns 400 when updating non-existent domain", async () => {
+  it("returns 400 when updating non-existent domain", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -228,7 +224,7 @@ describe("POST /api/w/[wId]", () => {
     });
   });
 
-  itInTransaction("returns 400 on invalid request body", async () => {
+  it("returns 400 on invalid request body", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -244,7 +240,7 @@ describe("POST /api/w/[wId]", () => {
     expect(res._getJSONData().error.type).toBe("invalid_request_error");
   });
 
-  itInTransaction("returns 405 for non-POST methods", async () => {
+  it("returns 405 for non-POST methods", async () => {
     for (const method of ["PUT", "DELETE"] as const) {
       const { req, res } = await createPrivateApiMockRequest({
         method,

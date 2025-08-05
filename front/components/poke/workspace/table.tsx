@@ -8,7 +8,6 @@ import {
   PokeTableCellWithCopy,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import config from "@app/lib/api/config";
 import { useWorkOSDSyncStatus } from "@app/lib/swr/workos";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type {
@@ -24,12 +23,14 @@ export function WorkspaceInfoTable({
   workspaceCreationDay,
   extensionConfig,
   workspaceRetention,
+  workosEnvironmentId,
 }: {
   owner: WorkspaceType;
   workspaceVerifiedDomains: WorkspaceDomain[];
   workspaceCreationDay: string;
   extensionConfig: ExtensionConfigurationType | null;
   workspaceRetention: number | null;
+  workosEnvironmentId: string;
 }) {
   const { dsyncStatus } = useWorkOSDSyncStatus({ owner });
 
@@ -95,11 +96,11 @@ export function WorkspaceInfoTable({
               <PokeTableCell>
                 {owner.workOSOrganizationId && (
                   <Link
-                    href={`https://dashboard.workos.com/${config.getWorkOSEnvironmentId()}/organizations/${owner.workOSOrganizationId}`}
+                    href={`https://dashboard.workos.com/${workosEnvironmentId}/organizations/${owner.workOSOrganizationId}`}
                     target="_blank"
                     className="text-xs text-highlight-400"
                   >
-                    Dashboard
+                    Organization
                   </Link>
                 )}
               </PokeTableCell>

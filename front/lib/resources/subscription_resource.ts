@@ -29,11 +29,11 @@ import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
@@ -312,7 +312,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     }
 
     // Proceed to the termination of the active subscription (if any) and creation of the new one
-    const newSubscription = await frontSequelize.transaction(async (t) => {
+    const newSubscription = await withTransaction(async (t) => {
       if (activeSubscription) {
         const endedStatus = activeSubscription.stripeSubscriptionId
           ? "ended_backend_only"
@@ -732,7 +732,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     });
 
     if (activeSubscription) {
-      await frontSequelize.transaction(async (t) => {
+      await withTransaction(async (t) => {
         // End the subscription
         const endedStatus = activeSubscription.stripeSubscriptionId
           ? "ended_backend_only"

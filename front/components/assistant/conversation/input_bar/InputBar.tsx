@@ -328,7 +328,7 @@ export function AssistantInputBar({
           <div
             className={classNames(
               "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-3 sm:flex-row",
-              "rounded-3xl transition-all",
+              "rounded-2xl transition-all",
               "bg-muted-background dark:bg-muted-background-night",
               "border",
               "border-border-dark dark:border-border-dark-night",
@@ -407,7 +407,7 @@ export function FixedAssistantInputBar({
       className={cn(
         "sticky bottom-0 z-20 flex max-h-screen w-full",
         "pb-2",
-        "sm:w-full sm:max-w-3xl sm:pb-8"
+        "sm:w-full sm:max-w-3xl sm:pb-4"
       )}
     >
       <AssistantInputBar

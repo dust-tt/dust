@@ -30,8 +30,10 @@ import {
   JiraTransitionIssueSchema,
   JiraTransitionsSchema,
   JiraUserInfoSchema,
+  JiraUsersSearchResultSchema,
   SEARCH_FILTER_FIELDS,
-  SEARCH_MAX_RESULTS,
+  SEARCH_ISSUES_MAX_RESULTS,
+  SEARCH_USERS_MAX_RESULTS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import logger from "@app/logger/logger";
@@ -317,7 +319,7 @@ export async function searchIssues(
   const {
     nextPageToken,
     sortBy,
-    maxResults = SEARCH_MAX_RESULTS,
+    maxResults = SEARCH_ISSUES_MAX_RESULTS,
   } = options || {};
 
   const jql = createJQLFromSearchFilters(filters, sortBy);
@@ -655,6 +657,40 @@ export async function getIssueLinkTypes(
   }
 
   return new Ok(result.value.issueLinkTypes);
+}
+
+export async function searchUsers(
+  baseUrl: string,
+  accessToken: string,
+  query: string,
+  maxResults: number = SEARCH_USERS_MAX_RESULTS
+): Promise<
+  Result<z.infer<typeof JiraUsersSearchResultSchema>, JiraErrorResult>
+> {
+  const params = new URLSearchParams({
+    query,
+    maxResults: maxResults.toString(),
+  });
+
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/api/3/users/search?${params.toString()}`,
+      accessToken,
+    },
+    JiraUsersSearchResultSchema,
+    { baseUrl }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  // Filter to only include Atlassian users as per documentation https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-user-search/#api-rest-api-3-user-search-get
+  const filteredUsers = result.value.filter(
+    (user) => user.accountType === "atlassian"
+  );
+
+  return new Ok(filteredUsers);
 }
 
 export const withAuth = async ({
