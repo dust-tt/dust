@@ -143,26 +143,12 @@ class TranscriptViewModel: ObservableObject {
 
         print("Transcript uploaded successfully!")
         print("Document ID: \(response.document.documentId)")
-        
-        // Open browser window on a new conversation.
-        openNewConversationWindow(workspaceId: credentials.workspaceId)
       } catch {
         print("Failed to upload transcript: \(error.localizedDescription)")
         if let dustError = error as? DustAPIError {
           print("Dust API Error: \(dustError.message)")
         }
       }
-    }
-  }
-  
-  private func openNewConversationWindow(workspaceId: String) {
-    let assistantURL = "\(AppConfig.dustBaseURL)/w/\(workspaceId)/assistant/new"
-    
-    if let url = URL(string: assistantURL) {
-      NSWorkspace.shared.open(url)
-      print("Opening assistant window: \(assistantURL)")
-    } else {
-      print("Failed to create URL for assistant window: \(assistantURL)")
     }
   }
 }
