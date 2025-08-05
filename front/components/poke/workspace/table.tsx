@@ -100,7 +100,7 @@ export function WorkspaceInfoTable({
                     target="_blank"
                     className="text-xs text-highlight-400"
                   >
-                    Dashboard
+                    Organization
                   </Link>
                 )}
               </PokeTableCell>
