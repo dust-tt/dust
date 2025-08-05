@@ -6,11 +6,11 @@ import { useDataSourceBuilderContext } from "@app/components/data_source_view/co
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
 
-type SpaceRowData = {
+type SpaceRowData = SpaceType & {
   id: string;
   icon: React.ComponentType;
   onClick: () => void;
-} & Pick<SpaceType, "name" | "kind">;
+};
 
 export interface DataSourceSpaceSelectorProps {
   spaces: SpaceType[];
@@ -27,6 +27,7 @@ export function DataSourceSpaceSelector({
     useDataSourceBuilderContext();
 
   const spaceRows: SpaceRowData[] = spaces.map((space) => ({
+    ...space,
     id: space.sId,
     name: space.name,
     kind: space.kind,
@@ -53,14 +54,14 @@ export function DataSourceSpaceSelector({
               onClick={(event) => event.stopPropagation()}
               onCheckedChange={(state) => {
                 if (state === "indeterminate") {
-                  removeNode(row.original.id);
+                  removeNode(row.original.id, row.original.name);
                   return;
                 }
 
                 if (state) {
-                  selectNode(row.original.id);
+                  selectNode({ type: "space", space: row.original });
                 } else {
-                  removeNode(row.original.id);
+                  removeNode(row.original.id, row.original.name);
                 }
               }}
             />
