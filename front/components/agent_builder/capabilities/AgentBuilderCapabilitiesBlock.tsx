@@ -212,14 +212,6 @@ export function AgentBuilderCapabilitiesBlock() {
     index: number;
   } | null>(null);
 
-  // State for MCP editing
-  const [mcpEditAction, setMcpEditAction] = useState<AgentBuilderAction | null>(
-    null
-  );
-  const [mcpEditIndex, setMcpEditIndex] = useState<number | undefined>(
-    undefined
-  );
-
   const [isKnowledgeSheetOpen, setIsKnowledgeSheetOpen] = useState(false);
 
   // TODO: Add logic for reasoning.
@@ -253,11 +245,6 @@ export function AgentBuilderCapabilitiesBlock() {
     if (isSupportedAgentBuilderAction(action)) {
       setIsKnowledgeSheetOpen(true);
     }
-
-    if (action.type === "MCP") {
-      setMcpEditAction(action);
-      setMcpEditIndex(index);
-    }
   };
 
   const handleCloseSheet = () => {
@@ -267,14 +254,10 @@ export function AgentBuilderCapabilitiesBlock() {
 
   const handleMcpEditSave = (action: AgentBuilderAction, index: number) => {
     update(index, action);
-    setMcpEditAction(null);
-    setMcpEditIndex(undefined);
     setEditingAction(null);
   };
 
   const handleMcpEditCancel = () => {
-    setMcpEditAction(null);
-    setMcpEditIndex(undefined);
     setEditingAction(null);
   };
 
@@ -289,12 +272,18 @@ export function AgentBuilderCapabilitiesBlock() {
       />
       <MCPServerViewsDialog
         addTools={append}
-        defaultMCPServerViews={selectableDefaultMCPServerViews}
-        nonDefaultMCPServerViews={selectableNonDefaultMCPServerViews}
+        mcpServerViews={[
+          ...selectableDefaultMCPServerViews,
+          ...selectableNonDefaultMCPServerViews,
+        ]}
         dataVisualization={dataVisualization}
         isMCPServerViewsLoading={isMCPServerViewsLoading}
-        editAction={mcpEditAction}
-        editActionIndex={mcpEditIndex}
+        editAction={
+          editingAction?.action.type === "MCP" ? editingAction.action : null
+        }
+        editActionIndex={
+          editingAction?.action.type === "MCP" ? editingAction.index : undefined
+        }
         onEditActionSave={handleMcpEditSave}
         onEditActionCancel={handleMcpEditCancel}
       />

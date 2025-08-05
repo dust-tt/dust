@@ -28,21 +28,11 @@ import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/sh
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
-import type {
-  ActionSpecification,
-  ConfigurationPagePageId,
-} from "@app/components/agent_builder/types";
-import {
-  CONFIGURATION_DIALOG_PAGE_IDS,
-  getDefaultMCPAction,
-} from "@app/components/agent_builder/types";
+import type { ActionSpecification, ConfigurationPagePageId } from "@app/components/agent_builder/types";
+import { CONFIGURATION_DIALOG_PAGE_IDS, getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
-import {
-  DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-  DEFAULT_DATA_VISUALIZATION_NAME,
-} from "@app/lib/actions/constants";
+import { DEFAULT_DATA_VISUALIZATION_DESCRIPTION, DEFAULT_DATA_VISUALIZATION_NAME } from "@app/lib/actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
@@ -60,8 +50,7 @@ const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
 interface MCPServerViewsDialogProps {
   addTools: UseFieldArrayAppend<AgentBuilderFormData, "actions">;
-  defaultMCPServerViews: MCPServerViewTypeWithLabel[];
-  nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];
+  mcpServerViews: MCPServerViewTypeWithLabel[];
   isMCPServerViewsLoading: boolean;
   dataVisualization: ActionSpecification | null;
   // Edit mode props
@@ -73,8 +62,7 @@ interface MCPServerViewsDialogProps {
 
 export function MCPServerViewsDialog({
   addTools,
-  defaultMCPServerViews,
-  nonDefaultMCPServerViews,
+  mcpServerViews,
   isMCPServerViewsLoading,
   dataVisualization,
   editAction,
@@ -85,53 +73,46 @@ export function MCPServerViewsDialog({
   const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
-  const { mcpServerViews } = useMCPServerViewsContext();
 
-  const [selectedToolsInDialog, setSelectedToolsInDialog] = useState<
-    SelectedTool[]
-  >([]);
-  const [isOpen, setIsOpen] = useState(false);
-
-  // Determine initial page based on edit mode
   const isEditMode = Boolean(
     editAction && typeof editActionIndex === "number" && onEditActionSave
   );
 
-  // Handle edit mode changes
-  React.useEffect(() => {
-    if (isEditMode && editAction) {
-      // Reset dialog state for edit mode
-      setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION);
-      setConfigurationTool(editAction);
-      setSelectedToolsInDialog([]);
-      setIsOpen(true);
-    } else if (!isEditMode) {
-      // Reset to add mode
-      setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
-      setConfigurationTool(null);
-      setConfigurationMCPServerView(null);
-    }
-  }, [isEditMode, editAction]);
+  const [selectedToolsInDialog, setSelectedToolsInDialog] = useState<
+    SelectedTool[]
+  >([]);
+  const [isOpen, setIsOpen] = useState(isEditMode);
   const [currentPageId, setCurrentPageId] = useState<ConfigurationPagePageId>(
     isEditMode
       ? CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION
       : CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION
   );
-
   const [configurationTool, setConfigurationTool] =
     useState<AgentBuilderAction | null>(editAction || null);
+
   const [configurationMCPServerView, setConfigurationMCPServerView] =
     useState<MCPServerViewType | null>(null);
 
-  // Initialize MCP server view for edit mode
   React.useEffect(() => {
-    if (isEditMode && editAction?.type === "MCP" && mcpServerViews.length > 0) {
-      const mcpServerView = mcpServerViews.find(
-        (view) => view.sId === editAction.configuration.mcpServerViewId
-      );
-      if (mcpServerView) {
-        setConfigurationMCPServerView(mcpServerView);
+    if (isEditMode && editAction) {
+      setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION);
+      setConfigurationTool(editAction);
+      setSelectedToolsInDialog([]);
+      setIsOpen(true);
+      
+      // Set MCP server view for edit mode
+      if (editAction.type === "MCP" && mcpServerViews.length > 0) {
+        const mcpServerView = mcpServerViews.find(
+          (view) => view.sId === editAction.configuration.mcpServerViewId
+        );
+        if (mcpServerView) {
+          setConfigurationMCPServerView(mcpServerView);
+        }
       }
+    } else if (!isEditMode) {
+      setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
+      setConfigurationTool(null);
+      setConfigurationMCPServerView(null);
     }
   }, [isEditMode, editAction, mcpServerViews]);
 
@@ -252,7 +233,7 @@ export function MCPServerViewsDialog({
     setSelectedToolsInDialog([]);
   };
 
-  // Configuration form logic - use the stored mcpServerView
+  // Configuration form logic
   const mcpServerView = configurationMCPServerView;
 
   const formSchema = useMemo(
@@ -321,10 +302,7 @@ export function MCPServerViewsDialog({
         </div>
       ) : (
         <MCPServerSelectionPage
-          mcpServerViews={[
-            ...defaultMCPServerViews,
-            ...nonDefaultMCPServerViews,
-          ]}
+          mcpServerViews={mcpServerViews}
           onItemClick={onClickMCPServer}
           dataVisualization={dataVisualization}
           onDataVisualizationClick={onClickDataVisualization}
