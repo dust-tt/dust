@@ -69,10 +69,10 @@ export async function executeAgentLoop(
         ({ action, actionBaseParams, actionConfiguration, mcpAction }, index) =>
           activities.runToolActivity(authType, {
             runAgentArgs,
-            action,
+            rawAction: action,
             actionBaseParams,
             actionConfiguration,
-            mcpAction,
+            rawMcpAction: mcpAction,
             step: i,
             stepContext: stepContexts[index],
           })

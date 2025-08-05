@@ -1,8 +1,10 @@
+import assert from "assert";
+
 import type {
   ActionBaseParams,
-  MCPActionType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
+import { MCPActionType } from "@app/lib/actions/mcp";
 import { runToolWithStreaming } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AuthenticatorType } from "@app/lib/auth";
@@ -17,18 +19,18 @@ import { getRunAgentData } from "@app/types/assistant/agent_run";
 export async function runToolActivity(
   authType: AuthenticatorType,
   {
-    action,
+    rawAction,
     actionBaseParams,
     actionConfiguration,
-    mcpAction,
+    rawMcpAction,
     runAgentArgs,
     step,
     stepContext,
   }: {
-    action: AgentMCPAction;
+    rawAction: AgentMCPAction;
     actionBaseParams: ActionBaseParams;
     actionConfiguration: MCPToolConfigurationType;
-    mcpAction: MCPActionType;
+    rawMcpAction: MCPActionType;
     runAgentArgs: RunAgentArgs;
     step: number;
     stepContext: StepContext;
@@ -60,6 +62,11 @@ export async function runToolActivity(
       // sliceConversationForAgentMessage)
       step: step + 1,
     });
+
+  // Temporal activity arguments are serialized as JSON, so we need to deserialize them.
+  const mcpAction = new MCPActionType(rawMcpAction);
+  const action = await AgentMCPAction.findByPk(rawAction.id);
+  assert(action, "Action not found");
 
   const eventStream = runToolWithStreaming(auth, actionConfiguration, {
     action,

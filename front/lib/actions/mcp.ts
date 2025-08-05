@@ -388,7 +388,7 @@ export async function* runToolWithStreaming(
   auth: Authenticator,
   actionConfiguration: MCPToolConfigurationType,
   {
-    rawAction,
+    action,
     actionBaseParams,
     agentConfiguration,
     agentMessage,
@@ -396,7 +396,7 @@ export async function* runToolWithStreaming(
     mcpAction,
     stepContext,
   }: {
-    rawAction: AgentMCPAction;
+    action: AgentMCPAction;
     actionBaseParams: ActionBaseParams;
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
@@ -428,12 +428,9 @@ export async function* runToolWithStreaming(
     `workspace_name:${owner.name}`,
   ];
 
-  const action = await AgentMCPAction.findByPk(rawAction.id);
-  assert(action, "Action not found");
-
   const executionState = await handleToolApproval(auth, {
     actionConfiguration,
-    executionState: rawAction.executionState,
+    executionState: action.executionState,
     localLogger,
     mcpAction,
     owner,

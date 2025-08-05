@@ -217,12 +217,12 @@ async function createActionForTool(
         step,
       }
     );
-
-    // Update the action to surface the pending state.
-    await agentMCPAction.update({
-      executionState: "pending",
-    });
   }
+
+  // Update the action to surface the execution state.
+  await agentMCPAction.update({
+    executionState: status,
+  });
 
   return {
     action: agentMCPAction,
