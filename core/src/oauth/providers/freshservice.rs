@@ -8,7 +8,7 @@ use crate::oauth::{
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use base64;
+use base64::{engine::general_purpose, Engine as _};
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::env;
@@ -41,7 +41,7 @@ impl Provider for FreshserviceConnectionProvider {
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
-        let domain = match connection.metadata()["freshservice_domain"].as_str() {
+        let domain = match connection.metadata()["instance_url"].as_str() {
             Some(d) => {
                 if !FRESHSERVICE_DOMAIN_RE.is_match(d) {
                     Err(anyhow!("Freshservice domain format invalid"))?
@@ -59,7 +59,7 @@ impl Provider for FreshserviceConnectionProvider {
 
         let auth_header = format!(
             "Basic {}",
-            base64::encode(format!("{}:{}", *OAUTH_FRESHSERVICE_CLIENT_ID, *OAUTH_FRESHSERVICE_CLIENT_SECRET))
+            general_purpose::STANDARD.encode(format!("{}:{}", *OAUTH_FRESHSERVICE_CLIENT_ID, *OAUTH_FRESHSERVICE_CLIENT_SECRET))
         );
 
         let req = self
@@ -89,9 +89,12 @@ impl Provider for FreshserviceConnectionProvider {
             ),
             refresh_token: result["refresh_token"].as_str().map(|s| s.to_string()),
             raw_json: result,
-            extra_metadata: Some(serde_json::json!({
-                "freshservice_domain": domain
-            })),
+            extra_metadata: Some(serde_json::Map::from_iter([
+                (
+                    "instance_url".to_string(),
+                    serde_json::Value::String(domain.to_string()),
+                ),
+            ])),
         })
     }
 
@@ -100,7 +103,7 @@ impl Provider for FreshserviceConnectionProvider {
         connection: &Connection,
         _related_credentials: Option<Credential>,
     ) -> Result<RefreshResult, ProviderError> {
-        let domain = match connection.metadata()["freshservice_domain"].as_str() {
+        let domain = match connection.metadata()["instance_url"].as_str() {
             Some(d) => {
                 if !FRESHSERVICE_DOMAIN_RE.is_match(d) {
                     Err(anyhow!("Freshservice domain format invalid"))?
@@ -121,7 +124,7 @@ impl Provider for FreshserviceConnectionProvider {
 
         let auth_header = format!(
             "Basic {}",
-            base64::encode(format!("{}:{}", *OAUTH_FRESHSERVICE_CLIENT_ID, *OAUTH_FRESHSERVICE_CLIENT_SECRET))
+            general_purpose::STANDARD.encode(format!("{}:{}", *OAUTH_FRESHSERVICE_CLIENT_ID, *OAUTH_FRESHSERVICE_CLIENT_SECRET))
         );
 
         let req = self

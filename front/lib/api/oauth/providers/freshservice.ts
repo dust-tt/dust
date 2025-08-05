@@ -47,7 +47,7 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
     ];
     
     // Get domain from connection metadata
-    const freshworksDomain = connection.metadata.freshservice_domain;
+    const freshworksDomain = connection.metadata.instance_url;
     
     if (!isValidFreshserviceDomain(freshworksDomain)) {
       throw new Error("Invalid Freshservice domain");
@@ -75,7 +75,7 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
     if (useCase === "personal_actions" || useCase === "platform_actions") {
       // For MCP servers, check both mcp_server_id and domain
       if (extraConfig.mcp_server_id) {
-        return isValidFreshserviceDomain(extraConfig.freshservice_domain);
+        return isValidFreshserviceDomain(extraConfig.instance_url);
       }
     }
     
@@ -83,6 +83,6 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
     if (Object.keys(extraConfig).length !== 1) {
       return false;
     }
-    return isValidFreshserviceDomain(extraConfig.freshservice_domain);
+    return isValidFreshserviceDomain(extraConfig.instance_url);
   }
 }

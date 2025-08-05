@@ -150,6 +150,18 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
       }
       return null;
     case "freshservice":
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
+        const result: OAuthCredentialInputs = {
+          instance_url: {
+            label: "Freshservice Domain",
+            value: undefined,
+            helpMessage: "Your Freshservice domain (e.g., yourcompany.freshservice.com)",
+            validator: isValidFreshserviceDomain,
+          },
+        };
+        return result;
+      }
+      return null;
     case "hubspot":
     case "zendesk":
     case "slack":
