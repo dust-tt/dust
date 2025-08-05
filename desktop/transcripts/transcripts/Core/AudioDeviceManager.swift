@@ -113,11 +113,13 @@ class AudioDeviceManager {
         &dataSize
       )
 
-      if status == noErr {
-        let bufferList = UnsafeMutablePointer<AudioBufferList>.allocate(
-          capacity: 1
+      if status == noErr && dataSize > 0 {
+        let bufferListSize = Int(dataSize)
+        let bufferListPtr = UnsafeMutableRawPointer.allocate(
+          byteCount: bufferListSize,
+          alignment: MemoryLayout<AudioBufferList>.alignment
         )
-        defer { bufferList.deallocate() }
+        defer { bufferListPtr.deallocate() }
 
         status = AudioObjectGetPropertyData(
           deviceID,
@@ -125,11 +127,15 @@ class AudioDeviceManager {
           0,
           nil,
           &dataSize,
-          bufferList
+          bufferListPtr
         )
 
         if status == noErr {
-          channelCount = Int(bufferList.pointee.mBuffers.mNumberChannels)
+          let bufferList = bufferListPtr.assumingMemoryBound(to: AudioBufferList.self)
+          let bufferCount = Int(bufferList.pointee.mNumberBuffers)
+          if bufferCount > 0 {
+            channelCount = Int(bufferList.pointee.mBuffers.mNumberChannels)
+          }
         }
       }
     }
