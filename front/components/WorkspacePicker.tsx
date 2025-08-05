@@ -7,22 +7,22 @@ import {
   DropdownMenuTrigger,
   Label,
 } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
 
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import type { LightWorkspaceType, UserTypeWithWorkspaces } from "@app/types";
 
 interface WorkspacePickerProps {
-  onWorkspaceUpdate: (w: LightWorkspaceType) => void;
   user: UserTypeWithWorkspaces;
   workspace: LightWorkspaceType;
 }
 
 export default function WorkspacePicker({
-  onWorkspaceUpdate,
   user,
   workspace,
 }: WorkspacePickerProps) {
   const { setNavigationSelection } = usePersistedNavigationSelection();
+  const router = useRouter();
 
   return (
     <div className="flex flex-row items-center gap-1 px-3 py-2">
@@ -37,21 +37,28 @@ export default function WorkspacePicker({
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuRadioGroup value={workspace.name}>
-            {user.workspaces.map((w) => {
-              return (
-                <DropdownMenuRadioItem
-                  key={w.sId}
-                  onClick={async () => {
-                    await setNavigationSelection({ lastWorkspaceId: w.sId });
-                    void onWorkspaceUpdate(w);
-                  }}
-                  value={w.name}
-                >
-                  {w.name}
-                </DropdownMenuRadioItem>
-              );
-            })}
+          <DropdownMenuRadioGroup value={workspace.sId}>
+            {user.organizations &&
+              user.organizations.map((org) => {
+                return (
+                  <DropdownMenuRadioItem
+                    key={org.id}
+                    value={org.externalId || ""}
+                    onClick={async () => {
+                      if (org.externalId && org.externalId !== workspace.sId) {
+                        await setNavigationSelection({
+                          lastWorkspaceId: org.externalId,
+                        });
+                        await router.push(
+                          `/api/workos/login?organizationId=${org.id}`
+                        );
+                      }
+                    }}
+                  >
+                    {org.name}
+                  </DropdownMenuRadioItem>
+                );
+              })}
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>

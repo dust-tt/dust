@@ -121,12 +121,12 @@ export function UserMenu({
         {hasMultipleWorkspaces && (
           <>
             <DropdownMenuLabel label="Workspace" />
-            <DropdownMenuRadioGroup value={owner.name}>
+            <DropdownMenuRadioGroup value={owner.sId}>
               {user.organizations &&
                 user.organizations.map((org) => (
                   <DropdownMenuRadioItem
                     key={org.id}
-                    value={org.name}
+                    value={org.externalId || ""}
                     onClick={async () => {
                       if (org.externalId && org.externalId !== owner.sId) {
                         await setNavigationSelection({
