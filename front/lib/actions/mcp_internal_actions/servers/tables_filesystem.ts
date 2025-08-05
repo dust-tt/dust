@@ -398,6 +398,322 @@ const createServer = (
     )
   );
 
+  server.tool(
+    "find",
+    "Find tables based on their name starting from a specific node in the tables hierarchy. " +
+      "Can be used to search for tables by name across warehouses, databases, and schemas. " +
+      "The query supports partial matching - for example, searching for 'sales' will find " +
+      "'sales_2024', 'monthly_sales_report', etc. This is like using 'find' in Unix for tables.",
+    {
+      query: z
+        .string()
+        .optional()
+        .describe(
+          "The table name to search for. This supports partial matching and does not require the " +
+            "exact name. For example, searching for 'revenue' will find 'revenue_2024', " +
+            "'monthly_revenue', 'revenue_by_region', etc. If omitted, lists all tables."
+        ),
+      rootNodeId: z
+        .string()
+        .optional()
+        .describe(
+          "The node ID to start the search from (warehouse, database, or schema ID). " +
+            "If not provided, searches across all available warehouses. This restricts the " +
+            "search to the specified node and all its descendants."
+        ),
+      limit: z
+        .number()
+        .optional()
+        .describe(`Maximum number of results to return. Default is ${DEFAULT_LIMIT}, max is ${MAX_LIMIT}.`),
+      nextPageCursor: z
+        .string()
+        .optional()
+        .describe(
+          "Cursor for fetching the next page of results. Use the 'nextPageCursor' from " +
+            "the previous find result to fetch additional items."
+        ),
+    },
+    withToolLogging(
+      auth,
+      { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
+      async ({ query, rootNodeId, limit, nextPageCursor }) => {
+        const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
+        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+        // Get all data source views in the global space
+        const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+        const dataSourceViews = await DataSourceViewResource.listBySpace(
+          auth,
+          globalSpace
+        );
+
+        // Filter to only remote databases
+        const remoteDatabaseViews = dataSourceViews.filter((dsView) =>
+          isRemoteDatabase(dsView.dataSource)
+        );
+
+        if (remoteDatabaseViews.length === 0) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: "No remote databases found in the workspace.",
+            },
+          ]);
+        }
+
+        // Build data source view filters based on rootNodeId
+        let dataSourceViewFilters: Array<{
+          data_source_id: string;
+          view_filter: string[];
+        }> = [];
+
+        if (!rootNodeId) {
+          // Search across all remote databases
+          dataSourceViewFilters = remoteDatabaseViews.map((dsView) => ({
+            data_source_id: dsView.dataSource.dustAPIDataSourceId,
+            view_filter: [],
+          }));
+        } else if (rootNodeId.startsWith("warehouse-")) {
+          // Search within a specific warehouse
+          const dataSourceSId = rootNodeId.substring("warehouse-".length);
+          const dataSourceView = remoteDatabaseViews.find(
+            (dsView) => dsView.dataSource.sId === dataSourceSId
+          );
+
+          if (!dataSourceView) {
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `Warehouse not found: ${rootNodeId}`,
+              },
+            ]);
+          }
+
+          dataSourceViewFilters = [
+            {
+              data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
+              view_filter: [],
+            },
+          ];
+        } else if (
+          rootNodeId.startsWith("database-") ||
+          rootNodeId.startsWith("schema-")
+        ) {
+          // Search within a specific database or schema
+          const parts = rootNodeId.split("-");
+          const dataSourceSId = parts[1];
+          const nodeId = parts.slice(2).join("-");
+
+          const dataSourceView = remoteDatabaseViews.find(
+            (dsView) => dsView.dataSource.sId === dataSourceSId
+          );
+
+          if (!dataSourceView) {
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `Data source not found for node: ${rootNodeId}`,
+              },
+            ]);
+          }
+
+          // Use the node as a view filter to search within it
+          dataSourceViewFilters = [
+            {
+              data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
+              view_filter: [nodeId],
+            },
+          ];
+        } else {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Invalid node ID format: ${rootNodeId}`,
+            },
+          ]);
+        }
+
+        // Search for tables (and optionally schemas if no query)
+        const nodeTypes = query ? ["table"] : ["folder", "table"];
+        
+        const searchResult = await coreAPI.searchNodes({
+          query,
+          filter: {
+            data_source_views: dataSourceViewFilters,
+            node_types: nodeTypes,
+          },
+          options: {
+            cursor: nextPageCursor,
+            limit: effectiveLimit,
+            // Only add sort when there's no query (Core API restriction)
+            sort: query
+              ? undefined
+              : [{ field: "timestamp", direction: "desc" as const }],
+          },
+        });
+
+        if (searchResult.isErr()) {
+          logger.error(
+            {
+              error: searchResult.error,
+              query,
+              rootNodeId,
+              limit: effectiveLimit,
+            },
+            "Error searching for tables"
+          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Error searching for tables: ${searchResult.error.message}`,
+            },
+          ]);
+        }
+
+        // Create connector map for rendering
+        const dataSourceIdToConnectorMap = new Map<
+          string,
+          ConnectorProvider | null
+        >();
+        remoteDatabaseViews.forEach((dsView) => {
+          dataSourceIdToConnectorMap.set(
+            dsView.dataSource.dustAPIDataSourceId,
+            dsView.dataSource.connectorProvider
+          );
+        });
+
+        // Collect all unique parent IDs to fetch their titles in bulk
+        const allParentIds = new Set<string>();
+        const nodeToDataSourceMap = new Map<string, typeof remoteDatabaseViews[0]>();
+        
+        searchResult.value.nodes.forEach((node) => {
+          node.parents.forEach((parentId) => allParentIds.add(parentId));
+          const dsView = remoteDatabaseViews.find(
+            (dsView) =>
+              dsView.dataSource.dustAPIDataSourceId === node.data_source_id
+          );
+          if (dsView) {
+            nodeToDataSourceMap.set(node.node_id, dsView);
+          }
+        });
+
+        // Fetch all parent nodes in one batch if needed
+        const parentTitleMap = new Map<string, string>();
+        if (allParentIds.size > 0) {
+          // Group parent IDs by data source
+          const parentsByDataSource = new Map<string, string[]>();
+          for (const node of searchResult.value.nodes) {
+            const dsView = nodeToDataSourceMap.get(node.node_id);
+            if (dsView) {
+              const dsId = dsView.dataSource.dustAPIDataSourceId;
+              if (!parentsByDataSource.has(dsId)) {
+                parentsByDataSource.set(dsId, []);
+              }
+              node.parents.forEach((parentId) => {
+                parentsByDataSource.get(dsId)!.push(parentId);
+              });
+            }
+          }
+
+          // Fetch parents for each data source
+          for (const [dsId, parentIds] of parentsByDataSource) {
+            const uniqueParentIds = [...new Set(parentIds)];
+            if (uniqueParentIds.length > 0) {
+              const parentNodesResult = await coreAPI.searchNodes({
+                filter: {
+                  node_ids: uniqueParentIds,
+                  data_source_views: [
+                    {
+                      data_source_id: dsId,
+                      view_filter: [],
+                    },
+                  ],
+                },
+                options: {
+                  limit: uniqueParentIds.length,
+                },
+              });
+
+              if (parentNodesResult.isOk()) {
+                parentNodesResult.value.nodes.forEach((parentNode) => {
+                  parentTitleMap.set(parentNode.node_id, parentNode.title);
+                });
+              }
+            }
+          }
+        }
+
+        // Find the corresponding data source for each node and format results
+        const data = searchResult.value.nodes.map((node) => {
+          const dataSourceView = nodeToDataSourceMap.get(node.node_id);
+
+          if (!dataSourceView) {
+            return renderNode(node, dataSourceIdToConnectorMap);
+          }
+
+          // Determine the type prefix based on the node type
+          let nodeIdPrefix = "table";
+          if (node.node_type === "folder") {
+            const mimeType = node.mime_type.toLowerCase();
+            nodeIdPrefix = mimeType.includes("schema") ? "schema" : "database";
+          }
+
+          // Build human-readable parent path
+          const parentTitles = node.parents
+            .map((parentId) => parentTitleMap.get(parentId) || parentId)
+            .filter(title => title); // Remove empty titles
+          
+          // Build a concise location description
+          let locationPath = "";
+          if (parentTitles.length > 0) {
+            // Show full hierarchy path
+            locationPath = [dataSourceView.dataSource.name, ...parentTitles].join(" / ");
+          } else {
+            // Just show warehouse name
+            locationPath = dataSourceView.dataSource.name;
+          }
+
+          // Override the node to include enhanced information
+          const modifiedNode = {
+            ...node,
+            node_id: `${nodeIdPrefix}-${dataSourceView.dataSource.sId}-${node.node_id}`,
+            // Keep the original title
+            title: node.title,
+            // Keep original parents array (with IDs) for the path
+            parents: node.parents,
+            // Set parent_title to include the location info for display
+            // This field is displayed in the UI
+            parent_title: locationPath,
+          };
+
+          return renderNode(modifiedNode, dataSourceIdToConnectorMap);
+        });
+
+        const hasMore = searchResult.value.next_page_cursor !== null;
+        const queryText = query ? `"${query}"` : "all tables";
+        const scopeText = rootNodeId
+          ? ` within ${rootNodeId}`
+          : " across all warehouses";
+
+        return new Ok([
+          {
+            type: "resource" as const,
+            resource: {
+              mimeType:
+                "application/vnd.dust.tool-output.tables-filesystem-browse",
+              uri: "",
+              text: `Found ${data.length} result${data.length !== 1 ? "s" : ""} for ${queryText}${scopeText}.${hasMore ? " More results available." : ""}`,
+              nodeId: rootNodeId || null,
+              data,
+              nextPageCursor: searchResult.value.next_page_cursor,
+              resultCount: data.length,
+            },
+          },
+        ]);
+      }
+    )
+  );
+
   return server;
 };
 
