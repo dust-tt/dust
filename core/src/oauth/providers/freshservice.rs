@@ -14,10 +14,9 @@ use regex::Regex;
 use std::env;
 
 lazy_static! {
-    static ref OAUTH_FRESHSERVICE_CLIENT_ID: String =
-        env::var("OAUTH_FRESHSERVICE_CLIENT_ID").unwrap();
-    static ref OAUTH_FRESHSERVICE_CLIENT_SECRET: String =
-        env::var("OAUTH_FRESHSERVICE_CLIENT_SECRET").unwrap();
+    static ref OAUTH_FRESHWORKS_CLIENT_ID: String = env::var("OAUTH_FRESHWORKS_CLIENT_ID").unwrap();
+    static ref OAUTH_FRESHWORKS_CLIENT_SECRET: String =
+        env::var("OAUTH_FRESHWORKS_CLIENT_SECRET").unwrap();
     static ref FRESHSERVICE_DOMAIN_RE: Regex =
         Regex::new(r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.myfreshworks\.com$").unwrap();
 }
@@ -63,7 +62,7 @@ impl Provider for FreshserviceConnectionProvider {
             "Basic {}",
             general_purpose::STANDARD.encode(format!(
                 "{}:{}",
-                *OAUTH_FRESHSERVICE_CLIENT_ID, *OAUTH_FRESHSERVICE_CLIENT_SECRET
+                *OAUTH_FRESHWORKS_CLIENT_ID, *OAUTH_FRESHWORKS_CLIENT_SECRET
             ))
         );
 
@@ -129,7 +128,7 @@ impl Provider for FreshserviceConnectionProvider {
             "Basic {}",
             general_purpose::STANDARD.encode(format!(
                 "{}:{}",
-                *OAUTH_FRESHSERVICE_CLIENT_ID, *OAUTH_FRESHSERVICE_CLIENT_SECRET
+                *OAUTH_FRESHWORKS_CLIENT_ID, *OAUTH_FRESHWORKS_CLIENT_SECRET
             ))
         );
 

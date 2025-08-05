@@ -186,10 +186,10 @@ const config = {
     return EnvironmentConfig.getEnvVariable("OAUTH_HUBSPOT_CLIENT_ID");
   },
   getOAuthFreshserviceClientId: (): string => {
-    return EnvironmentConfig.getEnvVariable("OAUTH_FRESHSERVICE_CLIENT_ID");
+    return EnvironmentConfig.getEnvVariable("OAUTH_FRESHWORKS_CLIENT_ID");
   },
   getOAuthFreshserviceDomain: (): string => {
-    return EnvironmentConfig.getEnvVariable("OAUTH_FRESHSERVICE_DOMAIN");
+    return EnvironmentConfig.getEnvVariable("OAUTH_FRESHWORKS_DOMAIN");
   },
   getOAuthJiraClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_JIRA_CLIENT_ID");

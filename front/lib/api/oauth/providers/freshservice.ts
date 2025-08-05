@@ -59,8 +59,8 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
     // Normalize the Freshworks domain (remove protocol and trailing slash)
     const freshworksDomain = freshworksDomainRaw
       .trim() // Remove whitespace
-      .replace(/^https?:\/\//, '') // Remove protocol
-      .replace(/\/$/, ''); // Remove trailing slash
+      .replace(/^https?:\/\//, "") // Remove protocol
+      .replace(/\/$/, ""); // Remove trailing slash
 
     if (!freshworksDomain) {
       throw new Error("Invalid Freshworks domain format");
@@ -92,14 +92,18 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
         return true;
       }
       // For personal/platform actions without MCP server, still need the standard validation
-      return !!extraConfig.freshworks_org_url && !!extraConfig.freshservice_domain;
+      return (
+        !!extraConfig.freshworks_org_url && !!extraConfig.freshservice_domain
+      );
     }
 
     // For other use cases, both domains are required
     if (Object.keys(extraConfig).length !== 2) {
       return false;
     }
-    return !!extraConfig.freshworks_org_url && !!extraConfig.freshservice_domain;
+    return (
+      !!extraConfig.freshworks_org_url && !!extraConfig.freshservice_domain
+    );
   }
 
   async getRelatedCredential(
@@ -123,7 +127,9 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
       const { mcp_server_id } = extraConfig;
 
       if (mcp_server_id) {
-        logger.info(`Freshservice getRelatedCredential: Using MCP server connection for mcp_server_id: ${mcp_server_id}`);
+        logger.info(
+          `Freshservice getRelatedCredential: Using MCP server connection for mcp_server_id: ${mcp_server_id}`
+        );
         const mcpServerConnectionRes =
           await MCPServerConnectionResource.findByMCPServer(auth, {
             mcpServerId: mcp_server_id,
@@ -161,7 +167,9 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
 
     // For non-personal actions, we need freshservice_domain in the extraConfig
     if (!extraConfig.freshservice_domain) {
-      throw new Error(`Missing freshservice_domain in extraConfig for Freshservice credential creation. UseCase: ${useCase}, ExtraConfig keys: ${Object.keys(extraConfig).join(', ')}`);
+      throw new Error(
+        `Missing freshservice_domain in extraConfig for Freshservice credential creation. UseCase: ${useCase}, ExtraConfig keys: ${Object.keys(extraConfig).join(", ")}`
+      );
     }
 
     return {
@@ -223,5 +231,4 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
 
     return extraConfig;
   }
-
 }

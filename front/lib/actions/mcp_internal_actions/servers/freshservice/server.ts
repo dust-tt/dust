@@ -61,18 +61,18 @@ const createServer = (): McpServer => {
     // Remove protocol, trailing slash, and trim whitespace
     const domain = freshserviceDomainRaw
       .trim() // Remove whitespace
-      .replace(/^https?:\/\//, '') // Remove protocol
-      .replace(/\/$/, ''); // Remove trailing slash
-    
+      .replace(/^https?:\/\//, "") // Remove protocol
+      .replace(/\/$/, ""); // Remove trailing slash
+
     if (!domain) {
       throw new Error("Invalid Freshservice domain format");
     }
-    
+
     // If it already contains a dot (likely a full domain), use as-is
-    if (domain.includes('.')) {
+    if (domain.includes(".")) {
       return domain;
     }
-    
+
     // If it's just the subdomain, add .freshservice.com
     return `${domain}.freshservice.com`;
   };
@@ -258,10 +258,15 @@ const createServer = (): McpServer => {
             ticketData.custom_fields = custom_fields;
           }
 
-          const result = await apiRequest(accessToken, freshserviceDomain, "tickets", {
-            method: "POST",
-            body: JSON.stringify(ticketData),
-          });
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            "tickets",
+            {
+              method: "POST",
+              body: JSON.stringify(ticketData),
+            }
+          );
 
           return makeMCPToolJSONSuccess({
             message: "Ticket created successfully",
@@ -783,7 +788,11 @@ const createServer = (): McpServer => {
     async (_, { authInfo }) => {
       return withAuth({
         action: async (accessToken, freshserviceDomain) => {
-          const result = await apiRequest(accessToken, freshserviceDomain, "sla_policies");
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            "sla_policies"
+          );
 
           return makeMCPToolJSONSuccess({
             message: `Retrieved ${result.sla_policies?.length || 0} SLA policies`,
