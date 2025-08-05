@@ -17,7 +17,10 @@ import type {
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
-import { MCPServerViewsDialog } from "@app/components/agent_builder/capabilities/MCPServerViewsDialog";
+import {
+  MCPServerViewsDialog,
+  type DialogMode,
+} from "@app/components/agent_builder/capabilities/MCPServerViewsDialog";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
@@ -168,23 +171,6 @@ const dataVisualizationAction = {
   ...DATA_VISUALIZATION_SPECIFICATION,
 };
 
-function filterSelectableViews(
-  views: MCPServerViewTypeWithLabel[],
-  fields: FieldArrayWithId<AgentBuilderFormData, "actions", "id">[]
-) {
-  return views.filter((view) => {
-    const selectedAction = fields.find(
-      (field) => field.name === view.server.name
-    );
-
-    if (selectedAction) {
-      return !selectedAction.noConfigurationRequired;
-    }
-
-    return true;
-  });
-}
-
 const BACKGROUND_IMAGE_PATH = "/static/IconBar.svg";
 const BACKGROUND_IMAGE_STYLE_PROPS = {
   backgroundImage: `url("${BACKGROUND_IMAGE_PATH}")`,
@@ -207,26 +193,13 @@ export function AgentBuilderCapabilitiesBlock() {
     nonDefaultMCPServerViews,
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
-  const [editingAction, setEditingAction] = useState<{
-    action: AgentBuilderAction;
-    index: number;
-  } | null>(null);
-
-  // State for info mode (non-configurable tools)
-  const [infoAction, setInfoAction] = useState<AgentBuilderAction | null>(null);
+  const [dialogMode, setDialogMode] = useState<DialogMode | undefined>(
+    undefined
+  );
 
   const [isKnowledgeSheetOpen, setIsKnowledgeSheetOpen] = useState(false);
 
   // TODO: Add logic for reasoning.
-  const selectableDefaultMCPServerViews = useMemo(
-    () => filterSelectableViews(defaultMCPServerViews, fields),
-    [defaultMCPServerViews, fields]
-  );
-
-  const selectableNonDefaultMCPServerViews = useMemo(
-    () => filterSelectableViews(nonDefaultMCPServerViews, fields),
-    [nonDefaultMCPServerViews, fields]
-  );
 
   const dataVisualization = fields.some(
     (field) => field.type === "DATA_VISUALIZATION"
@@ -235,12 +208,12 @@ export function AgentBuilderCapabilitiesBlock() {
     : dataVisualizationAction;
 
   const handleEditSave = (updatedAction: AgentBuilderAction) => {
-    if (editingAction) {
-      update(editingAction.index, updatedAction);
+    if (dialogMode?.type === "edit") {
+      update(dialogMode.index, updatedAction);
     } else {
       append(updatedAction);
     }
-    setEditingAction(null);
+    setDialogMode(undefined);
   };
 
   const handleActionEdit = (action: AgentBuilderAction, index: number) => {
@@ -248,14 +221,13 @@ export function AgentBuilderCapabilitiesBlock() {
       // For MCP actions, check if they are configurable
       if (action.noConfigurationRequired) {
         // Non-configurable tool - show info dialog
-        setInfoAction(action);
+        setDialogMode({ type: "info", action });
       } else {
         // Configurable tool - show edit dialog
-        setEditingAction({ action, index });
+        setDialogMode({ type: "edit", action, index });
       }
     } else {
       // For other action types, use normal edit flow
-      setEditingAction({ action, index });
       if (isSupportedAgentBuilderAction(action)) {
         setIsKnowledgeSheetOpen(true);
       }
@@ -263,21 +235,12 @@ export function AgentBuilderCapabilitiesBlock() {
   };
 
   const handleCloseSheet = () => {
-    setEditingAction(null);
+    setDialogMode(undefined);
     setIsKnowledgeSheetOpen(false);
   };
 
-  const handleMcpEditSave = (action: AgentBuilderAction, index: number) => {
+  const handleMcpActionUpdate = (action: AgentBuilderAction, index: number) => {
     update(index, action);
-    setEditingAction(null);
-  };
-
-  const handleMcpEditCancel = () => {
-    setEditingAction(null);
-  };
-
-  const handleInfoActionClose = () => {
-    setInfoAction(null);
   };
 
   const dropdownButtons = (
@@ -286,27 +249,19 @@ export function AgentBuilderCapabilitiesBlock() {
         onClose={handleCloseSheet}
         onOpen={() => setIsKnowledgeSheetOpen(true)}
         onSave={handleEditSave}
-        action={editingAction?.action}
+        action={
+          dialogMode?.type === "edit" && dialogMode.action.type !== "MCP"
+            ? dialogMode.action
+            : undefined
+        }
         open={isKnowledgeSheetOpen}
       />
       <MCPServerViewsDialog
         addTools={append}
-        mcpServerViews={[
-          ...selectableDefaultMCPServerViews,
-          ...selectableNonDefaultMCPServerViews,
-        ]}
         dataVisualization={dataVisualization}
-        isMCPServerViewsLoading={isMCPServerViewsLoading}
-        editAction={
-          editingAction?.action.type === "MCP" ? editingAction.action : null
-        }
-        editActionIndex={
-          editingAction?.action.type === "MCP" ? editingAction.index : undefined
-        }
-        onEditActionSave={handleMcpEditSave}
-        onEditActionCancel={handleMcpEditCancel}
-        infoAction={infoAction}
-        onInfoActionClose={handleInfoActionClose}
+        mode={dialogMode}
+        onModeChange={setDialogMode}
+        onActionUpdate={handleMcpActionUpdate}
       />
     </>
   );

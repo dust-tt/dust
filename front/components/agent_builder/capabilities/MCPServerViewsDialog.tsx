@@ -13,6 +13,8 @@ import { useMemo, useState } from "react";
 import React from "react";
 import type { UseFieldArrayAppend } from "react-hook-form";
 import { useForm } from "react-hook-form";
+
+import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderAction,
@@ -26,7 +28,6 @@ import { ChildAgentSection } from "@app/components/agent_builder/capabilities/sh
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
-import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type {
   ActionSpecification,
@@ -42,12 +43,11 @@ import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
+import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
 import { O4_MINI_MODEL_ID } from "@app/types";
-import { ToolsList } from "@app/components/actions/mcp/ToolsList";
-import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 
 export type SelectedTool =
   | {
@@ -59,47 +59,44 @@ export type SelectedTool =
 
 const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
+export type DialogMode =
+  | { type: "add" }
+  | { type: "edit"; action: AgentBuilderAction; index: number }
+  | { type: "info"; action: AgentBuilderAction };
+
 interface MCPServerViewsDialogProps {
   addTools: UseFieldArrayAppend<AgentBuilderFormData, "actions">;
-  mcpServerViews: MCPServerViewTypeWithLabel[];
-  isMCPServerViewsLoading: boolean;
   dataVisualization: ActionSpecification | null;
-  // Edit mode props
-  editAction?: AgentBuilderAction | null;
-  editActionIndex?: number;
-  onEditActionSave?: (action: AgentBuilderAction, index: number) => void;
-  onEditActionCancel?: () => void;
-  // Info mode props
-  infoAction?: AgentBuilderAction | null;
-  onInfoActionClose?: () => void;
+  mode?: DialogMode;
+  onModeChange?: (mode: DialogMode | undefined) => void;
+  onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
 }
 
 export function MCPServerViewsDialog({
   addTools,
-  mcpServerViews,
-  isMCPServerViewsLoading,
   dataVisualization,
-  editAction,
-  editActionIndex,
-  onEditActionSave,
-  onEditActionCancel,
-  infoAction,
-  onInfoActionClose,
+  mode,
+  onModeChange,
+  onActionUpdate,
 }: MCPServerViewsDialogProps) {
   const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
-  const { mcpServerViews: allMcpServerViews } = useMCPServerViewsContext();
+  const {
+    mcpServerViews: allMcpServerViews,
+    defaultMCPServerViews,
+    nonDefaultMCPServerViews,
+    isMCPServerViewsLoading,
+  } = useMCPServerViewsContext();
 
-  const isEditMode = Boolean(
-    editAction && typeof editActionIndex === "number" && onEditActionSave
-  );
-  const isInfoMode = Boolean(infoAction && onInfoActionClose);
+  const isEditMode = mode?.type === "edit";
+  const isInfoMode = mode?.type === "info";
+  const isAddMode = !mode || mode.type === "add";
 
   const [selectedToolsInDialog, setSelectedToolsInDialog] = useState<
     SelectedTool[]
   >([]);
-  const [isOpen, setIsOpen] = useState(isEditMode || isInfoMode);
+  const [isOpen, setIsOpen] = useState(Boolean(mode));
   const [currentPageId, setCurrentPageId] = useState<ConfigurationPagePageId>(
     isEditMode
       ? CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION
@@ -108,7 +105,9 @@ export function MCPServerViewsDialog({
         : CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION
   );
   const [configurationTool, setConfigurationTool] =
-    useState<AgentBuilderAction | null>(editAction || null);
+    useState<AgentBuilderAction | null>(
+      mode?.type === "edit" ? mode.action : null
+    );
 
   const [configurationMCPServerView, setConfigurationMCPServerView] =
     useState<MCPServerViewType | null>(null);
@@ -116,49 +115,60 @@ export function MCPServerViewsDialog({
     useState<MCPServerViewType | null>(null);
 
   React.useEffect(() => {
-    if (isEditMode && editAction) {
+    if (mode?.type === "edit") {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION);
-      setConfigurationTool(editAction);
+      setConfigurationTool(mode.action);
       setSelectedToolsInDialog([]);
       setIsOpen(true);
 
       // Set MCP server view for edit mode
-      if (editAction.type === "MCP" && mcpServerViews.length > 0) {
-        const mcpServerView = mcpServerViews.find(
-          (view) => view.sId === editAction.configuration.mcpServerViewId
+      if (
+        mode.action.type === "MCP" &&
+        mode.action.configuration &&
+        "mcpServerViewId" in mode.action.configuration &&
+        allMcpServerViews.length > 0
+      ) {
+        const mcpServerView = allMcpServerViews.find(
+          (view) =>
+            view.sId === (mode.action.configuration as any).mcpServerViewId
         );
         if (mcpServerView) {
           setConfigurationMCPServerView(mcpServerView);
         }
       }
-    } else if (isInfoMode && infoAction) {
+    } else if (mode?.type === "info") {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.INFO);
       setSelectedToolsInDialog([]);
       setIsOpen(true);
 
       // Set MCP server view for info mode
-      if (infoAction.type === "MCP" && allMcpServerViews.length > 0) {
+      if (
+        mode.action.type === "MCP" &&
+        mode.action.configuration &&
+        "mcpServerViewId" in mode.action.configuration &&
+        allMcpServerViews.length > 0
+      ) {
         const mcpServerView = allMcpServerViews.find(
-          (view) => view.sId === infoAction.configuration.mcpServerViewId
+          (view) =>
+            view.sId === (mode.action.configuration as any).mcpServerViewId
         );
         if (mcpServerView) {
           setInfoMCPServerView(mcpServerView);
         }
       }
-    } else if (!isEditMode && !isInfoMode) {
+    } else if (mode?.type === "add" || !mode) {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
       setConfigurationTool(null);
       setConfigurationMCPServerView(null);
       setInfoMCPServerView(null);
+      setIsOpen(Boolean(mode));
     }
-  }, [
-    isEditMode,
-    isInfoMode,
-    editAction,
-    infoAction,
-    mcpServerViews,
-    allMcpServerViews,
-  ]);
+  }, [mode, allMcpServerViews]);
+
+  // Filter MCP server views for the selection page (similar to what was done in AgentBuilderCapabilitiesBlock)
+  const selectableMcpServerViews = useMemo(() => {
+    return [...defaultMCPServerViews, ...nonDefaultMCPServerViews];
+  }, [defaultMCPServerViews, nonDefaultMCPServerViews]);
 
   const toggleToolSelection = (tool: SelectedTool): void => {
     setSelectedToolsInDialog((prev) => {
@@ -346,7 +356,7 @@ export function MCPServerViewsDialog({
         </div>
       ) : (
         <MCPServerSelectionPage
-          mcpServerViews={mcpServerViews}
+          mcpServerViews={selectableMcpServerViews}
           onItemClick={onClickMCPServer}
           dataVisualization={dataVisualization}
           onDataVisualizationClick={onClickDataVisualization}
@@ -428,11 +438,10 @@ export function MCPServerViewsDialog({
 
   const handleCancel = () => {
     setIsOpen(false);
-    if (isEditMode && onEditActionCancel) {
-      onEditActionCancel();
-    } else if (isInfoMode && onInfoActionClose) {
-      onInfoActionClose();
-    } else if (!isEditMode && !isInfoMode) {
+    if (onModeChange) {
+      onModeChange(undefined);
+    }
+    if (isAddMode) {
       setSelectedToolsInDialog([]);
       setConfigurationTool(null);
       setConfigurationMCPServerView(null);
@@ -466,14 +475,13 @@ export function MCPServerViewsDialog({
         configuration: formData.configuration as any,
       };
 
-      if (
-        isEditMode &&
-        onEditActionSave &&
-        typeof editActionIndex === "number"
-      ) {
+      if (mode?.type === "edit" && onActionUpdate) {
         // Edit mode: save the updated action and close dialog
-        onEditActionSave(configuredAction, editActionIndex);
+        onActionUpdate(configuredAction, mode.index);
         setIsOpen(false);
+        if (onModeChange) {
+          onModeChange(undefined);
+        }
 
         sendNotification({
           title: "Tool updated successfully",
