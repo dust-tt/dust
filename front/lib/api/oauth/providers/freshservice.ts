@@ -8,7 +8,6 @@ import {
 } from "@app/lib/api/oauth/utils";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
-import { isValidFreshserviceDomain } from "@app/types/oauth/lib";
 
 export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
@@ -44,10 +43,20 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
     ];
 
     // Get domain from connection metadata
-    const freshworksDomain = connection.metadata.instance_url;
+    const freshworksDomainRaw = connection.metadata.instance_url;
 
-    if (!isValidFreshserviceDomain(freshworksDomain)) {
-      throw new Error("Invalid Freshservice domain");
+    if (!freshworksDomainRaw) {
+      throw new Error("Freshworks domain is required");
+    }
+
+    // Normalize the Freshworks domain (remove protocol and trailing slash)
+    const freshworksDomain = freshworksDomainRaw
+      .trim() // Remove whitespace
+      .replace(/^https?:\/\//, '') // Remove protocol
+      .replace(/\/$/, ''); // Remove trailing slash
+
+    if (!freshworksDomain) {
+      throw new Error("Invalid Freshworks domain format");
     }
 
     return (
@@ -70,16 +79,16 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
     if (useCase === "personal_actions" || useCase === "platform_actions") {
-      // For MCP servers, check both mcp_server_id and domain
+      // For MCP servers, check both mcp_server_id and domains
       if (extraConfig.mcp_server_id) {
-        return isValidFreshserviceDomain(extraConfig.instance_url);
+        return !!extraConfig.instance_url && !!extraConfig.client_id;
       }
     }
 
-    // For other use cases, domain is required
-    if (Object.keys(extraConfig).length !== 1) {
+    // For other use cases, both domains are required
+    if (Object.keys(extraConfig).length !== 2) {
       return false;
     }
-    return isValidFreshserviceDomain(extraConfig.instance_url);
+    return !!extraConfig.instance_url && !!extraConfig.client_id;
   }
 }

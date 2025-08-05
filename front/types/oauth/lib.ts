@@ -155,8 +155,14 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
           instance_url: {
             label: "Freshworks Organization URL",
             value: undefined,
-            helpMessage: "Your Freshworks organization URL for OAuth (e.g., yourcompany.myfreshworks.com). API calls will automatically use the corresponding Freshservice domain.",
-            validator: isValidFreshserviceDomain,
+            helpMessage:
+              "Your Freshworks organization URL (e.g., yourcompany.myfreshworks.com).",
+          },
+          client_id: {
+            label: "Freshservice Domain URL",
+            value: undefined,
+            helpMessage:
+              "Your Freshservice domain URL (e.g., yourcompany.freshservice.com).",
           },
         };
         return result;
@@ -230,13 +236,6 @@ export function isValidSalesforceDomain(s: unknown): s is string {
 
 export function isValidClientIdOrSecret(s: unknown): s is string {
   return typeof s === "string" && s.trim().length > 0;
-}
-
-export function isValidFreshserviceDomain(s: unknown): s is string {
-  return (
-    typeof s === "string" &&
-    /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.myfreshworks\.com$/.test(s)
-  );
 }
 
 // Credentials Providers

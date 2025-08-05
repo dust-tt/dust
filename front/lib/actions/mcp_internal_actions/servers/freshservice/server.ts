@@ -30,7 +30,7 @@ const createServer = (): McpServer => {
     action,
     authInfo,
   }: {
-    action: (accessToken: string, domain: string) => Promise<T>;
+    action: (accessToken: string, freshserviceDomain: string) => Promise<T>;
     authInfo?: { token?: string; extra?: Record<string, unknown> };
   }): Promise<T> => {
     if (!authInfo?.token) {
@@ -39,16 +39,16 @@ const createServer = (): McpServer => {
       ) as T;
     }
 
-    // Extract domain from extra metadata
-    const domain = authInfo.extra?.instance_url as string;
-    if (!domain) {
+    // Extract Freshservice domain from extra metadata
+    const freshserviceDomain = authInfo.extra?.client_id as string;
+    if (!freshserviceDomain) {
       return makeMCPToolTextError(
-        "Freshworks organization URL not configured. Please reconnect your Freshservice account."
+        "Freshservice domain URL not configured. Please reconnect your Freshservice account."
       ) as T;
     }
 
     try {
-      return await action(authInfo.token, domain);
+      return await action(authInfo.token, freshserviceDomain);
     } catch (error) {
       return makeMCPToolTextError(
         `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -56,28 +56,35 @@ const createServer = (): McpServer => {
     }
   };
 
-  // Helper function to convert OAuth domain to API domain
-  const getApiDomain = (oauthDomain: string): string => {
-    // Convert dust-tt.myfreshworks.com -> dust-tt.freshservice.com
-    if (oauthDomain.endsWith('.myfreshworks.com')) {
-      return oauthDomain.replace('.myfreshworks.com', '.freshservice.com');
+  // Helper function to normalize Freshservice domain for API calls
+  const normalizeApiDomain = (freshserviceDomainRaw: string): string => {
+    // Remove protocol, trailing slash, and trim whitespace
+    const domain = freshserviceDomainRaw
+      .trim() // Remove whitespace
+      .replace(/^https?:\/\//, '') // Remove protocol
+      .replace(/\/$/, ''); // Remove trailing slash
+    
+    if (!domain) {
+      throw new Error("Invalid Freshservice domain format");
     }
-    // If it's already a freshservice.com domain, use it as-is
-    if (oauthDomain.endsWith('.freshservice.com')) {
-      return oauthDomain;
+    
+    // If it already contains a dot (likely a full domain), use as-is
+    if (domain.includes('.')) {
+      return domain;
     }
-    // Fallback: assume it's the subdomain and add .freshservice.com
-    return `${oauthDomain}.freshservice.com`;
+    
+    // If it's just the subdomain, add .freshservice.com
+    return `${domain}.freshservice.com`;
   };
 
   // Helper function to make API requests
   const apiRequest = async (
     accessToken: string,
-    oauthDomain: string,
+    freshserviceDomain: string,
     endpoint: string,
     options: RequestInit = {}
   ) => {
-    const apiDomain = getApiDomain(oauthDomain);
+    const apiDomain = normalizeApiDomain(freshserviceDomain);
     const url = `https://${apiDomain}/api/v2/${endpoint}`;
 
     const response = await fetch(url, {
@@ -115,7 +122,7 @@ const createServer = (): McpServer => {
     },
     async ({ filter, page, per_page }, { authInfo }) => {
       return withAuth({
-        action: async (accessToken, domain) => {
+        action: async (accessToken, freshserviceDomain) => {
           const params = new URLSearchParams({
             page: page.toString(),
             per_page: per_page.toString(),
@@ -136,7 +143,7 @@ const createServer = (): McpServer => {
 
           const result = await apiRequest(
             accessToken,
-            domain,
+            freshserviceDomain,
             `tickets?${params.toString()}`
           );
 
@@ -178,11 +185,11 @@ const createServer = (): McpServer => {
     },
     async ({ ticket_id, include }, { authInfo }) => {
       return withAuth({
-        action: async (accessToken, domain) => {
+        action: async (accessToken, freshserviceDomain) => {
           const params = include?.length ? `?include=${include.join(",")}` : "";
           const result = await apiRequest(
             accessToken,
-            domain,
+            freshserviceDomain,
             `tickets/${ticket_id}${params}`
           );
 
@@ -232,7 +239,7 @@ const createServer = (): McpServer => {
       { authInfo }
     ) => {
       return withAuth({
-        action: async (accessToken, domain) => {
+        action: async (accessToken, freshserviceDomain) => {
           const ticketData: any = {
             email,
             subject,
@@ -251,7 +258,7 @@ const createServer = (): McpServer => {
             ticketData.custom_fields = custom_fields;
           }
 
-          const result = await apiRequest(accessToken, domain, "tickets", {
+          const result = await apiRequest(accessToken, freshserviceDomain, "tickets", {
             method: "POST",
             body: JSON.stringify(ticketData),
           });
@@ -300,7 +307,7 @@ const createServer = (): McpServer => {
       { authInfo }
     ) => {
       return withAuth({
-        action: async (accessToken, domain) => {
+        action: async (accessToken, freshserviceDomain) => {
           const updateData: any = {};
 
           if (subject) {
@@ -324,7 +331,7 @@ const createServer = (): McpServer => {
 
           const result = await apiRequest(
             accessToken,
-            domain,
+            freshserviceDomain,
             `tickets/${ticket_id}`,
             {
               method: "PUT",
@@ -356,10 +363,10 @@ const createServer = (): McpServer => {
     },
     async ({ ticket_id, body, private: isPrivate }, { authInfo }) => {
       return withAuth({
-        action: async (accessToken, domain) => {
+        action: async (accessToken, freshserviceDomain) => {
           const result = await apiRequest(
             accessToken,
-            domain,
+            freshserviceDomain,
             `tickets/${ticket_id}/notes`,
             {
               method: "POST",
@@ -391,10 +398,10 @@ const createServer = (): McpServer => {
     },
     async ({ ticket_id, body }, { authInfo }) => {
       return withAuth({
-        action: async (accessToken, domain) => {
+        action: async (accessToken, freshserviceDomain) => {
           const result = await apiRequest(
             accessToken,
-            domain,
+            freshserviceDomain,
             `tickets/${ticket_id}/reply`,
             {
               method: "POST",
@@ -426,7 +433,7 @@ const createServer = (): McpServer => {
     },
     async ({ page, per_page }, { authInfo }) => {
       return withAuth({
-        action: async (accessToken, domain) => {
+        action: async (accessToken, freshserviceDomain) => {
           const params = new URLSearchParams({
             page: page.toString(),
             per_page: per_page.toString(),
@@ -434,7 +441,7 @@ const createServer = (): McpServer => {
 
           const result = await apiRequest(
             accessToken,
-            domain,
+            freshserviceDomain,
             `departments?${params.toString()}`
           );
 
@@ -458,7 +465,7 @@ const createServer = (): McpServer => {
     },
     async ({ page, per_page }, { authInfo }) => {
       return withAuth({
-        action: async (accessToken, domain) => {
+        action: async (accessToken, freshserviceDomain) => {
           const params = new URLSearchParams({
             page: page.toString(),
             per_page: per_page.toString(),
@@ -466,7 +473,7 @@ const createServer = (): McpServer => {
 
           const result = await apiRequest(
             accessToken,
-            domain,
+            freshserviceDomain,
             `products?${params.toString()}`
           );
 
@@ -490,7 +497,7 @@ const createServer = (): McpServer => {
     },
     async ({ page, per_page }, { authInfo }) => {
       return withAuth({
-        action: async (accessToken, domain) => {
+        action: async (accessToken, freshserviceDomain) => {
           const params = new URLSearchParams({
             page: page.toString(),
             per_page: per_page.toString(),
@@ -498,7 +505,7 @@ const createServer = (): McpServer => {
 
           const result = await apiRequest(
             accessToken,
-            domain,
+            freshserviceDomain,
             `oncall_schedules?${params.toString()}`
           );
 
@@ -524,7 +531,7 @@ const createServer = (): McpServer => {
     },
     async ({ category_id, search, page, per_page }, { authInfo }) => {
       return withAuth({
-        action: async (accessToken, domain) => {
+        action: async (accessToken, freshserviceDomain) => {
           const params = new URLSearchParams({
             page: page.toString(),
             per_page: per_page.toString(),
@@ -539,7 +546,7 @@ const createServer = (): McpServer => {
 
           const result = await apiRequest(
             accessToken,
-            domain,
+            freshserviceDomain,
             `service_catalog/items?${params.toString()}`
           );
 
@@ -560,10 +567,10 @@ const createServer = (): McpServer => {
     {},
     async (_, { authInfo }) => {
       return withAuth({
-        action: async (accessToken, domain) => {
+        action: async (accessToken, freshserviceDomain) => {
           const result = await apiRequest(
             accessToken,
-            domain,
+            freshserviceDomain,
             "solutions/categories"
           );
 
@@ -588,7 +595,7 @@ const createServer = (): McpServer => {
     },
     async ({ folder_id, category_id, page, per_page }, { authInfo }) => {
       return withAuth({
-        action: async (accessToken, domain) => {
+        action: async (accessToken, freshserviceDomain) => {
           const params = new URLSearchParams({
             page: page.toString(),
             per_page: per_page.toString(),
@@ -603,7 +610,7 @@ const createServer = (): McpServer => {
 
           const result = await apiRequest(
             accessToken,
-            domain,
+            freshserviceDomain,
             `solutions/articles?${params.toString()}`
           );
 
@@ -632,7 +639,7 @@ const createServer = (): McpServer => {
     },
     async ({ title, description, folder_id, status, tags }, { authInfo }) => {
       return withAuth({
-        action: async (accessToken, domain) => {
+        action: async (accessToken, freshserviceDomain) => {
           const articleData: any = {
             title,
             description,
@@ -646,7 +653,7 @@ const createServer = (): McpServer => {
 
           const result = await apiRequest(
             accessToken,
-            domain,
+            freshserviceDomain,
             "solutions/articles",
             {
               method: "POST",
@@ -679,7 +686,7 @@ const createServer = (): McpServer => {
     },
     async ({ email, mobile, phone, page, per_page }, { authInfo }) => {
       return withAuth({
-        action: async (accessToken, domain) => {
+        action: async (accessToken, freshserviceDomain) => {
           const params = new URLSearchParams({
             page: page.toString(),
             per_page: per_page.toString(),
@@ -697,7 +704,7 @@ const createServer = (): McpServer => {
 
           const result = await apiRequest(
             accessToken,
-            domain,
+            freshserviceDomain,
             `requesters?${params.toString()}`
           );
 
@@ -719,10 +726,10 @@ const createServer = (): McpServer => {
     },
     async ({ requester_id }, { authInfo }) => {
       return withAuth({
-        action: async (accessToken, domain) => {
+        action: async (accessToken, freshserviceDomain) => {
           const result = await apiRequest(
             accessToken,
-            domain,
+            freshserviceDomain,
             `requesters/${requester_id}`
           );
 
@@ -746,7 +753,7 @@ const createServer = (): McpServer => {
     },
     async ({ page, per_page }, { authInfo }) => {
       return withAuth({
-        action: async (accessToken, domain) => {
+        action: async (accessToken, freshserviceDomain) => {
           const params = new URLSearchParams({
             page: page.toString(),
             per_page: per_page.toString(),
@@ -754,7 +761,7 @@ const createServer = (): McpServer => {
 
           const result = await apiRequest(
             accessToken,
-            domain,
+            freshserviceDomain,
             `purchase_orders?${params.toString()}`
           );
 
@@ -775,8 +782,8 @@ const createServer = (): McpServer => {
     {},
     async (_, { authInfo }) => {
       return withAuth({
-        action: async (accessToken, domain) => {
-          const result = await apiRequest(accessToken, domain, "sla_policies");
+        action: async (accessToken, freshserviceDomain) => {
+          const result = await apiRequest(accessToken, freshserviceDomain, "sla_policies");
 
           return makeMCPToolJSONSuccess({
             message: `Retrieved ${result.sla_policies?.length || 0} SLA policies`,
