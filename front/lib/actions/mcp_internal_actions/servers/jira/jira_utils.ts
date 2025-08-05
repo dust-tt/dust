@@ -85,3 +85,37 @@ export function createJQLFromSearchFilters(
 
   return jql;
 }
+
+// Converts plain text to Atlassian Document Format (ADF)
+// Based on: https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/
+
+export function textToADF(text: string): {
+  type: "doc";
+  version: 1;
+  content: Array<{
+    type: "paragraph";
+    content: Array<{
+      type: "text";
+      text: string;
+    }>;
+  }>;
+} {
+  // Split text by newlines to create multiple paragraphs
+  const lines = text.split("\n");
+
+  const content = lines.map((line) => ({
+    type: "paragraph" as const,
+    content: [
+      {
+        type: "text" as const,
+        text: line || "", // Handle empty lines
+      },
+    ],
+  }));
+
+  return {
+    type: "doc",
+    version: 1,
+    content,
+  };
+}
