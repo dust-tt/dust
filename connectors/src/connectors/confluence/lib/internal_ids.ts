@@ -28,19 +28,19 @@ export function makeFolderInternalId(confluenceFolderId: string) {
   return `${ConfluenceInternalIdPrefix.Folder}${confluenceFolderId}`;
 }
 
-export function makeParentInternalId(
-  parentType: "page" | "folder",
-  parentId: string
+export function makeEntityInternalId(
+  entityType: "page" | "folder",
+  entityId: string
 ) {
-  switch (parentType) {
+  switch (entityType) {
     case "page":
-      return makePageInternalId(parentId);
+      return makePageInternalId(entityId);
 
     case "folder":
-      return makeFolderInternalId(parentId);
+      return makeFolderInternalId(entityId);
 
     default:
-      assertNever(parentType);
+      assertNever(entityType);
   }
 }
 

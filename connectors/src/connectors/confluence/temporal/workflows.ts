@@ -53,7 +53,7 @@ const {
   },
 });
 
-const { confluenceUpdatePagesParentIdsActivity } = proxyActivities<
+const { confluenceUpdateEntitiesParentIdsActivity } = proxyActivities<
   typeof activities
 >({
   startToCloseTimeout: "60 minutes",
@@ -229,7 +229,7 @@ export async function confluenceSpaceSyncWorkflow(
   const uniqueTopLevelEntityRefsArray = Array.from(
     uniqueTopLevelEntityRefs.values()
   );
-  // For small spaces, process each page individually; for large spaces, chunk them to be
+  // For small spaces, process each entity individually; for large spaces, chunk them to be
   // conservative.
   const topLevelEntityRefsToProcess =
     uniqueTopLevelEntityRefsArray.length > TOP_LEVEL_ENTITY_REFS_CHUNK_SIZE
@@ -263,7 +263,7 @@ export async function confluenceSpaceSyncWorkflow(
     spaceId,
   });
 
-  await confluenceUpdatePagesParentIdsActivity(
+  await confluenceUpdateEntitiesParentIdsActivity(
     connectorId,
     spaceId,
     visitedAtMs
@@ -287,18 +287,18 @@ interface confluenceSyncTopLevelChildEntitiesWorkflowInput {
  * It uses a stack to process pages and their children, with special handling for:
  *
  * 1. Pagination:
- *    - Regular pages are processed and their children are added to the stack
- *    - Cursor elements in the stack represent continuation points for pages with many children
+ *    - Regular entities are processed and their children are added to the stack
+ *    - Cursor elements in the stack represent continuation points for entities with many children
  *
  * 2. Leaf pages optimization:
- *    - Pages without children are batched together to reduce activity calls
+ *    - Entities without children are batched together to reduce activity calls
  *    - Batches are automatically flushed when full or before workflow continuation
  *
  * This ensures we never store too many pages in the workflow history while maintaining proper
  * traversal and optimal performance.
  *
- * The workflow stops importing child pages if a parent page is restricted.
- * Page restriction checks are performed by `confluenceCheckAndUpsertSinglePageActivity`.
+ * The workflow stops importing child entities if a parent entity is restricted.
+ * Entity restriction checks are performed by `confluenceCheckAndUpsertSingleEntityActivity`.
  */
 export async function confluenceSyncTopLevelChildEntitiesWorkflow(
   params: confluenceSyncTopLevelChildEntitiesWorkflowInput
@@ -325,7 +325,7 @@ export async function confluenceSyncTopLevelChildEntitiesWorkflow(
   while (stack.length > 0) {
     const current = stack.pop();
     if (!current) {
-      throw new Error("No more pages to parse.");
+      throw new Error("No more entities to parse.");
     }
 
     // Check if it's an entity reference or cursor.
@@ -360,7 +360,7 @@ export async function confluenceSyncTopLevelChildEntitiesWorkflow(
       }
     }
 
-    // Get child pages using either initial empty cursor or saved cursor.
+    // Get child entities using either initial empty cursor or saved cursor.
     const { childEntityRefs, nextPageCursor } =
       await confluenceGetActiveChildEntityRefsActivity({
         ...params,

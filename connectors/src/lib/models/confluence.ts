@@ -97,6 +97,7 @@ export class ConfluencePage extends ConnectorBaseModel<ConfluencePage> {
   declare externalUrl: string;
   declare pageId: string;
   declare parentId: string | null;
+  declare parentType: "page" | "folder" | null;
   declare skipReason: string | null;
   declare spaceId: string;
   declare title: string;
@@ -128,6 +129,11 @@ ConfluencePage.init(
       allowNull: true,
     },
     parentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    parentType: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
@@ -168,6 +174,7 @@ export class ConfluenceFolder extends ConnectorBaseModel<ConfluenceFolder> {
   declare externalUrl: string;
   declare folderId: string;
   declare parentId: string | null;
+  declare parentType: "page" | "folder" | null;
   declare skipReason: string | null;
   declare spaceId: string;
   declare title: string;
@@ -200,6 +207,11 @@ ConfluenceFolder.init(
       allowNull: true,
     },
     parentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    parentType: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,

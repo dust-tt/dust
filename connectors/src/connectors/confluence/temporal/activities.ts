@@ -15,13 +15,13 @@ import {
 import type { ConfluencePageWithBodyType } from "@connectors/connectors/confluence/lib/confluence_client";
 import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
 import {
-  getConfluencePageParentIds,
+  getConfluenceEntityParentIds,
   getSpaceHierarchy,
 } from "@connectors/connectors/confluence/lib/hierarchy";
 import {
+  makeEntityInternalId,
   makeFolderInternalId,
   makePageInternalId,
-  makeParentInternalId,
   makeSpaceInternalId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import { makeConfluenceDocumentUrl } from "@connectors/connectors/confluence/temporal/workflow_ids";
@@ -410,6 +410,7 @@ async function upsertConfluencePageInDb(
     pageId: page.id,
     spaceId: page.spaceId,
     parentId: page.parentId,
+    parentType: page.parentType,
     title: page.title,
     externalUrl: page._links.tinyui,
     version: page.version.number,
@@ -569,11 +570,11 @@ async function confluenceCheckAndUpsertSinglePageActivity({
   }
 
   let parents: [string, string, ...string[]];
-  if (page.parentId) {
+  if (page.parentId && page.parentType) {
     // Exact parent Ids will be computed after all page imports within the space have been completed.
     parents = [
       makePageInternalId(page.id),
-      makeParentInternalId(page.parentType, page.parentId),
+      makeEntityInternalId(page.parentType, page.parentId),
       HiddenContentNodeParentId,
     ];
   } else {
@@ -721,7 +722,8 @@ async function confluenceCheckAndUpsertSingleFolderActivity({
     externalUrl: folder._links.tinyui,
     folderId,
     lastVisitedAt: new Date(visitedAtMs),
-    parentId,
+    parentId: folder.parentId,
+    parentType: folder.parentType,
     spaceId,
     title: folder.title,
     version: folder.version.number,
@@ -836,9 +838,15 @@ export async function confluenceUpsertPageWithFullParentsActivity({
     );
   }
 
-  const parents = await getConfluencePageParentIds(
+  const parents = await getConfluenceEntityParentIds(
     connectorId,
-    { pageId: page.id, parentId: page.parentId, spaceId: page.spaceId },
+    {
+      id: page.id,
+      parentId: page.parentId,
+      parentType: page.parentType,
+      spaceId: page.spaceId,
+      type: "page",
+    },
     cachedSpaceHierarchies[page.spaceId]
   );
 
@@ -1032,7 +1040,7 @@ export async function confluenceGetTopLevelEntityIdsActivity({
 }
 
 // TODO:
-export async function confluenceUpdatePagesParentIdsActivity(
+export async function confluenceUpdateEntitiesParentIdsActivity(
   connectorId: ModelId,
   spaceId: string,
   visitedAtMs: number | null
@@ -1048,35 +1056,66 @@ export async function confluenceUpdatePagesParentIdsActivity(
     },
   });
 
+  const folders = await ConfluenceFolder.findAll({
+    attributes: ["id", "folderId", "parentId", "spaceId"],
+    where: {
+      connectorId,
+      spaceId,
+      ...(visitedAtMs ? { lastVisitedAt: visitedAtMs } : {}),
+    },
+  });
+
   await heartbeat();
 
   logger.info(
     {
-      connectorId,
+      confluenceEntitiesCount: pages.length + folders.length,
+      confluenceFoldersCount: folders.length,
       confluencePagesCount: pages.length,
+      connectorId,
     },
-    "Start updating pages parent ids."
+    "Start updating entities parent ids."
   );
 
-  // Utilize an in-memory map to cache page hierarchies, thereby reducing database queries.
+  // Utilize an in-memory map to cache entity hierarchies, thereby reducing database queries.
   const cachedHierarchy = await getSpaceHierarchy(connectorId, spaceId);
 
   await concurrentExecutor(
-    pages,
-    async (page) => {
+    [...pages, ...folders],
+    async (e) => {
+      const isPage = e instanceof ConfluencePage;
+
       // Retrieve parents using the internal ID, which aligns with the permissions
       // view rendering and RAG requirements.
-      const parentIds = await getConfluencePageParentIds(
+      const parentIds = await getConfluenceEntityParentIds(
         connectorId,
-        page,
+        {
+          id: isPage ? e.pageId : e.folderId,
+          parentId: e.parentId ?? null,
+          parentType: e.parentType,
+          spaceId: e.spaceId,
+          type: isPage ? "page" : "folder",
+        },
         cachedHierarchy
       );
 
-      await updateDataSourceDocumentParents({
+      if (isPage) {
+        return updateDataSourceDocumentParents({
+          dataSourceConfig: dataSourceConfigFromConnector(connector),
+          documentId: makePageInternalId(e.pageId),
+          parents: parentIds,
+          parentId: parentIds[1],
+        });
+      }
+
+      await upsertDataSourceFolder({
         dataSourceConfig: dataSourceConfigFromConnector(connector),
-        documentId: makePageInternalId(page.pageId),
-        parents: parentIds,
+        folderId: makeFolderInternalId(e.folderId),
+        mimeType: INTERNAL_MIME_TYPES.CONFLUENCE.FOLDER,
         parentId: parentIds[1],
+        parents: parentIds,
+        sourceUrl: e.externalUrl,
+        title: e.title,
       });
     },
     {

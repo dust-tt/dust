@@ -47,7 +47,7 @@ const ConfluencePageCodec = t.intersection([
   t.type({
     createdAt: t.string,
     parentId: t.union([t.string, t.null]),
-    parentType: t.union([t.literal("page"), t.literal("folder")]),
+    parentType: t.union([t.literal("page"), t.literal("folder"), t.null]),
     id: t.string,
     title: t.string,
     spaceId: t.string,
@@ -166,10 +166,11 @@ export type ConfluencePageWithBodyType = t.TypeOf<
 
 const ConfluenceFolderCodec = t.intersection([
   t.type({
-    createdAt: t.string,
+    // They sometimes return a number, sometimes a string.
+    createdAt: t.union([t.string, t.number]),
     id: t.string,
     parentId: t.union([t.string, t.null]),
-    parentType: t.union([t.literal("page"), t.literal("folder")]),
+    parentType: t.union([t.literal("page"), t.literal("folder"), t.null]),
     title: t.string,
     version: t.type({
       number: t.number,
@@ -364,6 +365,8 @@ export class ConfluenceClient {
       bypassThrottle = false,
     }: { retryCount?: number; bypassThrottle?: boolean } = {}
   ): Promise<T> {
+    console.log(">>> TOKEN: ", this.authToken);
+
     const response = await (async () => {
       try {
         return await undiciFetch(`${this.apiUrl}${endpoint}`, {
