@@ -161,21 +161,21 @@ export async function runModelActivity({
         messageId: agentMessage.sId,
         error,
       },
-      conversation,
       agentMessageRow,
-      step
+      {
+        conversationId: conversation.sId,
+        step,
+      }
     );
   }
 
   // Helper function to flush all pending tokens from the content parser
   async function flushParserTokens(): Promise<void> {
     for await (const tokenEvent of contentParser.flushTokens()) {
-      await updateResourceAndPublishEvent(
-        tokenEvent,
-        conversation,
-        agentMessageRow,
-        step
-      );
+      await updateResourceAndPublishEvent(tokenEvent, agentMessageRow, {
+        conversationId: conversation.sId,
+        step,
+      });
     }
   }
 
@@ -511,9 +511,11 @@ export async function runModelActivity({
           configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
         },
-        conversation,
         agentMessageRow,
-        step
+        {
+          conversationId: conversation.sId,
+          step,
+        }
       );
       return null;
     }
@@ -522,12 +524,10 @@ export async function runModelActivity({
       for await (const tokenEvent of contentParser.emitTokens(
         event.content.tokens.text
       )) {
-        await updateResourceAndPublishEvent(
-          tokenEvent,
-          conversation,
-          agentMessageRow,
-          step
-        );
+        await updateResourceAndPublishEvent(tokenEvent, agentMessageRow, {
+          conversationId: conversation.sId,
+          step,
+        });
       }
     }
 
@@ -541,9 +541,11 @@ export async function runModelActivity({
           messageId: agentMessage.sId,
           text: event.content.tokens.text,
         },
-        conversation,
         agentMessageRow,
-        step
+        {
+          conversationId: conversation.sId,
+          step,
+        }
       );
       nativeChainOfThought += event.content.tokens.text;
     }
@@ -558,9 +560,11 @@ export async function runModelActivity({
           messageId: agentMessage.sId,
           text: "\n\n",
         },
-        conversation,
         agentMessageRow,
-        step
+        {
+          conversationId: conversation.sId,
+          step,
+        }
       );
       nativeChainOfThought += "\n\n";
     }
@@ -717,9 +721,11 @@ export async function runModelActivity({
         message: agentMessage,
         runIds: [...runIds, await dustRunId],
       },
-      conversation,
       agentMessageRow,
-      step
+      {
+        conversationId: conversation.sId,
+        step,
+      }
     );
 
     return null;

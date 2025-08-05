@@ -7,6 +7,7 @@ import {
 } from "@temporalio/workflow";
 
 import type { AuthenticatorType } from "@app/lib/auth";
+import type * as createToolActionsActivities from "@app/temporal/agent_loop/activities/create_tool_actions";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as runModelActivities from "@app/temporal/agent_loop/activities/run_model";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
@@ -25,6 +26,11 @@ const activities: AgentLoopActivities = {
   runToolActivity: proxyActivities<typeof runToolActivities>({
     startToCloseTimeout: "10 minutes",
   }).runToolActivity,
+  createToolActionsActivity: proxyActivities<
+    typeof createToolActionsActivities
+  >({
+    startToCloseTimeout: "2 minutes",
+  }).createToolActionsActivity,
 };
 
 const { ensureConversationTitleActivity } = proxyActivities<

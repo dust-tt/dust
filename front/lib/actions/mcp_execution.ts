@@ -12,6 +12,7 @@ import {
 import type {
   MCPActionType,
   MCPApproveExecutionEvent,
+  MCPExecutionState,
   MCPToolConfigurationType,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
@@ -31,7 +32,6 @@ import type {
   ActionGeneratedFileType,
   AgentLoopRunContextType,
 } from "@app/lib/actions/types";
-import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
@@ -61,64 +61,25 @@ import {
  * Handles tool approval process and returns the final execution status.
  * Yields approval events during the process.
  */
-export async function* handleToolApproval({
-  auth,
-  actionConfiguration,
-  agentConfiguration,
-  conversation,
-  agentMessage,
-  mcpAction,
-  owner,
-  localLogger,
-}: {
-  auth: Authenticator;
-  actionConfiguration: MCPToolConfigurationType;
-  agentConfiguration: AgentConfigurationType;
-  conversation: ConversationType;
-  agentMessage: AgentMessageType;
-  mcpAction: MCPActionType;
-  owner: LightWorkspaceType;
-  localLogger: Logger;
-}): AsyncGenerator<
-  MCPApproveExecutionEvent,
-  | "allowed_implicitly"
-  | "allowed_explicitly"
-  | "pending"
-  | "timeout"
-  | "denied",
-  unknown
-> {
-  const { status: s } = await getExecutionStatusFromConfig(
-    auth,
+export async function handleToolApproval(
+  auth: Authenticator,
+  {
     actionConfiguration,
-    agentMessage
-  );
-  let status:
-    | "allowed_implicitly"
-    | "allowed_explicitly"
-    | "pending"
-    | "timeout"
-    | "denied" = s;
+    executionState,
+    localLogger,
+    mcpAction,
+    owner,
+  }: {
+    actionConfiguration: MCPToolConfigurationType;
+    executionState: MCPExecutionState;
+    localLogger: Logger;
+    mcpAction: MCPActionType;
+    owner: LightWorkspaceType;
+  }
+): Promise<MCPExecutionState> {
+  let newExecutionState: MCPExecutionState = executionState;
 
-  if (status === "pending") {
-    yield {
-      type: "tool_approve_execution",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      conversationId: conversation.sId,
-      actionId: mcpAction.getSId(owner),
-      action: mcpAction,
-      inputs: mcpAction.params,
-      stake: actionConfiguration.permission,
-      metadata: {
-        toolName: actionConfiguration.originalName,
-        mcpServerName: actionConfiguration.mcpServerName,
-        agentName: agentConfiguration.name,
-        icon: actionConfiguration.icon,
-      },
-    };
-
+  if (executionState === "pending") {
     try {
       const actionEventGenerator = getMCPEvents({
         actionId: mcpAction.getSId(owner),
@@ -138,7 +99,7 @@ export async function* handleToolApproval({
 
         // Check that the event is indeed for this action.
         if (getResourceIdFromSId(data.actionId) !== mcpAction.id) {
-          status = "denied";
+          newExecutionState = "denied";
           break;
         }
 
@@ -151,10 +112,10 @@ export async function* handleToolApproval({
         }
 
         if (data.type === "approved" || data.type === "always_approved") {
-          status = "allowed_explicitly";
+          newExecutionState = "allowed_explicitly";
           break;
         } else if (data.type === "rejected") {
-          status = "denied";
+          newExecutionState = "denied";
           break;
         }
       }
@@ -166,11 +127,11 @@ export async function* handleToolApproval({
 
   // The status was not updated by the event, or no event was received.
   // In this case, we set the status to timeout.
-  if (status === "pending") {
-    status = "timeout";
+  if (newExecutionState === "pending") {
+    newExecutionState = "timeout";
   }
 
-  return status;
+  return newExecutionState;
 }
 
 /**
