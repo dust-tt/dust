@@ -34,19 +34,19 @@ export function KnowledgeFooter() {
         <CollapsibleContent>
           <div className="rounded-xl bg-muted dark:bg-muted-night">
             <ContextItem.List className="max-h-[183px] overflow-x-scroll">
-              {field.value.in.map((path) => (
+              {field.value.in.map(({ path, name, readablePath }) => (
                 <ContextItem
                   key={path}
-                  title={path}
+                  title={name}
                   visual={<ContextItem.Visual visual={GithubLogo} />}
                   action={
                     <Checkbox
                       checked
-                      onCheckedChange={() => removeNodeWithPath(path)}
+                      onCheckedChange={() => removeNodeWithPath(path, name)}
                     />
                   }
                 >
-                  <span className="text-xs">{path}</span>
+                  <span className="text-xs">{readablePath}</span>
                 </ContextItem>
               ))}
             </ContextItem.List>

@@ -28,7 +28,7 @@ import {
 } from "@app/types";
 
 interface CategoryRowData {
-  id: string;
+  id: DataSourceViewCategoryWithoutApps;
   title: string;
   onClick: () => void;
   icon: React.JSX.Element;
@@ -109,14 +109,14 @@ export function DataSourceCategoryBrowser({
               onClick={(event) => event.stopPropagation()}
               onCheckedChange={(state) => {
                 if (state === "indeterminate") {
-                  removeNode(row.original.id);
+                  removeNode(row.original.id, row.original.title);
                   return;
                 }
 
                 if (state) {
-                  selectNode(row.original.id);
+                  selectNode({ type: "category", category: row.original.id });
                 } else {
-                  removeNode(row.original.id);
+                  removeNode(row.original.id, row.original.title);
                 }
               }}
             />
