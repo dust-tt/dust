@@ -19,7 +19,7 @@ export const slackAutoJoinPlugin = createPlugin({
     // Plugin is available for both slack and slack_bot providers.
     return ["slack", "slack_bot"].includes(resource.connectorProvider ?? "");
   },
-  execute: async (auth, resource, args) => {
+  execute: async (auth, resource) => {
     const owner = auth.getNonNullableWorkspace();
 
     if (!resource) {
