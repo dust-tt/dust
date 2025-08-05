@@ -9,6 +9,7 @@ import {
   GlobeAltIcon,
   IconButton,
   Input,
+  Label,
   LinkIcon,
   LockIcon,
   PopoverContent,
@@ -67,9 +68,9 @@ function FileSharingDropdown({
 
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-sm font-semibold text-primary dark:text-primary-night">
+      <Label className="text-sm font-semibold text-primary dark:text-primary-night">
         Who can access
-      </label>
+      </Label>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -79,7 +80,6 @@ function FileSharingDropdown({
             label={selectedOption?.label}
             icon={isLoading ? Spinner : selectedOption?.icon}
             disabled={disabled}
-            truncateText
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-full">

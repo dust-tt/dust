@@ -1,7 +1,7 @@
 import type { FileType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { checkWorkspaceShareAccess } from "@app/lib/api/files/share_utils";
+import { isSessionWithUserFromWorkspace } from "@app/lib/api/auth_wrappers";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -104,8 +104,12 @@ async function handler(
 
   // For workspace sharing, check authentication.
   if (shareScope === "workspace") {
-    const hasAccess = await checkWorkspaceShareAccess(req, res, workspace.sId);
-    if (!hasAccess) {
+    const isWorkspaceUser = await isSessionWithUserFromWorkspace(
+      req,
+      res,
+      workspace.sId
+    );
+    if (!isWorkspaceUser) {
       return apiError(req, res, {
         status_code: 404,
         api_error: {
