@@ -8,13 +8,71 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
+import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
+import { useNodePath } from "@app/hooks/useNodePath";
+import type { DataSourceViewContentNode } from "@app/types";
 import { pluralize } from "@app/types";
+
+function KnowledgeFooterItemReadablePath({
+  node,
+}: {
+  node: DataSourceViewContentNode;
+}) {
+  const { owner } = useAgentBuilderContext();
+  const disabled = !node.parentInternalIds?.length;
+  const { fullPath, isLoading } = useNodePath({
+    node,
+    owner,
+    disabled,
+  });
+
+  if (disabled) {
+    return <></>;
+  }
+
+  return (
+    <span className="text-xs">
+      {isLoading
+        ? "loading..."
+        : fullPath
+            .flatMap((node) => [
+              node.dataSourceView.dataSource.name,
+              node.title,
+            ])
+            .join("/")}
+    </span>
+  );
+}
+
+function KnowledgeFooterItem({
+  item: { path, name, node },
+}: {
+  item: DataSourceBuilderTreeItemType;
+}) {
+  const { removeNodeWithPath } = useDataSourceBuilderContext();
+
+  return (
+    <ContextItem
+      key={path}
+      title={name}
+      visual={<ContextItem.Visual visual={GithubLogo} />}
+      action={
+        <Checkbox
+          checked
+          onCheckedChange={() => removeNodeWithPath(path, name)}
+        />
+      }
+    >
+      {node != null && <KnowledgeFooterItemReadablePath node={node} />}
+    </ContextItem>
+  );
+}
 
 export function KnowledgeFooter() {
   const [isOpen, setOpen] = useState(true);
-  const { removeNodeWithPath } = useDataSourceBuilderContext();
 
   const { field } = useSourcesFormController();
 
@@ -34,20 +92,8 @@ export function KnowledgeFooter() {
         <CollapsibleContent>
           <div className="rounded-xl bg-muted dark:bg-muted-night">
             <ContextItem.List className="max-h-[183px] overflow-x-scroll">
-              {field.value.in.map(({ path, name, readablePath }) => (
-                <ContextItem
-                  key={path}
-                  title={name}
-                  visual={<ContextItem.Visual visual={GithubLogo} />}
-                  action={
-                    <Checkbox
-                      checked
-                      onCheckedChange={() => removeNodeWithPath(path, name)}
-                    />
-                  }
-                >
-                  <span className="text-xs">{readablePath}</span>
-                </ContextItem>
+              {field.value.in.map((item) => (
+                <KnowledgeFooterItem key={item.path} item={item} />
               ))}
             </ContextItem.List>
           </div>

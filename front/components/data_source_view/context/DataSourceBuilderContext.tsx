@@ -47,7 +47,6 @@ import type {
 import {
   addNodeToTree,
   computeNavigationPath,
-  computeNavigationReadablePath,
   getLastNavigationHistoryEntryId,
   isNodeSelected,
   navigationHistoryEntryTitle,
@@ -233,7 +232,7 @@ export function DataSourceBuilderProvider({
         addNodeToTree(field.value, {
           path: nodePath,
           name: navigationHistoryEntryTitle(entry),
-          readablePath: computeNavigationReadablePath(state.navigationHistory),
+          node: entry.type === "node" ? entry.node : undefined,
         })
       );
     },
@@ -243,9 +242,9 @@ export function DataSourceBuilderProvider({
   const selectCurrentNavigationEntry: DataSourceBuilderState["selectCurrentNavigationEntry"] =
     useCallback(() => {
       const nodePath = computeNavigationPath(state.navigationHistory);
-      const lastEntryId =
+      const lastEntry =
         state.navigationHistory[state.navigationHistory.length - 1];
-      const lastEntry = navigationHistoryEntryTitle(lastEntryId);
+      const lastEntryTitle = navigationHistoryEntryTitle(lastEntry);
 
       const isFirstNode =
         state.navigationHistory[state.navigationHistory.length - 2].type !==
@@ -254,10 +253,11 @@ export function DataSourceBuilderProvider({
       field.onChange(
         addNodeToTree(field.value, {
           path: nodePath,
-          name: lastEntry,
-          readablePath: computeNavigationReadablePath(
-            state.navigationHistory.slice(0, isFirstNode ? -2 : -1)
-          ),
+          name: lastEntryTitle,
+          node:
+            !isFirstNode && lastEntry.type === "node"
+              ? lastEntry.node
+              : undefined,
         })
       );
     }, [field, state.navigationHistory]);
@@ -272,7 +272,6 @@ export function DataSourceBuilderProvider({
         removeNodeFromTree(field.value, {
           path: nodePath,
           name,
-          readablePath: computeNavigationReadablePath(state.navigationHistory),
         })
       );
     },
@@ -286,13 +285,10 @@ export function DataSourceBuilderProvider({
           removeNodeFromTree(field.value, {
             path: path.split("."),
             name,
-            readablePath: computeNavigationReadablePath(
-              state.navigationHistory
-            ),
           })
         );
       },
-      [field, state.navigationHistory]
+      [field]
     );
 
   const removeCurrentNavigationEntry: DataSourceBuilderState["removeCurrentNavigationEntry"] =
@@ -305,7 +301,6 @@ export function DataSourceBuilderProvider({
         removeNodeFromTree(field.value, {
           path: nodePath,
           name: lastEntry,
-          readablePath: computeNavigationReadablePath(state.navigationHistory),
         })
       );
     }, [field, state.navigationHistory]);
