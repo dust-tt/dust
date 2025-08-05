@@ -26,7 +26,7 @@ import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conve
 import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationMCPServerViewResource } from "@app/lib/resources/conversation_mcp_server_view_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -49,11 +49,7 @@ export async function getJITServers(
 
   // Get the conversation MCP server views (aka Tools)
   const conversationMCPServerViews =
-    await ConversationMCPServerViewResource.fetchByConversationId(
-      auth,
-      conversation.id,
-      true
-    );
+    await ConversationResource.fetchMCPServerViews(auth, conversation, true);
 
   for (const conversationMCPServerView of conversationMCPServerViews) {
     const mcpServerViewResource = await MCPServerViewResource.fetchByModelPk(

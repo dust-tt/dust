@@ -317,7 +317,6 @@ export type ConversationTitleEvent = {
 
 export type ConversationMCPServerViewType = {
   id: ModelId;
-  sId: string;
   workspaceId: ModelId;
   conversationId: ModelId;
   mcpServerViewId: ModelId;

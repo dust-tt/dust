@@ -1,4 +1,4 @@
-import type { Attributes, Transaction } from "sequelize";
+import type { Attributes } from "sequelize";
 
 import { Plan } from "@app/lib/models/plan";
 import {

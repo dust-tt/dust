@@ -2,7 +2,7 @@ import type { RequestMethod } from "node-mocks-http";
 import { assert, describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
-import { ConversationMCPServerViewResource } from "@app/lib/resources/conversation_mcp_server_view_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -67,27 +67,39 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
     const remoteMCPServer1 = await RemoteMCPServerFactory.create(workspace);
     const remoteMCPServer2 = await RemoteMCPServerFactory.create(workspace);
 
-    const mcpServerView1 =
+    const systemView1 =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
         remoteMCPServer1.sId
       );
+    assert(systemView1, "MCP server view not found");
+    const globalSpace = await SpaceFactory.global(workspace);
+    const mcpServerView1 = await MCPServerViewResource.create(auth, {
+      systemView: systemView1,
+      space: globalSpace,
+    });
     assert(mcpServerView1, "MCP server view not found");
-    const mcpServerView2 =
+    const systemView2 =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
         remoteMCPServer2.sId
       );
+    assert(systemView2, "MCP server view not found");
+    const mcpServerView2 = await MCPServerViewResource.create(auth, {
+      systemView: systemView2,
+      space: globalSpace,
+    });
     assert(mcpServerView2, "MCP server view not found");
+
     // Create conversation relationships - one enabled, one disabled
-    await ConversationMCPServerViewResource.makeNew(auth, {
+    await ConversationResource.upsertMCPServerViews(auth, {
       conversation: conversation,
-      mcpServerViewId: mcpServerView1.id,
+      mcpServerViews: [mcpServerView1],
       enabled: true,
     });
-    await ConversationMCPServerViewResource.makeNew(auth, {
+    await ConversationResource.upsertMCPServerViews(auth, {
       conversation: conversation,
-      mcpServerViewId: mcpServerView2.id,
+      mcpServerViews: [mcpServerView2],
       enabled: false,
     });
 
@@ -154,14 +166,12 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
       expect(responseData.success).toBe(true);
 
       // Verify the relationship was created
-      const relationship =
-        await ConversationMCPServerViewResource.fetchByConversationAndMCPServerViewModelId(
-          auth,
-          conversation.id,
-          mcpServerView.id
-        );
-      expect(relationship).not.toBeNull();
-      expect(relationship!.enabled).toBe(true);
+      const relationship = await ConversationResource.fetchMCPServerViews(
+        auth,
+        conversation
+      );
+      expect(relationship).toHaveLength(1);
+      expect(relationship[0].enabled).toBe(true);
     });
 
     it("should enable existing disabled tool", async () => {
@@ -184,9 +194,9 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
       });
 
       // Create disabled relationship
-      await ConversationMCPServerViewResource.makeNew(auth, {
+      await ConversationResource.upsertMCPServerViews(auth, {
         conversation: conversation,
-        mcpServerViewId: mcpServerView.id,
+        mcpServerViews: [mcpServerView],
         enabled: false,
       });
 
@@ -202,13 +212,12 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
       expect(responseData.success).toBe(true);
 
       // Verify the relationship is now enabled
-      const relationship =
-        await ConversationMCPServerViewResource.fetchByConversationAndMCPServerViewModelId(
-          auth,
-          conversation.id,
-          mcpServerView.id
-        );
-      expect(relationship!.enabled).toBe(true);
+      const relationship = await ConversationResource.fetchMCPServerViews(
+        auth,
+        conversation
+      );
+      expect(relationship).toHaveLength(1);
+      expect(relationship[0].enabled).toBe(true);
     });
 
     it("should handle already enabled tool gracefully", async () => {
@@ -231,9 +240,9 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
       });
 
       // Create enabled relationship
-      await ConversationMCPServerViewResource.makeNew(auth, {
+      await ConversationResource.upsertMCPServerViews(auth, {
         conversation: conversation,
-        mcpServerViewId: mcpServerView.id,
+        mcpServerViews: [mcpServerView],
         enabled: true,
       });
 
@@ -286,9 +295,9 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
       });
 
       // Create enabled relationship
-      await ConversationMCPServerViewResource.makeNew(auth, {
+      await ConversationResource.upsertMCPServerViews(auth, {
         conversation: conversation,
-        mcpServerViewId: mcpServerView.id,
+        mcpServerViews: [mcpServerView],
         enabled: true,
       });
 
@@ -304,13 +313,12 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
       expect(responseData.success).toBe(true);
 
       // Verify the relationship is now disabled
-      const relationship =
-        await ConversationMCPServerViewResource.fetchByConversationAndMCPServerViewModelId(
-          auth,
-          conversation.id,
-          mcpServerView.id
-        );
-      expect(relationship!.enabled).toBe(false);
+      const relationship = await ConversationResource.fetchMCPServerViews(
+        auth,
+        conversation
+      );
+      expect(relationship).toHaveLength(1);
+      expect(relationship[0].enabled).toBe(false);
     });
 
     it("should handle non-existent relationship gracefully", async () => {
@@ -442,7 +450,7 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/tools", () => {
 
       await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(200);
+      expect(res._getStatusCode(), res._getJSONData()).toBe(200);
       const responseData = res._getJSONData();
       expect(responseData.success).toBe(true);
     });

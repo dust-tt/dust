@@ -6,7 +6,6 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationMCPServerViewResource } from "@app/lib/resources/conversation_mcp_server_view_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -60,9 +59,9 @@ async function handler(
       try {
         // Fetch all conversation MCP server views
         const conversationMCPServerViews =
-          await ConversationMCPServerViewResource.fetchByConversationId(
+          await ConversationResource.fetchMCPServerViews(
             auth,
-            conversationWithoutContent.id
+            conversationWithoutContent
           );
 
         // Fetch the actual MCP server view details
@@ -135,15 +134,11 @@ async function handler(
           });
         }
 
-        const r =
-          await ConversationMCPServerViewResource.upsertByConversationAndMCPServerViewIds(
-            auth,
-            {
-              conversation: conversationWithoutContent,
-              mcpServerViewIds: [mcp_server_view_id],
-              enabled: action === "add",
-            }
-          );
+        const r = await ConversationResource.upsertMCPServerViews(auth, {
+          conversation: conversationWithoutContent,
+          mcpServerViews: [mcpServerViewRes],
+          enabled: action === "add",
+        });
         if (r.isErr()) {
           return apiError(req, res, {
             status_code: 500,

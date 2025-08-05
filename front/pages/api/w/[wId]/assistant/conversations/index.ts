@@ -13,8 +13,8 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { ConversationMCPServerViewResource } from "@app/lib/resources/conversation_mcp_server_view_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -176,15 +176,16 @@ async function handler(
           message.context.selectedMCPServerViewIds &&
           featureFlags.includes("jit_tools")
         ) {
-          const r =
-            await ConversationMCPServerViewResource.upsertByConversationAndMCPServerViewIds(
-              auth,
-              {
-                conversation,
-                mcpServerViewIds: message.context.selectedMCPServerViewIds,
-                enabled: true,
-              }
-            );
+          const mcpServerViews = await MCPServerViewResource.fetchByIds(
+            auth,
+            message.context.selectedMCPServerViewIds
+          );
+
+          const r = await ConversationResource.upsertMCPServerViews(auth, {
+            conversation,
+            mcpServerViews,
+            enabled: true,
+          });
           if (r.isErr()) {
             return apiError(req, res, {
               status_code: 500,

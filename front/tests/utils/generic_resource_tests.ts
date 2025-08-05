@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -16,7 +17,7 @@ export const createResourceTest = async ({
   isSuperUser?: boolean;
 }) => {
   const workspace = await WorkspaceFactory.basic();
-  const user = await (isSuperUser
+  const user: UserResource = await (isSuperUser
     ? UserFactory.superUser()
     : UserFactory.basic());
 
