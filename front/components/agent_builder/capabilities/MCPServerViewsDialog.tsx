@@ -21,8 +21,10 @@ import type {
   MCPFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { getMCPConfigurationFormSchema } from "@app/components/agent_builder/capabilities/mcp/formValidation";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
+import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
+import { createFormResetHandler } from "@app/components/agent_builder/capabilities/mcp/utils/formStateUtils";
+import { getMCPConfigurationFormSchema } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/MCPServerSelectionPage";
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
@@ -344,32 +346,26 @@ export function MCPServerViewsDialog({
     [mcpServerView]
   );
 
+  // Memoize default values to prevent form recreation
+  const defaultFormValues = useMemo<MCPFormData>(() => {
+    if (configurationTool?.type === "MCP") {
+      return {
+        name: configurationTool.name ?? "",
+        description: configurationTool.description ?? "",
+        configuration: configurationTool.configuration,
+      };
+    }
+
+    return getDefaultFormValues(mcpServerView);
+  }, [configurationTool, mcpServerView]);
+
+  // Create stable form instance with conditional resolver
   const form = useForm<MCPFormData>({
     resolver: formSchema ? zodResolver(formSchema) : undefined,
     mode: "onChange", // Enable real-time validation
-    defaultValues:
-      configurationTool?.type === "MCP"
-        ? {
-            name: configurationTool.name ?? "",
-            description: configurationTool.description ?? "",
-            configuration: configurationTool.configuration,
-          }
-        : {
-            name: "",
-            description: "",
-            configuration: {
-              mcpServerViewId: mcpServerView?.sId ?? "",
-              dataSourceConfigurations: null,
-              tablesConfigurations: null,
-              childAgentId: null,
-              reasoningModel: null,
-              timeFrame: null,
-              additionalConfiguration: {},
-              dustAppConfiguration: null,
-              jsonSchema: null,
-              _jsonSchemaString: null,
-            },
-          },
+    defaultValues: defaultFormValues,
+    // Prevent form recreation by providing stable shouldUnregister
+    shouldUnregister: false,
   });
 
   const requirements = useMemo(
@@ -377,17 +373,16 @@ export function MCPServerViewsDialog({
     [mcpServerView]
   );
 
-  // Reset form when configurationTool changes
+  // Stable form reset handler - no form dependency to prevent re-renders
+  const resetFormValues = useMemo(
+    () => createFormResetHandler(configurationTool, mcpServerView, isOpen),
+    [configurationTool, mcpServerView, isOpen]
+  );
+
+  // Optimized form reset with stable dependencies
   React.useEffect(() => {
-    if (configurationTool?.type === "MCP" && mcpServerView && formSchema) {
-      const formValues = {
-        name: configurationTool.name ?? "",
-        description: configurationTool.description ?? "",
-        configuration: configurationTool.configuration,
-      };
-      form.reset(formValues);
-    }
-  }, [configurationTool, mcpServerView, formSchema, form]);
+    resetFormValues(form);
+  }, [resetFormValues, form]);
 
   const handleBackToSelection = () => {
     setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
@@ -605,17 +600,14 @@ export function MCPServerViewsDialog({
     }
   }, [
     configurationTool,
-    form,
+    form.trigger,
+    form.formState.errors,
+    form.getValues,
     mcpServerView,
     mode,
     onActionUpdate,
     onModeChange,
     sendNotification,
-    setCurrentPageId,
-    setConfigurationMCPServerView,
-    setConfigurationTool,
-    setIsOpen,
-    setSelectedToolsInDialog,
   ]);
 
   const getFooterButtons = () => {
