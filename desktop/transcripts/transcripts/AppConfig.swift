@@ -1,6 +1,6 @@
 import Foundation
 
-struct AppConfig 
+struct AppConfig {
   static let isDevelopment = true
 
   static var dustBaseURL: String {
