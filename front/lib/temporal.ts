@@ -3,8 +3,9 @@ import { Client, Connection } from "@temporalio/client";
 import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
-type TemporalNamespaces = "connectors" | "front" | "relocation";
+type TemporalNamespaces = "agent" | "connectors" | "front" | "relocation";
 export const temporalWorkspaceToEnvVar: Record<TemporalNamespaces, string> = {
+  agent: "TEMPORAL_AGENT_NAMESPACE",
   connectors: "TEMPORAL_CONNECTORS_NAMESPACE",
   front: "TEMPORAL_NAMESPACE",
   relocation: "TEMPORAL_RELOCATION_NAMESPACE",
@@ -80,6 +81,10 @@ export async function getTemporalWorkerConnection(): Promise<{
   const connectionOptions = await getConnectionOptions();
   const connection = await NativeConnection.connect(connectionOptions);
   return { connection, namespace: process.env.TEMPORAL_NAMESPACE };
+}
+
+export async function getTemporalClientForAgentNamespace() {
+  return getTemporalClientForNamespace("agent");
 }
 
 export async function getTemporalClientForFrontNamespace() {
