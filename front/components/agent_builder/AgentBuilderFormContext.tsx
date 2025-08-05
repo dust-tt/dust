@@ -140,7 +140,7 @@ export const reasoningModelSchema = z
   })
   .nullable();
 
-const mcpServerConfigurationSchema = z.object({
+export const mcpServerConfigurationSchema = z.object({
   mcpServerViewId: mcpServerViewIdSchema,
   dataSourceConfigurations: dataSourceConfigurationSchema,
   tablesConfigurations: dataSourceConfigurationSchema,
