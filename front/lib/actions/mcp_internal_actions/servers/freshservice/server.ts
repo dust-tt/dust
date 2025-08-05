@@ -250,6 +250,70 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
+    "update_ticket",
+    "Updates an existing ticket in Freshservice",
+    {
+      ticket_id: z.string().describe("Ticket ID to update"),
+      subject: z.string().optional().describe("Updated ticket subject"),
+      description: z.string().optional().describe("Updated ticket description"),
+      priority: z
+        .enum(["1", "2", "3", "4"])
+        .optional()
+        .describe("Priority: 1=Low, 2=Medium, 3=High, 4=Urgent"),
+      status: z
+        .enum(["2", "3", "4", "5"])
+        .optional()
+        .describe("Status: 2=Open, 3=Pending, 4=Resolved, 5=Closed"),
+      tags: z.array(z.string()).optional().describe("Ticket tags"),
+      custom_fields: z
+        .record(z.any())
+        .optional()
+        .describe("Custom field values"),
+    },
+    async (
+      {
+        ticket_id,
+        subject,
+        description,
+        priority,
+        status,
+        tags,
+        custom_fields,
+      },
+      { authInfo }
+    ) => {
+      return withAuth({
+        action: async (accessToken, domain) => {
+          const updateData: any = {};
+
+          if (subject) updateData.subject = subject;
+          if (description) updateData.description = description;
+          if (priority) updateData.priority = parseInt(priority);
+          if (status) updateData.status = parseInt(status);
+          if (tags) updateData.tags = tags;
+          if (custom_fields) updateData.custom_fields = custom_fields;
+
+          const result = await apiRequest(
+            accessToken,
+            domain,
+            `tickets/${ticket_id}`,
+            {
+              method: "PUT",
+              body: JSON.stringify(updateData),
+            }
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: "Ticket updated successfully",
+            result: result.ticket,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
     "add_ticket_note",
     "Adds a note to an existing ticket",
     {
@@ -271,8 +335,10 @@ const createServer = (): McpServer => {
             {
               method: "POST",
               body: JSON.stringify({
-                body,
-                private: isPrivate,
+                note: {
+                  body,
+                  private: isPrivate,
+                },
               }),
             }
           );
@@ -303,7 +369,11 @@ const createServer = (): McpServer => {
             `tickets/${ticket_id}/reply`,
             {
               method: "POST",
-              body: JSON.stringify({ body }),
+              body: JSON.stringify({
+                reply: {
+                  body,
+                },
+              }),
             }
           );
 
@@ -551,7 +621,9 @@ const createServer = (): McpServer => {
             "solutions/articles",
             {
               method: "POST",
-              body: JSON.stringify(articleData),
+              body: JSON.stringify({
+                article: articleData,
+              }),
             }
           );
 
