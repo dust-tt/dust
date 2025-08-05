@@ -4,7 +4,10 @@ import type {
   CallToolResult,
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
-import { ProgressNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolResultSchema,
+  ProgressNotificationSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import EventEmitter from "events";
 import type { JSONSchema7 } from "json-schema";
@@ -29,7 +32,6 @@ import type {
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
-import { CallToolResultSchemaWithoutBase64Validation } from "@app/lib/actions/mcp_call_tool_result_schema";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   getInternalMCPServerAvailability,
@@ -277,8 +279,7 @@ export async function* tryCallMCPTool(
           progressToken,
         },
       },
-      // Use custom schema to avoid Zod base64 validation stack overflow with large images
-      CallToolResultSchemaWithoutBase64Validation,
+      CallToolResultSchema,
       {
         timeout:
           agentLoopRunContext.actionConfiguration.timeoutMs ??
@@ -379,7 +380,7 @@ export async function* tryCallMCPTool(
     const generateContentMetadata = (
       content: CallToolResult["content"]
     ): {
-      type: "text" | "image" | "resource" | "audio";
+      type: "text" | "image" | "resource" | "audio" | "resource_link";
       byteSize: number;
       maxSize: number;
     }[] => {
