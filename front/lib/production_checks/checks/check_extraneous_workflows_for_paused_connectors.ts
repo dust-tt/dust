@@ -3,7 +3,7 @@ import { QueryTypes } from "sequelize";
 
 import type { CheckFunction } from "@app/lib/production_checks/types";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
-import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
+import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import type { ConnectorProvider } from "@app/types";
 
 interface ConnectorBlob {
@@ -58,7 +58,7 @@ export const checkExtraneousWorkflows: CheckFunction = async (
 
   logger.info(`Found ${connectors.length} paused connectors.`);
 
-  const client = await getTemporalConnectorsNamespaceConnection();
+  const client = await getTemporalClientForConnectorsNamespace();
 
   const hasExtraneousWorklows: any[] = [];
   for (const connector of connectors) {

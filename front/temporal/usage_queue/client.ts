@@ -1,6 +1,6 @@
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
-import { getTemporalClient } from "@app/lib/temporal";
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/usage_queue/config";
@@ -35,7 +35,7 @@ export async function launchUpdateUsageWorkflow({
     return new Ok(undefined);
   }
 
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
 
   try {
     await client.workflow.start(updateWorkspaceUsageWorkflow, {

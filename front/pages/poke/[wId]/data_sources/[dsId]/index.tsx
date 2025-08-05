@@ -29,7 +29,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
+import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
@@ -124,7 +124,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         ...connectorRes.value,
         connectionId: null,
       };
-      const temporalClient = await getTemporalConnectorsNamespaceConnection();
+      const temporalClient = await getTemporalClientForConnectorsNamespace();
 
       const res = temporalClient.workflow.list({
         query: `ExecutionStatus = 'Running' AND connectorId = ${connector.id}`,

@@ -82,10 +82,10 @@ export async function getTemporalWorkerConnection(): Promise<{
   return { connection, namespace: process.env.TEMPORAL_NAMESPACE };
 }
 
-export async function getTemporalClient() {
+export async function getTemporalClientForFrontNamespace() {
   return getTemporalClientForNamespace("front");
 }
 
-export async function getTemporalConnectorsNamespaceConnection() {
+export async function getTemporalClientForConnectorsNamespace() {
   return getTemporalClientForNamespace("connectors");
 }
