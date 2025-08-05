@@ -18,7 +18,7 @@ class TranscriptViewModel: ObservableObject {
       print("ViewModel workspaceIdInput changed to: '\(workspaceIdInput)'")
     }
   }
-  
+
   var isLoginButtonEnabled: Bool {
     !apiKeyInput.isEmpty && !workspaceIdInput.isEmpty
   }

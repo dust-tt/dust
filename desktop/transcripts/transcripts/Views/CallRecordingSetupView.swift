@@ -178,7 +178,9 @@ struct CallRecordingSetupView: View {
         !inputDevice.name.localizedCaseInsensitiveContains("aggregate")
       {
 
-        print("Attempting to create aggregate device...")
+        print(
+          "[CallRecordingSetup] Attempting to create aggregate device with input: \(inputDevice.name), output: \(outputDevice.name)"
+        )
         if let aggregateDevice = AudioAggregateManager.shared
           .createAggregateDevice(
             inputDevice: inputDevice,
@@ -202,7 +204,7 @@ struct CallRecordingSetupView: View {
           }
         } else {
           print(
-            "Failed to create aggregate device, falling back to input device only"
+            "[CallRecordingSetup] Aggregate device not supported in sandboxed environment, using input device only"
           )
         }
       }

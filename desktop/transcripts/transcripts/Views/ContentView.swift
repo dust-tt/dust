@@ -135,9 +135,7 @@ struct ContentView: View {
       }
 
       if hasPermission {
-        await MainActor.run {
-          audioRecorder.startRecording()
-        }
+        await audioRecorder.startRecording()
       }
     }
   }

@@ -10,5 +10,11 @@
 	<string>This app needs access to control audio devices for call recording setup.</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSScreenCaptureDescription</key>
+	<string>This app needs screen capture access to record system audio for complete call recording.</string>
+	<key>CFBundleDisplayName</key>
+	<string>Dust Transcripts</string>
+	<key>CFBundleName</key>
+	<string>Dust Transcripts</string>
 </dict>
 </plist>

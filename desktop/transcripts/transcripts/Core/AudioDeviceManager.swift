@@ -55,16 +55,16 @@ class AudioDeviceManager {
 
     return devices
   }
-  
+
   func getOutputDevices() -> [AudioDevice] {
     var devices: [AudioDevice] = []
-    
+
     var propertyAddress = AudioObjectPropertyAddress(
       mSelector: kAudioHardwarePropertyDevices,
       mScope: kAudioObjectPropertyScopeGlobal,
       mElement: kAudioObjectPropertyElementMain
     )
-    
+
     var dataSize: UInt32 = 0
     var status = AudioObjectGetPropertyDataSize(
       AudioObjectID(kAudioObjectSystemObject),
@@ -73,12 +73,12 @@ class AudioDeviceManager {
       nil,
       &dataSize
     )
-    
+
     guard status == noErr else { return devices }
-    
+
     let deviceCount = Int(dataSize) / MemoryLayout<AudioDeviceID>.size
     var deviceIDs = [AudioDeviceID](repeating: 0, count: deviceCount)
-    
+
     status = AudioObjectGetPropertyData(
       AudioObjectID(kAudioObjectSystemObject),
       &propertyAddress,
@@ -87,18 +87,18 @@ class AudioDeviceManager {
       &dataSize,
       &deviceIDs
     )
-    
+
     guard status == noErr else { return devices }
-    
+
     for deviceID in deviceIDs {
       if let device = getOutputDeviceInfo(deviceID: deviceID) {
         devices.append(device)
       }
     }
-    
+
     return devices
   }
-  
+
   private func getOutputDeviceInfo(deviceID: AudioDeviceID) -> AudioDevice? {
     // Get device name
     var propertyAddress = AudioObjectPropertyAddress(
@@ -106,7 +106,7 @@ class AudioDeviceManager {
       mScope: kAudioObjectPropertyScopeGlobal,
       mElement: kAudioObjectPropertyElementMain
     )
-    
+
     var dataSize: UInt32 = 0
     var status = AudioObjectGetPropertyDataSize(
       deviceID,
@@ -115,9 +115,9 @@ class AudioDeviceManager {
       nil,
       &dataSize
     )
-    
+
     guard status == noErr else { return nil }
-    
+
     var deviceName: CFString?
     status = AudioObjectGetPropertyData(
       deviceID,
@@ -127,13 +127,13 @@ class AudioDeviceManager {
       &dataSize,
       &deviceName
     )
-    
+
     guard status == noErr, let name = deviceName as String? else { return nil }
-    
+
     // Check if device has output streams
     propertyAddress.mSelector = kAudioDevicePropertyStreams
     propertyAddress.mScope = kAudioDevicePropertyScopeOutput
-    
+
     status = AudioObjectGetPropertyDataSize(
       deviceID,
       &propertyAddress,
@@ -141,10 +141,10 @@ class AudioDeviceManager {
       nil,
       &dataSize
     )
-    
+
     let hasOutput = status == noErr && dataSize > 0
     guard hasOutput else { return nil }
-    
+
     // Get channel count for output
     var channelCount = 0
     propertyAddress.mSelector = kAudioDevicePropertyStreamConfiguration
@@ -155,7 +155,7 @@ class AudioDeviceManager {
       nil,
       &dataSize
     )
-    
+
     if status == noErr && dataSize > 0 {
       let bufferListSize = Int(dataSize)
       let bufferListPtr = UnsafeMutableRawPointer.allocate(
@@ -174,18 +174,20 @@ class AudioDeviceManager {
       )
 
       if status == noErr {
-        let bufferList = bufferListPtr.assumingMemoryBound(to: AudioBufferList.self)
+        let bufferList = bufferListPtr.assumingMemoryBound(
+          to: AudioBufferList.self
+        )
         let bufferCount = Int(bufferList.pointee.mNumberBuffers)
         if bufferCount > 0 {
           channelCount = Int(bufferList.pointee.mBuffers.mNumberChannels)
         }
       }
     }
-    
+
     return AudioDevice(
       id: deviceID,
       name: name,
-      isInput: false, // This is an output device
+      isInput: false,  // This is an output device
       channelCount: channelCount
     )
   }
@@ -265,7 +267,9 @@ class AudioDeviceManager {
         )
 
         if status == noErr {
-          let bufferList = bufferListPtr.assumingMemoryBound(to: AudioBufferList.self)
+          let bufferList = bufferListPtr.assumingMemoryBound(
+            to: AudioBufferList.self
+          )
           let bufferCount = Int(bufferList.pointee.mNumberBuffers)
           if bufferCount > 0 {
             channelCount = Int(bufferList.pointee.mBuffers.mNumberChannels)
@@ -334,14 +338,14 @@ class AudioDeviceManager {
 
     return getDeviceInfo(deviceID: deviceID)
   }
-  
+
   func getCurrentOutputDevice() -> AudioDevice? {
     var propertyAddress = AudioObjectPropertyAddress(
       mSelector: kAudioHardwarePropertyDefaultOutputDevice,
       mScope: kAudioObjectPropertyScopeGlobal,
       mElement: kAudioObjectPropertyElementMain
     )
-    
+
     var dataSize: UInt32 = 0
     var status = AudioObjectGetPropertyDataSize(
       AudioObjectID(kAudioObjectSystemObject),
@@ -350,9 +354,9 @@ class AudioDeviceManager {
       nil,
       &dataSize
     )
-    
+
     guard status == noErr else { return nil }
-    
+
     var deviceID: AudioDeviceID = 0
     status = AudioObjectGetPropertyData(
       AudioObjectID(kAudioObjectSystemObject),
@@ -362,19 +366,19 @@ class AudioDeviceManager {
       &dataSize,
       &deviceID
     )
-    
+
     guard status == noErr else { return nil }
-    
+
     return getDeviceInfo(deviceID: deviceID)
   }
-  
+
   func setDefaultOutputDevice(_ device: AudioDevice) -> Bool {
     var propertyAddress = AudioObjectPropertyAddress(
       mSelector: kAudioHardwarePropertyDefaultOutputDevice,
       mScope: kAudioObjectPropertyScopeGlobal,
       mElement: kAudioObjectPropertyElementMain
     )
-    
+
     var deviceID = device.id
     let status = AudioObjectSetPropertyData(
       AudioObjectID(kAudioObjectSystemObject),
@@ -384,7 +388,7 @@ class AudioDeviceManager {
       UInt32(MemoryLayout<AudioDeviceID>.size),
       &deviceID
     )
-    
+
     return status == noErr
   }
 }

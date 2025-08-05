@@ -3,9 +3,9 @@ import Foundation
 struct AppConfig {
   static let isDevelopment: Bool = {
     #if DEBUG
-    return true
+      return true
     #else
-    return false
+      return false
     #endif
   }()
 
