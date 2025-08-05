@@ -56,7 +56,7 @@ export function TablesFilesystemBrowseDetails({
                   key={index}
                   onClick={
                     node.sourceUrl
-                      ? () => window.open(node.sourceUrl, "_blank")
+                      ? () => window.open(node.sourceUrl ?? "", "_blank")
                       : undefined
                   }
                   tooltip={`${node.path}${

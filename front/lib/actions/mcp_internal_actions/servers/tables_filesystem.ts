@@ -16,6 +16,9 @@ import { CoreAPI, Ok } from "@app/types";
 
 const TABLES_FILESYSTEM_TOOL_NAME = "tables_filesystem_navigation";
 
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 100;
+
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "tables_filesystem",
   version: "1.0.0",
@@ -39,7 +42,8 @@ const createServer = (
     "List the direct contents of a warehouse, database, or schema. Can be used to see what is inside a " +
       "specific location in the tables hierarchy, like 'ls' in Unix. If no nodeId is provided, lists " +
       "all available data warehouses at the root level. Hierarchy supports: warehouse → database → schema → " +
-      "nested schemas → tables. Schemas can be arbitrarily nested within other schemas.",
+      "nested schemas → tables. Schemas can be arbitrarily nested within other schemas. Results are paginated " +
+      "with a default limit and you can fetch additional pages using the nextPageCursor.",
     {
       nodeId: z
         .string()
@@ -51,13 +55,20 @@ const createServer = (
       limit: z
         .number()
         .optional()
-        .describe("Maximum number of results to return. Default is 50."),
+        .describe(`Maximum number of results to return. Default is ${DEFAULT_LIMIT}, max is ${MAX_LIMIT}.`),
+      nextPageCursor: z
+        .string()
+        .optional()
+        .describe(
+          "Cursor for fetching the next page of results. Use the 'nextPageCursor' from " +
+            "the previous list result to fetch additional items."
+        ),
     },
     withToolLogging(
       auth,
       { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
-      async ({ nodeId, limit }) => {
-        const effectiveLimit = limit || 50;
+      async ({ nodeId, limit, nextPageCursor }) => {
+        const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
 
         // When nodeId is null, list all warehouses at the root level
         if (nodeId === null) {
@@ -82,11 +93,15 @@ const createServer = (
               b.dataSource.editedAt.getTime() - a.dataSource.editedAt.getTime()
           );
 
-          // Apply limit
+          // Apply pagination
+          const offset = nextPageCursor ? parseInt(nextPageCursor, 10) || 0 : 0;
           const limitedDatabaseViews = remoteDatabaseViews.slice(
-            0,
-            effectiveLimit
+            offset,
+            offset + effectiveLimit
           );
+          
+          const hasMore = offset + effectiveLimit < remoteDatabaseViews.length;
+          const newCursor = hasMore ? String(offset + effectiveLimit) : null;
 
           // Create a map for connector providers
           const dataSourceIdToConnectorMap = new Map<
@@ -129,11 +144,11 @@ const createServer = (
                 mimeType:
                   "application/vnd.dust.tool-output.tables-filesystem-browse",
                 uri: "",
-                text: `Found ${remoteDatabaseViews.length} remote database${remoteDatabaseViews.length !== 1 ? "s" : ""} in the global space.`,
+                text: `Found ${remoteDatabaseViews.length} remote database${remoteDatabaseViews.length !== 1 ? "s" : ""} in the global space. Showing ${limitedDatabaseViews.length} result${limitedDatabaseViews.length !== 1 ? "s" : ""}.${hasMore ? " More results available." : ""}`,
                 nodeId: null, // Root level browsing
                 data,
-                nextPageCursor: null,
-                resultCount: remoteDatabaseViews.length,
+                nextPageCursor: newCursor,
+                resultCount: limitedDatabaseViews.length,
               },
             },
           ]);
@@ -181,6 +196,7 @@ const createServer = (
               node_types: ["folder"],
             },
             options: {
+              cursor: nextPageCursor,
               limit: effectiveLimit,
               // Always sort by timestamp descending (most recent first)
               sort: [{ field: "timestamp", direction: "desc" as const }],
@@ -232,6 +248,8 @@ const createServer = (
             return renderNode(modifiedNode, dataSourceIdToConnectorMap);
           });
 
+          const hasMore = coreRes.value.next_page_cursor !== null;
+          
           return new Ok([
             {
               type: "resource" as const,
@@ -239,7 +257,7 @@ const createServer = (
                 mimeType:
                   "application/vnd.dust.tool-output.tables-filesystem-browse",
                 uri: "",
-                text: `Found ${databaseNodes.length} database${databaseNodes.length !== 1 ? "s" : ""} in ${dataSourceView.dataSource.name}.`,
+                text: `Found ${databaseNodes.length} database${databaseNodes.length !== 1 ? "s" : ""} in ${dataSourceView.dataSource.name}.${hasMore ? " More results available." : ""}`,
                 nodeId: nodeId, // Show which warehouse was browsed
                 data,
                 nextPageCursor: coreRes.value.next_page_cursor,
@@ -294,6 +312,7 @@ const createServer = (
               node_types: ["folder", "table"], // Include both folders (schemas) and tables
             },
             options: {
+              cursor: nextPageCursor,
               limit: effectiveLimit,
               // Always sort by timestamp descending (most recent first)
               sort: [{ field: "timestamp", direction: "desc" as const }],
@@ -349,6 +368,8 @@ const createServer = (
           });
 
           const parentType = nodeType === "database" ? "database" : "schema";
+          const hasMore = coreRes.value.next_page_cursor !== null;
+          
           return new Ok([
             {
               type: "resource" as const,
@@ -356,7 +377,7 @@ const createServer = (
                 mimeType:
                   "application/vnd.dust.tool-output.tables-filesystem-browse",
                 uri: "",
-                text: `Found ${data.length} item${data.length !== 1 ? "s" : ""} in the ${parentType}.`,
+                text: `Found ${data.length} item${data.length !== 1 ? "s" : ""} in the ${parentType}.${hasMore ? " More results available." : ""}`,
                 nodeId: nodeId, // Show which node was browsed
                 data,
                 nextPageCursor: coreRes.value.next_page_cursor,
