@@ -50,9 +50,6 @@ export function MCPServerSelectionPage({
   const [showDataVisualization, setShowDataVisualization] =
     React.useState(true);
 
-  React.useEffect(() => {
-    setFilteredServerViews(mcpServerViews);
-  }, [mcpServerViews]);
   const [filter, setFilter] = React.useState<McpToolsFilterType>("All tools");
   const [searchTerm, setSearchTerm] = React.useState("");
 
