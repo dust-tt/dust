@@ -296,6 +296,7 @@ function ConversationInnerLayout({
               owner={owner}
               actionProgress={getActionState(messageId).actionProgress}
               isActing={getActionState(messageId).isActing}
+              messageStatus={getActionState(messageId).messageStatus}
             />
           )}
         </ResizablePanel>

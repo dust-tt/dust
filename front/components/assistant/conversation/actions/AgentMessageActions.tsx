@@ -31,6 +31,7 @@ export function AgentMessageActions({
     setActionState(agentMessage.sId, {
       actionProgress,
       isActing: lastAgentStateClassification === "acting",
+      messageStatus: agentMessage.status,
     });
   }, [
     agentMessage.sId,

@@ -14,6 +14,7 @@ interface AgentActionsPanelProps {
   owner: LightWorkspaceType;
   actionProgress: ActionProgressState;
   isActing: boolean;
+  messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
 }
 
 export function AgentActionsPanel({
@@ -21,6 +22,7 @@ export function AgentActionsPanel({
   owner,
   actionProgress,
   isActing,
+  messageStatus,
 }: AgentActionsPanelProps) {
   const { messageId, closeActions } = useAgentActionsContext();
 
@@ -75,6 +77,7 @@ export function AgentActionsPanel({
                         lastNotification={lastNotification}
                         defaultOpen={idx === 0 && step === "1"}
                         owner={owner}
+                        messageStatus={messageStatus}
                       />
                     </div>
                   );

@@ -9,6 +9,7 @@ const AGENT_ACTIONS_HASH_PARAM = "agentActions";
 interface AgentActionState {
   actionProgress: ActionProgressState;
   isActing: boolean;
+  messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
 }
 
 interface AgentActionsContextType {
@@ -104,6 +105,7 @@ export function AgentActionsProvider({ children }: AgentActionsProviderProps) {
         actionStates.get(msgId) || {
           actionProgress: new Map(),
           isActing: false,
+          messageStatus: undefined,
         }
       );
     },
