@@ -224,7 +224,7 @@ export const agentBuilderFormSchema = z.object({
   agentSettings: agentSettingsSchema,
   instructions: z.string().min(1, "Instructions are required"),
   generationSettings: generationSettingsSchema,
-  actions: z.union([z.array(actionSchema), z.array(mcpActionSchema)]),
+  actions: z.array(mcpActionSchema),
   maxStepsPerRun: z
     .number()
     .min(1, "Max steps per run must be at least 1")

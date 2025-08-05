@@ -2,7 +2,8 @@ import type { Icon } from "@dust-tt/sparkle";
 import { uniqueId } from "lodash";
 import { z } from "zod";
 
-import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {agentBuilderFormSchema} from "@app/components/agent_builder/AgentBuilderFormContext";
+import { additionalConfigurationSchema, childAgentIdSchema, dustAppConfigurationSchema, jsonSchemaFieldSchema, jsonSchemaStringSchema, mcpServerViewIdSchema, mcpTimeFrameSchema, reasoningModelSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/formValidation";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
@@ -16,144 +17,12 @@ type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
 export type AgentBuilderAction = AgentBuilderFormData["actions"][number];
 
-export type SearchAgentBuilderAction = Extract<
-  AgentBuilderAction,
-  { type: "SEARCH" }
->;
-
 export type DataVisualizationAgentBuilderAction = Extract<
   AgentBuilderAction,
   { type: "DATA_VISUALIZATION" }
 >;
 
-export type IncludeDataAgentBuilderAction = Extract<
-  AgentBuilderAction,
-  { type: "INCLUDE_DATA" }
->;
 
-export type ExtractDataAgentBuilderAction = Extract<
-  AgentBuilderAction,
-  { type: "EXTRACT_DATA" }
->;
-
-export type QueryTablesAgentBuilderAction = Extract<
-  AgentBuilderAction,
-  { type: "QUERY_TABLES" }
->;
-
-export type SearchActionConfiguration =
-  SearchAgentBuilderAction["configuration"];
-
-export type DataVisualizationActionConfiguration =
-  DataVisualizationAgentBuilderAction["configuration"];
-
-export type IncludeDataActionConfiguration =
-  IncludeDataAgentBuilderAction["configuration"];
-
-export type ExtractDataActionConfiguration =
-  ExtractDataAgentBuilderAction["configuration"];
-
-export type QueryTablesActionConfiguration =
-  QueryTablesAgentBuilderAction["configuration"];
-
-export type AgentBuilderActionConfiguration =
-  | SearchActionConfiguration
-  | DataVisualizationActionConfiguration
-  | IncludeDataActionConfiguration
-  | ExtractDataActionConfiguration
-  | QueryTablesActionConfiguration;
-
-// Type guards
-export function isSearchAction(
-  action: AgentBuilderAction
-): action is SearchAgentBuilderAction {
-  return action.type === "SEARCH";
-}
-
-export function isDataVisualizationAction(
-  action: AgentBuilderAction
-): action is DataVisualizationAgentBuilderAction {
-  return action.type === "DATA_VISUALIZATION";
-}
-
-export function isIncludeDataAction(
-  action: AgentBuilderAction
-): action is IncludeDataAgentBuilderAction {
-  return action.type === "INCLUDE_DATA";
-}
-
-export function isExtractDataAction(
-  action: AgentBuilderAction
-): action is ExtractDataAgentBuilderAction {
-  return action.type === "EXTRACT_DATA";
-}
-
-export type SupportedAgentBuilderAction =
-  | SearchAgentBuilderAction
-  | IncludeDataAgentBuilderAction
-  | ExtractDataAgentBuilderAction
-  | QueryTablesAgentBuilderAction;
-
-export function isSupportedAgentBuilderAction(
-  action: AgentBuilderAction
-): action is SupportedAgentBuilderAction {
-  return (
-    action.type === "SEARCH" ||
-    action.type === "INCLUDE_DATA" ||
-    action.type === "EXTRACT_DATA" ||
-    action.type === "QUERY_TABLES"
-  );
-}
-
-// MCP server names that map to agent builder actions
-export const AGENT_BUILDER_MCP_SERVERS = [
-  "extract_data",
-  "search",
-  "include_data",
-  "query_tables",
-] as const;
-export type AgentBuilderMCPServerName =
-  (typeof AGENT_BUILDER_MCP_SERVERS)[number];
-
-// Type for the supported action types that can be transformed from MCP server configurations
-export type SupportedAgentBuilderActionType =
-  | "EXTRACT_DATA"
-  | "SEARCH"
-  | "INCLUDE_DATA"
-  | "QUERY_TABLES";
-
-// Mapping of specific MCP server names to form action types
-export const MCP_SERVER_TO_ACTION_TYPE_MAP: Record<
-  AgentBuilderMCPServerName,
-  SupportedAgentBuilderActionType
-> = {
-  extract_data: "EXTRACT_DATA",
-  search: "SEARCH",
-  include_data: "INCLUDE_DATA",
-  query_tables: "QUERY_TABLES",
-} as const;
-
-export const ACTION_TYPE_TO_MCP_SERVER_MAP: Record<
-  SupportedAgentBuilderActionType,
-  AgentBuilderMCPServerName
-> = {
-  EXTRACT_DATA: "extract_data",
-  SEARCH: "search",
-  INCLUDE_DATA: "include_data",
-  QUERY_TABLES: "query_tables",
-} as const;
-
-// Legacy alias for backward compatibility
-export const KNOWLEDGE_SERVER_NAMES = AGENT_BUILDER_MCP_SERVERS;
-export type KnowledgeServerName = AgentBuilderMCPServerName;
-
-export function isKnowledgeServerName(
-  serverName: string
-): serverName is KnowledgeServerName {
-  return AGENT_BUILDER_MCP_SERVERS.includes(
-    serverName as AgentBuilderMCPServerName
-  );
-}
 
 export const AGENT_CREATIVITY_LEVELS = [
   "deterministic",
@@ -196,27 +65,7 @@ export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 
 export const DESCRIPTION_MAX_LENGTH = 800;
 
-// TODO: use mcpFormSchema for all tools.
-export const capabilityFormSchema = z.object({
-  sources: dataSourceBuilderTreeType.refine(
-    (val) => {
-      return val.in.length > 0;
-    },
-    { message: "You must select at least on data sources" }
-  ),
-  description: z
-    .string()
-    .min(1, "Description is required")
-    .max(DESCRIPTION_MAX_LENGTH, "Description too long"),
-  timeFrame: z
-    .object({
-      duration: z.number(),
-      unit: z.enum(["hour", "day", "week", "month", "year"]),
-    })
-    .nullable()
-    .default(null),
-  jsonSchema: z.any().nullable().default(null),
-});
+
 
 export const mcpFormSchema = z.object({
   configuration: z.object({
@@ -264,7 +113,7 @@ export const CONFIGURATION_SHEET_PAGE_IDS = {
 export type ConfigurationSheetPageId =
   (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
 
-// Zod validation schema for data source configuration - defines the contract/shape
+  // Zod validation schema for data source configuration - defines the contract/shape
 export const dataSourceConfigurationSchema = z.object({
   sId: z.string().optional(),
   workspaceId: z.string(),
@@ -286,6 +135,134 @@ export const dataSourceConfigurationSchema = z.object({
       .optional(),
   }),
 });
+
+// TODO: merge this with MCP form schema.
+export const capabilityFormSchema = z.object({
+    name: z
+        .string()
+        .min(1, "The name cannot be empty.")
+        .regex(
+          /^[a-z0-9_]+$/,
+          "The name can only contain lowercase letters, numbers, and underscores (no spaces)."
+        )
+        .default(""),
+  description: z
+    .string()
+    .min(1, "Description is required")
+    .max(DESCRIPTION_MAX_LENGTH, "Description too long"),
+  sources: dataSourceBuilderTreeType.refine(
+    (val) => {
+      return val.in.length > 0;
+    },
+    { message: "You must select at least on data sources" }
+  ),
+  mcpServerView: z.custom<MCPServerViewType>().nullable(),
+  configuration: z.object({
+     dataSourceConfigurations: dataSourceConfigurationSchema,
+      tablesConfigurations: dataSourceConfigurationSchema,
+      childAgentId: childAgentIdSchema,
+      reasoningModel: reasoningModelSchema,
+      timeFrame: mcpTimeFrameSchema,
+      additionalConfiguration: additionalConfigurationSchema,
+      dustAppConfiguration: dustAppConfigurationSchema,
+      jsonSchema: jsonSchemaFieldSchema,
+      _jsonSchemaString: jsonSchemaStringSchema,
+  })
+}).refine((val) => {
+    const requirements = getMCPServerRequirements(val.mcpServerView);
+    const configuration = val.configuration;
+    
+    if (!requirements) {
+      return true;
+    }
+
+    // Handle data source configuration requirements
+    if (requirements.requiresDataSourceConfiguration) {
+      if (!configuration.dataSourceConfigurations || Object.keys(configuration.dataSourceConfigurations).length === 0) {
+        return false;
+      }
+    }
+
+    // Handle table configuration requirements
+    if (requirements.requiresTableConfiguration) {
+      if (!configuration.tablesConfigurations || Object.keys(configuration.tablesConfigurations).length === 0) {
+        return false;
+      }
+    }
+
+    if (requirements.requiresChildAgentConfiguration) {
+      if (configuration.childAgentId === null) {
+        return false;
+      }
+    }
+
+    if (requirements.requiresReasoningConfiguration) {
+      if (configuration.reasoningModel === null) {
+        return false;
+      }
+    }
+
+    if (requirements.requiresDustAppConfiguration) {
+      if (configuration.dustAppConfiguration === null) {
+        return false;
+      }
+    }
+
+    // Handle time frame requirements
+    if (requirements.mayRequireTimeFrameConfiguration) {
+      if (configuration.timeFrame === null) {
+        return false;
+      }
+    }
+
+    // Handle JSON schema requirements
+    if (requirements.mayRequireJsonSchemaConfiguration) {
+      if (configuration.jsonSchema === null) {
+        return false;
+      }
+      if (!configuration._jsonSchemaString || configuration._jsonSchemaString.trim() === "") {
+        return false;
+      }
+    }
+
+    if (
+      requirements.requiredStrings.length > 0 ||
+      requirements.requiredNumbers.length > 0 ||
+      requirements.requiredBooleans.length > 0 ||
+      Object.keys(requirements.requiredEnums).length > 0
+    ) {
+      const additionalConfig = configuration.additionalConfiguration || {};
+      
+      for (const key of requirements.requiredStrings) {
+        if (!additionalConfig[key]) {
+          return false;
+        }
+      }
+
+      for (const key of requirements.requiredNumbers) {
+        if (additionalConfig[key] === undefined) {
+          return false;
+        }
+      }
+
+      for (const key of requirements.requiredBooleans) {
+        if (additionalConfig[key] === undefined) {
+          return false;
+        }
+      }
+
+      for (const [key] of Object.entries(requirements.requiredEnums)) {
+        if (!additionalConfig[key]) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }, {
+    message: "Please fill in all required configuration fields"
+  } 
+);
 
 export function getDefaultMCPAction(
   mcpServerView?: MCPServerViewType
