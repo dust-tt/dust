@@ -114,6 +114,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   jit_tools: {
     description: "Allow users to add tools to conversations",
+  tables_filesystem: {
+    description:
+      "Tables filesystem navigation with hierarchical warehouse structure",
   },
 } as const;
 

@@ -622,6 +622,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "xai_feature"
   | "agent_management_tool"
+  | "tables_filesystem"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

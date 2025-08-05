@@ -43,6 +43,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "run_dust_app",
   "salesforce",
   "search",
+  "tables_filesystem",
   "think",
   "web_search_&_browse",
   "google_calendar",
@@ -584,6 +585,14 @@ export const INTERNAL_MCP_SERVERS = {
       create_agent: "high",
     },
     timeoutMs: undefined,
+  },
+  tables_filesystem: {
+    id: 1012,
+    availability: "auto",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("tables_filesystem");
+    },
+    isPreview: true,
   },
   // Using satisfies here instead of : type to avoid typescript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies Record<
