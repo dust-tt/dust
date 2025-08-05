@@ -1,12 +1,19 @@
 import type { ParsedUrlQuery } from "querystring";
 
 import config from "@app/lib/api/config";
-import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
+import type {
+  BaseOAuthStrategyProvider,
+  RelatedCredential,
+} from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
+import type { Authenticator } from "@app/lib/auth";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
+import { OAuthAPI } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
 export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
@@ -93,6 +100,128 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
       return false;
     }
     return !!extraConfig.instance_url && !!extraConfig.client_id;
+  }
+
+  async getRelatedCredential(
+    auth: Authenticator,
+    {
+      extraConfig,
+      workspaceId,
+      userId,
+      useCase,
+    }: {
+      extraConfig: ExtraConfigType;
+      workspaceId: string;
+      userId: string;
+      useCase: OAuthUseCase;
+    }
+  ): Promise<RelatedCredential> {
+    if (useCase === "personal_actions") {
+      // For personal actions we reuse the existing connection credential id from the existing
+      // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
+      // we have client_id and instance_url (initial admin setup).
+      const { mcp_server_id } = extraConfig;
+
+      if (mcp_server_id) {
+        logger.info(`Freshservice getRelatedCredential: Using MCP server connection for mcp_server_id: ${mcp_server_id}`);
+        const mcpServerConnectionRes =
+          await MCPServerConnectionResource.findByMCPServer(auth, {
+            mcpServerId: mcp_server_id,
+            connectionType: "workspace",
+          });
+
+        if (mcpServerConnectionRes.isErr()) {
+          throw new Error(
+            "Failed to find MCP server connection: " +
+              mcpServerConnectionRes.error.message
+          );
+        }
+
+        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+        const connectionRes = await oauthApi.getConnectionMetadata({
+          connectionId: mcpServerConnectionRes.value.connectionId,
+        });
+        if (connectionRes.isErr()) {
+          throw new Error(
+            "Failed to get connection metadata: " + connectionRes.error.message
+          );
+        }
+        const connection = connectionRes.value.connection;
+        const connectionId = connection.connection_id;
+
+        return {
+          content: {
+            from_connection_id: connectionId,
+            client_id: connection.metadata.client_id,
+          },
+          metadata: { workspace_id: workspaceId, user_id: userId },
+        };
+      }
+    }
+
+    // For non-personal actions, we need client_id in the extraConfig
+    if (!extraConfig.client_id) {
+      throw new Error(`Missing client_id in extraConfig for Freshservice credential creation. UseCase: ${useCase}, ExtraConfig keys: ${Object.keys(extraConfig).join(', ')}`);
+    }
+
+    return {
+      content: {
+        client_id: extraConfig.client_id,
+      },
+      metadata: { workspace_id: workspaceId, user_id: userId },
+    };
+  }
+
+  async getUpdatedExtraConfig(
+    auth: Authenticator,
+    {
+      extraConfig,
+      useCase,
+    }: {
+      extraConfig: ExtraConfigType;
+      useCase: OAuthUseCase;
+    }
+  ): Promise<ExtraConfigType> {
+    if (useCase === "personal_actions") {
+      // For personal actions we reuse the existing connection credential id from the existing
+      // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
+      // we have client_id and instance_url (initial admin setup).
+      const { mcp_server_id, ...restConfig } = extraConfig;
+
+      if (mcp_server_id) {
+        const mcpServerConnectionRes =
+          await MCPServerConnectionResource.findByMCPServer(auth, {
+            mcpServerId: mcp_server_id,
+            connectionType: "workspace",
+          });
+
+        if (mcpServerConnectionRes.isErr()) {
+          throw new Error(
+            "Failed to find MCP server connection: " +
+              mcpServerConnectionRes.error.message
+          );
+        }
+
+        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+        const connectionRes = await oauthApi.getConnectionMetadata({
+          connectionId: mcpServerConnectionRes.value.connectionId,
+        });
+        if (connectionRes.isErr()) {
+          throw new Error(
+            "Failed to get connection metadata: " + connectionRes.error.message
+          );
+        }
+        const connection = connectionRes.value.connection;
+
+        return {
+          ...restConfig,
+          client_id: connection.metadata.client_id,
+          instance_url: connection.metadata.instance_url,
+        };
+      }
+    }
+
+    return extraConfig;
   }
 
 }
