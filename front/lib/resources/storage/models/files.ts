@@ -6,6 +6,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   AllSupportedFileContentType,
+  FileShareScope,
   FileStatus,
   FileUseCase,
   FileUseCaseMetadata,
@@ -18,7 +19,6 @@ export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare contentType: AllSupportedFileContentType;
   declare fileName: string;
   declare fileSize: number;
-  declare sharedAt: Date | null;
   declare snippet: string | null;
   declare status: FileStatus;
   declare useCase: FileUseCase;
@@ -70,11 +70,6 @@ FileModel.init(
       allowNull: true,
       defaultValue: null,
     },
-    sharedAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: null,
-    },
   },
   {
     modelName: "files",
@@ -90,3 +85,82 @@ UserModel.hasMany(FileModel, {
   onDelete: "RESTRICT",
 });
 FileModel.belongsTo(UserModel);
+
+/**
+ * Shared files logic.
+ */
+
+export class ShareableFileModel extends WorkspaceAwareModel<ShareableFileModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare expiresAt: Date | null;
+  declare sharedAt: Date;
+  declare shareScope: FileShareScope;
+  declare token: string; // The token is a UUID v4.
+
+  declare fileId: ForeignKey<FileModel["id"]>;
+  declare sharedBy: ForeignKey<UserModel["id"]>;
+
+  declare file?: NonAttribute<FileModel>;
+  declare sharedByUser?: NonAttribute<UserModel>;
+}
+
+ShareableFileModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    token: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      defaultValue: DataTypes.UUIDV4,
+    },
+    shareScope: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    sharedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    expiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+  },
+  {
+    modelName: "shareable_files",
+    sequelize: frontSequelize,
+    indexes: [
+      { fields: ["workspaceId", "fileId"], unique: true },
+      { fields: ["token"], unique: true },
+    ],
+  }
+);
+
+// FileModel has one ShareableFileModel.
+FileModel.hasOne(ShareableFileModel, {
+  foreignKey: { name: "fileId", allowNull: false },
+});
+ShareableFileModel.belongsTo(FileModel, {
+  foreignKey: { name: "fileId", allowNull: false },
+});
+
+// UserModel has many ShareableFileModel (who shared it).
+UserModel.hasMany(ShareableFileModel, {
+  foreignKey: { name: "sharedBy", allowNull: false },
+  onDelete: "RESTRICT",
+});
+ShareableFileModel.belongsTo(UserModel, {
+  foreignKey: { name: "sharedBy", allowNull: false },
+});
