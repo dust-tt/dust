@@ -5,7 +5,7 @@ import {
   ResizablePanelGroup,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import {
@@ -215,25 +215,27 @@ function ConversationInnerLayout({
   const { isActionsOpen, closeActions, messageId, getActionState } =
     useAgentActionsContext();
 
-  // Handle panel switching - close the other panel when a new one is opened
-  const [prevContentOpen, setPrevContentOpen] = useState(isContentOpen);
-  const [prevActionsOpen, setPrevActionsOpen] = useState(isActionsOpen);
-
+  /**
+   * This effect ensures that when one panel (content or actions) is opened,
+   * the other panel is closed. This is a bit involved because the actual
+   * open/close state is managed by the context.
+   */
+  const panelState = useRef({ content: isContentOpen, actions: isActionsOpen });
   useEffect(() => {
-    // If content panel is newly opened and actions panel is open, close actions
-    if (isContentOpen && !prevContentOpen && isActionsOpen) {
+    const contentOpening = isContentOpen && !panelState.current.content;
+    const actionsOpening = isActionsOpen && !panelState.current.actions;
+
+    if (contentOpening && isActionsOpen) {
       closeActions();
-    }
-    setPrevContentOpen(isContentOpen);
-  }, [isContentOpen, prevContentOpen, isActionsOpen, closeActions]);
-
-  useEffect(() => {
-    // If actions panel is newly opened and content panel is open, close content
-    if (isActionsOpen && !prevActionsOpen && isContentOpen) {
+    } else if (actionsOpening && isContentOpen) {
       closeContent();
     }
-    setPrevActionsOpen(isActionsOpen);
-  }, [isActionsOpen, prevActionsOpen, isContentOpen, closeContent]);
+
+    panelState.current = {
+      content: isContentOpen,
+      actions: isActionsOpen,
+    };
+  }, [isContentOpen, isActionsOpen, closeActions, closeContent]);
 
   const isPanelOpen = isContentOpen || isActionsOpen;
 
