@@ -17,7 +17,6 @@ import type {
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
-import { MCPConfigurationSheet } from "@app/components/agent_builder/capabilities/mcp/MCPConfigurationSheet";
 import { MCPServerViewsDialog } from "@app/components/agent_builder/capabilities/MCPServerViewsDialog";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -214,6 +213,14 @@ export function AgentBuilderCapabilitiesBlock() {
     index: number;
   } | null>(null);
 
+  // State for MCP editing
+  const [mcpEditAction, setMcpEditAction] = useState<AgentBuilderAction | null>(
+    null
+  );
+  const [mcpEditIndex, setMcpEditIndex] = useState<number | undefined>(
+    undefined
+  );
+
   const [isKnowledgeSheetOpen, setIsKnowledgeSheetOpen] = useState(false);
 
   // TODO: Open single sheet for selected MCP action.
@@ -254,13 +261,27 @@ export function AgentBuilderCapabilitiesBlock() {
     }
 
     if (action.type === "MCP") {
-      setSelectedAction(action);
+      setMcpEditAction(action);
+      setMcpEditIndex(index);
     }
   };
 
   const handleCloseSheet = () => {
     setEditingAction(null);
     setIsKnowledgeSheetOpen(false);
+  };
+
+  const handleMcpEditSave = (action: AgentBuilderAction, index: number) => {
+    update(index, action);
+    setMcpEditAction(null);
+    setMcpEditIndex(undefined);
+    setEditingAction(null);
+  };
+
+  const handleMcpEditCancel = () => {
+    setMcpEditAction(null);
+    setMcpEditIndex(undefined);
+    setEditingAction(null);
   };
 
   const getAgentInstructions = () => getValues("instructions");
@@ -282,6 +303,10 @@ export function AgentBuilderCapabilitiesBlock() {
         dataVisualization={dataVisualization}
         isMCPServerViewsLoading={isMCPServerViewsLoading}
         setSelectedAction={setSelectedAction}
+        editAction={mcpEditAction}
+        editActionIndex={mcpEditIndex}
+        onEditActionSave={handleMcpEditSave}
+        onEditActionCancel={handleMcpEditCancel}
       />
     </>
   );
@@ -335,24 +360,6 @@ export function AgentBuilderCapabilitiesBlock() {
           </CardGrid>
         )}
       </div>
-      <MCPConfigurationSheet
-        selectedAction={selectedAction}
-        isOpen={selectedAction !== null}
-        onClose={() => {
-          setSelectedAction(null);
-          setEditingAction(null);
-        }}
-        onSave={(action) => {
-          if (editingAction && selectedAction) {
-            update(editingAction.index, action);
-          } else {
-            append(action);
-          }
-          setSelectedAction(null);
-          setEditingAction(null);
-        }}
-        getAgentInstructions={getAgentInstructions}
-      />
     </div>
   );
 }
