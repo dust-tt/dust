@@ -8,8 +8,20 @@ class TranscriptViewModel: ObservableObject {
   @Published var showingLoginError = false
   @Published var loginErrorMessage = ""
 
-  @Published var apiKeyInput = ""
-  @Published var workspaceIdInput = ""
+  @Published var apiKeyInput = "" {
+    didSet {
+      print("ViewModel apiKeyInput changed to: '\(apiKeyInput)'")
+    }
+  }
+  @Published var workspaceIdInput = "" {
+    didSet {
+      print("ViewModel workspaceIdInput changed to: '\(workspaceIdInput)'")
+    }
+  }
+  
+  var isLoginButtonEnabled: Bool {
+    !apiKeyInput.isEmpty && !workspaceIdInput.isEmpty
+  }
 
   func checkLoginStatus() {
     isLoggedIn = UserDefaultsManager.shared.hasCompleteCredentials()

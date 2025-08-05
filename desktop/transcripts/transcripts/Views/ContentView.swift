@@ -140,6 +140,7 @@ struct ContentView: View {
         workspaceIdInput: $viewModel.workspaceIdInput,
         showingError: $viewModel.showingLoginError,
         errorMessage: $viewModel.loginErrorMessage,
+        viewModel: viewModel,
         onLogin: {
           viewModel.login { success in
             if success {

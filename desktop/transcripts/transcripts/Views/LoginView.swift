@@ -5,6 +5,7 @@ struct LoginView: View {
   @Binding var workspaceIdInput: String
   @Binding var showingError: Bool
   @Binding var errorMessage: String
+  @ObservedObject var viewModel: TranscriptViewModel
   let onLogin: () -> Void
   let onCancel: () -> Void
 
@@ -38,7 +39,7 @@ struct LoginView: View {
           onLogin()
         }
         .keyboardShortcut(.defaultAction)
-        .disabled(apiKeyInput.isEmpty || workspaceIdInput.isEmpty)
+        .disabled(!viewModel.isLoginButtonEnabled)
       }
     }
     .frame(width: 400, height: 220)
@@ -56,6 +57,7 @@ struct LoginView: View {
     workspaceIdInput: .constant(""),
     showingError: .constant(false),
     errorMessage: .constant(""),
+    viewModel: TranscriptViewModel(),
     onLogin: {},
     onCancel: {}
   )
