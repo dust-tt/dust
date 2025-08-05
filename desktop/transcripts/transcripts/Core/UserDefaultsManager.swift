@@ -34,6 +34,7 @@ class UserDefaultsManager {
     UserDefaults.standard.removeObject(forKey: apiKeyKey)
     UserDefaults.standard.removeObject(forKey: workspaceIdKey)
     UserDefaults.standard.removeObject(forKey: folderIdKey)
+    UserDefaults.standard.removeObject(forKey: selectedFolderKey)
     return true
   }
 

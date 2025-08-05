@@ -23,6 +23,14 @@ struct LoginView: View {
       VStack(spacing: 10) {
         SecureField("API Key (starts with sk-)", text: $apiKeyInput)
           .textFieldStyle(RoundedBorderTextFieldStyle())
+          .onChange(of: apiKeyInput) { newValue in
+            let cleanedValue = newValue.replacingOccurrences(of: "\n", with: "")
+              .replacingOccurrences(of: "\r", with: "")
+              .trimmingCharacters(in: .whitespacesAndNewlines)
+            if cleanedValue != newValue {
+              apiKeyInput = cleanedValue
+            }
+          }
 
         TextField("Workspace ID", text: $workspaceIdInput)
           .textFieldStyle(RoundedBorderTextFieldStyle())

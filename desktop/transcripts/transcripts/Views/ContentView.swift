@@ -49,9 +49,15 @@ struct ContentView: View {
 
         if viewModel.isSetupComplete {
           if let folder = UserDefaultsManager.shared.loadSelectedFolder() {
-            Text("Folder: \(folder.name)")
+            VStack(spacing: 4) {
+              Text("Folder: \(folder.name)")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+              Button("Change Folder") {
+                openSetupWindow()
+              }
               .font(.caption2)
-              .foregroundColor(.secondary)
+            }
           }
         } else {
           Button("Setup Folder") {
