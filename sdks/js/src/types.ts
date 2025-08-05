@@ -1033,11 +1033,19 @@ const NotificationRunAgentChainOfThoughtSchema = z.object({
   chainOfThought: z.string(),
 });
 
+const NotificationRunAgentGenerationTokensSchema = z.object({
+  type: z.literal("run_agent_generation_tokens"),
+  childAgentId: z.string(),
+  conversationId: z.string(),
+  text: z.string(),
+});
+
 const NotificationContentSchema = z.union([
   NotificationImageContentSchema,
   NotificationInteractiveFileContentSchema,
   NotificationRunAgentContentSchema,
   NotificationRunAgentChainOfThoughtSchema,
+  NotificationRunAgentGenerationTokensSchema,
   NotificationTextContentSchema,
   NotificationToolApproveBubbleUpContentSchema,
 ]);
