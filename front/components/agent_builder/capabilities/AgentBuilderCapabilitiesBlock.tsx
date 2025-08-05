@@ -10,7 +10,7 @@ import {
 import { Spinner } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 import type { FieldArrayWithId } from "react-hook-form";
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { useFieldArray } from "react-hook-form";
 
 import type {
   AgentBuilderDataVizAction,
@@ -195,7 +195,6 @@ const BACKGROUND_IMAGE_STYLE_PROPS = {
 };
 
 export function AgentBuilderCapabilitiesBlock() {
-  const { getValues } = useFormContext<AgentBuilderFormData>();
   const { fields, remove, append, update } = useFieldArray<
     AgentBuilderFormData,
     "actions"
@@ -222,11 +221,6 @@ export function AgentBuilderCapabilitiesBlock() {
   );
 
   const [isKnowledgeSheetOpen, setIsKnowledgeSheetOpen] = useState(false);
-
-  // TODO: Open single sheet for selected MCP action.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [selectedAction, setSelectedAction] =
-    useState<AgentBuilderAction | null>(null);
 
   // TODO: Add logic for reasoning.
   const selectableDefaultMCPServerViews = useMemo(
@@ -284,8 +278,6 @@ export function AgentBuilderCapabilitiesBlock() {
     setEditingAction(null);
   };
 
-  const getAgentInstructions = () => getValues("instructions");
-
   const dropdownButtons = (
     <>
       <KnowledgeConfigurationSheet
@@ -296,13 +288,11 @@ export function AgentBuilderCapabilitiesBlock() {
         open={isKnowledgeSheetOpen}
       />
       <MCPServerViewsDialog
-        tools={fields}
         addTools={append}
         defaultMCPServerViews={selectableDefaultMCPServerViews}
         nonDefaultMCPServerViews={selectableNonDefaultMCPServerViews}
         dataVisualization={dataVisualization}
         isMCPServerViewsLoading={isMCPServerViewsLoading}
-        setSelectedAction={setSelectedAction}
         editAction={mcpEditAction}
         editActionIndex={mcpEditIndex}
         onEditActionSave={handleMcpEditSave}

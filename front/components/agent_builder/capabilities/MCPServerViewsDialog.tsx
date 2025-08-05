@@ -8,11 +8,10 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import is from "@sindresorhus/is";
 import { uniqueId } from "lodash";
 import { useMemo, useState } from "react";
 import React from "react";
-import type { FieldArrayWithId, UseFieldArrayAppend } from "react-hook-form";
+import type { UseFieldArrayAppend } from "react-hook-form";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -30,7 +29,6 @@ import { ReasoningModelSection } from "@app/components/agent_builder/capabilitie
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type {
   ActionSpecification,
   ConfigurationPagePageId,
@@ -61,11 +59,7 @@ export type SelectedTool =
 const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
 interface MCPServerViewsDialogProps {
-  tools: FieldArrayWithId<AgentBuilderFormData, "actions", "id">[];
   addTools: UseFieldArrayAppend<AgentBuilderFormData, "actions">;
-  setSelectedAction: React.Dispatch<
-    React.SetStateAction<AgentBuilderAction | null>
-  >;
   defaultMCPServerViews: MCPServerViewTypeWithLabel[];
   nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];
   isMCPServerViewsLoading: boolean;
@@ -78,9 +72,7 @@ interface MCPServerViewsDialogProps {
 }
 
 export function MCPServerViewsDialog({
-  tools,
   addTools,
-  setSelectedAction,
   defaultMCPServerViews,
   nonDefaultMCPServerViews,
   isMCPServerViewsLoading,
@@ -94,7 +86,6 @@ export function MCPServerViewsDialog({
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
   const { mcpServerViews } = useMCPServerViewsContext();
-  const { spaces } = useSpacesContext();
 
   const [selectedToolsInDialog, setSelectedToolsInDialog] = useState<
     SelectedTool[]
