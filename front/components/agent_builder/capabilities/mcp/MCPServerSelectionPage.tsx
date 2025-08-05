@@ -5,7 +5,7 @@ import { PlusIcon } from "@dust-tt/sparkle";
 import { SearchInput } from "@dust-tt/sparkle";
 import React from "react";
 
-import type { SelectedTool } from "@app/components/agent_builder/capabilities/MCPServerViewsDialog";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { ActionSpecification } from "@app/components/agent_builder/types";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
