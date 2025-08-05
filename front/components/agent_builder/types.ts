@@ -3,12 +3,13 @@ import { uniqueId } from "lodash";
 import { z } from "zod";
 
 import type {agentBuilderFormSchema} from "@app/components/agent_builder/AgentBuilderFormContext";
-import { additionalConfigurationSchema, childAgentIdSchema, dustAppConfigurationSchema, jsonSchemaFieldSchema, jsonSchemaStringSchema, mcpServerViewIdSchema, mcpTimeFrameSchema, reasoningModelSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import {  mcpServerConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/formValidation";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { SupportedModel, WhitelistableFeature } from "@app/types";
 import { ioTsEnum } from "@app/types";
@@ -64,8 +65,6 @@ export const BUILDER_FLOWS = [
 export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 
 export const DESCRIPTION_MAX_LENGTH = 800;
-
-
 
 export const mcpFormSchema = z.object({
   configuration: z.object({
@@ -157,18 +156,8 @@ export const capabilityFormSchema = z.object({
     { message: "You must select at least on data sources" }
   ),
   mcpServerView: z.custom<MCPServerViewType>().nullable(),
-  configuration: z.object({
-     dataSourceConfigurations: dataSourceConfigurationSchema,
-      tablesConfigurations: dataSourceConfigurationSchema,
-      childAgentId: childAgentIdSchema,
-      reasoningModel: reasoningModelSchema,
-      timeFrame: mcpTimeFrameSchema,
-      additionalConfiguration: additionalConfigurationSchema,
-      dustAppConfiguration: dustAppConfigurationSchema,
-      jsonSchema: jsonSchemaFieldSchema,
-      _jsonSchemaString: jsonSchemaStringSchema,
-  })
-}).refine((val) => {
+  configuration: mcpServerConfigurationSchema
+}).superRefine((val, ctx) => {
     const requirements = getMCPServerRequirements(val.mcpServerView);
     const configuration = val.configuration;
     
@@ -176,91 +165,37 @@ export const capabilityFormSchema = z.object({
       return true;
     }
 
-    // Handle data source configuration requirements
-    if (requirements.requiresDataSourceConfiguration) {
-      if (!configuration.dataSourceConfigurations || Object.keys(configuration.dataSourceConfigurations).length === 0) {
-        return false;
-      }
-    }
-
-    // Handle table configuration requirements
-    if (requirements.requiresTableConfiguration) {
-      if (!configuration.tablesConfigurations || Object.keys(configuration.tablesConfigurations).length === 0) {
-        return false;
-      }
-    }
-
-    if (requirements.requiresChildAgentConfiguration) {
-      if (configuration.childAgentId === null) {
-        return false;
-      }
-    }
-
-    if (requirements.requiresReasoningConfiguration) {
-      if (configuration.reasoningModel === null) {
-        return false;
-      }
-    }
-
-    if (requirements.requiresDustAppConfiguration) {
-      if (configuration.dustAppConfiguration === null) {
-        return false;
-      }
-    }
-
-    // Handle time frame requirements
     if (requirements.mayRequireTimeFrameConfiguration) {
       if (configuration.timeFrame === null) {
-        return false;
+        return true;
+      }
+
+      if (configuration.timeFrame.duration === null || configuration.timeFrame.unit === null) {
+        return ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["configuration.timeFrame"],
+          message: "You must use time frame between that and that when you have required enums in mcpServerViews."
+        })
       }
     }
 
-    // Handle JSON schema requirements
     if (requirements.mayRequireJsonSchemaConfiguration) {
       if (configuration.jsonSchema === null) {
         return false;
       }
-      if (!configuration._jsonSchemaString || configuration._jsonSchemaString.trim() === "") {
-        return false;
-      }
+
+       const parsedSchema = validateConfiguredJsonSchema(configuration.jsonSchema);
+
+       if (parsedSchema.isErr()) {
+          return ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["configuration.jsonSchema"],
+          message: parsedSchema.error.message
+        })
+       } 
+
     }
-
-    if (
-      requirements.requiredStrings.length > 0 ||
-      requirements.requiredNumbers.length > 0 ||
-      requirements.requiredBooleans.length > 0 ||
-      Object.keys(requirements.requiredEnums).length > 0
-    ) {
-      const additionalConfig = configuration.additionalConfiguration || {};
-      
-      for (const key of requirements.requiredStrings) {
-        if (!additionalConfig[key]) {
-          return false;
-        }
-      }
-
-      for (const key of requirements.requiredNumbers) {
-        if (additionalConfig[key] === undefined) {
-          return false;
-        }
-      }
-
-      for (const key of requirements.requiredBooleans) {
-        if (additionalConfig[key] === undefined) {
-          return false;
-        }
-      }
-
-      for (const [key] of Object.entries(requirements.requiredEnums)) {
-        if (!additionalConfig[key]) {
-          return false;
-        }
-      }
-    }
-
     return true;
-  }, {
-    message: "Please fill in all required configuration fields"
   } 
 );
 
