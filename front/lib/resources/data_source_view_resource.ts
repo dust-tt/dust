@@ -671,19 +671,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       )
     );
 
-    // Delete associated MCP server configurations.
-    if (mcpServerConfigurationIds.length > 0) {
-      await AgentMCPServerConfiguration.destroy({
-        where: {
-          id: {
-            [Op.in]: mcpServerConfigurationIds,
-          },
-          workspaceId,
-        },
-        transaction,
-      });
-    }
-
     await AgentDataSourceConfiguration.destroy({
       where: {
         dataSourceViewId: this.id,
@@ -699,6 +686,19 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       },
       transaction,
     });
+
+    // Delete associated MCP server configurations.
+    if (mcpServerConfigurationIds.length > 0) {
+      await AgentMCPServerConfiguration.destroy({
+        where: {
+          id: {
+            [Op.in]: mcpServerConfigurationIds,
+          },
+          workspaceId,
+        },
+        transaction,
+      });
+    }
 
     const deletedCount = await DataSourceViewModel.destroy({
       where: {
