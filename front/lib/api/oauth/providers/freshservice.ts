@@ -50,7 +50,7 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
     ];
 
     // Get domain from connection metadata
-    const freshworksDomainRaw = connection.metadata.instance_url;
+    const freshworksDomainRaw = connection.metadata.freshworks_org_url;
 
     if (!freshworksDomainRaw) {
       throw new Error("Freshworks domain is required");
@@ -92,14 +92,14 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
         return true;
       }
       // For personal/platform actions without MCP server, still need the standard validation
-      return !!extraConfig.instance_url && !!extraConfig.client_id;
+      return !!extraConfig.freshworks_org_url && !!extraConfig.freshservice_domain;
     }
 
     // For other use cases, both domains are required
     if (Object.keys(extraConfig).length !== 2) {
       return false;
     }
-    return !!extraConfig.instance_url && !!extraConfig.client_id;
+    return !!extraConfig.freshworks_org_url && !!extraConfig.freshservice_domain;
   }
 
   async getRelatedCredential(
@@ -152,21 +152,21 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
         return {
           content: {
             from_connection_id: connectionId,
-            client_id: connection.metadata.client_id,
+            freshservice_domain: connection.metadata.freshservice_domain,
           },
           metadata: { workspace_id: workspaceId, user_id: userId },
         };
       }
     }
 
-    // For non-personal actions, we need client_id in the extraConfig
-    if (!extraConfig.client_id) {
-      throw new Error(`Missing client_id in extraConfig for Freshservice credential creation. UseCase: ${useCase}, ExtraConfig keys: ${Object.keys(extraConfig).join(', ')}`);
+    // For non-personal actions, we need freshservice_domain in the extraConfig
+    if (!extraConfig.freshservice_domain) {
+      throw new Error(`Missing freshservice_domain in extraConfig for Freshservice credential creation. UseCase: ${useCase}, ExtraConfig keys: ${Object.keys(extraConfig).join(', ')}`);
     }
 
     return {
       content: {
-        client_id: extraConfig.client_id,
+        freshservice_domain: extraConfig.freshservice_domain,
       },
       metadata: { workspace_id: workspaceId, user_id: userId },
     };
@@ -215,8 +215,8 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
 
         return {
           ...restConfig,
-          client_id: connection.metadata.client_id,
-          instance_url: connection.metadata.instance_url,
+          freshservice_domain: connection.metadata.freshservice_domain,
+          freshworks_org_url: connection.metadata.freshworks_org_url,
         };
       }
     }

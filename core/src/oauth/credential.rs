@@ -227,7 +227,7 @@ impl Credential {
                 vec!["integration_token"]
             }
             CredentialProvider::Freshservice => {
-                vec!["client_id"]
+                vec!["freshservice_domain"]
             }
         };
 

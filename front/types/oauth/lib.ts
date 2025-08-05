@@ -68,6 +68,8 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "code_verifier",
   "code_challenge",
   "scope",
+  "freshservice_domain",
+  "freshworks_org_url",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -152,13 +154,13 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "freshservice":
       if (useCase === "personal_actions" || useCase === "platform_actions") {
         const result: OAuthCredentialInputs = {
-          instance_url: {
+          freshworks_org_url: {
             label: "Freshworks Organization URL",
             value: undefined,
             helpMessage:
               "Your Freshworks organization URL (e.g., yourcompany.myfreshworks.com).",
           },
-          client_id: {
+          freshservice_domain: {
             label: "Freshservice Domain URL",
             value: undefined,
             helpMessage:

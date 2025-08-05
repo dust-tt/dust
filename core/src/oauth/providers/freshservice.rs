@@ -43,7 +43,7 @@ impl Provider for FreshserviceConnectionProvider {
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
-        let domain = match connection.metadata()["instance_url"].as_str() {
+        let domain = match connection.metadata()["freshworks_org_url"].as_str() {
             Some(d) => {
                 if !FRESHSERVICE_DOMAIN_RE.is_match(d) {
                     Err(anyhow!("Freshservice domain format invalid"))?
@@ -95,7 +95,7 @@ impl Provider for FreshserviceConnectionProvider {
             refresh_token: result["refresh_token"].as_str().map(|s| s.to_string()),
             raw_json: result,
             extra_metadata: Some(serde_json::Map::from_iter([(
-                "instance_url".to_string(),
+                "freshworks_org_url".to_string(),
                 serde_json::Value::String(domain.to_string()),
             )])),
         })
@@ -106,7 +106,7 @@ impl Provider for FreshserviceConnectionProvider {
         connection: &Connection,
         _related_credentials: Option<Credential>,
     ) -> Result<RefreshResult, ProviderError> {
-        let domain = match connection.metadata()["instance_url"].as_str() {
+        let domain = match connection.metadata()["freshworks_org_url"].as_str() {
             Some(d) => {
                 if !FRESHSERVICE_DOMAIN_RE.is_match(d) {
                     Err(anyhow!("Freshservice domain format invalid"))?

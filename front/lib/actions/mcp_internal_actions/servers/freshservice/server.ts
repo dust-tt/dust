@@ -40,7 +40,7 @@ const createServer = (): McpServer => {
     }
 
     // Extract Freshservice domain from extra metadata
-    const freshserviceDomain = authInfo.extra?.client_id as string;
+    const freshserviceDomain = authInfo.extra?.freshservice_domain as string;
     if (!freshserviceDomain) {
       return makeMCPToolTextError(
         "Freshservice domain URL not configured. Please reconnect your Freshservice account."
