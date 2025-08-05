@@ -8,8 +8,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { Spinner } from "@dust-tt/sparkle";
-import React, { useMemo, useState } from "react";
-import type { FieldArrayWithId } from "react-hook-form";
+import React, { useState } from "react";
 import { useFieldArray } from "react-hook-form";
 
 import type {
@@ -17,11 +16,8 @@ import type {
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
-import {
-  MCPServerViewsDialog,
-  type DialogMode,
-} from "@app/components/agent_builder/capabilities/MCPServerViewsDialog";
-import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
+import type { DialogMode } from "@app/components/agent_builder/capabilities/MCPServerViewsDialog";
+import { MCPServerViewsDialog } from "@app/components/agent_builder/capabilities/MCPServerViewsDialog";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
@@ -188,19 +184,13 @@ export function AgentBuilderCapabilitiesBlock() {
     name: "actions",
   });
 
-  const {
-    defaultMCPServerViews,
-    nonDefaultMCPServerViews,
-    isMCPServerViewsLoading,
-  } = useMCPServerViewsContext();
+  const { isMCPServerViewsLoading } = useMCPServerViewsContext();
+
   const [dialogMode, setDialogMode] = useState<DialogMode | undefined>(
     undefined
   );
 
   const [isKnowledgeSheetOpen, setIsKnowledgeSheetOpen] = useState(false);
-
-  // TODO: Add logic for reasoning.
-
   const dataVisualization = fields.some(
     (field) => field.type === "DATA_VISUALIZATION"
   )
