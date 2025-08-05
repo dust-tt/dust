@@ -3,7 +3,7 @@ import React from "react";
 
 import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
 import { useInteractiveContentContext } from "@app/components/assistant/conversation/content/InteractiveContentContext";
-import { InteractiveContentHeader } from "@app/components/assistant/conversation/content/InteractiveContentHeader";
+import { InteractiveContentHeader } from "@app/components/assistant/conversation/ResizablePanelHeader";
 
 interface UnsupportedContentRendererProps {
   contentType: string;

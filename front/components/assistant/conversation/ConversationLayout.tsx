@@ -5,9 +5,14 @@ import {
   ResizablePanelGroup,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
+import {
+  AgentActionsProvider,
+  useAgentActionsContext,
+} from "@app/components/assistant/conversation/actions/AgentActionsContext";
+import { AgentActionsPanel } from "@app/components/assistant/conversation/actions/AgentActionsPanel";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
@@ -160,15 +165,17 @@ const ConversationLayoutContent = ({
           hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
         >
           <InteractiveContentProvider>
-            <ConversationInnerLayout
-              activeConversationId={activeConversationId}
-              baseUrl={baseUrl}
-              conversation={conversation}
-              conversationError={conversationError}
-              owner={owner}
-            >
-              {children}
-            </ConversationInnerLayout>
+            <AgentActionsProvider>
+              <ConversationInnerLayout
+                activeConversationId={activeConversationId}
+                baseUrl={baseUrl}
+                conversation={conversation}
+                conversationError={conversationError}
+                owner={owner}
+              >
+                {children}
+              </ConversationInnerLayout>
+            </AgentActionsProvider>
           </InteractiveContentProvider>
         </CoEditionProvider>
         {shouldDisplayWelcomeTourGuide && (
@@ -204,7 +211,31 @@ function ConversationInnerLayout({
   conversationError,
   activeConversationId,
 }: ConversationInnerLayoutProps) {
-  const { isContentOpen } = useInteractiveContentContext();
+  const { isContentOpen, closeContent } = useInteractiveContentContext();
+  const { isActionsOpen, closeActions, messageId, getActionState } =
+    useAgentActionsContext();
+
+  // Handle panel switching - close the other panel when a new one is opened
+  const [prevContentOpen, setPrevContentOpen] = useState(isContentOpen);
+  const [prevActionsOpen, setPrevActionsOpen] = useState(isActionsOpen);
+
+  useEffect(() => {
+    // If content panel is newly opened and actions panel is open, close actions
+    if (isContentOpen && !prevContentOpen && isActionsOpen) {
+      closeActions();
+    }
+    setPrevContentOpen(isContentOpen);
+  }, [isContentOpen, prevContentOpen, isActionsOpen, closeActions]);
+
+  useEffect(() => {
+    // If actions panel is newly opened and content panel is open, close content
+    if (isActionsOpen && !prevActionsOpen && isContentOpen) {
+      closeContent();
+    }
+    setPrevActionsOpen(isActionsOpen);
+  }, [isActionsOpen, prevActionsOpen, isContentOpen, closeContent]);
+
+  const isPanelOpen = isContentOpen || isActionsOpen;
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -226,8 +257,8 @@ function ConversationInnerLayout({
                     id={CONVERSATION_VIEW_SCROLL_LAYOUT}
                     className={cn(
                       "h-full overflow-y-auto scroll-smooth px-4",
-                      // Hide conversation on mobile when interactive content is opened.
-                      isContentOpen && "hidden md:block"
+                      // Hide conversation on mobile when any panel is opened.
+                      isPanelOpen && "hidden md:block"
                     )}
                   >
                     {children}
@@ -238,16 +269,18 @@ function ConversationInnerLayout({
           </div>
         </ResizablePanel>
 
-        {/* Interactive Content Panel */}
-        {isContentOpen && <ResizableHandle className="hidden md:block" />}
+        {/* Resizable Handle for Panels */}
+        {isPanelOpen && <ResizableHandle className="hidden md:block" />}
+
+        {/* Panel Container - either Interactive Content or Actions */}
         <ResizablePanel
           minSize={20}
           defaultSize={70}
           className={cn(
-            !isContentOpen && "hidden",
+            !isPanelOpen && "hidden",
             // On mobile: overlay full screen with absolute positioning.
             "md:relative",
-            isContentOpen && "absolute inset-0 md:relative md:inset-auto"
+            isPanelOpen && "absolute inset-0 md:relative md:inset-auto"
           )}
         >
           {isContentOpen && (
@@ -255,6 +288,14 @@ function ConversationInnerLayout({
               conversation={conversation}
               isOpen={isContentOpen}
               owner={owner}
+            />
+          )}
+          {isActionsOpen && messageId && (
+            <AgentActionsPanel
+              conversation={conversation}
+              owner={owner}
+              actionProgress={getActionState(messageId).actionProgress}
+              isActing={getActionState(messageId).isActing}
             />
           )}
         </ResizablePanel>
