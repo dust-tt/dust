@@ -266,22 +266,7 @@ export async function runModelActivity({
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
-    const specRes = await buildToolSpecification(auth, a);
-
-    if (specRes.isErr()) {
-      await publishAgentError({
-        code: "build_spec_error",
-        message: `Failed to build the specification for action ${a.sId},`,
-        metadata: null,
-      });
-
-      return null;
-    }
-
-    // Truncate the description to 1024 characters
-    specRes.value.description = specRes.value.description.slice(0, 1024);
-
-    specifications.push(specRes.value);
+    specifications.push(buildToolSpecification(a));
   }
 
   // Count the number of tokens used by the functions presented to the model.

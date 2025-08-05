@@ -55,10 +55,9 @@ import type {
   ModelConfigurationType,
   ModelId,
   ReasoningModelConfigurationType,
-  Result,
   TimeFrame,
 } from "@app/types";
-import { normalizeError, Ok, removeNulls } from "@app/types";
+import { normalizeError, removeNulls } from "@app/types";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;
@@ -355,31 +354,25 @@ export class MCPActionType {
   }
 }
 
+const MAX_DESCRIPTION_LENGTH = 1024;
+
 /**
  * Builds a tool specification for the given MCP action configuration.
  */
-export async function buildToolSpecification(
-  auth: Authenticator,
+export function buildToolSpecification(
   actionConfiguration: MCPToolConfigurationType
-): Promise<Result<AgentActionSpecification, Error>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error(
-      "Unexpected unauthenticated call to `buildToolSpecification`"
-    );
-  }
-
+): AgentActionSpecification {
   // Filter out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.TOOL_INPUT
   const filteredInputSchema = hideInternalConfiguration(
     actionConfiguration.inputSchema
   );
 
-  return new Ok({
+  return {
     name: actionConfiguration.name,
-    description: actionConfiguration.description ?? "",
-    inputs: [],
+    description:
+      actionConfiguration.description?.slice(0, MAX_DESCRIPTION_LENGTH) ?? "",
     inputSchema: filteredInputSchema,
-  });
+  };
 }
 
 /**
