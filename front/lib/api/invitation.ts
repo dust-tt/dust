@@ -14,6 +14,7 @@ import { MembershipInvitationModel } from "@app/lib/models/membership_invitation
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { isEmailValid } from "@app/lib/utils";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   ActiveRoleType,
@@ -27,8 +28,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
-
-import { frontSequelize } from "../resources/storage";
 
 // Make token expires after 7 days
 const INVITATION_EXPIRATION_TIME_SEC = 60 * 60 * 24 * 7;
@@ -351,7 +350,7 @@ export async function handleMembershipInvitations(
 ): Promise<Result<HandleMembershipInvitationResult[], APIErrorWithStatusCode>> {
   const { maxUsers } = subscription.plan.limits.users;
 
-  const result = await frontSequelize.transaction(
+  const result = await withTransaction(
     async (
       t
     ): Promise<

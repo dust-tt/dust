@@ -34,11 +34,11 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { normalizeArrays } from "@app/lib/utils";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationScope,
@@ -508,9 +508,7 @@ export async function createAgentConfiguration(
       return agentConfigurationInstance;
     };
 
-    const agent = await (transaction
-      ? performCreation(transaction)
-      : frontSequelize.transaction(performCreation));
+    const agent = await withTransaction(performCreation, transaction);
 
     /*
      * Final rendering.
@@ -998,7 +996,7 @@ export async function updateAgentPermissions(
   // The canWrite check for agent_editors groups (allowing members and admins)
   // is implicitly handled by addMembers and removeMembers.
   try {
-    return await frontSequelize.transaction(async (t) => {
+    return await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
         const addRes = await editorGroupRes.value.addMembers(auth, usersToAdd, {
           transaction: t,

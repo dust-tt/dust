@@ -14,13 +14,13 @@ import {
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   ModelId,
@@ -75,7 +75,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     watchedDataSources: TrackerDataSourceConfigurationType[],
     space: SpaceResource
   ) {
-    return frontSequelize.transaction(async (transaction) => {
+    return withTransaction(async (transaction) => {
       const tracker = await TrackerConfigurationModel.create(
         {
           ...blob,
@@ -187,7 +187,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
   ): Promise<Result<TrackerConfigurationResource, Error>> {
     assert(this.canWrite(auth), "Unauthorized write attempt");
 
-    return frontSequelize.transaction(async (transaction) => {
+    return withTransaction(async (transaction) => {
       await this.update(blob);
 
       await TrackerDataSourceConfigurationModel.destroy({
@@ -319,7 +319,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       return new Err(new Error("Tracker not found"));
     }
 
-    return frontSequelize.transaction(async (transaction) => {
+    return withTransaction(async (transaction) => {
       await tracker.update(
         { lastNotifiedAt: new Date(currentRunMs) },
         transaction
@@ -620,7 +620,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     auth: Authenticator
   ): Promise<Result<number, Error>> {
     const workspaceId = auth.getNonNullableWorkspace().id;
-    const deletedCount = await frontSequelize.transaction(async (t) => {
+    const deletedCount = await withTransaction(async (t) => {
       await TrackerGenerationModel.destroy({
         where: {
           trackerConfigurationId: this.id,
@@ -652,7 +652,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     auth: Authenticator
   ): Promise<Result<number, Error>> {
     const workspaceId = auth.getNonNullableWorkspace().id;
-    const deletedCount = await frontSequelize.transaction(async (t) => {
+    const deletedCount = await withTransaction(async (t) => {
       await TrackerGenerationModel.destroy({
         where: {
           trackerConfigurationId: this.id,

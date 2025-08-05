@@ -16,6 +16,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   ConversationType,
   ConversationVisibility,
@@ -26,7 +27,6 @@ import type {
 import { ConversationError, Err, normalizeError, Ok } from "@app/types";
 
 import { GroupResource } from "./group_resource";
-import { frontSequelize } from "./storage";
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 import type { ResourceFindOptions } from "./types";
 
@@ -429,7 +429,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return;
     }
 
-    await frontSequelize.transaction(async (t) => {
+    await withTransaction(async (t) => {
       const participant = await ConversationParticipantModel.findOne({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
