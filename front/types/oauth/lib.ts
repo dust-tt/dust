@@ -153,9 +153,9 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
       if (useCase === "personal_actions" || useCase === "platform_actions") {
         const result: OAuthCredentialInputs = {
           instance_url: {
-            label: "Freshservice Domain",
+            label: "Freshworks Organization URL",
             value: undefined,
-            helpMessage: "Your Freshservice domain (e.g., yourcompany.freshservice.com)",
+            helpMessage: "Your Freshworks organization URL (e.g., yourcompany.myfreshworks.com)",
             validator: isValidFreshserviceDomain,
           },
         };
@@ -235,7 +235,7 @@ export function isValidClientIdOrSecret(s: unknown): s is string {
 export function isValidFreshserviceDomain(s: unknown): s is string {
   return (
     typeof s === "string" &&
-    /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.freshservice\.com$/.test(s)
+    /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.myfreshworks\.com$/.test(s)
   );
 }
 

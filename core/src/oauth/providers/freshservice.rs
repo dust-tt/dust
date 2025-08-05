@@ -17,7 +17,7 @@ lazy_static! {
     static ref OAUTH_FRESHSERVICE_CLIENT_ID: String = env::var("OAUTH_FRESHSERVICE_CLIENT_ID").unwrap();
     static ref OAUTH_FRESHSERVICE_CLIENT_SECRET: String =
         env::var("OAUTH_FRESHSERVICE_CLIENT_SECRET").unwrap();
-    static ref FRESHSERVICE_DOMAIN_RE: Regex = Regex::new(r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.freshservice\.com$").unwrap();
+    static ref FRESHSERVICE_DOMAIN_RE: Regex = Regex::new(r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.myfreshworks\.com$").unwrap();
 }
 
 pub struct FreshserviceConnectionProvider {}
@@ -64,7 +64,7 @@ impl Provider for FreshserviceConnectionProvider {
 
         let req = self
             .reqwest_client()
-            .post(format!("https://{}/oauth/v2/token", domain))
+            .post(format!("https://{}/org/oauth/v2/token", domain))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Authorization", auth_header)
             .form(&params);
@@ -129,7 +129,7 @@ impl Provider for FreshserviceConnectionProvider {
 
         let req = self
             .reqwest_client()
-            .post(format!("https://{}/oauth/v2/token", domain))
+            .post(format!("https://{}/org/oauth/v2/token", domain))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Authorization", auth_header)
             .form(&params);

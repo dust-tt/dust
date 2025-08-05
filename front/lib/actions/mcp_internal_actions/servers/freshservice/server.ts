@@ -43,7 +43,7 @@ const createServer = (): McpServer => {
     const domain = authInfo.metadata?.instance_url as string;
     if (!domain) {
       return makeMCPToolTextError(
-        "Freshservice domain not configured. Please reconnect your Freshservice account."
+        "Freshworks organization URL not configured. Please reconnect your Freshservice account."
       ) as T;
     }
 

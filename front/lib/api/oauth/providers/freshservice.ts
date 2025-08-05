@@ -54,7 +54,7 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
     }
     
     return (
-      `https://${freshworksDomain}/oauth/v2/authorize` +
+      `https://${freshworksDomain}/org/oauth/v2/authorize` +
       `?response_type=code` +
       `&client_id=${config.getOAuthFreshserviceClientId()}` +
       `&state=${connection.connection_id}` +
