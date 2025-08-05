@@ -7,7 +7,11 @@ import {
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import {
+  isValidFreshserviceDomain,
+  type OAuthConnectionType,
+  type OAuthUseCase,
+} from "@app/types/oauth/lib";
 
 export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
@@ -42,8 +46,12 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
       "freshservice.tickets.view",
     ];
     
-    // Domain should be in format: yourcompany.freshservice.com (without https://)
-    const freshworksDomain = config.getOAuthFreshserviceDomain();
+    // Get domain from connection metadata
+    const freshworksDomain = connection.metadata.freshservice_domain;
+    
+    if (!isValidFreshserviceDomain(freshworksDomain)) {
+      throw new Error("Invalid Freshservice domain");
+    }
     
     return (
       `https://${freshworksDomain}/oauth/v2/authorize` +
@@ -64,11 +72,17 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
-    if (useCase === "personal_actions") {
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
+      // For MCP servers, check both mcp_server_id and domain
       if (extraConfig.mcp_server_id) {
-        return true;
+        return isValidFreshserviceDomain(extraConfig.freshservice_domain);
       }
     }
-    return Object.keys(extraConfig).length === 0;
+    
+    // For other use cases, domain is required
+    if (Object.keys(extraConfig).length !== 1) {
+      return false;
+    }
+    return isValidFreshserviceDomain(extraConfig.freshservice_domain);
   }
 }

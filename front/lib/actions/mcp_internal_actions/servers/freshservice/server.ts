@@ -9,6 +9,7 @@ import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "freshservice",
+  icon: "FreshserviceLogo",
   version: "1.0.0",
   description:
     "Freshservice integration supporting ticket management, service catalog, solutions, departments, " +
@@ -18,7 +19,6 @@ const serverInfo: InternalMCPServerDefinitionType = {
     provider: "freshservice" as const,
     supported_use_cases: ["platform_actions", "personal_actions"] as const,
   },
-  icon: "ActionCloudArrowLeftRightIcon",
   documentationUrl: null,
 };
 
@@ -38,12 +38,12 @@ const createServer = (): McpServer => {
         "Authentication required. Please connect your Freshservice account."
       ) as T;
     }
-    
-    // Extract domain from metadata or use a default
-    const domain = (authInfo.metadata?.domain as string) || process.env.OAUTH_FRESHSERVICE_DOMAIN;
+
+    // Extract domain from metadata
+    const domain = authInfo.metadata?.freshservice_domain as string;
     if (!domain) {
       return makeMCPToolTextError(
-        "Freshservice domain not configured."
+        "Freshservice domain not configured. Please reconnect your Freshservice account."
       ) as T;
     }
 
@@ -162,9 +162,7 @@ const createServer = (): McpServer => {
     async ({ ticket_id, include }, { authInfo }) => {
       return withAuth({
         action: async (accessToken, domain) => {
-          const params = include?.length
-            ? `?include=${include.join(",")}`
-            : "";
+          const params = include?.length ? `?include=${include.join(",")}` : "";
           const result = await apiRequest(
             accessToken,
             domain,
@@ -677,11 +675,7 @@ const createServer = (): McpServer => {
     async (_, { authInfo }) => {
       return withAuth({
         action: async (accessToken, domain) => {
-          const result = await apiRequest(
-            accessToken,
-            domain,
-            "sla_policies"
-          );
+          const result = await apiRequest(accessToken, domain, "sla_policies");
 
           return makeMCPToolJSONSuccess({
             message: `Retrieved ${result.sla_policies?.length || 0} SLA policies`,

@@ -220,6 +220,13 @@ export function isValidClientIdOrSecret(s: unknown): s is string {
   return typeof s === "string" && s.trim().length > 0;
 }
 
+export function isValidFreshserviceDomain(s: unknown): s is string {
+  return (
+    typeof s === "string" &&
+    /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.freshservice\.com$/.test(s)
+  );
+}
+
 // Credentials Providers
 
 export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = [

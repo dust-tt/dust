@@ -10,14 +10,14 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use base64;
 use lazy_static::lazy_static;
+use regex::Regex;
 use std::env;
 
 lazy_static! {
     static ref OAUTH_FRESHSERVICE_CLIENT_ID: String = env::var("OAUTH_FRESHSERVICE_CLIENT_ID").unwrap();
     static ref OAUTH_FRESHSERVICE_CLIENT_SECRET: String =
         env::var("OAUTH_FRESHSERVICE_CLIENT_SECRET").unwrap();
-    // Domain should be in format: yourcompany.freshservice.com (without https://)
-    static ref OAUTH_FRESHSERVICE_DOMAIN: String = env::var("OAUTH_FRESHSERVICE_DOMAIN").unwrap();
+    static ref FRESHSERVICE_DOMAIN_RE: Regex = Regex::new(r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.freshservice\.com$").unwrap();
 }
 
 pub struct FreshserviceConnectionProvider {}
@@ -36,11 +36,21 @@ impl Provider for FreshserviceConnectionProvider {
 
     async fn finalize(
         &self,
-        _connection: &Connection,
+        connection: &Connection,
         _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
+        let domain = match connection.metadata()["freshservice_domain"].as_str() {
+            Some(d) => {
+                if !FRESHSERVICE_DOMAIN_RE.is_match(d) {
+                    Err(anyhow!("Freshservice domain format invalid"))?
+                }
+                d
+            }
+            None => Err(anyhow!("Freshservice domain is missing"))?,
+        };
+
         let params = [
             ("grant_type", "authorization_code"),
             ("code", code),
@@ -54,7 +64,7 @@ impl Provider for FreshserviceConnectionProvider {
 
         let req = self
             .reqwest_client()
-            .post(format!("https://{}/oauth/v2/token", *OAUTH_FRESHSERVICE_DOMAIN))
+            .post(format!("https://{}/oauth/v2/token", domain))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Authorization", auth_header)
             .form(&params);
@@ -79,7 +89,9 @@ impl Provider for FreshserviceConnectionProvider {
             ),
             refresh_token: result["refresh_token"].as_str().map(|s| s.to_string()),
             raw_json: result,
-            extra_metadata: None,
+            extra_metadata: Some(serde_json::json!({
+                "freshservice_domain": domain
+            })),
         })
     }
 
@@ -88,6 +100,16 @@ impl Provider for FreshserviceConnectionProvider {
         connection: &Connection,
         _related_credentials: Option<Credential>,
     ) -> Result<RefreshResult, ProviderError> {
+        let domain = match connection.metadata()["freshservice_domain"].as_str() {
+            Some(d) => {
+                if !FRESHSERVICE_DOMAIN_RE.is_match(d) {
+                    Err(anyhow!("Freshservice domain format invalid"))?
+                }
+                d
+            }
+            None => Err(anyhow!("Freshservice domain is missing"))?,
+        };
+
         let refresh_token = connection
             .unseal_refresh_token()?
             .ok_or_else(|| anyhow!("Missing refresh_token in Freshservice connection"))?;
@@ -104,7 +126,7 @@ impl Provider for FreshserviceConnectionProvider {
 
         let req = self
             .reqwest_client()
-            .post(format!("https://{}/oauth/v2/token", *OAUTH_FRESHSERVICE_DOMAIN))
+            .post(format!("https://{}/oauth/v2/token", domain))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Authorization", auth_header)
             .form(&params);
