@@ -1,7 +1,13 @@
 import Foundation
 
 struct AppConfig {
-  static let isDevelopment = true
+  static let isDevelopment: Bool = {
+    #if DEBUG
+    return true
+    #else
+    return false
+    #endif
+  }()
 
   static var dustBaseURL: String {
     return isDevelopment
