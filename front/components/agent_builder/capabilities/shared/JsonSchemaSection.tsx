@@ -10,19 +10,17 @@ interface JsonSchemaSectionProps {
   initialSchemaString?: string | null;
   agentInstructions?: string;
   owner: WorkspaceType;
-  fieldName: string;
 }
 
 export function JsonSchemaSection({
   initialSchemaString,
   agentInstructions,
   owner,
-  fieldName,
 }: JsonSchemaSectionProps) {
   const { getValues } = useFormContext();
 
   const { field } = useController({
-    name: fieldName,
+    name: "configuration.jsonSchema",
   });
 
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
