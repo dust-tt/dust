@@ -758,7 +758,7 @@ async function handleCheckOrFindNotionUrl(
 
 async function handleCheckZendeskTicket(
   args:
-    | { brandId: number; ticketId: number; wId: string; dsId: string }
+    | { brandId: number | null; ticketId: number; wId: string; dsId: string }
     | { ticketUrl: string; wId: string; dsId: string }
 ): Promise<ZendeskFetchTicketResponseType | null> {
   const res = await fetch(`/api/poke/admin`, {
@@ -989,9 +989,9 @@ function ZendeskTicketCheck({
           variant="outline"
           icon={idsIsLoading ? Spinner : MagnifyingGlassIcon}
           label={idsIsLoading ? undefined : "Check"}
-          disabled={!ticketId || !brandId || idsIsLoading}
+          disabled={!ticketId || idsIsLoading}
           onClick={async () => {
-            if (brandId && ticketId) {
+            if (ticketId) {
               setIdsIsLoading(true);
               setTicketDetails(
                 await handleCheckZendeskTicket({
