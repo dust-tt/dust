@@ -237,6 +237,9 @@ const config = {
   getWorkOSActionSigningSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_ACTION_SIGNING_SECRET");
   },
+  getWorkOSEnvironmentId: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_ENVIRONMENT_ID");
+  },
 
   // Profiler.
   getProfilerSecret: (): string | undefined => {

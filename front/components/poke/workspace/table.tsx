@@ -23,12 +23,14 @@ export function WorkspaceInfoTable({
   workspaceCreationDay,
   extensionConfig,
   workspaceRetention,
+  workosEnvironmentId,
 }: {
   owner: WorkspaceType;
   workspaceVerifiedDomains: WorkspaceDomain[];
   workspaceCreationDay: string;
   extensionConfig: ExtensionConfigurationType | null;
   workspaceRetention: number | null;
+  workosEnvironmentId: string;
 }) {
   const { dsyncStatus } = useWorkOSDSyncStatus({ owner });
 
@@ -87,6 +89,20 @@ export function WorkspaceInfoTable({
                 >
                   Metabase
                 </Link>
+              </PokeTableCell>
+            </PokeTableRow>
+            <PokeTableRow>
+              <PokeTableCell>WorkOS dashboard</PokeTableCell>
+              <PokeTableCell>
+                {owner.workOSOrganizationId && (
+                  <Link
+                    href={`https://dashboard.workos.com/${workosEnvironmentId}/organizations/${owner.workOSOrganizationId}`}
+                    target="_blank"
+                    className="text-xs text-highlight-400"
+                  >
+                    Organization
+                  </Link>
+                )}
               </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
