@@ -16,8 +16,8 @@ import type {
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
-import type { DialogMode } from "@app/components/agent_builder/capabilities/MCPServerViewsDialog";
-import { MCPServerViewsDialog } from "@app/components/agent_builder/capabilities/MCPServerViewsDialog";
+import type { DialogMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
+import { MCPServerViewsDialog } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
