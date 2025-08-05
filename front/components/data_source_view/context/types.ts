@@ -9,7 +9,7 @@ import type {
 const dataSourceBuilderTreeItemType = z.object({
   name: z.string(),
   path: z.string(),
-  readablePath: z.string(),
+  node: z.custom<DataSourceViewContentNode>().optional(),
 });
 export type DataSourceBuilderTreeItemType = z.infer<
   typeof dataSourceBuilderTreeItemType

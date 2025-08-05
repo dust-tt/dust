@@ -168,8 +168,7 @@ export function transformSelectionConfigurationsToTree(
 
           inPaths.push({
             path: pathParts.join("."),
-            name: node.title,
-            readablePath: "",
+            name: parentId ?? node.title,
           });
         }
       }
@@ -222,6 +221,5 @@ function buildDataSourcePath(
   return {
     path: parts.join("."),
     name: dataSourceView.dataSource.name,
-    readablePath: "",
   };
 }

@@ -36,7 +36,7 @@ export function addNodeToTree(
   item: {
     path: string[];
     name: string;
-    readablePath: string;
+    node?: DataSourceViewContentNode;
   }
 ): DataSourceBuilderTreeType {
   const pathStr = pathToString(item.path);
@@ -74,7 +74,11 @@ export function addNodeToTree(
 
   const newIn = [
     ...tree.in,
-    { path: pathStr, name: item.name, readablePath: item.readablePath },
+    {
+      path: pathStr,
+      name: item.name,
+      node: item.node,
+    },
   ];
 
   return {
@@ -95,7 +99,6 @@ export function removeNodeFromTree(
   item: {
     path: string[];
     name: string;
-    readablePath: string;
   }
 ): DataSourceBuilderTreeType {
   const pathStr = pathToString(item.path);
@@ -149,7 +152,6 @@ export function removeNodeFromTree(
     newNotIn.push({
       path: pathStr,
       name: item.name,
-      readablePath: item.readablePath,
     });
   }
 
@@ -230,24 +232,6 @@ export function computeNavigationPath(
   return navigationHistory.map((entry) =>
     getLastNavigationHistoryEntryId(entry)
   );
-}
-
-/**
- * Compute the human readable path only for node.
- * e.g: Projects/Work/John
- */
-export function computeNavigationReadablePath(
-  navigationHistory: NavigationHistoryEntryType[]
-): string {
-  return navigationHistory
-    .reduce((acc, entry) => {
-      if (entry.type === "node") {
-        acc.push(entry.node.title);
-      }
-
-      return acc;
-    }, [] as string[])
-    .join("/");
 }
 
 export function navigationHistoryEntryTitle(
