@@ -63,7 +63,7 @@ export async function executeAgentLoop(
       }
     );
 
-    // Execute tools
+    // Execute tools.
     await Promise.all(
       (actionBlobs || []).map(
         ({ action, actionBaseParams, actionConfiguration, mcpAction }, index) =>

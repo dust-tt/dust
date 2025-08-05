@@ -1,6 +1,5 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
-import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type {
