@@ -29,7 +29,7 @@ class DustAPIClient {
   func fetchSpaces(apiKey: String, workspaceId: String) async throws
     -> [DustSpace]
   {
-    let urlString = "\(baseURL)/w/\(workspaceId)/spaces"
+    let urlString = "\(baseURL)/api/v1/w/\(workspaceId)/spaces"
     guard let url = URL(string: urlString) else {
       throw DustAPIError(message: "Invalid URL: \(urlString)", statusCode: nil)
     }
@@ -79,7 +79,7 @@ class DustAPIClient {
     spaceId: String
   ) async throws -> [DustDataSourceView] {
     let urlString =
-      "\(baseURL)/w/\(workspaceId)/spaces/\(spaceId)/data_source_views"
+      "\(baseURL)/api/v1/w/\(workspaceId)/spaces/\(spaceId)/data_source_views"
     guard let url = URL(string: urlString) else {
       throw DustAPIError(message: "Invalid URL: \(urlString)", statusCode: nil)
     }
@@ -137,7 +137,7 @@ class DustAPIClient {
     audioData: Data
   ) async throws -> DustTranscriptUploadResponse {
     let urlString =
-      "\(baseURL)/w/\(workspaceId)/spaces/\(spaceId)/data_sources/\(dataSourceId)/documents/\(documentId)/transcript"
+      "\(baseURL)/api/v1/w/\(workspaceId)/spaces/\(spaceId)/data_sources/\(dataSourceId)/documents/\(documentId)/transcript"
     guard let url = URL(string: urlString) else {
       throw DustAPIError(message: "Invalid URL: \(urlString)", statusCode: nil)
     }

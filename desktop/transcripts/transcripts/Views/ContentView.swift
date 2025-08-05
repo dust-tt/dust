@@ -114,7 +114,8 @@ struct ContentView: View {
     // Wait a moment for the recording data to be processed
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
       if let recordingData = audioRecorder.recordingData,
-         let recordingId = audioRecorder.recordingId {
+        let recordingId = audioRecorder.recordingId
+      {
         print("Recording completed: \(recordingData.count) bytes")
 
         // Upload to Dust API using stored credentials

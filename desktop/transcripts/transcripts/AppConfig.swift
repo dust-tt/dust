@@ -6,7 +6,7 @@ struct AppConfig {
 
   static var dustBaseURL: String {
     return isDevelopment
-      ? "http://localhost:3000/api/v1" : "https://dust.tt/api/v1"
+      ? "http://localhost:3000" : "https://dust.tt"
   }
 
   static var environment: String {
