@@ -90,25 +90,14 @@ struct ContentView: View {
 
       Divider()
 
-      Button(action: openCallRecordingSetup) {
+      Button(action: openAudioDeviceSelection) {
         HStack {
-          Text("Select devices")
+          Text("Select microphone")
         }
       }
       .font(.caption2)
-
-      Button(action: openAudioSetupHelp) {
-        HStack {
-          Image(systemName: "questionmark.circle")
-          Text("Audio Setup Help")
-        }
-      }
-      .font(.caption2)
-      .foregroundColor(.secondary)
 
       Button(action: {
-        // Clean up any aggregate devices before quitting
-        AudioAggregateManager.shared.cleanupAggregateDevice()
         NSApplication.shared.terminate(nil)
       }) {
         Text("Quit")
@@ -231,25 +220,21 @@ struct ContentView: View {
     setupWindow.orderFrontRegardless()
   }
 
-  private func openCallRecordingSetup() {
+  private func openAudioDeviceSelection() {
     let setupWindow = NSWindow(
-      contentRect: NSRect(x: 0, y: 0, width: 520, height: 570),
+      contentRect: NSRect(x: 0, y: 0, width: 450, height: 350),
       styleMask: [.titled, .closable],
       backing: .buffered,
       defer: false
     )
-    setupWindow.title = "Audio Device Setup"
+    setupWindow.title = "Select Audio Input Device"
     setupWindow.contentView = NSHostingView(
-      rootView: CallRecordingSetupView(
-        onSetupComplete: { aggregateDevice in
-          if AudioDeviceManager.shared.setDefaultInputDevice(aggregateDevice) {
-            print(
-              "Successfully created and selected call recording setup: \(aggregateDevice.name)"
-            )
+      rootView: AudioDeviceSelectionView(
+        onDeviceSelected: { device in
+          if AudioDeviceManager.shared.setDefaultInputDevice(device) {
+            print("Successfully selected audio device: \(device.name)")
           } else {
-            print(
-              "Created aggregate device but failed to set as default: \(aggregateDevice.name)"
-            )
+            print("Failed to set audio device: \(device.name)")
           }
           setupWindow.close()
         },
@@ -263,21 +248,6 @@ struct ContentView: View {
     setupWindow.orderFrontRegardless()
   }
 
-  private func openAudioSetupHelp() {
-    let helpWindow = NSWindow(
-      contentRect: NSRect(x: 0, y: 0, width: 570, height: 620),
-      styleMask: [.titled, .closable, .resizable],
-      backing: .buffered,
-      defer: false
-    )
-    helpWindow.title = "Audio Setup Guide"
-    helpWindow.contentView = NSHostingView(
-      rootView: AudioSetupHelpView()
-    )
-    helpWindow.center()
-    helpWindow.makeKeyAndOrderFront(nil)
-    helpWindow.orderFrontRegardless()
-  }
 }
 
 #Preview {

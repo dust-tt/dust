@@ -6,7 +6,6 @@ class AudioRecorder: NSObject, ObservableObject {
   private var audioFile: AVAudioFile?
   private var tempURL: URL?
   // Simple audio capture - microphone only
-  private var mixerNode = AVAudioMixerNode()
 
   // Permission caching
   private var cachedMicPermission: Bool?
@@ -51,12 +50,6 @@ class AudioRecorder: NSObject, ObservableObject {
       cachedMicPermission = false
       return false
     }
-  }
-
-  // Method to reset permission cache if needed
-  func resetPermissionCache() {
-    cachedMicPermission = nil
-    print("[AudioRecorder] Permission cache reset")
   }
 
   func startRecording() async {
