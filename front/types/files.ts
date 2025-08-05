@@ -30,11 +30,10 @@ export type FileUseCaseMetadata = {
   generatedTables?: string[];
 };
 
-export const fileShareScopeSchema = z.union([
-  z.literal("conversation_participants"),
-  z.literal("workspace"),
-  z.literal("public"),
-  z.null(),
+export const fileShareScopeSchema = z.enum([
+  "conversation_participants",
+  "workspace",
+  "public",
 ]);
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 

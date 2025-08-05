@@ -100,10 +100,10 @@ export class ShareableFileModel extends WorkspaceAwareModel<ShareableFileModel> 
   declare token: string; // The token is a UUID v4.
 
   declare fileId: ForeignKey<FileModel["id"]>;
-  declare sharedBy: ForeignKey<UserModel["id"]>;
+  declare sharedBy: ForeignKey<UserModel["id"]> | null;
 
   declare file?: NonAttribute<FileModel>;
-  declare sharedByUser?: NonAttribute<UserModel>;
+  declare sharedByUser?: NonAttribute<UserModel> | null;
 }
 
 ShareableFileModel.init(
@@ -151,6 +151,7 @@ ShareableFileModel.init(
 // FileModel has one ShareableFileModel.
 FileModel.hasOne(ShareableFileModel, {
   foreignKey: { name: "fileId", allowNull: false },
+  onDelete: "RESTRICT",
 });
 ShareableFileModel.belongsTo(FileModel, {
   foreignKey: { name: "fileId", allowNull: false },
@@ -158,9 +159,9 @@ ShareableFileModel.belongsTo(FileModel, {
 
 // UserModel has many ShareableFileModel (who shared it).
 UserModel.hasMany(ShareableFileModel, {
-  foreignKey: { name: "sharedBy", allowNull: false },
+  foreignKey: { name: "sharedBy", allowNull: true },
   onDelete: "RESTRICT",
 });
 ShareableFileModel.belongsTo(UserModel, {
-  foreignKey: { name: "sharedBy", allowNull: false },
+  foreignKey: { name: "sharedBy", allowNull: true },
 });

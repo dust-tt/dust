@@ -1,10 +1,11 @@
 import type { FileType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { checkWorkspaceShareAccess } from "@app/lib/api/files/share_utils";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isInteractiveContentType } from "@app/types";
 
 export interface PublicFileResponseBody {
   content?: string;
@@ -30,18 +31,18 @@ async function handler(
     });
   }
 
-  const { shortToken } = req.query;
-  if (typeof shortToken !== "string") {
+  const { token } = req.query;
+  if (typeof token !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Missing shortToken parameter.",
+        message: "Missing token parameter.",
       },
     });
   }
 
-  const result = await FileResource.fetchByShareTokenWithContent(shortToken);
+  const result = await FileResource.fetchByShareTokenWithContent(token);
   if (!result) {
     return apiError(req, res, {
       status_code: 404,
@@ -52,13 +53,23 @@ async function handler(
     });
   }
 
-  const { file, content: fileContent } = result;
+  const workspace = await WorkspaceResource.fetchByModelId(
+    result.file.workspaceId
+  );
+  if (!workspace) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  }
+
+  const { file, content: fileContent, shareScope } = result;
 
   // Only allow conversation interactive files.
-  if (
-    file.useCase !== "conversation" ||
-    !isInteractiveContentType(file.contentType)
-  ) {
+  if (!file.isInteractive) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -77,6 +88,32 @@ async function handler(
         message: "File is not safe for public display.",
       },
     });
+  }
+
+  // This endpoint does not support conversation participants sharing. It goes through the private
+  // API endpoint instead.
+  if (shareScope === "conversation_participants") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  }
+
+  // For workspace sharing, check authentication.
+  if (shareScope === "workspace") {
+    const hasAccess = await checkWorkspaceShareAccess(req, res, workspace.sId);
+    if (!hasAccess) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    }
   }
 
   res.status(200).json({
