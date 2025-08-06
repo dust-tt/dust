@@ -205,8 +205,6 @@ function KnowledgeConfigurationSheetContent({
   const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
-  const agentInstructions = getAgentInstructions();
-
   const initialPageId = isEditing
     ? CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION
     : CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
@@ -293,7 +291,7 @@ function KnowledgeConfigurationSheetContent({
             {requirements.mayRequireJsonSchemaConfiguration && (
               <JsonSchemaSection
                 owner={owner}
-                agentInstructions={agentInstructions}
+                getAgentInstructions={getAgentInstructions}
               />
             )}
 

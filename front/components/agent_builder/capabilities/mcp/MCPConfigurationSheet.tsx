@@ -91,7 +91,6 @@ function MCPConfigurationSheetContent({
   const { owner } = useAgentBuilderContext();
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
-  const agentInstructions = getAgentInstructions();
 
   const mcpServerView =
     action.type === "MCP" && !isMCPServerViewsLoading
@@ -163,7 +162,7 @@ function MCPConfigurationSheetContent({
                   mcpServerView={mcpServerView}
                   requirements={requirements}
                   owner={owner}
-                  agentInstructions={agentInstructions}
+                  getAgentInstructions={getAgentInstructions}
                 />
               </ScrollArea>
             </div>
@@ -189,14 +188,14 @@ interface MCPConfigurationFormProps {
   mcpServerView: MCPServerViewType;
   requirements: ReturnType<typeof getMCPServerRequirements>;
   owner: WorkspaceType;
-  agentInstructions: string;
+  getAgentInstructions: () => string;
 }
 
 function MCPConfigurationForm({
   mcpServerView,
   requirements,
   owner,
-  agentInstructions,
+  getAgentInstructions,
 }: MCPConfigurationFormProps) {
   const { spaces } = useSpacesContext();
 
@@ -236,7 +235,7 @@ function MCPConfigurationForm({
       {requirements.mayRequireJsonSchemaConfiguration && (
         <JsonSchemaSection
           owner={owner}
-          agentInstructions={agentInstructions}
+          getAgentInstructions={getAgentInstructions}
         />
       )}
 

@@ -133,7 +133,7 @@ export const dataSourceConfigurationSchema = z.object({
   }),
 });
 
-// TODO: merge this with MCP form schema. Right now it only validates relevant fields.
+// TODO: merge this with MCP form schema. Right now it only validates two fields.
 export const capabilityFormSchema = z
   .object({
     name: z
@@ -166,13 +166,9 @@ export const capabilityFormSchema = z
     }
 
     if (requirements.mayRequireTimeFrameConfiguration) {
-      if (configuration.timeFrame === null) {
-        return true;
-      }
-
-      if (
+      if (configuration.timeFrame !== null && (
         configuration.timeFrame.duration === null ||
-        configuration.timeFrame.unit === null
+        configuration.timeFrame.unit === null)
       ) {
         return ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -183,15 +179,9 @@ export const capabilityFormSchema = z
       }
     }
 
-    // TODO: right now we run validation in the component too, we should run only
-    // on form submit instead.
-    if (requirements.mayRequireJsonSchemaConfiguration) {
-      if (configuration.jsonSchema === null) {
-        return false;
-      }
-
+    if (requirements.mayRequireJsonSchemaConfiguration && configuration._jsonSchemaString !== null) {
       const parsedSchema = validateConfiguredJsonSchema(
-        configuration.jsonSchema
+        configuration._jsonSchemaString
       );
 
       if (parsedSchema.isErr()) {
@@ -202,6 +192,7 @@ export const capabilityFormSchema = z
         });
       }
     }
+    
     return true;
   });
 
