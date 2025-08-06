@@ -244,6 +244,19 @@ function createServer(
 
       let text = content.text;
 
+      // Returning early with a custom message if the text is empty.
+      if (text.length === 0) {
+        return {
+          isError: false,
+          content: [
+            {
+              type: "text",
+              text: `No content retrieved for file ${title}.`,
+            },
+          ],
+        };
+      }
+
       // Apply offset and limit.
       if (offset !== undefined || limit !== undefined) {
         const start = offset || 0;
@@ -282,7 +295,7 @@ function createServer(
             `Invalid regular expression: ${grep}. Error: ${e instanceof Error ? e.message : String(e)}`
           );
         }
-        if (text === "") {
+        if (text.length === 0) {
           return makeMCPToolTextError(
             `No lines matched the grep pattern: ${grep}.`
           );
