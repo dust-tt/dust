@@ -9,7 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import { Spinner } from "@dust-tt/sparkle";
 import React, { useState } from "react";
-import { useFieldArray } from "react-hook-form";
+import { useFieldArray, useFormContext } from "react-hook-form";
 
 import type {
   AgentBuilderDataVizAction,
@@ -28,7 +28,6 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
   DATA_VISUALIZATION_SPECIFICATION,
-  getActionSpecification,
   MCP_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -127,61 +126,6 @@ function MCPActionCard({ action, onRemove, onEdit }: MCPActionCardProps) {
         </div>
       </div>
     </Card>
-  );
-}
-
-interface ActionCardProps {
-  action: AgentBuilderAction;
-  onRemove: () => void;
-  onEdit?: () => void;
-}
-
-function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
-  const spec = getActionSpecification(action.type);
-
-  if (!spec) {
-    return null;
-  }
-
-  return (
-    <Card
-      variant="primary"
-      className="max-h-40"
-      onClick={onEdit}
-      action={
-        <CardActionButton
-          size="mini"
-          icon={XMarkIcon}
-          onClick={(e: Event) => {
-            onRemove();
-            e.stopPropagation();
-          }}
-        />
-      }
-    >
-      <div className="flex w-full flex-col gap-2 text-sm">
-        <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          <Avatar icon={spec.cardIcon} size="xs" />
-          <div className="w-full truncate">{action.name}</div>
-        </div>
-        <div className="line-clamp-4 text-muted-foreground dark:text-muted-foreground-night">
-          <p>{action.description}</p>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-function shouldUseDialog(
-  action: AgentBuilderAction,
-  mcpServerViews: MCPServerViewType[]
-): boolean {
-  if (action.type !== "MCP") {
-    return false;
-  }
-
-  return mcpServerViews.some(
-    (view) => view.sId === action.configuration.mcpServerViewId
   );
 }
 
