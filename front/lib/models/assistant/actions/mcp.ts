@@ -352,7 +352,7 @@ AgentMCPActionOutputItem.init(
 AgentMCPAction.hasMany(AgentMCPActionOutputItem, {
   foreignKey: { name: "agentMCPActionId", allowNull: false },
   as: "outputItems",
-  onDelete: "RESTRICT",
+  onDelete: "CASCADE",
 });
 
 AgentMCPActionOutputItem.belongsTo(AgentMCPAction, {

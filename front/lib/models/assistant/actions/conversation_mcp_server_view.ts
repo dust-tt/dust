@@ -70,20 +70,12 @@ ConversationMCPServerViewModel.init(
     indexes: [
       {
         unique: true,
-        fields: ["conversationId", "mcpServerViewId"],
-        name: "conversation_mcp_server_views_conversation_mcp_server_view_un",
+        fields: ["workspaceId", "conversationId", "mcpServerViewId"],
+        name: "conversation_mcp_server_views_conversation_mcp_server_view_id",
       },
       {
         fields: ["workspaceId", "conversationId"],
         name: "conversation_mcp_server_views_workspace_conversation_idx",
-      },
-      {
-        fields: ["workspaceId", "mcpServerViewId"],
-        name: "conversation_mcp_server_views_workspace_mcp_server_view_idx",
-      },
-      {
-        fields: ["userId"],
-        name: "conversation_mcp_server_views_user_idx",
       },
     ],
   }
@@ -92,7 +84,7 @@ ConversationMCPServerViewModel.init(
 // Set up associations
 ConversationModel.hasMany(ConversationMCPServerViewModel, {
   foreignKey: "conversationId",
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 
 ConversationMCPServerViewModel.belongsTo(ConversationModel, {
@@ -101,7 +93,7 @@ ConversationMCPServerViewModel.belongsTo(ConversationModel, {
 
 MCPServerViewModel.hasMany(ConversationMCPServerViewModel, {
   foreignKey: "mcpServerViewId",
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 
 ConversationMCPServerViewModel.belongsTo(MCPServerViewModel, {
@@ -110,7 +102,7 @@ ConversationMCPServerViewModel.belongsTo(MCPServerViewModel, {
 
 UserModel.hasMany(ConversationMCPServerViewModel, {
   foreignKey: "userId",
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 
 ConversationMCPServerViewModel.belongsTo(UserModel, {

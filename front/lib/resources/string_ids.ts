@@ -36,7 +36,6 @@ const RESOURCES_PREFIX = {
   transcripts_configuration: "tsc",
   agent_step_content: "asc",
   agent_memory: "amm",
-  conversation_mcp_server_view: "cmv",
 
   // Action (used for tool approval currently).
   mcp_action: "act",
