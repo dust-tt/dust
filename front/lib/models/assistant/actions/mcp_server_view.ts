@@ -120,7 +120,7 @@ MCPServerViewModel.init(
       },
     ],
     hooks: {
-      beforeValidate: (config: MCPServerViewModel) => {
+      beforeValidate: async (config: MCPServerViewModel) => {
         if (config.serverType) {
           switch (config.serverType) {
             case "internal":

@@ -68,26 +68,17 @@ export const isMCPServerAvailability = (
   );
 };
 
-export const INTERNAL_MCP_SERVERS: Record<
-  InternalMCPServerNameType,
-  {
-    id: number;
-    availability: MCPServerAvailability;
-    isRestricted?: (params: {
-      plan: PlanType;
-      featureFlags: WhitelistableFeature[];
-    }) => boolean;
-    isPreview?: boolean;
-    tools_stakes?: Record<string, MCPToolStakeLevelType>;
-    timeoutMs?: number;
-  }
-> = {
+export const INTERNAL_MCP_SERVERS = {
   // Note:
   // ids should be stable, do not change them when moving internal servers to production as it would break existing agents.
 
   github: {
     id: 1,
     availability: "manual",
+    // Github only allows one instance of the same app per user.
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       create_issue: "low",
       add_issue_to_project: "low",
@@ -96,34 +87,61 @@ export const INTERNAL_MCP_SERVERS: Record<
       list_issues: "never_ask",
       get_issue: "never_ask",
     },
+    timeoutMs: undefined,
   },
   image_generation: {
     id: 2,
     availability: "auto",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   file_generation: {
     id: 3,
     availability: "auto",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   query_tables: {
     id: 4,
     availability: "auto",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   "web_search_&_browse": {
     id: 5,
     availability: "auto",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   think: {
     id: 6,
     availability: "auto",
+    allowMultipleInstances: false,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("dev_mcp_actions");
     },
     isPreview: true,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   hubspot: {
     id: 7,
     availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       // Get operations.
       get_object_properties: "never_ask",
@@ -164,22 +182,41 @@ export const INTERNAL_MCP_SERVERS: Record<
       update_deal: "high",
       remove_association: "high",
     },
+    timeoutMs: undefined,
   },
   agent_router: {
     id: 8,
     availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   include_data: {
     id: 9,
     availability: "auto",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   run_dust_app: {
     id: 10,
     availability: "auto",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   notion: {
     id: 11,
     availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       search: "never_ask",
       retrieve_page: "never_ask",
@@ -202,43 +239,64 @@ export const INTERNAL_MCP_SERVERS: Record<
       update_row_database: "low",
       update_schema_database: "low",
     },
+    timeoutMs: undefined,
   },
   extract_data: {
     id: 12,
     availability: "auto",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   missing_action_catcher: {
     id: 13,
     availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   salesforce: {
     id: 14,
     availability: "manual",
+    allowMultipleInstances: false,
     isRestricted: ({ featureFlags, plan }) => {
       const isInPlan = plan.limits.connections.isSalesforceAllowed;
       const hasFeatureFlag = featureFlags.includes("salesforce_tool");
       const isAvailable = isInPlan || hasFeatureFlag;
       return !isAvailable;
     },
+    isPreview: false,
     tools_stakes: {
       execute_read_query: "never_ask",
       list_objects: "never_ask",
       describe_object: "never_ask",
     },
+    timeoutMs: undefined,
   },
   gmail: {
     id: 15,
     availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       get_drafts: "never_ask",
       create_draft: "low",
       get_messages: "low",
       create_reply_draft: "low",
     },
+    timeoutMs: undefined,
   },
   google_calendar: {
     id: 16,
     availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       list_calendars: "never_ask",
       list_events: "never_ask",
@@ -248,14 +306,23 @@ export const INTERNAL_MCP_SERVERS: Record<
       delete_event: "low",
       check_availability: "never_ask",
     },
+    timeoutMs: undefined,
   },
   conversation_files: {
     id: 17,
     availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   slack: {
     id: 18,
     availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       search_messages: "never_ask",
       list_users: "never_ask",
@@ -263,10 +330,12 @@ export const INTERNAL_MCP_SERVERS: Record<
       list_threads: "never_ask",
       post_message: "low",
     },
+    timeoutMs: undefined,
   },
   google_sheets: {
     id: 19,
     availability: "manual",
+    allowMultipleInstances: false,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("google_sheets_tool");
     },
@@ -283,10 +352,12 @@ export const INTERNAL_MCP_SERVERS: Record<
       delete_worksheet: "low",
       format_cells: "low",
     },
+    timeoutMs: undefined,
   },
   monday: {
     id: 20,
     availability: "manual",
+    allowMultipleInstances: false,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("monday_tool");
     },
@@ -321,14 +392,21 @@ export const INTERNAL_MCP_SERVERS: Record<
       delete_item: "high",
       delete_group: "high",
     },
+    timeoutMs: undefined,
   },
   agent_memory: {
     id: 21,
     availability: "auto",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   jira: {
     id: 22,
     availability: "manual",
+    allowMultipleInstances: false,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("jira_tool");
     },
@@ -354,18 +432,25 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_issue_link: "low",
       delete_issue_link: "low",
     },
+    timeoutMs: undefined,
   },
   interactive_content: {
     id: 23,
     availability: "auto",
+    allowMultipleInstances: false,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("interactive_content_server");
     },
     isPreview: true,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   outlook: {
     id: 24,
     availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       get_messages: "never_ask",
       get_drafts: "never_ask",
@@ -376,10 +461,14 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_contact: "high",
       update_contact: "high",
     },
+    timeoutMs: undefined,
   },
   outlook_calendar: {
     id: 25,
     availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       list_calendars: "never_ask",
       list_events: "never_ask",
@@ -389,10 +478,12 @@ export const INTERNAL_MCP_SERVERS: Record<
       delete_event: "low",
       check_availability: "never_ask",
     },
+    timeoutMs: undefined,
   },
   freshservice: {
     id: 26,
     availability: "manual",
+    allowMultipleInstances: false,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("freshservice_tool");
     },
@@ -418,57 +509,122 @@ export const INTERNAL_MCP_SERVERS: Record<
       add_ticket_reply: "low",
       create_solution_article: "high",
     },
+    timeoutMs: undefined,
   },
   search: {
     id: 1006,
     availability: "auto",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   run_agent: {
     id: 1008,
     availability: "auto",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: undefined,
     timeoutMs: 10 * 60 * 1000, // 10 minutes
   },
   primitive_types_debugger: {
     id: 1004,
     availability: "manual",
+    allowMultipleInstances: false,
+    isPreview: false,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("dev_mcp_actions");
     },
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   reasoning: {
     id: 1007,
     availability: "auto",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   query_tables_v2: {
     id: 1009,
     availability: "auto",
+    allowMultipleInstances: false,
     // We'll eventually switch everyone to this new tables query toolset.
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("exploded_tables_query");
     },
     isPreview: true,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   data_sources_file_system: {
     id: 1010,
     availability: "auto",
+    allowMultipleInstances: false,
     // This server is hidden for everyone, it is only available through the search tool
     // when the advanced_search mode is enabled.
     isRestricted: () => true,
+    isPreview: false,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   agent_management: {
     id: 1011,
     availability: "auto",
+    allowMultipleInstances: false,
+    isPreview: false,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("agent_management_tool");
     },
     tools_stakes: {
       create_agent: "high",
     },
+    timeoutMs: undefined,
   },
-};
+  // Using satisfies here instead of : type to avoid typescript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
+} satisfies Record<
+  InternalMCPServerNameType,
+  {
+    id: number;
+    availability: MCPServerAvailability;
+    allowMultipleInstances: boolean;
+    isRestricted:
+      | ((params: {
+          plan: PlanType;
+          featureFlags: WhitelistableFeature[];
+        }) => boolean)
+      | undefined;
+    isPreview: boolean;
+    tools_stakes: Record<string, MCPToolStakeLevelType> | undefined;
+    timeoutMs: number | undefined;
+  }
+>;
 
 export type InternalMCPServerNameType =
   (typeof AVAILABLE_INTERNAL_MCP_SERVER_NAMES)[number];
+
+type AutoServerKeys<T> = {
+  [K in keyof T]: T[K] extends { availability: "auto" | "auto_hidden_builder" }
+    ? K
+    : never;
+}[keyof T];
+
+export type AutoInternalMCPServerNameType = AutoServerKeys<
+  typeof INTERNAL_MCP_SERVERS
+>;
+
+export const isAutoInternalMCPServerName = (
+  name: InternalMCPServerNameType
+): name is AutoInternalMCPServerNameType => {
+  return (
+    INTERNAL_MCP_SERVERS[name].availability === "auto" ||
+    INTERNAL_MCP_SERVERS[name].availability === "auto_hidden_builder"
+  );
+};
 
 export const getAvailabilityOfInternalMCPServerByName = (
   name: InternalMCPServerNameType
@@ -476,7 +632,7 @@ export const getAvailabilityOfInternalMCPServerByName = (
   return INTERNAL_MCP_SERVERS[name].availability;
 };
 
-export const getInternalMCPServerAvailability = (
+export const getAvailabilityOfInternalMCPServerById = (
   sId: string
 ): MCPServerAvailability => {
   const r = getInternalMCPServerNameAndWorkspaceId(sId);
@@ -484,6 +640,16 @@ export const getInternalMCPServerAvailability = (
     return "manual";
   }
   return getAvailabilityOfInternalMCPServerByName(r.value.name);
+};
+
+export const getAllowMultipleInstancesOfInternalMCPServerById = (
+  sId: string
+): boolean => {
+  const r = getInternalMCPServerNameAndWorkspaceId(sId);
+  if (r.isErr()) {
+    return false;
+  }
+  return !!INTERNAL_MCP_SERVERS[r.value.name].allowMultipleInstances;
 };
 
 export const getInternalMCPServerNameAndWorkspaceId = (

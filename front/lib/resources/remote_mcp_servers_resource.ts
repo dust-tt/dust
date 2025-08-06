@@ -13,7 +13,7 @@ import type {
   CustomServerIconType,
   InternalAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
-import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
+import type { MCPToolType, RemoteMCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
@@ -333,7 +333,10 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
   }
 
   // Serialization.
-  toJSON(): MCPServerType & {
+  toJSON(): Omit<
+    RemoteMCPServerType,
+    "url" | "lastSyncAt" | "lastError" | "sharedSecret"
+  > & {
     // Remote MCP Server specifics
 
     url: string;
@@ -363,7 +366,8 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       tools: this.cachedTools,
 
       authorization: this.authorization,
-      availability: "manual", // So far we don't have auto remote MCP servers.
+      availability: "manual",
+      allowMultipleInstances: true,
 
       // Remote MCP Server specifics
       url: this.url,

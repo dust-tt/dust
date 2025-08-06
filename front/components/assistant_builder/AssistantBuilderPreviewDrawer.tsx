@@ -39,7 +39,7 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { getDefaultMCPServerConfigurationWithId } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -157,7 +157,7 @@ export default function AssistantBuilderRightPanel({
     const mcpServerView = mcpServerViews.find(
       (mcpServerView) =>
         mcpServerView.server.sId ===
-        internalMCPServerNameToSId({
+        autoInternalMCPServerNameToSId({
           name: internalMcpServerName,
           workspaceId: owner.id,
         })

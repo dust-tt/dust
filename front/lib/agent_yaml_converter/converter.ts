@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ACTION_TYPE_TO_MCP_SERVER_MAP } from "@app/components/agent_builder/types";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -293,7 +293,7 @@ export class AgentYAMLConverter {
 
   private static getMCPServerName(
     actionType: string
-  ): InternalMCPServerNameType | null {
+  ): AutoInternalMCPServerNameType | null {
     return (
       ACTION_TYPE_TO_MCP_SERVER_MAP[
         actionType as keyof typeof ACTION_TYPE_TO_MCP_SERVER_MAP

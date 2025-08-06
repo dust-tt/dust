@@ -34,7 +34,7 @@ import type {
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
-  getInternalMCPServerAvailability,
+  getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -787,7 +787,7 @@ async function listToolsForServerSideMCPServer(
     return new Ok(serverSideToolConfigs);
   }
 
-  const availability = getInternalMCPServerAvailability(
+  const availability = getAvailabilityOfInternalMCPServerById(
     connectionParams.mcpServerId
   );
   const { serverType, id } = getServerTypeAndIdFromSId(
@@ -806,7 +806,7 @@ async function listToolsForServerSideMCPServer(
         return r;
       }
       const serverName = r.value.name;
-      toolsStakes = INTERNAL_MCP_SERVERS[serverName]?.tools_stakes || {};
+      toolsStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes || {};
       serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
       break;
     }
