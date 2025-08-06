@@ -40,7 +40,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Disable logging of agent runs",
   },
   disallow_agent_creation_to_users: {
-    description: "Restrict agent creation to admins only",
+    description:
+      "Prevent users from creating agents, allowing only admins and builders",
   },
   exploded_tables_query: {
     description: "Enhanced table querying with exploded views",
