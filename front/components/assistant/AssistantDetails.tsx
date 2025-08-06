@@ -22,6 +22,7 @@ import {
   TabsTrigger,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
+import { ReadOnlyTextArea } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { BrainIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -32,7 +33,6 @@ import { AgentMemorySection } from "@app/components/assistant/details/AgentMemor
 import { AssistantEditedSection } from "@app/components/assistant/details/AssistantEditedSection";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/AssistantKnowledgeSection";
 import { AssistantToolsSection } from "@app/components/assistant/details/AssistantToolsSection";
-import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { RestoreAssistantDialog } from "@app/components/assistant/RestoreAssistantDialog";
 import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
 import { MembersList } from "@app/components/members/MembersList";

@@ -10,9 +10,9 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { ReadOnlyTextArea } from "@dust-tt/sparkle";
 import Link from "next/link";
 
-import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type { WorkspaceType } from "@app/types";
