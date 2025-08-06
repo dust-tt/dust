@@ -9,6 +9,7 @@ import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
@@ -33,15 +34,17 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { ConversationType } from "@app/types";
+import type { AgentConfigurationType, ConversationType } from "@app/types";
 import { assertNever, CoreAPI } from "@app/types";
 
 export async function getJITServers(
   auth: Authenticator,
   {
+    agentConfiguration,
     conversation,
     attachments,
   }: {
+    agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
     attachments: ConversationAttachmentType[];
   }
@@ -50,6 +53,15 @@ export async function getJITServers(
 
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
   if (featureFlags.includes("jit_tools")) {
+    // Get the list of tools from the agent configuration to avoid duplicates.
+    const agentMcpServerViewIds = agentConfiguration.actions
+      .map((action) =>
+        isServerSideMCPServerConfiguration(action)
+          ? action.mcpServerViewId
+          : null
+      )
+      .filter((mcpServerViewId) => mcpServerViewId !== null);
+
     // Get the conversation MCP server views (aka Tools)
     const conversationMCPServerViews =
       await ConversationResource.fetchMCPServerViews(auth, conversation, true);
@@ -60,7 +72,10 @@ export async function getJITServers(
         conversationMCPServerView.mcpServerViewId
       );
 
-      if (!mcpServerViewResource) {
+      if (
+        !mcpServerViewResource ||
+        agentMcpServerViewIds.includes(mcpServerViewResource.sId)
+      ) {
         continue;
       }
 

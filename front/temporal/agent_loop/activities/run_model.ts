@@ -192,6 +192,7 @@ export async function runModelActivity({
 
   const attachments = listAttachments(conversation);
   const jitServers = await getJITServers(auth, {
+    agentConfiguration,
     conversation,
     attachments,
   });
