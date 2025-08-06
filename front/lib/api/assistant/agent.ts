@@ -3,6 +3,7 @@ import assert from "assert";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { wakeLock } from "@app/lib/wake_lock";
+import { createToolActionsActivity } from "@app/temporal/agent_loop/activities/create_tool_actions";
 import { runModelActivity } from "@app/temporal/agent_loop/activities/run_model";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
@@ -34,6 +35,7 @@ async function runAgentSynchronousWithStreaming(
       {
         runModelActivity,
         runToolActivity,
+        createToolActionsActivity,
       },
       startStep
     );
