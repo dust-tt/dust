@@ -613,6 +613,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_o1_mini_feature"
+  | "freshservice_tool"
   | "pro_plan_salesforce_connector"
   | "salesforce_synced_queries"
   | "salesforce_tool"
