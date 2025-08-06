@@ -107,6 +107,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         organizationTagsToExclude: null,
         ticketTagsToInclude: null,
         ticketTagsToExclude: null,
+        customFieldsConfig: [],
       }
     );
     const loggerArgs = {
