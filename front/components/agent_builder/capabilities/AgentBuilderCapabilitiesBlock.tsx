@@ -153,7 +153,6 @@ export function AgentBuilderCapabilitiesBlock() {
     ? null
     : dataVisualizationAction;
 
-  // fixme
   const handleEditSave = (updatedAction: AgentBuilderAction) => {
     if (dialogMode?.type === "edit") {
       update(dialogMode.index, updatedAction);
@@ -166,7 +165,6 @@ export function AgentBuilderCapabilitiesBlock() {
     setKnowledgeAction(null);
   };
 
-  // fixme
   const handleActionEdit = (action: AgentBuilderAction, index: number) => {
     const isDataSourceSelectionRequired =
       action.type === "MCP" &&

@@ -85,27 +85,26 @@ export function JsonSchemaSection({
   };
 
   const handleChange = (newSchemaString: string) => {
-    // Always update the string representation
-    jsonSchemaStringField.onChange(newSchemaString || null);
-
     // If the new schema string is empty, we reset the jsonSchema to
     // null. Storing a null jsonSchema in the database indicates that
     // the model will auto-generate the schema.
     if (newSchemaString === "") {
       jsonSchemaField.onChange(null);
+      jsonSchemaStringField.onChange(null);
       return;
     }
 
+    jsonSchemaStringField.onChange(newSchemaString);
+
     const parsedSchema = validateConfiguredJsonSchema(newSchemaString);
 
-    // We validate the jsonSchemaString when form is submitted, so it's okay to not update the value
+    // We validate the jsonSchemaString when the form is submitted, so it's okay to not update the jsonSchema value
     // when we cannot parse it.
     if (parsedSchema.isOk()) {
       jsonSchemaField.onChange(parsedSchema.value);
     }
   };
 
-  // Validate the current schema string for display purposes
   return (
     <div className="space-y-4">
       <div>
