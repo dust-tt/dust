@@ -1,8 +1,9 @@
-import { SIDE_PANEL_HASH_PARAM } from "@app/components/assistant/conversation/constant";
 import { assertNever } from "@dust-tt/client";
-import { useHashParam } from "@app/hooks/useHashParams";
 import React, { useEffect, useState } from "react";
-import { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
+
+import { SIDE_PANEL_HASH_PARAM } from "@app/components/assistant/conversation/constant";
+import { useHashParam } from "@app/hooks/useHashParams";
+import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
 
 type PanelType = "content" | "actions";
 
@@ -61,27 +62,30 @@ export function ConversationSidePanelProvider({
   const [data, setData] = useHashParam(SIDE_PANEL_HASH_PARAM);
   const [metadata, setMetadata] = useState<SidePanelMetadata>(null);
 
-  const openPanel = React.useCallback((params: OpenPanelParams) => {
-    setCurrentPanel(params.type);
+  const openPanel = React.useCallback(
+    (params: OpenPanelParams) => {
+      setCurrentPanel(params.type);
 
-    switch (params.type) {
-      case "actions":
-        setData(params.messageId);
-        setMetadata(params.metadata);
-        setCurrentPanel("actions");
-        break;
-      case "content":
-        params.timestamp
-          ? setData(`${params.fileId}@${params.timestamp}`)
-          : setData(params.fileId);
-        setMetadata(null);
-        setCurrentPanel("content");
-        break;
-      default:
-        const { type } = params;
-        assertNever(type);
-    }
-  }, []);
+      switch (params.type) {
+        case "actions":
+          setData(params.messageId);
+          setMetadata(params.metadata);
+          setCurrentPanel("actions");
+          break;
+        case "content":
+          params.timestamp
+            ? setData(`${params.fileId}@${params.timestamp}`)
+            : setData(params.fileId);
+          setMetadata(null);
+          setCurrentPanel("content");
+          break;
+        default:
+          const { type } = params;
+          assertNever(type);
+      }
+    },
+    [setData]
+  );
 
   const closePanel = React.useCallback(() => {
     setCurrentPanel(null);

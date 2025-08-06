@@ -5,7 +5,7 @@ import {
   ResizablePanelGroup,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useMemo } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AgentActionsPanel } from "@app/components/assistant/conversation/actions/AgentActionsPanel";
@@ -14,6 +14,8 @@ import { CoEditionProvider } from "@app/components/assistant/conversation/co_edi
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import { InteractiveContentContainer } from "@app/components/assistant/conversation/content/InteractiveContentContainer";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
+import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import {
   ConversationsNavigationProvider,
   useConversationsNavigation,
@@ -23,7 +25,6 @@ import { FileDropProvider } from "@app/components/assistant/conversation/FileUpl
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
@@ -38,7 +39,6 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 
 export interface ConversationLayoutProps {
   baseUrl: string;

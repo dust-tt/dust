@@ -1,13 +1,13 @@
 import { Spinner } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
 import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
 import { ClientExecutableRenderer } from "@app/components/assistant/conversation/content/ClientExecutableRenderer";
 import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/content/UnsupportedContentRenderer";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useFileMetadata } from "@app/lib/swr/files";
 import type { ConversationType, LightWorkspaceType } from "@app/types";
 import { clientExecutableContentType } from "@app/types";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { useMemo } from "react";
 
 interface InteractiveContentContainerProps {
   conversation: ConversationType | null;

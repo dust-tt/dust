@@ -7,10 +7,10 @@ import {
   CitationTitle,
 } from "@dust-tt/sparkle";
 
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
 import type { LightAgentMessageType } from "@app/types";
 import { clientExecutableContentType } from "@app/types";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 
 interface DefaultAgentMessageGeneratedFilesProps {
   document: MarkdownCitation;

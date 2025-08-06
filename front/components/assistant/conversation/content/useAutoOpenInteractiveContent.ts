@@ -1,10 +1,10 @@
 import React from "react";
 
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { isInteractiveFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
 import type { LightAgentMessageType } from "@app/types";
 import { isInteractiveFileContentType, removeNulls } from "@app/types";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 
 interface UseAutoOpenInteractiveContentProps {
   agentMessageToRender: LightAgentMessageType;

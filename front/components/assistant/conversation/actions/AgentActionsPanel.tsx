@@ -2,11 +2,11 @@ import { Spinner } from "@dust-tt/sparkle";
 import React from "react";
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { InteractiveContentHeader } from "@app/components/assistant/conversation/ResizablePanelHeader";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type { ConversationType, LightWorkspaceType } from "@app/types";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 
 interface AgentActionsPanelProps {
   conversation: ConversationType | null;
