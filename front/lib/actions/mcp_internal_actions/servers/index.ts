@@ -146,7 +146,7 @@ export async function getInternalMCPServer(
       return agentManagementServer(auth, agentLoopContext);
     case "freshservice":
       return freshserviceServer();
-    case "tables_filesystem":
+    case "data_warehouses":
       return tablesFilesystemServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);

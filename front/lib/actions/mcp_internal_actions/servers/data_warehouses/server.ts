@@ -46,7 +46,7 @@ const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "tables_filesystem",
+  name: "data_warehouses",
   version: "1.0.0",
   description:
     "Comprehensive tables navigation toolkit for browsing data warehouses and tables. Provides Unix-like " +

@@ -64,7 +64,8 @@ export const DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE =
 export type DataSourceFolderSpreadsheetMimeType =
   typeof DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE;
 
-type DataSourceMimeType = typeof DATA_SOURCE_MIME_TYPE;
+export type DataSourceMimeType = typeof DATA_SOURCE_MIME_TYPE;
+export type DataWarehouseMimeType = typeof DATA_WAREHOUSE_MIME_TYPE;
 
 export const CONTENT_NODE_MIME_TYPES = {
   GENERIC: {
@@ -350,6 +351,7 @@ export type DustMimeType =
   | SalesforceMimeType
   | GongMimeType
   | DataSourceMimeType
+  | DataWarehouseMimeType
   | DataSourceFolderSpreadsheetMimeType;
 
 export function isDustMimeType(mimeType: string): mimeType is DustMimeType {

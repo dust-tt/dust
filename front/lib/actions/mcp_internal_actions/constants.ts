@@ -43,7 +43,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "run_dust_app",
   "salesforce",
   "search",
-  "tables_filesystem",
+  "data_warehouses",
   "think",
   "web_search_&_browse",
   "google_calendar",
@@ -586,13 +586,13 @@ export const INTERNAL_MCP_SERVERS = {
     },
     timeoutMs: undefined,
   },
-  tables_filesystem: {
+  data_warehouses: {
     id: 1012,
     availability: "auto",
     allowMultipleInstances: false,
     isPreview: true,
     isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("tables_filesystem");
+      return !featureFlags.includes("data_warehouses_file_system");
     },
     tools_stakes: undefined,
     timeoutMs: undefined,
