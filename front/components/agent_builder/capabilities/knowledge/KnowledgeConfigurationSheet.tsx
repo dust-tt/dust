@@ -23,7 +23,7 @@ import {
   transformTreeToSelectionConfigurations,
 } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import { CAPABILITY_CONFIGS } from "@app/components/agent_builder/capabilities/knowledge/utils";
-import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/formValidation";
+import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { MCPServerViewsKnowledgeDropdown } from "@app/components/agent_builder/capabilities/MCPServerViewsKnowledgeDropdown";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
