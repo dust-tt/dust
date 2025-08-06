@@ -8,7 +8,6 @@ import {
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
-import { InteractiveContentProvider } from "@app/components/assistant/conversation/content/InteractiveContentContext";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -120,16 +119,14 @@ export function AgentBuilderPreview() {
         )}
         <div className="flex-1 overflow-y-auto">
           {conversation && user && (
-            <InteractiveContentProvider>
-              <ConversationViewer
-                owner={owner}
-                user={user}
-                conversationId={conversation.sId}
-                onStickyMentionsChange={setStickyMentions}
-                isInModal
-                key={conversation.sId}
-              />
-            </InteractiveContentProvider>
+            <ConversationViewer
+              owner={owner}
+              user={user}
+              conversationId={conversation.sId}
+              onStickyMentionsChange={setStickyMentions}
+              isInModal
+              key={conversation.sId}
+            />
           )}
         </div>
         <div className="flex-shrink-0 p-4">

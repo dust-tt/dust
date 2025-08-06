@@ -1,7 +1,10 @@
 import { assertNever } from "@dust-tt/client";
 import React, { useEffect, useState } from "react";
 
-import { SIDE_PANEL_HASH_PARAM } from "@app/components/assistant/conversation/constant";
+import {
+  SIDE_PANEL_HASH_PARAM,
+  SIDE_PANEL_TYPE_HASH_PARAM,
+} from "@app/components/assistant/conversation/constant";
 import { useHashParam } from "@app/hooks/useHashParams";
 import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
 
@@ -28,7 +31,7 @@ interface AgentActionState {
 type SidePanelMetadata = AgentActionState | null;
 
 interface ConversationSidePanelContextType {
-  currentPanel: PanelType | null;
+  currentPanel: PanelType | undefined;
   openPanel: (params: OpenPanelParams) => void;
   closePanel: () => void;
   data: string | undefined;
@@ -57,9 +60,10 @@ interface ConversationSidePanelProviderProps {
 export function ConversationSidePanelProvider({
   children,
 }: ConversationSidePanelProviderProps) {
-  const [currentPanel, setCurrentPanel] = useState<PanelType | null>(null);
-
   const [data, setData] = useHashParam(SIDE_PANEL_HASH_PARAM);
+  const [currentPanel, setCurrentPanel] = useHashParam(
+    SIDE_PANEL_TYPE_HASH_PARAM
+  );
   const [metadata, setMetadata] = useState<SidePanelMetadata>(null);
 
   const openPanel = React.useCallback(
@@ -84,22 +88,41 @@ export function ConversationSidePanelProvider({
           assertNever(type);
       }
     },
-    [setData]
+    [setData, setCurrentPanel]
   );
 
   const closePanel = React.useCallback(() => {
-    setCurrentPanel(null);
-  }, []);
+    setCurrentPanel(undefined);
+  }, [setCurrentPanel]);
 
+  // Initialize panel state from URL hash parameters
   useEffect(() => {
-    if (!data) {
-      setCurrentPanel(null);
+    if (
+      data &&
+      currentPanel &&
+      (currentPanel === "content" || currentPanel === "actions")
+    ) {
+      setCurrentPanel(currentPanel);
+
+      // Set default metadata for actions panel when opened from URL
+      if (currentPanel === "actions" && !metadata) {
+        setMetadata({
+          actionProgress: new Map(),
+          isActing: false,
+          messageStatus: "succeeded",
+        });
+      }
+    } else if (!data) {
+      setCurrentPanel(undefined);
     }
-  }, [data]);
+  }, [data, currentPanel, setCurrentPanel, metadata]);
 
   const value: ConversationSidePanelContextType = React.useMemo(
     () => ({
-      currentPanel,
+      currentPanel:
+        currentPanel !== "content" && currentPanel !== "actions"
+          ? undefined
+          : currentPanel,
       openPanel,
       closePanel,
       data,

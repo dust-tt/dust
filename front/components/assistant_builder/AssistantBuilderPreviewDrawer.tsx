@@ -23,7 +23,6 @@ import { useContext, useEffect, useRef, useState } from "react";
 
 import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
-import { InteractiveContentProvider } from "@app/components/assistant/conversation/content/InteractiveContentContext";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -235,16 +234,14 @@ export default function AssistantBuilderRightPanel({
                       )}
                       <div className="flex-grow overflow-y-auto">
                         {conversation && (
-                          <InteractiveContentProvider>
-                            <ConversationViewer
-                              owner={owner}
-                              user={user}
-                              conversationId={conversation.sId}
-                              onStickyMentionsChange={setStickyMentions}
-                              isInModal
-                              key={conversation.sId}
-                            />
-                          </InteractiveContentProvider>
+                          <ConversationViewer
+                            owner={owner}
+                            user={user}
+                            conversationId={conversation.sId}
+                            onStickyMentionsChange={setStickyMentions}
+                            isInModal
+                            key={conversation.sId}
+                          />
                         )}
                       </div>
                       <div className="shrink-0">
