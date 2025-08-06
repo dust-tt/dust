@@ -198,35 +198,7 @@ export interface ZendeskFetchedOrganization {
 
 export interface ZendeskFetchedTicketField {
   id: number;
-  url: string;
-  type: string;
   title: string;
-  raw_title: string;
-  description: string;
-  raw_description: string;
-  position: number;
-  active: boolean;
-  required: boolean;
-  collapsed_for_agents: boolean;
-  regexp_for_validation: string | null;
-  title_in_portal: string;
-  raw_title_in_portal: string;
-  visible_in_portal: boolean;
-  editable_in_portal: boolean;
-  required_in_portal: boolean;
-  tag: string;
   created_at: string;
   updated_at: string;
-  removable: boolean;
-  agent_description: string | null;
-  system_field_options: Record<string, unknown> | null;
-  custom_field_options: Array<{
-    id: number;
-    name: string;
-    raw_name: string;
-    value: string;
-    default: boolean;
-  }> | null;
-  sub_type_id: number | null;
-  follower_ids: number[] | null;
 }
