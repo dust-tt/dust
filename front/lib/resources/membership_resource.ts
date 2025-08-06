@@ -730,6 +730,40 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         { role: newRole },
         { where: { id: membership.id }, transaction }
       );
+
+      if (workspace.workOSOrganizationId && user.workOSUserId) {
+        try {
+          const workos = getWorkOS();
+          const workOSMemberships =
+            await workos.userManagement.listOrganizationMemberships({
+              organizationId: workspace.workOSOrganizationId,
+              userId: user.workOSUserId,
+            });
+          if (workOSMemberships.data.length > 0) {
+            await workos.userManagement.updateOrganizationMembership(
+              workOSMemberships.data[0].id,
+              {
+                roleSlug: newRole,
+              }
+            );
+          } else {
+            await workos.userManagement.createOrganizationMembership({
+              userId: user.workOSUserId,
+              organizationId: workspace.workOSOrganizationId,
+              roleSlug: newRole,
+            });
+          }
+        } catch (error) {
+          logger.error(
+            {
+              workspaceId: workspace.id,
+              userId: user.id,
+              error,
+            },
+            "Failed to udpate WorkOS membership"
+          );
+        }
+      }
     } else {
       // If the last membership was terminated, we create a new membership with the new role.
       // Preserve the origin from the previous membership.
