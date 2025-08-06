@@ -127,6 +127,7 @@ async function processConversation(
             createdAt: lastMessageByUserId[userId],
             updatedAt: lastMessageByUserId[userId],
             action: "posted",
+            state: "read",
           },
           {
             silent: true,

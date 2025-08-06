@@ -204,6 +204,7 @@ export type ConversationWithoutContentType = {
   id: ModelId;
   created: number;
   updated?: number;
+  state?: ConversationParticipantState;
   owner: WorkspaceType;
   sId: string;
   title: string | null;
@@ -221,6 +222,10 @@ export type ConversationType = ConversationWithoutContentType & {
 };
 
 export type ParticipantActionType = "posted" | "reacted" | "subscribed";
+export type ConversationParticipantState =
+  | "read"
+  | "unread"
+  | "action_required";
 
 /**
  * Conversation participants.
