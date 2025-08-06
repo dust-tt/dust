@@ -231,9 +231,7 @@ export function ZendeskCustomFieldFilters({
         <div className="text-muted-foreground dark:text-muted-foreground-night">
           <p className="mb-4">
             Configure custom ticket field that should be included as labels on
-            synced tickets. Custom field values will be added as tags in the
-            format "fieldName:value", making them searchable and filterable in
-            Dust.
+            synced tickets.
           </p>
 
           {customFields.length > 0 ? (
