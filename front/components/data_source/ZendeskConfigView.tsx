@@ -208,12 +208,13 @@ export function ZendeskConfigView({
                 type="number"
                 onChange={(e) => setRetentionInput(e.target.value)}
                 disabled={readOnly || !isAdmin || loading}
-                placeholder={retentionPeriodDays ?? undefined}
-                className="w-20"
+                placeholder={
+                  retentionPeriodDays
+                    ? `${retentionPeriodDays} days`
+                    : undefined
+                }
+                className="w-24"
               />
-              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                days
-              </span>
               <Button
                 size="sm"
                 onClick={handleRetentionPeriodSave}
