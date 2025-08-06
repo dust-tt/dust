@@ -365,8 +365,6 @@ export class ConfluenceClient {
       bypassThrottle = false,
     }: { retryCount?: number; bypassThrottle?: boolean } = {}
   ): Promise<T> {
-    console.log(">>> TOKEN: ", this.authToken);
-
     const response = await (async () => {
       try {
         return await undiciFetch(`${this.apiUrl}${endpoint}`, {
@@ -539,11 +537,9 @@ export class ConfluenceClient {
 
     const responseBody = await response.json();
 
-    console.log(">>>", JSON.stringify(responseBody, null, 2));
     const result = codec.decode(responseBody);
 
     if (isLeft(result)) {
-      console.log(">>> ERROR", reporter.formatValidationErrors(result.left));
       throw new ConfluenceClientError("Response validation failed", {
         type: "validation_error",
         data: {

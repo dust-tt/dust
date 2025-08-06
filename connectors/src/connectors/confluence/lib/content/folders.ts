@@ -2,7 +2,10 @@ import { Op } from "sequelize";
 
 import type { ConfluenceFolderRef } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { BaseConfluenceCheckAndUpsertSingleEntityActivityInput } from "@connectors/connectors/confluence/lib/content/types";
-import { HiddenContentNodeParentId } from "@connectors/connectors/confluence/lib/content/types";
+import {
+  HiddenContentNodeParentId,
+  makeConfluenceContentUrl,
+} from "@connectors/connectors/confluence/lib/content/types";
 import {
   makeEntityInternalId,
   makeFolderInternalId,
@@ -153,6 +156,10 @@ export async function confluenceCheckAndUpsertSingleFolder({
   }
 
   const parentId = parents[1];
+  const contentUrl = makeConfluenceContentUrl({
+    baseUrl: confluenceConfig.url,
+    suffix: folder._links.tinyui,
+  });
 
   localLogger.info("Upserting Confluence folder.");
   await upsertDataSourceFolder({
@@ -161,7 +168,7 @@ export async function confluenceCheckAndUpsertSingleFolder({
     mimeType: INTERNAL_MIME_TYPES.CONFLUENCE.FOLDER,
     parentId,
     parents,
-    sourceUrl: folder._links.tinyui,
+    sourceUrl: contentUrl,
     title: folder.title,
   });
 

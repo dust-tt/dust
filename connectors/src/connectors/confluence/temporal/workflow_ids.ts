@@ -31,13 +31,3 @@ export function makeConfluenceRemoveSpaceWorkflowIdFromParentId(
 export function makeConfluencePersonalDataWorkflowId() {
   return `confluence-personal-data-reporting`;
 }
-
-export function makeConfluenceDocumentUrl({
-  baseUrl,
-  suffix,
-}: {
-  baseUrl: string;
-  suffix: string;
-}) {
-  return `${baseUrl}/wiki${suffix}`;
-}

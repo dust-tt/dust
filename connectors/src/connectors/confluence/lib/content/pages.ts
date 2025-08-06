@@ -7,7 +7,11 @@ import type {
   ConfluencePageWithBodyType,
 } from "@connectors/connectors/confluence/lib/confluence_client";
 import type { BaseConfluenceCheckAndUpsertSingleEntityActivityInput } from "@connectors/connectors/confluence/lib/content/types";
-import { HiddenContentNodeParentId } from "@connectors/connectors/confluence/lib/content/types";
+import {
+  HiddenContentNodeParentId,
+  makeConfluenceContentUrl,
+  makeConfluenceDocumentUrl,
+} from "@connectors/connectors/confluence/lib/content/types";
 import {
   makeEntityInternalId,
   makePageInternalId,
@@ -17,7 +21,6 @@ import {
   getConfluenceClient,
   getConfluenceConfig,
 } from "@connectors/connectors/confluence/lib/utils";
-import { makeConfluenceDocumentUrl } from "@connectors/connectors/confluence/temporal/workflow_ids";
 import { filterCustomTags } from "@connectors/connectors/shared/tags";
 import type { UpsertDataSourceDocumentParams } from "@connectors/lib/data_sources";
 import {
@@ -130,7 +133,7 @@ export async function confluenceUpsertPageToDataSource({
   });
 
   const documentId = makePageInternalId(page.id);
-  const documentUrl = makeConfluenceDocumentUrl({
+  const documentUrl = makeConfluenceContentUrl({
     baseUrl: confluenceConfig.url,
     suffix: page._links.tinyui,
   });
