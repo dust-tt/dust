@@ -86,7 +86,7 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
         });
         if (connectionRes.isErr()) {
           logger.error(
-            "Failed to get access token for admin-setup connection when updating the config for personal actions",
+            "Failed to get connection metadata for admin-setup connection when updating the config for personal actions",
             {
               error: connectionRes.error,
             }
@@ -96,37 +96,91 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
           );
         }
 
-        const workspaceId = connectionRes.value.connection.metadata.workspace_id;
-        const workspaceName = connectionRes.value.connection.metadata.workspace_name;
+        // The workspace_id in metadata is the Dust workspace ID, not the Notion workspace ID.
+        // We need to get the Notion workspace info from the raw OAuth response
+        const oauthRes = await oauthApi.getAccessToken({
+          connectionId: mcpServerConnectionRes.value.connectionId,
+        });
+        
+        if (oauthRes.isErr()) {
+          throw new Error(
+            "Failed to get access token for admin connection: " + oauthRes.error.message
+          );
+        }
 
-        return {
+        // Extract Notion workspace info from the raw OAuth response
+        const notionWorkspaceId = (oauthRes.value.scrubbed_raw_json as any)?.workspace_id;
+        const notionWorkspaceName = (oauthRes.value.scrubbed_raw_json as any)?.workspace_name;
+
+        if (!notionWorkspaceId) {
+          throw new Error("No workspace_id found in admin OAuth response");
+        }
+
+        const updatedConfig = {
           ...restConfig,
-          requested_workspace_id: workspaceId,
-          requested_workspace_name: workspaceName,
+          requested_notion_workspace_id: notionWorkspaceId,
+          requested_notion_workspace_name: notionWorkspaceName || "Unknown Workspace",
         };
+
+        return updatedConfig;
       }
     }
 
     return extraConfig;
   }
 
-  checkConnectionValidPostFinalize(connection: OAuthConnectionType) {
-    // If a workspace was requested, we need to check that the workspace id is the same as the requested workspace id.
-    if ("requested_workspace_id" in connection.metadata) {
-      if (
-        connection.metadata.workspace_id === connection.metadata.requested_workspace_id
-      ) {
-        return new Ok(undefined);
+  async checkConnectionValidPostFinalize(connection: OAuthConnectionType) {
+    // If a Notion workspace was requested, we need to check that the Notion workspace id is the same as the requested one.
+    if ("requested_notion_workspace_id" in connection.metadata) {
+      const requestedNotionWorkspaceId = connection.metadata.requested_notion_workspace_id;
+      const requestedNotionWorkspaceName = connection.metadata.requested_notion_workspace_name;
+      
+      try {
+        // Get the current user's OAuth token information to extract their Notion workspace info
+        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+        const accessTokenRes = await oauthApi.getAccessToken({
+          connectionId: connection.connection_id,
+        });
+        
+        if (accessTokenRes.isErr()) {
+          return new Err({
+            message:
+              "Unable to validate Notion workspace. Please try connecting again.",
+          });
+        }
+        
+        // Extract current user's Notion workspace info from raw OAuth response
+        const currentNotionWorkspaceId = (accessTokenRes.value.scrubbed_raw_json as any)?.workspace_id;
+        const currentNotionWorkspaceName = (accessTokenRes.value.scrubbed_raw_json as any)?.workspace_name;
+        
+        if (!currentNotionWorkspaceId) {
+          return new Err({
+            message:
+              "Unable to validate Notion workspace. Please try connecting again.",
+          });
+        }
+        
+        if (currentNotionWorkspaceId === requestedNotionWorkspaceId) {
+          return new Ok(undefined);
+        }
+        
+        return new Err({
+          message:
+            "You must connect to the Notion workspace configured by your admin (" +
+            requestedNotionWorkspaceName +
+            "), instead of the current workspace (" +
+            (currentNotionWorkspaceName || "Unknown") +
+            ").",
+        });
+        
+      } catch (error) {
+        return new Err({
+          message:
+            "Unable to validate Notion workspace. Please try connecting again.",
+        });
       }
-      return new Err({
-        message:
-          "You must connect to the Notion workspace configured by your admin (" +
-          connection.metadata.requested_workspace_name +
-          "), instead of the current workspace (" +
-          connection.metadata.workspace_name +
-          ").",
-      });
     }
+
     return new Ok(undefined);
   }
 }

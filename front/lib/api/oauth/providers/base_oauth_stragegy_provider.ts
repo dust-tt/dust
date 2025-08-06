@@ -75,5 +75,5 @@ export interface BaseOAuthStrategyProvider {
 
   checkConnectionValidPostFinalize?: (
     connection: OAuthConnectionType
-  ) => Result<void, { message: string }>;
+  ) => Result<void, { message: string }> | Promise<Result<void, { message: string }>>;
 }
