@@ -117,7 +117,7 @@ export function ZendeskTagFilters({
       }
       action={
         <div className="flex flex-col gap-2">
-          {isEditing ? (
+          {isEditing && (
             <>
               <div className="flex flex-col gap-2">
                 <Tabs
@@ -157,20 +157,23 @@ export function ZendeskTagFilters({
                 />
               </div>
             </>
-          ) : (
-            <Button
-              size="sm"
-              onClick={handleEdit}
-              disabled={readOnly || !isAdmin || loading}
-              label="Add Tags"
-            />
           )}
         </div>
       }
     >
       <ContextItem.Description>
         <div className="text-muted-foreground dark:text-muted-foreground-night">
-          <p className="mb-4">{description}</p>
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <p>{description}</p>
+            {!isEditing && (
+              <Button
+                size="sm"
+                onClick={handleEdit}
+                disabled={readOnly || !isAdmin || loading}
+                label="Add Tags"
+              />
+            )}
+          </div>
 
           {hasIncludedTags && (
             <div className="mb-4">
