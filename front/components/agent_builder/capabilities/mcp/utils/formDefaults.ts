@@ -8,7 +8,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
  * @returns Default configuration object
  */
 export function getDefaultConfiguration(
-  mcpServerView: MCPServerViewType | null | undefined
+  mcpServerView: MCPServerViewType | null
 ): MCPServerConfigurationType {
   const requirements = mcpServerView
     ? getMCPServerRequirements(mcpServerView)
@@ -55,9 +55,7 @@ export function getDefaultConfiguration(
  * @param mcpServerView - The MCP server view
  * @returns Default form data object
  */
-export function getDefaultFormValues(
-  mcpServerView: MCPServerViewType | null | undefined
-) {
+export function getDefaultFormValues(mcpServerView: MCPServerViewType | null) {
   return {
     name: "",
     description: "",
