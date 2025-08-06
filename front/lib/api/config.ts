@@ -147,7 +147,7 @@ const config = {
   getOAuthNotionClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_NOTION_CLIENT_ID");
   },
-  getOAuthNotionToolsClientId: (): string => {
+  getOAuthNotionPlatformActionsClientId: (): string => {
     return EnvironmentConfig.getEnvVariable(
       "OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_ID"
     );
