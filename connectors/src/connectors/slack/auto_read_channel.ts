@@ -21,7 +21,7 @@ import { SlackConfigurationResource } from "@connectors/resources/slack_configur
 import type { SlackAutoReadPattern } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
-function findMatchingChannelPatterns(
+export function findMatchingChannelPatterns(
   remoteChannelName: string,
   autoReadChannelPatterns: SlackAutoReadPattern[]
 ): SlackAutoReadPattern[] {
