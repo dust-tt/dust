@@ -18,7 +18,7 @@ import { getOAuthConnectionAccessToken } from "@connectors/types";
 
 const PAGE_FETCH_LIMIT = 100;
 
-const CONNECTOR_IDS_WITH_FOLDER_SUPPORT: ModelId[] = [27089];
+const CONNECTOR_IDS_WITH_FOLDER_SUPPORT: ModelId[] = [1126, 27089];
 
 export async function getConfluenceCloudInformation(accessToken: string) {
   const client = new ConfluenceClient(accessToken);

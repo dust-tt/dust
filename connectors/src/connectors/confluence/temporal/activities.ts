@@ -426,6 +426,7 @@ export async function confluenceGetTopLevelContentIdsActivity({
   const { childContentRefs, nextPageCursor } = await getActiveChildContentRefs(
     client,
     {
+      connectorId,
       pageCursor,
       parentContentId: rootContentId,
       spaceKey,
