@@ -162,7 +162,7 @@ export { SliderToggle } from "./SliderToggle";
 export { default as Spinner } from "./Spinner";
 export { FlexSplitButton, SplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
-export { TextArea } from "./TextArea";
+export { ReadOnlyTextArea, TextArea } from "./TextArea";
 export {
   Tooltip,
   TooltipContent,

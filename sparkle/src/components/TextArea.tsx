@@ -110,4 +110,19 @@ const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 );
 TextArea.displayName = "TextArea";
 
-export { TextArea };
+const ReadOnlyTextArea = ({ content }: { content: string | null }) => {
+  return (
+    <TextArea
+      disabled
+      isDisplay
+      className={cn(
+        "s-copy-sm s-h-full s-min-h-60 s-w-full s-min-w-0 s-rounded-xl",
+        "s-resize-none s-border-border s-bg-muted-background",
+        "dark:s-border-border-night dark:s-bg-muted-background-night"
+      )}
+      defaultValue={content ?? ""}
+    />
+  );
+};
+
+export { ReadOnlyTextArea, TextArea };
