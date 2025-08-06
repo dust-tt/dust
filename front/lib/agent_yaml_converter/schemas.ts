@@ -82,45 +82,26 @@ export const timeFrameActionConfigurationSchema =
 
 /**
  * YAML Action Schemas
- * Each action type extends the base schema with specific configuration
  */
-export const agentYAMLSearchActionSchema = baseAgentYAMLActionSchema.extend({
-  type: z.literal("SEARCH"),
-  configuration: baseDataSourceActionConfigurationSchema,
-});
-
 export const agentYAMLDataVisualizationActionSchema =
   baseAgentYAMLActionSchema.extend({
     type: z.literal("DATA_VISUALIZATION"),
     configuration: z.object({}), // Empty configuration
   });
 
-export const agentYAMLIncludeDataActionSchema =
-  baseAgentYAMLActionSchema.extend({
-    type: z.literal("INCLUDE_DATA"),
-    configuration: timeFrameActionConfigurationSchema,
-  });
-
-export const agentYAMLExtractDataActionSchema =
-  baseAgentYAMLActionSchema.extend({
-    type: z.literal("EXTRACT_DATA"),
-    configuration: timeFrameActionConfigurationSchema.extend({
-      json_schema: z.object({}).nullable(),
-    }),
-  });
-
-export const agentYAMLQueryTablesActionSchema =
-  baseAgentYAMLActionSchema.extend({
-    type: z.literal("QUERY_TABLES"),
-    configuration: timeFrameActionConfigurationSchema,
-  });
+export const agentYAMLMCPActionSchema = baseAgentYAMLActionSchema.extend({
+  type: z.literal("MCP"),
+  configuration: z.object({
+    mcp_server_name: z.string(),
+    data_sources: z.record(z.string(), agentYAMLDataSourceConfigurationSchema).optional(),
+    time_frame: agentYAMLTimeFrameSchema.optional(),
+    json_schema: z.object({}).nullable().optional(),
+  }),
+});
 
 export const agentYAMLActionSchema = z.discriminatedUnion("type", [
-  agentYAMLSearchActionSchema,
   agentYAMLDataVisualizationActionSchema,
-  agentYAMLIncludeDataActionSchema,
-  agentYAMLExtractDataActionSchema,
-  agentYAMLQueryTablesActionSchema,
+  agentYAMLMCPActionSchema,
 ]);
 
 export const agentYAMLSlackIntegrationSchema = z.object({
