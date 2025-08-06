@@ -127,7 +127,6 @@ export interface CitationType {
   href?: string;
   title: string;
   provider: string;
-  chunks?: string[];
 }
 
 /**
