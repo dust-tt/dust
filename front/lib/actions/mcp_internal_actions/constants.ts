@@ -577,7 +577,7 @@ export const INTERNAL_MCP_SERVERS = {
     id: 1011,
     availability: "auto",
     allowMultipleInstances: false,
-    isPreview: false,
+    isPreview: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("agent_management_tool");
     },
@@ -589,10 +589,13 @@ export const INTERNAL_MCP_SERVERS = {
   tables_filesystem: {
     id: 1012,
     availability: "auto",
+    allowMultipleInstances: false,
+    isPreview: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("tables_filesystem");
     },
-    isPreview: true,
+    tools_stakes: undefined,
+    timeoutMs: undefined,
   },
   // Using satisfies here instead of : type to avoid typescript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies Record<
