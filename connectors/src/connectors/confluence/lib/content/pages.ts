@@ -10,7 +10,6 @@ import type { BaseConfluenceCheckAndUpsertSingleEntityActivityInput } from "@con
 import {
   HiddenContentNodeParentId,
   makeConfluenceContentUrl,
-  makeConfluenceDocumentUrl,
 } from "@connectors/connectors/confluence/lib/content/types";
 import {
   makeEntityInternalId,
