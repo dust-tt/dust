@@ -206,7 +206,9 @@ export function ZendeskConfigView({
               placeholder={retentionPeriodDays ?? undefined}
               className="w-20"
             />
-            <span className="text-sm text-muted-foreground">days</span>
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              days
+            </span>
             <Button
               size="sm"
               onClick={handleRetentionPeriodSave}
