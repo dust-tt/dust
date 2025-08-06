@@ -1,3 +1,5 @@
+import assert from "assert";
+
 import type {
   ActionBaseParams,
   MCPActionType,
@@ -32,7 +34,7 @@ interface ActionBlob {
 }
 
 export type CreateToolActionsResult = {
-  actionBlobs?: ActionBlob[];
+  actionBlobs: ActionBlob[];
 };
 
 export async function createToolActionsActivity(
@@ -113,11 +115,11 @@ async function createActionForTool(
   // Fetch step content to derive inputs, functionCallId, and step.
   const stepContent =
     await AgentStepContentResource.fetchByModelId(stepContentId);
-  if (!stepContent) {
-    throw new Error(
-      `Step content not found for stepContentId: ${stepContentId}`
-    );
-  }
+  assert(
+    stepContent,
+    `Step content not found for stepContentId: ${stepContentId}`
+  );
+
   if (!isFunctionCallContent(stepContent.value)) {
     throw new Error(
       `Expected step content to be a function call, got: ${stepContent.value.type}`
