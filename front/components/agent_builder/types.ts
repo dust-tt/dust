@@ -206,7 +206,7 @@ export const capabilityFormSchema = z
   });
 
 export function getDefaultMCPAction(
-  mcpServerView: MCPServerViewType | null
+  mcpServerView?: MCPServerViewType
 ): AgentBuilderAction {
   const requirements = getMCPServerRequirements(mcpServerView);
   const configuration = getDefaultConfiguration(mcpServerView);

@@ -92,6 +92,7 @@ interface MCPServerViewsDialogProps {
   mode: DialogMode | null;
   onModeChange: (mode: DialogMode | null) => void;
   onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
+  getAgentInstructions: () => string;
 }
 
 export function MCPServerViewsDialog({
@@ -100,6 +101,7 @@ export function MCPServerViewsDialog({
   mode,
   onModeChange,
   onActionUpdate,
+  getAgentInstructions,
 }: MCPServerViewsDialogProps) {
   const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
@@ -420,7 +422,7 @@ export function MCPServerViewsDialog({
                 {requirements.mayRequireJsonSchemaConfiguration && (
                   <JsonSchemaSection
                     owner={owner}
-                    fieldName="configuration.jsonSchema"
+                    getAgentInstructions={getAgentInstructions}
                   />
                 )}
               </div>
