@@ -544,6 +544,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         await workos.userManagement.createOrganizationMembership({
           userId: user.workOSUserId,
           organizationId: workspace.workOSOrganizationId,
+          roleSlug: role,
         });
       } catch (error) {
         logger.error(
