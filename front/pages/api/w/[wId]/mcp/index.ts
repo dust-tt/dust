@@ -2,12 +2,15 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { internalMCPServerNameToFirstId } from "@app/lib/actions/mcp_helper";
 import {
   DEFAULT_MCP_SERVER_ICON,
   isCustomServerIconType,
 } from "@app/lib/actions/mcp_icons";
-import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  getAllowMultipleInstancesOfInternalMCPServerById,
+  isInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
@@ -271,7 +274,7 @@ async function handler(
           });
         }
 
-        const internalMCPServerId = internalMCPServerNameToSId({
+        const internalMCPServerId = internalMCPServerNameToFirstId({
           name,
           workspaceId: auth.getNonNullableWorkspace().id,
         });
@@ -282,12 +285,16 @@ async function handler(
             internalMCPServerId
           );
 
-        if (existingServer) {
+        if (
+          existingServer &&
+          !getAllowMultipleInstancesOfInternalMCPServerById(internalMCPServerId)
+        ) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: "This internal tool has already been added",
+              message:
+                "This internal tool has already been added and only one instance is allowed.",
             },
           });
         }
