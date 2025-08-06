@@ -53,8 +53,8 @@ import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
-import { O4_MINI_MODEL_ID } from "@app/types";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { O4_MINI_MODEL_ID } from "@app/types";
 
 export type SelectedTool =
   | {
