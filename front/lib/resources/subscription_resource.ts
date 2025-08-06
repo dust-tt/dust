@@ -4,10 +4,10 @@ import { Op } from "sequelize";
 import type Stripe from "stripe";
 
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
+import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { Subscription } from "@app/lib/models/plan";
-import { Plan } from "@app/lib/models/plan";
+import { Plan, Subscription } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
@@ -15,9 +15,10 @@ import {
   isEntreprisePlan,
   isFreePlan,
   isProPlan,
+  isUpgraded,
+  PRO_PLAN_SEAT_29_CODE,
+  PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
-import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
-import { PRO_PLAN_SEAT_39_CODE } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   cancelSubscriptionImmediately,
@@ -460,11 +461,15 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       return;
     }
 
-    await this.internalSubscribeWorkspaceToFreePlan({
+    const newSubscription = await this.internalSubscribeWorkspaceToFreePlan({
       workspaceId: owner.sId,
       planCode: newPlan.code,
       endDate,
     });
+
+    if (isUpgraded(newSubscription.getPlan())) {
+      await getOrCreateWorkOSOrganization(owner);
+    }
   }
 
   static async maybeCancelInactiveTrials(
