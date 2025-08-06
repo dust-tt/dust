@@ -34,7 +34,6 @@ export function ZendeskCustomFieldFilters({
   const { isDark } = useTheme();
   const sendNotification = useSendNotification();
   const [inputValue, setInputValue] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
 
   const {
     configValue: customFieldsConfigValue,
@@ -168,20 +167,10 @@ export function ZendeskCustomFieldFilters({
 
     await addCustomFieldByName(inputValue.trim());
     setInputValue("");
-    setIsEditing(false);
   };
 
   const handleRemoveField = async (fieldId: number) => {
     await removeCustomField(fieldId);
-  };
-
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
-
-  const handleCancel = () => {
-    setInputValue("");
-    setIsEditing(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -221,38 +210,20 @@ export function ZendeskCustomFieldFilters({
       }
       action={
         <div className="flex items-center gap-2">
-          {isEditing ? (
-            <>
-              <Input
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Enter custom field name"
-                disabled={readOnly || !isAdmin || loading}
-                className="w-80"
-              />
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={readOnly || !isAdmin || loading || !inputValue.trim()}
-                label="Add"
-              />
-              <Button
-                size="sm"
-                variant="ghost-secondary"
-                onClick={handleCancel}
-                disabled={readOnly || !isAdmin || loading}
-                label="Cancel"
-              />
-            </>
-          ) : (
-            <Button
-              size="sm"
-              onClick={handleEdit}
-              disabled={readOnly || !isAdmin || loading}
-              label="Add Custom Field"
-            />
-          )}
+          <Input
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Enter custom field name"
+            disabled={readOnly || !isAdmin || loading}
+            className="w-80"
+          />
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={readOnly || !isAdmin || loading || !inputValue.trim()}
+            label="Add"
+          />
         </div>
       }
     >
