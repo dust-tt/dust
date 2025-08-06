@@ -13,6 +13,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
+import { safeParseJSON } from "@app/types";
 
 interface CustomField {
   id: number;
@@ -53,7 +54,7 @@ export function ZendeskCustomFieldFilters({
     if (parsingResult.isErr()) {
       return [];
     }
-    return parsingResult.value;
+    return (parsingResult.value || []) as CustomField[];
   }, [customFieldsConfigValue]);
 
   const addCustomFieldByName = useCallback(
@@ -258,10 +259,10 @@ export function ZendeskCustomFieldFilters({
       <ContextItem.Description>
         <div className="text-muted-foreground dark:text-muted-foreground-night">
           <p className="mb-4">
-            Configure custom ticket field names that should be included as tags
-            when syncing tickets. Custom field values will be added as tags in
-            the format "fieldName:value", making them searchable and filterable
-            in Dust.
+            Configure custom ticket field that should be included as labels on
+            synced tickets. Custom field values will be added as tags in the
+            format "fieldName:value", making them searchable and filterable in
+            Dust.
           </p>
 
           {customFields.length > 0 ? (
@@ -272,18 +273,10 @@ export function ZendeskCustomFieldFilters({
               {renderCustomFields()}
             </div>
           ) : (
-            <p className="mb-4 text-sm text-muted-foreground">
-              No custom fields configured. Custom field values will not be added
-              as tags.
+            <p className="mb-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              No custom fields configured.
             </p>
           )}
-
-          <p className="mt-2 text-xs text-muted-foreground">
-            Enter the exact name of the custom field as it appears in Zendesk.
-            The field will be validated against available fields when added.
-            Field values will be formatted as "fieldName:value" tags during
-            sync.
-          </p>
         </div>
       </ContextItem.Description>
     </ContextItem>
