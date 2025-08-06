@@ -1,19 +1,13 @@
-import {
-  cn,
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@dust-tt/sparkle";
+import { cn, ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import { AgentActionsPanel } from "@app/components/assistant/conversation/actions/AgentActionsPanel";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
-import { InteractiveContentContainer } from "@app/components/assistant/conversation/content/InteractiveContentContainer";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
+import ConversationSidePanelContainer from "@app/components/assistant/conversation/ConversationSidePanelContainer";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import {
@@ -39,7 +33,6 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import ConversationSidePanelContainer from "@app/components/assistant/conversation/ConversationSidePanelContainer";
 
 export interface ConversationLayoutProps {
   baseUrl: string;
@@ -238,28 +231,10 @@ function ConversationInnerLayout({
           </div>
         </ResizablePanel>
 
-        {/* Resizable Handle for Panels */}
-        {currentPanel && <ResizableHandle className="hidden md:block" />}
-
-        {/* Panel Container - either Interactive Content or Actions */}
-        {currentPanel && (
-          <ResizablePanel
-            minSize={20}
-            defaultSize={70}
-            className={cn(
-              !currentPanel && "hidden",
-              // On mobile: overlay full screen with absolute positioning.
-              "md:relative",
-              currentPanel && "absolute inset-0 md:relative md:inset-auto"
-            )}
-          >
-            <ConversationSidePanelContainer
-              currentPanel={currentPanel}
-              owner={owner}
-              conversation={conversation}
-            />
-          </ResizablePanel>
-        )}
+        <ConversationSidePanelContainer
+          owner={owner}
+          conversation={conversation}
+        />
       </ResizablePanelGroup>
     </div>
   );

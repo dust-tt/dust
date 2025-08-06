@@ -8,6 +8,8 @@ import {
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
+import ConversationSidePanelContainer from "@app/components/assistant/conversation/ConversationSidePanelContainer";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -15,7 +17,6 @@ import { useMCPServerViewsContext } from "@app/components/assistant_builder/cont
 import { useUser } from "@app/lib/swr/user";
 
 import type { AgentBuilderFormData } from "./AgentBuilderFormContext";
-import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 
 interface EmptyStateProps {
   message: string;
@@ -55,6 +56,8 @@ export function AgentBuilderPreview() {
   const { user } = useUser();
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
+
+  const { currentPanel } = useConversationSidePanelContext();
 
   const hasContent =
     !!getValues("instructions").trim() || getValues("actions").length > 0;
@@ -120,16 +123,22 @@ export function AgentBuilderPreview() {
         )}
         <div className="flex-1 overflow-y-auto">
           {conversation && user && (
-            <ConversationSidePanelProvider>
-              <ConversationViewer
+            <>
+              <div className={currentPanel ? "hidden" : "block"}>
+                <ConversationViewer
+                  owner={owner}
+                  user={user}
+                  conversationId={conversation.sId}
+                  onStickyMentionsChange={setStickyMentions}
+                  isInModal
+                  key={conversation.sId}
+                />
+              </div>
+              <ConversationSidePanelContainer
                 owner={owner}
-                user={user}
-                conversationId={conversation.sId}
-                onStickyMentionsChange={setStickyMentions}
-                isInModal
-                key={conversation.sId}
+                conversation={conversation}
               />
-            </ConversationSidePanelProvider>
+            </>
           )}
         </div>
         <div className="flex-shrink-0 p-4">

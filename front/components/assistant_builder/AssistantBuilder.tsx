@@ -13,6 +13,7 @@ import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useState } from "react";
 
+import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import ActionsScreen, {
   hasActionError,
 } from "@app/components/assistant_builder/ActionsScreen";
@@ -568,24 +569,26 @@ export default function AssistantBuilder({
               </div>
             }
             rightPanel={
-              <AssistantBuilderRightPanel
-                screen={screen}
-                template={template}
-                mcpServerViews={mcpServerViews}
-                removeTemplate={removeTemplate}
-                resetToTemplateInstructions={async () => {
-                  resetToTemplateInstructions(setBuilderState);
-                  setEdited(true);
-                }}
-                resetToTemplateActions={async () => {
-                  resetToTemplateActions(setBuilderState);
-                  setEdited(true);
-                }}
-                owner={owner}
-                builderState={builderState}
-                agentConfiguration={agentConfiguration}
-                setAction={setAction}
-              />
+              <ConversationSidePanelProvider>
+                <AssistantBuilderRightPanel
+                  screen={screen}
+                  template={template}
+                  mcpServerViews={mcpServerViews}
+                  removeTemplate={removeTemplate}
+                  resetToTemplateInstructions={async () => {
+                    resetToTemplateInstructions(setBuilderState);
+                    setEdited(true);
+                  }}
+                  resetToTemplateActions={async () => {
+                    resetToTemplateActions(setBuilderState);
+                    setEdited(true);
+                  }}
+                  owner={owner}
+                  builderState={builderState}
+                  agentConfiguration={agentConfiguration}
+                  setAction={setAction}
+                />
+              </ConversationSidePanelProvider>
             }
           />
         </div>
