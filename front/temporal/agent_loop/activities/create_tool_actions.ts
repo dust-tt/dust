@@ -64,7 +64,10 @@ export async function createToolActionsActivity(
 
   const actionBlobs: ActionBlob[] = [];
 
-  for (const { action: actionConfiguration, functionCallId } of actions) {
+  for (const [
+    index,
+    { action: actionConfiguration, functionCallId },
+  ] of actions.entries()) {
     const { agentConfiguration, agentMessage, agentMessageRow } =
       runAgentDataRes.value;
     const stepContentId = functionCallStepContentIds[functionCallId];
@@ -76,7 +79,7 @@ export async function createToolActionsActivity(
       agentMessageRow,
       conversationId,
       stepContentId,
-      stepContext: stepContexts[step],
+      stepContext: stepContexts[index],
       step,
     });
 
