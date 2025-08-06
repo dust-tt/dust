@@ -162,7 +162,7 @@ function JsonValue({
           <div
             key={key}
             className={cn(
-              "s-max-w-full s-border-b s-pb-3 last:s-border-0",
+              "s-max-w-full s-border-b s-pb-3 last:s-border-0 last:s-pb-0",
               "s-border-structure-200 dark:s-border-structure-200-night"
             )}
           >
