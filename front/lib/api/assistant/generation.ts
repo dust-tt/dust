@@ -162,8 +162,12 @@ export async function constructPromptMultiActions(
       isMCPConfigurationForInternalNotion(action)
   );
 
+  const isUsingRunAgent = agentConfiguration.actions.some((action) =>
+    isMCPConfigurationForRunAgent(action)
+  );
+
   if (canRetrieveDocuments) {
-    guidelinesSection += `\n${citationMetaPrompt()}\n`;
+    guidelinesSection += `\n${citationMetaPrompt(isUsingRunAgent)}\n`;
   }
 
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
