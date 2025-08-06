@@ -2,16 +2,30 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { GET_DATABASE_SCHEMA_MARKER } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  generateCSVFileAndSnippet,
+  generateSectionFile,
+  uploadFileToConversationDataSource,
+} from "@app/lib/actions/action_file_helpers";
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  EXECUTE_TABLES_QUERY_MARKER,
+  GET_DATABASE_SCHEMA_MARKER,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderNode } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   getDatabaseExampleRowsContent,
   getQueryWritingInstructionsContent,
   getSchemaContent,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
+import {
+  getSectionColumnsPrefix,
+  TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH,
+} from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
+import type { CSVRecord } from "@app/lib/api/csv";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
@@ -19,7 +33,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { ConnectorProvider, CoreAPIContentNode } from "@app/types";
-import { CoreAPI, Ok } from "@app/types";
+import { CoreAPI, Err, Ok } from "@app/types";
 
 const TABLES_FILESYSTEM_TOOL_NAME = "tables_filesystem_navigation";
 
@@ -864,6 +878,238 @@ const createServer = (
           ...getQueryWritingInstructionsContent(schemaResult.value.dialect),
           ...getDatabaseExampleRowsContent(schemaResult.value.schemas),
         ]);
+      }
+    )
+  );
+
+  server.tool(
+    "query",
+    "Execute SQL queries on tables from the same warehouse. You MUST call describe_tables at least once " +
+      "before attempting to query tables to understand their structure. The query must respect the SQL dialect " +
+      "and guidelines provided by describe_tables. All tables in a single query must be from the same warehouse.",
+    {
+      tableIds: z
+        .array(z.string())
+        .min(1)
+        .describe(
+          "Array of table identifiers in the format 'table-<dataSourceSId>-<nodeId>'. " +
+            "All tables must be from the same warehouse (same dataSourceSId)."
+        ),
+      query: z
+        .string()
+        .describe(
+          "The SQL query to execute. Must respect the SQL dialect and guidelines provided by describe_tables."
+        ),
+      fileName: z
+        .string()
+        .describe("The name of the file to save the results to."),
+    },
+    withToolLogging(
+      auth,
+      { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
+      async ({ tableIds, query, fileName }) => {
+        if (!agentLoopContext?.runContext) {
+          throw new Error("Unreachable: missing agentLoopContext.");
+        }
+
+        const agentLoopRunContext = agentLoopContext.runContext;
+
+        // Parse table identifiers and validate they're all from the same warehouse
+        const parsedTables: Array<{
+          dataSourceSId: string;
+          nodeId: string;
+        }> = [];
+
+        for (const tableId of tableIds) {
+          if (!tableId.startsWith("table-")) {
+            return new Err(
+              new MCPError(
+                `Invalid table identifier format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`,
+                { tracked: false }
+              )
+            );
+          }
+
+          const parts = tableId.split("-");
+          if (parts.length < 3) {
+            return new Err(
+              new MCPError(
+                `Invalid table identifier format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`,
+                { tracked: false }
+              )
+            );
+          }
+
+          const dataSourceSId = parts[1];
+          const nodeId = parts.slice(2).join("-");
+
+          parsedTables.push({ dataSourceSId, nodeId });
+        }
+
+        // Check all tables are from the same warehouse
+        const uniqueDataSources = new Set(
+          parsedTables.map((t) => t.dataSourceSId)
+        );
+        if (uniqueDataSources.size > 1) {
+          return new Err(
+            new MCPError(
+              `All tables must be from the same warehouse. Found tables from ${uniqueDataSources.size} different warehouses: ${Array.from(uniqueDataSources).join(", ")}`,
+              { tracked: false }
+            )
+          );
+        }
+
+        const dataSourceSId = parsedTables[0].dataSourceSId;
+
+        // Find the data source view
+        const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+        const dataSourceViews = await DataSourceViewResource.listBySpace(
+          auth,
+          globalSpace
+        );
+
+        const dataSourceView = dataSourceViews.find(
+          (dsView) =>
+            dsView.dataSource.sId === dataSourceSId &&
+            isRemoteDatabase(dsView.dataSource)
+        );
+
+        if (!dataSourceView) {
+          return new Err(
+            new MCPError(
+              `Data source not found or is not a remote database: ${dataSourceSId}`,
+              { tracked: false }
+            )
+          );
+        }
+
+        // Prepare tables for Core API call
+        const coreAPITables = parsedTables.map((t) => ({
+          project_id: parseInt(dataSourceView.dataSource.dustAPIProjectId),
+          data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
+          table_id: t.nodeId,
+        }));
+
+        // Call Core API's queryDatabase endpoint
+        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+        const queryResult = await coreAPI.queryDatabase({
+          tables: coreAPITables,
+          query,
+        });
+
+        if (queryResult.isErr()) {
+          return new Err(
+            new MCPError(
+              "Error executing database query: " + queryResult.error.message,
+              { tracked: false }
+            )
+          );
+        }
+
+        const content: {
+          type: "resource";
+          resource: any;
+        }[] = [];
+
+        const results: CSVRecord[] = queryResult.value.results
+          .map((r) => r.value)
+          .filter(
+            (record) =>
+              record !== undefined &&
+              record !== null &&
+              typeof record === "object"
+          );
+
+        content.push({
+          type: "resource",
+          resource: {
+            text: EXECUTE_TABLES_QUERY_MARKER,
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOL_MARKER,
+            uri: "",
+          },
+        });
+
+        if (results.length > 0) {
+          // date in yyyy-mm-dd
+          const humanReadableDate = new Date().toISOString().split("T")[0];
+          const queryTitle = `${fileName} (${humanReadableDate})`;
+
+          // Generate the CSV file
+          const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(
+            auth,
+            {
+              title: queryTitle,
+              conversationId: agentLoopRunContext.conversation.sId,
+              results,
+            }
+          );
+
+          // Upload the CSV file to the conversation data source
+          await uploadFileToConversationDataSource({
+            auth,
+            file: csvFile,
+          });
+
+          // Append the CSV file to the output of the tool as an agent-generated file
+          content.push({
+            type: "resource",
+            resource: {
+              text: "Your query results were generated successfully. They are available as a structured CSV file.",
+              uri: csvFile.getPublicUrl(auth),
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+              fileId: csvFile.sId,
+              title: queryTitle,
+              contentType: csvFile.contentType,
+              snippet: csvSnippet,
+            },
+          });
+
+          // Check if we should generate a section JSON file
+          const shouldGenerateSectionFile = results.some((result) =>
+            Object.values(result).some(
+              (value) =>
+                typeof value === "string" &&
+                value.length > TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH
+            )
+          );
+
+          if (shouldGenerateSectionFile) {
+            const connectorProvider =
+              dataSourceView.dataSource.connectorProvider ?? null;
+            const sectionColumnsPrefix =
+              getSectionColumnsPrefix(connectorProvider);
+
+            // Generate the section file
+            const sectionFile = await generateSectionFile(auth, {
+              title: queryTitle,
+              conversationId: agentLoopRunContext.conversation.sId,
+              results,
+              sectionColumnsPrefix,
+            });
+
+            // Upload the section file to the conversation data source
+            await uploadFileToConversationDataSource({
+              auth,
+              file: sectionFile,
+            });
+
+            // Append the section file to the output of the tool as an agent-generated file
+            content.push({
+              type: "resource",
+              resource: {
+                text: "Results are also available as a rich text file that can be searched.",
+                uri: sectionFile.getPublicUrl(auth),
+                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+                fileId: sectionFile.sId,
+                title: `${queryTitle} (Rich Text)`,
+                contentType: sectionFile.contentType,
+                snippet: null,
+              },
+            });
+          }
+        }
+
+        return new Ok(content);
       }
     )
   );
