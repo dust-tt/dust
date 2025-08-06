@@ -340,7 +340,9 @@ export class AgentYAMLConverter {
 
     if (!isAutoInternalMCPServerName(mcpServerName)) {
       return new Err(
-        new Error(`MCP server ${mcpServerName} is not available for auto configuration`)
+        new Error(
+          `MCP server ${mcpServerName} is not available for auto configuration`
+        )
       );
     }
 
