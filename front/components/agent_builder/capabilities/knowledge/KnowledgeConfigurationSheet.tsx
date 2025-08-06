@@ -52,7 +52,6 @@ interface KnowledgeConfigurationSheetProps {
   onClickKnowledge: () => void;
   action: AgentBuilderAction | null;
   isEditing: boolean;
-  open: boolean;
   mcpServerViews: MCPServerViewType[];
   getAgentInstructions: () => string;
 }
@@ -63,10 +62,11 @@ export function KnowledgeConfigurationSheet({
   onClickKnowledge,
   action,
   isEditing,
-  open,
   mcpServerViews,
   getAgentInstructions,
 }: KnowledgeConfigurationSheetProps) {
+  const open = action !== null;
+
   const handleSave = (
     formData: CapabilityFormData,
     dataSourceConfigurations: DataSourceViewSelectionConfigurations
@@ -99,7 +99,7 @@ export function KnowledgeConfigurationSheet({
       action?.configuration?.dataSourceConfigurations;
 
     const dataSourceTree =
-      dataSourceConfigurations && open
+      dataSourceConfigurations && action
         ? transformSelectionConfigurationsToTree(
             dataSourceConfigurations as DataSourceViewSelectionConfigurations
           ) // TODO: fix type
@@ -121,7 +121,7 @@ export function KnowledgeConfigurationSheet({
       mcpServerView: selectedMCPServerView ?? null,
       name: selectedMCPServerView?.server.name,
     };
-  }, [action, open, mcpServerViews, isEditing]);
+  }, [action, mcpServerViews, isEditing]);
 
   const formMethods = useForm<CapabilityFormData>({
     resolver: zodResolver(capabilityFormSchema),
@@ -151,7 +151,7 @@ export function KnowledgeConfigurationSheet({
       <FormProvider {...formMethods}>
         <KnowledgeConfigurationSheetContent
           onSave={handleSave}
-          isOpen={open}
+          open={open}
           getAgentInstructions={getAgentInstructions}
           isEditing={isEditing}
         />
@@ -165,14 +165,14 @@ interface KnowledgeConfigurationSheetContentProps {
     formData: CapabilityFormData,
     dataSourceConfigurations: DataSourceViewSelectionConfigurations
   ) => void;
-  isOpen: boolean;
+  open: boolean;
   getAgentInstructions: () => string;
   isEditing: boolean;
 }
 
 function KnowledgeConfigurationSheetContent({
   onSave,
-  isOpen,
+  open,
   getAgentInstructions,
   isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
@@ -213,7 +213,7 @@ function KnowledgeConfigurationSheetContent({
     useState<ConfigurationSheetPageId>(initialPageId);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!open) {
       setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
 
       return;
@@ -222,7 +222,7 @@ function KnowledgeConfigurationSheetContent({
     if (isEditing) {
       setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION);
     }
-  }, [isEditing, isOpen]);
+  }, [isEditing, open]);
 
   const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {

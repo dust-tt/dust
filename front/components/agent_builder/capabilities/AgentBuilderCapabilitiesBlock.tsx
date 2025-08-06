@@ -143,8 +143,7 @@ export function AgentBuilderCapabilitiesBlock() {
 
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
 
-  const [isKnowledgeSheetOpen, setIsKnowledgeSheetOpen] = useState(false);
-  const [knowledgeSheetAction, setKnowledgeSheetAction] = useState<{
+  const [knowledgeAction, setKnowledgeAction] = useState<{
     action: AgentBuilderAction;
     index: number | null;
   } | null>(null);
@@ -158,13 +157,13 @@ export function AgentBuilderCapabilitiesBlock() {
   const handleEditSave = (updatedAction: AgentBuilderAction) => {
     if (dialogMode?.type === "edit") {
       update(dialogMode.index, updatedAction);
-    } else if (knowledgeSheetAction && knowledgeSheetAction.index !== null) {
-      update(knowledgeSheetAction.index, updatedAction);
+    } else if (knowledgeAction && knowledgeAction.index !== null) {
+      update(knowledgeAction.index, updatedAction);
     } else {
       append(updatedAction);
     }
     setDialogMode(null);
-    setKnowledgeSheetAction(null);
+    setKnowledgeAction(null);
   };
 
   // fixme
@@ -177,8 +176,7 @@ export function AgentBuilderCapabilitiesBlock() {
       );
 
     if (isDataSourceSelectionRequired) {
-      setKnowledgeSheetAction({ action, index });
-      setIsKnowledgeSheetOpen(true);
+      setKnowledgeAction({ action, index });
     } else {
       setDialogMode(
         action.noConfigurationRequired
@@ -190,8 +188,7 @@ export function AgentBuilderCapabilitiesBlock() {
 
   const handleCloseSheet = () => {
     setDialogMode(null);
-    setIsKnowledgeSheetOpen(false);
-    setKnowledgeSheetAction(null);
+    setKnowledgeAction(null);
   };
 
   const handleMcpActionUpdate = (action: AgentBuilderAction, index: number) => {
@@ -202,14 +199,13 @@ export function AgentBuilderCapabilitiesBlock() {
     // We don't know which action will be selected so we will create a generic MCP action.
     const action = getDefaultMCPAction();
 
-    setKnowledgeSheetAction({
+    setKnowledgeAction({
       action: {
         ...action,
         noConfigurationRequired: false, // it's always required for knowledge
       },
       index: null,
     });
-    setIsKnowledgeSheetOpen(true);
   };
 
   const getAgentInstructions = () => getValues("instructions");
@@ -220,11 +216,8 @@ export function AgentBuilderCapabilitiesBlock() {
         onClose={handleCloseSheet}
         onClickKnowledge={onClickKnowledge}
         onSave={handleEditSave}
-        action={knowledgeSheetAction?.action ?? null}
-        isEditing={
-          knowledgeSheetAction ? knowledgeSheetAction.index !== null : false
-        }
-        open={isKnowledgeSheetOpen}
+        action={knowledgeAction?.action ?? null}
+        isEditing={Boolean(knowledgeAction && knowledgeAction.index !== null)}
         mcpServerViews={mcpServerViewsWithKnowledge}
         getAgentInstructions={getAgentInstructions}
       />
