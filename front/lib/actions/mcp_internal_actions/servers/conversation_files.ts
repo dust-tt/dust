@@ -27,6 +27,7 @@ import type {
   Result,
   TextContent,
 } from "@app/types";
+import { normalizeError } from "@app/types";
 import { Err, isImageContent, isTextContent, Ok } from "@app/types";
 
 const MAX_FILE_SIZE_FOR_GREP = 20 * 1024 * 1024; // 20MB.
@@ -292,7 +293,7 @@ function createServer(
           text = matchedLines.join("\n");
         } catch (e) {
           return makeMCPToolTextError(
-            `Invalid regular expression: ${grep}. Error: ${e instanceof Error ? e.message : String(e)}`
+            `Invalid regular expression: ${grep}. Error: ${normalizeError(e)}`
           );
         }
         if (text.length === 0) {
@@ -307,7 +308,7 @@ function createServer(
         content: [
           {
             type: "text",
-            text: text || `No content retrieved for file ${title}.`,
+            text,
           },
         ],
       };
