@@ -653,6 +653,7 @@ export function MCPServerViewsDialog({
         <Button label="Add tools" icon={LightbulbIcon} />
       </MultiPageDialogTrigger>
       <MultiPageDialogContent
+        isAlertDialog
         showNavigation={
           !isEditMode &&
           !isInfoMode &&
