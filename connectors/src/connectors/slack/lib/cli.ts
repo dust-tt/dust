@@ -32,6 +32,7 @@ import type {
 import {
   INTERNAL_MIME_TYPES,
   isSlackbotWhitelistType,
+  normalizeError,
 } from "@connectors/types";
 
 export async function maybeLaunchSlackSyncWorkflowForChannelId(
@@ -418,7 +419,7 @@ export const slack = async ({
               connectorId: connector.id,
               channelId: channel.id,
               channelName: channel.name,
-              error: normalizeError(error)
+              error: normalizeError(error),
             },
             "Exception while processing channel with autoReadChannel"
           );

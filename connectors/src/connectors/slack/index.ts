@@ -12,7 +12,10 @@ import {
   BaseConnectorManager,
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
-import { autoReadChannel } from "@connectors/connectors/slack/auto_read_channel";
+import {
+  autoReadChannel,
+  findMatchingChannelPatterns,
+} from "@connectors/connectors/slack/auto_read_channel";
 import { getBotEnabled } from "@connectors/connectors/slack/bot";
 import {
   getChannels,
@@ -44,6 +47,7 @@ import type {
   SlackConfigurationType,
 } from "@connectors/types";
 import {
+  concurrentExecutor,
   isSlackAutoReadPatterns,
   normalizeError,
   safeParseJSON,
@@ -554,32 +558,33 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
             return false;
           }
 
-          return newAutoReadChannelPatterns.some((pattern) => {
-            try {
-              const regex = new RegExp(pattern.pattern);
-              return regex.test(channelName);
-            } catch (e) {
-              // Skip invalid regex patterns
-              return false;
-            }
-          });
+          const matchingPatterns = findMatchingChannelPatterns(
+            channelName,
+            newAutoReadChannelPatterns
+          );
+          return matchingPatterns.length > 0;
         });
-        for (const channel of matchingChannels) {
-          try {
-            if (channel.id) {
-              results.push(
-                await autoReadChannel(
-                  slackConfig.slackTeamId,
-                  logger,
-                  channel.id,
-                  connector.type as "slack" | "slack_bot"
-                )
-              );
+
+        await concurrentExecutor(
+          matchingChannels,
+          async (channel) => {
+            try {
+              if (channel.id) {
+                results.push(
+                  await autoReadChannel(
+                    slackConfig.slackTeamId,
+                    logger,
+                    channel.id,
+                    connector.type as "slack" | "slack_bot"
+                  )
+                );
+              }
+            } catch (error) {
+              results.push(new Err(normalizeError(error)));
             }
-          } catch (error) {
-            results.push(new Err(normalizeError(error)));
-          }
-        }
+          },
+          { concurrency: 10 }
+        );
 
         for (const result of results) {
           if (result.isErr()) {
