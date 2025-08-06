@@ -78,13 +78,13 @@ export default function SharedFilePage({
   workspaceName,
 }: SharedFilePageProps) {
   const humanFriendlyTitle = formatFilenameForDisplay(title);
-  const description = `${humanFriendlyTitle} shared from ${workspaceName} via Dust`;
+  const description = `Discover what ${workspaceName} built with AI. Explore now.`;
 
   return (
     <>
       <Head>
         {/* Basic meta tags */}
-        <title>{humanFriendlyTitle} - Dust</title>
+        <title>{humanFriendlyTitle} - Powered by Dust</title>
         <meta name="description" content={description} />
 
         {/* Prevent search engine indexing */}
@@ -115,7 +115,7 @@ export default function SharedFilePage({
         <meta property="og:image:height" content="630" />
         <meta
           property="og:image:alt"
-          content="Dust - Accelerate your entire organization with custom AI agents"
+          content={`Preview of ${humanFriendlyTitle} created by ${workspaceName}`}
         />
 
         {/* Favicon */}
