@@ -87,7 +87,7 @@ export default function AssistantBuilderDataSourceModal({
 
   const supportedDataSourceViewsForViewType = useMemo(() => {
     let filtered = dataSourceViews;
-    
+
     // Apply remote databases only filter if needed
     if (remoteDatabasesOnly) {
       filtered = filtered.filter((dsv) => isRemoteDatabase(dsv.dataSource));
@@ -110,7 +110,7 @@ export default function AssistantBuilderDataSourceModal({
           assertNever(viewType);
       }
     }
-    
+
     return filtered;
   }, [dataSourceViews, viewType, featureFlags, remoteDatabasesOnly]);
 
@@ -150,7 +150,9 @@ export default function AssistantBuilderDataSourceModal({
               setSelectionConfigurations={setSelectionConfigurationsCallback}
               viewType={viewType}
               isRootSelectable={true}
-              allowWarehouseHierarchySelection={allowWarehouseHierarchySelection}
+              allowWarehouseHierarchySelection={
+                allowWarehouseHierarchySelection
+              }
               allowMultipleWarehouses={allowMultipleWarehouses}
             />
           </div>

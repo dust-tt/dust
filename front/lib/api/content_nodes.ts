@@ -108,7 +108,9 @@ export function getContentNodeFromCoreNode(
     mimeType: coreNode.mime_type,
     preventSelection:
       FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(coreNode.mime_type) ||
-      (viewType === "table" && !allowHierarchicalSelection && coreNode.node_type !== "table"),
+      (viewType === "table" &&
+        !allowHierarchicalSelection &&
+        coreNode.node_type !== "table"),
     parentTitle: coreNode.parent_title,
   };
 }

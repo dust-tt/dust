@@ -656,20 +656,30 @@ export const isDataSourceNodeListType = (
 
 // Schema for tables filesystem browsing (no query field)
 export const TablesFilesystemBrowseSchema = z.object({
-  mimeType: z.literal("application/vnd.dust.tool-output.tables-filesystem-browse"),
+  mimeType: z.literal(
+    "application/vnd.dust.tool-output.tables-filesystem-browse"
+  ),
   uri: z.literal(""),
   text: z.string(),
-  nodeId: z.string().nullable().describe("The node ID that was browsed (null for root)"),
+  nodeId: z
+    .string()
+    .nullable()
+    .describe("The node ID that was browsed (null for root)"),
   data: z.array(RenderedNodeSchema),
   nextPageCursor: z.string().nullable(),
   resultCount: z.number(),
 });
 
-export type TablesFilesystemBrowseType = z.infer<typeof TablesFilesystemBrowseSchema>;
+export type TablesFilesystemBrowseType = z.infer<
+  typeof TablesFilesystemBrowseSchema
+>;
 
 export const isTablesFilesystemBrowseType = (
   outputBlock: CallToolResult["content"][number]
-): outputBlock is { type: "resource"; resource: TablesFilesystemBrowseType } => {
+): outputBlock is {
+  type: "resource";
+  resource: TablesFilesystemBrowseType;
+} => {
   return (
     outputBlock.type === "resource" &&
     TablesFilesystemBrowseSchema.safeParse(outputBlock.resource).success

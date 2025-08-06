@@ -1,3 +1,4 @@
+import type { WhitelistableFeature } from "@dust-tt/client";
 import { ContentMessage, InformationCircleIcon } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 
@@ -30,7 +31,6 @@ import type {
   Result,
   SpaceType,
   TimeFrame,
-  WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
 import { asDisplayName, assertNever, Err, Ok } from "@app/types";
@@ -174,7 +174,8 @@ export function MCPAction({
 
   // Check if this server requires data warehouse configuration
   // This is identified by the presence of DATA_WAREHOUSE MIME type in its tools
-  const isDataWarehouseConfig = !!requirements.requiresDataWarehouseConfiguration;
+  const isDataWarehouseConfig =
+    !!requirements.requiresDataWarehouseConfiguration;
 
   // We don't show the "Available Tools" section if there is only one tool.
   // Because it's redundant with the tool description.
@@ -191,7 +192,8 @@ export function MCPAction({
   return (
     <>
       {/* Additional modals for selecting data sources */}
-      {(requirements.requiresDataSourceConfiguration || requirements.requiresDataWarehouseConfiguration) && (
+      {(requirements.requiresDataSourceConfiguration ||
+        requirements.requiresDataWarehouseConfiguration) && (
         <AssistantBuilderDataSourceModal
           isOpen={showDataSourcesModal}
           setOpen={setShowDataSourcesModal}
@@ -235,7 +237,8 @@ export function MCPAction({
       )}
 
       {/* Configurable blocks */}
-      {(requirements.requiresDataSourceConfiguration || requirements.requiresDataWarehouseConfiguration) && (
+      {(requirements.requiresDataSourceConfiguration ||
+        requirements.requiresDataWarehouseConfiguration) && (
         <DataSourceSelectionSection
           owner={owner}
           dataSourceConfigurations={
