@@ -116,7 +116,7 @@ export function ZendeskTagFilters({
         <ContextItem.Visual visual={isDark ? ZendeskWhiteLogo : ZendeskLogo} />
       }
       action={
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2">
           {isEditing ? (
             <>
               <div className="flex flex-col gap-2">
@@ -137,32 +137,33 @@ export function ZendeskTagFilters({
                   onKeyDown={handleKeyDown}
                   placeholder={placeholder}
                   disabled={readOnly || !isAdmin || loading}
-                  className="w-80"
                 />
               </div>
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={readOnly || !isAdmin || loading || !inputValue.trim()}
-                label="Add"
-              />
-              <Button
-                size="sm"
-                variant="ghost-secondary"
-                onClick={handleCancel}
-                disabled={readOnly || !isAdmin || loading}
-                label="Cancel"
-              />
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={
+                    readOnly || !isAdmin || loading || !inputValue.trim()
+                  }
+                  label="Add"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCancel}
+                  disabled={readOnly || !isAdmin || loading}
+                  label="Cancel"
+                />
+              </div>
             </>
           ) : (
-            <>
-              <Button
-                size="sm"
-                onClick={handleEdit}
-                disabled={readOnly || !isAdmin || loading}
-                label="Add Tags"
-              />
-            </>
+            <Button
+              size="sm"
+              onClick={handleEdit}
+              disabled={readOnly || !isAdmin || loading}
+              label="Add Tags"
+            />
           )}
         </div>
       }
