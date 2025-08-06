@@ -16,6 +16,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Names should reflect the purpose of the server but not directly the tools it contains.
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
+  "agent_management",
   "agent_router",
   "conversation_files",
   "data_sources_file_system",
@@ -342,6 +343,7 @@ export const INTERNAL_MCP_SERVERS: Record<
       get_issue_fields: "never_ask",
       get_connection_info: "never_ask",
       get_issue_link_types: "never_ask",
+      get_users: "never_ask",
 
       // Update operations - low stakes
       create_comment: "low",
@@ -363,25 +365,20 @@ export const INTERNAL_MCP_SERVERS: Record<
   outlook: {
     id: 24,
     availability: "manual",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("outlook_tool");
-    },
-    isPreview: true,
     tools_stakes: {
       get_messages: "never_ask",
       get_drafts: "never_ask",
       create_draft: "low",
       delete_draft: "low",
       create_reply_draft: "low",
+      get_contacts: "never_ask",
+      create_contact: "high",
+      update_contact: "high",
     },
   },
   outlook_calendar: {
     id: 25,
     availability: "manual",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("outlook_tool");
-    },
-    isPreview: true,
     tools_stakes: {
       list_calendars: "never_ask",
       list_events: "never_ask",
@@ -427,6 +424,16 @@ export const INTERNAL_MCP_SERVERS: Record<
     // This server is hidden for everyone, it is only available through the search tool
     // when the advanced_search mode is enabled.
     isRestricted: () => true,
+  },
+  agent_management: {
+    id: 1011,
+    availability: "auto",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("agent_management_tool");
+    },
+    tools_stakes: {
+      create_agent: "high",
+    },
   },
 };
 

@@ -140,9 +140,10 @@ export function withLogging<T>(
 
     const elapsed = new Date().getTime() - now.getTime();
 
+    // Keep metric cardinality low for cost optimization
+    // Previously tagging by route created high cardinality (~$3k/month for 2 metrics)
     const tags = [
       `method:${req.method}`,
-      `route:${route}`,
       streaming ? `streaming:true` : `streaming:false`,
       `status_code:${res.statusCode}`,
     ];

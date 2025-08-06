@@ -15,15 +15,18 @@ import {
   getProjects,
   getTransitions,
   searchIssues,
+  searchUsers,
   transitionIssue,
   updateIssue,
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
 import {
+  ADFDocumentSchema,
   JiraCreateIssueLinkRequestSchema,
   JiraCreateIssueRequestSchema,
   JiraSearchFilterSchema,
   JiraSortSchema,
+  SEARCH_USERS_MAX_RESULTS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
   makeMCPToolJSONSuccess,
@@ -47,7 +50,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 const createServer = (): McpServer => {
   const server = new McpServer(serverInfo, {
     instructions: `
-      You have access to the following tools: get_issue, get_projects, get_project, get_transitions, create_comment, get_issues, get_issue_types, get_issue_fields, get_connection_info, transition_issue, create_issue, update_issue, create_issue_link, delete_issue_link, get_issue_link_types.
+      You have access to the following tools: get_issue, get_projects, get_project, get_transitions, create_comment, get_issues, get_issue_types, get_issue_fields, get_connection_info, transition_issue, create_issue, update_issue, create_issue_link, delete_issue_link, get_issue_link_types, get_users.
 
       # General Workflow for JIRA Data:
       0.  **Authenticate:** Use \`get_connection_info\` to authenticate with JIRA if you are not authenticated ("No access token found").
@@ -175,10 +178,14 @@ const createServer = (): McpServer => {
 
   server.tool(
     "create_comment",
-    "Adds a comment to an existing JIRA issue.",
+    "Adds a comment to an existing JIRA issue. Accepts either plain text string or rich Atlassian Document Format (ADF).",
     {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
-      comment: z.string().describe("The comment text to add"),
+      comment: z
+        .union([z.string(), ADFDocumentSchema])
+        .describe(
+          "The comment content - either plain text string or ADF document object for rich formatting"
+        ),
       visibilityType: z
         .enum(["group", "role"])
         .optional()
@@ -221,7 +228,8 @@ const createServer = (): McpServer => {
             message: "Comment added successfully",
             result: {
               issueKey,
-              comment,
+              comment:
+                typeof comment === "string" ? comment : "[Rich ADF Content]",
               commentId: result.value.id,
             },
           });
@@ -422,7 +430,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "create_issue",
-    "Creates a new JIRA issue with the specified details. Note: Available fields vary by project and issue type. Use get_issue_fields to check which fields are required and available.",
+    "Creates a new JIRA issue with the specified details. For textarea fields (like description), you can use either plain text or rich ADF format. Note: Available fields vary by project and issue type. Use get_issue_fields to check which fields are required and available.",
     {
       issueData: JiraCreateIssueRequestSchema.describe(
         "The description of the issue"
@@ -454,11 +462,11 @@ const createServer = (): McpServer => {
 
   server.tool(
     "update_issue",
-    "Updates an existing JIRA issue with new field values (e.g., summary, description, priority, assignee). Note: Issue links, attachments, and some system fields require separate APIs and are not supported.",
+    "Updates an existing JIRA issue with new field values (e.g., summary, description, priority, assignee). For textarea fields (like description), you can use either plain text or rich ADF format. Use get_issue_fields to identify textarea fields. Note: Issue links, attachments, and some system fields require separate APIs and are not supported.",
     {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       updateData: JiraCreateIssueRequestSchema.partial().describe(
-        "The partial data to update the issue with"
+        "The partial data to update the issue with - description field supports both plain text and ADF format"
       ),
     },
     async ({ issueKey, updateData }, { authInfo }) => {
@@ -564,6 +572,64 @@ const createServer = (): McpServer => {
           return makeMCPToolJSONSuccess({
             message: "Issue link types retrieved successfully",
             result: result.value,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_users",
+    "Search for JIRA users by email address or display name. Useful for finding user account IDs for assignments, mentions, or other user-related operations.",
+    {
+      query: z
+        .string()
+        .describe(
+          "Search query - can be email address or display name (e.g., 'john.doe@company.com' or 'John Doe')"
+        ),
+      maxResults: z
+        .number()
+        .min(1)
+        .max(SEARCH_USERS_MAX_RESULTS)
+        .optional()
+        .default(SEARCH_USERS_MAX_RESULTS)
+        .describe(
+          `Maximum number of users to return (default: ${SEARCH_USERS_MAX_RESULTS}, max: ${SEARCH_USERS_MAX_RESULTS})`
+        ),
+    },
+    async ({ query, maxResults = SEARCH_USERS_MAX_RESULTS }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await searchUsers(
+            baseUrl,
+            accessToken,
+            query,
+            maxResults
+          );
+          if (result.isErr()) {
+            return makeMCPToolTextError(
+              `Error searching users: ${result.error}`
+            );
+          }
+
+          // Construct the exact URL that was queried
+          const params = new URLSearchParams({
+            query,
+            maxResults: maxResults.toString(),
+          });
+          const queryUrl = `${baseUrl}/rest/api/3/users/search?${params.toString()}`;
+
+          const message =
+            result.value.length === 0
+              ? "No users found matching the search query"
+              : `Found ${result.value.length} user(s) matching the search query`;
+          return makeMCPToolJSONSuccess({
+            message,
+            result: {
+              users: result.value,
+              queryUrl,
+            },
           });
         },
         authInfo,

@@ -2,6 +2,7 @@ import { cn } from "@dust-tt/sparkle";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import Document from "@tiptap/extension-document";
 import { History } from "@tiptap/extension-history";
+import { ListItem } from "@tiptap/extension-list-item";
 import Text from "@tiptap/extension-text";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { cva } from "class-variance-authority";
@@ -12,12 +13,13 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderInstructionsAutoCompleteExtension } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsAutoCompleteExtension";
 import { AgentInstructionDiffExtension } from "@app/components/agent_builder/instructions/AgentInstructionDiffExtension";
+import { InstructionBlockExtension } from "@app/components/agent_builder/instructions/InstructionBlockExtension";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
-} from "@app/lib/client/assistant_builder/instructions";
+} from "@app/lib/client/agent_builder/instructions";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightAgentConfigurationType } from "@app/types";
 
@@ -105,10 +107,12 @@ export function AgentBuilderInstructionsEditor({
 
   const extensions = useMemo(() => {
     const baseExtensions = [
+      ListItem,
       Document,
       Text,
       ParagraphExtension,
       History,
+      InstructionBlockExtension,
       AgentInstructionDiffExtension,
       CharacterCount.configure({
         limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,

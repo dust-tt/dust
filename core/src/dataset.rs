@@ -1,4 +1,3 @@
-use crate::info;
 use crate::project::Project;
 use crate::stores::store::Store;
 use crate::utils;
@@ -6,6 +5,7 @@ use anyhow::Result;
 use serde::Serialize;
 use serde_json::Value;
 use std::slice::Iter;
+use tracing::info;
 
 #[derive(Debug, Serialize)]
 pub struct Dataset {

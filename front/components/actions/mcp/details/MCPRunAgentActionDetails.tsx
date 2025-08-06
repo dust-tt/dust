@@ -1,17 +1,35 @@
 import {
   Avatar,
   Button,
+  Citation,
+  CitationGrid,
+  CitationIcons,
+  CitationIndex,
+  CitationTitle,
   ContentMessage,
   Markdown,
   RobotIcon,
 } from "@dust-tt/sparkle";
 import { ExternalLinkIcon } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
 import {
+  CitationsContext,
+  CiteBlock,
+  getCiteDirective,
+} from "@app/components/markdown/CiteBlock";
+import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
+import { getCitationIcon } from "@app/components/markdown/MarkdownCitation";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import {
+  isRunAgentChainOfThoughtProgressOutput,
+  isRunAgentGenerationTokensProgressOutput,
   isRunAgentProgressOutput,
+  isRunAgentQueryProgressOutput,
   isRunAgentQueryResourceType,
   isRunAgentResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -23,6 +41,8 @@ export function MCPRunAgentActionDetails({
   lastNotification,
   defaultOpen,
 }: MCPActionDetailsProps) {
+  const { isDark } = useTheme();
+
   const queryResource =
     action.output?.find(isRunAgentQueryResourceType) || null;
 
@@ -34,36 +54,52 @@ export function MCPRunAgentActionDetails({
       return queryResource.resource.childAgentId;
     }
     if (lastNotification) {
-      if (isRunAgentProgressOutput(lastNotification.data.output)) {
-        return lastNotification.data.output.childAgentId;
+      const output = lastNotification.data.output;
+      if (isRunAgentProgressOutput(output)) {
+        return output.childAgentId;
       }
     }
     return null;
   }, [queryResource, lastNotification]);
 
-  const query = useMemo(() => {
+  const [query, setQuery] = useState<string | null>(null);
+  const [streamedChainOfThought, setStreamedChainOfThought] = useState<
+    string | null
+  >(null);
+  const [streamedResponse, setStreamedResponse] = useState<string | null>(null);
+  const [activeReferences, setActiveReferences] = useState<
+    { index: number; document: MarkdownCitation }[]
+  >([]);
+
+  useEffect(() => {
     if (queryResource) {
-      return queryResource.resource.text;
+      setQuery(queryResource.resource.text);
     }
-    if (isRunAgentProgressOutput(lastNotification?.data.output)) {
-      return lastNotification.data.output.query;
+    if (lastNotification?.data.output) {
+      const output = lastNotification.data.output;
+      if (isRunAgentQueryProgressOutput(output) && !query) {
+        setQuery(output.query);
+      } else if (isRunAgentChainOfThoughtProgressOutput(output)) {
+        setStreamedChainOfThought(output.chainOfThought);
+      } else if (isRunAgentGenerationTokensProgressOutput(output)) {
+        setStreamedResponse(output.text);
+      }
     }
-    return null;
-  }, [queryResource, lastNotification]);
+  }, [queryResource, lastNotification, query]);
 
   const response = useMemo(() => {
     if (resultResource) {
       return resultResource.resource.text;
     }
-    return null;
-  }, [resultResource]);
+    return streamedResponse;
+  }, [resultResource, streamedResponse]);
 
   const chainOfThought = useMemo(() => {
-    if (resultResource) {
-      return resultResource.resource.chainOfThought || null;
+    if (resultResource && resultResource.resource.chainOfThought) {
+      return resultResource.resource.chainOfThought;
     }
-    return null;
-  }, [resultResource]);
+    return streamedChainOfThought;
+  }, [resultResource, streamedChainOfThought]);
 
   const { agentConfiguration: childAgent } = useAgentConfiguration({
     workspaceId: owner.sId,
@@ -77,15 +113,59 @@ export function MCPRunAgentActionDetails({
     return true;
   }, [resultResource]);
 
+  const isStreamingChainOfThought = useMemo(() => {
+    return isBusy && chainOfThought !== null && response === null;
+  }, [isBusy, chainOfThought, response]);
+
+  const isStreamingResponse = useMemo(() => {
+    return isBusy && response !== null && !resultResource;
+  }, [isBusy, response, resultResource]);
+
   const conversationUrl = useMemo(() => {
     if (resultResource) {
       return resultResource.resource.uri;
     }
-    if (isRunAgentProgressOutput(lastNotification?.data.output)) {
-      return `/w/${owner.sId}/assistant/${lastNotification.data.output.conversationId}`;
+    const output = lastNotification?.data.output;
+    if (isRunAgentProgressOutput(output)) {
+      return `/w/${owner.sId}/assistant/${output.conversationId}`;
     }
     return null;
   }, [resultResource, lastNotification, owner.sId]);
+
+  const references = useMemo(() => {
+    if (!resultResource?.resource.refs) {
+      return {};
+    }
+    const markdownCitations: { [key: string]: MarkdownCitation } = {};
+    Object.entries(resultResource.resource.refs).forEach(([key, citation]) => {
+      const IconComponent = getCitationIcon(citation.provider, isDark);
+      markdownCitations[key] = {
+        title: citation.title,
+        href: citation.href,
+        description: citation.description,
+        icon: <IconComponent />,
+      };
+    });
+    return markdownCitations;
+  }, [resultResource, isDark]);
+
+  const updateActiveReferences = (doc: MarkdownCitation, index: number) => {
+    const existingIndex = activeReferences.find((r) => r.index === index);
+    if (!existingIndex) {
+      setActiveReferences([...activeReferences, { index, document: doc }]);
+    }
+  };
+  const additionalMarkdownPlugins: PluggableList = useMemo(
+    () => [getCiteDirective()],
+    []
+  );
+
+  const additionalMarkdownComponents: Components = useMemo(
+    () => ({
+      sup: CiteBlock,
+    }),
+    []
+  );
   return (
     <ActionDetailsWrapper
       actionName={childAgent?.name ? `Run @${childAgent.name}` : "Run Agent"}
@@ -122,7 +202,7 @@ export function MCPRunAgentActionDetails({
               >
                 <Markdown
                   content={chainOfThought}
-                  isStreaming={false}
+                  isStreaming={isStreamingChainOfThought}
                   forcedTextSize="text-sm"
                   textColor="text-muted-foreground"
                   isLastMessage={false}
@@ -133,13 +213,48 @@ export function MCPRunAgentActionDetails({
           {response && childAgent && (
             <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
               <ContentMessage title="Response" variant="primary" size="lg">
-                <Markdown
-                  content={response}
-                  isStreaming={false}
-                  forcedTextSize="text-sm"
-                  textColor="text-muted-foreground"
-                  isLastMessage={false}
-                />
+                <CitationsContext.Provider
+                  value={{
+                    references,
+                    updateActiveReferences,
+                  }}
+                >
+                  <Markdown
+                    content={response}
+                    isStreaming={isStreamingResponse}
+                    forcedTextSize="text-sm"
+                    textColor="text-muted-foreground"
+                    isLastMessage={false}
+                    additionalMarkdownPlugins={additionalMarkdownPlugins}
+                    additionalMarkdownComponents={additionalMarkdownComponents}
+                  />
+                </CitationsContext.Provider>
+
+                {activeReferences.length > 0 && (
+                  <div className="mt-4">
+                    <CitationGrid variant="grid">
+                      {activeReferences
+                        .sort((a, b) => a.index - b.index)
+                        .map(({ document, index }) => (
+                          <Citation
+                            key={index}
+                            onClick={
+                              document.href
+                                ? () => window.open(document.href, "_blank")
+                                : undefined
+                            }
+                            tooltip={document.description || document.title}
+                          >
+                            <CitationIcons>
+                              <CitationIndex>{index}</CitationIndex>
+                              {document.icon}
+                            </CitationIcons>
+                            <CitationTitle>{document.title}</CitationTitle>
+                          </Citation>
+                        ))}
+                    </CitationGrid>
+                  </div>
+                )}
               </ContentMessage>
             </div>
           )}

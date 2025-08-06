@@ -1,10 +1,9 @@
-import { describe, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   createPublicApiAuthenticationTests,
   createPublicApiMockRequest,
 } from "@app/tests/utils/generic_public_api_tests";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
 
@@ -20,7 +19,7 @@ vi.mock(import("@app/lib/api/config"), (() => ({
 })) as any);
 
 describe("POST /api/w/[wId]/files", () => {
-  itInTransaction("creates file upload URL successfully", async () => {
+  it("creates file upload URL successfully", async () => {
     const { req, res } = await createPublicApiMockRequest({
       method: "POST",
     });
@@ -45,27 +44,24 @@ describe("POST /api/w/[wId]/files", () => {
     expect(data.file.sId).toBeDefined();
   });
 
-  itInTransaction(
-    "refuses non public use-case without a system API key",
-    async () => {
-      const { req, res } = await createPublicApiMockRequest({
-        method: "POST",
-      });
+  it("refuses non public use-case without a system API key", async () => {
+    const { req, res } = await createPublicApiMockRequest({
+      method: "POST",
+    });
 
-      req.body = {
-        contentType: "text/csv",
-        fileName: "test.csv",
-        fileSize: 1024,
-        useCase: "upsert_table",
-      };
+    req.body = {
+      contentType: "text/csv",
+      fileName: "test.csv",
+      fileSize: 1024,
+      useCase: "upsert_table",
+    };
 
-      await handler(req, res);
+    await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(400);
-    }
-  );
+    expect(res._getStatusCode()).toBe(400);
+  });
 
-  itInTransaction("refuses invalid use-cases", async () => {
+  it("refuses invalid use-cases", async () => {
     const { req, res } = await createPublicApiMockRequest({
       method: "POST",
       systemKey: true,
@@ -83,24 +79,21 @@ describe("POST /api/w/[wId]/files", () => {
     expect(res._getStatusCode()).toBe(400);
   });
 
-  itInTransaction(
-    "accepts non public use-case with a system API key",
-    async () => {
-      const { req, res } = await createPublicApiMockRequest({
-        method: "POST",
-        systemKey: true,
-      });
+  it("accepts non public use-case with a system API key", async () => {
+    const { req, res } = await createPublicApiMockRequest({
+      method: "POST",
+      systemKey: true,
+    });
 
-      req.body = {
-        contentType: "text/csv",
-        fileName: "test.csv",
-        fileSize: 1024,
-        useCase: "upsert_table",
-      };
+    req.body = {
+      contentType: "text/csv",
+      fileName: "test.csv",
+      fileSize: 1024,
+      useCase: "upsert_table",
+    };
 
-      await handler(req, res);
+    await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(200);
-    }
-  );
+    expect(res._getStatusCode()).toBe(200);
+  });
 });

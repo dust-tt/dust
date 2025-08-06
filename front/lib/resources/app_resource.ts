@@ -10,11 +10,11 @@ import { DatasetResource } from "@app/lib/resources/dataset_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { AppModel, Clone } from "@app/lib/resources/storage/models/apps";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { AppType, LightWorkspaceType, Result } from "@app/types";
 import type { SpecificationType } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -252,7 +252,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
   protected async hardDelete(
     auth: Authenticator
   ): Promise<Result<number, Error>> {
-    const deletedCount = await frontSequelize.transaction(async (t) => {
+    const deletedCount = await withTransaction(async (t) => {
       await RunResource.deleteAllByAppId(this.id, t);
 
       await Clone.destroy({

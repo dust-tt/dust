@@ -1,8 +1,7 @@
-import { beforeEach, describe, expect, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { config } from "@app/lib/api/regions/config";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./pull";
 
@@ -53,48 +52,42 @@ describe(
       vi.clearAllMocks();
     });
 
-    itInTransaction(
-      "returns 401 when the user is not a super user",
-      async () => {
-        const { req, res } = await createPrivateApiMockRequest({
-          method: "POST",
-          isSuperUser: false,
-        });
+    it("returns 401 when the user is not a super user", async () => {
+      const { req, res } = await createPrivateApiMockRequest({
+        method: "POST",
+        isSuperUser: false,
+      });
 
-        await handler(req, res);
+      await handler(req, res);
 
-        expect(res._getStatusCode()).toBe(401);
-        expect(res._getJSONData()).toEqual({
-          error: {
-            type: "not_authenticated",
-            message: "The user does not have permission",
-          },
-        });
-      }
-    );
+      expect(res._getStatusCode()).toBe(401);
+      expect(res._getJSONData()).toEqual({
+        error: {
+          type: "not_authenticated",
+          message: "The user does not have permission",
+        },
+      });
+    });
 
-    itInTransaction(
-      "returns 400 when called from with the sync disabled",
-      async () => {
-        vi.mocked(config.getDustRegionSyncEnabled).mockReturnValue(false);
-        const { req, res } = await createPrivateApiMockRequest({
-          method: "POST",
-          isSuperUser: true,
-        });
+    it("returns 400 when called from with the sync disabled", async () => {
+      vi.mocked(config.getDustRegionSyncEnabled).mockReturnValue(false);
+      const { req, res } = await createPrivateApiMockRequest({
+        method: "POST",
+        isSuperUser: true,
+      });
 
-        await handler(req, res);
+      await handler(req, res);
 
-        expect(res._getStatusCode()).toBe(400);
-        expect(res._getJSONData()).toEqual({
-          error: {
-            type: "invalid_request_error",
-            message: "This endpoint can only be called from non-main regions.",
-          },
-        });
-      }
-    );
+      expect(res._getStatusCode()).toBe(400);
+      expect(res._getJSONData()).toEqual({
+        error: {
+          type: "invalid_request_error",
+          message: "This endpoint can only be called from non-main regions.",
+        },
+      });
+    });
 
-    itInTransaction("only supports POST method", async () => {
+    it("only supports POST method", async () => {
       vi.mocked(config.getDustRegionSyncEnabled).mockReturnValue(true);
       for (const method of ["DELETE", "GET", "PUT", "PATCH"] as const) {
         const { req, res } = await createPrivateApiMockRequest({
@@ -114,7 +107,7 @@ describe(
       }
     });
 
-    itInTransaction("handles failed templates list fetch", async () => {
+    it("handles failed templates list fetch", async () => {
       vi.mocked(config.getDustRegionSyncEnabled).mockReturnValue(true);
 
       mockFetch.mockImplementationOnce(() =>
@@ -141,72 +134,65 @@ describe(
       });
     });
 
-    itInTransaction(
-      "successfully pulls templates from main region",
-      async () => {
-        vi.mocked(config.getDustRegionSyncEnabled).mockReturnValue(true);
+    it("successfully pulls templates from main region", async () => {
+      vi.mocked(config.getDustRegionSyncEnabled).mockReturnValue(true);
 
-        // Mock the templates list response
-        mockFetch
-          .mockImplementationOnce(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  templates: [{ sId: "template1" }, { sId: "template2" }],
-                }),
-            })
-          )
-          // Mock individual template responses
-          .mockImplementationOnce(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  ...SAMPLE_TEMPLATE,
-                  sId: "template1",
-                  handle: "template1",
-                }),
-            })
-          )
-          .mockImplementationOnce(() =>
-            Promise.resolve({
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  ...SAMPLE_TEMPLATE,
-                  sId: "template2",
-                  handle: "template2",
-                }),
-            })
-          );
-
-        const { req, res } = await createPrivateApiMockRequest({
-          method: "POST",
-          isSuperUser: true,
-        });
-
-        await handler(req, res);
-
-        expect(res._getStatusCode()).toBe(200);
-        expect(res._getJSONData()).toEqual({
-          success: true,
-          count: 2,
-        });
-
-        // Verify fetch was called correctly
-        expect(mockFetch).toHaveBeenCalledTimes(3);
-        expect(mockFetch.mock.calls[0][0]).toContain("/api/templates");
-        expect(mockFetch.mock.calls[1][0]).toContain(
-          "/api/templates/template1"
+      // Mock the templates list response
+      mockFetch
+        .mockImplementationOnce(() =>
+          Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                templates: [{ sId: "template1" }, { sId: "template2" }],
+              }),
+          })
+        )
+        // Mock individual template responses
+        .mockImplementationOnce(() =>
+          Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                ...SAMPLE_TEMPLATE,
+                sId: "template1",
+                handle: "template1",
+              }),
+          })
+        )
+        .mockImplementationOnce(() =>
+          Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                ...SAMPLE_TEMPLATE,
+                sId: "template2",
+                handle: "template2",
+              }),
+          })
         );
-        expect(mockFetch.mock.calls[2][0]).toContain(
-          "/api/templates/template2"
-        );
-      }
-    );
 
-    itInTransaction("handles failed template fetches gracefully", async () => {
+      const { req, res } = await createPrivateApiMockRequest({
+        method: "POST",
+        isSuperUser: true,
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      expect(res._getJSONData()).toEqual({
+        success: true,
+        count: 2,
+      });
+
+      // Verify fetch was called correctly
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+      expect(mockFetch.mock.calls[0][0]).toContain("/api/templates");
+      expect(mockFetch.mock.calls[1][0]).toContain("/api/templates/template1");
+      expect(mockFetch.mock.calls[2][0]).toContain("/api/templates/template2");
+    });
+
+    it("handles failed template fetches gracefully", async () => {
       vi.mocked(config.getDustRegionSyncEnabled).mockReturnValue(true);
 
       // Mock the templates list response

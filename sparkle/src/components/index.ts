@@ -97,6 +97,18 @@ export { LinkWrapper } from "./LinkWrapper";
 export { LoadingBlock } from "./LoadingBlock";
 export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";
+export type {
+  MultiPageDialogFooterProps,
+  MultiPageDialogPage,
+  MultiPageDialogProps,
+} from "./MultiPageDialog";
+export {
+  MultiPageDialog,
+  MultiPageDialogClose,
+  MultiPageDialogContent,
+  MultiPageDialogFooter,
+  MultiPageDialogTrigger,
+} from "./MultiPageDialog";
 export {
   MultiPageSheet,
   MultiPageSheetClose,

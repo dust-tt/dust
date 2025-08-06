@@ -10,17 +10,19 @@ interface JsonSchemaSectionProps {
   initialSchemaString?: string | null;
   agentInstructions?: string;
   owner: WorkspaceType;
+  fieldName: string;
 }
 
 export function JsonSchemaSection({
   initialSchemaString,
   agentInstructions,
   owner,
+  fieldName,
 }: JsonSchemaSectionProps) {
   const { getValues } = useFormContext();
 
-  const { field } = useController({
-    name: "configuration.jsonSchema",
+  const { field, fieldState } = useController({
+    name: fieldName,
   });
 
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
@@ -40,10 +42,6 @@ export function JsonSchemaSection({
       setJsonSchemaString(newString);
     }
   }, [field.value, initialSchemaString]);
-
-  const schemaValidationResult = jsonSchemaString
-    ? validateConfiguredJsonSchema(jsonSchemaString)
-    : null;
 
   const generateSchemaFromInstructions = async () => {
     if (!agentInstructions) {
@@ -138,11 +136,7 @@ export function JsonSchemaSection({
       />
       <div className="space-y-2">
         <TextArea
-          error={
-            schemaValidationResult?.isErr()
-              ? schemaValidationResult.error.message
-              : undefined
-          }
+          error={fieldState.error?.message}
           showErrorLabel={true}
           placeholder={
             '{\n  "type": "object",\n  "properties": {\n    "name": { "type": "string" },\n    ...\n  }\n}'

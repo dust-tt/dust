@@ -4,6 +4,7 @@ import config from "@app/lib/production_checks/config";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -85,7 +86,7 @@ makeScript(
 
     // Using transactions to ensure that we don't end up with a key that is not in sync between the
     // front and connectors databases. Explicitly aborting both transactions if an error occurs.
-    await frontSequelize.transaction(async (frontTransaction) => {
+    await withTransaction(async (frontTransaction) => {
       await connectorsDb.transaction(async (connectorsTransaction) => {
         try {
           const [affectedCount] = await keyToRotate.rotateSecret(

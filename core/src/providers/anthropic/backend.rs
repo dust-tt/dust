@@ -1,10 +1,11 @@
+use crate::gcp_auth::get_gcp_access_token;
 use crate::run::Credentials;
-use crate::{gcp_auth::get_gcp_access_token, info};
 use anyhow::{anyhow, Result};
 use hyper::Uri;
 use reqwest::header::HeaderMap;
 use serde_json::{json, Value};
 use std::str::FromStr;
+use tracing::info;
 
 #[async_trait::async_trait]
 pub trait AnthropicBackend {
