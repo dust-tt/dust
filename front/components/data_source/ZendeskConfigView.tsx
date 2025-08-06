@@ -13,6 +13,7 @@ import { ZendeskOrganizationTagFilters } from "@app/components/data_source/Zende
 import { ZendeskTicketTagFilters } from "@app/components/data_source/ZendeskTicketTagFilters";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 
@@ -29,17 +30,13 @@ export function ZendeskConfigView({
 }) {
   const { isDark } = useTheme();
 
-  const unresolvedTicketsConfigKey = "zendeskSyncUnresolvedTicketsEnabled";
-  const hideCustomerDetailsConfigKey = "zendeskHideCustomerDetails";
-  const retentionPeriodConfigKey = "zendeskRetentionPeriodDays";
-
   const {
     configValue: syncUnresolvedTicketsConfigValue,
     mutateConfig: mutateSyncUnresolvedTicketsConfig,
   } = useConnectorConfig({
     owner,
     dataSource,
-    configKey: unresolvedTicketsConfigKey,
+    configKey: ZENDESK_CONFIG_KEYS.SYNC_UNRESOLVED_TICKETS,
   });
   const {
     configValue: hideCustomerDetailsConfigValue,
@@ -47,7 +44,7 @@ export function ZendeskConfigView({
   } = useConnectorConfig({
     owner,
     dataSource,
-    configKey: hideCustomerDetailsConfigKey,
+    configKey: ZENDESK_CONFIG_KEYS.HIDE_CUSTOMER_DETAILS,
   });
   const {
     configValue: retentionPeriodDays,
@@ -55,7 +52,7 @@ export function ZendeskConfigView({
   } = useConnectorConfig({
     owner,
     dataSource,
-    configKey: retentionPeriodConfigKey,
+    configKey: ZENDESK_CONFIG_KEYS.RETENTION_PERIOD,
   });
 
   const syncUnresolvedTicketsEnabled =
@@ -88,7 +85,7 @@ export function ZendeskConfigView({
       setLoading(false);
 
       // Show a notif only for the retention period (the others are toggles).
-      if (configKey === retentionPeriodConfigKey) {
+      if (configKey === ZENDESK_CONFIG_KEYS.RETENTION_PERIOD) {
         sendNotification({
           type: "success",
           title: "Retention period updated",
@@ -122,7 +119,7 @@ export function ZendeskConfigView({
         });
         return;
       }
-      await handleSetNewConfig(retentionPeriodConfigKey, numValue);
+      await handleSetNewConfig(ZENDESK_CONFIG_KEYS.RETENTION_PERIOD, numValue);
     }
   };
 
@@ -141,7 +138,7 @@ export function ZendeskConfigView({
               size="xs"
               onClick={async () => {
                 await handleSetNewConfig(
-                  unresolvedTicketsConfigKey,
+                  ZENDESK_CONFIG_KEYS.SYNC_UNRESOLVED_TICKETS,
                   !syncUnresolvedTicketsEnabled
                 );
               }}
@@ -171,7 +168,7 @@ export function ZendeskConfigView({
               size="xs"
               onClick={async () => {
                 await handleSetNewConfig(
-                  hideCustomerDetailsConfigKey,
+                  ZENDESK_CONFIG_KEYS.HIDE_CUSTOMER_DETAILS,
                   !hideCustomerDetailsEnabled
                 );
               }}
