@@ -37,7 +37,7 @@ const MAX_PAGE_SIZE: u64 = 1000;
 const MAX_TOTAL_HITS_TRACKED: i64 = 10000;
 const MAX_ES_QUERY_CLAUSES: usize = 1024; // Default Elasticsearch limit.
 
-const DEFAULT_TAG_AGGREGATION_SIZE_LIMIT: u64 = 100;
+const DEFAULT_TAG_AGGREGATION_SIZE_LIMIT: u64 = 200;
 
 #[derive(serde::Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
