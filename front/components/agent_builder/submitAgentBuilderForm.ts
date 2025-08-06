@@ -1,7 +1,6 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   AgentConfigurationType,
   DataSourceViewSelectionConfigurations,
