@@ -181,6 +181,14 @@ export class FileResource extends BaseResource<FileModel> {
     workspace: LightWorkspaceType,
     transaction?: Transaction
   ) {
+    // Delete all shareable file records.
+    await ShareableFileModel.destroy({
+      where: {
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
+
     return this.model.destroy({
       where: {
         workspaceId: workspace.id,
@@ -195,6 +203,20 @@ export class FileResource extends BaseResource<FileModel> {
     transaction?: Transaction
   ) {
     // We don't actually delete, instead we set the userId field to null.
+
+    await ShareableFileModel.update(
+      {
+        sharedBy: null,
+      },
+      {
+        where: {
+          sharedBy: user.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+      }
+    );
+
     return this.model.update(
       { userId: null },
       {
@@ -222,6 +244,14 @@ export class FileResource extends BaseResource<FileModel> {
         await this.getBucketForVersion("public")
           .file(this.getCloudStoragePath(auth, "public"))
           .delete({ ignoreNotFound: true });
+
+        // Delete the shareable file record.
+        await ShareableFileModel.destroy({
+          where: {
+            fileId: this.id,
+            workspaceId: this.workspaceId,
+          },
+        });
       }
 
       await this.model.destroy({
