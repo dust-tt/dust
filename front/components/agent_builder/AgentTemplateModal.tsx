@@ -3,6 +3,7 @@ import {
   Button,
   Markdown,
   Page,
+  ReadOnlyTextArea,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -10,7 +11,6 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import { ReadOnlyTextArea } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 import type { BuilderFlow } from "@app/components/assistant_builder/types";

@@ -11,6 +11,7 @@ import {
   LockIcon,
   Page,
   PlusIcon,
+  ReadOnlyTextArea,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -22,7 +23,6 @@ import {
   TabsTrigger,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
-import { ReadOnlyTextArea } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { BrainIcon } from "lucide-react";
 import { useEffect, useState } from "react";
