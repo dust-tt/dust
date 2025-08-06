@@ -2,7 +2,10 @@ import * as yaml from "js-yaml";
 import { z } from "zod";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  isAutoInternalMCPServerName,
+  isInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -332,6 +335,12 @@ export class AgentYAMLConverter {
     if (!isInternalMCPServerName(mcpServerName)) {
       return new Err(
         new Error(`Invalid internal MCP server name: ${mcpServerName}`)
+      );
+    }
+
+    if (!isAutoInternalMCPServerName(mcpServerName)) {
+      return new Err(
+        new Error(`MCP server ${mcpServerName} is not available for auto configuration`)
       );
     }
 
