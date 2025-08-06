@@ -1,3 +1,4 @@
+// TODO(2025-08-06 aubin): add some validation to confirm we actually get these types.
 export interface ZendeskFetchedBrand {
   url: string;
   id: number;
