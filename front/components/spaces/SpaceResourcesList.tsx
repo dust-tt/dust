@@ -10,7 +10,6 @@ import {
   PencilSquareIcon,
   Spinner,
   TrashIcon,
-  usePaginationFromUrl,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
@@ -36,6 +35,7 @@ import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
+import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import {
   getConnectorProviderLogoWithFallback,
   isConnectorPermissionsEditable,
