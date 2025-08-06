@@ -8,8 +8,6 @@ import {
 import { DESCRIPTION_MAX_LENGTH } from "@app/components/agent_builder/types";
 
 export interface CapabilityConfig {
-  title: string;
-  description: string;
   icon: React.ComponentType;
   configPageTitle: string;
   configPageDescription: string;
@@ -24,8 +22,6 @@ export interface CapabilityConfig {
 
 export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
   search: {
-    title: "Select Data Sources",
-    description: "Choose which data sources to search",
     icon: MagnifyingGlassIcon,
     configPageTitle: "Configure Search",
     configPageDescription: "Describe what you want to search for",
@@ -39,8 +35,6 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
     },
   },
   include_data: {
-    title: "Select Data Sources",
-    description: "Choose which data sources to include data from",
     icon: ActionIncludeIcon,
     configPageTitle: "Configure Include Data",
     configPageDescription: "Set time range and describe what data to include",
@@ -55,14 +49,12 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
     },
   },
   extract_data: {
-    title: "Data Sources",
-    description: "Choose which data sources to extract data from",
     icon: ActionScanIcon,
     configPageTitle: "Configure Extract Data",
     configPageDescription:
       "Set extraction parameters and describe what data to extract",
     descriptionConfig: {
-      title: "What's the data?",
+      title: "What’s the data?",
       description:
         "Provide a brief description (maximum 800 characters) of the data content and context to help the agent determine when to utilize it effectively.",
       placeholder: "This data contains…",
@@ -70,8 +62,6 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
     },
   },
   query_tables: {
-    title: "Select Tables",
-    description: "Choose which tables to query from your data sources",
     icon: TableIcon,
     configPageTitle: "Configure Query Tables",
     configPageDescription: "Describe how you want to query the selected tables",

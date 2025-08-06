@@ -16,7 +16,7 @@ import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_action
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
-// TODO: Merge this capability form schema, and create validation based on selectedMCPServerView
+// TODO: Merge this with capability form schema, and create validation based on selectedMCPServerView
 const getConfigurationSchema = (requirements: MCPServerRequirements | null) => {
   const baseFields = {
     mcpServerViewId: mcpServerViewIdSchema,
@@ -150,7 +150,7 @@ export function getMCPConfigurationFormSchema(
 }
 
 export function getDefaultConfiguration(
-  mcpServerView?: MCPServerViewType | null
+  mcpServerView?: MCPServerViewType
 ) {
   const requirements = mcpServerView
     ? getMCPServerRequirements(mcpServerView)
