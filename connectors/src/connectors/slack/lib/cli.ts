@@ -418,7 +418,7 @@ export const slack = async ({
               connectorId: connector.id,
               channelId: channel.id,
               channelName: channel.name,
-              error: error instanceof Error ? error.message : String(error),
+              error: normalizeError(error)
             },
             "Exception while processing channel with autoReadChannel"
           );
