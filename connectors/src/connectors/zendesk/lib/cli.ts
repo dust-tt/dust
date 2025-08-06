@@ -272,25 +272,27 @@ export const zendesk = async ({
       }
 
       const brandId = args.brandId ?? null;
-      if (!brandId) {
-        throw new Error(`Missing --brandId argument`);
-      }
       const ticketId = args.ticketId ?? null;
       if (!ticketId) {
         throw new Error(`Missing --ticketId argument`);
       }
-      const ticketOnDb = await ZendeskTicketResource.fetchByTicketId({
-        connectorId: connector.id,
-        brandId,
-        ticketId,
-      });
 
-      const brandSubdomain = await getZendeskBrandSubdomain({
-        connectorId: connector.id,
-        brandId,
-        subdomain,
-        accessToken,
-      });
+      let ticketOnDb = null;
+      let brandSubdomain = subdomain;
+
+      if (brandId) {
+        ticketOnDb = await ZendeskTicketResource.fetchByTicketId({
+          connectorId: connector.id,
+          brandId,
+          ticketId,
+        });
+        brandSubdomain = await getZendeskBrandSubdomain({
+          connectorId: connector.id,
+          brandId,
+          subdomain,
+          accessToken,
+        });
+      }
 
       const ticket = await fetchZendeskTicket({
         accessToken,
@@ -301,7 +303,7 @@ export const zendesk = async ({
       const shouldSyncTicket = await checkTicketShouldBeSynced(
         ticket,
         configuration,
-        { brandId, accessToken, brandSubdomain },
+        { brandId: brandId ?? undefined, accessToken, brandSubdomain },
         logger
       );
 
