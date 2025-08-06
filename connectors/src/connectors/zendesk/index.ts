@@ -33,6 +33,7 @@ import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendes
 import {
   fetchZendeskCurrentUser,
   isUserAdmin,
+  listZendeskTicketFields,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import {
   launchZendeskFullSyncWorkflow,
@@ -65,6 +66,7 @@ const ORGANIZATION_TAGS_TO_INCLUDE_CONFIG_KEY =
   "zendeskOrganizationTagsToInclude";
 const ORGANIZATION_TAGS_TO_EXCLUDE_CONFIG_KEY =
   "zendeskOrganizationTagsToExclude";
+const CUSTOM_FIELDS_CONFIG_KEY = "zendeskCustomFieldsConfig";
 const MAX_RETENTION_DAYS = 365;
 const DEFAULT_RETENTION_DAYS = 180;
 
@@ -689,6 +691,61 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         await zendeskConfiguration.update({
           organizationTagsToExclude: tags,
         });
+
+        return new Ok(undefined);
+      }
+      case CUSTOM_FIELDS_CONFIG_KEY: {
+        const fieldNames =
+          configValue.trim() === "" ? null : JSON.parse(configValue);
+
+        if (fieldNames !== null && !Array.isArray(fieldNames)) {
+          return new Err(
+            new Error("Custom field names must be an array or empty.")
+          );
+        }
+
+        if (fieldNames === null) {
+          await zendeskConfiguration.update({
+            customFieldsConfig: [],
+          });
+
+          return new Ok(undefined);
+        }
+
+        const { accessToken, subdomain } =
+          await getZendeskSubdomainAndAccessToken(connector.connectionId);
+
+        const allTicketFields = await listZendeskTicketFields({
+          accessToken,
+          subdomain,
+        });
+
+        const convertedFields: { id: number; name: string }[] = [];
+        for (const fieldName of fieldNames) {
+          const matchingField = allTicketFields.find(
+            (field) =>
+              field.title.toLowerCase() === fieldName.toLowerCase() &&
+              field.active
+          );
+
+          if (!matchingField) {
+            return new Err(
+              new Error(
+                `Field "${fieldName}" not found in active Zendesk ticket fields.`
+              )
+            );
+          }
+
+          convertedFields.push({
+            id: matchingField.id,
+            name: matchingField.title,
+          });
+        }
+
+        await zendeskConfiguration.update({
+          customFieldsConfig: convertedFields,
+        });
+
         return new Ok(undefined);
       }
       default: {
@@ -751,6 +808,15 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         return new Ok(
           zendeskConfiguration.organizationTagsToExclude
             ? JSON.stringify(zendeskConfiguration.organizationTagsToExclude)
+            : ""
+        );
+      }
+      case CUSTOM_FIELDS_CONFIG_KEY: {
+        return new Ok(
+          zendeskConfiguration.customFieldsConfig
+            ? JSON.stringify(
+                zendeskConfiguration.customFieldsConfig.map((f) => f.name)
+              )
             : ""
         );
       }
