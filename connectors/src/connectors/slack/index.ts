@@ -523,6 +523,28 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           );
         }
 
+        const existingAutoReadChannelPatterns = new Set(
+          slackConfig.autoReadChannelPatterns.map((p) => p.pattern)
+        );
+        const newAutoReadChannelPatterns = new Set(
+          autoReadChannelPatterns.map((p) => p.pattern)
+        );
+
+        const addedAutoReadChannelPatterns = autoReadChannelPatterns.filter(
+          (item) => !existingAutoReadChannelPatterns.has(item.pattern)
+        );
+        const removedAutoReadChannelPatterns =
+          slackConfig.autoReadChannelPatterns.filter(
+            (item) => !newAutoReadChannelPatterns.has(item.pattern)
+          );
+
+        if (
+          addedAutoReadChannelPatterns.length === 0 &&
+          removedAutoReadChannelPatterns.length === 0
+        ) {
+          return new Ok(undefined);
+        }
+
         const res = await slackConfig.setAutoReadChannelPatterns(
           autoReadChannelPatterns
         );
@@ -531,15 +553,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           return res;
         }
 
-        const existingAutoReadChannelPatterns = new Set(
-          slackConfig.autoReadChannelPatterns.map((p) => p.pattern)
-        );
-
-        const newAutoReadChannelPatterns = autoReadChannelPatterns.filter(
-          (item) => !existingAutoReadChannelPatterns.has(item.pattern)
-        );
-
-        if (newAutoReadChannelPatterns.length === 0) {
+        if (addedAutoReadChannelPatterns.length === 0) {
           return res;
         }
 
@@ -560,7 +574,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
           const matchingPatterns = findMatchingChannelPatterns(
             channelName,
-            newAutoReadChannelPatterns
+            addedAutoReadChannelPatterns
           );
           return matchingPatterns.length > 0;
         });
