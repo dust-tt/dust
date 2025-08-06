@@ -21,8 +21,8 @@ import {
   ScrollableDataTable,
 } from "@sparkle/components/";
 import {
-  createSelectionColumn,
   createRadioSelectionColumn,
+  createSelectionColumn,
   MenuItem,
 } from "@sparkle/components/DataTable";
 import { FolderIcon } from "@sparkle/icons/app";
