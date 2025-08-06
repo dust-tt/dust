@@ -8,7 +8,7 @@ import {
 import { useHashParam } from "@app/hooks/useHashParams";
 import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
 
-type PanelType = "content" | "actions";
+export type ConversationSidePanelType = "content" | "actions" | undefined;
 
 type OpenPanelParams =
   | {
@@ -20,6 +20,7 @@ type OpenPanelParams =
       type: "content";
       fileId: string;
       timestamp?: string;
+      metadata?: undefined;
     };
 
 interface AgentActionState {
@@ -28,10 +29,10 @@ interface AgentActionState {
   messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
 }
 
-type SidePanelMetadata = AgentActionState | null;
+type SidePanelMetadata = Pick<OpenPanelParams, "metadata">["metadata"];
 
 interface ConversationSidePanelContextType {
-  currentPanel: PanelType | undefined;
+  currentPanel: ConversationSidePanelType;
   openPanel: (params: OpenPanelParams) => void;
   closePanel: () => void;
   data: string | undefined;
@@ -64,14 +65,13 @@ export function ConversationSidePanelProvider({
   const [currentPanel, setCurrentPanel] = useHashParam(
     SIDE_PANEL_TYPE_HASH_PARAM
   );
-  const [metadata, setMetadata] = useState<SidePanelMetadata>(null);
+  const [metadata, setMetadata] = useState<SidePanelMetadata>(undefined);
 
   const openPanel = (params: OpenPanelParams) => {
     setCurrentPanel(params.type);
 
     switch (params.type) {
       case "actions":
-        console.log(params, data);
         if (params.messageId === data) {
           closePanel();
           return;
@@ -83,17 +83,16 @@ export function ConversationSidePanelProvider({
         params.timestamp
           ? setData(`${params.fileId}@${params.timestamp}`)
           : setData(params.fileId);
-        setMetadata(null);
+        setMetadata(undefined);
         break;
       default:
-        const { type } = params;
-        assertNever(type);
+        assertNever(params);
     }
   };
 
   const closePanel = () => {
     setData(undefined);
-    setMetadata(null);
+    setMetadata(undefined);
     setCurrentPanel(undefined);
   };
 
@@ -119,22 +118,19 @@ export function ConversationSidePanelProvider({
     }
   }, [data, currentPanel, setCurrentPanel, metadata]);
 
-  const value: ConversationSidePanelContextType = React.useMemo(
-    () => ({
-      currentPanel:
-        currentPanel !== "content" && currentPanel !== "actions"
-          ? undefined
-          : currentPanel,
-      openPanel,
-      closePanel,
-      data,
-      metadata,
-    }),
-    [currentPanel, openPanel, closePanel, data, metadata]
-  );
-
   return (
-    <ConversationSidePanelContext.Provider value={value}>
+    <ConversationSidePanelContext.Provider
+      value={{
+        currentPanel:
+          currentPanel !== "content" && currentPanel !== "actions"
+            ? undefined
+            : currentPanel,
+        openPanel,
+        closePanel,
+        data,
+        metadata,
+      }}
+    >
       {children}
     </ConversationSidePanelContext.Provider>
   );

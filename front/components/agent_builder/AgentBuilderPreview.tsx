@@ -15,6 +15,7 @@ import { useMCPServerViewsContext } from "@app/components/assistant_builder/cont
 import { useUser } from "@app/lib/swr/user";
 
 import type { AgentBuilderFormData } from "./AgentBuilderFormContext";
+import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 
 interface EmptyStateProps {
   message: string;
@@ -119,14 +120,16 @@ export function AgentBuilderPreview() {
         )}
         <div className="flex-1 overflow-y-auto">
           {conversation && user && (
-            <ConversationViewer
-              owner={owner}
-              user={user}
-              conversationId={conversation.sId}
-              onStickyMentionsChange={setStickyMentions}
-              isInModal
-              key={conversation.sId}
-            />
+            <ConversationSidePanelProvider>
+              <ConversationViewer
+                owner={owner}
+                user={user}
+                conversationId={conversation.sId}
+                onStickyMentionsChange={setStickyMentions}
+                isInModal
+                key={conversation.sId}
+              />
+            </ConversationSidePanelProvider>
           )}
         </div>
         <div className="flex-shrink-0 p-4">

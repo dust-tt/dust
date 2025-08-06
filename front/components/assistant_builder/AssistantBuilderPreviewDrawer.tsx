@@ -51,6 +51,7 @@ import type {
 } from "@app/types";
 import type { LightAgentConfigurationType } from "@app/types";
 import { assertNever, isAssistantBuilderRightPanelTab } from "@app/types";
+import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;
@@ -234,14 +235,16 @@ export default function AssistantBuilderRightPanel({
                       )}
                       <div className="flex-grow overflow-y-auto">
                         {conversation && (
-                          <ConversationViewer
-                            owner={owner}
-                            user={user}
-                            conversationId={conversation.sId}
-                            onStickyMentionsChange={setStickyMentions}
-                            isInModal
-                            key={conversation.sId}
-                          />
+                          <ConversationSidePanelProvider>
+                            <ConversationViewer
+                              owner={owner}
+                              user={user}
+                              conversationId={conversation.sId}
+                              onStickyMentionsChange={setStickyMentions}
+                              isInModal
+                              key={conversation.sId}
+                            />
+                          </ConversationSidePanelProvider>
                         )}
                       </div>
                       <div className="shrink-0">

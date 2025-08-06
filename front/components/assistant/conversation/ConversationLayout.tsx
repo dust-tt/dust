@@ -39,6 +39,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import ConversationSidePanelContainer from "@app/components/assistant/conversation/ConversationSidePanelContainer";
 
 export interface ConversationLayoutProps {
   baseUrl: string;
@@ -252,15 +253,11 @@ function ConversationInnerLayout({
               currentPanel && "absolute inset-0 md:relative md:inset-auto"
             )}
           >
-            {currentPanel === "content" && (
-              <InteractiveContentContainer
-                conversation={conversation}
-                owner={owner}
-              />
-            )}
-            {currentPanel === "actions" && (
-              <AgentActionsPanel conversation={conversation} owner={owner} />
-            )}
+            <ConversationSidePanelContainer
+              currentPanel={currentPanel}
+              owner={owner}
+              conversation={conversation}
+            />
           </ResizablePanel>
         )}
       </ResizablePanelGroup>
