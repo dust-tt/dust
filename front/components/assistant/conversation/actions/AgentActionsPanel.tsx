@@ -2,36 +2,39 @@ import { Spinner } from "@dust-tt/sparkle";
 import React from "react";
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
-import { useAgentActionsContext } from "@app/components/assistant/conversation/actions/AgentActionsContext";
 import { InteractiveContentHeader } from "@app/components/assistant/conversation/ResizablePanelHeader";
 import type { MCPActionType } from "@app/lib/actions/mcp";
-import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type { ConversationType, LightWorkspaceType } from "@app/types";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 
 interface AgentActionsPanelProps {
   conversation: ConversationType | null;
   owner: LightWorkspaceType;
-  actionProgress: ActionProgressState;
-  isActing: boolean;
-  messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
 }
 
 export function AgentActionsPanel({
   conversation,
   owner,
-  actionProgress,
-  isActing,
-  messageStatus,
 }: AgentActionsPanelProps) {
-  const { messageId, closeActions } = useAgentActionsContext();
+  const {
+    closePanel,
+    data: messageId,
+    metadata: messageMetadata,
+  } = useConversationSidePanelContext();
 
   const { message: fullAgentMessage, isMessageLoading } =
     useConversationMessage({
       conversationId: conversation?.sId ?? null,
       workspaceId: owner.sId,
-      messageId: messageId,
+      messageId: messageId ?? null,
     });
+
+  if (!messageId || !messageMetadata) {
+    return null;
+  }
+
+  const { actionProgress, isActing, messageStatus } = messageMetadata;
 
   const actions =
     fullAgentMessage?.type === "agent_message" ? fullAgentMessage.actions : [];
@@ -50,7 +53,7 @@ export function AgentActionsPanel({
     <div className="flex h-full flex-col bg-background">
       <InteractiveContentHeader
         title="Breakdown of the tools used"
-        onClose={closeActions}
+        onClose={closePanel}
       />
       <div className="flex-1 overflow-y-auto p-4">
         {isMessageLoading ? (

@@ -8,19 +8,11 @@ import { useRouter } from "next/router";
 import React, { useEffect, useMemo, useRef } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import {
-  AgentActionsProvider,
-  useAgentActionsContext,
-} from "@app/components/assistant/conversation/actions/AgentActionsContext";
 import { AgentActionsPanel } from "@app/components/assistant/conversation/actions/AgentActionsPanel";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import { InteractiveContentContainer } from "@app/components/assistant/conversation/content/InteractiveContentContainer";
-import {
-  InteractiveContentProvider,
-  useInteractiveContentContext,
-} from "@app/components/assistant/conversation/content/InteractiveContentContext";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
   ConversationsNavigationProvider,
@@ -31,6 +23,7 @@ import { FileDropProvider } from "@app/components/assistant/conversation/FileUpl
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
@@ -45,6 +38,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 
 export interface ConversationLayoutProps {
   baseUrl: string;
@@ -164,19 +158,17 @@ const ConversationLayoutContent = ({
           owner={owner}
           hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
         >
-          <InteractiveContentProvider>
-            <AgentActionsProvider>
-              <ConversationInnerLayout
-                activeConversationId={activeConversationId}
-                baseUrl={baseUrl}
-                conversation={conversation}
-                conversationError={conversationError}
-                owner={owner}
-              >
-                {children}
-              </ConversationInnerLayout>
-            </AgentActionsProvider>
-          </InteractiveContentProvider>
+          <ConversationSidePanelProvider>
+            <ConversationInnerLayout
+              activeConversationId={activeConversationId}
+              baseUrl={baseUrl}
+              conversation={conversation}
+              conversationError={conversationError}
+              owner={owner}
+            >
+              {children}
+            </ConversationInnerLayout>
+          </ConversationSidePanelProvider>
         </CoEditionProvider>
         {shouldDisplayWelcomeTourGuide && (
           <WelcomeTourGuide
@@ -211,33 +203,7 @@ function ConversationInnerLayout({
   conversationError,
   activeConversationId,
 }: ConversationInnerLayoutProps) {
-  const { isContentOpen, closeContent } = useInteractiveContentContext();
-  const { isActionsOpen, closeActions, messageId, getActionState } =
-    useAgentActionsContext();
-
-  /**
-   * This effect ensures that when one panel (content or actions) is opened,
-   * the other panel is closed. This is a bit involved because the actual
-   * open/close state is managed by the context.
-   */
-  const panelState = useRef({ content: isContentOpen, actions: isActionsOpen });
-  useEffect(() => {
-    const contentOpening = isContentOpen && !panelState.current.content;
-    const actionsOpening = isActionsOpen && !panelState.current.actions;
-
-    if (contentOpening && isActionsOpen) {
-      closeActions();
-    } else if (actionsOpening && isContentOpen) {
-      closeContent();
-    }
-
-    panelState.current = {
-      content: isContentOpen,
-      actions: isActionsOpen,
-    };
-  }, [isContentOpen, isActionsOpen, closeActions, closeContent]);
-
-  const isPanelOpen = isContentOpen || isActionsOpen;
+  const { currentPanel } = useConversationSidePanelContext();
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -260,7 +226,7 @@ function ConversationInnerLayout({
                     className={cn(
                       "h-full overflow-y-auto scroll-smooth px-4",
                       // Hide conversation on mobile when any panel is opened.
-                      isPanelOpen && "hidden md:block"
+                      currentPanel && "hidden md:block"
                     )}
                   >
                     {children}
@@ -272,36 +238,32 @@ function ConversationInnerLayout({
         </ResizablePanel>
 
         {/* Resizable Handle for Panels */}
-        {isPanelOpen && <ResizableHandle className="hidden md:block" />}
+        {currentPanel && <ResizableHandle className="hidden md:block" />}
 
         {/* Panel Container - either Interactive Content or Actions */}
-        <ResizablePanel
-          minSize={20}
-          defaultSize={70}
-          className={cn(
-            !isPanelOpen && "hidden",
-            // On mobile: overlay full screen with absolute positioning.
-            "md:relative",
-            isPanelOpen && "absolute inset-0 md:relative md:inset-auto"
-          )}
-        >
-          {isContentOpen && (
-            <InteractiveContentContainer
-              conversation={conversation}
-              isOpen={isContentOpen}
-              owner={owner}
-            />
-          )}
-          {isActionsOpen && messageId && (
-            <AgentActionsPanel
-              conversation={conversation}
-              owner={owner}
-              actionProgress={getActionState(messageId).actionProgress}
-              isActing={getActionState(messageId).isActing}
-              messageStatus={getActionState(messageId).messageStatus}
-            />
-          )}
-        </ResizablePanel>
+        {currentPanel && (
+          <ResizablePanel
+            minSize={20}
+            defaultSize={70}
+            className={cn(
+              !currentPanel && "hidden",
+              // On mobile: overlay full screen with absolute positioning.
+              "md:relative",
+              currentPanel &&
+                "absolute inset-0 border-red-200 md:relative md:inset-auto"
+            )}
+          >
+            {currentPanel === "content" && (
+              <InteractiveContentContainer
+                conversation={conversation}
+                owner={owner}
+              />
+            )}
+            {currentPanel === "actions" && (
+              <AgentActionsPanel conversation={conversation} owner={owner} />
+            )}
+          </ResizablePanel>
+        )}
       </ResizablePanelGroup>
     </div>
   );

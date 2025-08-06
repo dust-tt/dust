@@ -2,24 +2,31 @@ import { Spinner } from "@dust-tt/sparkle";
 
 import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
 import { ClientExecutableRenderer } from "@app/components/assistant/conversation/content/ClientExecutableRenderer";
-import { useInteractiveContentContext } from "@app/components/assistant/conversation/content/InteractiveContentContext";
 import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/content/UnsupportedContentRenderer";
 import { useFileMetadata } from "@app/lib/swr/files";
 import type { ConversationType, LightWorkspaceType } from "@app/types";
 import { clientExecutableContentType } from "@app/types";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { useMemo } from "react";
 
 interface InteractiveContentContainerProps {
   conversation: ConversationType | null;
-  isOpen: boolean;
   owner: LightWorkspaceType;
 }
 
 export function InteractiveContentContainer({
   conversation,
-  isOpen,
   owner,
 }: InteractiveContentContainerProps) {
-  const { contentId, contentHash } = useInteractiveContentContext();
+  const { data: contentHash } = useConversationSidePanelContext();
+
+  const contentId = useMemo(() => {
+    if (!contentHash) {
+      return null;
+    }
+    return contentHash.split("@")[0];
+  }, [contentHash]);
+
   const { fileMetadata, isFileMetadataLoading, isFileMetadataError } =
     useFileMetadata({
       fileId: contentId,
@@ -28,7 +35,7 @@ export function InteractiveContentContainer({
       cacheKey: contentHash,
     });
 
-  if (!isOpen || !contentId) {
+  if (!contentId) {
     return null;
   }
 

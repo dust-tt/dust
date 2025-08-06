@@ -2,11 +2,11 @@ import { TOOL_RUNNING_LABEL } from "@dust-tt/client";
 import { Button, Chip, CommandLineIcon } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
-import { useAgentActionsContext } from "@app/components/assistant/conversation/actions/AgentActionsContext";
 import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
 import type { AgentStateClassification } from "@app/lib/assistant/state/messageReducer";
 import type { LightAgentMessageType } from "@app/types";
 import { assertNever } from "@app/types";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 
 interface AgentMessageActionsProps {
   agentMessage: LightAgentMessageType;
@@ -20,48 +20,7 @@ export function AgentMessageActions({
   actionProgress,
 }: AgentMessageActionsProps) {
   const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
-  const { openActions, setActionState /** isAutoOpenDisabled */ } =
-    useAgentActionsContext();
-  /**
-   * const { isContentOpen } = useInteractiveContentContext();
-   */
-
-  // Update action state whenever it changes
-  useEffect(() => {
-    setActionState(agentMessage.sId, {
-      actionProgress,
-      isActing: lastAgentStateClassification === "acting",
-      messageStatus: agentMessage.status,
-    });
-  }, [
-    agentMessage.sId,
-    actionProgress,
-    lastAgentStateClassification,
-    setActionState,
-  ]);
-
-  /**
-  
-  // Auto-open actions panel when agent starts acting (but respect user preferences)
-  useEffect(() => {
-    if (
-      lastAgentStateClassification === "acting" &&
-      agentMessage.actions.length > 0 &&
-      !isAutoOpenDisabled &&
-      !isContentOpen
-    ) {
-      openActions(agentMessage.sId);
-    }
-  }, [
-    lastAgentStateClassification,
-    agentMessage.actions.length,
-    agentMessage.sId,
-    openActions,
-    isAutoOpenDisabled,
-    isContentOpen,
-  ]);
-  
-  */
+  const { openPanel } = useConversationSidePanelContext();
 
   useEffect(() => {
     switch (lastAgentStateClassification) {
@@ -92,7 +51,17 @@ export function AgentMessageActions({
         hasActions={agentMessage.actions.length > 0}
         isActionStepDone={!isThinkingOrActing}
         label={chipLabel}
-        onClick={() => openActions(agentMessage.sId, true)}
+        onClick={() =>
+          openPanel({
+            type: "actions",
+            messageId: agentMessage.sId,
+            metadata: {
+              actionProgress,
+              isActing: lastAgentStateClassification === "acting",
+              messageStatus: agentMessage.status,
+            },
+          })
+        }
       />
     </div>
   );
