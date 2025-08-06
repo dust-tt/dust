@@ -12,6 +12,10 @@ import {
   BaseConnectorManager,
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
+import {
+  autoReadChannel,
+  findMatchingChannelPatterns,
+} from "@connectors/connectors/slack/auto_read_channel";
 import { getBotEnabled } from "@connectors/connectors/slack/bot";
 import {
   getChannels,
@@ -43,6 +47,7 @@ import type {
   SlackConfigurationType,
 } from "@connectors/types";
 import {
+  concurrentExecutor,
   isSlackAutoReadPatterns,
   normalizeError,
   safeParseJSON,
@@ -518,7 +523,90 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           );
         }
 
-        return slackConfig.setAutoReadChannelPatterns(autoReadChannelPatterns);
+        const existingAutoReadChannelPatterns = new Set(
+          slackConfig.autoReadChannelPatterns.map((p) => p.pattern)
+        );
+        const newAutoReadChannelPatterns = new Set(
+          autoReadChannelPatterns.map((p) => p.pattern)
+        );
+
+        const addedAutoReadChannelPatterns = autoReadChannelPatterns.filter(
+          (item) => !existingAutoReadChannelPatterns.has(item.pattern)
+        );
+        const removedAutoReadChannelPatterns =
+          slackConfig.autoReadChannelPatterns.filter(
+            (item) => !newAutoReadChannelPatterns.has(item.pattern)
+          );
+
+        if (
+          addedAutoReadChannelPatterns.length === 0 &&
+          removedAutoReadChannelPatterns.length === 0
+        ) {
+          return new Ok(undefined);
+        }
+
+        const res = await slackConfig.setAutoReadChannelPatterns(
+          autoReadChannelPatterns
+        );
+
+        if (res.isErr()) {
+          return res;
+        }
+
+        if (addedAutoReadChannelPatterns.length === 0) {
+          return res;
+        }
+
+        // Check matching channels.
+        const slackClient = await getSlackClient(connector.id);
+
+        // Fetch all channels from Slack
+        const allChannels = await getChannels(slackClient, connector.id, false);
+
+        const results: Result<boolean, Error>[] = [];
+
+        // Filter channels that match any new pattern
+        const matchingChannels = allChannels.filter((channel) => {
+          const channelName = channel.name;
+          if (!channelName) {
+            return false;
+          }
+
+          const matchingPatterns = findMatchingChannelPatterns(
+            channelName,
+            addedAutoReadChannelPatterns
+          );
+          return matchingPatterns.length > 0;
+        });
+
+        await concurrentExecutor(
+          matchingChannels,
+          async (channel) => {
+            try {
+              if (channel.id) {
+                results.push(
+                  await autoReadChannel(
+                    slackConfig.slackTeamId,
+                    logger,
+                    channel.id,
+                    connector.type as "slack" | "slack_bot"
+                  )
+                );
+              }
+            } catch (error) {
+              results.push(new Err(normalizeError(error)));
+            }
+          },
+          { concurrency: 10 }
+        );
+
+        for (const result of results) {
+          if (result.isErr()) {
+            return result;
+          }
+        }
+
+        return res;
       }
 
       case "restrictedSpaceAgentsEnabled": {

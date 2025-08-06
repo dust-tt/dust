@@ -2,7 +2,7 @@ import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
-import { getTemporalClient } from "@app/lib/temporal";
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { TRANSCRIPTS_QUEUE_NAME } from "@app/temporal/labs/transcripts/config";
 import { makeRetrieveTranscriptWorkflowId } from "@app/temporal/labs/transcripts/utils";
@@ -13,7 +13,7 @@ import { Err, normalizeError, Ok } from "@app/types";
 export async function launchRetrieveTranscriptsWorkflow(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource
 ): Promise<Result<string, Error>> {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
   const workflowId = makeRetrieveTranscriptWorkflowId(transcriptsConfiguration);
 
   try {
@@ -53,7 +53,7 @@ export async function stopRetrieveTranscriptsWorkflow(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
   setIsActiveToFalse: boolean = true
 ): Promise<Result<void, Error>> {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
   const workflowId = makeRetrieveTranscriptWorkflowId(transcriptsConfiguration);
 
   try {

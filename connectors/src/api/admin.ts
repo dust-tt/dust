@@ -42,6 +42,10 @@ const whitelistedCommands = [
     command: "whitelist-bot",
   },
   {
+    majorCommand: "slack",
+    command: "run-auto-join",
+  },
+  {
     majorCommand: "connectors",
     command: "set-error",
   },

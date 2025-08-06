@@ -1,6 +1,6 @@
 import parseArgs from "minimist";
 
-import { getTemporalClient } from "@app/lib/temporal";
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import {
   launchDataRetentionWorkflow,
   stopDataRetentionWorkflow,
@@ -24,7 +24,7 @@ const main = async () => {
       await stopDataRetentionWorkflow();
       return;
     case "run-now":
-      const client = await getTemporalClient();
+      const client = await getTemporalClientForFrontNamespace();
       await client.workflow.signalWithStart(dataRetentionWorkflow, {
         workflowId: "data-retention-workflow",
         taskQueue: QUEUE_NAME,

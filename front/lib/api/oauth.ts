@@ -6,6 +6,7 @@ import type {
   RelatedCredential,
 } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import { ConfluenceOAuthProvider } from "@app/lib/api/oauth/providers/confluence";
+import { FreshserviceOAuthProvider } from "@app/lib/api/oauth/providers/freshservice";
 import { GithubOAuthProvider } from "@app/lib/api/oauth/providers/github";
 import { GmailOAuthProvider } from "@app/lib/api/oauth/providers/gmail";
 import { GongOAuthProvider } from "@app/lib/api/oauth/providers/gong";
@@ -46,6 +47,7 @@ export type OAuthError = {
 // DO NOT USE THIS DIRECTLY, USE getProviderStrategy instead.
 const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   confluence: new ConfluenceOAuthProvider(),
+  freshservice: new FreshserviceOAuthProvider(),
   github: new GithubOAuthProvider(),
   gmail: new GmailOAuthProvider(),
   gong: new GongOAuthProvider(),

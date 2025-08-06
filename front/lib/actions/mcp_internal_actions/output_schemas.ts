@@ -545,6 +545,17 @@ export const RunAgentResultResourceSchema = z.object({
   text: z.string(),
   chainOfThought: z.string().optional(),
   uri: z.string(),
+  refs: z
+    .record(
+      z.string(),
+      z.object({
+        description: z.string().optional(),
+        href: z.string().optional(),
+        title: z.string(),
+        provider: z.string(),
+      })
+    )
+    .optional(),
 });
 
 export type RunAgentResultResourceType = z.infer<

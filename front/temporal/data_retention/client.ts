@@ -1,6 +1,6 @@
 import type { WorkflowHandle } from "@temporalio/client";
 
-import { getTemporalClient } from "@app/lib/temporal";
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Ok } from "@app/types";
@@ -12,7 +12,7 @@ import { dataRetentionWorkflow } from "./workflows";
 export async function launchDataRetentionWorkflow(): Promise<
   Result<undefined, Error>
 > {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
   await client.workflow.signalWithStart(dataRetentionWorkflow, {
     args: [],
     taskQueue: QUEUE_NAME,
@@ -26,7 +26,7 @@ export async function launchDataRetentionWorkflow(): Promise<
 }
 
 export async function stopDataRetentionWorkflow() {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
 
   try {
     const handle: WorkflowHandle<typeof dataRetentionWorkflow> =

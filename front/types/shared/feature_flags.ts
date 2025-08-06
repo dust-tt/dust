@@ -102,11 +102,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   monday_tool: {
     description: "Monday MCP tool",
   },
+  freshservice_tool: {
+    description: "Freshservice MCP tool",
+  },
   async_loop: {
     description: "Asynchronous loop for conversation processing",
   },
   agent_management_tool: {
     description: "MCP tool for creating and managing agent configurations",
+  },
+  jit_tools: {
+    description: "Allow users to add tools to conversations",
   },
 } as const;
 

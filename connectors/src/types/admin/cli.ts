@@ -554,6 +554,7 @@ export const SlackCommandSchema = t.type({
     t.literal("sync-thread"),
     t.literal("uninstall-for-unknown-team-ids"),
     t.literal("unskip-channel"),
+    t.literal("run-auto-join"),
     t.literal("whitelist-bot"),
     t.literal("whitelist-domains"),
   ]),
@@ -563,6 +564,13 @@ export const SlackCommandSchema = t.type({
   ),
 });
 export type SlackCommandType = t.TypeOf<typeof SlackCommandSchema>;
+
+export const SlackJoinResponseSchema = t.type({
+  total: t.number,
+  processed: t.number,
+});
+export type SlackJoinResponseType = t.TypeOf<typeof SlackJoinResponseSchema>;
+
 /**
  * </Slack>
  */
@@ -694,7 +702,7 @@ export const ZendeskCommandSchema = t.type({
     wId: t.union([t.string, t.undefined]),
     dsId: t.union([t.string, t.undefined]),
     connectorId: t.union([t.number, t.undefined]),
-    brandId: t.union([t.number, t.undefined]),
+    brandId: t.union([t.number, t.null, t.undefined]),
     query: t.union([t.string, t.undefined]),
     forceResync: t.union([t.literal("true"), t.undefined]),
     ticketId: t.union([t.number, t.undefined]),
@@ -812,6 +820,7 @@ export const AdminResponseSchema = t.union([
   NotionMeResponseSchema,
   NotionSearchPagesResponseSchema,
   NotionUpsertResponseSchema,
+  SlackJoinResponseSchema,
   SalesforceCheckConnectionResponseSchema,
   SalesforceRunSoqlResponseSchema,
   SalesforceSetupSyncedQueryResponseSchema,
