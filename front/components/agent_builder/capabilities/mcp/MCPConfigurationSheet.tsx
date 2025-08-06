@@ -11,7 +11,10 @@ import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  AgentBuilderDataVizAction,
+  MCPFormData,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getMCPConfigurationFormSchema } from "@app/components/agent_builder/capabilities/mcp/formValidation";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
 import { AdditionalConfigurationSection } from "@app/components/agent_builder/capabilities/shared/AdditionalConfigurationSection";
@@ -29,8 +32,8 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { WorkspaceType } from "@app/types";
 
 interface MCPConfigurationSheetProps {
-  selectedAction: AgentBuilderAction | null;
-  onSave: (action: AgentBuilderAction) => void;
+  selectedAction?: AgentBuilderAction | AgentBuilderDataVizAction | null;
+  onSave: (action: AgentBuilderAction | AgentBuilderDataVizAction) => void;
   isOpen: boolean;
   onClose: () => void;
   getAgentInstructions: () => string;

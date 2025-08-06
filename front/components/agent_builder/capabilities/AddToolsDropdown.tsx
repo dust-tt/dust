@@ -49,6 +49,7 @@ interface AddToolsDropdownProps {
     React.SetStateAction<{
       action: AgentBuilderAction;
       index: number | null;
+      isDataSourceSelectionRequired: boolean;
     } | null>
   >;
   defaultMCPServerViews: MCPServerViewTypeWithLabel[];
@@ -135,6 +136,7 @@ export function AddToolsDropdown({
           },
         },
         index: null,
+        isDataSourceSelectionRequired: false,
       });
       return;
     }
@@ -144,7 +146,11 @@ export function AddToolsDropdown({
     if (requirement.noRequirement) {
       addTools(action);
     } else {
-      setSelectedAction({ action, index: null });
+      setSelectedAction({
+        action,
+        index: null,
+        isDataSourceSelectionRequired: false,
+      });
     }
   }
 

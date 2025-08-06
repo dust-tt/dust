@@ -125,7 +125,11 @@ const dataVisualizationAction = {
 
 function filterSelectableViews(
   views: MCPServerViewTypeWithLabel[],
-  fields: FieldArrayWithId<AgentBuilderFormData, "actions", "id">[]
+  fields: FieldArrayWithId<
+    AgentBuilderFormData | AgentBuilderDataVizAction,
+    "actions",
+    "id"
+  >[]
 ) {
   return views.filter((view) => {
     const selectedAction = fields.find(
@@ -151,11 +155,10 @@ const BACKGROUND_IMAGE_STYLE_PROPS = {
 
 export function AgentBuilderCapabilitiesBlock() {
   const [selectedAction, setSelectedAction] = useState<{
-    action: AgentBuilderAction;
+    action: AgentBuilderAction | AgentBuilderDataVizAction;
     index: number | null;
+    isDataSourceSelectionRequired: boolean;
   } | null>(null);
-  const [isKnowledgeSheetOpen, setIsKnowledgeSheetOpen] = useState(false);
-
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { fields, remove, append, update } = useFieldArray<
     AgentBuilderFormData,
@@ -200,26 +203,23 @@ export function AgentBuilderCapabilitiesBlock() {
 
   // fixme
   const handleActionEdit = (action: AgentBuilderAction, index: number) => {
-    if (
-      action.configuration.dataSourceConfigurations ||
-      action.configuration.tablesConfigurations
-    ) {
-      setIsKnowledgeSheetOpen(true);
-    }
+    const isDataSourceSelectionRequired =
+      action.type === "MCP" &&
+      Boolean(
+        action.configuration.dataSourceConfigurations ||
+          action.configuration.tablesConfigurations
+      );
 
-    setSelectedAction({ action, index });
+    setSelectedAction({ action, index, isDataSourceSelectionRequired });
   };
 
   const handleCloseSheet = () => {
     setSelectedAction(null);
-    setIsKnowledgeSheetOpen(false);
   };
 
   const getAgentInstructions = () => getValues("instructions");
 
   const onClickKnowledge = () => {
-    setIsKnowledgeSheetOpen(true);
-
     // We don't know which action will be selected so we will create a generic MCP action.
     const action = getDefaultMCPAction();
 
@@ -229,6 +229,7 @@ export function AgentBuilderCapabilitiesBlock() {
         noConfigurationRequired: false, // it's always required for knowledge
       },
       index: null,
+      isDataSourceSelectionRequired: true,
     });
   };
 
@@ -240,7 +241,10 @@ export function AgentBuilderCapabilitiesBlock() {
         onSave={handleEditSave}
         action={selectedAction?.action ?? null}
         isEditing={selectedAction ? selectedAction.index !== null : false}
-        open={isKnowledgeSheetOpen}
+        open={
+          selectedAction !== null &&
+          selectedAction.isDataSourceSelectionRequired
+        }
         mcpServerViews={mcpServerViewsWithKnowledge}
         getAgentInstructions={getAgentInstructions}
       />
@@ -298,12 +302,15 @@ export function AgentBuilderCapabilitiesBlock() {
       </div>
       <MCPConfigurationSheet
         selectedAction={selectedAction?.action}
-        isOpen={selectedAction !== null}
+        isOpen={
+          selectedAction !== null &&
+          !selectedAction.isDataSourceSelectionRequired
+        }
         onClose={() => {
           setSelectedAction(null);
         }}
         onSave={(action) => {
-          if (selectedAction) {
+          if (selectedAction && selectedAction.index !== null) {
             update(selectedAction.index, action);
           } else {
             append(action);
