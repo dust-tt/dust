@@ -16,7 +16,7 @@ import type {
   ZendeskFetchedUser,
 } from "@connectors/connectors/zendesk/lib/types";
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
-import logger from "@connectors/logger/logger";
+import mainLogger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
@@ -29,6 +29,13 @@ const RATE_LIMIT_TIMEOUT_SECONDS = 60;
 const TICKET_PAGE_SIZE = 300;
 const COMMENT_PAGE_SIZE = 100;
 const CUSTOM_FIELDS_PAGE_SIZE = 100;
+
+const logger = mainLogger.child(
+  {
+    connector: "zendesk",
+  },
+  { msgPrefix: "[Zendesk] " }
+);
 
 function extractMetadataFromZendeskUrl(url: string): {
   subdomain: string;
@@ -100,7 +107,7 @@ async function handleZendeskRateLimit(
     if (retryAfter > RATE_LIMIT_TIMEOUT_SECONDS) {
       logger.info(
         { subdomain, endpoint, response, retryAfter },
-        `[Zendesk] Attempting to wait more than ${RATE_LIMIT_TIMEOUT_SECONDS} s, aborting.`
+        `Attempting to wait more than ${RATE_LIMIT_TIMEOUT_SECONDS} s, aborting.`
       );
       throw new Error(
         `Zendesk retry after larger than ${RATE_LIMIT_TIMEOUT_SECONDS} s, aborting.`
@@ -108,7 +115,7 @@ async function handleZendeskRateLimit(
     }
     logger.info(
       { subdomain, endpoint, response, retryAfter },
-      "[Zendesk] Rate limit hit, waiting before retrying."
+      "Rate limit hit, waiting before retrying."
     );
     await setTimeoutAsync(retryAfter * 1000);
     return true;
@@ -147,7 +154,7 @@ async function fetchFromZendeskWithRetries({
     if (retryCount >= RATE_LIMIT_MAX_RETRIES) {
       logger.info(
         { response: rawResponse },
-        `[Zendesk] Rate limit hit more than ${RATE_LIMIT_MAX_RETRIES}, aborting.`
+        `Rate limit hit more than ${RATE_LIMIT_MAX_RETRIES}, aborting.`
       );
       throw new Error(
         `Zendesk rate limit hit more than ${RATE_LIMIT_MAX_RETRIES} times, aborting.`
@@ -369,7 +376,7 @@ export async function listRecentlyUpdatedArticles({
       }
       logger.warn(
         { subdomain, brandSubdomain },
-        "[Zendesk] Could not fetch article diff."
+        "Could not fetch article diff."
       );
       return { articles: [], hasMore: false, endTime: 0 };
     }
