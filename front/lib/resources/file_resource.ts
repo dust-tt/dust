@@ -263,6 +263,11 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   async markAsReady() {
+    // Early return if the file is already ready.
+    if (this.status === "ready") {
+      return;
+    }
+
     const updateResult = await this.update({ status: "ready" });
 
     // For interactive conversation files, automatically create a ShareableFileModel with default
