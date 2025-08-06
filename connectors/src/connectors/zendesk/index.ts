@@ -814,9 +814,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       case CUSTOM_FIELDS_CONFIG_KEY: {
         return new Ok(
           zendeskConfiguration.customFieldsConfig
-            ? JSON.stringify(
-                zendeskConfiguration.customFieldsConfig.map((f) => f.name)
-              )
+            ? JSON.stringify(zendeskConfiguration.customFieldsConfig)
             : ""
         );
       }
