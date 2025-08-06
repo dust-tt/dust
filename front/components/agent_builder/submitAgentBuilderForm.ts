@@ -10,6 +10,7 @@ import {
   isSearchAction,
 } from "@app/components/agent_builder/types";
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
+import { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
@@ -104,7 +105,7 @@ function convertSearchActionToMCPConfiguration(
 // Generic MCP server view finder
 function getMCPServerViewByName(
   mcpServerViews: MCPServerViewType[],
-  serverName: string
+  serverName: AutoInternalMCPServerNameType
 ): MCPServerViewType {
   const mcpServerView = mcpServerViews.find(
     (view) =>
