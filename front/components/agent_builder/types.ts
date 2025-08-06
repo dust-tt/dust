@@ -2,8 +2,8 @@ import type { Icon } from "@dust-tt/sparkle";
 import { uniqueId } from "lodash";
 import { z } from "zod";
 
-import type {agentBuilderFormSchema} from "@app/components/agent_builder/AgentBuilderFormContext";
-import {  mcpServerConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { mcpServerConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/formValidation";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
@@ -22,8 +22,6 @@ export type DataVisualizationAgentBuilderAction = Extract<
   AgentBuilderAction,
   { type: "DATA_VISUALIZATION" }
 >;
-
-
 
 export const AGENT_CREATIVITY_LEVELS = [
   "deterministic",
@@ -112,7 +110,7 @@ export const CONFIGURATION_SHEET_PAGE_IDS = {
 export type ConfigurationSheetPageId =
   (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
 
-  // Zod validation schema for data source configuration - defines the contract/shape
+// Zod validation schema for data source configuration - defines the contract/shape
 export const dataSourceConfigurationSchema = z.object({
   sId: z.string().optional(),
   workspaceId: z.string(),
@@ -136,31 +134,33 @@ export const dataSourceConfigurationSchema = z.object({
 });
 
 // TODO: merge this with MCP form schema.
-export const capabilityFormSchema = z.object({
+export const capabilityFormSchema = z
+  .object({
     name: z
-        .string()
-        .min(1, "The name cannot be empty.")
-        .regex(
-          /^[a-z0-9_]+$/,
-          "The name can only contain lowercase letters, numbers, and underscores (no spaces)."
-        )
-        .default(""),
-  description: z
-    .string()
-    .min(1, "Description is required")
-    .max(DESCRIPTION_MAX_LENGTH, "Description too long"),
-  sources: dataSourceBuilderTreeType.refine(
-    (val) => {
-      return val.in.length > 0;
-    },
-    { message: "You must select at least on data sources" }
-  ),
-  mcpServerView: z.custom<MCPServerViewType>().nullable(),
-  configuration: mcpServerConfigurationSchema
-}).superRefine((val, ctx) => {
+      .string()
+      .min(1, "The name cannot be empty.")
+      .regex(
+        /^[a-z0-9_]+$/,
+        "The name can only contain lowercase letters, numbers, and underscores (no spaces)."
+      )
+      .default(""),
+    description: z
+      .string()
+      .min(1, "Description is required")
+      .max(DESCRIPTION_MAX_LENGTH, "Description too long"),
+    sources: dataSourceBuilderTreeType.refine(
+      (val) => {
+        return val.in.length > 0;
+      },
+      { message: "You must select at least on data sources" }
+    ),
+    mcpServerView: z.custom<MCPServerViewType>().nullable(),
+    configuration: mcpServerConfigurationSchema,
+  })
+  .superRefine((val, ctx) => {
     const requirements = getMCPServerRequirements(val.mcpServerView);
     const configuration = val.configuration;
-    
+
     if (!requirements) {
       return true;
     }
@@ -170,12 +170,16 @@ export const capabilityFormSchema = z.object({
         return true;
       }
 
-      if (configuration.timeFrame.duration === null || configuration.timeFrame.unit === null) {
+      if (
+        configuration.timeFrame.duration === null ||
+        configuration.timeFrame.unit === null
+      ) {
         return ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["configuration.timeFrame"],
-          message: "You must use time frame between that and that when you have required enums in mcpServerViews."
-        })
+          message:
+            "You must use time frame between that and that when you have required enums in mcpServerViews.",
+        });
       }
     }
 
@@ -184,20 +188,20 @@ export const capabilityFormSchema = z.object({
         return false;
       }
 
-       const parsedSchema = validateConfiguredJsonSchema(configuration.jsonSchema);
+      const parsedSchema = validateConfiguredJsonSchema(
+        configuration.jsonSchema
+      );
 
-       if (parsedSchema.isErr()) {
-          return ctx.addIssue({
+      if (parsedSchema.isErr()) {
+        return ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["configuration.jsonSchema"],
-          message: parsedSchema.error.message
-        })
-       } 
-
+          message: parsedSchema.error.message,
+        });
+      }
     }
     return true;
-  } 
-);
+  });
 
 export function getDefaultMCPAction(
   mcpServerView?: MCPServerViewType

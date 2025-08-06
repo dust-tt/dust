@@ -54,9 +54,7 @@ function convertDataSourceConfigurations(
 }
 
 function processTableSelection(
-  tablesConfigurations:
-    | DataSourceViewSelectionConfigurations
-    | null,
+  tablesConfigurations: DataSourceViewSelectionConfigurations | null,
   owner: WorkspaceType
 ): TableDataSourceConfiguration[] | null {
   if (!tablesConfigurations || Object.keys(tablesConfigurations).length === 0) {

@@ -82,35 +82,25 @@ const getConfigurationSchema = (requirements: MCPServerRequirements | null) => {
       .refine(
         (additionalConfig) => {
           for (const key of requirements.requiredStrings) {
-            if (
-              !additionalConfig[key] 
-            ) {
+            if (!additionalConfig[key]) {
               return false;
             }
           }
 
           for (const key of requirements.requiredNumbers) {
-            if (
-              additionalConfig[key] === undefined
-            ) {
+            if (additionalConfig[key] === undefined) {
               return false;
             }
           }
 
           for (const key of requirements.requiredBooleans) {
-            if (
-              additionalConfig[key] === undefined
-            ) {
+            if (additionalConfig[key] === undefined) {
               return false;
             }
           }
 
-          for (const [key] of Object.entries(
-            requirements.requiredEnums
-          )) {
-            if (
-              !additionalConfig[key]
-            ) {
+          for (const [key] of Object.entries(requirements.requiredEnums)) {
+            if (!additionalConfig[key]) {
               return false;
             }
           }
