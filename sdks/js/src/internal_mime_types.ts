@@ -55,6 +55,10 @@ function generateConnectorRelativeMimeTypes<
 // Mime type that represents a datasource.
 export const DATA_SOURCE_MIME_TYPE = "application/vnd.dust.datasource" as const;
 
+// Mime type that represents a data warehouse, like Snowflake or BigQuery.
+export const DATA_WAREHOUSE_MIME_TYPE =
+  "application/vnd.dust.data_warehouse" as const;
+
 export const DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE =
   "application/vnd.dust.folder.spreadsheet" as const;
 export type DataSourceFolderSpreadsheetMimeType =
@@ -65,6 +69,7 @@ type DataSourceMimeType = typeof DATA_SOURCE_MIME_TYPE;
 export const CONTENT_NODE_MIME_TYPES = {
   GENERIC: {
     DATA_SOURCE: DATA_SOURCE_MIME_TYPE,
+    DATA_WAREHOUSE: DATA_WAREHOUSE_MIME_TYPE,
   },
   FOLDER: {
     SPREADSHEET: DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE,

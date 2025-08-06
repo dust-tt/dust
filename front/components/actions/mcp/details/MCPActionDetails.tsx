@@ -20,8 +20,8 @@ import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCP
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
 import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
-import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { TablesFilesystemBrowseDetails } from "@app/components/actions/mcp/details/MCPTablesFilesystemBrowseDetails";
+import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -37,13 +37,13 @@ import {
   isFilesystemPathType,
   isGetDatabaseSchemaMarkerResourceType,
   isIncludeResultResourceType,
-  isTablesFilesystemBrowseType,
   isReasoningSuccessOutput,
   isResourceContentWithText,
   isRunAgentProgressOutput,
   isRunAgentResultResourceType,
   isSearchResultResourceType,
   isSqlQueryOutput,
+  isTablesFilesystemBrowseType,
   isTextContent,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
