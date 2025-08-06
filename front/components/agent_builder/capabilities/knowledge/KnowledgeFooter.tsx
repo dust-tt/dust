@@ -37,12 +37,9 @@ function KnowledgeFooterItemReadablePath({
     <span className="text-xs">
       {isLoading
         ? "loading..."
-        : fullPath
-            .flatMap((node) => [
-              node.dataSourceView.dataSource.name,
-              node.title,
-            ])
-            .join("/")}
+        : [node.parentInternalId, ...fullPath.map((node) => node.title)].join(
+            "/"
+          )}
     </span>
   );
 }
