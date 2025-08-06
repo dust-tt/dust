@@ -392,6 +392,7 @@ export function CodeBlockWithExtendedSupport({
             tooltip={showMermaid ? "Switch to Markdown" : "Switch to Mermaid"}
           />
         }
+        buttonDisplay="inside"
       >
         {showMermaid ? (
           <MermaidGraph chart={validChildrenContent} />
@@ -427,6 +428,7 @@ export function CodeBlockWithExtendedSupport({
           />
         }
         displayActions="hover"
+        buttonDisplay="inside"
       >
         {showPrettyJson ? (
           <PrettyJsonViewer data={parsedJson} />
@@ -443,6 +445,7 @@ export function CodeBlockWithExtendedSupport({
     <ContentBlockWrapper
       content={validChildrenContent}
       getContentToDownload={getContentToDownload}
+      buttonDisplay="inside"
     >
       <CodeBlock className={className} inline={inline}>
         {children}
