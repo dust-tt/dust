@@ -105,7 +105,7 @@ export default function SharedFilePage({
         <meta property="og:description" content={description} />
         <meta property="og:url" content={shareUrl} />
         <meta property="og:site_name" content="Dust" />
-        <meta property="og:image" content="https://dust.tt/static/og/ic.jpg" />
+        <meta property="og:image" content="https://dust.tt/static/og/ic.png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content="Dust - Interactive Content" />
