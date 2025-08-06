@@ -607,11 +607,6 @@ export function MCPServerViewsDialog({
             variant: "outline",
             onClick: handleBackToSelection,
           },
-          centerButton: {
-            label: "Cancel",
-            variant: "outline",
-            onClick: handleCancel,
-          },
           rightButton: {
             label: "Save Configuration",
             variant: "primary",
@@ -634,7 +629,7 @@ export function MCPServerViewsDialog({
     return {};
   };
 
-  const { leftButton, centerButton, rightButton } = getFooterButtons();
+  const { leftButton, rightButton } = getFooterButtons();
 
   return (
     <MultiPageDialog
@@ -670,7 +665,6 @@ export function MCPServerViewsDialog({
           }
         }}
         leftButton={leftButton}
-        centerButton={centerButton}
         rightButton={rightButton}
       />
     </MultiPageDialog>
