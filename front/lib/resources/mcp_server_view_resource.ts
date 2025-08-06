@@ -9,19 +9,20 @@ import type {
 import { Op } from "sequelize";
 
 import {
+  autoInternalMCPServerNameToSId,
   getServerTypeAndIdFromSId,
-  internalMCPServerNameToSId,
   remoteMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type {
-  InternalMCPServerNameType,
+  AutoInternalMCPServerNameType,
   MCPServerAvailability,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
+  getAvailabilityOfInternalMCPServerById,
   getAvailabilityOfInternalMCPServerByName,
-  getInternalMCPServerAvailability,
+  isAutoInternalMCPServerName,
   isValidInternalMCPServerId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -369,11 +370,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   // They can be null if ensureAllAutoToolsAreCreated has not been called.
   static async getMCPServerViewForAutoInternalTool(
     auth: Authenticator,
-    name: InternalMCPServerNameType
+    name: AutoInternalMCPServerNameType
   ) {
     const views = await this.listByMCPServer(
       auth,
-      internalMCPServerNameToSId({
+      autoInternalMCPServerNameToSId({
         name,
         workspaceId: auth.getNonNullableWorkspace().id,
       })
@@ -595,7 +596,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       return "manual";
     }
 
-    return getInternalMCPServerAvailability(this.internalMCPServerId);
+    return getAvailabilityOfInternalMCPServerById(this.internalMCPServerId);
   }
 
   static async ensureAllAutoToolsAreCreated(auth: Authenticator) {
@@ -604,12 +605,16 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
       const autoInternalMCPServerIds: string[] = [];
       for (const name of names) {
+        if (!isAutoInternalMCPServerName(name)) {
+          continue;
+        }
+
         const isEnabled = await isEnabledForWorkspace(auth, name);
         const availability = getAvailabilityOfInternalMCPServerByName(name);
 
         if (isEnabled && availability !== "manual") {
           autoInternalMCPServerIds.push(
-            internalMCPServerNameToSId({
+            autoInternalMCPServerNameToSId({
               name,
               workspaceId: auth.getNonNullableWorkspace().id,
             })

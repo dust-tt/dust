@@ -5,7 +5,7 @@ import {
   DEFAULT_REMOTE_MCP_SERVERS,
   getDefaultRemoteMCPServerById,
 } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import type { MCPServerType } from "@app/lib/api/mcp";
+import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 
 export class DefaultRemoteMCPServerInMemoryResource {
@@ -52,7 +52,7 @@ export class DefaultRemoteMCPServerInMemoryResource {
     return resources;
   }
 
-  toJSON(): MCPServerType {
+  toJSON(): RemoteMCPServerType {
     return {
       sId: this.id,
       name: this.config.name,
@@ -67,8 +67,9 @@ export class DefaultRemoteMCPServerInMemoryResource {
             }
           : null,
       tools: [], // There are no predefined tools for default remote servers
-      availability: "manual" as const,
       documentationUrl: this.config.documentationUrl || null,
+      availability: "manual" as const,
+      allowMultipleInstances: true,
     };
   }
 }

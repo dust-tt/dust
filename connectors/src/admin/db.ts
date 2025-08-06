@@ -3,6 +3,7 @@ import type { Sequelize } from "sequelize";
 import { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import {
   ConfluenceConfiguration,
+  ConfluenceFolder,
   ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
@@ -90,6 +91,7 @@ async function main(): Promise<void> {
   });
   await ConnectorModel.sync({ alter: true });
   await ConfluenceConfiguration.sync({ alter: true });
+  await ConfluenceFolder.sync({ alter: true });
   await ConfluencePage.sync({ alter: true });
   await ConfluenceSpace.sync({ alter: true });
   await SlackConfigurationModel.sync({ alter: true });
