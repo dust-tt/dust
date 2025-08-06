@@ -679,18 +679,20 @@ export class ConfluenceClient {
   }
 
   async getChildContent({
+    includeFolders = false,
     limit,
     pageCursor,
     parentContentId,
     spaceKey,
   }: {
+    includeFolders?: boolean;
     limit: number;
     pageCursor: string | null;
     parentContentId: string;
     spaceKey: string;
   }) {
     // Build CQL query to get pages with specific IDs.
-    const cqlQuery = `type IN (page, folder) AND space="${spaceKey}" AND parent=${parentContentId}`;
+    const cqlQuery = `type IN (${includeFolders ? "page, folder" : "page"}) AND space="${spaceKey}" AND parent=${parentContentId}`;
 
     const params = new URLSearchParams({
       cql: cqlQuery,

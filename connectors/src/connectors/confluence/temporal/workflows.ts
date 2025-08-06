@@ -335,10 +335,7 @@ export async function confluenceSyncTopLevelChildContentWorkflow(
     const isContentRef = "id" in current;
 
     // Step 3: If this is a real content and it has no children, buffer it for batch processing.
-    if (
-      isContentRef &&
-      (!current.hasPageChildren || !current.hasFolderChildren)
-    ) {
+    if (isContentRef && !current.hasChildren) {
       leafContentBatch.push(current);
 
       // Check if we reached the threshold and, if so, flush the batch.

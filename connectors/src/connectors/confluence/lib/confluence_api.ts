@@ -18,6 +18,8 @@ import { getOAuthConnectionAccessToken } from "@connectors/types";
 
 const PAGE_FETCH_LIMIT = 100;
 
+const CONNECTOR_IDS_WITH_FOLDER_SUPPORT: ModelId[] = [27089];
+
 export async function getConfluenceCloudInformation(accessToken: string) {
   const client = new ConfluenceClient(accessToken);
 
@@ -124,8 +126,7 @@ export async function pageHasReadRestrictions(
 }
 
 interface BaseConfluenceContentRef {
-  hasFolderChildren: boolean;
-  hasPageChildren: boolean;
+  hasChildren: boolean;
   hasReadRestrictions: boolean;
   id: string;
   parentId: string | null;
@@ -158,14 +159,15 @@ function getConfluenceContentRef(
       ? page.childTypes.page.value
       : page.childTypes.page;
 
+  const hasChildren = hasFolderChildren || hasPageChildren;
+
   return {
-    hasFolderChildren,
-    hasPageChildren,
-    type: page.type,
+    hasChildren,
     hasReadRestrictions,
     id: page.id,
     // Ancestors is an array of the page's ancestors, starting with the root page.
     parentId: page.ancestors[page.ancestors.length - 1]?.id ?? null,
+    type: page.type,
     version: page.version.number,
   };
 }
@@ -173,10 +175,12 @@ function getConfluenceContentRef(
 export async function getActiveChildContentRefs(
   client: ConfluenceClient,
   {
+    connectorId,
     pageCursor,
     parentContentId,
     spaceKey,
   }: {
+    connectorId: ModelId;
     pageCursor: string | null;
     parentContentId: string;
     spaceKey: string;
@@ -185,13 +189,12 @@ export async function getActiveChildContentRefs(
   // Fetch the child content of the parent page.
   const { content: childContent, nextPageCursor } =
     await client.getChildContent({
+      includeFolders: CONNECTOR_IDS_WITH_FOLDER_SUPPORT.includes(connectorId),
       limit: PAGE_FETCH_LIMIT,
       pageCursor,
       parentContentId,
       spaceKey,
     });
-
-  console.log(">>>>>", JSON.stringify(childContent, null, 2));
 
   const activeChildContentIds = childContent
     .filter((p) => p.status === "current")
