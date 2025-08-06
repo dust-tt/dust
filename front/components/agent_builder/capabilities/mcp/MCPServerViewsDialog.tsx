@@ -29,6 +29,7 @@ import {
   validateMCPActionConfiguration,
 } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
+import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
@@ -53,6 +54,7 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
 import { O4_MINI_MODEL_ID } from "@app/types";
+import { useSpaces } from "@app/lib/swr/spaces";
 
 export type SelectedTool =
   | {
@@ -104,6 +106,7 @@ export function MCPServerViewsDialog({
   getAgentInstructions,
 }: MCPServerViewsDialogProps) {
   const { owner } = useAgentBuilderContext();
+  const { spaces } = useSpaces({ workspaceId: owner.sId });
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
   const {
@@ -417,6 +420,10 @@ export function MCPServerViewsDialog({
 
                 {requirements.mayRequireTimeFrameConfiguration && (
                   <TimeFrameSection actionType="search" />
+                )}
+
+                {requirements.requiresDustAppConfiguration && (
+                  <DustAppSection owner={owner} allowedSpaces={spaces} />
                 )}
 
                 {requirements.mayRequireJsonSchemaConfiguration && (
