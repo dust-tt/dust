@@ -9,7 +9,6 @@ import {
   createConversationWithMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
-import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
@@ -27,8 +26,6 @@ import { Err, Ok } from "@app/types";
 
 export function useDraftAgent() {
   const { owner } = useAgentBuilderContext();
-  const { mcpServerViews, isMCPServerViewsLoading } =
-    useMCPServerViewsContext();
   const sendNotification = useSendNotification();
   const { getValues } = useFormContext<AgentBuilderFormData>();
 
@@ -78,11 +75,6 @@ export function useDraftAgent() {
 
   const createDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
-      // Don't create draft if MCP server views are still loading
-      if (isMCPServerViewsLoading) {
-        return null;
-      }
-
       setIsSavingDraftAgent(true);
       setDraftCreationFailed(false);
 
@@ -98,7 +90,6 @@ export function useDraftAgent() {
           },
         },
         owner,
-        mcpServerViews,
         agentConfigurationId: null,
         isDraft: true,
       });
@@ -118,13 +109,7 @@ export function useDraftAgent() {
       setStickyMentions([{ configurationId: aRes.value.sId }]);
       setIsSavingDraftAgent(false);
       return aRes.value;
-    }, [
-      owner,
-      mcpServerViews,
-      sendNotification,
-      isMCPServerViewsLoading,
-      getValues,
-    ]);
+    }, [owner, sendNotification, getValues]);
 
   const getDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
@@ -140,10 +125,6 @@ export function useDraftAgent() {
     }, [draftAgent, createDraftAgent, getValues]);
 
   useEffect(() => {
-    if (isMCPServerViewsLoading) {
-      return;
-    }
-
     // Create the first version here, after that we will update the draft agent on form submission or name changes.
     if (!draftAgent) {
       const hasContent =
@@ -172,7 +153,6 @@ export function useDraftAgent() {
     debouncedAgentName,
     draftAgent,
     createDraftAgent,
-    isMCPServerViewsLoading,
     isSavingDraftAgent,
     getValues,
   ]);

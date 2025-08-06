@@ -152,11 +152,18 @@ export class AgentYAMLConverter {
         } else if (action.type === "MCP") {
           // MCP actions are already in the correct format
           // We need to extract the server name from the configuration
-          const mcpServerName = await this.getMCPServerNameFromConfig(auth, action.configuration);
+          const mcpServerName = await this.getMCPServerNameFromConfig(
+            auth,
+            action.configuration
+          );
           if (!mcpServerName) {
-            return new Err(new Error("Could not determine MCP server name from configuration"));
+            return new Err(
+              new Error(
+                "Could not determine MCP server name from configuration"
+              )
+            );
           }
-          
+
           convertedActions.push({
             ...baseAction,
             type: "MCP",
@@ -164,14 +171,15 @@ export class AgentYAMLConverter {
               mcp_server_name: mcpServerName,
               data_sources: action.configuration.dataSourceConfigurations
                 ? this.convertDataSourceConfigurations(
-                    action.configuration.dataSourceConfigurations as DataSourceViewSelectionConfigurations
+                    action.configuration
+                      .dataSourceConfigurations as DataSourceViewSelectionConfigurations
                   )
                 : undefined,
               time_frame: action.configuration.timeFrame || undefined,
               json_schema: action.configuration.jsonSchema || undefined,
             },
           });
-        } 
+        }
       }
 
       return new Ok(convertedActions);
@@ -251,7 +259,6 @@ export class AgentYAMLConverter {
     };
   }
 
-
   /**
    * Gets the MCP server name from an MCP action configuration.
    * Looks up the MCP server view to get the actual server name.
@@ -266,7 +273,7 @@ export class AgentYAMLConverter {
           auth,
           configuration.mcpServerViewId
         );
-        
+
         if (mcpServerView) {
           const json = mcpServerView.toJSON();
           return json.server.name;
@@ -347,7 +354,8 @@ export class AgentYAMLConverter {
         name: action.name,
         description: action.description,
         dataSources:
-          "data_sources" in action.configuration && action.configuration.data_sources
+          "data_sources" in action.configuration &&
+          action.configuration.data_sources
             ? this.convertDataSources(
                 action.configuration.data_sources,
                 auth.getNonNullableWorkspace().sId
@@ -357,13 +365,15 @@ export class AgentYAMLConverter {
         childAgentId: null,
         reasoningModel: null,
         jsonSchema:
-          "json_schema" in action.configuration && action.configuration.json_schema
+          "json_schema" in action.configuration &&
+          action.configuration.json_schema
             ? action.configuration.json_schema
             : null,
         additionalConfiguration: {},
         dustAppConfiguration: null,
         timeFrame:
-          "time_frame" in action.configuration && action.configuration.time_frame
+          "time_frame" in action.configuration &&
+          action.configuration.time_frame
             ? action.configuration.time_frame
             : null,
       });

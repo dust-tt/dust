@@ -183,7 +183,7 @@ export const capabilityFormSchema = z
       }
     }
 
-    // TODO: right now we run validation in the component too, we should run only 
+    // TODO: right now we run validation in the component too, we should run only
     // on form submit instead.
     if (requirements.mayRequireJsonSchemaConfiguration) {
       if (configuration.jsonSchema === null) {

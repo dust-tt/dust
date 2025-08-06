@@ -93,7 +93,9 @@ export const agentYAMLMCPActionSchema = baseAgentYAMLActionSchema.extend({
   type: z.literal("MCP"),
   configuration: z.object({
     mcp_server_name: z.string(),
-    data_sources: z.record(z.string(), agentYAMLDataSourceConfigurationSchema).optional(),
+    data_sources: z
+      .record(z.string(), agentYAMLDataSourceConfigurationSchema)
+      .optional(),
     time_frame: agentYAMLTimeFrameSchema.optional(),
     json_schema: z.object({}).nullable().optional(),
   }),

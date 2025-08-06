@@ -96,11 +96,13 @@ export function KnowledgeConfigurationSheet({
   // Memoize default values based on action (React Hook Form best practice)
   const defaultValues = useMemo(() => {
     const dataSourceConfigurations =
-      action?.configuration.dataSourceConfigurations;
+      action?.configuration?.dataSourceConfigurations;
 
     const dataSourceTree =
-      dataSourceConfigurations && dataSourceConfigurations !== null && open
-        ? transformSelectionConfigurationsToTree(dataSourceConfigurations)
+      dataSourceConfigurations && open
+        ? transformSelectionConfigurationsToTree(
+            dataSourceConfigurations as DataSourceViewSelectionConfigurations
+          ) // TODO: fix type
         : { in: [], notIn: [] };
 
     const selectedMCPServerView =
@@ -159,7 +161,6 @@ export function KnowledgeConfigurationSheet({
 }
 
 interface KnowledgeConfigurationSheetContentProps {
-  action: CapabilityFormData | null;
   onSave: (
     formData: CapabilityFormData,
     dataSourceConfigurations: DataSourceViewSelectionConfigurations
