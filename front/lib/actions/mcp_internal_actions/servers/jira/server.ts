@@ -21,6 +21,7 @@ import {
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
 import {
+  ADFDocumentSchema,
   JiraCreateIssueLinkRequestSchema,
   JiraCreateIssueRequestSchema,
   JiraSearchFilterSchema,
@@ -177,10 +178,14 @@ const createServer = (): McpServer => {
 
   server.tool(
     "create_comment",
-    "Adds a comment to an existing JIRA issue.",
+    "Adds a comment to an existing JIRA issue. Accepts either plain text string or rich Atlassian Document Format (ADF).",
     {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
-      comment: z.string().describe("The comment text to add"),
+      comment: z
+        .union([z.string(), ADFDocumentSchema])
+        .describe(
+          "The comment content - either plain text string or ADF document object for rich formatting"
+        ),
       visibilityType: z
         .enum(["group", "role"])
         .optional()
@@ -223,7 +228,8 @@ const createServer = (): McpServer => {
             message: "Comment added successfully",
             result: {
               issueKey,
-              comment,
+              comment:
+                typeof comment === "string" ? comment : "[Rich ADF Content]",
               commentId: result.value.id,
             },
           });
@@ -424,7 +430,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "create_issue",
-    "Creates a new JIRA issue with the specified details. Note: Available fields vary by project and issue type. Use get_issue_fields to check which fields are required and available.",
+    "Creates a new JIRA issue with the specified details. For textarea fields (like description), you can use either plain text or rich ADF format. Note: Available fields vary by project and issue type. Use get_issue_fields to check which fields are required and available.",
     {
       issueData: JiraCreateIssueRequestSchema.describe(
         "The description of the issue"
@@ -456,11 +462,11 @@ const createServer = (): McpServer => {
 
   server.tool(
     "update_issue",
-    "Updates an existing JIRA issue with new field values (e.g., summary, description, priority, assignee). Note: Issue links, attachments, and some system fields require separate APIs and are not supported.",
+    "Updates an existing JIRA issue with new field values (e.g., summary, description, priority, assignee). For textarea fields (like description), you can use either plain text or rich ADF format. Use get_issue_fields to identify textarea fields. Note: Issue links, attachments, and some system fields require separate APIs and are not supported.",
     {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       updateData: JiraCreateIssueRequestSchema.partial().describe(
-        "The partial data to update the issue with"
+        "The partial data to update the issue with - description field supports both plain text and ADF format"
       ),
     },
     async ({ issueKey, updateData }, { authInfo }) => {

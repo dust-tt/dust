@@ -230,13 +230,19 @@ export async function createConversationWithMessage({
     mentions: MentionType[];
     contentFragments: ContentFragmentsType;
     clientSideMCPServerIds?: string[];
+    selectedMCPServerViewIds?: string[];
   };
   visibility?: ConversationVisibility;
   title?: string;
   forceAsync?: boolean;
 }): Promise<Result<ConversationType, SubmitMessageError>> {
-  const { input, mentions, contentFragments, clientSideMCPServerIds } =
-    messageData;
+  const {
+    input,
+    mentions,
+    contentFragments,
+    clientSideMCPServerIds,
+    selectedMCPServerViewIds,
+  } = messageData;
 
   const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> = {
     title: title ?? null,
@@ -247,6 +253,7 @@ export async function createConversationWithMessage({
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
         profilePictureUrl: user.image,
         clientSideMCPServerIds,
+        selectedMCPServerViewIds,
       },
       mentions,
     },

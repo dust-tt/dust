@@ -181,20 +181,6 @@ export const JiraTransitionsSchema = z.object({
   transitions: z.array(JiraTransitionSchema),
 });
 
-export const JiraCommentSchema = z.object({
-  id: z.string(),
-  body: z.object({
-    type: z.string(),
-    version: z.number(),
-    content: z.array(
-      z.object({
-        type: z.string(),
-        content: z.array(z.object({ type: z.string(), text: z.string() })),
-      })
-    ),
-  }),
-});
-
 export const JiraCreateMetaSchema = z.object({
   fields: z.array(z.unknown()), // JIRA returns an array of field definitions, not an object
 });
@@ -237,6 +223,93 @@ export const JiraConnectionInfoSchema = z.object({
 
 export const JiraTransitionIssueSchema = z.void();
 
+// Atlassian Document Format (ADF) schemas
+// Based on: https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/
+export const ADFMarkSchema = z.object({
+  type: z.string(),
+  attrs: z.record(z.any()).optional(),
+});
+
+export type ADFMark = z.infer<typeof ADFMarkSchema>;
+
+export const ADFTextNodeSchema = z.object({
+  type: z.literal("text"),
+  text: z.string(),
+  marks: z.array(ADFMarkSchema).optional(),
+});
+
+export type ADFTextNode = z.infer<typeof ADFTextNodeSchema>;
+
+export const ADFHardBreakNodeSchema = z.object({
+  type: z.literal("hardBreak"),
+});
+
+export type ADFHardBreakNode = z.infer<typeof ADFHardBreakNodeSchema>;
+
+export const ADFRuleNodeSchema = z.object({
+  type: z.literal("rule"),
+});
+
+export type ADFRuleNode = z.infer<typeof ADFRuleNodeSchema>;
+
+// Base content node with recursive structure
+export const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
+  z.discriminatedUnion("type", [
+    // Text nodes
+    ADFTextNodeSchema,
+    ADFHardBreakNodeSchema,
+
+    // Block nodes with content
+    z.object({
+      type: z.enum([
+        "paragraph",
+        "heading",
+        "blockquote",
+        "panel",
+        "bulletList",
+        "orderedList",
+        "listItem",
+      ]),
+      attrs: z.record(z.any()).optional(),
+      content: z.array(ADFContentNodeSchema).optional(),
+    }),
+
+    // Code block (has text content instead of nested content)
+    z.object({
+      type: z.literal("codeBlock"),
+      attrs: z.record(z.any()).optional(),
+      content: z
+        .array(
+          z.object({
+            type: z.literal("text"),
+            text: z.string(),
+          })
+        )
+        .optional(),
+    }),
+
+    // Self-closing nodes
+    ADFRuleNodeSchema,
+
+    // Table nodes
+    z.object({
+      type: z.enum(["table", "tableRow", "tableCell", "tableHeader"]),
+      attrs: z.record(z.any()).optional(),
+      content: z.array(ADFContentNodeSchema).optional(),
+    }),
+  ])
+);
+
+export type ADFContentNode = z.infer<typeof ADFContentNodeSchema>;
+
+export const ADFDocumentSchema = z.object({
+  type: z.literal("doc"),
+  version: z.literal(1),
+  content: z.array(ADFContentNodeSchema).optional(),
+});
+
+export type ADFDocument = z.infer<typeof ADFDocumentSchema>;
+
 export const JiraCreateIssueRequestSchema = JiraIssueFieldsSchema.partial({
   description: true,
   priority: true,
@@ -244,7 +317,26 @@ export const JiraCreateIssueRequestSchema = JiraIssueFieldsSchema.partial({
   reporter: true,
   labels: true,
   parent: true,
-});
+})
+  .extend({
+    description: z.union([z.string(), ADFDocumentSchema]).optional(),
+  })
+  .passthrough(); // Allow custom fields
+
+// Schema for update operations that allows ADF format for description and any string field
+export const JiraUpdateIssueRequestSchema = z
+  .record(
+    z.union([
+      z.string(),
+      ADFDocumentSchema,
+      z.object({}).passthrough(), // For complex field types like assignee, priority
+      z.array(z.string()), // For arrays like labels (most common case)
+      z.null(),
+    ])
+  )
+  .describe(
+    "Issue field updates - string fields can be plain text or ADF format"
+  );
 
 export const JiraSearchRequestSchema = z.object({
   jql: z.string(),
@@ -365,7 +457,15 @@ export const JiraUserSchema = z.object({
   active: z.boolean(),
 });
 
+export type JiraUser = z.infer<typeof JiraUserSchema>;
+
 export const JiraUsersSearchResultSchema = z.array(JiraUserSchema);
+
+// JIRA Comment schema (defined after ADF schemas to avoid circular dependency)
+export const JiraCommentSchema = z.object({
+  id: z.string(),
+  body: ADFDocumentSchema,
+});
 
 // Inferred types
 export type JiraSearchResult = z.infer<typeof JiraSearchResultSchema>;
@@ -379,9 +479,11 @@ export type JiraConnectionInfo = z.infer<typeof JiraConnectionInfoSchema>;
 export type JiraCreateIssueRequest = z.infer<
   typeof JiraCreateIssueRequestSchema
 >;
+export type JiraUpdateIssueRequest = z.infer<
+  typeof JiraUpdateIssueRequestSchema
+>;
 export type JiraIssueLink = z.infer<typeof JiraIssueLinkSchema>;
 export type JiraIssueLinkType = z.infer<typeof JiraIssueLinkTypeSchema>;
 export type JiraCreateIssueLinkRequest = z.infer<
   typeof JiraCreateIssueLinkRequestSchema
 >;
-export type JiraUser = z.infer<typeof JiraUserSchema>;

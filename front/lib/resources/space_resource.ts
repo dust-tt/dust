@@ -88,7 +88,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }: {
       systemGroup: GroupResource;
       globalGroup: GroupResource;
-    }
+    },
+    transaction?: Transaction
   ) {
     assert(auth.isAdmin(), "Only admins can call `makeDefaultsForWorkspace`");
 
@@ -103,7 +104,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           kind: "system",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        [systemGroup]
+        [systemGroup],
+        transaction
       ));
 
     const globalSpace =
@@ -114,7 +116,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           kind: "global",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        [globalGroup]
+        [globalGroup],
+        transaction
       ));
 
     const conversationsSpace =
@@ -125,7 +128,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           kind: "conversations",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        [globalGroup]
+        [globalGroup],
+        transaction
       ));
 
     return {

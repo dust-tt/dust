@@ -3,13 +3,13 @@ import { parse } from "csv-parse";
 import fs from "fs";
 import path from "path";
 
-import { getTemporalClient } from "@app/lib/temporal";
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { launchUpsertDocumentWorkflow } from "@app/temporal/upsert_queue/client";
 
 async function terminateWorkflow(workflowId: string, logger: Logger) {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
   try {
     const workflowHandle = client.workflow.getHandle(workflowId);
     await workflowHandle.terminate();

@@ -1,5 +1,7 @@
+import { autoReadChannel } from "@connectors/connectors/slack/auto_read_channel";
 import {
   getChannelById,
+  getChannels,
   joinChannel,
   updateSlackChannelInConnectorsDb,
 } from "@connectors/connectors/slack/lib/channels";
@@ -25,10 +27,12 @@ import { ConnectorModel } from "@connectors/resources/storage/models/connector_m
 import type {
   AdminSuccessResponseType,
   SlackCommandType,
+  SlackJoinResponseType as SlackJoinResponseType,
 } from "@connectors/types";
 import {
   INTERNAL_MIME_TYPES,
   isSlackbotWhitelistType,
+  normalizeError,
 } from "@connectors/types";
 
 export async function maybeLaunchSlackSyncWorkflowForChannelId(
@@ -53,7 +57,9 @@ export async function maybeLaunchSlackSyncWorkflowForChannelId(
 export const slack = async ({
   command,
   args,
-}: SlackCommandType): Promise<AdminSuccessResponseType> => {
+}: SlackCommandType): Promise<
+  AdminSuccessResponseType | SlackJoinResponseType
+> => {
   const logger = topLogger.child({ majorCommand: "slack", command, args });
   switch (command) {
     case "enable-bot": {
@@ -304,6 +310,136 @@ export const slack = async ({
       }
 
       return { success: true };
+    }
+
+    case "run-auto-join": {
+      // Auto-join channels based on autoReadChannelPatterns configuration
+      // Usage: --wId <workspaceId> --providerType <slack|slack_bot>
+      // This command fetches all channels from Slack, matches them against
+      // the configured autoReadChannelPatterns regex patterns, and processes
+      // all matching channels using the autoReadChannel function (same logic
+      // as when a new channel is created via webhook).
+      const { wId, providerType } = args;
+      if (!wId) {
+        throw new Error("Missing --wId argument");
+      }
+
+      if (!providerType) {
+        throw new Error("Missing --providerType argument");
+      }
+
+      if (!["slack", "slack_bot"].includes(providerType)) {
+        throw new Error(
+          "--providerType argument must be set to 'slack' or 'slack_bot'"
+        );
+      }
+
+      const connector = await ConnectorModel.findOne({
+        where: {
+          workspaceId: `${args.wId}`,
+          type: providerType,
+        },
+      });
+
+      if (!connector) {
+        throw new Error(`Could not find connector for workspace ${args.wId}`);
+      }
+
+      const slackConfiguration =
+        await SlackConfigurationResource.fetchByConnectorId(connector.id);
+      if (!slackConfiguration) {
+        throw new Error(
+          `Could not find Slack configuration for connector ${connector.id}`
+        );
+      }
+
+      const { autoReadChannelPatterns } = slackConfiguration;
+      if (!autoReadChannelPatterns || autoReadChannelPatterns.length === 0) {
+        logger.info(
+          { connectorId: connector.id },
+          "No autoReadChannelPatterns configured, skipping"
+        );
+        return { success: true };
+      }
+
+      const slackClient = await getSlackClient(connector.id);
+
+      // Fetch all channels from Slack
+      const allChannels = await getChannels(slackClient, connector.id, false);
+      logger.info(
+        { connectorId: connector.id, totalChannels: allChannels.length },
+        "Fetched all channels from Slack"
+      );
+
+      // Process each matching channel using autoReadChannel
+      let processedCount = 0;
+      let errorCount = 0;
+
+      for (const channel of allChannels) {
+        if (!channel.id || !channel.name) {
+          continue;
+        }
+
+        try {
+          const autoReadResult = await autoReadChannel(
+            slackConfiguration.slackTeamId,
+            logger,
+            channel.id,
+            providerType as "slack" | "slack_bot"
+          );
+
+          if (autoReadResult.isOk()) {
+            if (autoReadResult.value) {
+              processedCount++;
+              logger.info(
+                {
+                  connectorId: connector.id,
+                  channelId: channel.id,
+                  channelName: channel.name,
+                },
+                "Successfully processed channel with autoReadChannel"
+              );
+            }
+          } else {
+            errorCount++;
+            logger.error(
+              {
+                connectorId: connector.id,
+                channelId: channel.id,
+                channelName: channel.name,
+                error: autoReadResult.error.message,
+              },
+              "Failed to process channel with autoReadChannel"
+            );
+          }
+        } catch (error) {
+          errorCount++;
+          logger.error(
+            {
+              connectorId: connector.id,
+              channelId: channel.id,
+              channelName: channel.name,
+              error: normalizeError(error),
+            },
+            "Exception while processing channel with autoReadChannel"
+          );
+        }
+      }
+
+      logger.info(
+        {
+          connectorId: connector.id,
+          total: allChannels.length,
+          processed: processedCount,
+          errors: errorCount,
+        },
+        "Auto-join channel operation completed"
+      );
+
+      return {
+        total: allChannels.length,
+        processed: processedCount,
+      };
     }
 
     case "sync-channel-metadata": {

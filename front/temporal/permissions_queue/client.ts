@@ -2,7 +2,7 @@ import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { getTemporalClient } from "@app/lib/temporal";
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/permissions_queue/config";
 import type { UpdateSpacePermissionsSignal } from "@app/temporal/permissions_queue/signals";
@@ -22,7 +22,7 @@ export async function launchUpdateSpacePermissionsWorkflow(
 
   const workflowId = `workflow-update-space-permissions-${workspaceId}-${spaceId}`;
 
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
 
   const signalArgs: UpdateSpacePermissionsSignal[] = [
     {

@@ -10,7 +10,6 @@ import {
   fetchZendeskArticle,
   getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
-import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -28,6 +27,8 @@ import {
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 import { getZendeskGarbageCollectionWorkflowId } from "@connectors/types";
+
+const GC_BATCH_SIZE = 500;
 
 /**
  * Retrieves the IDs of the Brands whose tickets are to be deleted.
@@ -80,7 +81,7 @@ export async function removeOutdatedTicketBatchActivity(
       expirationDate: new Date(
         Date.now() - configuration.retentionPeriodDays * 24 * 60 * 60 * 1000 // conversion from days to ms
       ),
-      batchSize: ZENDESK_BATCH_SIZE,
+      batchSize: GC_BATCH_SIZE,
     });
   logger.info(
     { ...loggerArgs, ticketCount: ticketIdsWithBrandIds.length },
@@ -104,7 +105,7 @@ export async function removeOutdatedTicketBatchActivity(
     { concurrency: 10 }
   );
 
-  return { hasMore: ticketIdsWithBrandIds.length === ZENDESK_BATCH_SIZE }; // true iff there are more tickets to process
+  return { hasMore: ticketIdsWithBrandIds.length === GC_BATCH_SIZE };
 }
 
 /**
@@ -125,7 +126,7 @@ export async function removeMissingArticleBatchActivity({
       connectorId,
       brandId,
       cursor,
-      batchSize: ZENDESK_BATCH_SIZE,
+      batchSize: GC_BATCH_SIZE,
     });
 
   if (articleIds.length === 0) {
@@ -205,7 +206,7 @@ export async function deleteTicketBatchActivity({
   const ticketIds = await ZendeskTicketResource.fetchTicketIdsByBrandId({
     connectorId,
     brandId,
-    batchSize: ZENDESK_BATCH_SIZE,
+    batchSize: GC_BATCH_SIZE,
   });
   logger.info(
     { ...loggerArgs, brandId, ticketCount: ticketIds.length },
@@ -229,8 +230,7 @@ export async function deleteTicketBatchActivity({
     ticketIds,
   });
 
-  /// returning false if we know for sure there isn't any more ticket to process
-  return { hasMore: ticketIds.length === ZENDESK_BATCH_SIZE };
+  return { hasMore: ticketIds.length === GC_BATCH_SIZE };
 }
 
 /**
@@ -261,7 +261,7 @@ export async function deleteCategoryBatchActivity({
     await ZendeskCategoryResource.fetchCategoriesNotSelectedInBrand({
       connectorId,
       brandId,
-      batchSize: ZENDESK_BATCH_SIZE,
+      batchSize: GC_BATCH_SIZE,
     });
 
   for (const categoryId of categoryIds) {
@@ -307,5 +307,5 @@ export async function deleteCategoryBatchActivity({
     "[Zendesk] Deleting a batch of categories."
   );
 
-  return { hasMore: deletedCount === ZENDESK_BATCH_SIZE };
+  return { hasMore: deletedCount === GC_BATCH_SIZE };
 }

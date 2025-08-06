@@ -1596,7 +1596,7 @@ export async function updateConversationRequestedGroupIds(
   }: {
     agents?: LightAgentConfigurationType[];
     contentFragment?: ContentFragmentInputWithContentNode;
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     t: Transaction;
   }
 ): Promise<void> {

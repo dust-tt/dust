@@ -2,19 +2,101 @@ import {
   Button,
   ClipboardCheckIcon,
   ClipboardIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  GlobeAltIcon,
   IconButton,
   Input,
+  Label,
   LinkIcon,
+  LockIcon,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
+  Separator,
   Spinner,
   useCopyToClipboard,
+  UserGroupIcon,
 } from "@dust-tt/sparkle";
 import React from "react";
 
 import { useShareInteractiveFile } from "@app/lib/swr/files";
-import type { LightWorkspaceType } from "@app/types";
+import type { FileShareScope, LightWorkspaceType } from "@app/types";
+
+interface FileSharingDropdownProps {
+  selectedScope: FileShareScope;
+  onScopeChange: (scope: FileShareScope) => void;
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+  isLoading?: boolean;
+}
+
+function FileSharingDropdown({
+  selectedScope,
+  onScopeChange,
+  owner,
+  disabled = false,
+}: FileSharingDropdownProps) {
+  const scopeOptions: {
+    icon: React.ComponentType;
+    label: string;
+    value: FileShareScope;
+  }[] = [
+    {
+      icon: LockIcon,
+      label: "Only conversation participants",
+      value: "conversation_participants",
+    },
+    {
+      icon: UserGroupIcon,
+      label: `Anyone in ${owner.name} workspace`,
+      value: "workspace",
+    },
+    {
+      icon: GlobeAltIcon,
+      label: "Anyone with the link",
+      value: "public",
+    },
+  ];
+
+  const selectedOption = scopeOptions.find(
+    (opt) => opt.value === selectedScope
+  );
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Label className="text-sm font-semibold text-primary dark:text-primary-night">
+        Who can access
+      </Label>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            isSelect
+            label={selectedOption?.label}
+            icon={selectedOption?.icon}
+            disabled={disabled}
+            className="grid w-full grid-cols-[auto_1fr_auto] truncate"
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+          {scopeOptions.map((option) => (
+            <DropdownMenuItem
+              key={option.value}
+              label={option.label}
+              onClick={() => onScopeChange(option.value)}
+              truncateText
+              icon={option.icon}
+            />
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
 
 interface ShareInteractiveFilePopoverProps {
   fileId: string;
@@ -32,27 +114,44 @@ export function ShareInteractiveFilePopover({
   const [isOpen, setIsOpen] = React.useState(false);
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const [isUpdatingShare, setIsUpdatingShare] = React.useState(false);
+  const [selectedScope, setSelectedScope] = React.useState<FileShareScope>(
+    "conversation_participants"
+  );
 
-  const { doShare, fileShare, isFileShareLoading } = useShareInteractiveFile({
-    fileId,
-    owner,
-  });
+  const { doShare, fileShare, isFileShareLoading, isFileShareError } =
+    useShareInteractiveFile({
+      fileId,
+      owner,
+    });
 
-  const handleChangeFileShare = async (isShared: boolean) => {
+  // Sync selectedScope with current fileShare data.
+  React.useEffect(() => {
+    if (!isFileShareLoading && !isFileShareError && fileShare) {
+      setSelectedScope(fileShare.scope);
+    }
+  }, [fileShare, isFileShareLoading, isFileShareError]);
+
+  const handleChangeFileShare = async (shareScope: FileShareScope) => {
     setIsUpdatingShare(true);
     try {
-      await doShare(isShared);
+      await doShare(shareScope);
+      setSelectedScope(shareScope);
     } finally {
       setIsUpdatingShare(false);
+    }
+  };
+
+  const handleScopeChange = async (scope: FileShareScope) => {
+    if (scope !== selectedScope) {
+      setSelectedScope(scope);
+
+      await handleChangeFileShare(scope);
     }
   };
 
   const handleCopyLink = async () => {
     await copyToClipboard(fileShare?.shareUrl ?? "");
   };
-
-  const isShared = !!fileShare?.shareUrl;
-  const isLoading = isFileShareLoading || isUpdatingShare;
 
   return (
     <PopoverRoot open={isOpen} onOpenChange={setIsOpen} modal={true}>
@@ -65,26 +164,31 @@ export function ShareInteractiveFilePopover({
           disabled={disabled}
         />
       </PopoverTrigger>
-      <PopoverContent className="flex h-48 w-96 flex-col" align="end">
-        <div className="flex flex-1 flex-col">
-          <div className="mb-4">
-            <div className="text-base font-semibold text-primary dark:text-primary-night">
-              Share interactive content
-            </div>
-            <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-              {isShared
-                ? "Anyone with this link can view your interactive content"
-                : "Create a link to share your interactive content"}
-            </p>
+      <PopoverContent className="flex h-52 w-96 flex-col" align="end">
+        <div className="flex flex-col gap-4">
+          <div className="text-base font-semibold text-primary dark:text-primary-night">
+            Share this interactive content
           </div>
 
-          <div className="flex flex-1 flex-col justify-between">
-            <div className="flex-1">
-              {isLoading ? (
-                <div className="flex h-full items-center justify-center">
-                  <Spinner size="sm" />
-                </div>
-              ) : isShared ? (
+          <div className="flex flex-1 flex-col">
+            {isFileShareLoading ? (
+              <div className="flex h-full items-center justify-center">
+                <Spinner size="sm" />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {/* Scope Selection Dropdown - always visible */}
+                <FileSharingDropdown
+                  selectedScope={selectedScope}
+                  onScopeChange={handleScopeChange}
+                  owner={owner}
+                  disabled={isUpdatingShare}
+                  isLoading={isUpdatingShare}
+                />
+
+                <Separator />
+
+                {/* Content area with loading state */}
                 <div className="flex items-center gap-2">
                   <div className="grow">
                     <Input
@@ -101,33 +205,8 @@ export function ShareInteractiveFilePopover({
                     onClick={handleCopyLink}
                   />
                 </div>
-              ) : (
-                <p className="text-sm text-gray-600">
-                  This will create a public link that anyone can use to view
-                  your interactive content.
-                </p>
-              )}
-            </div>
-
-            <div className="mt-4 flex justify-end">
-              {isShared ? (
-                <Button
-                  label="Stop sharing"
-                  variant="warning"
-                  size="sm"
-                  onClick={() => handleChangeFileShare(false)}
-                  disabled={isLoading}
-                />
-              ) : (
-                <Button
-                  label="Create share link"
-                  variant="primary"
-                  size="sm"
-                  onClick={() => handleChangeFileShare(true)}
-                  disabled={isLoading}
-                />
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </PopoverContent>
