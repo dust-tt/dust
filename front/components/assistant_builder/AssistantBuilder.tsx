@@ -7,7 +7,6 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  useHashParam,
 } from "@dust-tt/sparkle";
 import assert from "assert";
 import { uniqueId } from "lodash";
@@ -54,6 +53,7 @@ import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
+import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAssistantConfigurationActions } from "@app/lib/swr/actions";
