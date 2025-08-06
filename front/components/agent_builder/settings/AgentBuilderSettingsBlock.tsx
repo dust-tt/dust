@@ -23,6 +23,10 @@ import { AgentBuilderEditors } from "@app/components/agent_builder/settings/Agen
 import { AgentBuilderScopeSelector } from "@app/components/agent_builder/settings/AgentBuilderScopeSelector";
 import { AgentBuilderSlackSelector } from "@app/components/agent_builder/settings/AgentBuilderSlackSelector";
 import { AvatarPicker } from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker";
+import {
+  DROID_AVATAR_URLS,
+  SPIRIT_AVATAR_URLS,
+} from "@app/components/agent_builder/settings/avatar_picker/types";
 import { TagsSection } from "@app/components/agent_builder/settings/TagsSection";
 import {
   fetchWithErr,
@@ -33,10 +37,6 @@ import {
   buildSelectedEmojiType,
   makeUrlForEmojiAndBackground,
 } from "@app/components/assistant_builder/avatar_picker/utils";
-import {
-  DROID_AVATAR_URLS,
-  SPIRIT_AVATAR_URLS,
-} from "@app/components/assistant_builder/shared";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   APIError,
