@@ -22,13 +22,13 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  useHashParam,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React, { useCallback, useMemo, useState } from "react";
 
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useHashParam } from "@app/hooks/useHashParams";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   compareForFuzzySort,

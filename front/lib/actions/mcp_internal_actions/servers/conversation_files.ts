@@ -27,6 +27,7 @@ import type {
   Result,
   TextContent,
 } from "@app/types";
+import { normalizeError } from "@app/types";
 import { Err, isImageContent, isTextContent, Ok } from "@app/types";
 
 const MAX_FILE_SIZE_FOR_GREP = 20 * 1024 * 1024; // 20MB.
@@ -244,10 +245,32 @@ function createServer(
 
       let text = content.text;
 
+      // Returning early with a custom message if the text is empty.
+      if (text.length === 0) {
+        return {
+          isError: false,
+          content: [
+            {
+              type: "text",
+              text: `No content retrieved for file ${title}.`,
+            },
+          ],
+        };
+      }
+
       // Apply offset and limit.
       if (offset !== undefined || limit !== undefined) {
         const start = offset || 0;
         const end = limit !== undefined ? start + limit : undefined;
+
+        if (start > text.length) {
+          return makeMCPToolTextError(
+            `Offset ${start} is out of bounds for file ${title}.`
+          );
+        }
+        if (limit === 0) {
+          return makeMCPToolTextError(`Limit cannot be equal to 0.`);
+        }
         text = text.slice(start, end);
       }
 
@@ -270,7 +293,12 @@ function createServer(
           text = matchedLines.join("\n");
         } catch (e) {
           return makeMCPToolTextError(
-            `Invalid regular expression: ${grep}. Error: ${e instanceof Error ? e.message : String(e)}`
+            `Invalid regular expression: ${grep}. Error: ${normalizeError(e)}`
+          );
+        }
+        if (text.length === 0) {
+          return makeMCPToolTextError(
+            `No lines matched the grep pattern: ${grep}.`
           );
         }
       }
@@ -280,7 +308,7 @@ function createServer(
         content: [
           {
             type: "text",
-            text: text,
+            text,
           },
         ],
       };

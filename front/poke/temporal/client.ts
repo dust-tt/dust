@@ -3,7 +3,7 @@ import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { getTemporalClient } from "@app/lib/temporal";
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
@@ -18,7 +18,7 @@ export async function launchScrubDataSourceWorkflow(
   owner: LightWorkspaceType,
   dataSource: DataSourceResource
 ) {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
 
   try {
     await client.workflow.start(scrubDataSourceWorkflow, {
@@ -51,7 +51,7 @@ export async function launchScrubSpaceWorkflow(
   auth: Authenticator,
   space: SpaceResource
 ) {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
   const owner = auth.getNonNullableWorkspace();
 
   await client.workflow.start(scrubSpaceWorkflow, {
@@ -73,7 +73,7 @@ export async function launchDeleteWorkspaceWorkflow({
   workspaceId: string;
   workspaceHasBeenRelocated?: boolean;
 }) {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
 
   try {
     await client.workflow.start(deleteWorkspaceWorkflow, {

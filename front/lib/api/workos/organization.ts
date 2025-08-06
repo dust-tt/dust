@@ -91,6 +91,7 @@ export async function getOrCreateWorkOSOrganization(
           await getWorkOS().userManagement.createOrganizationMembership({
             userId: user.workOSUserId,
             organizationId: organization.id,
+            roleSlug: membership.role,
           });
         },
         { concurrency: 10 }

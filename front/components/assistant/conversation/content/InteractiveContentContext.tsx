@@ -1,6 +1,7 @@
-import { useHashParam } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React from "react";
+
+import { useHashParam } from "@app/hooks/useHashParams";
 
 const INTERACTIVE_CONTENT_HASH_PARAM = "icid";
 

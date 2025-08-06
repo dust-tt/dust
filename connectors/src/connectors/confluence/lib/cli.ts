@@ -5,11 +5,13 @@ import {
   listConfluenceSpaces,
   pageHasReadRestrictions,
 } from "@connectors/connectors/confluence/lib/confluence_api";
-import { extractConfluenceIdsFromUrl } from "@connectors/connectors/confluence/lib/utils";
 import {
-  confluenceUpdatePagesParentIdsActivity,
-  fetchConfluenceConfigurationActivity,
+  extractConfluenceIdsFromUrl,
   getConfluenceClient,
+} from "@connectors/connectors/confluence/lib/utils";
+import {
+  confluenceUpdateContentParentIdsActivity,
+  fetchConfluenceConfigurationActivity,
 } from "@connectors/connectors/confluence/temporal/activities";
 import { QUEUE_NAME } from "@connectors/connectors/confluence/temporal/config";
 import {
@@ -201,14 +203,14 @@ export const confluence = async ({
             { spaceId: space.spaceId },
             "Updating parents for space."
           );
-          await confluenceUpdatePagesParentIdsActivity(
+          await confluenceUpdateContentParentIdsActivity(
             connectorId,
             space.spaceId,
             null
           );
         }
       } else {
-        await confluenceUpdatePagesParentIdsActivity(
+        await confluenceUpdateContentParentIdsActivity(
           connectorId,
           args.spaceId.toString(),
           null
@@ -246,7 +248,10 @@ export const confluence = async ({
           title: a.title,
         })) ?? [];
 
-      const hasChildren = page.childTypes.page.value ?? false;
+      const hasChildren =
+        typeof page.childTypes.page === "object"
+          ? page.childTypes.page.value
+          : page.childTypes.page;
 
       const hasReadRestrictions = await pageHasReadRestrictions(
         confluenceClient,

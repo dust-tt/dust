@@ -28,6 +28,7 @@ pub enum CredentialProvider {
     Monday,
     Mcp,
     Notion,
+    Freshservice,
 }
 
 impl From<ConnectionProvider> for CredentialProvider {
@@ -39,6 +40,7 @@ impl From<ConnectionProvider> for CredentialProvider {
             ConnectionProvider::Gmail => CredentialProvider::Gmail,
             ConnectionProvider::Jira => CredentialProvider::Jira,
             ConnectionProvider::Mcp => CredentialProvider::Mcp,
+            ConnectionProvider::Freshservice => CredentialProvider::Freshservice,
             _ => panic!("Unsupported provider: {:?}", provider),
         }
     }
@@ -223,6 +225,9 @@ impl Credential {
             }
             CredentialProvider::Notion => {
                 vec!["integration_token"]
+            }
+            CredentialProvider::Freshservice => {
+                vec!["freshservice_domain"]
             }
         };
 

@@ -71,7 +71,7 @@ export const CONTENT_NODE_MIME_TYPES = {
   },
   CONFLUENCE: generateConnectorRelativeMimeTypes({
     provider: "confluence",
-    resourceTypes: ["SPACE", "PAGE"],
+    resourceTypes: ["FOLDER", "PAGE", "SPACE"],
   }),
   GITHUB: generateConnectorRelativeMimeTypes({
     provider: "github",

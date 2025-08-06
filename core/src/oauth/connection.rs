@@ -1,15 +1,15 @@
 use crate::oauth::{
     encryption::{seal_str, unseal_str},
     providers::{
-        confluence::ConfluenceConnectionProvider, github::GithubConnectionProvider,
-        gmail::GmailConnectionProvider, gong::GongConnectionProvider,
-        google_drive::GoogleDriveConnectionProvider, hubspot::HubspotConnectionProvider,
-        intercom::IntercomConnectionProvider, jira::JiraConnectionProvider,
-        mcp::MCPConnectionProvider, microsoft::MicrosoftConnectionProvider,
-        microsoft_tools::MicrosoftToolsConnectionProvider, mock::MockConnectionProvider,
-        monday::MondayConnectionProvider, notion::NotionConnectionProvider,
-        salesforce::SalesforceConnectionProvider, slack::SlackConnectionProvider,
-        zendesk::ZendeskConnectionProvider,
+        confluence::ConfluenceConnectionProvider, freshservice::FreshserviceConnectionProvider,
+        github::GithubConnectionProvider, gmail::GmailConnectionProvider,
+        gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
+        hubspot::HubspotConnectionProvider, intercom::IntercomConnectionProvider,
+        jira::JiraConnectionProvider, mcp::MCPConnectionProvider,
+        microsoft::MicrosoftConnectionProvider, microsoft_tools::MicrosoftToolsConnectionProvider,
+        mock::MockConnectionProvider, monday::MondayConnectionProvider,
+        notion::NotionConnectionProvider, salesforce::SalesforceConnectionProvider,
+        slack::SlackConnectionProvider, zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
 };
@@ -91,6 +91,7 @@ impl std::error::Error for ConnectionError {}
 #[serde(rename_all = "snake_case")]
 pub enum ConnectionProvider {
     Confluence,
+    Freshservice,
     Github,
     Gong,
     GoogleDrive,
@@ -230,6 +231,7 @@ pub trait Provider {
 pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
     match t {
         ConnectionProvider::Confluence => Box::new(ConfluenceConnectionProvider::new()),
+        ConnectionProvider::Freshservice => Box::new(FreshserviceConnectionProvider::new()),
         ConnectionProvider::Github => Box::new(GithubConnectionProvider::new()),
         ConnectionProvider::Gong => Box::new(GongConnectionProvider::new()),
         ConnectionProvider::GoogleDrive => Box::new(GoogleDriveConnectionProvider::new()),

@@ -107,8 +107,17 @@ export const CONFIGURATION_SHEET_PAGE_IDS = {
   CONFIGURATION: "configuration",
 } as const;
 
+export const CONFIGURATION_DIALOG_PAGE_IDS = {
+  TOOL_SELECTION: "tool-selection",
+  CONFIGURATION: "configuration",
+  INFO: "info",
+};
+
 export type ConfigurationSheetPageId =
   (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
+
+export type ConfigurationPagePageId =
+  (typeof CONFIGURATION_DIALOG_PAGE_IDS)[keyof typeof CONFIGURATION_DIALOG_PAGE_IDS];
 
 // Zod validation schema for data source configuration - defines the contract/shape
 export const dataSourceConfigurationSchema = z.object({
@@ -197,7 +206,7 @@ export const capabilityFormSchema = z
   });
 
 export function getDefaultMCPAction(
-  mcpServerView?: MCPServerViewType
+  mcpServerView: MCPServerViewType | null
 ): AgentBuilderAction {
   const requirements = getMCPServerRequirements(mcpServerView);
   const configuration = getDefaultConfiguration(mcpServerView);

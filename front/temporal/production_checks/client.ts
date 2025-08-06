@@ -1,6 +1,6 @@
 import { WorkflowNotFoundError } from "@temporalio/client";
 
-import { getTemporalClient } from "@app/lib/temporal";
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
@@ -11,7 +11,7 @@ import { runAllChecksWorkflow } from "./workflows";
 export async function launchProductionChecksWorkflow(): Promise<
   Result<string, Error>
 > {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
 
   const workflowId = "production_checks";
   try {
