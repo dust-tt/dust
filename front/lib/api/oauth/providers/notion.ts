@@ -13,6 +13,22 @@ import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup"
 import { Err, OAuthAPI, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
+// Type definition for Notion OAuth response - only the fields we actually use
+interface NotionOAuthResponse {
+  workspace_id: string;
+  workspace_name?: string;
+  [key: string]: unknown;
+}
+
+// Type guard to safely check if an object has the Notion workspace properties we need
+function hasNotionWorkspaceId(obj: unknown): obj is NotionOAuthResponse {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    typeof (obj as any).workspace_id === "string"
+  );
+}
+
 export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
     connection,
@@ -23,7 +39,7 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
   }) {
     const clientId =
       useCase === "platform_actions" || useCase === "personal_actions"
-        ? config.getOAuthNotionToolsClientId()
+        ? config.getOAuthNotionPlatformActionsClientId()
         : config.getOAuthNotionClientId();
     return (
       `https://api.notion.com/v1/oauth/authorize?owner=user` +
@@ -109,12 +125,12 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
         }
 
         // Extract Notion workspace info from the raw OAuth response
-        const notionWorkspaceId = (oauthRes.value.scrubbed_raw_json as any)?.workspace_id;
-        const notionWorkspaceName = (oauthRes.value.scrubbed_raw_json as any)?.workspace_name;
-
-        if (!notionWorkspaceId) {
+        if (!hasNotionWorkspaceId(oauthRes.value.scrubbed_raw_json)) {
           throw new Error("No workspace_id found in admin OAuth response");
         }
+
+        const notionWorkspaceId = oauthRes.value.scrubbed_raw_json.workspace_id;
+        const notionWorkspaceName = oauthRes.value.scrubbed_raw_json.workspace_name;
 
         const updatedConfig = {
           ...restConfig,
@@ -150,15 +166,15 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
         }
         
         // Extract current user's Notion workspace info from raw OAuth response
-        const currentNotionWorkspaceId = (accessTokenRes.value.scrubbed_raw_json as any)?.workspace_id;
-        const currentNotionWorkspaceName = (accessTokenRes.value.scrubbed_raw_json as any)?.workspace_name;
-        
-        if (!currentNotionWorkspaceId) {
+        if (!hasNotionWorkspaceId(accessTokenRes.value.scrubbed_raw_json)) {
           return new Err({
             message:
               "Unable to validate Notion workspace. Please try connecting again.",
           });
         }
+
+        const currentNotionWorkspaceId = accessTokenRes.value.scrubbed_raw_json.workspace_id;
+        const currentNotionWorkspaceName = accessTokenRes.value.scrubbed_raw_json.workspace_name;
         
         if (currentNotionWorkspaceId === requestedNotionWorkspaceId) {
           return new Ok(undefined);
