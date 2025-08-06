@@ -7,11 +7,14 @@ export function makeConfluenceSpaceSyncWorkflowIdFromParentId(
   return `${parentWorkflowId}-space-${spaceId}`;
 }
 
-export function makeConfluenceSyncTopLevelChildEntitiesWorkflowIdFromParentId(
-  parentWorkflowId: string,
-  topLevelEntityId: string
-) {
-  return `${parentWorkflowId}-top-level-entity-${topLevelEntityId}`;
+export function makeConfluenceSyncTopLevelChildContentWorkflowIdFromParentId({
+  parentWorkflowId,
+  topLevelContentId,
+}: {
+  parentWorkflowId: string;
+  topLevelContentId: string;
+}) {
+  return `${parentWorkflowId}-top-level-content-${topLevelContentId}`;
 }
 
 export function makeConfluenceRemoveSpacesWorkflowId(connectorId: ModelId) {

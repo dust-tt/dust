@@ -10,7 +10,7 @@ import {
   getConfluenceClient,
 } from "@connectors/connectors/confluence/lib/utils";
 import {
-  confluenceUpdateEntitiesParentIdsActivity,
+  confluenceUpdateContentParentIdsActivity,
   fetchConfluenceConfigurationActivity,
 } from "@connectors/connectors/confluence/temporal/activities";
 import { QUEUE_NAME } from "@connectors/connectors/confluence/temporal/config";
@@ -203,14 +203,14 @@ export const confluence = async ({
             { spaceId: space.spaceId },
             "Updating parents for space."
           );
-          await confluenceUpdateEntitiesParentIdsActivity(
+          await confluenceUpdateContentParentIdsActivity(
             connectorId,
             space.spaceId,
             null
           );
         }
       } else {
-        await confluenceUpdateEntitiesParentIdsActivity(
+        await confluenceUpdateContentParentIdsActivity(
           connectorId,
           args.spaceId.toString(),
           null

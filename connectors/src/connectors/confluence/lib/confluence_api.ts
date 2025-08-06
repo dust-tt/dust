@@ -2,7 +2,7 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
 import type {
-  ConfluenceSearchEntityType,
+  ConfluenceSearchContentType,
   ConfluenceSpaceType,
 } from "@connectors/connectors/confluence/lib/confluence_client";
 import {
@@ -123,7 +123,7 @@ export async function pageHasReadRestrictions(
   return hasGroupReadPermissions || hasUserReadPermissions;
 }
 
-interface BaseConfluenceEntityRef {
+interface BaseConfluenceContentRef {
   hasFolderChildren: boolean;
   hasPageChildren: boolean;
   hasReadRestrictions: boolean;
@@ -132,19 +132,19 @@ interface BaseConfluenceEntityRef {
   version: number;
 }
 
-export type ConfluencePageRef = BaseConfluenceEntityRef & {
+export type ConfluencePageRef = BaseConfluenceContentRef & {
   type: "page";
 };
 
-export type ConfluenceFolderRef = BaseConfluenceEntityRef & {
+export type ConfluenceFolderRef = BaseConfluenceContentRef & {
   type: "folder";
 };
 
-export type ConfluenceEntityRef = ConfluencePageRef | ConfluenceFolderRef;
+export type ConfluenceContentRef = ConfluencePageRef | ConfluenceFolderRef;
 
-function getConfluenceEntityRef(
-  page: ConfluenceSearchEntityType
-): ConfluenceEntityRef {
+function getConfluenceContentRef(
+  page: ConfluenceSearchContentType
+): ConfluenceContentRef {
   const hasReadRestrictions =
     page.restrictions.read.restrictions.group.results.length > 0 ||
     page.restrictions.read.restrictions.user.results.length > 0;
@@ -170,42 +170,42 @@ function getConfluenceEntityRef(
   };
 }
 
-export async function getActiveChildEntityRefs(
+export async function getActiveChildContentRefs(
   client: ConfluenceClient,
   {
     pageCursor,
-    parentEntityId,
+    parentContentId,
     spaceKey,
   }: {
     pageCursor: string | null;
-    parentEntityId: string;
+    parentContentId: string;
     spaceKey: string;
   }
 ) {
-  // Fetch the child entities of the parent page.
-  const { entities: childEntities, nextPageCursor } =
-    await client.getChildEntities({
+  // Fetch the child content of the parent page.
+  const { content: childContent, nextPageCursor } =
+    await client.getChildContent({
       limit: PAGE_FETCH_LIMIT,
       pageCursor,
-      parentEntityId,
+      parentContentId,
       spaceKey,
     });
 
-  console.log(">>>>>", JSON.stringify(childEntities, null, 2));
+  console.log(">>>>>", JSON.stringify(childContent, null, 2));
 
-  const activeChildEntityIds = childEntities
+  const activeChildContentIds = childContent
     .filter((p) => p.status === "current")
     .map((p) => p.id);
 
-  if (activeChildEntityIds.length === 0) {
-    return { childEntityRefs: [], nextPageCursor };
+  if (activeChildContentIds.length === 0) {
+    return { childContentRefs: [], nextPageCursor };
   }
 
-  const childEntityRefs: ConfluenceEntityRef[] = childEntities.map(
-    getConfluenceEntityRef
+  const childContentRefs: ConfluenceContentRef[] = childContent.map(
+    getConfluenceContentRef
   );
 
-  return { childEntityRefs, nextPageCursor };
+  return { childContentRefs, nextPageCursor };
 }
 
 export async function bulkFetchConfluencePageRefs(
@@ -227,8 +227,8 @@ export async function bulkFetchConfluencePageRefs(
     limit,
   });
 
-  const pageRefs: ConfluenceEntityRef[] = pagesWithDetails.results.map(
-    getConfluenceEntityRef
+  const pageRefs: ConfluenceContentRef[] = pagesWithDetails.results.map(
+    getConfluenceContentRef
   );
 
   return pageRefs;
