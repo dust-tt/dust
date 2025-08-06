@@ -14,8 +14,9 @@ import {
   TabsList,
   TabsTrigger,
   TrashIcon,
-  useHashParam,
 } from "@dust-tt/sparkle";
+import { useHashParam } from "@app/hooks/useHashParams";
+
 import type { InferGetServerSidePropsType } from "next";
 import { useEffect, useMemo, useRef, useState } from "react";
 

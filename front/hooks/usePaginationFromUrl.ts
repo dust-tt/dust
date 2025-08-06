@@ -1,7 +1,7 @@
 import { PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 
-import { HistoryOptions, useHashParam } from "@sparkle/hooks/useHashParams";
+import { HistoryOptions, useHashParam } from "@app/hooks/useHashParams";
 
 const defaultPageSize = 25;
 
