@@ -2,7 +2,6 @@ import {
   Button,
   ContextItem,
   Input,
-  XMarkIcon,
   ZendeskLogo,
   ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
@@ -180,74 +179,82 @@ export function ZendeskCustomFieldFilters({
     }
   };
 
-  const renderCustomFields = () => (
-    <div className="flex flex-wrap gap-2">
-      {customFields.map((field: CustomField) => (
-        <span
-          key={field.id}
-          className="inline-flex items-center gap-1 rounded-md bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-        >
-          {field.name}
-          {!readOnly && isAdmin && (
-            <button
-              onClick={() => handleRemoveField(field.id)}
-              disabled={loading}
-              className="ml-1 hover:opacity-70 disabled:opacity-50"
-            >
-              <XMarkIcon className="h-3 w-3" />
-            </button>
-          )}
-        </span>
-      ))}
-    </div>
-  );
-
   return (
     <ContextItem
       title="Custom Field Tags"
       visual={
         <ContextItem.Visual visual={isDark ? ZendeskWhiteLogo : ZendeskLogo} />
       }
-      action={
-        <div className="flex items-center gap-2">
-          <Input
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Enter custom field name"
-            disabled={readOnly || !isAdmin || loading}
-            className="w-80"
-          />
-          <Button
-            size="sm"
-            onClick={handleSave}
-            disabled={readOnly || !isAdmin || loading || !inputValue.trim()}
-            label="Add"
-          />
-        </div>
-      }
     >
-      <ContextItem.Description>
+      <div className="space-y-4">
         <div className="text-muted-foreground dark:text-muted-foreground-night">
-          <p className="mb-4">
-            Configure custom ticket field that should be included as labels on
-            synced tickets.
+          <p className="text-sm">
+            Configure custom ticket field names that should be included as tags
+            when syncing tickets. Custom field values will be added as tags in
+            the format "fieldName:value".
           </p>
+        </div>
 
+        {!readOnly && isAdmin && (
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <Input
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Enter custom field name"
+                disabled={loading}
+              />
+              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={loading || !inputValue.trim()}
+                label="Add Field"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+              Enter the exact name of the custom field as it appears in Zendesk.
+              The field will be validated when added.
+            </p>
+          </div>
+        )}
+
+        <div>
           {customFields.length > 0 ? (
-            <div className="mb-4">
-              <p className="mb-2 text-sm font-medium">
-                Configured Custom Fields:
-              </p>
-              {renderCustomFields()}
+            <div className="space-y-2">
+              {customFields.map((field: CustomField) => (
+                <div
+                  key={field.id}
+                  className="flex items-center justify-between rounded-md border bg-gray-50 p-3 dark:bg-gray-800"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                      {field.name}
+                    </span>
+                  </div>
+                  {!readOnly && isAdmin && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleRemoveField(field.id)}
+                      disabled={loading}
+                      label="Remove"
+                      className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                    />
+                  )}
+                </div>
+              ))}
             </div>
           ) : (
-            <p className="mb-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
-              No custom fields configured.
-            </p>
+            <div className="rounded-md border border-dashed bg-gray-50 p-4 dark:bg-gray-800">
+              <p className="text-center text-sm text-muted-foreground">
+                No custom fields configured yet. Add your first custom field
+                below.
+              </p>
+            </div>
           )}
         </div>
-      </ContextItem.Description>
+      </div>
     </ContextItem>
   );
 }
