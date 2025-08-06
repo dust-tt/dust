@@ -201,14 +201,9 @@ export function ZendeskTagFilters({
 
           {!hasTags && (
             <p className="mb-4 text-sm text-muted-foreground">
-              No tag filters configured. All items will be synced.
+              No tag filters configured.
             </p>
           )}
-
-          <p className="mt-2 text-xs text-muted-foreground">
-            Enter one tag at a time. Excluded tags take precedence over included
-            tags.
-          </p>
         </div>
       </ContextItem.Description>
     </ContextItem>
