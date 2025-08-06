@@ -626,11 +626,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     try {
       await ConversationMCPServerViewModel.destroy({
-        where: { conversationId: this.id },
+        where: { workspaceId: owner.id, conversationId: this.id },
         transaction,
       });
       await ConversationParticipantModel.destroy({
-        where: { conversationId: this.id },
+        where: { workspaceId: owner.id, conversationId: this.id },
         transaction,
       });
       await ConversationResource.model.destroy({
