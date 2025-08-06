@@ -8,9 +8,8 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { uniqueId } from "lodash";
-import { useCallback, useMemo, useState } from "react";
-import React from "react";
+import uniqueId from "lodash/uniqueId";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { UseFieldArrayAppend } from "react-hook-form";
 import { useForm } from "react-hook-form";
 
@@ -136,7 +135,7 @@ export function MCPServerViewsDialog({
   const [infoMCPServerView, setInfoMCPServerView] =
     useState<MCPServerViewType | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isEditMode) {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION);
       setConfigurationTool(mode.action);
@@ -278,7 +277,7 @@ export function MCPServerViewsDialog({
     toggleToolSelection(tool);
   }
 
-  const handleAddSelectedTools = useCallback(async () => {
+  const handleAddSelectedTools = useCallback(() => {
     // Validate any configured tools before adding
     for (const tool of selectedToolsInDialog) {
       if (tool.type === "MCP" && tool.configuredAction) {
@@ -358,7 +357,7 @@ export function MCPServerViewsDialog({
     [configurationTool, mcpServerView, isOpen]
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     resetFormValues(form);
   }, [resetFormValues, form]);
 
