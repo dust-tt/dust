@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs access to your microphone to record audio for transcription.</string>
+	<key>NSSystemAdministrationUsageDescription</key>
+	<string>This app needs system administration access to create aggregate audio devices for call recording.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>This app needs access to control audio devices for call recording setup.</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSScreenCaptureDescription</key>
+	<string>This app needs screen capture access to record system audio for complete call recording.</string>
+	<key>CFBundleDisplayName</key>
+	<string>Dust Transcripts</string>
+	<key>CFBundleName</key>
+	<string>Dust Transcripts</string>
+</dict>
+</plist>
