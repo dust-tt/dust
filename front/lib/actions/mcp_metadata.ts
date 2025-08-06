@@ -535,6 +535,7 @@ async function fetchRemoteServerMetaData(
       ...metadata,
       tools: serverTools,
       availability: "manual",
+      allowMultipleInstances: true,
     });
   } catch (e: unknown) {
     logger.error(

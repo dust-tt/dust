@@ -13,7 +13,7 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { SUGGEST_AGENTS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
@@ -293,7 +293,7 @@ function _getHelperGlobalAgent({
     ..._getAgentRouterToolsConfiguration(
       GLOBAL_AGENTS_SID.HELPER,
       agentRouterMCPServerView,
-      internalMCPServerNameToSId({
+      autoInternalMCPServerNameToSId({
         name: "agent_router",
         workspaceId: owner.id,
       })
@@ -1742,7 +1742,7 @@ The agent should not provide additional information or content that the user did
     ..._getAgentRouterToolsConfiguration(
       GLOBAL_AGENTS_SID.DUST,
       agentRouterMCPServerView,
-      internalMCPServerNameToSId({
+      autoInternalMCPServerNameToSId({
         name: "agent_router",
         workspaceId: owner.id,
       })

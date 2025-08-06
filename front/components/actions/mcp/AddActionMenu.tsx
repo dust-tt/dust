@@ -77,8 +77,10 @@ export const AddActionMenu = ({
           </div>
         )}
         {availableMCPServers
+          .filter((mcpServer) => mcpServer.availability === "manual")
           .filter(
             (mcpServer) =>
+              mcpServer.allowMultipleInstances ||
               !enabledMCPServers.some((enabled) => enabled.id === mcpServer.sId)
           )
           .filter((mcpServer) => filterMCPServer(mcpServer, searchText))
