@@ -133,7 +133,7 @@ export const dataSourceConfigurationSchema = z.object({
   }),
 });
 
-// TODO: merge this with MCP form schema.
+// TODO: merge this with MCP form schema. Right now it only validates relevant fields.
 export const capabilityFormSchema = z
   .object({
     name: z
@@ -183,6 +183,8 @@ export const capabilityFormSchema = z
       }
     }
 
+    // TODO: right now we run validation in the component too, we should run only 
+    // on form submit instead.
     if (requirements.mayRequireJsonSchemaConfiguration) {
       if (configuration.jsonSchema === null) {
         return false;
