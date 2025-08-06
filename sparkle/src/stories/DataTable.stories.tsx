@@ -20,7 +20,11 @@ import {
   Input,
   ScrollableDataTable,
 } from "@sparkle/components/";
-import { createSelectionColumn, MenuItem } from "@sparkle/components/DataTable";
+import {
+  createSelectionColumn,
+  createRadioSelectionColumn,
+  MenuItem,
+} from "@sparkle/components/DataTable";
 import { FolderIcon } from "@sparkle/icons/app";
 
 const meta = {
@@ -643,6 +647,62 @@ export const DataTableWithRowSelectionExample = () => {
           </pre>
           <p className="s-mt-2 s-text-sm">
             Selected {Object.keys(rowSelection).length} of {data.length} rows
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const DataTableWithRadioSelectionExample = () => {
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [data] = useState<Data[]>(() => createData(0, 10));
+  const [filter, setFilter] = useState("");
+
+  const columnsWithRadioSelection: ColumnDef<Data>[] = useMemo(
+    () => [createRadioSelectionColumn<Data>(), ...columns],
+    []
+  );
+
+  // Get the selected row ID from rowSelection state
+  const selectedRowId = Object.keys(rowSelection).find(
+    (id) => rowSelection[id]
+  );
+
+  return (
+    <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
+      <h3 className="s-text-lg s-font-medium">
+        DataTable with Radio Selection (Single Row)
+      </h3>
+
+      <div className="s-flex s-flex-col s-gap-4">
+        <Input
+          name="filter"
+          placeholder="Filter"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+
+        <DataTable
+          data={data}
+          filter={filter}
+          filterColumn="name"
+          columns={columnsWithRadioSelection}
+          rowSelection={rowSelection}
+          setRowSelection={setRowSelection}
+          enableRowSelection={true}
+          enableMultiRowSelection={false}
+          getRowId={(row) => row.name}
+        />
+
+        <div className="s-rounded-md s-border s-bg-muted/50 s-p-2">
+          <h4 className="s-mb-2 s-font-medium">Radio Selection State:</h4>
+          <pre className="s-overflow-auto s-text-xs">
+            {JSON.stringify(rowSelection, null, 2)}
+          </pre>
+          <p className="s-mt-2 s-text-sm">
+            {selectedRowId ? `Selected: ${selectedRowId}` : "No row selected"}{" "}
+            (only one row can be selected at a time)
           </p>
         </div>
       </div>
