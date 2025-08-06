@@ -6,18 +6,16 @@ import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 interface AgentActionsPanelHeaderProps {
   children?: React.ReactNode;
   onClose?: () => void;
-  onShare?: () => void;
   title: string;
 }
 
 export function AgentActionsPanelHeader({
   children,
   onClose,
-  onShare,
   title,
 }: AgentActionsPanelHeaderProps) {
   return (
-    <AppLayoutTitle className="bg-gray-50 @container dark:bg-gray-900">
+    <AppLayoutTitle className="@container">
       <div className="flex h-full min-w-0 max-w-full items-center justify-between gap-2">
         {/* Progressive content visibility based on container width. */}
         <div className="flex min-w-0 items-center gap-2 overflow-hidden">
@@ -35,16 +33,6 @@ export function AgentActionsPanelHeader({
         {/* Actions - always visible and right-aligned. */}
         <div className="flex shrink-0 items-center gap-2">
           {children}
-          {onShare && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onShare}
-              icon={LinkIcon}
-              tooltip="Share publicly"
-              className="text-element-600 hover:text-element-900"
-            />
-          )}
           {onClose && (
             <Button
               variant="ghost"

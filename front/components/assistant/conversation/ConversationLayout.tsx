@@ -249,8 +249,7 @@ function ConversationInnerLayout({
               !currentPanel && "hidden",
               // On mobile: overlay full screen with absolute positioning.
               "md:relative",
-              currentPanel &&
-                "absolute inset-0 border-red-200 md:relative md:inset-auto"
+              currentPanel && "absolute inset-0 md:relative md:inset-auto"
             )}
           >
             {currentPanel === "content" && (
