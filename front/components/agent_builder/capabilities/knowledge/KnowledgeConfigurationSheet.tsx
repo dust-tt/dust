@@ -137,24 +137,17 @@ export function KnowledgeConfigurationSheet({
     }
   };
 
-  const handleTriggerClick = () => {
-    if (!open) {
-      onClickKnowledge();
-    }
-  };
-
   return (
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
       <MultiPageSheetTrigger asChild>
         <Button
           label="Add knowledge"
-          onClick={handleTriggerClick}
+          onClick={onClickKnowledge}
           icon={BookOpenIcon}
         />
       </MultiPageSheetTrigger>
       <FormProvider {...formMethods}>
         <KnowledgeConfigurationSheetContent
-          action={action}
           onSave={handleSave}
           isOpen={open}
           getAgentInstructions={getAgentInstructions}
@@ -177,16 +170,13 @@ interface KnowledgeConfigurationSheetContentProps {
 }
 
 function KnowledgeConfigurationSheetContent({
-  action,
   onSave,
   isOpen,
   getAgentInstructions,
   isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
-  const { control, handleSubmit, setValue, formState } =
+  const { control, handleSubmit, setValue } =
     useFormContext<CapabilityFormData>();
-
-  console.log("formState", formState.errors);
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
@@ -293,29 +283,21 @@ function KnowledgeConfigurationSheetContent({
               />
             </div>
           </div>
+          <hr className="border-gray-200" />
+          <div className="space-y-6">
+            {requirements.mayRequireTimeFrameConfiguration && (
+              <TimeFrameSection actionType="extract" />
+            )}
 
-          {/* Configuration Section - Only show when MCP server is selected */}
-          {
-            <>
-              <hr className="border-gray-200" />
-              <div className="space-y-6">
-                {requirements.mayRequireTimeFrameConfiguration && (
-                  <TimeFrameSection actionType="extract" />
-                )}
+            {requirements.mayRequireJsonSchemaConfiguration && (
+              <JsonSchemaSection
+                owner={owner}
+                agentInstructions={agentInstructions}
+              />
+            )}
 
-                {requirements.mayRequireJsonSchemaConfiguration && (
-                  <JsonSchemaSection
-                    owner={owner}
-                    agentInstructions={agentInstructions}
-                  />
-                )}
-
-                {config && (
-                  <DescriptionSection {...config?.descriptionConfig} />
-                )}
-              </div>
-            </>
-          }
+            {config && <DescriptionSection {...config?.descriptionConfig} />}
+          </div>
         </div>
       ),
     },
