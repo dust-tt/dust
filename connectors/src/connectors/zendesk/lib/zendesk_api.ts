@@ -23,11 +23,12 @@ import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 import { removeNulls } from "@connectors/types/shared/utils/general";
 
-const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
-const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
-const ZENDESK_TICKET_PAGE_SIZE = 300;
-const ZENDESK_COMMENT_PAGE_SIZE = 100;
-const ZENDESK_CUSTOM_FIELDS_PAGE_SIZE = 100;
+const RATE_LIMIT_MAX_RETRIES = 5;
+const RATE_LIMIT_TIMEOUT_SECONDS = 60;
+
+const TICKET_PAGE_SIZE = 300;
+const COMMENT_PAGE_SIZE = 100;
+const CUSTOM_FIELDS_PAGE_SIZE = 100;
 
 function extractMetadataFromZendeskUrl(url: string): {
   subdomain: string;
@@ -96,13 +97,13 @@ async function handleZendeskRateLimit(
       `endpoint:${endpoint}`,
     ]);
 
-    if (retryAfter > ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS) {
+    if (retryAfter > RATE_LIMIT_TIMEOUT_SECONDS) {
       logger.info(
         { subdomain, endpoint, response, retryAfter },
-        `[Zendesk] Attempting to wait more than ${ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS} s, aborting.`
+        `[Zendesk] Attempting to wait more than ${RATE_LIMIT_TIMEOUT_SECONDS} s, aborting.`
       );
       throw new Error(
-        `Zendesk retry after larger than ${ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS} s, aborting.`
+        `Zendesk retry after larger than ${RATE_LIMIT_TIMEOUT_SECONDS} s, aborting.`
       );
     }
     logger.info(
@@ -143,13 +144,13 @@ async function fetchFromZendeskWithRetries({
   while (await handleZendeskRateLimit(rawResponse, url)) {
     rawResponse = await runFetch();
     retryCount++;
-    if (retryCount >= ZENDESK_RATE_LIMIT_MAX_RETRIES) {
+    if (retryCount >= RATE_LIMIT_MAX_RETRIES) {
       logger.info(
         { response: rawResponse },
-        `[Zendesk] Rate limit hit more than ${ZENDESK_RATE_LIMIT_MAX_RETRIES}, aborting.`
+        `[Zendesk] Rate limit hit more than ${RATE_LIMIT_MAX_RETRIES}, aborting.`
       );
       throw new Error(
-        `Zendesk rate limit hit more than ${ZENDESK_RATE_LIMIT_MAX_RETRIES} times, aborting.`
+        `Zendesk rate limit hit more than ${RATE_LIMIT_MAX_RETRIES} times, aborting.`
       );
     }
   }
@@ -429,7 +430,7 @@ export async function listZendeskTickets(
       url:
         url ?? // using the URL if we got one, reconstructing it otherwise
         `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor?` +
-          `per_page=${ZENDESK_TICKET_PAGE_SIZE}&start_time=${startTime}`,
+          `per_page=${TICKET_PAGE_SIZE}&start_time=${startTime}`,
       accessToken,
     });
     return {
@@ -485,7 +486,7 @@ export async function listZendeskTicketComments({
   ticketId: number;
 }): Promise<ZendeskFetchedTicketComment[]> {
   const comments = [];
-  let url: string = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}/comments?page[size]=${ZENDESK_COMMENT_PAGE_SIZE}`;
+  let url: string = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}/comments?page[size]=${COMMENT_PAGE_SIZE}`;
   let hasMore = true;
 
   while (hasMore) {
@@ -723,7 +724,7 @@ export async function listZendeskTicketFields({
 }): Promise<ZendeskFetchedTicketField[]> {
   let url =
     `https://${subdomain}.zendesk.com/api/v2/ticket_fields` +
-    +`?page[size]=${ZENDESK_CUSTOM_FIELDS_PAGE_SIZE}`;
+    +`?page[size]=${CUSTOM_FIELDS_PAGE_SIZE}`;
   const ticketFields = [];
   let hasMore = true;
 
