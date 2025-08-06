@@ -8,6 +8,7 @@ import {
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   EXECUTE_TABLES_QUERY_MARKER,
   GET_DATABASE_SCHEMA_MARKER,
@@ -66,6 +67,13 @@ const createServer = (
       "nested schemas → tables. Schemas can be arbitrarily nested within other schemas. Results are paginated " +
       "with a default limit and you can fetch additional pages using the nextPageCursor.",
     {
+      dataSources: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE
+      ]
+        .optional()
+        .describe(
+          "The data sources configured for this tool. This determines which warehouses and content nodes the tool can access."
+        ),
       nodeId: z
         .string()
         .nullable()
@@ -428,6 +436,13 @@ const createServer = (
       "The query supports partial matching - for example, searching for 'sales' will find " +
       "'sales_2024', 'monthly_sales_report', etc. This is like using 'find' in Unix for tables.",
     {
+      dataSources: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE
+      ]
+        .optional()
+        .describe(
+          "The data sources configured for this tool. This determines which warehouses and content nodes the tool can access."
+        ),
       query: z
         .string()
         .optional()
@@ -752,6 +767,13 @@ const createServer = (
       "warehouse - cross-warehouse schema requests are not supported. Use this to understand table " +
       "structure before writing queries.",
     {
+      dataSources: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE
+      ]
+        .optional()
+        .describe(
+          "The data sources configured for this tool. This determines which warehouses and content nodes the tool can access."
+        ),
       tableIds: z
         .array(z.string())
         .min(1)
@@ -888,6 +910,13 @@ const createServer = (
       "before attempting to query tables to understand their structure. The query must respect the SQL dialect " +
       "and guidelines provided by describe_tables. All tables in a single query must be from the same warehouse.",
     {
+      dataSources: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE
+      ]
+        .optional()
+        .describe(
+          "The data sources configured for this tool. This determines which warehouses and content nodes the tool can access."
+        ),
       tableIds: z
         .array(z.string())
         .min(1)

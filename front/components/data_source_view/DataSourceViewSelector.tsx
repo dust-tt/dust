@@ -71,7 +71,8 @@ const getUseResourceHook =
     owner: LightWorkspaceType,
     dataSourceView: DataSourceViewType,
     viewType: ContentNodesViewType,
-    useContentNodes: typeof useDataSourceViewContentNodes
+    useContentNodes: typeof useDataSourceViewContentNodes,
+    allowWarehouseHierarchySelection: boolean = false
   ) =>
   (parentId: string | null) => {
     // State for accumulating nodes for "load more".
@@ -134,8 +135,23 @@ const getUseResourceHook =
       }
     }, [nextPageCursor, isLoadingMore]);
 
+    // Override preventSelection for warehouse hierarchy selection if needed
+    const processedNodes = allowWarehouseHierarchySelection
+      ? accumulatedNodes.map((node) => {
+          // For warehouse hierarchy selection in table view, allow selecting folders (databases/schemas)
+          // but keep any other preventSelection flags (like for syncing folders)
+          if (viewType === "table" && node.type === "folder") {
+            return {
+              ...node,
+              preventSelection: false,
+            };
+          }
+          return node;
+        })
+      : accumulatedNodes;
+
     return {
-      resources: accumulatedNodes,
+      resources: processedNodes,
       totalResourceCount: totalNodesCount,
       isResourcesLoading:
         isInitialNodesLoading || (isLoadingMore && currentCursor === null),
@@ -256,6 +272,9 @@ interface DataSourceViewsSelectorProps {
   space: SpaceType;
   selectionMode?: "checkbox" | "radio";
   allowAdminSearch?: boolean;
+  // Special configuration for data warehouse selection
+  allowWarehouseHierarchySelection?: boolean;
+  allowMultipleWarehouses?: boolean;
 }
 
 export function DataSourceViewsSelector({
@@ -269,6 +288,8 @@ export function DataSourceViewsSelector({
   space,
   selectionMode = "checkbox",
   allowAdminSearch = false,
+  allowWarehouseHierarchySelection = false,
+  allowMultipleWarehouses = false,
 }: DataSourceViewsSelectorProps) {
   const [searchResult, setSearchResult] = useState<
     DataSourceViewContentNode | undefined
@@ -290,7 +311,8 @@ export function DataSourceViewsSelector({
     const includesConnectorIDs: string[] = [];
     const excludesConnectorIDs: string[] = [];
 
-    if (viewType === "table" && useCase === "assistantBuilder") {
+    // Skip warehouse filtering if multiple warehouses are allowed
+    if (viewType === "table" && useCase === "assistantBuilder" && !allowMultipleWarehouses) {
       const selection = Object.values(selectionConfigurations);
       const firstDs =
         selection.length > 0 ? selection[0].dataSourceView.dataSource : null;
@@ -572,6 +594,7 @@ export function DataSourceViewsSelector({
                 useCase={useCase}
                 searchResult={searchResult}
                 selectionMode={selectionMode}
+                allowWarehouseHierarchySelection={allowWarehouseHierarchySelection}
               />
             ))}
           </Tree.Item>
@@ -620,6 +643,7 @@ export function DataSourceViewsSelector({
                 useCase={useCase}
                 searchResult={searchResult}
                 selectionMode={selectionMode}
+                allowWarehouseHierarchySelection={allowWarehouseHierarchySelection}
               />
             ))}
           </Tree.Item>
@@ -694,6 +718,7 @@ interface DataSourceViewSelectorProps {
   useCase?: DataSourceViewsSelectorProps["useCase"];
   searchResult?: DataSourceViewContentNode;
   selectionMode?: "checkbox" | "radio";
+  allowWarehouseHierarchySelection?: boolean;
 }
 
 export function DataSourceViewSelector({
@@ -708,6 +733,7 @@ export function DataSourceViewSelector({
   useCase,
   searchResult,
   selectionMode = "checkbox",
+  allowWarehouseHierarchySelection = false,
 }: DataSourceViewSelectorProps) {
   const { isDark } = useTheme();
   const dataSourceView = selectionConfiguration.dataSourceView;
@@ -797,7 +823,8 @@ export function DataSourceViewSelector({
   const isTableView = viewType === "table";
 
   // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
-  const hideCheckbox = readonly || (isTableView && isChecked !== "partial");
+  // However, for warehouse hierarchy selection, always show the checkbox to allow warehouse selection.
+  const hideCheckbox = readonly || (isTableView && !allowWarehouseHierarchySelection && isChecked !== "partial");
 
   const selectedNodes = useMemo(
     () => getNodesFromConfig(selectionConfiguration),
@@ -872,9 +899,10 @@ export function DataSourceViewSelector({
         owner,
         dataSourceView,
         viewType,
-        useContentNodes
+        useContentNodes,
+        allowWarehouseHierarchySelection
       )(parentId),
-    [owner, dataSourceView, viewType, useContentNodes]
+    [owner, dataSourceView, viewType, useContentNodes, allowWarehouseHierarchySelection]
   );
 
   const isExpanded = searchResult

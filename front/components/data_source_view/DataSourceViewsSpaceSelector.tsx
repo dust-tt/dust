@@ -26,6 +26,9 @@ interface DataSourceViewsSpaceSelectorProps {
   viewType: ContentNodesViewType;
   isRootSelectable: boolean;
   selectionMode?: "checkbox" | "radio";
+  // Special configuration for data warehouse selection
+  allowWarehouseHierarchySelection?: boolean;
+  allowMultipleWarehouses?: boolean;
 }
 
 export const DataSourceViewsSpaceSelector = ({
@@ -38,6 +41,8 @@ export const DataSourceViewsSpaceSelector = ({
   viewType,
   isRootSelectable,
   selectionMode = "checkbox",
+  allowWarehouseHierarchySelection = false,
+  allowMultipleWarehouses = false,
 }: DataSourceViewsSpaceSelectorProps) => {
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
 
@@ -74,6 +79,8 @@ export const DataSourceViewsSpaceSelector = ({
         isRootSelectable={isRootSelectable}
         space={space}
         selectionMode={selectionMode}
+        allowWarehouseHierarchySelection={allowWarehouseHierarchySelection}
+        allowMultipleWarehouses={allowMultipleWarehouses}
       />
     );
   }
@@ -107,6 +114,8 @@ export const DataSourceViewsSpaceSelector = ({
             isRootSelectable={isRootSelectable}
             space={space}
             selectionMode={selectionMode}
+            allowWarehouseHierarchySelection={allowWarehouseHierarchySelection}
+            allowMultipleWarehouses={allowMultipleWarehouses}
           />
         );
       }}

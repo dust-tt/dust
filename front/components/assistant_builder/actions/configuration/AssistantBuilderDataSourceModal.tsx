@@ -13,6 +13,7 @@ import { useDataSourceViewsContext } from "@app/components/assistant_builder/con
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import {
+  isRemoteDatabase,
   supportsDocumentsData,
   supportsStructuredData,
 } from "@app/lib/data_sources";
@@ -33,6 +34,10 @@ interface AssistantBuilderDataSourceModalProps {
   owner: WorkspaceType;
   setOpen: (isOpen: boolean) => void;
   viewType: ContentNodesViewType;
+  // Special configuration for data warehouse selection
+  allowWarehouseHierarchySelection?: boolean;
+  allowMultipleWarehouses?: boolean;
+  remoteDatabasesOnly?: boolean;
 }
 
 export default function AssistantBuilderDataSourceModal({
@@ -43,6 +48,9 @@ export default function AssistantBuilderDataSourceModal({
   owner,
   setOpen,
   viewType,
+  allowWarehouseHierarchySelection = false,
+  allowMultipleWarehouses = false,
+  remoteDatabasesOnly = false,
 }: AssistantBuilderDataSourceModalProps) {
   const { dataSourceViews } = useDataSourceViewsContext();
   const [hasChanged, setHasChanged] = useState(false);
@@ -78,21 +86,33 @@ export default function AssistantBuilderDataSourceModal({
   );
 
   const supportedDataSourceViewsForViewType = useMemo(() => {
-    switch (viewType) {
-      case "all":
-        return dataSourceViews;
-      case "table":
-        return dataSourceViews.filter((dsv) =>
-          supportsStructuredData(dsv.dataSource)
-        );
-      case "document":
-        return dataSourceViews.filter((dsv) =>
-          supportsDocumentsData(dsv.dataSource, featureFlags)
-        );
-      default:
-        assertNever(viewType);
+    let filtered = dataSourceViews;
+    
+    // Apply remote databases only filter if needed
+    if (remoteDatabasesOnly) {
+      filtered = filtered.filter((dsv) => isRemoteDatabase(dsv.dataSource));
+    } else {
+      // Apply normal viewType filtering
+      switch (viewType) {
+        case "all":
+          break;
+        case "table":
+          filtered = filtered.filter((dsv) =>
+            supportsStructuredData(dsv.dataSource)
+          );
+          break;
+        case "document":
+          filtered = filtered.filter((dsv) =>
+            supportsDocumentsData(dsv.dataSource, featureFlags)
+          );
+          break;
+        default:
+          assertNever(viewType);
+      }
     }
-  }, [dataSourceViews, viewType, featureFlags]);
+    
+    return filtered;
+  }, [dataSourceViews, viewType, featureFlags, remoteDatabasesOnly]);
 
   const selectedTableCount = useMemo(() => {
     if (viewType !== "table") {
@@ -130,6 +150,8 @@ export default function AssistantBuilderDataSourceModal({
               setSelectionConfigurations={setSelectionConfigurationsCallback}
               viewType={viewType}
               isRootSelectable={true}
+              allowWarehouseHierarchySelection={allowWarehouseHierarchySelection}
+              allowMultipleWarehouses={allowMultipleWarehouses}
             />
           </div>
         </SheetContainer>

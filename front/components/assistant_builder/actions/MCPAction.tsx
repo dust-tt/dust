@@ -169,7 +169,12 @@ export function MCPAction({
   const requirements = getMCPServerRequirements(selectedMCPServerView);
   const withDataSource =
     requirements.requiresDataSourceConfiguration ||
+    requirements.requiresDataWarehouseConfiguration ||
     requirements.requiresTableConfiguration;
+
+  // Check if this server requires data warehouse configuration
+  // This is identified by the presence of DATA_WAREHOUSE MIME type in its tools
+  const isDataWarehouseConfig = !!requirements.requiresDataWarehouseConfiguration;
 
   // We don't show the "Available Tools" section if there is only one tool.
   // Because it's redundant with the tool description.
@@ -186,7 +191,7 @@ export function MCPAction({
   return (
     <>
       {/* Additional modals for selecting data sources */}
-      {requirements.requiresDataSourceConfiguration && (
+      {(requirements.requiresDataSourceConfiguration || requirements.requiresDataWarehouseConfiguration) && (
         <AssistantBuilderDataSourceModal
           isOpen={showDataSourcesModal}
           setOpen={setShowDataSourcesModal}
@@ -198,7 +203,11 @@ export function MCPAction({
             actionConfiguration.dataSourceConfigurations ?? {}
           }
           allowedSpaces={allowedSpaces}
-          viewType="document"
+          viewType={isDataWarehouseConfig ? "table" : "document"}
+          // Pass special configuration for data warehouse selection
+          allowWarehouseHierarchySelection={isDataWarehouseConfig}
+          allowMultipleWarehouses={isDataWarehouseConfig}
+          remoteDatabasesOnly={isDataWarehouseConfig}
         />
       )}
       {requirements.requiresTableConfiguration && (
@@ -226,7 +235,7 @@ export function MCPAction({
       )}
 
       {/* Configurable blocks */}
-      {requirements.requiresDataSourceConfiguration && (
+      {(requirements.requiresDataSourceConfiguration || requirements.requiresDataWarehouseConfiguration) && (
         <DataSourceSelectionSection
           owner={owner}
           dataSourceConfigurations={
@@ -236,7 +245,7 @@ export function MCPAction({
           onSave={(dataSourceConfigurations) => {
             handleConfigUpdate((old) => ({ ...old, dataSourceConfigurations }));
           }}
-          viewType="document"
+          viewType={isDataWarehouseConfig ? "table" : "document"}
         />
       )}
       {requirements.requiresTableConfiguration && (

@@ -219,6 +219,7 @@ const TOOL_MIME_TYPES = {
     category: "TOOL_INPUT",
     resourceTypes: [
       "DATA_SOURCE",
+      "DATA_WAREHOUSE",
       "TABLE",
       "AGENT",
       "STRING",
