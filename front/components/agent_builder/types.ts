@@ -297,7 +297,7 @@ export const dataSourceConfigurationSchema = z.object({
 });
 
 export function getDefaultMCPAction(
-  mcpServerView?: MCPServerViewType
+  mcpServerView: MCPServerViewType | null
 ): AgentBuilderAction {
   const requirements = getMCPServerRequirements(mcpServerView);
   const configuration = getDefaultConfiguration(mcpServerView);
