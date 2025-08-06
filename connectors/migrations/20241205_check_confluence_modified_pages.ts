@@ -1,8 +1,8 @@
 import { makeScript } from "scripts/helpers";
 
+import { getConfluenceClient } from "@connectors/connectors/confluence/lib/utils";
 import {
   fetchConfluenceConfigurationActivity,
-  getConfluenceClient,
   getSpaceIdsToSyncActivity,
 } from "@connectors/connectors/confluence/temporal/activities";
 import {

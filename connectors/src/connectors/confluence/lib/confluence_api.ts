@@ -2,7 +2,7 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
 import type {
-  ConfluenceSearchPageType,
+  ConfluenceSearchContentType,
   ConfluenceSpaceType,
 } from "@connectors/connectors/confluence/lib/confluence_client";
 import {
@@ -17,6 +17,8 @@ import type { ModelId } from "@connectors/types";
 import { getOAuthConnectionAccessToken } from "@connectors/types";
 
 const PAGE_FETCH_LIMIT = 100;
+
+const CONNECTOR_IDS_WITH_FOLDER_SUPPORT: ModelId[] = [1126, 27089];
 
 export async function getConfluenceCloudInformation(accessToken: string) {
   const client = new ConfluenceClient(accessToken);
@@ -123,7 +125,7 @@ export async function pageHasReadRestrictions(
   return hasGroupReadPermissions || hasUserReadPermissions;
 }
 
-export interface ConfluencePageRef {
+interface BaseConfluenceContentRef {
   hasChildren: boolean;
   hasReadRestrictions: boolean;
   id: string;
@@ -131,53 +133,82 @@ export interface ConfluencePageRef {
   version: number;
 }
 
-function getConfluencePageRef(page: ConfluenceSearchPageType) {
+export type ConfluencePageRef = BaseConfluenceContentRef & {
+  type: "page";
+};
+
+export type ConfluenceFolderRef = BaseConfluenceContentRef & {
+  type: "folder";
+};
+
+export type ConfluenceContentRef = ConfluencePageRef | ConfluenceFolderRef;
+
+function getConfluenceContentRef(
+  page: ConfluenceSearchContentType
+): ConfluenceContentRef {
   const hasReadRestrictions =
     page.restrictions.read.restrictions.group.results.length > 0 ||
     page.restrictions.read.restrictions.user.results.length > 0;
 
+  const hasFolderChildren =
+    typeof page.childTypes.folder === "object"
+      ? page.childTypes.folder.value
+      : page.childTypes.folder;
+  const hasPageChildren =
+    typeof page.childTypes.page === "object"
+      ? page.childTypes.page.value
+      : page.childTypes.page;
+
+  const hasChildren = hasFolderChildren || hasPageChildren;
+
   return {
-    hasChildren: page.childTypes.page.value,
+    hasChildren,
     hasReadRestrictions,
     id: page.id,
     // Ancestors is an array of the page's ancestors, starting with the root page.
     parentId: page.ancestors[page.ancestors.length - 1]?.id ?? null,
+    type: page.type,
     version: page.version.number,
   };
 }
 
-export async function getActiveChildPageRefs(
+export async function getActiveChildContentRefs(
   client: ConfluenceClient,
   {
+    connectorId,
     pageCursor,
-    parentPageId,
+    parentContentId,
     spaceKey,
   }: {
+    connectorId: ModelId;
     pageCursor: string | null;
-    parentPageId: string;
+    parentContentId: string;
     spaceKey: string;
   }
 ) {
-  // Fetch the child pages of the parent page.
-  const { pages: childPages, nextPageCursor } = await client.getChildPages({
-    limit: PAGE_FETCH_LIMIT,
-    pageCursor,
-    parentPageId,
-    spaceKey,
-  });
+  // Fetch the child content of the parent page.
+  const { content: childContent, nextPageCursor } =
+    await client.getChildContent({
+      includeFolders: CONNECTOR_IDS_WITH_FOLDER_SUPPORT.includes(connectorId),
+      limit: PAGE_FETCH_LIMIT,
+      pageCursor,
+      parentContentId,
+      spaceKey,
+    });
 
-  const activeChildPageIds = childPages
+  const activeChildContentIds = childContent
     .filter((p) => p.status === "current")
     .map((p) => p.id);
 
-  if (activeChildPageIds.length === 0) {
-    return { childPageRefs: [], nextPageCursor };
+  if (activeChildContentIds.length === 0) {
+    return { childContentRefs: [], nextPageCursor };
   }
 
-  const childPageRefs: ConfluencePageRef[] =
-    childPages.map(getConfluencePageRef);
+  const childContentRefs: ConfluenceContentRef[] = childContent.map(
+    getConfluenceContentRef
+  );
 
-  return { childPageRefs, nextPageCursor };
+  return { childContentRefs, nextPageCursor };
 }
 
 export async function bulkFetchConfluencePageRefs(
@@ -199,8 +230,9 @@ export async function bulkFetchConfluencePageRefs(
     limit,
   });
 
-  const pageRefs: ConfluencePageRef[] =
-    pagesWithDetails.results.map(getConfluencePageRef);
+  const pageRefs: ConfluenceContentRef[] = pagesWithDetails.results.map(
+    getConfluenceContentRef
+  );
 
   return pageRefs;
 }
