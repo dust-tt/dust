@@ -3,7 +3,7 @@ import { ActionIcons } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { PlusIcon } from "@dust-tt/sparkle";
 import { SearchInput } from "@dust-tt/sparkle";
-import React from "react";
+import React, { useMemo } from "react";
 
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -52,6 +52,17 @@ export function MCPServerSelectionPage({
 
   const [filter, setFilter] = React.useState<McpToolsFilterType>("All tools");
   const [searchTerm, setSearchTerm] = React.useState("");
+
+  // Optimize selection lookup with Set-based approach
+  const selectedMCPIds = useMemo(() => {
+    const mcpIds = new Set<string>();
+    selectedToolsInDialog.forEach((tool) => {
+      if (tool.type === "MCP") {
+        mcpIds.add(tool.view.sId);
+      }
+    });
+    return mcpIds;
+  }, [selectedToolsInDialog]);
 
   const applyFiltersAndSearch = (
     newFilter?: string,
@@ -165,10 +176,7 @@ export function MCPServerSelectionPage({
             </Card>
           )}
         {filteredServerViews.map((view) => {
-          const isSelectedInDialog = selectedToolsInDialog.some(
-            (tool) => tool.type === "MCP" && tool.view.sId === view.sId
-          );
-
+          const isSelectedInDialog = selectedMCPIds.has(view.sId);
           return (
             <Card
               key={view.id}

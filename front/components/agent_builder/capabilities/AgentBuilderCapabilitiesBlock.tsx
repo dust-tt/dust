@@ -31,6 +31,20 @@ import {
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { asDisplayName } from "@app/types";
 
+const dataVisualizationAction = {
+  type: "DATA_VISUALIZATION",
+  ...DATA_VISUALIZATION_SPECIFICATION,
+};
+
+const BACKGROUND_IMAGE_PATH = "/static/IconBar.svg";
+const BACKGROUND_IMAGE_STYLE_PROPS = {
+  backgroundImage: `url("${BACKGROUND_IMAGE_PATH}")`,
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "center 20px",
+  backgroundSize: "auto 60px",
+  paddingTop: "100px",
+};
+
 function actionIcon(
   action: AgentBuilderAction | AgentBuilderDataVizAction,
   mcpServerView: MCPServerViewType | null
@@ -63,16 +77,14 @@ function actionDisplayName(
   }`;
 }
 
-// TODO: Merge this with ActionCard.
-function MCPActionCard({
-  action,
-  onRemove,
-  onEdit,
-}: {
+interface MCPActionCardProps {
   action: AgentBuilderAction | AgentBuilderDataVizAction;
   onRemove: () => void;
   onEdit?: () => void;
-}) {
+}
+
+// TODO: Merge this with ActionCard.
+function MCPActionCard({ action, onRemove, onEdit }: MCPActionCardProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
@@ -115,15 +127,13 @@ function MCPActionCard({
   );
 }
 
-function ActionCard({
-  action,
-  onRemove,
-  onEdit,
-}: {
+interface ActionCardProps {
   action: AgentBuilderAction;
   onRemove: () => void;
   onEdit?: () => void;
-}) {
+}
+
+function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   const spec = getActionSpecification(action.type);
 
   if (!spec) {
@@ -158,20 +168,6 @@ function ActionCard({
     </Card>
   );
 }
-
-const dataVisualizationAction = {
-  type: "DATA_VISUALIZATION",
-  ...DATA_VISUALIZATION_SPECIFICATION,
-};
-
-const BACKGROUND_IMAGE_PATH = "/static/IconBar.svg";
-const BACKGROUND_IMAGE_STYLE_PROPS = {
-  backgroundImage: `url("${BACKGROUND_IMAGE_PATH}")`,
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "center 20px",
-  backgroundSize: "auto 60px",
-  paddingTop: "100px",
-};
 
 function shouldUseDialog(
   action: AgentBuilderAction,

@@ -25,7 +25,10 @@ import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { createFormResetHandler } from "@app/components/agent_builder/capabilities/mcp/utils/formStateUtils";
-import { getMCPConfigurationFormSchema } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
+import {
+  getMCPConfigurationFormSchema,
+  validateMCPActionConfiguration,
+} from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
@@ -279,25 +282,18 @@ export function MCPServerViewsDialog({
     // Validate any configured tools before adding
     for (const tool of selectedToolsInDialog) {
       if (tool.type === "MCP" && tool.configuredAction) {
-        // This tool was configured - validate its configuration
-        const requirements = getMCPServerRequirements(tool.view);
-        if (!requirements.noRequirement) {
-          // Get the form schema for validation
-          const toolSchema = getMCPConfigurationFormSchema(tool.view);
-          try {
-            toolSchema.parse({
-              name: tool.configuredAction.name,
-              description: tool.configuredAction.description,
-              configuration: tool.configuredAction.configuration,
-            });
-          } catch (error) {
-            sendNotification({
-              title: "Configuration validation failed",
-              description: `Tool "${tool.view.name}" has invalid configuration. Please reconfigure it.`,
-              type: "error",
-            });
-            return;
-          }
+        const validation = validateMCPActionConfiguration(
+          tool.configuredAction,
+          tool.view
+        );
+
+        if (!validation.isValid) {
+          sendNotification({
+            title: "Configuration validation failed",
+            description: validation.errorMessage!,
+            type: "error",
+          });
+          return;
         }
       }
     }
@@ -560,7 +556,6 @@ export function MCPServerViewsDialog({
         setConfigurationMCPServerView(null);
       }
     } catch (error) {
-      console.error("Error in handleConfigurationSave:", error);
       sendNotification({
         title: "Configuration failed",
         description:

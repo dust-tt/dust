@@ -2,6 +2,7 @@ import type { UseFormReturn } from "react-hook-form";
 
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
+import logger from "@app/logger/logger";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
 import { getDefaultFormValues } from "./formDefaults";
@@ -51,7 +52,7 @@ export function createFormResetHandler(
 
       form.clearErrors();
     } catch (error) {
-      console.warn("Form reset error:", error);
+      logger.warn({ err: error }, "Form reset error");
       // Fallback: reset to default values
       form.reset(getDefaultFormValues(null));
       form.clearErrors();
