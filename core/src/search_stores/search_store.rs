@@ -37,6 +37,8 @@ const MAX_PAGE_SIZE: u64 = 1000;
 const MAX_TOTAL_HITS_TRACKED: i64 = 10000;
 const MAX_ES_QUERY_CLAUSES: usize = 1024; // Default Elasticsearch limit.
 
+const DEFAULT_TAG_AGGREGATION_SIZE_LIMIT: u64 = 100;
+
 #[derive(serde::Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum SortDirection {
@@ -616,10 +618,10 @@ impl SearchStore for ElasticsearchSearchStore {
         };
         let aggregate =
             aggregate.aggregate("tags_in_datasource", Aggregation::terms("data_source_id"));
-        let search = Search::new()
-            .size(0)
-            .query(bool_query)
-            .aggregate("unique_tags", aggregate.size(limit.unwrap_or(100)));
+        let search = Search::new().size(0).query(bool_query).aggregate(
+            "unique_tags",
+            aggregate.size(limit.unwrap_or(DEFAULT_TAG_AGGREGATION_SIZE_LIMIT)),
+        );
 
         let response = self
             .client
