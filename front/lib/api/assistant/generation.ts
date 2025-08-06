@@ -11,6 +11,7 @@ import {
   isMCPConfigurationForInternalNotion,
   isMCPConfigurationForInternalSlack,
   isMCPConfigurationForInternalWebsearch,
+  isMCPConfigurationForRunAgent,
   isMCPConfigurationWithDataSource,
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
@@ -156,6 +157,7 @@ export async function constructPromptMultiActions(
     (action) =>
       isMCPConfigurationWithDataSource(action) ||
       isMCPConfigurationForInternalWebsearch(action) ||
+      isMCPConfigurationForRunAgent(action) ||
       isMCPConfigurationForInternalSlack(action) ||
       isMCPConfigurationForInternalNotion(action)
   );

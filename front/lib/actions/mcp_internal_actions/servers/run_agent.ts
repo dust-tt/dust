@@ -162,7 +162,11 @@ export default async function createServer(
 
   server.tool(
     `run_${childAgentBlob.name}`,
-    `Run agent ${childAgentBlob.name} (${childAgentBlob.description})`,
+    `Run agent ${childAgentBlob.name} (${childAgentBlob.description}). ` +
+      "The agent's response contains :cite[ref] markers that MUST be preserved. " +
+      "When you use ANY information from this agent's response, you MUST include the citation markers exactly as they appear. " +
+      "For example, if the agent says 'the temperature is 25°C :cite[abc]', you must include ':cite[abc]' when mentioning this fact. " +
+      "NEVER remove :cite[...] markers - they are essential for source attribution. ",
     {
       query: z
         .string()
