@@ -41,6 +41,7 @@ export class ConversationFactory {
       );
     }
 
+    // Note: fetchConversationParticipants rely on the existence of UserMessage even if we have a table for ConversationParticipant.
     for (let i = 0; i < messagesCreatedAt.length; i++) {
       const createdAt = messagesCreatedAt[i];
       await createMessageAndUserMessage({

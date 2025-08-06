@@ -3,7 +3,7 @@ import { uniqueId } from "lodash";
 import { z } from "zod";
 
 import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/formValidation";
+import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
@@ -261,8 +261,17 @@ export const CONFIGURATION_SHEET_PAGE_IDS = {
   CONFIGURATION: "configuration",
 } as const;
 
+export const CONFIGURATION_DIALOG_PAGE_IDS = {
+  TOOL_SELECTION: "tool-selection",
+  CONFIGURATION: "configuration",
+  INFO: "info",
+};
+
 export type ConfigurationSheetPageId =
   (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
+
+export type ConfigurationPagePageId =
+  (typeof CONFIGURATION_DIALOG_PAGE_IDS)[keyof typeof CONFIGURATION_DIALOG_PAGE_IDS];
 
 // Zod validation schema for data source configuration - defines the contract/shape
 export const dataSourceConfigurationSchema = z.object({
@@ -288,7 +297,7 @@ export const dataSourceConfigurationSchema = z.object({
 });
 
 export function getDefaultMCPAction(
-  mcpServerView?: MCPServerViewType
+  mcpServerView: MCPServerViewType | null
 ): AgentBuilderAction {
   const requirements = getMCPServerRequirements(mcpServerView);
   const configuration = getDefaultConfiguration(mcpServerView);

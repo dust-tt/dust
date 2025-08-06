@@ -434,6 +434,12 @@ export async function processToolResults({
             };
           }
         }
+        case "resource_link": {
+          return {
+            content: block,
+            file: null,
+          };
+        }
         default:
           assertNever(block);
       }

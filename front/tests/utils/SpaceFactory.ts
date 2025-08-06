@@ -1,11 +1,31 @@
 import { faker } from "@faker-js/faker";
-import type { Transaction } from "sequelize";
 
+import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import type { WorkspaceType } from "@app/types";
 
 export class SpaceFactory {
+  static async defaults(auth: Authenticator) {
+    const { globalGroup, systemGroup } = await GroupFactory.defaults(
+      auth.getNonNullableWorkspace()
+    );
+    const { globalSpace, systemSpace, conversationsSpace } =
+      await SpaceResource.makeDefaultsForWorkspace(auth, {
+        globalGroup,
+        systemGroup,
+      });
+
+    return {
+      globalGroup,
+      systemGroup,
+      globalSpace,
+      systemSpace,
+      conversationsSpace,
+    };
+  }
+
   static async global(workspace: WorkspaceType) {
     return SpaceResource.makeNew(
       {

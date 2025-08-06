@@ -1,15 +1,30 @@
 import {
   Avatar,
   Button,
+  Citation,
+  CitationGrid,
+  CitationIcons,
+  CitationIndex,
+  CitationTitle,
   ContentMessage,
   Markdown,
   RobotIcon,
 } from "@dust-tt/sparkle";
 import { ExternalLinkIcon } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
+import {
+  CitationsContext,
+  CiteBlock,
+  getCiteDirective,
+} from "@app/components/markdown/CiteBlock";
+import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
+import { getCitationIcon } from "@app/components/markdown/MarkdownCitation";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   isRunAgentChainOfThoughtProgressOutput,
   isRunAgentGenerationTokensProgressOutput,
@@ -26,6 +41,8 @@ export function MCPRunAgentActionDetails({
   lastNotification,
   defaultOpen,
 }: MCPActionDetailsProps) {
+  const { isDark } = useTheme();
+
   const queryResource =
     action.output?.find(isRunAgentQueryResourceType) || null;
 
@@ -50,6 +67,9 @@ export function MCPRunAgentActionDetails({
     string | null
   >(null);
   const [streamedResponse, setStreamedResponse] = useState<string | null>(null);
+  const [activeReferences, setActiveReferences] = useState<
+    { index: number; document: MarkdownCitation }[]
+  >([]);
 
   useEffect(() => {
     if (queryResource) {
@@ -111,6 +131,41 @@ export function MCPRunAgentActionDetails({
     }
     return null;
   }, [resultResource, lastNotification, owner.sId]);
+
+  const references = useMemo(() => {
+    if (!resultResource?.resource.refs) {
+      return {};
+    }
+    const markdownCitations: { [key: string]: MarkdownCitation } = {};
+    Object.entries(resultResource.resource.refs).forEach(([key, citation]) => {
+      const IconComponent = getCitationIcon(citation.provider, isDark);
+      markdownCitations[key] = {
+        title: citation.title,
+        href: citation.href,
+        description: citation.description,
+        icon: <IconComponent />,
+      };
+    });
+    return markdownCitations;
+  }, [resultResource, isDark]);
+
+  const updateActiveReferences = (doc: MarkdownCitation, index: number) => {
+    const existingIndex = activeReferences.find((r) => r.index === index);
+    if (!existingIndex) {
+      setActiveReferences([...activeReferences, { index, document: doc }]);
+    }
+  };
+  const additionalMarkdownPlugins: PluggableList = useMemo(
+    () => [getCiteDirective()],
+    []
+  );
+
+  const additionalMarkdownComponents: Components = useMemo(
+    () => ({
+      sup: CiteBlock,
+    }),
+    []
+  );
   return (
     <ActionDetailsWrapper
       actionName={childAgent?.name ? `Run @${childAgent.name}` : "Run Agent"}
@@ -158,13 +213,48 @@ export function MCPRunAgentActionDetails({
           {response && childAgent && (
             <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
               <ContentMessage title="Response" variant="primary" size="lg">
-                <Markdown
-                  content={response}
-                  isStreaming={isStreamingResponse}
-                  forcedTextSize="text-sm"
-                  textColor="text-muted-foreground"
-                  isLastMessage={false}
-                />
+                <CitationsContext.Provider
+                  value={{
+                    references,
+                    updateActiveReferences,
+                  }}
+                >
+                  <Markdown
+                    content={response}
+                    isStreaming={isStreamingResponse}
+                    forcedTextSize="text-sm"
+                    textColor="text-muted-foreground"
+                    isLastMessage={false}
+                    additionalMarkdownPlugins={additionalMarkdownPlugins}
+                    additionalMarkdownComponents={additionalMarkdownComponents}
+                  />
+                </CitationsContext.Provider>
+
+                {activeReferences.length > 0 && (
+                  <div className="mt-4">
+                    <CitationGrid variant="grid">
+                      {activeReferences
+                        .sort((a, b) => a.index - b.index)
+                        .map(({ document, index }) => (
+                          <Citation
+                            key={index}
+                            onClick={
+                              document.href
+                                ? () => window.open(document.href, "_blank")
+                                : undefined
+                            }
+                            tooltip={document.description || document.title}
+                          >
+                            <CitationIcons>
+                              <CitationIndex>{index}</CitationIndex>
+                              {document.icon}
+                            </CitationIcons>
+                            <CitationTitle>{document.title}</CitationTitle>
+                          </Citation>
+                        ))}
+                    </CitationGrid>
+                  </div>
+                )}
               </ContentMessage>
             </div>
           )}

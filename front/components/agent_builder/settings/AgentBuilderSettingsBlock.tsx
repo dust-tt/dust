@@ -22,21 +22,21 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { AgentBuilderEditors } from "@app/components/agent_builder/settings/AgentBuilderEditors";
 import { AgentBuilderScopeSelector } from "@app/components/agent_builder/settings/AgentBuilderScopeSelector";
 import { AgentBuilderSlackSelector } from "@app/components/agent_builder/settings/AgentBuilderSlackSelector";
+import { AvatarPicker } from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker";
+import {
+  DROID_AVATAR_URLS,
+  SPIRIT_AVATAR_URLS,
+} from "@app/components/agent_builder/settings/avatar_picker/types";
 import { TagsSection } from "@app/components/agent_builder/settings/TagsSection";
 import {
   fetchWithErr,
   getDescriptionSuggestion,
   getNameSuggestions,
 } from "@app/components/agent_builder/settings/utils";
-import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
 import {
   buildSelectedEmojiType,
   makeUrlForEmojiAndBackground,
 } from "@app/components/assistant_builder/avatar_picker/utils";
-import {
-  DROID_AVATAR_URLS,
-  SPIRIT_AVATAR_URLS,
-} from "@app/components/assistant_builder/shared";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   APIError,
