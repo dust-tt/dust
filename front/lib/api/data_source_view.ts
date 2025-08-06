@@ -205,8 +205,6 @@ export async function getContentNodesForDataSourceView(
       return new Err(new Error(coreRes.error.message));
     }
 
-    console.log(">>> CORE RES: ", coreRes.value);
-
     hitCount = coreRes.value.hit_count;
     totalIsAccurate = coreRes.value.hit_count_is_accurate;
     const filteredNodes = removeCatchAllFoldersIfEmpty(

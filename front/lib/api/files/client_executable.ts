@@ -125,7 +125,6 @@ export async function editClientExecutableFile(
   }
 
   // Perform the replacement.
-  // FIXME: This reset the shareable file record.
   const updatedContent = currentContent.replace(regex, newString);
 
   // Upload the updated content.

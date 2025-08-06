@@ -319,8 +319,6 @@ impl SearchStore for ElasticsearchSearchStore {
             Some(_) => self.build_relevance_sort(),
         };
 
-        println!("bool_query: {:?}", bool_query);
-
         // Build and run search
         let mut search = Search::new()
             .size(options.limit.unwrap_or(MAX_PAGE_SIZE))

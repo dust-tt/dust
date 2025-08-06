@@ -76,7 +76,7 @@ export async function launchConfluenceSyncWorkflow(
       memo: {
         connectorId,
       },
-      // cronSchedule: `${minute} ${oddOrEvenHour}/2 * * *`, // Every 2 hours at minute `minute`.
+      cronSchedule: `${minute} ${oddOrEvenHour}/2 * * *`, // Every 2 hours at minute `minute`.
     });
   } catch (err) {
     return new Err(normalizeError(err));
