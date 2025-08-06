@@ -16,7 +16,7 @@ type RawConfluenceEntity = {
   parentType: "page" | "folder" | null;
 };
 
-type ConfluenceEntityWithType = Pick<
+export type ConfluenceContentWithType = Pick<
   RawConfluenceEntity,
   "parentId" | "parentType"
 >;
@@ -24,10 +24,10 @@ type ConfluenceEntityWithType = Pick<
 export async function getSpaceHierarchy(
   connectorId: ModelId,
   spaceId: string
-): Promise<Record<string, ConfluenceEntityWithType>> {
+): Promise<Record<string, ConfluenceContentWithType>> {
   // Currently opting for a best-effort strategy to reduce database queries,
   // this logic may be enhanced later for important Confluence connections.
-  // By fetching all entities within a space, we reconstruct parent-child
+  // By fetching all content within a space, we reconstruct parent-child
   // relationships in-app, minimizing database interactions.
   // If needed we could move the same approach as Notion and cache the results in Redis.
   const allPages = await ConfluencePage.findAll({
@@ -46,7 +46,7 @@ export async function getSpaceHierarchy(
     },
   });
 
-  // Map each entityId to its respective parentId.
+  // Map each contentId to its respective parentId.
   const pageIdToParentIdMap = new Map(
     allPages.map((page) => [
       page.pageId,
@@ -67,46 +67,46 @@ export async function getSpaceHierarchy(
   return {
     ...Object.fromEntries(pageIdToParentIdMap),
     ...Object.fromEntries(folderIdToParentIdMap),
-  } as Record<string, ConfluenceEntityWithType>;
+  } as Record<string, ConfluenceContentWithType>;
 }
 
-export async function getConfluenceEntityParentIds(
+export async function getConfluenceContentParentIds(
   connectorId: ModelId,
-  entity: RawConfluenceEntity,
-  cachedHierarchy?: Record<string, ConfluenceEntityWithType>
+  content: RawConfluenceEntity,
+  cachedHierarchy?: Record<string, ConfluenceContentWithType>
 ): Promise<[string, string, ...string[]]> {
-  const entityIdToParentEntityMap =
-    cachedHierarchy ?? (await getSpaceHierarchy(connectorId, entity.spaceId));
+  const contentIdToParentContentMap =
+    cachedHierarchy ?? (await getSpaceHierarchy(connectorId, content.spaceId));
 
   const parentEntities: { id: string; type: "page" | "folder" }[] = [];
-  let currentId = entity.id;
+  let currentId = content.id;
 
-  // If the entity has not been saved yet. Let's add it to the object.
-  if (!(currentId in entityIdToParentEntityMap)) {
-    entityIdToParentEntityMap[currentId] = entity;
+  // If the content has not been saved yet. Let's add it to the object.
+  if (!(currentId in contentIdToParentContentMap)) {
+    contentIdToParentContentMap[currentId] = content;
   }
 
   // Traverse the hierarchy upwards until no further parent IDs are found.
-  while (currentId in entityIdToParentEntityMap) {
-    const parentEntity = entityIdToParentEntityMap[currentId];
-    if (parentEntity?.parentId && parentEntity?.parentType) {
+  while (currentId in contentIdToParentContentMap) {
+    const parentContent = contentIdToParentContentMap[currentId];
+    if (parentContent?.parentId && parentContent?.parentType) {
       parentEntities.push({
-        id: parentEntity.parentId,
-        type: parentEntity.parentType,
+        id: parentContent.parentId,
+        type: parentContent.parentType,
       });
       // Move up the hierarchy.
-      currentId = parentEntity.parentId;
+      currentId = parentContent.parentId;
     } else {
       // No more parents, exit the loop.
       break;
     }
   }
 
+  // Casting here since what we are interested in in knowing that parents[1] will be a string,
+  // no matter if it is the last element or one from the middle.
   return [
-    // Add the current entity.
-    makeEntityInternalId(entity.type, entity.id),
+    makeEntityInternalId(content.type, content.id), // Add the current content.
     ...parentEntities.map((p) => makeEntityInternalId(p.type, p.id)),
-    // Add the space id at the end.
-    makeSpaceInternalId(entity.spaceId),
-  ] as unknown as [string, string, ...string[]]; // casting here since what we are interested in in knowing that parents[1] will be a string, no matter if it is the last element or one from the middle
+    makeSpaceInternalId(content.spaceId), // Add the space id at the end.
+  ] as unknown as [string, string, ...string[]];
 }

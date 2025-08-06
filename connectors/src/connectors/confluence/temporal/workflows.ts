@@ -9,6 +9,7 @@ import {
 import { chunk } from "lodash";
 
 import type { ConfluenceEntityRef } from "@connectors/connectors/confluence/lib/confluence_api";
+import type { ConfluenceContentWithType } from "@connectors/connectors/confluence/lib/hierarchy";
 import type * as activities from "@connectors/connectors/confluence/temporal/activities";
 import type { SpaceBlob } from "@connectors/connectors/confluence/temporal/activities";
 import type { SpaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
@@ -535,7 +536,7 @@ export async function confluenceUpsertPagesWithFullParentsWorkflow({
   const cachedSpaceNames: Record<string, string> = {};
   const cachedSpaceHierarchies: Record<
     string,
-    Record<string, string | null>
+    Record<string, ConfluenceContentWithType>
   > = {};
 
   for (const pageId of pageIds) {
