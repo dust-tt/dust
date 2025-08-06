@@ -203,7 +203,8 @@ export function ConversationContainer({
     async (
       input: string,
       mentions: MentionType[],
-      contentFragments: ContentFragmentsType
+      contentFragments: ContentFragmentsType,
+      selectedMCPServerViewIds?: string[]
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
         return new Err({
@@ -223,6 +224,7 @@ export function ConversationContainer({
           mentions,
           contentFragments,
           clientSideMCPServerIds: removeNulls([serverId]),
+          selectedMCPServerViewIds,
         },
         forceAsync: async === "true",
       });

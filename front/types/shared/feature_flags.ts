@@ -111,6 +111,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   agent_management_tool: {
     description: "MCP tool for creating and managing agent configurations",
   },
+  jit_tools: {
+    description: "Allow users to add tools to conversations",
+  },
 } as const;
 
 export const WHITELISTABLE_FEATURES = Object.keys(
