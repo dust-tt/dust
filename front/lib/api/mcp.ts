@@ -59,6 +59,8 @@ export type RemoteMCPServerType = MCPServerType & {
   icon: CustomServerIconType | InternalAllowedIconType;
 };
 
+export type MCPServerViewTypeType = "remote" | "internal";
+
 export interface MCPServerViewType {
   id: ModelId;
   sId: string;
@@ -67,7 +69,7 @@ export interface MCPServerViewType {
   createdAt: number;
   updatedAt: number;
   spaceId: string;
-  serverType: "remote" | "internal";
+  serverType: MCPServerViewTypeType;
   server: MCPServerType;
   oAuthUseCase: MCPOAuthUseCase | null;
   editedByUser: EditedByUser | null;
