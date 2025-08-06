@@ -1,11 +1,10 @@
 import type { UseFormReturn } from "react-hook-form";
 
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
-import logger from "@app/logger/logger";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-
-import { getDefaultFormValues } from "./formDefaults";
+import logger from "@app/logger/logger";
 
 /**
  * Creates form reset function for different dialog modes
@@ -24,7 +23,6 @@ export function createFormResetHandler(
       if (!isOpen) {
         // Dialog closed: reset to empty state and clear errors
         form.reset(getDefaultFormValues(null));
-        form.clearErrors();
         return;
       }
 
@@ -49,13 +47,10 @@ export function createFormResetHandler(
         // No server view: reset to empty state
         form.reset(getDefaultFormValues(null));
       }
-
-      form.clearErrors();
     } catch (error) {
       logger.warn({ err: error }, "Form reset error");
       // Fallback: reset to default values
       form.reset(getDefaultFormValues(null));
-      form.clearErrors();
     }
   };
 }

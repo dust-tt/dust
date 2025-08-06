@@ -298,21 +298,22 @@ export function MCPServerViewsDialog({
     }
 
     // All validations passed, add the tools
-    selectedToolsInDialog.forEach((tool) => {
-      if (tool.type === "DATA_VISUALIZATION") {
-        addTools({
-          id: uniqueId(),
-          type: "DATA_VISUALIZATION",
-          configuration: null,
-          name: DEFAULT_DATA_VISUALIZATION_NAME,
-          description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-          noConfigurationRequired: true,
-        });
-      } else if (tool.type === "MCP") {
-        const action = tool.configuredAction || getDefaultMCPAction(tool.view);
-        addTools(action);
-      }
-    });
+    addTools(
+      selectedToolsInDialog.map((tool) => {
+        if (tool.type === "DATA_VISUALIZATION") {
+          return {
+            id: uniqueId(),
+            type: "DATA_VISUALIZATION",
+            configuration: null,
+            name: DEFAULT_DATA_VISUALIZATION_NAME,
+            description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
+            noConfigurationRequired: true,
+          };
+        } else {
+          return tool.configuredAction || getDefaultMCPAction(tool.view);
+        }
+      })
+    );
 
     setSelectedToolsInDialog([]);
   }, [selectedToolsInDialog, addTools, sendNotification]);
@@ -470,107 +471,90 @@ export function MCPServerViewsDialog({
     }
   };
 
-  const handleConfigurationSave = useCallback(async () => {
-    if (!configurationTool || !form || !mcpServerView) {
-      return;
-    }
-
-    try {
-      const isValid = await form.trigger();
-      if (!isValid) {
-        const errors = form.formState.errors;
-        const firstErrorPath = Object.keys(errors)[0];
-        const firstError = firstErrorPath
-          ? errors[firstErrorPath as keyof typeof errors]
-          : null;
-        const errorMessage =
-          firstError?.message ||
-          "Please check the form for errors and try again.";
-
-        sendNotification({
-          title: "Form validation failed",
-          description: errorMessage,
-          type: "error",
-        });
+  const handleConfigurationSave = useCallback(
+    async (formData: MCPFormData) => {
+      if (!configurationTool || !form || !mcpServerView) {
         return;
       }
 
-      const formData = form.getValues();
+      try {
+        // Ensure we're working with an MCP action
+        if (configurationTool.type !== "MCP") {
+          throw new Error("Expected MCP action for configuration save");
+        }
 
-      // Ensure we're working with an MCP action
-      if (configurationTool.type !== "MCP") {
-        throw new Error("Expected MCP action for configuration save");
-      }
+        const configuredAction: AgentBuilderAction = {
+          ...configurationTool,
+          name: formData.name,
+          description: formData.description,
+          configuration: formData.configuration,
+        };
 
-      const configuredAction: AgentBuilderAction = {
-        ...configurationTool,
-        name: formData.name,
-        description: formData.description,
-        configuration: formData.configuration,
-      };
+        if (mode?.type === "edit" && onActionUpdate) {
+          // Edit mode: save the updated action and close dialog
+          onActionUpdate(configuredAction, mode.index);
+          setIsOpen(false);
+          onModeChange(null);
 
-      if (mode?.type === "edit" && onActionUpdate) {
-        // Edit mode: save the updated action and close dialog
-        onActionUpdate(configuredAction, mode.index);
-        setIsOpen(false);
-        onModeChange(null);
+          sendNotification({
+            title: "Tool updated successfully",
+            description: `${mcpServerView.server.name} configuration has been updated.`,
+            type: "success",
+          });
+        } else {
+          // Add mode: update the selected tool with the configured action
+          setSelectedToolsInDialog((prev) => {
+            const existingToolIndex = prev.findIndex(
+              (tool) =>
+                tool.type === "MCP" && tool.view.sId === mcpServerView.sId
+            );
 
-        sendNotification({
-          title: "Tool updated successfully",
-          description: `${mcpServerView.server.name} configuration has been updated.`,
-          type: "success",
-        });
-      } else {
-        // Add mode: update the selected tool with the configured action
-        setSelectedToolsInDialog((prev) => {
-          const existingToolIndex = prev.findIndex(
-            (tool) => tool.type === "MCP" && tool.view.sId === mcpServerView.sId
-          );
-
-          if (existingToolIndex >= 0) {
-            // Update existing tool with configuration
-            const updated = [...prev];
-            updated[existingToolIndex] = {
-              type: "MCP",
-              view: mcpServerView,
-              configuredAction,
-            };
-            return updated;
-          } else {
-            // Add new configured tool
-            return [
-              ...prev,
-              {
+            if (existingToolIndex >= 0) {
+              // Update existing tool with configuration
+              const updated = [...prev];
+              updated[existingToolIndex] = {
                 type: "MCP",
                 view: mcpServerView,
                 configuredAction,
-              },
-            ];
-          }
-        });
+              };
+              return updated;
+            } else {
+              // Add new configured tool
+              return [
+                ...prev,
+                {
+                  type: "MCP",
+                  view: mcpServerView,
+                  configuredAction,
+                },
+              ];
+            }
+          });
 
-        // Navigate back to tool selection page
-        setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
-        setConfigurationTool(null);
-        setConfigurationMCPServerView(null);
+          // Navigate back to tool selection page
+          setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
+          setConfigurationTool(null);
+          setConfigurationMCPServerView(null);
+        }
+      } catch (error) {
+        sendNotification({
+          title: "Configuration failed",
+          description:
+            "There was an error configuring the tool. Please try again.",
+          type: "error",
+        });
       }
-    } catch (error) {
-      sendNotification({
-        title: "Configuration failed",
-        description:
-          "There was an error configuring the tool. Please try again.",
-        type: "error",
-      });
-    }
-  }, [
-    configurationTool,
-    form,
-    mcpServerView,
-    mode,
-    onActionUpdate,
-    sendNotification,
-    onModeChange,
-  ]);
+    },
+    [
+      configurationTool,
+      form,
+      mcpServerView,
+      mode,
+      onActionUpdate,
+      sendNotification,
+      onModeChange,
+    ]
+  );
 
   const getFooterButtons = () => {
     const isToolSelectionPage =
@@ -613,7 +597,7 @@ export function MCPServerViewsDialog({
           rightButton: {
             label: "Save Changes",
             variant: "primary",
-            onClick: handleConfigurationSave,
+            onClick: form.handleSubmit(handleConfigurationSave),
           },
         };
       } else {
@@ -631,7 +615,7 @@ export function MCPServerViewsDialog({
           rightButton: {
             label: "Save Configuration",
             variant: "primary",
-            onClick: handleConfigurationSave,
+            onClick: form.handleSubmit(handleConfigurationSave),
           },
         };
       }
