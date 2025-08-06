@@ -12,6 +12,7 @@ import type {
   ZendeskFetchedSection,
   ZendeskFetchedTicket,
   ZendeskFetchedTicketComment,
+  ZendeskFetchedTicketField,
   ZendeskFetchedUser,
 } from "@connectors/connectors/zendesk/lib/types";
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
@@ -26,6 +27,7 @@ const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
 const ZENDESK_TICKET_PAGE_SIZE = 300;
 const ZENDESK_COMMENT_PAGE_SIZE = 100;
+const ZENDESK_CUSTOM_FIELDS_PAGE_SIZE = 100;
 
 function extractMetadataFromZendeskUrl(url: string): {
   subdomain: string;
@@ -707,4 +709,40 @@ export async function getOrganizationTagMapForTickets(
     organizationIds,
   });
   return new Map(organizations.map((t) => [t.id, t.tags]));
+}
+
+/**
+ * Fetches all ticket fields from the Zendesk API.
+ */
+export async function listZendeskTicketFields({
+  accessToken,
+  subdomain,
+}: {
+  accessToken: string;
+  subdomain: string;
+}): Promise<ZendeskFetchedTicketField[]> {
+  let url =
+    `https://${subdomain}.zendesk.com/api/v2/ticket_fields` +
+    +`?page[size]=${ZENDESK_CUSTOM_FIELDS_PAGE_SIZE}`;
+  const ticketFields = [];
+  let hasMore = true;
+
+  do {
+    try {
+      const response = await fetchFromZendeskWithRetries({
+        url,
+        accessToken,
+      });
+      ticketFields.push(...response.ticket_fields);
+      hasMore = response.meta?.has_more || false;
+      url = response.links?.next || null;
+    } catch (e) {
+      if (isZendeskNotFoundError(e)) {
+        return ticketFields;
+      }
+      throw e;
+    }
+  } while (hasMore);
+
+  return ticketFields;
 }
