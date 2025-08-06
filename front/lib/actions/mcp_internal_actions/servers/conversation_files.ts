@@ -248,6 +248,15 @@ function createServer(
       if (offset !== undefined || limit !== undefined) {
         const start = offset || 0;
         const end = limit !== undefined ? start + limit : undefined;
+
+        if (start > text.length) {
+          return makeMCPToolTextError(
+            `Offset ${start} is out of bounds for file ${title}.`
+          );
+        }
+        if (limit === 0) {
+          return makeMCPToolTextError(`Limit cannot be equal to 0.`);
+        }
         text = text.slice(start, end);
       }
 
@@ -273,6 +282,11 @@ function createServer(
             `Invalid regular expression: ${grep}. Error: ${e instanceof Error ? e.message : String(e)}`
           );
         }
+        if (text === "") {
+          return makeMCPToolTextError(
+            `No lines matched the grep pattern: ${grep}.`
+          );
+        }
       }
 
       return {
@@ -280,7 +294,7 @@ function createServer(
         content: [
           {
             type: "text",
-            text: text,
+            text: text || `No content retrieved for file ${title}.`,
           },
         ],
       };
