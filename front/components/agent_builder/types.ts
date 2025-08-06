@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { mcpServerConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/formValidation";
+import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
@@ -175,9 +175,10 @@ export const capabilityFormSchema = z
     }
 
     if (requirements.mayRequireTimeFrameConfiguration) {
-      if (configuration.timeFrame !== null && (
-        configuration.timeFrame.duration === null ||
-        configuration.timeFrame.unit === null)
+      if (
+        configuration.timeFrame !== null &&
+        (configuration.timeFrame.duration === null ||
+          configuration.timeFrame.unit === null)
       ) {
         return ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -188,7 +189,10 @@ export const capabilityFormSchema = z
       }
     }
 
-    if (requirements.mayRequireJsonSchemaConfiguration && configuration._jsonSchemaString !== null) {
+    if (
+      requirements.mayRequireJsonSchemaConfiguration &&
+      configuration._jsonSchemaString !== null
+    ) {
       const parsedSchema = validateConfiguredJsonSchema(
         configuration._jsonSchemaString
       );
@@ -201,7 +205,7 @@ export const capabilityFormSchema = z
         });
       }
     }
-    
+
     return true;
   });
 

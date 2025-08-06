@@ -209,6 +209,7 @@ export function AgentBuilderCapabilitiesBlock() {
       },
       index: null,
     });
+    setIsKnowledgeSheetOpen(true);
   };
 
   const getAgentInstructions = () => getValues("instructions");
