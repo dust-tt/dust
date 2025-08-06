@@ -79,14 +79,14 @@ function actionDisplayName(
   }`;
 }
 
-interface MCPActionCardProps {
+interface ActionCardProps {
   action: AgentBuilderAction | AgentBuilderDataVizAction;
   onRemove: () => void;
   onEdit?: () => void;
 }
 
 // TODO: Merge this with ActionCard.
-function MCPActionCard({ action, onRemove, onEdit }: MCPActionCardProps) {
+function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
@@ -260,7 +260,7 @@ export function AgentBuilderCapabilitiesBlock() {
         ) : (
           <CardGrid>
             {fields.map((field, index) => (
-              <MCPActionCard
+              <ActionCard
                 key={field.id}
                 action={field}
                 onRemove={() => remove(index)}
