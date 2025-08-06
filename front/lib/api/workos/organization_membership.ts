@@ -24,7 +24,11 @@ export async function findWorkOSOrganizationsForUserId(userId: string) {
   );
 
   const orgs = await concurrentExecutor(
-    response.data.map((membership) => membership.organizationId),
+    response.data
+      .filter((membership) =>
+        ["admin", "builder", "user"].includes(membership.role.slug)
+      )
+      .map((membership) => membership.organizationId),
     async (orgId) => getWorkOS().organizations.getOrganization(orgId),
     { concurrency: 10 }
   );
