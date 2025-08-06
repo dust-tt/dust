@@ -3,10 +3,10 @@ import React from "react";
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { InteractiveContentHeader } from "@app/components/assistant/conversation/ResizablePanelHeader";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type { ConversationType, LightWorkspaceType } from "@app/types";
+import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
 
 interface AgentActionsPanelProps {
   conversation: ConversationType | null;
@@ -51,7 +51,7 @@ export function AgentActionsPanel({
 
   return (
     <div className="flex h-full flex-col bg-background">
-      <InteractiveContentHeader
+      <AgentActionsPanelHeader
         title="Breakdown of the tools used"
         onClose={closePanel}
       />
