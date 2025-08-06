@@ -2,8 +2,8 @@ import { ContentMessage, ExclamationCircleIcon } from "@dust-tt/sparkle";
 import React from "react";
 
 import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { InteractiveContentHeader } from "@app/components/assistant/conversation/content/InteractiveContentHeader";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 
 interface UnsupportedContentRendererProps {
   contentType: string;

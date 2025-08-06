@@ -14,8 +14,8 @@ import { useFileContent } from "@app/lib/swr/files";
 import type { ConversationType, LightWorkspaceType } from "@app/types";
 
 import { useConversationSidePanelContext } from "../ConversationSidePanelContext";
-import { InteractiveContentHeader } from "./InteractiveContentHeader";
 import { ShareInteractiveFilePopover } from "../ShareInteractiveFilePopover";
+import { InteractiveContentHeader } from "./InteractiveContentHeader";
 
 interface ClientExecutableRendererProps {
   conversation: ConversationType;

@@ -66,34 +66,36 @@ export function ConversationSidePanelProvider({
   );
   const [metadata, setMetadata] = useState<SidePanelMetadata>(null);
 
-  const openPanel = React.useCallback(
-    (params: OpenPanelParams) => {
-      setCurrentPanel(params.type);
+  const openPanel = (params: OpenPanelParams) => {
+    setCurrentPanel(params.type);
 
-      switch (params.type) {
-        case "actions":
-          setData(params.messageId);
-          setMetadata(params.metadata);
-          setCurrentPanel("actions");
-          break;
-        case "content":
-          params.timestamp
-            ? setData(`${params.fileId}@${params.timestamp}`)
-            : setData(params.fileId);
-          setMetadata(null);
-          setCurrentPanel("content");
-          break;
-        default:
-          const { type } = params;
-          assertNever(type);
-      }
-    },
-    [setData, setCurrentPanel]
-  );
+    switch (params.type) {
+      case "actions":
+        console.log(params, data);
+        if (params.messageId === data) {
+          closePanel();
+          return;
+        }
+        setData(params.messageId);
+        setMetadata(params.metadata);
+        break;
+      case "content":
+        params.timestamp
+          ? setData(`${params.fileId}@${params.timestamp}`)
+          : setData(params.fileId);
+        setMetadata(null);
+        break;
+      default:
+        const { type } = params;
+        assertNever(type);
+    }
+  };
 
-  const closePanel = React.useCallback(() => {
+  const closePanel = () => {
+    setData(undefined);
+    setMetadata(null);
     setCurrentPanel(undefined);
-  }, [setCurrentPanel]);
+  };
 
   // Initialize panel state from URL hash parameters
   useEffect(() => {
