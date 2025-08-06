@@ -1,7 +1,14 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { GET_DATABASE_SCHEMA_MARKER } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderNode } from "@app/lib/actions/mcp_internal_actions/rendering";
+import {
+  getDatabaseExampleRowsContent,
+  getQueryWritingInstructionsContent,
+  getSchemaContent,
+} from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
@@ -55,7 +62,9 @@ const createServer = (
       limit: z
         .number()
         .optional()
-        .describe(`Maximum number of results to return. Default is ${DEFAULT_LIMIT}, max is ${MAX_LIMIT}.`),
+        .describe(
+          `Maximum number of results to return. Default is ${DEFAULT_LIMIT}, max is ${MAX_LIMIT}.`
+        ),
       nextPageCursor: z
         .string()
         .optional()
@@ -99,7 +108,7 @@ const createServer = (
             offset,
             offset + effectiveLimit
           );
-          
+
           const hasMore = offset + effectiveLimit < remoteDatabaseViews.length;
           const newCursor = hasMore ? String(offset + effectiveLimit) : null;
 
@@ -249,7 +258,7 @@ const createServer = (
           });
 
           const hasMore = coreRes.value.next_page_cursor !== null;
-          
+
           return new Ok([
             {
               type: "resource" as const,
@@ -369,7 +378,7 @@ const createServer = (
 
           const parentType = nodeType === "database" ? "database" : "schema";
           const hasMore = coreRes.value.next_page_cursor !== null;
-          
+
           return new Ok([
             {
               type: "resource" as const,
@@ -424,7 +433,9 @@ const createServer = (
       limit: z
         .number()
         .optional()
-        .describe(`Maximum number of results to return. Default is ${DEFAULT_LIMIT}, max is ${MAX_LIMIT}.`),
+        .describe(
+          `Maximum number of results to return. Default is ${DEFAULT_LIMIT}, max is ${MAX_LIMIT}.`
+        ),
       nextPageCursor: z
         .string()
         .optional()
@@ -535,7 +546,7 @@ const createServer = (
 
         // Search for tables (and optionally schemas if no query)
         const nodeTypes = query ? ["table"] : ["folder", "table"];
-        
+
         const searchResult = await coreAPI.searchNodes({
           query,
           filter: {
@@ -584,8 +595,11 @@ const createServer = (
 
         // Collect all unique parent IDs to fetch their titles in bulk
         const allParentIds = new Set<string>();
-        const nodeToDataSourceMap = new Map<string, typeof remoteDatabaseViews[0]>();
-        
+        const nodeToDataSourceMap = new Map<
+          string,
+          (typeof remoteDatabaseViews)[0]
+        >();
+
         searchResult.value.nodes.forEach((node) => {
           node.parents.forEach((parentId) => allParentIds.add(parentId));
           const dsView = remoteDatabaseViews.find(
@@ -661,13 +675,16 @@ const createServer = (
           // Build human-readable parent path
           const parentTitles = node.parents
             .map((parentId) => parentTitleMap.get(parentId) || parentId)
-            .filter(title => title); // Remove empty titles
-          
+            .filter((title) => title); // Remove empty titles
+
           // Build a concise location description
           let locationPath = "";
           if (parentTitles.length > 0) {
             // Show full hierarchy path
-            locationPath = [dataSourceView.dataSource.name, ...parentTitles].join(" / ");
+            locationPath = [
+              dataSourceView.dataSource.name,
+              ...parentTitles,
+            ].join(" / ");
           } else {
             // Just show warehouse name
             locationPath = dataSourceView.dataSource.name;
@@ -709,6 +726,143 @@ const createServer = (
               resultCount: data.length,
             },
           },
+        ]);
+      }
+    )
+  );
+
+  server.tool(
+    "describe_tables",
+    "Get detailed schema information for one or more tables. Provides DBML schema definitions, " +
+      "SQL dialect-specific query guidelines, and example rows. All tables must be from the same " +
+      "warehouse - cross-warehouse schema requests are not supported. Use this to understand table " +
+      "structure before writing queries.",
+    {
+      tableIds: z
+        .array(z.string())
+        .min(1)
+        .describe(
+          "Array of table identifiers in the format 'table-<dataSourceSId>-<nodeId>'. " +
+            "All tables must be from the same warehouse (same dataSourceSId)."
+        ),
+    },
+    withToolLogging(
+      auth,
+      { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
+      async ({ tableIds }) => {
+        // Parse table identifiers and validate they're all from the same warehouse
+        const parsedTables: Array<{
+          dataSourceSId: string;
+          nodeId: string;
+        }> = [];
+
+        for (const tableId of tableIds) {
+          if (!tableId.startsWith("table-")) {
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `Invalid table identifier format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`,
+              },
+            ]);
+          }
+
+          const parts = tableId.split("-");
+          if (parts.length < 3) {
+            return new Ok([
+              {
+                type: "text" as const,
+                text: `Invalid table identifier format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`,
+              },
+            ]);
+          }
+
+          const dataSourceSId = parts[1];
+          const nodeId = parts.slice(2).join("-");
+
+          parsedTables.push({ dataSourceSId, nodeId });
+        }
+
+        // Check all tables are from the same warehouse
+        const uniqueDataSources = new Set(
+          parsedTables.map((t) => t.dataSourceSId)
+        );
+        if (uniqueDataSources.size > 1) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `All tables must be from the same warehouse. Found tables from ${uniqueDataSources.size} different warehouses: ${Array.from(uniqueDataSources).join(", ")}`,
+            },
+          ]);
+        }
+
+        const dataSourceSId = parsedTables[0].dataSourceSId;
+
+        // Find the data source view
+        const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+        const dataSourceViews = await DataSourceViewResource.listBySpace(
+          auth,
+          globalSpace
+        );
+
+        const dataSourceView = dataSourceViews.find(
+          (dsView) =>
+            dsView.dataSource.sId === dataSourceSId &&
+            isRemoteDatabase(dsView.dataSource)
+        );
+
+        if (!dataSourceView) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Data source not found or is not a remote database: ${dataSourceSId}`,
+            },
+          ]);
+        }
+
+        // Prepare tables for Core API call
+        const coreAPITables = parsedTables.map((t) => ({
+          project_id: parseInt(dataSourceView.dataSource.dustAPIProjectId),
+          data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
+          table_id: t.nodeId,
+        }));
+
+        // Call Core API's getDatabaseSchema endpoint
+        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+        const schemaResult = await coreAPI.getDatabaseSchema({
+          tables: coreAPITables,
+        });
+
+        if (schemaResult.isErr()) {
+          logger.error(
+            {
+              error: schemaResult.error,
+              dataSourceSId,
+              tableIds,
+            },
+            "Error retrieving database schema from Core API"
+          );
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Error retrieving database schema: ${schemaResult.error.message}`,
+            },
+          ]);
+        }
+
+        // Format the response with schema content and query guidelines
+        // Use the same format as tables_query_v2 to ensure proper UI rendering with syntax highlighting
+        return new Ok([
+          {
+            type: "resource" as const,
+            resource: {
+              text: GET_DATABASE_SCHEMA_MARKER,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOL_MARKER,
+              uri: "",
+            },
+          },
+          ...getSchemaContent(schemaResult.value.schemas),
+          ...getQueryWritingInstructionsContent(schemaResult.value.dialect),
+          ...getDatabaseExampleRowsContent(schemaResult.value.schemas),
         ]);
       }
     )
