@@ -18,8 +18,8 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
     useCase: OAuthUseCase;
   }) {
     const clientId =
-      useCase === "platform_actions"
-        ? config.getOAuthNotionPlatformActionsClientId()
+      useCase === "platform_actions" || useCase === "personal_actions"
+        ? config.getOAuthNotionToolsClientId()
         : config.getOAuthNotionClientId();
     return (
       `https://api.notion.com/v1/oauth/authorize?owner=user` +
