@@ -51,7 +51,7 @@ export function MCPServerPersonalAuthenticationRequired({
       <div className="whitespace-normal break-words">
         {isConnected
           ? "You are now connected. Automatically retrying..."
-          : "The agent took an action that requires personal authentication"}
+          : "The agent took an action that requires personal authentication."}
       </div>
       {!isConnected && mcpServer && (
         <div className="flex flex-col gap-2 pt-3 sm:flex-row">
