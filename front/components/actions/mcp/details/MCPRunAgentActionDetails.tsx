@@ -274,51 +274,41 @@ export function MCPRunAgentActionDetails({
   const generatedFiles =
     action.output?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
 
-  // Get child agent ID
-  const childAgentId = useMemo(() => {
-    if (queryResource) {
-      const resource = queryResource.resource as any;
-      if (resource && "childAgentId" in resource) {
-        return resource.childAgentId;
-      }
-    }
-    if (progressInfo) {
-      return progressInfo.childAgentId;
-    }
-    return null;
-  }, [queryResource, progressInfo]);
+  const childAgentId = queryResource?.resource?.childAgentId ?? null;
 
   const queryDataArray = useMemo(() => {
-    const queryRes = queryResource?.resource;
-    const resultRes = resultResource?.resource;
-    const queries = queryRes?.queries || [];
-    const results = resultRes?.results || [];
+    const queries = queryResource?.resource?.queries || [];
+    const results = resultResource?.resource?.results || [];
     const progressQueries = progressInfo?.activeQueries || [];
 
     const allQueries =
       queries.length > 0 ? queries : progressQueries.map((pq) => pq.query);
 
-    // Merge data from all sources
     return allQueries.map((query: string, index: number) => {
       const result = results[index];
-      const progressQuery = progressQueries[index];
+      const progress = progressQueries[index];
+
+      const buildConversationUrl = () => {
+        if (result?.uri || progress?.uri) {
+          return result?.uri || progress?.uri;
+        }
+        if (progress?.conversationId) {
+          return `${window.location.origin}/w/${owner.sId}/assistant/${progress.conversationId}`;
+        }
+        return null;
+      };
 
       return {
         query,
-        response: result?.text || progressQuery?.text || null,
+        response: result?.text || progress?.text || null,
         chainOfThought:
-          result?.chainOfThought || progressQuery?.chainOfThought || null,
+          result?.chainOfThought || progress?.chainOfThought || null,
         conversationId:
-          result?.conversationId || progressQuery?.conversationId || null,
-        conversationUrl:
-          result?.uri ||
-          progressQuery?.uri ||
-          (progressQuery?.conversationId && progressQuery.conversationId !== ""
-            ? `${window.location.origin}/w/${owner.sId}/assistant/${progressQuery.conversationId}`
-            : null),
-        isStreaming: progressQuery?.status === "running",
-        error: result?.error || progressQuery?.error || null,
-        status: progressQuery?.status || (result ? "completed" : "pending"),
+          result?.conversationId || progress?.conversationId || null,
+        conversationUrl: buildConversationUrl(),
+        isStreaming: progress?.status === "running",
+        error: result?.error || progress?.error || null,
+        status: progress?.status || (result ? "completed" : "pending"),
         refs: result?.refs || {},
       };
     });
