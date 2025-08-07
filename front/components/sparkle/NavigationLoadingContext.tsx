@@ -9,7 +9,6 @@ import React, {
 
 interface NavigationLoadingContextType {
   isLoading: boolean;
-  shouldShowLoader: boolean;
   setLoading: (loading: boolean) => void;
   startNavigation: () => void;
   takeOverLoading: () => void;
@@ -28,9 +27,7 @@ export function NavigationLoadingProvider({
   children,
 }: NavigationLoadingProviderProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [shouldShowLoader, setShouldShowLoader] = useState(false);
   const isTakenOverRef = useRef(false);
-  const timeoutRef = useRef<NodeJS.Timeout>();
   const router = useRouter();
 
   const setLoading = useCallback((loading: boolean) => {
@@ -51,29 +48,6 @@ export function NavigationLoadingProvider({
     isTakenOverRef.current = false;
     setIsLoading(false);
   }, []);
-
-  // Handle the delayed loader visibility
-  useEffect(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    if (isLoading) {
-      // Show loader after 500ms delay to prevent flicker
-      timeoutRef.current = setTimeout(() => {
-        setShouldShowLoader(true);
-      }, 500);
-    } else {
-      // Hide loader immediately when loading stops
-      setShouldShowLoader(false);
-    }
-
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [isLoading]);
 
   // Clear loading state when route change is complete (unless taken over by a page)
   useEffect(() => {
@@ -101,7 +75,6 @@ export function NavigationLoadingProvider({
     <NavigationLoadingContext.Provider
       value={{
         isLoading,
-        shouldShowLoader,
         setLoading,
         startNavigation,
         takeOverLoading,
