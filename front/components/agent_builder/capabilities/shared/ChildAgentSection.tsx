@@ -40,7 +40,7 @@ function AgentSelectionTable({
   handleRowSelectionChange,
 }: AgentSelectionTableProps) {
   return (
-    <div className="flex flex-col">
+    <>
       <SearchInput
         name="search"
         placeholder="Search"
@@ -58,7 +58,7 @@ function AgentSelectionTable({
         filter={searchQuery}
         filterColumn="name"
       />
-    </div>
+    </>
   );
 }
 
@@ -103,14 +103,12 @@ export function ChildAgentSection({ owner }: ChildAgentSectionProps) {
 
   const [searchQuery, setSearchQuery] = useState("");
 
-  const rowSelection: RowSelectionState = field.value
-    ? (() => {
-        const selectedIndex = agentConfigurations.findIndex(
-          (agent) => agent.sId === field.value
-        );
-        return selectedIndex >= 0 ? { [selectedIndex]: true } : {};
-      })()
-    : {};
+  const selectedIndex = field.value
+    ? agentConfigurations.findIndex((agent) => agent.sId === field.value)
+    : null;
+
+  const rowSelection =
+    selectedIndex && selectedIndex >= 0 ? { [selectedIndex]: true } : {};
 
   const handleRowSelectionChange = (newSelection: RowSelectionState) => {
     const selectedIndex = Object.keys(newSelection)[0];
