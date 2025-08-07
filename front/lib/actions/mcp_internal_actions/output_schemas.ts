@@ -608,6 +608,17 @@ export const RunAgentBatchResultResourceSchema = z.object({
     chainOfThought: z.string().optional(),
     uri: z.string(),
     error: z.string().optional(),
+    refs: z
+      .record(
+        z.string(),
+        z.object({
+          description: z.string().optional(),
+          href: z.string().optional(),
+          title: z.string(),
+          provider: z.string(),
+        })
+      )
+      .optional(),
   })),
   text: z.string(),
   uri: z.literal(""),
