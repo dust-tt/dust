@@ -23,7 +23,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 
 import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
-import ConversationSidePanelContainer from "@app/components/assistant/conversation/ConversationSidePanelContainer";
+import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
@@ -221,7 +221,7 @@ export default function AssistantBuilderRightPanel({
               <ConversationsNavigationProvider>
                 <ActionValidationProvider owner={owner}>
                   <GenerationContextProvider>
-                    <div className="flex h-full flex-col">
+                    <div className={"flex h-full flex-col"}>
                       {conversation && (
                         <div className="flex items-center justify-between py-3">
                           <h2 className="font-semibold text-foreground dark:text-foreground-night">
@@ -249,9 +249,10 @@ export default function AssistantBuilderRightPanel({
                                 key={conversation.sId}
                               />
                             </div>
-                            <ConversationSidePanelContainer
-                              owner={owner}
+                            <ConversationSidePanelContent
                               conversation={conversation}
+                              owner={owner}
+                              currentPanel={currentPanel}
                             />
                           </>
                         )}

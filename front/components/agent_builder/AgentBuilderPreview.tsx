@@ -8,7 +8,7 @@ import {
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
-import ConversationSidePanelContainer from "@app/components/assistant/conversation/ConversationSidePanelContainer";
+import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -134,9 +134,10 @@ export function AgentBuilderPreview() {
                   key={conversation.sId}
                 />
               </div>
-              <ConversationSidePanelContainer
-                owner={owner}
+              <ConversationSidePanelContent
                 conversation={conversation}
+                owner={owner}
+                currentPanel={currentPanel}
               />
             </>
           )}

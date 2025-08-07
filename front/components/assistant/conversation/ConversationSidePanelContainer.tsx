@@ -1,7 +1,6 @@
 import { cn, ResizableHandle, ResizablePanel } from "@dust-tt/sparkle";
 
-import { AgentActionsPanel } from "@app/components/assistant/conversation/actions/AgentActionsPanel";
-import { InteractiveContentContainer } from "@app/components/assistant/conversation/content/InteractiveContentContainer";
+import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { ConversationType, WorkspaceType } from "@app/types";
 
@@ -33,15 +32,11 @@ export default function ConversationSidePanelContainer({
             currentPanel && "absolute inset-0 md:relative md:inset-auto"
           )}
         >
-          {currentPanel === "content" && (
-            <InteractiveContentContainer
-              conversation={conversation}
-              owner={owner}
-            />
-          )}
-          {currentPanel === "actions" && (
-            <AgentActionsPanel conversation={conversation} owner={owner} />
-          )}
+          <ConversationSidePanelContent
+            conversation={conversation}
+            owner={owner}
+            currentPanel={currentPanel}
+          />
         </ResizablePanel>
       )}
     </>
