@@ -468,7 +468,8 @@ export async function migrateChannelsFromLegacyBotToNewBot(
         "Could not join channel"
       );
 
-      return joinRes;
+      // Ignore the error and continue.
+      continue;
     }
   }
 
