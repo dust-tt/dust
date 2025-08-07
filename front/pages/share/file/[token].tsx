@@ -2,6 +2,7 @@ import Head from "next/head";
 
 import { PublicInteractiveContentContainer } from "@app/components/assistant/conversation/content/PublicInteractiveContentContainer";
 import config from "@app/lib/api/config";
+import { formatFilenameForDisplay } from "@app/lib/files";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -76,13 +77,14 @@ export default function SharedFilePage({
   token,
   workspaceName,
 }: SharedFilePageProps) {
-  const description = `Interactive content "${title}" shared from ${workspaceName} workspace`;
+  const humanFriendlyTitle = formatFilenameForDisplay(title);
+  const description = `Discover what ${workspaceName} built with AI. Explore now.`;
 
   return (
     <>
       <Head>
         {/* Basic meta tags */}
-        <title>{title} - Dust</title>
+        <title>{humanFriendlyTitle} - Powered by Dust</title>
         <meta name="description" content={description} />
 
         {/* Prevent search engine indexing */}
@@ -101,14 +103,20 @@ export default function SharedFilePage({
 
         {/* Open Graph meta tags */}
         <meta property="og:type" content="website" />
-        <meta property="og:title" content={`${title} - Interactive Content`} />
+        <meta
+          property="og:title"
+          content={`${humanFriendlyTitle} - ${workspaceName}`}
+        />
         <meta property="og:description" content={description} />
         <meta property="og:url" content={shareUrl} />
         <meta property="og:site_name" content="Dust" />
         <meta property="og:image" content="https://dust.tt/static/og/ic.png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="Dust - Interactive Content" />
+        <meta
+          property="og:image:alt"
+          content={`Preview of ${humanFriendlyTitle} created by ${workspaceName}`}
+        />
 
         {/* Favicon */}
         <link rel="shortcut icon" href="/static/favicon.png" />

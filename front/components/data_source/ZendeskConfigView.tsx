@@ -152,9 +152,7 @@ export function ZendeskConfigView({
       >
         <ContextItem.Description>
           <div className="text-muted-foreground dark:text-muted-foreground-night">
-            If activated, Dust will also sync the unresolved tickets. This may
-            significantly increase the number of synced tickets, potentially
-            negatively affecting the response quality due to the added noise.
+            If activated, Dust will also sync the unresolved tickets.
           </div>
         </ContextItem.Description>
       </ContextItem>
@@ -198,35 +196,36 @@ export function ZendeskConfigView({
             visual={isDark ? ZendeskWhiteLogo : ZendeskLogo}
           />
         }
-        action={
-          <div className="flex items-center gap-2">
-            <Input
-              value={retentionInput}
-              type="number"
-              onChange={(e) => setRetentionInput(e.target.value)}
-              disabled={readOnly || !isAdmin || loading}
-              placeholder={retentionPeriodDays ?? undefined}
-              className="w-20"
-            />
-            <span className="text-sm text-muted-foreground">days</span>
-            <Button
-              size="sm"
-              onClick={handleRetentionPeriodSave}
-              disabled={
-                readOnly ||
-                !isAdmin ||
-                loading ||
-                retentionInput === retentionPeriodDays?.toString()
-              }
-              label="Save"
-            />
-          </div>
-        }
       >
         <ContextItem.Description>
-          <div className="text-muted-foreground dark:text-muted-foreground-night">
-            Set the duration of the retention period: tickets older than the
-            retention period will be cleaned on a daily basis.
+          <div className="mb-4 flex items-start justify-between gap-4 text-muted-foreground dark:text-muted-foreground-night">
+            Set the retention period (in days), tickets older than the retention
+            period will not be synced with Dust.
+            <div className="flex items-center gap-2">
+              <Input
+                value={retentionInput}
+                type="number"
+                onChange={(e) => setRetentionInput(e.target.value)}
+                disabled={readOnly || !isAdmin || loading}
+                placeholder={
+                  retentionPeriodDays
+                    ? `${retentionPeriodDays} days`
+                    : undefined
+                }
+                className="w-24"
+              />
+              <Button
+                size="sm"
+                onClick={handleRetentionPeriodSave}
+                disabled={
+                  readOnly ||
+                  !isAdmin ||
+                  loading ||
+                  retentionInput === retentionPeriodDays?.toString()
+                }
+                label="Save"
+              />
+            </div>
           </div>
         </ContextItem.Description>
       </ContextItem>
