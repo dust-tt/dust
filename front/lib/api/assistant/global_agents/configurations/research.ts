@@ -322,6 +322,31 @@ You must never output text outside of \`<thinking>\` tags between tool use. Only
     (dsView) => dsView.dataSource.assistantDefaultSelected === true
   );
 
+  if (dataSourceViews.length > 0 && dataSourcesFileSystemMCPServerView) {
+    actions.push({
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.RESEARCH + "-file-system-action",
+      type: "mcp_server_configuration",
+      name: "hidden_dust_search_file_system",
+      description: `The user's data sources (file system).`,
+      mcpServerViewId: dataSourcesFileSystemMCPServerView.sId,
+      internalMCPServerId:
+        dataSourcesFileSystemMCPServerView.internalMCPServerId,
+      dataSources: dataSourceViews.map((dsView) => ({
+        dataSourceViewId: dsView.sId,
+        workspaceId: preFetchedDataSources.workspaceId,
+        filter: { parents: null, tags: null },
+      })),
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+    });
+  }
+
   // Only add the action if there are data sources and the search MCPServer is available.
   if (dataSourceViews.length > 0 && searchMCPServerView) {
     // We push one action with all data sources
@@ -385,35 +410,6 @@ You must never output text outside of \`<thinking>\` tags between tool use. Only
           dustAppConfiguration: null,
           jsonSchema: null,
         });
-        if (dataSourcesFileSystemMCPServerView) {
-          actions.push({
-            id: -1,
-            sId:
-              GLOBAL_AGENTS_SID.RESEARCH +
-              "-datasource-action-" +
-              dsView.dataSource.sId,
-            type: "mcp_server_configuration",
-            name: "hidden_dust_search_file_system_" + dsView.dataSource.name,
-            description: `The user's ${dsView.dataSource.connectorProvider} data source (file system).`,
-            mcpServerViewId: dataSourcesFileSystemMCPServerView.sId,
-            internalMCPServerId:
-              dataSourcesFileSystemMCPServerView.internalMCPServerId,
-            dataSources: [
-              {
-                workspaceId: preFetchedDataSources.workspaceId,
-                dataSourceViewId: dsView.sId,
-                filter: { parents: null, tags: null },
-              },
-            ],
-            tables: null,
-            childAgentId: null,
-            reasoningModel: null,
-            additionalConfiguration: {},
-            timeFrame: null,
-            dustAppConfiguration: null,
-            jsonSchema: null,
-          });
-        }
       }
     });
   }
