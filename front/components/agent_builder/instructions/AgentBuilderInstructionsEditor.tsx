@@ -46,7 +46,7 @@ function createBuilderStateFromWatchedFields(
 
 const editorVariants = cva(
   [
-    "overflow-auto border rounded-xl p-2 resize-y min-h-60",
+    "overflow-auto border rounded-xl p-2 resize-y min-h-60 h-125",
     "transition-all duration-200",
     "bg-muted-background dark:bg-muted-background-night",
   ],

@@ -23,7 +23,10 @@ import { AgentBuilderEditors } from "@app/components/agent_builder/settings/Agen
 import { AgentBuilderScopeSelector } from "@app/components/agent_builder/settings/AgentBuilderScopeSelector";
 import { AgentBuilderSlackSelector } from "@app/components/agent_builder/settings/AgentBuilderSlackSelector";
 import { AvatarPicker } from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker";
-import { DROID_AVATAR_URLS, SPIRIT_AVATAR_URLS } from "@app/components/agent_builder/settings/avatar_picker/types";
+import {
+  DROID_AVATAR_URLS,
+  SPIRIT_AVATAR_URLS,
+} from "@app/components/agent_builder/settings/avatar_picker/types";
 import { TagsSection } from "@app/components/agent_builder/settings/TagsSection";
 import {
   fetchWithErr,
@@ -35,7 +38,12 @@ import {
   makeUrlForEmojiAndBackground,
 } from "@app/components/assistant_builder/avatar_picker/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { APIError, BuilderEmojiSuggestionsType, Result, WorkspaceType } from "@app/types";
+import type {
+  APIError,
+  BuilderEmojiSuggestionsType,
+  Result,
+  WorkspaceType,
+} from "@app/types";
 
 const MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS = 20;
 
@@ -400,7 +408,7 @@ export function AgentBuilderSettingsBlock({
           <Page.H>Settings</Page.H>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="flex flex-col gap-4 pt-4 px-1">
+          <div className="flex flex-col gap-4 px-1 pt-4">
             <Page.P>
               <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Configure tags and access settings for your agent.
