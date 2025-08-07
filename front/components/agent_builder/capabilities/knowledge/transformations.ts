@@ -9,7 +9,6 @@ import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
 } from "@app/types";
-import { removeNulls } from "@app/types";
 
 /**
  * Creates a placeholder DataSourceViewContentNode with minimal information.
@@ -24,7 +23,7 @@ function getPlaceholderResource(
   return {
     internalId: nodeId,
     parentInternalId: parentId,
-    parentInternalIds: removeNulls([parentId, nodeId]),
+    parentInternalIds: parentId ? [parentId] : null,
     parentTitle: null,
     title: nodeId,
     type: "document",
@@ -104,19 +103,25 @@ export function transformTreeToSelectionConfigurations(
     if (!isFullDataSource) {
       configurations[dataSourceView.sId].isSelectAll = false;
 
-      // Extract node information from the path
-      const nodeIds = parts.slice(dsvIdIndex + 1);
-      if (nodeIds.length > 0) {
-        const nodeId = nodeIds[nodeIds.length - 1]; // Last part is the selected node
-        const parentId =
-          nodeIds.length > 1 ? nodeIds[nodeIds.length - 2] : null;
+      if (path.type === "node") {
+        configurations[dataSourceView.sId].selectedResources.push(path.node);
+      } else {
+        // Extract node information from the path
+        const nodeIds = parts.slice(dsvIdIndex + 1);
+        if (nodeIds.length > 0) {
+          const nodeId = nodeIds[nodeIds.length - 1]; // Last part is the selected node
+          const parentId =
+            nodeIds.length > 1 ? nodeIds[nodeIds.length - 2] : null;
 
-        const existingResources = existingResourcesMap.get(dataSourceView.sId)!;
-        if (!existingResources.has(nodeId)) {
-          existingResources.add(nodeId);
-          configurations[dataSourceView.sId].selectedResources.push(
-            getPlaceholderResource(nodeId, parentId, dataSourceView)
-          );
+          const existingResources = existingResourcesMap.get(
+            dataSourceView.sId
+          )!;
+          if (!existingResources.has(nodeId)) {
+            existingResources.add(nodeId);
+            configurations[dataSourceView.sId].selectedResources.push(
+              getPlaceholderResource(nodeId, parentId, dataSourceView)
+            );
+          }
         }
       }
     }
@@ -171,7 +176,7 @@ export function transformSelectionConfigurationsToTree(
             path: pathParts.join("/"),
             name: parentId ?? node.title,
             node,
-          });
+          } as any); // WARN:
         }
       }
     }
@@ -223,5 +228,5 @@ function buildDataSourcePath(
   return {
     path: parts.join("/"),
     name: dataSourceView.dataSource.name,
-  };
+  } as any; // WARN:
 }

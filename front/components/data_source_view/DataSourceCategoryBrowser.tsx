@@ -1,19 +1,18 @@
 import {
   Checkbox,
   DataTable,
-  Icon,
   ScrollableDataTable,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import React, { useMemo } from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { WorkspaceType } from "@app/types";
 import type {
   DataSourceViewCategory,
   DataSourceViewCategoryWithoutApps,
@@ -31,26 +30,24 @@ interface CategoryRowData {
   id: DataSourceViewCategoryWithoutApps;
   title: string;
   onClick: () => void;
-  icon: React.JSX.Element;
+  icon: React.ComponentType;
 }
 
 interface DataSourceCategoryBrowserProps {
-  owner: WorkspaceType;
   space: SpaceType;
-  onSelectCategory: (category: DataSourceViewCategoryWithoutApps) => void;
 }
 
 export function DataSourceCategoryBrowser({
-  owner,
   space,
-  onSelectCategory,
 }: DataSourceCategoryBrowserProps) {
+  const { owner } = useAgentBuilderContext();
   const { spaceInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
   const {
     selectNode,
+    setCategoryEntry,
     selectCurrentNavigationEntry,
     removeNode,
     removeCurrentNavigationEntry,
@@ -67,12 +64,12 @@ export function DataSourceCategoryBrowser({
     if (!isSpaceInfoLoading && spaceInfo) {
       return getCategoryRows(spaceInfo.categories, hasFeature, (category) => {
         if (isDataSourceViewCategoryWithoutApps(category)) {
-          onSelectCategory(category);
+          setCategoryEntry(category);
         }
       });
     }
     return emptyArray<CategoryRowData>();
-  }, [hasFeature, isSpaceInfoLoading, onSelectCategory, spaceInfo]);
+  }, [hasFeature, isSpaceInfoLoading, setCategoryEntry, spaceInfo]);
 
   const columns: ColumnDef<CategoryRowData>[] = useMemo(
     () => [
@@ -80,48 +77,46 @@ export function DataSourceCategoryBrowser({
         id: "select",
         enableSorting: false,
         enableHiding: false,
-        header: () => (
-          <Checkbox
-            size="xs"
-            checked={isCurrentNavigationEntrySelected()}
-            disabled={!isRowSelectable()}
-            onClick={(event) => event.stopPropagation()}
-            onCheckedChange={(state) => {
-              if (state === "indeterminate") {
-                removeCurrentNavigationEntry();
-                return;
-              }
+        header: () => {
+          const selectionState = isCurrentNavigationEntrySelected();
 
-              if (state) {
-                selectCurrentNavigationEntry();
-              } else {
-                removeCurrentNavigationEntry();
-              }
-            }}
-          />
-        ),
-        cell: ({ row }) => (
-          <div className="flex h-full items-center">
+          return (
             <Checkbox
               size="xs"
-              checked={isRowSelected(row.original.id)}
-              disabled={!isRowSelectable(row.original.id)}
+              checked={selectionState}
+              disabled={!isRowSelectable()}
               onClick={(event) => event.stopPropagation()}
               onCheckedChange={(state) => {
-                if (state === "indeterminate") {
-                  removeNode(row.original.id, row.original.title);
-                  return;
-                }
-
-                if (state) {
-                  selectNode({ type: "category", category: row.original.id });
+                if (selectionState === "partial" || state) {
+                  selectCurrentNavigationEntry();
                 } else {
-                  removeNode(row.original.id, row.original.title);
+                  removeCurrentNavigationEntry();
                 }
               }}
             />
-          </div>
-        ),
+          );
+        },
+        cell: ({ row }) => {
+          const selectionState = isRowSelected(row.original.id);
+
+          return (
+            <div className="flex h-full items-center">
+              <Checkbox
+                size="xs"
+                checked={selectionState}
+                disabled={!isRowSelectable(row.original.id)}
+                onClick={(event) => event.stopPropagation()}
+                onCheckedChange={(state) => {
+                  if (selectionState === "partial" || state) {
+                    selectNode({ type: "category", category: row.original.id });
+                  } else {
+                    removeNode({ type: "category", category: row.original.id });
+                  }
+                }}
+              />
+            </div>
+          );
+        },
         meta: {
           sizeRatio: 5,
         },
@@ -131,11 +126,8 @@ export function DataSourceCategoryBrowser({
         id: "name",
         header: "Name",
         cell: ({ row }) => (
-          <DataTable.CellContent>
-            <span className="flex items-center gap-2 truncate text-ellipsis font-semibold">
-              {row.original.icon}
-              {row.original.title}
-            </span>
+          <DataTable.CellContent icon={row.original.icon}>
+            {row.original.title}
           </DataTable.CellContent>
         ),
         meta: {
@@ -192,7 +184,7 @@ function getCategoryRows(
             ? {
                 id: category,
                 title: CATEGORY_DETAILS[category].label,
-                icon: <Icon visual={CATEGORY_DETAILS[category].icon} />,
+                icon: CATEGORY_DETAILS[category].icon,
                 onClick: () => onSelect(category),
               }
             : null

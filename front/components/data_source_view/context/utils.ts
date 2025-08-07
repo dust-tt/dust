@@ -8,10 +8,11 @@ import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import type {
   DataSourceViewCategoryWithoutApps,
   DataSourceViewContentNode,
+  DataSourceViewType,
   SpaceType,
 } from "@app/types";
 
-function pathToString(path: string[]): string {
+export function pathToString(path: string[]): string {
   return path.join("/");
 }
 
@@ -33,22 +34,20 @@ function isParentOrSamePath(parentPath: string, childPath: string): boolean {
  */
 export function addNodeToTree(
   tree: DataSourceBuilderTreeType,
-  item: {
-    path: string[];
-    name: string;
-    node?: DataSourceViewContentNode;
-  }
+  item: DataSourceBuilderTreeItemType
 ): DataSourceBuilderTreeType {
-  const pathStr = pathToString(item.path);
-  const pathPrefix = getPathPrefix(pathStr);
+  const { path } = item;
+  const pathPrefix = getPathPrefix(path);
+
+  console.log({ item });
 
   const hasParentInclusion = tree.in.some(({ path: inPath }) =>
-    isParentOrSamePath(inPath, pathStr)
+    isParentOrSamePath(inPath, path)
   );
 
   const newNotIn = tree.notIn.filter(
     ({ path: notInPath }) =>
-      notInPath !== pathStr && !notInPath.startsWith(pathPrefix)
+      notInPath !== path && !notInPath.startsWith(pathPrefix)
   );
 
   if (hasParentInclusion) {
@@ -58,28 +57,21 @@ export function addNodeToTree(
     };
   }
 
-  if (tree.notIn.map((el) => el.path).includes(pathStr)) {
+  if (tree.notIn.map((el) => el.path).includes(path)) {
     return {
       in: tree.in,
       notIn: newNotIn,
     };
   }
 
-  if (tree.in.map((el) => el.path).includes(pathStr)) {
+  if (tree.in.map((el) => el.path).includes(path)) {
     return {
       in: tree.in,
       notIn: newNotIn,
     };
   }
 
-  const newIn = [
-    ...tree.in,
-    {
-      path: pathStr,
-      name: item.name,
-      node: item.node,
-    },
-  ];
+  const newIn = [...tree.in, item];
 
   return {
     in: newIn,
@@ -96,12 +88,8 @@ export function addNodeToTree(
  */
 export function removeNodeFromTree(
   tree: DataSourceBuilderTreeType,
-  item: {
-    path: string[];
-    name: string;
-  }
+  { path: pathStr, ...opts }: DataSourceBuilderTreeItemType
 ): DataSourceBuilderTreeType {
-  const pathStr = pathToString(item.path);
   const pathPrefix = getPathPrefix(pathStr);
 
   let hasParentExclusion = false;
@@ -151,7 +139,7 @@ export function removeNodeFromTree(
   ) {
     newNotIn.push({
       path: pathStr,
-      name: item.name,
+      ...opts,
     });
   }
 
@@ -221,6 +209,8 @@ export function getLastNavigationHistoryEntryId(
       return entry.space.sId;
     case "category":
       return entry.category;
+    case "data_source":
+      return entry.dataSourceView.sId;
     case "node":
       return entry.node.internalId;
   }
@@ -229,9 +219,7 @@ export function getLastNavigationHistoryEntryId(
 export function computeNavigationPath(
   navigationHistory: NavigationHistoryEntryType[]
 ): string[] {
-  return navigationHistory.map((entry) =>
-    getLastNavigationHistoryEntryId(entry)
-  );
+  return navigationHistory.map(getLastNavigationHistoryEntryId);
 }
 
 export function navigationHistoryEntryTitle(
@@ -244,6 +232,8 @@ export function navigationHistoryEntryTitle(
       return entry.space.name;
     case "category":
       return CATEGORY_DETAILS[entry.category].label;
+    case "data_source":
+      return entry.dataSourceView.dataSource.name;
     case "node":
       return entry.node.title;
   }
@@ -266,6 +256,17 @@ export function findCategoryFromNavigationHistory(
   const entry = navigationHistory[2];
   if (entry != null && entry.type === "category") {
     return entry.category;
+  }
+
+  return null;
+}
+
+export function findDataSourceViewFromNavigationHistory(
+  navigationHistory: NavigationHistoryEntryType[]
+): DataSourceViewType | null {
+  const entry = navigationHistory[3];
+  if (entry != null && entry.type === "data_source") {
+    return entry.dataSourceView;
   }
 
   return null;

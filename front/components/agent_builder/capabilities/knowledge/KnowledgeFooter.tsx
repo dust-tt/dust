@@ -45,7 +45,7 @@ function KnowledgeFooterItemReadablePath({
 }
 
 function KnowledgeFooterItem({
-  item: { path, name, node },
+  item,
 }: {
   item: DataSourceBuilderTreeItemType;
 }) {
@@ -53,17 +53,16 @@ function KnowledgeFooterItem({
 
   return (
     <ContextItem
-      key={path}
-      title={name}
+      key={item.path}
+      title={item.name}
       visual={<ContextItem.Visual visual={GithubLogo} />}
       action={
-        <Checkbox
-          checked
-          onCheckedChange={() => removeNodeWithPath(path, name)}
-        />
+        <Checkbox checked onCheckedChange={() => removeNodeWithPath(item)} />
       }
     >
-      {node != null && <KnowledgeFooterItemReadablePath node={node} />}
+      {item.type === "node" && (
+        <KnowledgeFooterItemReadablePath node={item.node} />
+      )}
     </ContextItem>
   );
 }

@@ -1,20 +1,17 @@
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import { Breadcrumbs, SearchInput } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
+import { useWatch } from "react-hook-form";
 
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
-import {
-  findCategoryFromNavigationHistory,
-  findSpaceFromNavigationHistory,
-  getLatestNodeFromNavigationHistory,
-} from "@app/components/data_source_view/context/utils";
+import { findDataSourceViewFromNavigationHistory } from "@app/components/data_source_view/context/utils";
 import { DataSourceCategoryBrowser } from "@app/components/data_source_view/DataSourceCategoryBrowser";
 import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
 import { DataSourceSpaceSelector } from "@app/components/data_source_view/DataSourceSpaceSelector";
+import { DataSourceViewTable } from "@app/components/data_source_view/DataSourceViewTable";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
-import { useSpaceDataSourceViewsWithDetails } from "@app/lib/swr/spaces";
 import type {
   ContentNodesViewType,
   DataSourceViewType,
@@ -29,37 +26,18 @@ type DataSourceBuilderSelectorProps = {
 
 export const DataSourceBuilderSelector = ({
   dataSourceViews,
-  owner,
   viewType,
 }: DataSourceBuilderSelectorProps) => {
   const { spaces } = useSpacesContext();
-  const {
-    navigationHistory,
-    navigateTo,
-    setSpaceEntry,
-    setCategoryEntry,
-    addNodeEntry,
-  } = useDataSourceBuilderContext();
+  const { navigationHistory, navigateTo } = useDataSourceBuilderContext();
   const currentNavigationEntry =
     navigationHistory[navigationHistory.length - 1];
 
-  const selectedSpaceId =
-    findSpaceFromNavigationHistory(navigationHistory)?.sId;
-  const selectedCategory = findCategoryFromNavigationHistory(navigationHistory);
-  const traversedNode = getLatestNodeFromNavigationHistory(navigationHistory);
+  const selectedDataSourceView =
+    findDataSourceViewFromNavigationHistory(navigationHistory);
 
   const [searchQuery, setSearchQuery] = useState("");
-
-  // Fetch category data when a category is selected
-  const {
-    spaceDataSourceViews: categoryDataSourceViews,
-    isSpaceDataSourceViewsLoading: isCategoryLoading,
-  } = useSpaceDataSourceViewsWithDetails({
-    workspaceId: owner.sId,
-    spaceId: selectedSpaceId || "",
-    category: selectedCategory || "managed",
-    disabled: !selectedSpaceId || !selectedCategory,
-  });
+  const sources = useWatch({ name: "sources" });
 
   const breadcrumbItems: BreadcrumbItem[] = useMemo(
     () =>
@@ -89,7 +67,6 @@ export const DataSourceBuilderSelector = ({
         <DataSourceSpaceSelector
           spaces={filteredSpaces}
           allowedSpaces={spaces}
-          onSelectSpace={setSpaceEntry}
         />
       ) : (
         <SearchInput
@@ -101,25 +78,18 @@ export const DataSourceBuilderSelector = ({
       )}
 
       {currentNavigationEntry.type === "space" && (
-        <DataSourceCategoryBrowser
-          owner={owner}
-          space={currentNavigationEntry.space}
-          onSelectCategory={setCategoryEntry}
-        />
+        <DataSourceCategoryBrowser space={currentNavigationEntry.space} />
       )}
 
+      {currentNavigationEntry.type === "category" && <DataSourceViewTable />}
+
       {(currentNavigationEntry.type === "node" ||
-        currentNavigationEntry.type === "category") && (
-        <DataSourceNodeTable
-          owner={owner}
-          viewType={viewType}
-          categoryDataSourceViews={categoryDataSourceViews}
-          selectedCategory={selectedCategory}
-          traversedNode={traversedNode}
-          onNavigate={addNodeEntry}
-          isCategoryLoading={isCategoryLoading}
-        />
-      )}
+        currentNavigationEntry.type === "data_source") &&
+        selectedDataSourceView !== null && (
+          <DataSourceNodeTable viewType={viewType} />
+        )}
+
+      <pre>{JSON.stringify(sources, undefined, 2)}</pre>
     </div>
   );
 };
@@ -139,6 +109,10 @@ function getBreadcrumbConfig(
     case "category":
       return {
         label: CATEGORY_DETAILS[entry.category].label,
+      };
+    case "data_source":
+      return {
+        label: entry.dataSourceView.dataSource.name,
       };
     case "node":
       return {

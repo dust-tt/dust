@@ -15,16 +15,19 @@ type SpaceRowData = SpaceType & {
 export interface DataSourceSpaceSelectorProps {
   spaces: SpaceType[];
   allowedSpaces?: SpaceType[];
-  onSelectSpace: (space: SpaceType) => void;
 }
 
 export function DataSourceSpaceSelector({
   spaces,
   allowedSpaces = [],
-  onSelectSpace,
 }: DataSourceSpaceSelectorProps) {
-  const { selectNode, removeNode, isRowSelected, isRowSelectable } =
-    useDataSourceBuilderContext();
+  const {
+    selectNode,
+    removeNode,
+    isRowSelected,
+    isRowSelectable,
+    setSpaceEntry,
+  } = useDataSourceBuilderContext();
 
   const spaceRows: SpaceRowData[] = spaces.map((space) => ({
     ...space,
@@ -32,7 +35,7 @@ export function DataSourceSpaceSelector({
     name: space.name,
     kind: space.kind,
     icon: getSpaceIcon(space),
-    onClick: () => onSelectSpace(space),
+    onClick: () => setSpaceEntry(space),
     disabled: allowedSpaces.find((s) => s.sId === space.sId) == null,
   }));
 
@@ -42,31 +45,30 @@ export function DataSourceSpaceSelector({
         id: "select",
         enableSorting: false,
         enableHiding: false,
-        cell: ({ row }) => (
-          <div className="flex h-full items-center">
-            <Checkbox
-              size="xs"
-              checked={isRowSelected(row.original.id)}
-              disabled={
-                row.original.kind !== "global" &&
-                !isRowSelectable(row.original.id)
-              }
-              onClick={(event) => event.stopPropagation()}
-              onCheckedChange={(state) => {
-                if (state === "indeterminate") {
-                  removeNode(row.original.id, row.original.name);
-                  return;
-                }
+        cell: ({ row }) => {
+          const selectionState = isRowSelected(row.original.id);
 
-                if (state) {
-                  selectNode({ type: "space", space: row.original });
-                } else {
-                  removeNode(row.original.id, row.original.name);
+          return (
+            <div className="flex h-full items-center">
+              <Checkbox
+                size="xs"
+                checked={selectionState}
+                disabled={
+                  row.original.kind !== "global" &&
+                  !isRowSelectable(row.original.id)
                 }
-              }}
-            />
-          </div>
-        ),
+                onClick={(event) => event.stopPropagation()}
+                onCheckedChange={(state) => {
+                  if (selectionState === "partial" && state) {
+                    selectNode({ type: "space", space: row.original });
+                  } else {
+                    removeNode({ type: "space", space: row.original });
+                  }
+                }}
+              />
+            </div>
+          );
+        },
         meta: {
           sizeRatio: 5,
         },

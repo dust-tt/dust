@@ -1,62 +1,46 @@
-import { isFolder, isWebsite } from "@dust-tt/client";
 import {
   Checkbox,
   DataTable,
   Hoverable,
-  Icon,
   ScrollableDataTable,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
+import {
+  findDataSourceViewFromNavigationHistory,
+  getLatestNodeFromNavigationHistory,
+} from "@app/components/data_source_view/context/utils";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
-import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import type {
   ContentNodesViewType,
   DataSourceViewContentNode,
-  DataSourceViewType,
-  WorkspaceType,
 } from "@app/types";
 
 const PAGE_SIZE = 25;
 
 interface DataSourceNodeTableProps {
-  owner: WorkspaceType;
   viewType: ContentNodesViewType;
-  categoryDataSourceViews?: DataSourceViewType[];
-  selectedCategory: string | null;
-  traversedNode: DataSourceViewContentNode | null;
-  onNavigate: (node: DataSourceViewContentNode) => void;
-  isCategoryLoading?: boolean;
 }
 
-interface NodeRowData extends DataSourceViewContentNode {
+interface NodeRowData {
   id: string;
   title: string;
   onClick?: () => void;
-  parentTitle: string | null;
-  icon?: React.JSX.Element;
+  icon?: React.ComponentType;
+  rawNodeData: DataSourceViewContentNode;
 }
 
-export function DataSourceNodeTable({
-  owner,
-  viewType,
-  categoryDataSourceViews = [],
-  selectedCategory,
-  traversedNode,
-  onNavigate,
-  isCategoryLoading = false,
-}: DataSourceNodeTableProps) {
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
+  const { owner } = useAgentBuilderContext();
   const [nodeRows, setNodeRows] = useState<NodeRowData[]>([]);
-  const { isDark } = useTheme();
   const {
+    navigationHistory,
     selectNode,
     selectCurrentNavigationEntry,
     removeNode,
@@ -64,7 +48,12 @@ export function DataSourceNodeTable({
     isRowSelected,
     isRowSelectable,
     isCurrentNavigationEntrySelected,
+    addNodeEntry,
   } = useDataSourceBuilderContext();
+
+  const traversedNode = getLatestNodeFromNavigationHistory(navigationHistory);
+  const dataSourceView =
+    findDataSourceViewFromNavigationHistory(navigationHistory);
 
   const {
     cursorPagination,
@@ -75,15 +64,16 @@ export function DataSourceNodeTable({
 
   const {
     nodes: childNodes,
-    isNodesLoading: isChildrenLoading,
+    isNodesLoading,
     nextPageCursor,
   } = useDataSourceViewContentNodes({
     owner,
-    dataSourceView: traversedNode?.dataSourceView,
-    ...(traversedNode &&
-      traversedNode.parentInternalIds && {
-        parentId: traversedNode.internalId,
-      }),
+    dataSourceView:
+      traversedNode?.dataSourceView ?? dataSourceView ?? undefined,
+    parentId:
+      traversedNode !== null && traversedNode.parentInternalIds !== null
+        ? traversedNode.internalId
+        : undefined,
     viewType,
     pagination: { cursor: cursorPagination.cursor, limit: PAGE_SIZE },
   });
@@ -93,7 +83,7 @@ export function DataSourceNodeTable({
   }, [traversedNode, resetPagination]);
 
   const handleLoadMore = useCallback(() => {
-    if (nextPageCursor && !isChildrenLoading) {
+    if (nextPageCursor && !isNodesLoading) {
       handlePaginationChange(
         {
           pageIndex: tablePagination.pageIndex + 1,
@@ -104,89 +94,30 @@ export function DataSourceNodeTable({
     }
   }, [
     nextPageCursor,
-    isChildrenLoading,
+    isNodesLoading,
     handlePaginationChange,
     tablePagination.pageIndex,
   ]);
 
   useEffect(() => {
-    if (!traversedNode && selectedCategory) {
-      // Listing data source views of a category
-      // Convert data source views to content nodes
-      const categoryNodes = categoryDataSourceViews
-        .filter((dsv) => {
-          if (selectedCategory === "managed") {
-            return !isFolder(dsv.dataSource) && !isWebsite(dsv.dataSource);
-          }
-          if (selectedCategory === "folder") {
-            return isFolder(dsv.dataSource);
-          }
-          if (selectedCategory === "website") {
-            return isWebsite(dsv.dataSource);
-          }
-          return false;
-        })
-        .map((dsv) => {
-          const logo = getConnectorProviderLogoWithFallback({
-            provider: dsv.dataSource.connectorProvider,
-            isDark,
-          });
-
-          const contentNode: DataSourceViewContentNode = {
-            internalId: dsv.sId,
-            title: getDataSourceNameFromView(dsv),
-            dataSourceView: dsv,
-            expandable: true,
-            parentInternalIds: null,
-            type: "folder",
-            mimeType: "application/vnd.dust.folder",
-            parentTitle: null,
-            lastUpdatedAt: null,
-            parentInternalId: null,
-            permission: "read",
-            sourceUrl: null,
-            providerVisibility: null,
-          };
-
-          return {
-            ...contentNode,
-            id: dsv.sId,
-            internalId: dsv.sId,
-            title: dsv.dataSource.name,
-            icon: <Icon visual={logo} />,
-            parentTitle: null,
-            onClick: () => {
-              onNavigate(contentNode);
-            },
-          };
-        });
-      setNodeRows(categoryNodes);
-    } else if (traversedNode && childNodes.length > 0) {
+    if (childNodes.length > 0) {
       // Handle child nodes
       if (tablePagination.pageIndex === 0) {
         const rows = getTableRows(childNodes, (node) => {
-          onNavigate(node);
+          addNodeEntry(node);
         });
         setNodeRows(rows);
       } else {
         // Append new nodes when paginating
         const newRows = getTableRows(childNodes, (node) => {
-          onNavigate(node);
+          addNodeEntry(node);
         });
         setNodeRows((prev) => [...prev, ...newRows]);
       }
     } else {
       setNodeRows([]);
     }
-  }, [
-    traversedNode,
-    selectedCategory,
-    categoryDataSourceViews,
-    childNodes,
-    tablePagination.pageIndex,
-    onNavigate,
-    isDark,
-  ]);
+  }, [childNodes, tablePagination.pageIndex, addNodeEntry]);
 
   const columns: ColumnDef<NodeRowData>[] = useMemo(
     () => [
@@ -228,9 +159,15 @@ export function DataSourceNodeTable({
                 onCheckedChange={(state) => {
                   // When clicking a partial checkbox, select all
                   if (selectionState === "partial" || state) {
-                    selectNode({ type: "node", node: row.original });
+                    selectNode({
+                      type: "node",
+                      node: row.original.rawNodeData,
+                    });
                   } else {
-                    removeNode(row.original.id, row.original.title);
+                    removeNode({
+                      type: "node",
+                      node: row.original.rawNodeData,
+                    });
                   }
                 }}
               />
@@ -246,11 +183,8 @@ export function DataSourceNodeTable({
         id: "name",
         header: "Name",
         cell: ({ row }) => (
-          <DataTable.CellContent>
-            <span className="flex items-center gap-2 truncate text-ellipsis py-1 font-semibold">
-              {row.original.icon}
-              <Hoverable>{row.original.title}</Hoverable>
-            </span>
+          <DataTable.CellContent icon={row.original.icon}>
+            <Hoverable>{row.original.title}</Hoverable>
           </DataTable.CellContent>
         ),
         meta: {
@@ -269,26 +203,22 @@ export function DataSourceNodeTable({
     ]
   );
 
-  const isLoading =
-    !traversedNode && selectedCategory ? isCategoryLoading : isChildrenLoading;
-
   return (
     <div>
-      {isLoading ? (
+      {isNodesLoading ? (
         <div className="flex justify-center p-4">
           <Spinner size="md" />
         </div>
       ) : (
-        <ScrollableDataTable
-          data={nodeRows}
-          columns={columns}
-          maxHeight="max-h-[600px]"
-          rowSelection={rowSelection}
-          setRowSelection={setRowSelection}
-          enableRowSelection={true}
-          getRowId={(row) => row.id}
-          onLoadMore={handleLoadMore}
-        />
+        <>
+          <ScrollableDataTable
+            data={nodeRows}
+            columns={columns}
+            maxHeight="max-h-[600px]"
+            getRowId={(row) => row.id}
+            onLoadMore={handleLoadMore}
+          />
+        </>
       )}
     </div>
   );
@@ -300,14 +230,11 @@ function getTableRows(
 ): NodeRowData[] {
   return nodes.map((node) => {
     return {
-      ...node,
       id: node.internalId,
       title: node.title,
-      icon: (
-        <Icon visual={getVisualForDataSourceViewContentNode(node)} size="md" />
-      ),
-      parentTitle: node.parentTitle,
+      icon: getVisualForDataSourceViewContentNode(node),
       onClick: node.expandable ? () => onNodeClick(node) : undefined,
+      rawNodeData: node,
     };
   });
 }
