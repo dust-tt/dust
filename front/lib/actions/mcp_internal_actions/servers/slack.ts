@@ -28,7 +28,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { TimeFrame } from "@app/types";
 import { parseTimeFrame, stripNullBytes, timeFrameFromNow } from "@app/types";
 
-const serverInfo: InternalMCPServerDefinitionType = {
+const serverInfo = {
   name: "slack",
   version: "1.0.0",
   description: "Slack tools for searching and posting messages.",
@@ -38,7 +38,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   },
   icon: "SlackLogo",
   documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
-};
+} satisfies InternalMCPServerDefinitionType;
 
 const getSlackClient = async (accessToken?: string) => {
   if (!accessToken) {

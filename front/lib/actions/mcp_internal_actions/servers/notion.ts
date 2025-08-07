@@ -30,7 +30,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { TimeFrame } from "@app/types";
 import { normalizeError, parseTimeFrame, timeFrameFromNow } from "@app/types";
 
-const serverInfo: InternalMCPServerDefinitionType = {
+const serverInfo = {
   name: "notion",
   version: "1.0.0",
   description: "Notion tools to manage pages and databases.",
@@ -40,7 +40,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   },
   icon: "NotionLogo",
   documentationUrl: null,
-};
+} satisfies InternalMCPServerDefinitionType;
 
 const uuidRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
