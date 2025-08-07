@@ -1,33 +1,12 @@
 import { cn, Spinner } from "@dust-tt/sparkle";
-import React, { useEffect, useState } from "react";
+import React from "react";
 
 import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
 
 export function NavigationLoadingOverlay() {
-  const { isLoading } = useNavigationLoading();
-  const [showOverlay, setShowOverlay] = useState(false);
+  const { shouldShowLoader } = useNavigationLoading();
 
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-
-    if (isLoading) {
-      // Show overlay after 500ms delay to prevent flicker
-      timeoutId = setTimeout(() => {
-        setShowOverlay(true);
-      }, 500);
-    } else {
-      // Hide overlay immediately when loading stops
-      setShowOverlay(false);
-    }
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [isLoading]);
-
-  if (!showOverlay) {
+  if (!shouldShowLoader) {
     return null;
   }
 
