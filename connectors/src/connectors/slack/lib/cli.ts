@@ -378,16 +378,26 @@ export const slack = async ({
       let processedCount = 0;
       let errorCount = 0;
 
+      allChannels.sort((a, b) => {
+        if (a.name && b.name) {
+          return a.name.localeCompare(b.name);
+        }
+        return 0;
+      });
+
       for (const channel of allChannels) {
         if (!channel.id || !channel.name) {
           continue;
         }
+
+        logger.info({ channel }, "Processing channel");
 
         const matchingPatterns = findMatchingChannelPatterns(
           channel.name,
           autoReadChannelPatterns
         );
         if (matchingPatterns.length === 0) {
+          logger.info({ channel }, "No match, skipping");
           continue;
         }
 
