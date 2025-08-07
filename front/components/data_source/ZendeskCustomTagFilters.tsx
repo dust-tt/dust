@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   ContextItem,
   Input,
   ZendeskLogo,
@@ -221,28 +222,19 @@ export function ZendeskCustomFieldFilters({
 
         <div>
           {customFields.length > 0 ? (
-            <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
               {customFields.map((field: CustomField) => (
-                <div
+                <Chip
                   key={field.id}
-                  className="flex items-center justify-between rounded-md border bg-gray-50 p-3 dark:bg-gray-800"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                      {field.name}
-                    </span>
-                  </div>
-                  {!readOnly && isAdmin && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleRemoveField(field.id)}
-                      disabled={loading}
-                      label="Remove"
-                      className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                    />
-                  )}
-                </div>
+                  label={field.name}
+                  color="blue"
+                  size="sm"
+                  onRemove={
+                    !readOnly && isAdmin
+                      ? () => handleRemoveField(field.id)
+                      : undefined
+                  }
+                />
               ))}
             </div>
           ) : (
