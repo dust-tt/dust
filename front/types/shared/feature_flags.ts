@@ -115,11 +115,22 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   jit_tools: {
     description: "Allow users to add tools to conversations",
   },
+  data_warehouses_file_system: {
+    description:
+      "Data warehouses file system navigation with hierarchical warehouse structure",
+  },
+  // Deprecated features
+  openai_o1_mini_feature: {
+    description: "OpenAI o1 mini model (deprecated, do not use)",
+  },
+  pro_plan_salesforce_connector: {
+    description: "Salesforce connector for Pro plans (deprecated, do not use)",
+  },
 } as const;
 
-export const WHITELISTABLE_FEATURES = Object.keys(
-  WHITELISTABLE_FEATURES_CONFIG
-) as WhitelistableFeature[];
+export const WHITELISTABLE_FEATURES = [
+  ...Object.keys(WHITELISTABLE_FEATURES_CONFIG),
+] as WhitelistableFeature[];
 
 export type WhitelistableFeature = keyof typeof WHITELISTABLE_FEATURES_CONFIG;
 

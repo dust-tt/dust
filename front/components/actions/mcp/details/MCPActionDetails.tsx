@@ -20,6 +20,7 @@ import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCP
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
 import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
+import { TablesFilesystemBrowseDetails } from "@app/components/actions/mcp/details/MCPTablesFilesystemBrowseDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { MCPActionType } from "@app/lib/actions/mcp";
@@ -42,6 +43,7 @@ import {
   isRunAgentResultResourceType,
   isSearchResultResourceType,
   isSqlQueryOutput,
+  isTablesFilesystemBrowseType,
   isTextContent,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -83,6 +85,9 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   const isReasoning = props.action.output?.some(isReasoningSuccessOutput);
   const isDataSourceFileSystem = props.action.output?.some(
     isDataSourceNodeListType
+  );
+  const isTablesFilesystemBrowse = props.action.output?.some(
+    isTablesFilesystemBrowseType
   );
 
   const isCat = props.action.output?.some(isDataSourceNodeContentType);
@@ -138,6 +143,8 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
         visual={ActionDocumentTextIcon}
       />
     );
+  } else if (isTablesFilesystemBrowse) {
+    return <TablesFilesystemBrowseDetails {...props} />;
   } else if (isCat) {
     return <DataSourceNodeContentDetails {...props} />;
   } else if (isFilesystemPath) {

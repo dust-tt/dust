@@ -633,6 +633,21 @@ const RenderedNodeSchema = z.object({
   connectorProvider: z.enum(CONNECTOR_PROVIDERS).nullable(),
 });
 
+const RenderedWarehouseNodeSchema = z.object({
+  nodeId: z.string(),
+  title: z.string(),
+  path: z.string(),
+  parentTitle: z.string().nullable(),
+  mimeType: z.string(),
+  hasChildren: z.boolean(),
+  connectorProvider: z.enum(CONNECTOR_PROVIDERS).nullable(),
+  sourceUrl: z.undefined(),
+  lastUpdatedAt: z.undefined(),
+});
+export type RenderedWarehouseNodeType = z.infer<
+  typeof RenderedWarehouseNodeSchema
+>;
+
 export const DataSourceNodeListSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_LIST),
   uri: z.literal(""),
@@ -651,6 +666,34 @@ export const isDataSourceNodeListType = (
   return (
     outputBlock.type === "resource" &&
     DataSourceNodeListSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+export const TablesFilesystemBrowseSchema = z.object({
+  mimeType: z.literal(
+    "application/vnd.dust.tool-output.tables-filesystem-browse"
+  ),
+  uri: z.literal(""),
+  text: z.string(),
+  nodeId: z.string().nullable(),
+  data: z.array(RenderedWarehouseNodeSchema),
+  nextPageCursor: z.string().nullable(),
+  resultCount: z.number(),
+});
+
+export type TablesFilesystemBrowseType = z.infer<
+  typeof TablesFilesystemBrowseSchema
+>;
+
+export const isTablesFilesystemBrowseType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: TablesFilesystemBrowseType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    TablesFilesystemBrowseSchema.safeParse(outputBlock.resource).success
   );
 };
 

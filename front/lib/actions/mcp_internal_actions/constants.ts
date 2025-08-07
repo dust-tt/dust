@@ -43,6 +43,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "run_dust_app",
   "salesforce",
   "search",
+  "data_warehouses",
   "think",
   "web_search_&_browse",
   "google_calendar",
@@ -576,13 +577,24 @@ export const INTERNAL_MCP_SERVERS = {
     id: 1011,
     availability: "auto",
     allowMultipleInstances: false,
-    isPreview: false,
+    isPreview: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("agent_management_tool");
     },
     tools_stakes: {
       create_agent: "high",
     },
+    timeoutMs: undefined,
+  },
+  data_warehouses: {
+    id: 1012,
+    availability: "auto",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("data_warehouses_file_system");
+    },
+    tools_stakes: undefined,
     timeoutMs: undefined,
   },
   // Using satisfies here instead of : type to avoid typescript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
