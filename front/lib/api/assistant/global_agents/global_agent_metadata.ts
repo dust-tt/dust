@@ -11,6 +11,7 @@ import {
   GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
+  GPT_5_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
@@ -48,6 +49,13 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.GPT4,
         name: "gpt4",
         description: GPT_4_1_MODEL_CONFIG.description,
+        pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.GPT5:
+      return {
+        sId: GLOBAL_AGENTS_SID.GPT5,
+        name: "gpt5",
+        description: GPT_5_MODEL_CONFIG.description,
         pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.O1:

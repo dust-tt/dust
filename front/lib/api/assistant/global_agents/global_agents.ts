@@ -22,6 +22,7 @@ import {
 } from "@app/lib/api/assistant/global_agents/configurations/mistral";
 import {
   _getGPT4GlobalAgent,
+  _getGPT5GlobalAgent,
   _getGPT35TurboGlobalAgent,
   _getO1GlobalAgent,
   _getO1HighReasoningGlobalAgent,
@@ -94,6 +95,13 @@ function getGlobalAgent({
       break;
     case GLOBAL_AGENTS_SID.GPT4:
       agentConfiguration = _getGPT4GlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.GPT5:
+      agentConfiguration = _getGPT5GlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,

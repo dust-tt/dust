@@ -93,7 +93,9 @@ export async function constructPromptMultiActions(
   let toolUseDirectives = "\n## TOOL USE DIRECTIVES\n";
   if (
     hasAvailableActions &&
-    agentConfiguration.model.reasoningEffort === "light"
+    agentConfiguration.model.reasoningEffort === "light" &&
+    // TODO(gpt5): improve config to clean this up.
+    agentConfiguration.model.providerId !== "openai"
   ) {
     toolUseDirectives += `${CHAIN_OF_THOUGHT_META_PROMPT}\n`;
   } else if (
