@@ -9,15 +9,17 @@ interface NavigationLoadingContextType {
   releaseLoading: () => void;
 }
 
+interface NavigationLoadingProviderProps {
+  children: React.ReactNode;
+}
+
 const NavigationLoadingContext = React.createContext<
   NavigationLoadingContextType | undefined
 >(undefined);
 
 export function NavigationLoadingProvider({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+}: NavigationLoadingProviderProps) {
   const [isLoading, setIsLoading] = useState(false);
   const isTakenOverRef = useRef(false);
   const router = useRouter();
