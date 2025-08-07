@@ -24,10 +24,6 @@ export const generationSettingsSchema = z.object({
   responseFormat: z.string().optional(),
 });
 
-export type AgentBuilderGenerationSettings = z.infer<
-  typeof generationSettingsSchema
->;
-
 export const mcpServerViewIdSchema = z.string();
 
 export const childAgentIdSchema = z.string().nullable();
@@ -187,18 +183,6 @@ export type AgentBuilderAction = z.infer<typeof actionSchema>;
 export type AgentBuilderDataVizAction = z.infer<
   typeof dataVisualizationActionSchema
 >;
-
-export const mcpFormConfigurationSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  configuration: mcpServerConfigurationSchema,
-});
-
-export type MCPFormConfigurationData = z.infer<
-  typeof mcpFormConfigurationSchema
->;
-
-export type BaseActionData = z.infer<typeof baseActionSchema>;
 
 // TODO: create types from schema
 export interface MCPFormData {

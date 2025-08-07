@@ -11,17 +11,11 @@ import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { SupportedModel, WhitelistableFeature } from "@app/types";
-import { ioTsEnum } from "@app/types";
+import type { WhitelistableFeature } from "@app/types";
 
 type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
 export type AgentBuilderAction = AgentBuilderFormData["actions"][number];
-
-export type DataVisualizationAgentBuilderAction = Extract<
-  AgentBuilderAction,
-  { type: "DATA_VISUALIZATION" }
->;
 
 export const AGENT_CREATIVITY_LEVELS = [
   "deterministic",
@@ -30,10 +24,7 @@ export const AGENT_CREATIVITY_LEVELS = [
   "creative",
 ] as const;
 export type AgentCreativityLevel = (typeof AGENT_CREATIVITY_LEVELS)[number];
-export const AgentCreativityLevelCodec = ioTsEnum<AgentCreativityLevel>(
-  AGENT_CREATIVITY_LEVELS,
-  "AgentCreativityLevel"
-);
+
 export const AGENT_CREATIVITY_LEVEL_DISPLAY_NAMES = {
   deterministic: "Deterministic",
   factual: "Factual",
@@ -50,12 +41,6 @@ export const AGENT_CREATIVITY_LEVEL_TEMPERATURES: Record<
   creative: 1.0,
 };
 
-export type GenerationSettingsType = {
-  modelSettings: SupportedModel;
-  temperature: number;
-  responseFormat?: string;
-};
-
 export const BUILDER_FLOWS = [
   "workspace_assistants",
   "personal_assistants",
@@ -63,42 +48,6 @@ export const BUILDER_FLOWS = [
 export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 
 export const DESCRIPTION_MAX_LENGTH = 800;
-
-export const mcpFormSchema = z.object({
-  configuration: z.object({
-    mcpServerViewId: z.string(),
-    dataSourceConfigurations: z.any().nullable().default(null),
-    tablesConfigurations: z.any().nullable().default(null),
-    childAgentId: z.string().nullable().default(null),
-    reasoningModel: z.any().nullable().default(null),
-    timeFrame: z
-      .object({
-        duration: z.number(),
-        unit: z.enum(["hour", "day", "week", "month", "year"]),
-      })
-      .nullable()
-      .default(null),
-    additionalConfiguration: z
-      .record(z.union([z.boolean(), z.number(), z.string()]))
-      .default({}),
-    dustAppConfiguration: z.any().nullable().default(null),
-    jsonSchema: z.any().nullable().default(null),
-    _jsonSchemaString: z.string().nullable().default(null),
-  }),
-  name: z
-    .string()
-    .min(1, "The name cannot be empty.")
-    .regex(
-      /^[a-z0-9_]+$/,
-      "The name can only contain lowercase letters, numbers, and underscores (no spaces)."
-    )
-    .default(""),
-  description: z
-    .string()
-    .min(1, "Description is required")
-    .max(DESCRIPTION_MAX_LENGTH, "Description too long")
-    .default(""),
-});
 
 export type CapabilityFormData = z.infer<typeof capabilityFormSchema>;
 
