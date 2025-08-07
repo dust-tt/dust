@@ -10,9 +10,10 @@ import {
   DocumentIcon,
   Markdown,
   RobotIcon,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { ExternalLinkIcon } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -28,15 +29,34 @@ import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation
 import { getCitationIcon } from "@app/components/markdown/MarkdownCitation";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
-  isRunAgentChainOfThoughtProgressOutput,
-  isRunAgentGenerationTokensProgressOutput,
   isRunAgentProgressOutput,
-  isRunAgentQueryProgressOutput,
-  isRunAgentQueryResourceType,
-  isRunAgentResultResourceType,
+  isRunAgentQueriesResourceType,
+  isRunAgentResultsResourceType,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import type { LightWorkspaceType } from "@app/types";
+
+interface AgentInteractionData {
+  query: string;
+  response: string | null;
+  chainOfThought: string | null;
+  conversationId: string | null;
+  isStreaming: boolean;
+  error: string | null;
+  status: string;
+  refs?:
+    | Record<
+        string,
+        {
+          title: string;
+          provider: string;
+          description?: string | undefined;
+          href?: string | undefined;
+        }
+      >
+    | undefined;
+}
 
 export function MCPRunAgentActionDetails({
   owner,
@@ -47,65 +67,49 @@ export function MCPRunAgentActionDetails({
   const { isDark } = useTheme();
 
   const queryResource =
-    action.output?.find(isRunAgentQueryResourceType) || null;
-
+    action.output?.find(isRunAgentQueriesResourceType) || null;
   const resultResource =
-    action.output?.find(isRunAgentResultResourceType) || null;
+    action.output?.find(isRunAgentResultsResourceType) || null;
+
+  const agentInteractions = useMemo(() => {
+    const progressInfo =
+      lastNotification?.data.output &&
+      isRunAgentProgressOutput(lastNotification.data.output)
+        ? lastNotification.data.output
+        : null;
+
+    const queries = queryResource?.resource?.queries || [];
+    const results = resultResource?.resource?.results || [];
+    const progressQueries = progressInfo?.activeQueries || [];
+
+    const allQueries =
+      queries.length > 0 ? queries : progressQueries.map((pq) => pq.query);
+
+    return allQueries.map((query: string, index: number) => {
+      const progress = progressQueries[index];
+      const result = results[index];
+
+      // Use progress data if actively streaming, otherwise use final results.
+      const currentData =
+        progress?.status === "running" ? progress : result || progress;
+
+      return {
+        query,
+        response: currentData?.text || null,
+        chainOfThought: currentData?.chainOfThought || null,
+        conversationId: currentData?.conversationId || null,
+        isStreaming: progress?.status === "running",
+        error: currentData?.error || null,
+        status: progress?.status || (result ? "completed" : "pending"),
+        refs: ("refs" in currentData && currentData?.refs) || {},
+      };
+    });
+  }, [queryResource, resultResource, lastNotification]);
 
   const generatedFiles =
     action.output?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
 
-  const childAgentId = useMemo(() => {
-    if (queryResource) {
-      return queryResource.resource.childAgentId;
-    }
-    if (lastNotification) {
-      const output = lastNotification.data.output;
-      if (isRunAgentProgressOutput(output)) {
-        return output.childAgentId;
-      }
-    }
-    return null;
-  }, [queryResource, lastNotification]);
-
-  const [query, setQuery] = useState<string | null>(null);
-  const [streamedChainOfThought, setStreamedChainOfThought] = useState<
-    string | null
-  >(null);
-  const [streamedResponse, setStreamedResponse] = useState<string | null>(null);
-  const [activeReferences, setActiveReferences] = useState<
-    { index: number; document: MarkdownCitation }[]
-  >([]);
-
-  useEffect(() => {
-    if (queryResource) {
-      setQuery(queryResource.resource.text);
-    }
-    if (lastNotification?.data.output) {
-      const output = lastNotification.data.output;
-      if (isRunAgentQueryProgressOutput(output) && !query) {
-        setQuery(output.query);
-      } else if (isRunAgentChainOfThoughtProgressOutput(output)) {
-        setStreamedChainOfThought(output.chainOfThought);
-      } else if (isRunAgentGenerationTokensProgressOutput(output)) {
-        setStreamedResponse(output.text);
-      }
-    }
-  }, [queryResource, lastNotification, query]);
-
-  const response = useMemo(() => {
-    if (resultResource) {
-      return resultResource.resource.text;
-    }
-    return streamedResponse;
-  }, [resultResource, streamedResponse]);
-
-  const chainOfThought = useMemo(() => {
-    if (resultResource && resultResource.resource.chainOfThought) {
-      return resultResource.resource.chainOfThought;
-    }
-    return streamedChainOfThought;
-  }, [resultResource, streamedChainOfThought]);
+  const childAgentId = queryResource?.resource?.childAgentId ?? null;
 
   const { agentConfiguration: childAgent } = useAgentConfiguration({
     workspaceId: owner.sId,
@@ -113,37 +117,87 @@ export function MCPRunAgentActionDetails({
   });
 
   const isBusy = useMemo(() => {
-    if (resultResource) {
-      return false;
-    }
-    return true;
+    return !resultResource;
   }, [resultResource]);
 
-  const isStreamingChainOfThought = useMemo(() => {
-    return isBusy && chainOfThought !== null && response === null;
-  }, [isBusy, chainOfThought, response]);
+  const actionName = childAgent?.name
+    ? `Run @${childAgent.name}${agentInteractions.length > 1 ? ` (${agentInteractions.length} queries)` : ""}`
+    : "Run Agent";
 
-  const isStreamingResponse = useMemo(() => {
-    return isBusy && response !== null && !resultResource;
-  }, [isBusy, response, resultResource]);
+  return (
+    <ActionDetailsWrapper
+      actionName={actionName}
+      defaultOpen={defaultOpen}
+      visual={
+        childAgent?.pictureUrl
+          ? () => (
+              <Avatar visual={childAgent.pictureUrl} size="sm" busy={isBusy} />
+            )
+          : RobotIcon
+      }
+    >
+      <div className="flex flex-col gap-6 pl-6 pt-4">
+        {agentInteractions.map(
+          (queryData: AgentInteractionData, index: number) => (
+            <div key={index} className="flex flex-col gap-4">
+              <AgentQueryItem
+                queryData={queryData}
+                index={index}
+                totalQueries={agentInteractions.length}
+                isDark={isDark}
+                owner={owner}
+              />
+              {agentInteractions.length > 1 &&
+                index < agentInteractions.length - 1 && (
+                  <div className="border-structure-200 border-b" />
+                )}
+            </div>
+          )
+        )}
+        {generatedFiles.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {generatedFiles.map((file) => (
+              <ToolGeneratedFileDetails
+                key={file.fileId}
+                resource={file}
+                icon={DocumentIcon}
+                owner={owner}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </ActionDetailsWrapper>
+  );
+}
 
-  const conversationUrl = useMemo(() => {
-    if (resultResource) {
-      return resultResource.resource.uri;
-    }
-    const output = lastNotification?.data.output;
-    if (isRunAgentProgressOutput(output)) {
-      return `/w/${owner.sId}/assistant/${output.conversationId}`;
-    }
-    return null;
-  }, [resultResource, lastNotification, owner.sId]);
+function AgentQueryItem({
+  queryData,
+  index,
+  totalQueries,
+  isDark,
+  owner,
+}: {
+  queryData: AgentInteractionData;
+  index: number;
+  totalQueries: number;
+  isDark: boolean;
+  owner: LightWorkspaceType;
+}) {
+  const isStreamingChainOfThought =
+    queryData.isStreaming &&
+    queryData.chainOfThought !== null &&
+    queryData.response === null;
+  const isStreamingResponse =
+    queryData.isStreaming && queryData.response !== null;
 
+  // Extract references for this specific query
   const references = useMemo(() => {
-    if (!resultResource?.resource.refs) {
+    if (!queryData.refs || Object.keys(queryData.refs).length === 0) {
       return {};
     }
     const markdownCitations: { [key: string]: MarkdownCitation } = {};
-    Object.entries(resultResource.resource.refs).forEach(([key, citation]) => {
+    Object.entries(queryData.refs).forEach(([key, citation]: [string, any]) => {
       const IconComponent = getCitationIcon(citation.provider, isDark);
       markdownCitations[key] = {
         title: citation.title,
@@ -153,14 +207,26 @@ export function MCPRunAgentActionDetails({
       };
     });
     return markdownCitations;
-  }, [resultResource, isDark]);
+  }, [queryData.refs, isDark]);
 
-  const updateActiveReferences = (doc: MarkdownCitation, index: number) => {
-    const existingIndex = activeReferences.find((r) => r.index === index);
+  // Create local active references for this query
+  const [localActiveReferences, setLocalActiveReferences] = useState<
+    { index: number; document: MarkdownCitation }[]
+  >([]);
+
+  const updateLocalActiveReferences = (
+    doc: MarkdownCitation,
+    index: number
+  ) => {
+    const existingIndex = localActiveReferences.find((r) => r.index === index);
     if (!existingIndex) {
-      setActiveReferences([...activeReferences, { index, document: doc }]);
+      setLocalActiveReferences([
+        ...localActiveReferences,
+        { index, document: doc },
+      ]);
     }
   };
+
   const additionalMarkdownPlugins: PluggableList = useMemo(
     () => [getCiteDirective()],
     []
@@ -172,124 +238,154 @@ export function MCPRunAgentActionDetails({
     }),
     []
   );
+
   return (
-    <ActionDetailsWrapper
-      actionName={childAgent?.name ? `Run @${childAgent.name}` : "Run Agent"}
-      defaultOpen={defaultOpen}
-      visual={
-        childAgent?.pictureUrl
-          ? () => (
-              <Avatar visual={childAgent.pictureUrl} size="sm" busy={isBusy} />
-            )
-          : RobotIcon
-      }
-    >
-      <div className="flex flex-col gap-4 pl-6 pt-4">
-        <div className="flex flex-col gap-4">
-          {query && childAgent && (
-            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-              <ContentMessage title="Query" variant="primary" size="lg">
-                <Markdown
-                  content={query}
-                  isStreaming={false}
-                  forcedTextSize="text-sm"
-                  textColor="text-muted-foreground"
-                  isLastMessage={false}
-                />
-              </ContentMessage>
+    <div className="flex flex-col gap-4">
+      {totalQueries > 1 && (
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <span>
+            Query {index + 1} of {totalQueries}
+          </span>
+          {queryData.status === "pending" && (
+            <span className="text-xs text-muted-foreground">(Pending)</span>
+          )}
+          {queryData.status === "running" && (
+            <span className="text-xs text-blue-600">(Running)</span>
+          )}
+          {queryData.status === "completed" && (
+            <span className="text-xs text-green-600">✓</span>
+          )}
+          {queryData.status === "failed" && (
+            <span className="text-xs text-red-600">✗</span>
+          )}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-4">
+        {queryData.query && (
+          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+            <ContentMessage title="Query" variant="primary" size="lg">
+              <Markdown
+                content={queryData.query}
+                isStreaming={false}
+                forcedTextSize="text-sm"
+                textColor="text-muted-foreground"
+                isLastMessage={false}
+              />
+            </ContentMessage>
+          </div>
+        )}
+
+        {queryData.error && (
+          <div className="text-sm font-normal text-red-600">
+            <ContentMessage title="Error" variant="primary" size="lg">
+              <div className="text-sm">{queryData.error}</div>
+            </ContentMessage>
+          </div>
+        )}
+
+        {/* Show loading state when query is running but no response yet */}
+        {queryData.status === "running" &&
+          !queryData.chainOfThought &&
+          !queryData.response &&
+          !queryData.error && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Spinner size="xs" variant="color" />
+              <span>Agent is processing...</span>
             </div>
           )}
-          {chainOfThought && childAgent && (
-            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-              <ContentMessage
-                title="Agent thoughts"
-                variant="primary"
-                size="lg"
+
+        {/* Show pending state */}
+        {queryData.status === "pending" && (
+          <div className="text-sm text-muted-foreground opacity-60">
+            <span>Waiting to start...</span>
+          </div>
+        )}
+
+        {queryData.chainOfThought && !queryData.error && (
+          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+            <ContentMessage title="Agent thoughts" variant="primary" size="lg">
+              <Markdown
+                content={queryData.chainOfThought}
+                isStreaming={isStreamingChainOfThought}
+                forcedTextSize="text-sm"
+                textColor="text-muted-foreground"
+                isLastMessage={false}
+              />
+            </ContentMessage>
+          </div>
+        )}
+
+        {queryData.response && !queryData.error && (
+          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+            <ContentMessage title="Response" variant="primary" size="lg">
+              <CitationsContext.Provider
+                value={{
+                  references,
+                  updateActiveReferences: updateLocalActiveReferences,
+                }}
               >
                 <Markdown
-                  content={chainOfThought}
-                  isStreaming={isStreamingChainOfThought}
+                  content={queryData.response}
+                  isStreaming={isStreamingResponse}
                   forcedTextSize="text-sm"
                   textColor="text-muted-foreground"
                   isLastMessage={false}
+                  additionalMarkdownPlugins={additionalMarkdownPlugins}
+                  additionalMarkdownComponents={additionalMarkdownComponents}
                 />
-              </ContentMessage>
-            </div>
-          )}
-          {response && childAgent && (
-            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-              <ContentMessage title="Response" variant="primary" size="lg">
-                <CitationsContext.Provider
-                  value={{
-                    references,
-                    updateActiveReferences,
-                  }}
-                >
-                  <Markdown
-                    content={response}
-                    isStreaming={isStreamingResponse}
-                    forcedTextSize="text-sm"
-                    textColor="text-muted-foreground"
-                    isLastMessage={false}
-                    additionalMarkdownPlugins={additionalMarkdownPlugins}
-                    additionalMarkdownComponents={additionalMarkdownComponents}
-                  />
-                </CitationsContext.Provider>
+              </CitationsContext.Provider>
 
-                {activeReferences.length > 0 && (
-                  <div className="mt-4">
-                    <CitationGrid variant="grid">
-                      {activeReferences
-                        .sort((a, b) => a.index - b.index)
-                        .map(({ document, index }) => (
-                          <Citation
-                            key={index}
-                            onClick={
-                              document.href
-                                ? () => window.open(document.href, "_blank")
-                                : undefined
-                            }
-                            tooltip={document.description || document.title}
-                          >
-                            <CitationIcons>
-                              <CitationIndex>{index}</CitationIndex>
-                              {document.icon}
-                            </CitationIcons>
-                            <CitationTitle>{document.title}</CitationTitle>
-                          </Citation>
-                        ))}
-                    </CitationGrid>
-                  </div>
-                )}
-              </ContentMessage>
-            </div>
-          )}
-          {generatedFiles.length > 0 && (
-            <div className="flex flex-col gap-2">
-              {generatedFiles.map((file) => (
-                <ToolGeneratedFileDetails
-                  key={file.fileId}
-                  resource={file}
-                  icon={DocumentIcon}
-                  owner={owner}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-        <div>
-          {conversationUrl && (
-            <Button
-              icon={ExternalLinkIcon}
-              label="View full conversation"
-              variant="outline"
-              onClick={() => window.open(conversationUrl, "_blank")}
-              size="xs"
-              className="!p-1"
-            />
-          )}
-        </div>
+              {localActiveReferences.length > 0 && (
+                <div className="mt-4">
+                  <CitationGrid variant="grid">
+                    {localActiveReferences
+                      .sort((a, b) => a.index - b.index)
+                      .map(({ document, index }) => (
+                        <Citation
+                          key={index}
+                          onClick={
+                            document.href
+                              ? () => window.open(document.href, "_blank")
+                              : undefined
+                          }
+                          tooltip={document.description || document.title}
+                        >
+                          <CitationIcons>
+                            <CitationIndex>{index}</CitationIndex>
+                            {document.icon}
+                          </CitationIcons>
+                          <CitationTitle>{document.title}</CitationTitle>
+                        </Citation>
+                      ))}
+                  </CitationGrid>
+                </div>
+              )}
+            </ContentMessage>
+          </div>
+        )}
       </div>
-    </ActionDetailsWrapper>
+
+      <div>
+        {queryData.conversationId && (
+          <Button
+            icon={ExternalLinkIcon}
+            label={
+              queryData.status === "completed"
+                ? "View full conversation"
+                : "View conversation in progress"
+            }
+            variant="outline"
+            onClick={() => {
+              window.open(
+                `${window.location.origin}/w/${owner.sId}/assistant/${queryData.conversationId}`
+              );
+            }}
+            size="xs"
+            className="!p-1"
+          />
+        )}
+      </div>
+    </div>
   );
 }

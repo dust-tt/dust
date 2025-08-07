@@ -39,7 +39,8 @@ import {
   isReasoningSuccessOutput,
   isResourceContentWithText,
   isRunAgentProgressOutput,
-  isRunAgentResultResourceType,
+  isRunAgentQueriesResourceType,
+  isRunAgentResultsResourceType,
   isSearchResultResourceType,
   isSqlQueryOutput,
   isTextContent,
@@ -71,9 +72,12 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   );
 
   const isExtract = props.action.output?.some(isExtractResultResourceType);
+
   const isRunAgent =
-    props.action.output?.some(isRunAgentResultResourceType) ||
+    props.action.output?.some(isRunAgentResultsResourceType) ||
+    props.action.output?.some(isRunAgentQueriesResourceType) ||
     isRunAgentProgressOutput(props.lastNotification?.data.output);
+
   const isAgentCreation = props.action.output?.some(
     isAgentCreationResultResourceType
   );

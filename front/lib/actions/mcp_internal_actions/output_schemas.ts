@@ -476,29 +476,6 @@ export const isBrowseResultResourceType = (
 
 // RunAgent results.
 
-export const RunAgentQueryResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY),
-  text: z.string(),
-  childAgentId: z.string(),
-  uri: z.literal(""),
-});
-
-export type RunAgentQueryResourceType = z.infer<
-  typeof RunAgentQueryResourceSchema
->;
-
-export const isRunAgentQueryResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: RunAgentQueryResourceType;
-} => {
-  return (
-    outputBlock.type === "resource" &&
-    RunAgentQueryResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
 // Agent creation results.
 
 export const AgentCreationResultResourceSchema = z.object({
@@ -539,38 +516,71 @@ export const isAgentCreationResultResourceType = (
   );
 };
 
-export const RunAgentResultResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT),
-  conversationId: z.string(),
+// Run agent schemas (supports multiple queries)
+export const RunAgentQueriesResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERIES),
+  queries: z.array(z.string()),
+  childAgentId: z.string(),
   text: z.string(),
-  chainOfThought: z.string().optional(),
-  uri: z.string(),
-  refs: z
-    .record(
-      z.string(),
-      z.object({
-        description: z.string().optional(),
-        href: z.string().optional(),
-        title: z.string(),
-        provider: z.string(),
-      })
-    )
-    .optional(),
+  uri: z.literal(""),
 });
 
-export type RunAgentResultResourceType = z.infer<
-  typeof RunAgentResultResourceSchema
+export type RunAgentQueriesResourceType = z.infer<
+  typeof RunAgentQueriesResourceSchema
 >;
 
-export const isRunAgentResultResourceType = (
+export const isRunAgentQueriesResourceType = (
   outputBlock: CallToolResult["content"][number]
 ): outputBlock is {
   type: "resource";
-  resource: RunAgentResultResourceType;
+  resource: RunAgentQueriesResourceType;
 } => {
   return (
     outputBlock.type === "resource" &&
-    RunAgentResultResourceSchema.safeParse(outputBlock.resource).success
+    RunAgentQueriesResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+export const RunAgentResultsResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULTS),
+  results: z.array(
+    z.object({
+      conversationId: z.string(),
+      query: z.string(),
+      text: z.string(),
+      chainOfThought: z.string().optional(),
+      uri: z.string(),
+      error: z.string().optional(),
+      refs: z
+        .record(
+          z.string(),
+          z.object({
+            description: z.string().optional(),
+            href: z.string().optional(),
+            title: z.string(),
+            provider: z.string(),
+          })
+        )
+        .optional(),
+    })
+  ),
+  text: z.string(),
+  uri: z.literal(""),
+});
+
+export type RunAgentResultsResourceType = z.infer<
+  typeof RunAgentResultsResourceSchema
+>;
+
+export const isRunAgentResultsResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: RunAgentResultsResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    RunAgentResultsResourceSchema.safeParse(outputBlock.resource).success
   );
 };
 
@@ -859,16 +869,37 @@ export function isRunAgentGenerationTokensProgressOutput(
   );
 }
 
+// Run agent progress notifications (supports multiple queries)
+const NotificationRunAgentProgressSchema = z.object({
+  type: z.literal("run_agent_progress"),
+  childAgentId: z.string(),
+  totalQueries: z.number(),
+  completedQueries: z.number(),
+  activeQueries: z.array(
+    z.object({
+      index: z.number(),
+      query: z.string(),
+      conversationId: z.string(),
+      status: z.enum(["pending", "running", "completed", "failed"]),
+      error: z.string().optional(),
+      text: z.string().optional(),
+      chainOfThought: z.string().optional(),
+      uri: z.string().optional(),
+    })
+  ),
+});
+
+type RunAgentProgressOutput = z.infer<
+  typeof NotificationRunAgentProgressSchema
+>;
+
 export function isRunAgentProgressOutput(
   output: ProgressNotificationOutput
-): output is
-  | RunAgentQueryProgressOutput
-  | RunAgentChainOfThoughtProgressOutput
-  | RunAgentGenerationTokensProgressOutput {
+): output is RunAgentProgressOutput {
   return (
-    isRunAgentQueryProgressOutput(output) ||
-    isRunAgentChainOfThoughtProgressOutput(output) ||
-    isRunAgentGenerationTokensProgressOutput(output)
+    output !== undefined &&
+    output.type === "run_agent_progress" &&
+    "totalQueries" in output
   );
 }
 
@@ -879,6 +910,7 @@ export const ProgressNotificationOutputSchema = z
     NotificationRunAgentContentSchema,
     NotificationRunAgentChainOfThoughtSchema,
     NotificationRunAgentGenerationTokensSchema,
+    NotificationRunAgentProgressSchema,
     NotificationTextContentSchema,
     NotificationToolApproveBubbleUpContentSchema,
   ])
