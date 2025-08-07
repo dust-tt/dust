@@ -31,6 +31,64 @@ interface AppTableData extends AppType {
   onClick?: () => void;
 }
 
+interface AppSelectionTableProps {
+  tableData: AppTableData[];
+  columns: ColumnDef<AppTableData>[];
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  rowSelection: RowSelectionState;
+  handleRowSelectionChange: (newSelection: RowSelectionState) => void;
+}
+
+function AppSelectionTable({
+  tableData,
+  columns,
+  searchQuery,
+  setSearchQuery,
+  rowSelection,
+  handleRowSelectionChange,
+}: AppSelectionTableProps) {
+  return (
+    <div className="flex flex-col">
+      <SearchInput
+        name="search"
+        placeholder="Search"
+        value={searchQuery}
+        onChange={setSearchQuery}
+      />
+      <DataTable
+        data={tableData}
+        columns={columns}
+        enableRowSelection
+        enableMultiRowSelection={false}
+        rowSelection={rowSelection}
+        setRowSelection={handleRowSelectionChange}
+        getRowId={(row, index) => index.toString()}
+        filter={searchQuery}
+        filterColumn="name"
+      />
+    </div>
+  );
+}
+
+interface AppMessageProps {
+  title: string;
+  children: string;
+}
+
+function AppMessage({ title, children }: AppMessageProps) {
+  return (
+    <ContentMessage
+      title={title}
+      icon={InformationCircleIcon}
+      variant="warning"
+      size="sm"
+    >
+      {children}
+    </ContentMessage>
+  );
+}
+
 interface DustAppSectionProps {
   owner: LightWorkspaceType;
   allowedSpaces: SpaceType[];
@@ -44,17 +102,33 @@ export function DustAppSection({ owner, allowedSpaces }: DustAppSectionProps) {
     name: "configuration.dustAppConfiguration",
   });
 
-  const [selectedSpace, setSelectedSpace] = useState<SpaceType | null>(
-    allowedSpaces[0] || null
-  );
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSpace, setSelectedSpace] = useState<SpaceType>(
+    () => allowedSpaces[0]
+  );
 
   const { apps, isAppsLoading } = useApps({
     owner,
-    space: selectedSpace || allowedSpaces[0],
-    disabled: !selectedSpace,
+    space: selectedSpace,
   });
+
+  useEffect(() => {
+    const configuredAppId = field.value?.appId;
+    if (!configuredAppId || isAppsLoading) {
+      return;
+    }
+
+    const appInCurrentSpace = apps.find((app) => app.sId === configuredAppId);
+    if (!appInCurrentSpace && selectedSpace) {
+      const currentIndex = allowedSpaces.findIndex(
+        (space) => space.sId === selectedSpace.sId
+      );
+      const nextSpace = allowedSpaces[currentIndex + 1];
+      if (nextSpace) {
+        setSelectedSpace(nextSpace);
+      }
+    }
+  }, [field.value?.appId, apps, isAppsLoading, selectedSpace, allowedSpaces]);
 
   const availableApps = useMemo(
     () =>
@@ -65,24 +139,19 @@ export function DustAppSection({ owner, allowedSpaces }: DustAppSectionProps) {
     [apps]
   );
 
-  useEffect(() => {
-    if (field.value && availableApps.length > 0) {
-      const selectedIndex = availableApps.findIndex(
-        (app) => app.sId === field.value.appId
-      );
-      if (selectedIndex >= 0) {
-        setRowSelection({ [selectedIndex]: true });
-      } else {
-        setRowSelection({});
-      }
-    } else {
-      setRowSelection({});
+  const rowSelection: RowSelectionState = useMemo(() => {
+    if (!field.value?.appId) {
+      return {};
     }
-  }, [field.value, availableApps]);
+
+    const selectedIndex = availableApps.findIndex(
+      (app) => app.sId === field.value.appId
+    );
+    return selectedIndex >= 0 ? { [selectedIndex]: true } : {};
+  }, [field.value?.appId, availableApps]);
 
   const handleRowSelectionChange = useCallback(
     (newSelection: RowSelectionState) => {
-      setRowSelection(newSelection);
       const selectedIndex = Object.keys(newSelection)[0];
       const selectedApp = availableApps[parseInt(selectedIndex, 10)];
       if (selectedApp) {
@@ -98,8 +167,20 @@ export function DustAppSection({ owner, allowedSpaces }: DustAppSectionProps) {
         field.onChange(config);
       }
     },
-    [availableApps, field, owner.sId]
+    [availableApps, owner.sId, field]
   );
+
+  const handleSpaceChange = useCallback(
+    (space: SpaceType) => {
+      setSelectedSpace(space);
+      field.onChange(null); // Clear selection when changing space
+    },
+    [field]
+  );
+
+  const handleSearchQueryChange = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
 
   const tableData: AppTableData[] = useMemo(
     () => availableApps.map((app) => ({ ...app })),
@@ -130,76 +211,6 @@ export function DustAppSection({ owner, allowedSpaces }: DustAppSectionProps) {
     ],
     []
   );
-
-  const renderContent = () => {
-    if (isAppsLoading) {
-      return (
-        <div className="flex h-full w-full items-center justify-center">
-          <Spinner />
-        </div>
-      );
-    }
-
-    if (allowedSpaces.length > 0 && selectedSpace && availableApps.length > 0) {
-      return (
-        <div className="flex flex-col">
-          <SearchInput
-            name="search"
-            placeholder="Search"
-            value={searchQuery}
-            onChange={setSearchQuery}
-          />
-          <DataTable
-            data={tableData}
-            columns={columns}
-            enableRowSelection
-            enableMultiRowSelection={false}
-            rowSelection={rowSelection}
-            setRowSelection={handleRowSelectionChange}
-            getRowId={(row, index) => index.toString()}
-            filter={searchQuery}
-            filterColumn="name"
-          />
-        </div>
-      );
-    }
-
-    let messageProps: {
-      title: string;
-      children: string;
-    };
-
-    if (allowedSpaces.length === 0) {
-      messageProps = {
-        title: "No spaces available",
-        children: "You need access to at least one space to select Dust apps.",
-      };
-    } else if (!selectedSpace) {
-      messageProps = {
-        title: "Select a space",
-        children: "Please select a space to view available Dust apps.",
-      };
-    } else {
-      messageProps = {
-        title: "No Dust apps available",
-        children:
-          apps.length > 0
-            ? "Dust apps without a description are not selectable. To make a Dust App selectable, edit it and add a description."
-            : "No Dust apps found in this space. Create a Dust app first.",
-      };
-    }
-
-    return (
-      <ContentMessage
-        title={messageProps.title}
-        icon={InformationCircleIcon}
-        variant="warning"
-        size="sm"
-      >
-        {messageProps.children}
-      </ContentMessage>
-    );
-  };
 
   return (
     <ConfigurationSectionContainer
@@ -238,11 +249,7 @@ export function DustAppSection({ owner, allowedSpaces }: DustAppSectionProps) {
               {allowedSpaces.map((space) => (
                 <DropdownMenuItem
                   key={space.sId}
-                  onClick={() => {
-                    setSelectedSpace(space);
-                    setRowSelection({});
-                    field.onChange(null);
-                  }}
+                  onClick={() => handleSpaceChange(space)}
                 >
                   {space.name}
                 </DropdownMenuItem>
@@ -250,7 +257,40 @@ export function DustAppSection({ owner, allowedSpaces }: DustAppSectionProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        {renderContent()}
+        {isAppsLoading ? (
+          <div className="flex h-full w-full items-center justify-center">
+            <Spinner />
+          </div>
+        ) : allowedSpaces.length > 0 &&
+          selectedSpace &&
+          availableApps.length > 0 ? (
+          <AppSelectionTable
+            tableData={tableData}
+            columns={columns}
+            searchQuery={searchQuery}
+            setSearchQuery={handleSearchQueryChange}
+            rowSelection={rowSelection}
+            handleRowSelectionChange={handleRowSelectionChange}
+          />
+        ) : (
+          <AppMessage
+            title={
+              allowedSpaces.length === 0
+                ? "No spaces available"
+                : !selectedSpace
+                  ? "Select a space"
+                  : "No Dust apps available"
+            }
+          >
+            {allowedSpaces.length === 0
+              ? "You need access to at least one space to select Dust apps."
+              : !selectedSpace
+                ? "Please select a space to view available Dust apps."
+                : apps.length > 0
+                  ? "Dust apps without a description are not selectable. To make a Dust App selectable, edit it and add a description."
+                  : "No Dust apps found in this space. Create a Dust app first."}
+          </AppMessage>
+        )}
       </div>
     </ConfigurationSectionContainer>
   );
