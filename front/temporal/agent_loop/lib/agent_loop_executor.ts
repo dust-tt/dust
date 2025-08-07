@@ -1,3 +1,4 @@
+import type { AgentLoopMaybeContinueAsync } from "@app/lib/actions/types";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type { ModelId } from "@app/types";
 import {
@@ -7,6 +8,8 @@ import {
 import type { RunAgentArgs } from "@app/types/assistant/agent_run";
 
 import type { AgentLoopActivities } from "./activity_interface";
+
+const TWO_MINUTES = 2 * 60 * 1000;
 
 /**
  * Core agent loop executor that works with both Temporal workflows and direct execution.
@@ -19,13 +22,21 @@ export async function executeAgentLoop(
   runAgentArgs: RunAgentArgs,
   activities: AgentLoopActivities,
   startStep: number
-): Promise<void> {
+): Promise<AgentLoopMaybeContinueAsync> {
   const runIds: string[] = [];
+  const startTime = Date.now();
 
   // Track step content IDs by function call ID for later use in actions.
   let functionCallStepContentIds: Record<string, ModelId> = {};
 
   for (let i = startStep; i < MAX_STEPS_USE_PER_RUN_LIMIT + 1; i++) {
+    // Auto-switch from sync to async mode after 2 minutes.
+    if (runAgentArgs.sync && Date.now() - startTime > TWO_MINUTES) {
+      return {
+        resumeAsyncFromStep: i,
+      };
+    }
+
     const result = await activities.runModelActivity({
       authType,
       runAgentArgs,
