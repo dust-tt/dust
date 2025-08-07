@@ -112,9 +112,7 @@ export function DataSourceViewTable() {
         header: "Name",
         cell: ({ row }) => (
           <DataTable.CellContent icon={row.original.icon}>
-            <Hoverable>
-              {row.original.title} - {row.original.id}
-            </Hoverable>
+            <Hoverable>{row.original.title}</Hoverable>
           </DataTable.CellContent>
         ),
         meta: {
@@ -134,7 +132,7 @@ export function DataSourceViewTable() {
   );
 
   const rows: RowData[] = spaceDataSourceViews.map((dsv) => ({
-    id: dsv.dataSource.sId,
+    id: dsv.sId,
     title: dsv.dataSource.name,
     onClick: () => setDataSourceViewEntry(dsv),
     dataSourceView: dsv,
