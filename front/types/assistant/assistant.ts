@@ -1454,6 +1454,7 @@ export type ReasoningModelConfigurationType = {
 export enum GLOBAL_AGENTS_SID {
   HELPER = "helper",
   DUST = "dust",
+  RESEARCH = "research",
   SLACK = "slack",
   GOOGLE_DRIVE = "google_drive",
   NOTION = "notion",

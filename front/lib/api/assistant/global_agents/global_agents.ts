@@ -30,6 +30,7 @@ import {
   _getO3GlobalAgent,
   _getO3MiniGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/openai";
+import { _getResearchGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/research";
 import {
   _getGithubGlobalAgent,
   _getGoogleDriveGlobalAgent,
@@ -252,6 +253,15 @@ function getGlobalAgent({
         searchMCPServerView,
       });
       break;
+    case GLOBAL_AGENTS_SID.RESEARCH:
+      agentConfiguration = _getResearchGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        agentRouterMCPServerView,
+        webSearchBrowseMCPServerView,
+        searchMCPServerView,
+      });
+      break;
     default:
       return null;
   }
@@ -361,6 +371,12 @@ export async function getGlobalAgents(
   if (!flags.includes("deepseek_r1_global_agent_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK_R1
+    );
+  }
+
+  if (!flags.includes("research_agent")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.RESEARCH
     );
   }
 
