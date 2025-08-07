@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import {
   createJQLFromSearchFilters,
+  processFieldsForJira,
   textToADF,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
 import type {
@@ -514,25 +515,7 @@ export async function createIssue(
   accessToken: string,
   issueData: z.infer<typeof JiraCreateIssueRequestSchema>
 ): Promise<Result<z.infer<typeof JiraIssueSchema>, JiraErrorResult>> {
-  // Process fields to convert strings to ADF for textarea fields only
-  const processedFields: typeof issueData & Record<string, unknown> = {
-    ...issueData,
-  };
-
-  // Convert description from string to ADF if it's a string
-  if (
-    processedFields.description &&
-    typeof processedFields.description === "string"
-  ) {
-    processedFields.description = textToADF(processedFields.description);
-  }
-
-  // Convert custom fields from string to ADF if they're strings
-  for (const [fieldKey, fieldValue] of Object.entries(processedFields)) {
-    if (fieldKey.startsWith("customfield_") && typeof fieldValue === "string") {
-      processedFields[fieldKey] = textToADF(fieldValue);
-    }
-  }
+  const processedFields = processFieldsForJira(issueData);
 
   const result = await jiraApiCall(
     {
@@ -567,25 +550,7 @@ export async function updateIssue(
 ): Promise<
   Result<{ issueKey: string; browseUrl?: string } | null, JiraErrorResult>
 > {
-  // Process fields to convert strings to ADF for textarea fields only
-  const processedFields: typeof updateData & Record<string, unknown> = {
-    ...updateData,
-  };
-
-  // Convert description from string to ADF if it's a string
-  if (
-    processedFields.description &&
-    typeof processedFields.description === "string"
-  ) {
-    processedFields.description = textToADF(processedFields.description);
-  }
-
-  // Convert custom fields from string to ADF if they're strings
-  for (const [fieldKey, fieldValue] of Object.entries(processedFields)) {
-    if (fieldKey.startsWith("customfield_") && typeof fieldValue === "string") {
-      processedFields[fieldKey] = textToADF(fieldValue);
-    }
-  }
+  const processedFields = processFieldsForJira(updateData);
 
   const result = await jiraApiCall(
     {
