@@ -8,7 +8,6 @@ import {
   CubeIcon,
   DataTable,
   PencilSquareIcon,
-  Spinner,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
@@ -23,6 +22,7 @@ import React, {
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
+import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
@@ -260,6 +260,7 @@ export const SpaceResourcesList = ({
   activeSeats,
 }: SpaceResourcesListProps) => {
   const { isDark } = useTheme();
+  const { takeOverLoading, releaseLoading } = useNavigationLoading();
   const [assistantSId, setAssistantSId] = useState<string | null>(null);
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
@@ -416,12 +417,20 @@ export const SpaceResourcesList = ({
     containerId: ACTION_BUTTONS_CONTAINER_ID,
   });
 
-  if (isSpaceDataSourceViewsLoading || isNewConnectorLoading) {
-    return (
-      <div className="mt-8 flex justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+  const isLoading = isSpaceDataSourceViewsLoading || isNewConnectorLoading;
+
+  // Take over navigation loading while data is loading
+  React.useEffect(() => {
+    if (isLoading) {
+      takeOverLoading();
+    } else {
+      releaseLoading();
+    }
+  }, [isLoading, takeOverLoading, releaseLoading]);
+
+  // Don't render anything while loading - let the navigation loader handle it
+  if (isLoading) {
+    return null;
   }
 
   const actionButtons = (

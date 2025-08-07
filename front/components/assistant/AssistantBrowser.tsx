@@ -27,6 +27,7 @@ import { useRouter } from "next/router";
 import React, { useCallback, useMemo, useState } from "react";
 
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
+import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -107,6 +108,7 @@ export function AssistantBrowser({
 
   const router = useRouter();
   const { createAgentButtonRef } = useWelcomeTourGuide();
+  const { startNavigation } = useNavigationLoading();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const { isDark } = useTheme();
   const [sortType, setSortType] = useState<
@@ -305,6 +307,7 @@ export function AssistantBrowser({
                   data-gtm-label="assistantCreationButton"
                   data-gtm-location="homepage"
                   size="sm"
+                  onClick={startNavigation}
                 />
               </div>
             )}
@@ -318,6 +321,7 @@ export function AssistantBrowser({
               data-gtm-label="assistantManagementButton"
               data-gtm-location="homepage"
               size="sm"
+              onClick={startNavigation}
             />
           </div>
         </div>

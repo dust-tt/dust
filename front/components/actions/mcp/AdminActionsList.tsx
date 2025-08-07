@@ -3,14 +3,15 @@ import {
   classNames,
   DataTable,
   EmptyCTA,
-  Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import * as React from "react";
 import { useMemo, useState } from "react";
 
 import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerDialog";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import {
   getMcpServerDisplayName,
@@ -93,6 +94,7 @@ export const AdminActionsList = ({
   const [defaultServerConfig, setDefaultServerConfig] = useState<
     DefaultRemoteMCPServerConfig | undefined
   >();
+  const { takeOverLoading, releaseLoading } = useNavigationLoading();
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: false,
@@ -116,6 +118,15 @@ export const AdminActionsList = ({
   const { portalToHeader } = useActionButtonsPortal({
     containerId: ACTION_BUTTONS_CONTAINER_ID,
   });
+
+  // Take over navigation loading while data is loading
+  React.useEffect(() => {
+    if (showLoader) {
+      takeOverLoading();
+    } else {
+      releaseLoading();
+    }
+  }, [showLoader, takeOverLoading, releaseLoading]);
 
   const onCreateRemoteMCPServer = (
     defaultServerConfig?: DefaultRemoteMCPServerConfig
@@ -288,16 +299,10 @@ export const AdminActionsList = ({
           />
         )}
 
-      {showLoader && (
-        <div className="mt-16 flex justify-center">
-          <Spinner />
-        </div>
-      )}
-
-      {!showLoader &&
-        (rows.length === 0 ? (
+      {!showLoader && (
+        rows.length === 0 ? (
           <EmptyCTA
-            message="You don’t have any tools yet."
+            message="You don't have any tools yet."
             action={
               <AddActionMenu
                 buttonVariant="outline"
@@ -317,7 +322,8 @@ export const AdminActionsList = ({
             filter={filter}
             filterColumn="name"
           />
-        ))}
+        )
+      )}
     </>
   );
 };

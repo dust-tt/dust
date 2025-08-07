@@ -1,10 +1,12 @@
 import { useRouter } from "next/router";
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 interface NavigationLoadingContextType {
   isLoading: boolean;
   setLoading: (loading: boolean) => void;
   startNavigation: () => void;
+  takeOverLoading: () => void;
+  releaseLoading: () => void;
 }
 
 const NavigationLoadingContext = React.createContext<
@@ -17,6 +19,7 @@ export function NavigationLoadingProvider({
   children: React.ReactNode;
 }) {
   const [isLoading, setIsLoading] = useState(false);
+  const isTakenOverRef = useRef(false);
   const router = useRouter();
 
   const setLoading = useCallback((loading: boolean) => {
@@ -25,15 +28,29 @@ export function NavigationLoadingProvider({
 
   const startNavigation = useCallback(() => {
     setIsLoading(true);
+    isTakenOverRef.current = false;
   }, []);
 
-  // Clear loading state when route change is complete
+  const takeOverLoading = useCallback(() => {
+    isTakenOverRef.current = true;
+    setIsLoading(true);
+  }, []);
+
+  const releaseLoading = useCallback(() => {
+    isTakenOverRef.current = false;
+    setIsLoading(false);
+  }, []);
+
+  // Clear loading state when route change is complete (unless taken over by a page)
   useEffect(() => {
     const handleRouteChangeComplete = () => {
-      setIsLoading(false);
+      if (!isTakenOverRef.current) {
+        setIsLoading(false);
+      }
     };
 
     const handleRouteChangeError = () => {
+      isTakenOverRef.current = false;
       setIsLoading(false);
     };
 
@@ -48,7 +65,7 @@ export function NavigationLoadingProvider({
 
   return (
     <NavigationLoadingContext.Provider
-      value={{ isLoading, setLoading, startNavigation }}
+      value={{ isLoading, setLoading, startNavigation, takeOverLoading, releaseLoading }}
     >
       {children}
     </NavigationLoadingContext.Provider>

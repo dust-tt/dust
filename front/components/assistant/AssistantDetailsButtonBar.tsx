@@ -17,6 +17,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
+import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
@@ -53,6 +54,7 @@ export function AssistantDetailsButtonBar({
     !isBuilder(owner);
 
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
 
   const { updateUserFavorite, isUpdatingFavorite } = useUpdateUserFavorite({
     owner,
@@ -102,6 +104,7 @@ export function AssistantDetailsButtonBar({
                   data-gtm-location="assistantDetails"
                   icon={ClipboardIcon}
                   onClick={async (e) => {
+                    startNavigation();
                     await router.push(
                       `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
                     );
@@ -162,6 +165,7 @@ export function AssistantDetailsButtonBar({
         size="sm"
         variant="outline"
         href={`/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`}
+        onClick={startNavigation}
       />
 
       {agentConfiguration.scope !== "global" &&
@@ -176,6 +180,7 @@ export function AssistantDetailsButtonBar({
             disabled={!canEditAssistant}
             variant="outline"
             icon={PencilSquareIcon}
+            onClick={canEditAssistant ? startNavigation : undefined}
           />
         )}
 
