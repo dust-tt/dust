@@ -89,6 +89,7 @@ export function AgentMessageActionsDrawer({
                           lastNotification={lastNotification}
                           defaultOpen={idx === 0 && step === "1"}
                           owner={owner}
+                          messageStatus={message.status}
                         />
                       </div>
                     );

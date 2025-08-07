@@ -9,6 +9,9 @@ import {
   isIncludeDataAction,
   isSearchAction,
 } from "@app/components/agent_builder/types";
+import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   AgentConfigurationType,
@@ -22,9 +25,14 @@ import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 function convertDataSourceConfigurations(
-  dataSourceConfigurations: DataSourceViewSelectionConfigurations,
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations | null,
   owner: WorkspaceType
 ) {
+  // TODO: fix type, it should not be null.
+  if (dataSourceConfigurations === null) {
+    return [];
+  }
+
   return Object.values(dataSourceConfigurations).map((config) => ({
     dataSourceViewId: config.dataSourceView.sId,
     workspaceId: owner.sId,
@@ -46,13 +54,35 @@ function convertDataSourceConfigurations(
   }));
 }
 
+function processTableSelection(
+  tablesConfigurations: DataSourceViewSelectionConfigurations | null,
+  owner: WorkspaceType
+): TableDataSourceConfiguration[] | null {
+  if (!tablesConfigurations || Object.keys(tablesConfigurations).length === 0) {
+    return null;
+  }
+
+  const tables = Object.values(tablesConfigurations).flatMap(
+    ({ dataSourceView, selectedResources }) => {
+      return selectedResources.map((resource) => ({
+        dataSourceViewId: dataSourceView.sId,
+        workspaceId: owner.sId,
+        tableId: getTableIdForContentNode(dataSourceView.dataSource, resource),
+      }));
+    }
+  );
+
+  return tables.length > 0 ? tables : null;
+}
+
 function convertSearchActionToMCPConfiguration(
   searchAction: SearchAgentBuilderAction,
   searchMCPServerView: MCPServerViewType,
   owner: WorkspaceType
 ): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
   const dataSources = convertDataSourceConfigurations(
-    searchAction.configuration.dataSourceConfigurations,
+    searchAction.configuration
+      .dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type,
     owner
   );
 
@@ -60,7 +90,7 @@ function convertSearchActionToMCPConfiguration(
     type: "mcp_server_configuration",
     mcpServerViewId: searchMCPServerView.sId,
     name: searchAction.name,
-    description: searchAction.description,
+    description: searchAction.description || null,
     dataSources,
     tables: null,
     childAgentId: null,
@@ -75,7 +105,7 @@ function convertSearchActionToMCPConfiguration(
 // Generic MCP server view finder
 function getMCPServerViewByName(
   mcpServerViews: MCPServerViewType[],
-  serverName: string
+  serverName: AutoInternalMCPServerNameType
 ): MCPServerViewType {
   const mcpServerView = mcpServerViews.find(
     (view) =>
@@ -101,7 +131,8 @@ function convertIncludeDataActionToMCPConfiguration(
   owner: WorkspaceType
 ): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
   const dataSources = convertDataSourceConfigurations(
-    includeDataAction.configuration.dataSourceConfigurations,
+    includeDataAction.configuration
+      .dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type,
     owner
   );
 
@@ -133,7 +164,8 @@ function convertExtractDataActionToMCPConfiguration(
   owner: WorkspaceType
 ): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
   const dataSources = convertDataSourceConfigurations(
-    extractDataAction.configuration.dataSourceConfigurations,
+    extractDataAction.configuration
+      .dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type,
     owner
   );
 
@@ -194,6 +226,40 @@ export async function submitAgentBuilderForm({
       actions: formData.actions.flatMap((action) => {
         if (action.type === "DATA_VISUALIZATION") {
           return [];
+        }
+
+        if (action.type === "MCP") {
+          return [
+            {
+              type: "mcp_server_configuration",
+              mcpServerViewId: action.configuration.mcpServerViewId,
+              name: action.name,
+              description: action.description,
+              dataSources:
+                action.configuration.dataSourceConfigurations !== null
+                  ? convertDataSourceConfigurations(
+                      action.configuration
+                        .dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type
+                      owner
+                    )
+                  : null,
+              tables:
+                action.configuration.tablesConfigurations !== null
+                  ? processTableSelection(
+                      action.configuration
+                        .tablesConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type
+                      owner
+                    )
+                  : null,
+              childAgentId: action.configuration.childAgentId,
+              reasoningModel: action.configuration.reasoningModel,
+              timeFrame: action.configuration.timeFrame,
+              jsonSchema: action.configuration.jsonSchema,
+              additionalConfiguration:
+                action.configuration.additionalConfiguration,
+              dustAppConfiguration: action.configuration.dustAppConfiguration,
+            },
+          ];
         }
 
         if (isSearchAction(action)) {

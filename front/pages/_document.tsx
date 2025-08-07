@@ -49,12 +49,34 @@ class MyDocument extends Document {
                  clientToken: '${process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN}',
                  applicationId: '5e9735e7-87c8-4093-b09f-49d708816bfd',
                  site: 'datadoghq.eu',
-                 service: 'front',
+                 service: '${process.env.NEXT_PUBLIC_DATADOG_SERVICE}-browser',
                  env: '${process.env.NODE_ENV === "production" ? "prod" : "dev"}',
                  version: '${process.env.NEXT_PUBLIC_COMMIT_HASH || ""}',
+                 allowedTracingUrls: [
+                  "https://dust.tt",
+                  "https://eu.dust.tt",
+                  "https://front-edge.dust.tt",
+                  "https://eu.front-edge.dust.tt",
+                 ],
+                 traceSampleRate: 5,
+                 traceContextInjection: 'sampled',
                  sessionSampleRate: 100,
-                 sessionReplaySampleRate: 1,
+                 sessionReplaySampleRate: 5,
                  defaultPrivacyLevel: 'mask',
+                 beforeSend: (event) => {
+                  if (event.type === 'action' && event.action && event.action.target && event.action.target.name && event.action.target.name.includes('@')) {
+                    const el = event._dd && event._dd.target; // Get the actual DOM element from Datadog's internal properties
+                    if (el) {
+                      var selector = el.tagName.toLowerCase();
+                      if (el.id) selector += '#' + el.id;
+                      if (el.className) selector += '.' + el.className.trim().replace(/\\s+/g, '.');
+                      event.action.target.name = selector;
+                    } else {
+                      event.action.target.name = '[redacted]';
+                    }
+                  }
+                  return true;
+                }
                });
              })
            `}

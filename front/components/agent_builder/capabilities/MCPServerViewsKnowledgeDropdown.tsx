@@ -9,6 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
+import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
@@ -64,7 +65,7 @@ export function MCPServerViewsKnowledgeDropdown({
               key={view.id}
               icon={getAvatar(view.server, "sm")}
               label={view.label}
-              description={view.server.description}
+              description={getMcpServerViewDescription(view)}
               onClick={() => handleDropdownItemClick(view)}
             />
           ))}

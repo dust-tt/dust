@@ -13,7 +13,7 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { SUGGEST_AGENTS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
@@ -66,6 +66,12 @@ const globalAgentGuidelines = `
   Respond in a helpful, honest, and engaging way. 
   Unless instructed to be brief, present answers with clear structure and formatting to improve readability: use headings, bullet points, and examples when appropriate.
   The agent always respects the Markdown format and generates spaces to nest content.
+  
+  IMPORTANT: Always provide citations for any information retrieved from documents or external sources. Citations must appear immediately after the relevant information, not grouped at the end. This ensures transparency and allows users to verify the information.
+  
+  Good citation examples:
+  ✓ "The Q3 revenue increased by 25% :cite[abc] while operational costs remained stable."
+  ✓ "According to the latest report :cite[xyz], three key factors contributed to growth: market expansion :cite[xyz], product innovation :cite[def], and strategic partnerships :cite[ghi]."
 
   Only use visualization if it is strictly necessary to visualize data or if it was explicitly requested by the user.
   Do not use visualization if Markdown is sufficient.
@@ -157,7 +163,6 @@ function _getDefaultWebActionsForGlobalAgent({
       // a legacy agent (see isLegacyAgent) and being capped to 1 action.
       description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
       mcpServerViewId: webSearchBrowseMCPServerView.sId,
-      mcpServerName: webSearchBrowseMCPServerView.toJSON().server.name,
       internalMCPServerId: webSearchBrowseMCPServerView.internalMCPServerId,
       dataSources: null,
       tables: null,
@@ -188,7 +193,6 @@ function _getAgentRouterToolsConfiguration(
       description: DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
       mcpServerViewId: mcpServerView.sId,
       internalMCPServerId,
-      mcpServerName: mcpServerView.toJSON().server.name,
       dataSources: null,
       tables: null,
       childAgentId: null,
@@ -260,7 +264,6 @@ function _getHelperGlobalAgent({
       name: "search_dust_docs",
       description: "The documentation of the Dust platform.",
       mcpServerViewId: searchMCPServerView.sId,
-      mcpServerName: searchMCPServerView.toJSON().server.name,
       internalMCPServerId: searchMCPServerView.internalMCPServerId,
       dataSources: [
         {
@@ -290,7 +293,7 @@ function _getHelperGlobalAgent({
     ..._getAgentRouterToolsConfiguration(
       GLOBAL_AGENTS_SID.HELPER,
       agentRouterMCPServerView,
-      internalMCPServerNameToSId({
+      autoInternalMCPServerNameToSId({
         name: "agent_router",
         workspaceId: owner.id,
       })
@@ -1375,7 +1378,6 @@ function _getManagedDataSourceAgent(
       name: "search_data_sources",
       description: `The user's ${connectorProvider} data source.`,
       mcpServerViewId: searchMCPServerView.sId,
-      mcpServerName: searchMCPServerView.toJSON().server.name,
       internalMCPServerId: searchMCPServerView.internalMCPServerId,
       dataSources: filteredDataSourceViews.map((dsView) => ({
         dataSourceViewId: dsView.sId,
@@ -1676,7 +1678,6 @@ The agent should not provide additional information or content that the user did
       description: "The user's entire workspace data sources",
       mcpServerViewId: searchMCPServerView.sId,
       internalMCPServerId: searchMCPServerView.internalMCPServerId,
-      mcpServerName: searchMCPServerView.toJSON().server.name,
       dataSources: dataSourceViews.map((dsView) => ({
         dataSourceViewId: dsView.sId,
         workspaceId: preFetchedDataSources.workspaceId,
@@ -1713,7 +1714,6 @@ The agent should not provide additional information or content that the user did
           name: "hidden_dust_search_" + dsView.dataSource.name,
           description: `The user's ${dsView.dataSource.connectorProvider} data source.`,
           mcpServerViewId: searchMCPServerView.sId,
-          mcpServerName: searchMCPServerView.toJSON().server.name,
           internalMCPServerId: searchMCPServerView.internalMCPServerId,
           dataSources: [
             {
@@ -1742,7 +1742,7 @@ The agent should not provide additional information or content that the user did
     ..._getAgentRouterToolsConfiguration(
       GLOBAL_AGENTS_SID.DUST,
       agentRouterMCPServerView,
-      internalMCPServerNameToSId({
+      autoInternalMCPServerNameToSId({
         name: "agent_router",
         workspaceId: owner.id,
       })

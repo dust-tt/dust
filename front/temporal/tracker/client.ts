@@ -1,6 +1,6 @@
 import type { WorkflowHandle } from "@temporalio/client";
 
-import { getTemporalClient } from "@app/lib/temporal";
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import {
   RUN_QUEUE_NAME,
@@ -27,7 +27,7 @@ export async function launchTrackersGenerationWorkflow({
   documentHash: string;
   dataSourceConnectorProvider: ConnectorProvider | null;
 }) {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
 
   await client.workflow.signalWithStart(trackersGenerationWorkflow, {
     args: [
@@ -47,7 +47,7 @@ export async function launchTrackersGenerationWorkflow({
 export async function launchTrackerNotificationWorkflow(
   signaledTrackerIds: TrackerIdWorkspaceId[] = []
 ) {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
   await client.workflow.signalWithStart(trackersNotificationsWorkflow, {
     args: [],
     taskQueue: TRACKER_NOTIFICATION_QUEUE_NAME,
@@ -59,7 +59,7 @@ export async function launchTrackerNotificationWorkflow(
 }
 
 export async function stopTrackerNotificationWorkflow() {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
 
   try {
     const handle: WorkflowHandle<typeof trackersNotificationsWorkflow> =

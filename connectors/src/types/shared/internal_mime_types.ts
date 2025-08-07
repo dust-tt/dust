@@ -55,7 +55,7 @@ function generateMimeTypes<
 export const INTERNAL_MIME_TYPES = {
   CONFLUENCE: generateMimeTypes({
     provider: "confluence",
-    resourceTypes: ["SPACE", "PAGE"],
+    resourceTypes: ["FOLDER", "PAGE", "SPACE"],
   }),
   GITHUB: generateMimeTypes({
     provider: "github",

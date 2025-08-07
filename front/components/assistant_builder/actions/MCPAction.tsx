@@ -344,7 +344,7 @@ export function MCPAction({
           <ToolsList
             owner={owner}
             mcpServerView={selectedMCPServerView}
-            forcedCanUpdate={false}
+            disableUpdates={true}
           />
         </ConfigurationSectionContainer>
       )}

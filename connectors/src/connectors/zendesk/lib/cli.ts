@@ -45,8 +45,9 @@ import type {
   ZendeskGetRetentionPeriodResponseType,
   ZendeskOrganizationTagResponseType,
 } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
 
-function getOrganizationTagsArgs(args: ZendeskCommandType["args"]) {
+function getTagsArgs(args: ZendeskCommandType["args"]) {
   const tag = args.tag;
   if (!tag) {
     throw new Error("Missing --tag argument");
@@ -81,7 +82,7 @@ async function checkTicketShouldBeSynced(
   logger: Logger
 ) {
   if (!ticket) {
-    return false;
+    return { shouldSync: false, reason: "Ticket not found" };
   }
 
   let organizationTags: string[] = [];
@@ -108,6 +109,7 @@ async function checkTicketShouldBeSynced(
   return shouldSyncTicket(ticket, configuration, {
     brandId,
     organizationTags,
+    ticketTags: ticket.tags,
   });
 }
 
@@ -231,7 +233,10 @@ export const zendesk = async ({
         } catch (e) {
           return {
             ticket: null,
-            shouldSyncTicket: false,
+            shouldSyncTicket: {
+              shouldSync: false,
+              reason: `Error getting ticket metadata: ${normalizeError(e).message}`,
+            },
             isTicketOnDb: false,
           };
         }
@@ -267,25 +272,27 @@ export const zendesk = async ({
       }
 
       const brandId = args.brandId ?? null;
-      if (!brandId) {
-        throw new Error(`Missing --brandId argument`);
-      }
       const ticketId = args.ticketId ?? null;
       if (!ticketId) {
         throw new Error(`Missing --ticketId argument`);
       }
-      const ticketOnDb = await ZendeskTicketResource.fetchByTicketId({
-        connectorId: connector.id,
-        brandId,
-        ticketId,
-      });
 
-      const brandSubdomain = await getZendeskBrandSubdomain({
-        connectorId: connector.id,
-        brandId,
-        subdomain,
-        accessToken,
-      });
+      let ticketOnDb = null;
+      let brandSubdomain = subdomain;
+
+      if (brandId) {
+        ticketOnDb = await ZendeskTicketResource.fetchByTicketId({
+          connectorId: connector.id,
+          brandId,
+          ticketId,
+        });
+        brandSubdomain = await getZendeskBrandSubdomain({
+          connectorId: connector.id,
+          brandId,
+          subdomain,
+          accessToken,
+        });
+      }
 
       const ticket = await fetchZendeskTicket({
         accessToken,
@@ -296,7 +303,7 @@ export const zendesk = async ({
       const shouldSyncTicket = await checkTicketShouldBeSynced(
         ticket,
         configuration,
-        { brandId, accessToken, brandSubdomain },
+        { brandId: brandId ?? undefined, accessToken, brandSubdomain },
         logger
       );
 
@@ -479,7 +486,7 @@ export const zendesk = async ({
       return { success: true };
     }
     case "add-organization-tag": {
-      const { tag, include, exclude } = getOrganizationTagsArgs(args);
+      const { tag, include, exclude } = getTagsArgs(args);
 
       const { wasAdded, message } = await configuration.addOrganizationTag({
         tag,
@@ -490,7 +497,7 @@ export const zendesk = async ({
       return { success: true, message };
     }
     case "remove-organization-tag": {
-      const { tag, include, exclude } = getOrganizationTagsArgs(args);
+      const { tag, include, exclude } = getTagsArgs(args);
 
       const { wasRemoved, message } = await configuration.removeOrganizationTag(
         {
@@ -501,6 +508,31 @@ export const zendesk = async ({
       logger.info({ wasRemoved, tag, include, exclude }, message);
 
       return { success: true, message };
+    }
+    case "add-ticket-tag": {
+      const { tag, include, exclude } = getTagsArgs(args);
+
+      const { wasAdded, message } = await configuration.addTicketTag({
+        tag,
+        includeOrExclude: include ? "include" : "exclude",
+      });
+      logger.info({ wasAdded, tag, include, exclude }, message);
+
+      return { success: true, message };
+    }
+    case "remove-ticket-tag": {
+      const { tag, include, exclude } = getTagsArgs(args);
+
+      const { wasRemoved, message } = await configuration.removeTicketTag({
+        tag,
+        includeOrExclude: include ? "include" : "exclude",
+      });
+      logger.info({ wasRemoved, tag, include, exclude }, message);
+
+      return { success: true, message };
+    }
+    default: {
+      throw new Error(`Unknown command: ${command}`);
     }
   }
 };

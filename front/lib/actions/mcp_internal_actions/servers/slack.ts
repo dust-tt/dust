@@ -14,7 +14,6 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
-  getMcpServerIdFromContext,
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -99,10 +98,7 @@ function isSlackTokenRevoked(error: unknown): boolean {
   );
 }
 
-function makeSlackTokenRevokedError(
-  agentLoopContext?: AgentLoopContextType
-): CallToolResult {
-  const mcpServerId = getMcpServerIdFromContext(agentLoopContext);
+function makeSlackTokenRevokedError(): CallToolResult {
   return {
     isError: true,
     content: [
@@ -110,8 +106,7 @@ function makeSlackTokenRevokedError(
         type: "text" as const,
         text: JSON.stringify({
           __dust_auth_required: {
-            mcpServerId,
-            provider: "slack",
+            provider: serverInfo.authorization?.provider,
           },
         }),
       },
@@ -346,7 +341,7 @@ const createServer = (
         }
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
-          return makeSlackTokenRevokedError(agentLoopContext);
+          return makeSlackTokenRevokedError();
         }
         return makeMCPToolTextError(`Error searching messages: ${error}`);
       }
@@ -476,7 +471,7 @@ const createServer = (
         }
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
-          return makeSlackTokenRevokedError(agentLoopContext);
+          return makeSlackTokenRevokedError();
         }
         return makeMCPToolTextError(`Error listing threads: ${error}`);
       }
@@ -538,7 +533,7 @@ const createServer = (
         });
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
-          return makeSlackTokenRevokedError(agentLoopContext);
+          return makeSlackTokenRevokedError();
         }
         return makeMCPToolTextError(`Error posting message: ${error}`);
       }
@@ -614,7 +609,7 @@ const createServer = (
         });
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
-          return makeSlackTokenRevokedError(agentLoopContext);
+          return makeSlackTokenRevokedError();
         }
         return makeMCPToolTextError(`Error listing users: ${error}`);
       }
@@ -689,7 +684,7 @@ const createServer = (
         });
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
-          return makeSlackTokenRevokedError(agentLoopContext);
+          return makeSlackTokenRevokedError();
         }
         return makeMCPToolTextError(`Error listing channels: ${error}`);
       }

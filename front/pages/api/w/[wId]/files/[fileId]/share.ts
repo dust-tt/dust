@@ -8,18 +8,18 @@ import { isFileUsingConversationFiles } from "@app/lib/files";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { isInteractiveContentType } from "@app/types";
+import type { FileShareScope, WithAPIErrorResponse } from "@app/types";
+import { fileShareScopeSchema } from "@app/types";
 
 const ShareFileRequestBodySchema = z.object({
-  isShared: z.boolean(),
+  shareScope: fileShareScopeSchema,
 });
 
-export interface ShareFileResponseBody {
-  isShared: boolean;
-  sharedAt: number | null;
-  shareUrl: string | null;
-}
+export type ShareFileResponseBody = {
+  scope: FileShareScope;
+  sharedAt: Date;
+  shareUrl: string;
+};
 
 async function handler(
   req: NextApiRequest,
@@ -68,11 +68,8 @@ async function handler(
     }
   }
 
-  // Only allow sharing of conversation files with interactive content.
-  if (
-    file.useCase !== "conversation" ||
-    !isInteractiveContentType(file.contentType)
-  ) {
+  // Only allow sharing interactive files.
+  if (!file.isInteractive) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -95,11 +92,10 @@ async function handler(
         });
       }
 
-      const { isShared } = parseResult.data;
+      const { shareScope } = parseResult.data;
 
-      // For now, we only allow public sharing of interactive files that don't use conversation's
-      // files. Those should not be shared publicly.
-      if (isShared) {
+      // For workspace/public sharing, check if file uses conversation files.
+      if (shareScope !== "conversation_participants") {
         const fileContent = await getFileContent(auth, file, "original");
         if (!fileContent) {
           return apiError(req, res, {
@@ -123,25 +119,36 @@ async function handler(
         }
       }
 
-      await file.setIsShared(isShared);
+      await file.setShareScope(auth, shareScope);
 
-      const shareUrl = file.getShareUrl(auth);
+      const shareInfo = await file.getShareInfo();
+      if (!shareInfo) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "file_not_found",
+            message: "File not found.",
+          },
+        });
+      }
 
-      return res.status(200).json({
-        isShared,
-        sharedAt: file.sharedAtMs,
-        shareUrl,
-      });
+      return res.status(200).json(shareInfo);
     }
 
     case "GET": {
-      const shareUrl = file.getShareUrl(auth);
+      const shareInfo = await file.getShareInfo();
 
-      return res.status(200).json({
-        isShared: file.isShared,
-        sharedAt: file.sharedAtMs,
-        shareUrl,
-      });
+      if (!shareInfo) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "file_not_found",
+            message: "File not found.",
+          },
+        });
+      }
+
+      return res.status(200).json(shareInfo);
     }
 
     default:

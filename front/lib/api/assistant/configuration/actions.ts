@@ -18,8 +18,8 @@ import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/r
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType, Result } from "@app/types";
 import type { ReasoningModelConfigurationType } from "@app/types";
@@ -38,7 +38,7 @@ export async function createAgentActionConfiguration(
 
   assert(isServerSideMCPServerConfiguration(action));
 
-  return frontSequelize.transaction(async (t) => {
+  return withTransaction(async (t) => {
     const mcpServerView = await MCPServerViewResource.fetchById(
       auth,
       action.mcpServerViewId
@@ -106,7 +106,6 @@ export async function createAgentActionConfiguration(
       name: action.name,
       description: action.description,
       mcpServerViewId: action.mcpServerViewId,
-      mcpServerName: action.mcpServerName,
       internalMCPServerId: action.internalMCPServerId,
       dataSources: action.dataSources,
       tables: action.tables,

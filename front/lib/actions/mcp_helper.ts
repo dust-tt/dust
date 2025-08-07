@@ -1,6 +1,9 @@
 import type { AgentBuilderAction } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import type {
+  AutoInternalMCPServerNameType,
+  InternalMCPServerNameType,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
@@ -42,11 +45,24 @@ export const getServerTypeAndIdFromSId = (
   }
 };
 
-export const internalMCPServerNameToSId = ({
+export const internalMCPServerNameToFirstId = ({
   name,
   workspaceId,
 }: {
   name: InternalMCPServerNameType;
+  workspaceId: ModelId;
+}): string => {
+  return makeSId("internal_mcp_server", {
+    id: INTERNAL_MCP_SERVERS[name].id,
+    workspaceId,
+  });
+};
+
+export const autoInternalMCPServerNameToSId = ({
+  name,
+  workspaceId,
+}: {
+  name: AutoInternalMCPServerNameType;
   workspaceId: ModelId;
 }): string => {
   return makeSId("internal_mcp_server", {
@@ -98,10 +114,17 @@ export function isRemoteMCPServerType(
   return serverType === "remote";
 }
 
+export function getMcpServerViewDescription(view: MCPServerViewType): string {
+  return view.description ?? view.server.description;
+}
+
 export function getMcpServerViewDisplayName(
   view: MCPServerViewType,
   action?: AssistantBuilderMCPConfiguration | AgentBuilderAction
 ) {
+  if (view.name) {
+    return asDisplayName(view.name);
+  }
   return getMcpServerDisplayName(view.server, action);
 }
 

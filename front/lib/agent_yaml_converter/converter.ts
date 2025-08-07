@@ -3,11 +3,11 @@ import { z } from "zod";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ACTION_TYPE_TO_MCP_SERVER_MAP } from "@app/components/agent_builder/types";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { Result } from "@app/types";
+import type { DataSourceViewSelectionConfigurations, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -147,7 +147,8 @@ export class AgentYAMLConverter {
               type: "SEARCH",
               configuration: {
                 data_sources: this.convertDataSourceConfigurations(
-                  action.configuration.dataSourceConfigurations
+                  action.configuration
+                    .dataSourceConfigurations as DataSourceViewSelectionConfigurations // TODO fix type
                 ),
               },
             });
@@ -167,7 +168,8 @@ export class AgentYAMLConverter {
               type: "INCLUDE_DATA",
               configuration: {
                 data_sources: this.convertDataSourceConfigurations(
-                  action.configuration.dataSourceConfigurations
+                  action.configuration
+                    .dataSourceConfigurations as DataSourceViewSelectionConfigurations // TODO fix type
                 ),
                 time_frame: action.configuration.timeFrame,
               },
@@ -180,7 +182,8 @@ export class AgentYAMLConverter {
               type: "EXTRACT_DATA",
               configuration: {
                 data_sources: this.convertDataSourceConfigurations(
-                  action.configuration.dataSourceConfigurations
+                  action.configuration
+                    .dataSourceConfigurations as DataSourceViewSelectionConfigurations // TODO fix type
                 ),
                 time_frame: action.configuration.timeFrame,
                 json_schema: action.configuration.jsonSchema,
@@ -194,7 +197,8 @@ export class AgentYAMLConverter {
               type: "QUERY_TABLES",
               configuration: {
                 data_sources: this.convertDataSourceConfigurations(
-                  action.configuration.dataSourceConfigurations
+                  action.configuration
+                    .dataSourceConfigurations as DataSourceViewSelectionConfigurations // TODO fix type
                 ),
                 time_frame: action.configuration.timeFrame,
               },
@@ -289,7 +293,7 @@ export class AgentYAMLConverter {
 
   private static getMCPServerName(
     actionType: string
-  ): InternalMCPServerNameType | null {
+  ): AutoInternalMCPServerNameType | null {
     return (
       ACTION_TYPE_TO_MCP_SERVER_MAP[
         actionType as keyof typeof ACTION_TYPE_TO_MCP_SERVER_MAP

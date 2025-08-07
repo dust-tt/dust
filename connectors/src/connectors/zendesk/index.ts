@@ -59,6 +59,12 @@ const SYNC_UNRESOLVED_TICKETS_CONFIG_KEY =
   "zendeskSyncUnresolvedTicketsEnabled";
 const HIDE_CUSTOMER_DETAILS_CONFIG_KEY = "zendeskHideCustomerDetails";
 export const RETENTION_PERIOD_CONFIG_KEY = "zendeskRetentionPeriodDays";
+const TICKET_TAGS_TO_INCLUDE_CONFIG_KEY = "zendeskTicketTagsToInclude";
+const TICKET_TAGS_TO_EXCLUDE_CONFIG_KEY = "zendeskTicketTagsToExclude";
+const ORGANIZATION_TAGS_TO_INCLUDE_CONFIG_KEY =
+  "zendeskOrganizationTagsToInclude";
+const ORGANIZATION_TAGS_TO_EXCLUDE_CONFIG_KEY =
+  "zendeskOrganizationTagsToExclude";
 const MAX_RETENTION_DAYS = 365;
 const DEFAULT_RETENTION_DAYS = 180;
 
@@ -99,6 +105,8 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         hideCustomerDetails: false,
         organizationTagsToInclude: null,
         organizationTagsToExclude: null,
+        ticketTagsToInclude: null,
+        ticketTagsToExclude: null,
       }
     );
     const loggerArgs = {
@@ -634,6 +642,54 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         }
         return new Ok(undefined);
       }
+      case TICKET_TAGS_TO_INCLUDE_CONFIG_KEY: {
+        const tags = configValue.trim() === "" ? null : JSON.parse(configValue);
+        if (tags !== null && !Array.isArray(tags)) {
+          return new Err(
+            new Error("Ticket tags to include must be an array or empty.")
+          );
+        }
+        await zendeskConfiguration.update({
+          ticketTagsToInclude: tags,
+        });
+        return new Ok(undefined);
+      }
+      case TICKET_TAGS_TO_EXCLUDE_CONFIG_KEY: {
+        const tags = configValue.trim() === "" ? null : JSON.parse(configValue);
+        if (tags !== null && !Array.isArray(tags)) {
+          return new Err(
+            new Error("Ticket tags to exclude must be an array or empty.")
+          );
+        }
+        await zendeskConfiguration.update({
+          ticketTagsToExclude: tags,
+        });
+        return new Ok(undefined);
+      }
+      case ORGANIZATION_TAGS_TO_INCLUDE_CONFIG_KEY: {
+        const tags = configValue.trim() === "" ? null : JSON.parse(configValue);
+        if (tags !== null && !Array.isArray(tags)) {
+          return new Err(
+            new Error("Organization tags to include must be an array or empty.")
+          );
+        }
+        await zendeskConfiguration.update({
+          organizationTagsToInclude: tags,
+        });
+        return new Ok(undefined);
+      }
+      case ORGANIZATION_TAGS_TO_EXCLUDE_CONFIG_KEY: {
+        const tags = configValue.trim() === "" ? null : JSON.parse(configValue);
+        if (tags !== null && !Array.isArray(tags)) {
+          return new Err(
+            new Error("Organization tags to exclude must be an array or empty.")
+          );
+        }
+        await zendeskConfiguration.update({
+          organizationTagsToExclude: tags,
+        });
+        return new Ok(undefined);
+      }
       default: {
         return new Err(new Error(`Invalid config key ${configKey}`));
       }
@@ -668,6 +724,34 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       }
       case RETENTION_PERIOD_CONFIG_KEY: {
         return new Ok(zendeskConfiguration.retentionPeriodDays.toString());
+      }
+      case TICKET_TAGS_TO_INCLUDE_CONFIG_KEY: {
+        return new Ok(
+          zendeskConfiguration.ticketTagsToInclude
+            ? JSON.stringify(zendeskConfiguration.ticketTagsToInclude)
+            : ""
+        );
+      }
+      case TICKET_TAGS_TO_EXCLUDE_CONFIG_KEY: {
+        return new Ok(
+          zendeskConfiguration.ticketTagsToExclude
+            ? JSON.stringify(zendeskConfiguration.ticketTagsToExclude)
+            : ""
+        );
+      }
+      case ORGANIZATION_TAGS_TO_INCLUDE_CONFIG_KEY: {
+        return new Ok(
+          zendeskConfiguration.organizationTagsToInclude
+            ? JSON.stringify(zendeskConfiguration.organizationTagsToInclude)
+            : ""
+        );
+      }
+      case ORGANIZATION_TAGS_TO_EXCLUDE_CONFIG_KEY: {
+        return new Ok(
+          zendeskConfiguration.organizationTagsToExclude
+            ? JSON.stringify(zendeskConfiguration.organizationTagsToExclude)
+            : ""
+        );
       }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));

@@ -1,4 +1,4 @@
-import { describe, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
@@ -9,7 +9,6 @@ import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { itInTransaction } from "@app/tests/utils/utils";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WhitelistableFeature } from "@app/types";
 import type { PlanType } from "@app/types";
@@ -17,7 +16,7 @@ import type { PlanType } from "@app/types";
 import handler from "./available";
 
 describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
-  itInTransaction("returns available servers for regular user", async (t) => {
+  it("returns available servers for regular user", async () => {
     // Create mock request
     const { req, res, workspace, globalGroup } =
       await createPrivateApiMockRequest({
@@ -25,9 +24,9 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
         role: "user",
       });
     // Create workspace and space
-    const space = await SpaceFactory.regular(workspace, t);
+    const space = await SpaceFactory.regular(workspace);
     await GroupSpaceFactory.associate(space, globalGroup);
-    await SpaceFactory.system(workspace, t);
+    await SpaceFactory.system(workspace);
 
     // Get auth
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -62,8 +61,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
       {
         name: "primitive_types_debugger",
         useCase: null,
-      },
-      t
+      }
     );
 
     const remoteServer = await RemoteMCPServerFactory.create(workspace);
@@ -73,7 +71,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
 
     // Create another server in another workspace
     const workspace2 = await WorkspaceFactory.basic();
-    await SpaceFactory.system(workspace2, t);
+    await SpaceFactory.system(workspace2);
     await RemoteMCPServerFactory.create(workspace2);
 
     // Add query params

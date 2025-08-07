@@ -1,19 +1,18 @@
-import { describe, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
 
 describe("GET /api/w/[wId]/spaces/[spaceId]/mcp_views", () => {
-  itInTransaction("returns MCP servers views", async (t) => {
+  it("returns MCP servers views", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       role: "admin",
     });
 
     // Create a system space
-    const systemSpace = await SpaceFactory.system(workspace, t);
+    const systemSpace = await SpaceFactory.system(workspace);
     req.query.spaceId = systemSpace.sId;
 
     await handler(req, res);

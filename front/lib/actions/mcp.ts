@@ -24,7 +24,6 @@ import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_sche
 import {
   hideFileFromActionOutput,
   rewriteContentForModel,
-  validateToolInputs,
 } from "@app/lib/actions/mcp_utils";
 import type {
   ActionGeneratedFileType,
@@ -55,10 +54,9 @@ import type {
   ModelConfigurationType,
   ModelId,
   ReasoningModelConfigurationType,
-  Result,
   TimeFrame,
 } from "@app/types";
-import { normalizeError, Ok, removeNulls } from "@app/types";
+import { removeNulls } from "@app/types";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;
@@ -68,7 +66,6 @@ export type BaseMCPServerConfigurationType = {
   type: "mcp_server_configuration";
 
   name: string;
-  mcpServerName: string | null;
 
   description: string | null;
   icon?: CustomServerIconType | InternalAllowedIconType;
@@ -152,6 +149,13 @@ export type MCPApproveExecutionEvent = {
   metadata: MCPValidationMetadataType;
 };
 
+export type MCPExecutionState =
+  | "allowed_implicitly"
+  | "allowed_explicitly"
+  | "pending"
+  | "timeout"
+  | "denied";
+
 export function isMCPApproveExecutionEvent(
   event: AgentActionRunningEvents
 ): event is MCPApproveExecutionEvent {
@@ -223,12 +227,7 @@ export class MCPActionType {
   readonly id: ModelId;
   readonly generatedFiles: ActionGeneratedFileType[];
   readonly agentMessageId: ModelId;
-  readonly executionState:
-    | "pending"
-    | "timeout"
-    | "allowed_explicitly"
-    | "allowed_implicitly"
-    | "denied" = "pending";
+  readonly executionState: MCPExecutionState = "pending";
 
   readonly mcpServerConfigurationId: string;
   readonly params: Record<string, unknown>; // Hold the inputs for the action.
@@ -356,31 +355,25 @@ export class MCPActionType {
   }
 }
 
+const MAX_DESCRIPTION_LENGTH = 1024;
+
 /**
  * Builds a tool specification for the given MCP action configuration.
  */
-export async function buildToolSpecification(
-  auth: Authenticator,
+export function buildToolSpecification(
   actionConfiguration: MCPToolConfigurationType
-): Promise<Result<AgentActionSpecification, Error>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error(
-      "Unexpected unauthenticated call to `buildToolSpecification`"
-    );
-  }
-
+): AgentActionSpecification {
   // Filter out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.TOOL_INPUT
   const filteredInputSchema = hideInternalConfiguration(
     actionConfiguration.inputSchema
   );
 
-  return new Ok({
+  return {
     name: actionConfiguration.name,
-    description: actionConfiguration.description ?? "",
-    inputs: [],
+    description:
+      actionConfiguration.description?.slice(0, MAX_DESCRIPTION_LENGTH) ?? "",
     inputSchema: filteredInputSchema,
-  });
+  };
 }
 
 /**
@@ -388,27 +381,26 @@ export async function buildToolSpecification(
  *
  * All errors within this function must be handled through `handleMCPActionError`
  * to ensure consistent error reporting and proper conversation flow control.
+ * TODO(DURABLE_AGENTS 2025-08-05): This function is going to be used only to execute the tool.
  */
 export async function* runToolWithStreaming(
   auth: Authenticator,
   actionConfiguration: MCPToolConfigurationType,
   {
+    action,
+    actionBaseParams,
     agentConfiguration,
-    conversation,
     agentMessage,
-    rawInputs,
-    functionCallId,
-    step,
-    stepContentId,
+    conversation,
+    mcpAction,
     stepContext,
   }: {
+    action: AgentMCPAction;
+    actionBaseParams: ActionBaseParams;
     agentConfiguration: AgentConfigurationType;
-    conversation: ConversationType;
     agentMessage: AgentMessageType;
-    rawInputs: Record<string, unknown>;
-    functionCallId: string;
-    step: number;
-    stepContentId: ModelId;
+    conversation: ConversationType;
+    mcpAction: MCPActionType;
     stepContext: StepContext;
   }
 ): AsyncGenerator<
@@ -428,89 +420,6 @@ export async function* runToolWithStreaming(
     workspaceId: conversation.owner.sId,
   });
 
-  const actionBaseParams: ActionBaseParams = {
-    agentMessageId: agentMessage.agentMessageId,
-    functionCallId,
-    functionCallName: actionConfiguration.name,
-    generatedFiles: [],
-    mcpServerConfigurationId: `${actionConfiguration.id}`,
-    params: rawInputs,
-    step,
-    citationsAllocated: stepContext.citationsCount,
-  };
-
-  const validateToolInputsResult = validateToolInputs(rawInputs);
-  if (validateToolInputsResult.isErr()) {
-    // Can't use handleMCPActionError yet - no action object.
-    yield {
-      type: "tool_error",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "tool_error",
-        message: validateToolInputsResult.error.message,
-        metadata: null,
-      },
-    };
-    return;
-  }
-
-  // Create the action object in the database and yield an event for
-  // the generation of the params. We store the action here as the params have been generated, if
-  // an error occurs later on, the error will be stored on the parent agent message.
-  const { action, mcpAction } = await createMCPAction({
-    actionBaseParams,
-    owner,
-    stepContentId,
-    stepContext,
-  });
-
-  yield {
-    type: "tool_params",
-    created: Date.now(),
-    configurationId: agentConfiguration.sId,
-    messageId: agentMessage.sId,
-    action: mcpAction,
-  };
-
-  let status:
-    | "allowed_implicitly"
-    | "allowed_explicitly"
-    | "pending"
-    | "timeout"
-    | "denied";
-
-  try {
-    status = yield* handleToolApproval({
-      auth,
-      actionConfiguration,
-      agentConfiguration,
-      conversation,
-      agentMessage,
-      mcpAction,
-      owner,
-      localLogger,
-    });
-  } catch (error) {
-    yield await handleMCPActionError({
-      action,
-      actionBaseParams,
-      agentConfiguration,
-      agentMessage,
-      executionState: "denied",
-      errorMessage: `Error checking action validation status: ${normalizeError(
-        error
-      )}`,
-      yieldAsError: true,
-    });
-    return;
-  }
-
-  await action.update({
-    executionState: status,
-  });
-
   const tags = [
     `action:${actionConfiguration.name}`,
     `mcp_server:${actionConfiguration.mcpServerName}`,
@@ -518,7 +427,19 @@ export async function* runToolWithStreaming(
     `workspace_name:${owner.name}`,
   ];
 
-  if (status === "timeout") {
+  const executionState = await handleToolApproval(auth, {
+    actionConfiguration,
+    executionState: action.executionState,
+    localLogger,
+    mcpAction,
+    owner,
+  });
+
+  await action.update({
+    executionState,
+  });
+
+  if (executionState === "timeout") {
     statsDClient.increment("mcp_actions_timeout.count", 1, tags);
     localLogger.info(
       {
@@ -527,6 +448,7 @@ export async function* runToolWithStreaming(
       },
       "Tool validation timed out"
     );
+
     yield await handleMCPActionError({
       action,
       agentConfiguration,
@@ -540,7 +462,7 @@ export async function* runToolWithStreaming(
     return;
   }
 
-  if (status === "denied") {
+  if (executionState === "denied") {
     statsDClient.increment("mcp_actions_denied.count", 1, tags);
     localLogger.info(
       {
@@ -549,6 +471,7 @@ export async function* runToolWithStreaming(
       },
       "Action execution rejected by user"
     );
+
     yield await handleMCPActionError({
       action,
       agentConfiguration,
@@ -565,7 +488,7 @@ export async function* runToolWithStreaming(
   // We put back the preconfigured inputs (data sources for instance) from the agent configuration if any.
   const inputs = getAugmentedInputs({
     auth,
-    rawInputs,
+    rawInputs: actionBaseParams.params,
     actionConfiguration,
   });
 
@@ -616,7 +539,7 @@ export async function* runToolWithStreaming(
         actionBaseParams,
         agentConfiguration,
         agentMessage,
-        executionState: status,
+        executionState,
         errorMessage: authErrorMessage,
         yieldAsError: true,
         errorCode: "mcp_server_personal_authentication_required",
@@ -650,7 +573,7 @@ export async function* runToolWithStreaming(
       agentConfiguration,
       agentMessage,
       actionBaseParams,
-      executionState: status,
+      executionState,
       errorMessage,
       yieldAsError: false,
     });
@@ -676,7 +599,7 @@ export async function* runToolWithStreaming(
     action: new MCPActionType({
       ...actionBaseParams,
       generatedFiles,
-      executionState: status,
+      executionState,
       id: action.id,
       isError: false,
       output: removeNulls(outputItems.map(hideFileFromActionOutput)),
@@ -688,21 +611,22 @@ export async function* runToolWithStreaming(
 /**
  * Creates MCP action in database and returns both the DB record and the type object.
  */
-export async function createMCPAction({
-  actionBaseParams,
-  owner,
-  stepContentId,
-  stepContext,
-}: {
-  actionBaseParams: ActionBaseParams;
-  owner: LightWorkspaceType;
-  stepContentId: ModelId;
-  stepContext: StepContext;
-}): Promise<{ action: AgentMCPAction; mcpAction: MCPActionType }> {
+export async function createMCPAction(
+  auth: Authenticator,
+  {
+    actionBaseParams,
+    stepContentId,
+    stepContext,
+  }: {
+    actionBaseParams: ActionBaseParams;
+    stepContentId: ModelId;
+    stepContext: StepContext;
+  }
+): Promise<{ action: AgentMCPAction; mcpAction: MCPActionType }> {
   const action = await AgentMCPAction.create({
     agentMessageId: actionBaseParams.agentMessageId,
     mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
-    workspaceId: owner.id,
+    workspaceId: auth.getNonNullableWorkspace().id,
     isError: false,
     executionState: "pending",
     version: 0,
@@ -728,12 +652,7 @@ type BaseErrorParams = {
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
   errorMessage: string;
-  executionState:
-    | "pending"
-    | "timeout"
-    | "allowed_explicitly"
-    | "allowed_implicitly"
-    | "denied";
+  executionState: MCPExecutionState;
 };
 
 // Yields tool_error (stops conversation) - for auth/validation failures.

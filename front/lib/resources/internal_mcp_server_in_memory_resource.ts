@@ -1,13 +1,14 @@
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { internalMCPServerNameToFirstId } from "@app/lib/actions/mcp_helper";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
+  getAllowMultipleInstancesOfInternalMCPServerById,
+  getAvailabilityOfInternalMCPServerById,
   getAvailabilityOfInternalMCPServerByName,
-  getInternalMCPServerAvailability,
   getInternalMCPServerNameAndWorkspaceId,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -75,10 +76,12 @@ export class InternalMCPServerInMemoryResource {
   // SID of the internal MCP server, scoped to a workspace.
   readonly id: string;
 
-  private metadata: Omit<MCPServerType, "sId"> = {
+  private metadata: Omit<
+    MCPServerType,
+    "sId" | "allowMultipleInstances" | "availability"
+  > = {
     ...extractMetadataFromServerVersion(undefined),
     tools: [],
-    availability: "manual",
   };
 
   constructor(id: string) {
@@ -131,7 +134,7 @@ export class InternalMCPServerInMemoryResource {
 
     const server = await InternalMCPServerInMemoryResource.init(
       auth,
-      internalMCPServerNameToSId({
+      internalMCPServerNameToFirstId({
         name,
         workspaceId: auth.getNonNullableWorkspace().id,
       })
@@ -214,7 +217,7 @@ export class InternalMCPServerInMemoryResource {
 
   static async fetchById(auth: Authenticator, id: string) {
     // Fast path : Do not check for default internal MCP servers as they are always available.
-    const availability = getInternalMCPServerAvailability(id);
+    const availability = getAvailabilityOfInternalMCPServerById(id);
     if (availability === "manual") {
       const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
@@ -249,7 +252,7 @@ export class InternalMCPServerInMemoryResource {
     }
 
     const ids = names.map((name) =>
-      internalMCPServerNameToSId({
+      internalMCPServerNameToFirstId({
         name,
         workspaceId: auth.getNonNullableWorkspace().id,
       })
@@ -300,6 +303,10 @@ export class InternalMCPServerInMemoryResource {
     return {
       sId: this.id,
       ...this.metadata,
+      availability: getAvailabilityOfInternalMCPServerById(this.id),
+      allowMultipleInstances: getAllowMultipleInstancesOfInternalMCPServerById(
+        this.id
+      ),
     };
   }
 }

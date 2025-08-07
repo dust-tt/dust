@@ -26,10 +26,10 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
 import type { ModelId, Result } from "@app/types";
@@ -404,7 +404,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     CreationAttributes<AgentStepContentModel>,
     "version"
   >): Promise<AgentStepContentResource> {
-    return frontSequelize.transaction(async (transaction: Transaction) => {
+    return withTransaction(async (transaction: Transaction) => {
       const existingContent = await this.model.findAll({
         where: {
           agentMessageId,

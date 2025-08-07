@@ -555,6 +555,7 @@ export const SlackCommandSchema = t.type({
     t.literal("uninstall-for-unknown-team-ids"),
     t.literal("unskip-channel"),
     t.literal("whitelist-bot"),
+    t.literal("run-auto-join"),
     t.literal("whitelist-domains"),
   ]),
   args: t.record(
@@ -563,6 +564,12 @@ export const SlackCommandSchema = t.type({
   ),
 });
 export type SlackCommandType = t.TypeOf<typeof SlackCommandSchema>;
+
+export const SlackJoinResponseSchema = t.type({
+  total: t.number,
+  processed: t.number,
+});
+export type SlackJoinResponseType = t.TypeOf<typeof SlackJoinResponseSchema>;
 /**
  * </Slack>
  */
@@ -687,12 +694,14 @@ export const ZendeskCommandSchema = t.type({
     t.literal("set-retention-period"),
     t.literal("add-organization-tag"),
     t.literal("remove-organization-tag"),
+    t.literal("add-ticket-tag"),
+    t.literal("remove-ticket-tag"),
   ]),
   args: t.type({
     wId: t.union([t.string, t.undefined]),
     dsId: t.union([t.string, t.undefined]),
     connectorId: t.union([t.number, t.undefined]),
-    brandId: t.union([t.number, t.undefined]),
+    brandId: t.union([t.number, t.null, t.undefined]),
     query: t.union([t.string, t.undefined]),
     forceResync: t.union([t.literal("true"), t.undefined]),
     ticketId: t.union([t.number, t.undefined]),
@@ -723,7 +732,10 @@ export type ZendeskCountTicketsResponseType = t.TypeOf<
 
 export const ZendeskFetchTicketResponseSchema = t.type({
   ticket: t.union([t.UnknownRecord, t.null]), // Zendesk type, can't be iots'd,
-  shouldSyncTicket: t.boolean,
+  shouldSyncTicket: t.type({
+    shouldSync: t.boolean,
+    reason: t.union([t.string, t.null]),
+  }),
   isTicketOnDb: t.boolean,
 });
 export type ZendeskFetchTicketResponseType = t.TypeOf<

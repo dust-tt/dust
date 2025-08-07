@@ -7,11 +7,14 @@ export function makeConfluenceSpaceSyncWorkflowIdFromParentId(
   return `${parentWorkflowId}-space-${spaceId}`;
 }
 
-export function makeConfluenceSyncTopLevelChildPagesWorkflowIdFromParentId(
-  parentWorkflowId: string,
-  topLevelPageId: string
-) {
-  return `${parentWorkflowId}-top-level-page-${topLevelPageId}`;
+export function makeConfluenceSyncTopLevelChildContentWorkflowIdFromParentId({
+  parentWorkflowId,
+  topLevelContentId,
+}: {
+  parentWorkflowId: string;
+  topLevelContentId: string;
+}) {
+  return `${parentWorkflowId}-top-level-content-${topLevelContentId}`;
 }
 
 export function makeConfluenceRemoveSpacesWorkflowId(connectorId: ModelId) {
@@ -27,14 +30,4 @@ export function makeConfluenceRemoveSpaceWorkflowIdFromParentId(
 
 export function makeConfluencePersonalDataWorkflowId() {
   return `confluence-personal-data-reporting`;
-}
-
-export function makeConfluenceDocumentUrl({
-  baseUrl,
-  suffix,
-}: {
-  baseUrl: string;
-  suffix: string;
-}) {
-  return `${baseUrl}/wiki${suffix}`;
 }

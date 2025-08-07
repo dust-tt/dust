@@ -39,7 +39,7 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { getDefaultMCPServerConfigurationWithId } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -157,7 +157,7 @@ export default function AssistantBuilderRightPanel({
     const mcpServerView = mcpServerViews.find(
       (mcpServerView) =>
         mcpServerView.server.sId ===
-        internalMCPServerNameToSId({
+        autoInternalMCPServerNameToSId({
           name: internalMcpServerName,
           workspaceId: owner.id,
         })
@@ -218,23 +218,12 @@ export default function AssistantBuilderRightPanel({
               <ConversationsNavigationProvider>
                 <ActionValidationProvider owner={owner}>
                   <GenerationContextProvider>
-                    <div className="flex-grow overflow-y-auto">
+                    <div className="flex h-full flex-col">
                       {conversation && (
-                        <InteractiveContentProvider>
-                          <ConversationViewer
-                            owner={owner}
-                            user={user}
-                            conversationId={conversation.sId}
-                            onStickyMentionsChange={setStickyMentions}
-                            isInModal
-                            key={conversation.sId}
-                          />
-                        </InteractiveContentProvider>
-                      )}
-                    </div>
-                    <div className="shrink-0">
-                      {conversation && (
-                        <div className="mb-2 px-4">
+                        <div className="flex items-center justify-between py-3">
+                          <h2 className="font-semibold text-foreground dark:text-foreground-night">
+                            {conversation.title}
+                          </h2>
                           <Button
                             variant="outline"
                             size="sm"
@@ -244,19 +233,35 @@ export default function AssistantBuilderRightPanel({
                           />
                         </div>
                       )}
-                      <AssistantInputBar
-                        disableButton={isSavingDraftAgent}
-                        owner={owner}
-                        onSubmit={handleSubmit}
-                        stickyMentions={stickyMentions}
-                        conversationId={conversation?.sId || null}
-                        additionalAgentConfiguration={
-                          draftAssistant ?? undefined
-                        }
-                        actions={["attachment"]}
-                        disableAutoFocus
-                        isFloating={false}
-                      />
+                      <div className="flex-grow overflow-y-auto">
+                        {conversation && (
+                          <InteractiveContentProvider>
+                            <ConversationViewer
+                              owner={owner}
+                              user={user}
+                              conversationId={conversation.sId}
+                              onStickyMentionsChange={setStickyMentions}
+                              isInModal
+                              key={conversation.sId}
+                            />
+                          </InteractiveContentProvider>
+                        )}
+                      </div>
+                      <div className="shrink-0">
+                        <AssistantInputBar
+                          disableButton={isSavingDraftAgent}
+                          owner={owner}
+                          onSubmit={handleSubmit}
+                          stickyMentions={stickyMentions}
+                          conversationId={conversation?.sId || null}
+                          additionalAgentConfiguration={
+                            draftAssistant ?? undefined
+                          }
+                          actions={["attachment"]}
+                          disableAutoFocus
+                          isFloating={false}
+                        />
+                      </div>
                     </div>
                   </GenerationContextProvider>
                 </ActionValidationProvider>

@@ -3,8 +3,9 @@ import { Client, Connection } from "@temporalio/client";
 import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
-type TemporalNamespaces = "connectors" | "front" | "relocation";
+type TemporalNamespaces = "agent" | "connectors" | "front" | "relocation";
 export const temporalWorkspaceToEnvVar: Record<TemporalNamespaces, string> = {
+  agent: "TEMPORAL_AGENT_NAMESPACE",
   connectors: "TEMPORAL_CONNECTORS_NAMESPACE",
   front: "TEMPORAL_NAMESPACE",
   relocation: "TEMPORAL_RELOCATION_NAMESPACE",
@@ -73,6 +74,17 @@ export async function getConnectionOptions(
   };
 }
 
+export async function getTemporalAgentWorkerConnection(): Promise<{
+  connection: NativeConnection;
+  namespace: string | undefined;
+}> {
+  const connectionOptions = await getConnectionOptions(
+    temporalWorkspaceToEnvVar["agent"]
+  );
+  const connection = await NativeConnection.connect(connectionOptions);
+  return { connection, namespace: process.env.TEMPORAL_AGENT_NAMESPACE };
+}
+
 export async function getTemporalWorkerConnection(): Promise<{
   connection: NativeConnection;
   namespace: string | undefined;
@@ -82,10 +94,14 @@ export async function getTemporalWorkerConnection(): Promise<{
   return { connection, namespace: process.env.TEMPORAL_NAMESPACE };
 }
 
-export async function getTemporalClient() {
+export async function getTemporalClientForAgentNamespace() {
+  return getTemporalClientForNamespace("agent");
+}
+
+export async function getTemporalClientForFrontNamespace() {
   return getTemporalClientForNamespace("front");
 }
 
-export async function getTemporalConnectorsNamespaceConnection() {
+export async function getTemporalClientForConnectorsNamespace() {
   return getTemporalClientForNamespace("connectors");
 }

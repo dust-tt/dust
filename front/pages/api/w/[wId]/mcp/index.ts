@@ -2,12 +2,15 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { internalMCPServerNameToFirstId } from "@app/lib/actions/mcp_helper";
 import {
   DEFAULT_MCP_SERVER_ICON,
   isCustomServerIconType,
 } from "@app/lib/actions/mcp_icons";
-import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  getAllowMultipleInstancesOfInternalMCPServerById,
+  isInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
@@ -21,7 +24,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -183,17 +185,7 @@ async function handler(
           (config) => config.url === url
         );
 
-        let name = defaultConfig?.name || metadata.name;
-
-        const existingServer = await RemoteMCPServerResource.findByName(
-          auth,
-          name
-        );
-
-        if (existingServer) {
-          const uuid = generateRandomModelSId();
-          name = `${name} #${uuid.substring(0, 4).toLowerCase()}`;
-        }
+        const name = defaultConfig?.name || metadata.name;
 
         const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -282,7 +274,7 @@ async function handler(
           });
         }
 
-        const internalMCPServerId = internalMCPServerNameToSId({
+        const internalMCPServerId = internalMCPServerNameToFirstId({
           name,
           workspaceId: auth.getNonNullableWorkspace().id,
         });
@@ -293,12 +285,16 @@ async function handler(
             internalMCPServerId
           );
 
-        if (existingServer) {
+        if (
+          existingServer &&
+          !getAllowMultipleInstancesOfInternalMCPServerById(internalMCPServerId)
+        ) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: "This internal tool has already been added",
+              message:
+                "This internal tool has already been added and only one instance is allowed.",
             },
           });
         }

@@ -7,23 +7,20 @@ import {
   Page,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import React, { useMemo, useState } from "react";
-import type { FieldArrayWithId } from "react-hook-form";
+import { Spinner } from "@dust-tt/sparkle";
+import React, { useState } from "react";
 import { useFieldArray } from "react-hook-form";
 
 import type {
   AgentBuilderDataVizAction,
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
-import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
+import type { DialogMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
+import { MCPServerViewsDialog } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
-import {
-  isDefaultActionName,
-  isSupportedAgentBuilderAction,
-} from "@app/components/agent_builder/types";
+import { isDefaultActionName } from "@app/components/agent_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
@@ -33,6 +30,20 @@ import {
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { asDisplayName } from "@app/types";
+
+const dataVisualizationAction = {
+  type: "DATA_VISUALIZATION",
+  ...DATA_VISUALIZATION_SPECIFICATION,
+};
+
+const BACKGROUND_IMAGE_PATH = "/static/IconBar.svg";
+const BACKGROUND_IMAGE_STYLE_PROPS = {
+  backgroundImage: `url("${BACKGROUND_IMAGE_PATH}")`,
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "center 20px",
+  backgroundSize: "auto 60px",
+  paddingTop: "100px",
+};
 
 function actionIcon(
   action: AgentBuilderAction | AgentBuilderDataVizAction,
@@ -66,16 +77,14 @@ function actionDisplayName(
   }`;
 }
 
-// TODO: Merge this with ActionCard.
-function MCPActionCard({
-  action,
-  onRemove,
-  onEdit,
-}: {
+interface MCPActionCardProps {
   action: AgentBuilderAction | AgentBuilderDataVizAction;
   onRemove: () => void;
   onEdit?: () => void;
-}) {
+}
+
+// TODO: Merge this with ActionCard.
+function MCPActionCard({ action, onRemove, onEdit }: MCPActionCardProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
@@ -118,15 +127,13 @@ function MCPActionCard({
   );
 }
 
-function ActionCard({
-  action,
-  onRemove,
-  onEdit,
-}: {
+interface ActionCardProps {
   action: AgentBuilderAction;
   onRemove: () => void;
   onEdit?: () => void;
-}) {
+}
+
+function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   const spec = getActionSpecification(action.type);
 
   if (!spec) {
@@ -162,26 +169,17 @@ function ActionCard({
   );
 }
 
-const dataVisualizationAction = {
-  type: "DATA_VISUALIZATION",
-  ...DATA_VISUALIZATION_SPECIFICATION,
-};
+function shouldUseDialog(
+  action: AgentBuilderAction,
+  mcpServerViews: MCPServerViewType[]
+): boolean {
+  if (action.type !== "MCP") {
+    return false;
+  }
 
-function filterSelectableViews(
-  views: MCPServerViewTypeWithLabel[],
-  fields: FieldArrayWithId<AgentBuilderFormData, "actions", "id">[]
-) {
-  return views.filter((view) => {
-    const selectedAction = fields.find(
-      (field) => field.name === view.server.name
-    );
-
-    if (selectedAction) {
-      return !selectedAction.noConfigurationRequired;
-    }
-
-    return true;
-  });
+  return mcpServerViews.some(
+    (view) => view.sId === action.configuration.mcpServerViewId
+  );
 }
 
 export function AgentBuilderCapabilitiesBlock() {
@@ -197,29 +195,18 @@ export function AgentBuilderCapabilitiesBlock() {
     nonDefaultMCPServerViews,
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
-  const [editingAction, setEditingAction] = useState<{
+  const mcpServerViews = [
+    ...defaultMCPServerViews,
+    ...nonDefaultMCPServerViews,
+  ];
+
+  const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
+
+  const [isKnowledgeSheetOpen, setIsKnowledgeSheetOpen] = useState(false);
+  const [knowledgeSheetAction, setKnowledgeSheetAction] = useState<{
     action: AgentBuilderAction;
     index: number;
   } | null>(null);
-
-  const [isKnowledgeSheetOpen, setIsKnowledgeSheetOpen] = useState(false);
-
-  // TODO: Open single sheet for selected MCP action.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [selectedAction, setSelectedAction] =
-    useState<AgentBuilderAction | null>(null);
-
-  // TODO: Add logic for reasoning.
-  const selectableDefaultMCPServerViews = useMemo(
-    () => filterSelectableViews(defaultMCPServerViews, fields),
-    [defaultMCPServerViews, fields]
-  );
-
-  const selectableNonDefaultMCPServerViews = useMemo(
-    () => filterSelectableViews(nonDefaultMCPServerViews, fields),
-    [nonDefaultMCPServerViews, fields]
-  );
-
   const dataVisualization = fields.some(
     (field) => field.type === "DATA_VISUALIZATION"
   )
@@ -227,24 +214,40 @@ export function AgentBuilderCapabilitiesBlock() {
     : dataVisualizationAction;
 
   const handleEditSave = (updatedAction: AgentBuilderAction) => {
-    if (editingAction) {
-      update(editingAction.index, updatedAction);
+    if (dialogMode?.type === "edit") {
+      update(dialogMode.index, updatedAction);
+    } else if (knowledgeSheetAction) {
+      update(knowledgeSheetAction.index, updatedAction);
     } else {
       append(updatedAction);
     }
-    setEditingAction(null);
+    setDialogMode(null);
+    setKnowledgeSheetAction(null);
   };
 
   const handleActionEdit = (action: AgentBuilderAction, index: number) => {
-    setEditingAction({ action, index });
-    if (isSupportedAgentBuilderAction(action)) {
-      setIsKnowledgeSheetOpen(true);
+    if (action.type === "MCP") {
+      if (shouldUseDialog(action, mcpServerViews)) {
+        setDialogMode(
+          action.noConfigurationRequired
+            ? { type: "info", action }
+            : { type: "edit", action, index }
+        );
+      } else {
+        setKnowledgeSheetAction({ action, index });
+        setIsKnowledgeSheetOpen(true);
+      }
     }
   };
 
   const handleCloseSheet = () => {
-    setEditingAction(null);
+    setDialogMode(null);
     setIsKnowledgeSheetOpen(false);
+    setKnowledgeSheetAction(null);
+  };
+
+  const handleMcpActionUpdate = (action: AgentBuilderAction, index: number) => {
+    update(index, action);
   };
 
   const dropdownButtons = (
@@ -253,17 +256,15 @@ export function AgentBuilderCapabilitiesBlock() {
         onClose={handleCloseSheet}
         onOpen={() => setIsKnowledgeSheetOpen(true)}
         onSave={handleEditSave}
-        action={editingAction?.action}
+        action={knowledgeSheetAction?.action}
         open={isKnowledgeSheetOpen}
       />
-      <AddToolsDropdown
-        tools={fields}
+      <MCPServerViewsDialog
         addTools={append}
-        defaultMCPServerViews={selectableDefaultMCPServerViews}
-        nonDefaultMCPServerViews={selectableNonDefaultMCPServerViews}
         dataVisualization={dataVisualization}
-        isMCPServerViewsLoading={isMCPServerViewsLoading}
-        setSelectedAction={setSelectedAction}
+        mode={dialogMode}
+        onModeChange={setDialogMode}
+        onActionUpdate={handleMcpActionUpdate}
       />
     </>
   );
@@ -284,12 +285,16 @@ export function AgentBuilderCapabilitiesBlock() {
         </div>
       </div>
       <div className="flex-1">
-        {fields.length === 0 ? (
+        {isMCPServerViewsLoading ? (
+          <div className="flex h-40 w-full items-center justify-center">
+            <Spinner />
+          </div>
+        ) : fields.length === 0 ? (
           <EmptyCTA
-            message="No tools added yet. Add knowledge and tools to enhance your agent's capabilities."
             action={
               <div className="flex items-center gap-2">{dropdownButtons}</div>
             }
+            style={BACKGROUND_IMAGE_STYLE_PROPS}
           />
         ) : (
           <CardGrid>

@@ -26,6 +26,7 @@ use tokio::{
     sync::mpsc::unbounded_channel,
 };
 use tokio_stream::Stream;
+use tracing::{error, info};
 
 use dust::{
     api_keys::validate_api_key,
@@ -44,7 +45,6 @@ use dust::{
     databases_store::{self, gcs::GoogleCloudStorageDatabasesStore},
     dataset,
     deno::js_executor::JSExecutor,
-    error, info,
     open_telemetry::init_subscribers,
     project,
     providers::provider::{provider, ProviderID},

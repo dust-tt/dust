@@ -42,9 +42,28 @@ export function withLogging<T>(
     req: NextApiRequestWithContext,
     res: NextApiResponse<WithAPIErrorResponse<T>>
   ): Promise<void> => {
-    const ddtraceSpan = tracer.scope().active();
-    if (ddtraceSpan) {
-      ddtraceSpan.setTag("streaming", streaming);
+    const ddtraceNextRequestSpan = tracer.scope().active();
+    if (ddtraceNextRequestSpan) {
+      // Tag the current active span (usually `next.request`) with a "streaming" flag
+      // so we can filter these requests later in Datadog traces and analytics.
+      ddtraceNextRequestSpan.setTag("streaming", streaming);
+
+      if (streaming) {
+        // For streaming requests, change the operation name of the *current span*
+        // from `next.request` to `next.request.streaming` so that:
+        //   1. It appears as a separate operation in the Datadog APM "operation" dropdown,
+        //      making it easy to isolate streaming traffic from regular requests.
+        //   2. You can analyze streaming request performance and error rates independently,
+        //      without mixing them into standard request metrics.
+        //   3. Without this separation, the long-lived nature of streaming requests would
+        //      inflate and skew p95/p99 latency metrics, making them unrepresentative of
+        //      typical request performance.
+        //
+        // Note: This changes only the Next.js request span, not the root `web.request` span.
+        // That means streaming requests will still be counted in `web.request` service-level
+        // latency metrics unless you also update the root span.
+        ddtraceNextRequestSpan.setOperationName("next.request.streaming");
+      }
     }
     const now = new Date();
 
@@ -140,9 +159,10 @@ export function withLogging<T>(
 
     const elapsed = new Date().getTime() - now.getTime();
 
+    // Keep metric cardinality low for cost optimization
+    // Previously tagging by route created high cardinality (~$3k/month for 2 metrics)
     const tags = [
       `method:${req.method}`,
-      `route:${route}`,
       streaming ? `streaming:true` : `streaming:false`,
       `status_code:${res.statusCode}`,
     ];

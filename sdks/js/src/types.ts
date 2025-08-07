@@ -603,26 +603,25 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "index_private_slack_channel"
   | "interactive_content_server"
   | "jira_tool"
+  | "jit_tools"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"
   | "monday_tool"
   | "notion_private_integration"
-  | "okta_enterprise_connection"
   | "openai_o1_custom_assistants_feature"
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_o1_mini_feature"
-  | "outlook_tool"
+  | "freshservice_tool"
   | "pro_plan_salesforce_connector"
   | "salesforce_synced_queries"
   | "salesforce_tool"
   | "show_debug_tools"
   | "usage_data_api"
-  | "workos"
-  | "workos_user_provisioning"
   | "xai_feature"
+  | "agent_management_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1025,10 +1024,26 @@ const NotificationRunAgentContentSchema = z.object({
   query: z.string(),
 });
 
+const NotificationRunAgentChainOfThoughtSchema = z.object({
+  type: z.literal("run_agent_chain_of_thought"),
+  childAgentId: z.string(),
+  conversationId: z.string(),
+  chainOfThought: z.string(),
+});
+
+const NotificationRunAgentGenerationTokensSchema = z.object({
+  type: z.literal("run_agent_generation_tokens"),
+  childAgentId: z.string(),
+  conversationId: z.string(),
+  text: z.string(),
+});
+
 const NotificationContentSchema = z.union([
   NotificationImageContentSchema,
   NotificationInteractiveFileContentSchema,
   NotificationRunAgentContentSchema,
+  NotificationRunAgentChainOfThoughtSchema,
+  NotificationRunAgentGenerationTokensSchema,
   NotificationTextContentSchema,
   NotificationToolApproveBubbleUpContentSchema,
 ]);
@@ -1583,6 +1598,30 @@ export const GetAgentConfigurationsResponseSchema = z.object({
 
 export type GetAgentConfigurationsResponseType = z.infer<
   typeof GetAgentConfigurationsResponseSchema
+>;
+
+export const CreateGenericAgentConfigurationRequestSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  instructions: z.string(),
+  emoji: z.string().optional(),
+  subAgentName: z.string().optional(),
+  subAgentDescription: z.string().optional(),
+  subAgentInstructions: z.string().optional(),
+  subAgentEmoji: z.string().optional(),
+});
+
+export type CreateAgentConfigurationWithDefaultsRequestType = z.infer<
+  typeof CreateGenericAgentConfigurationRequestSchema
+>;
+
+export const CreateGenericAgentConfigurationResponseSchema = z.object({
+  agentConfiguration: LightAgentConfigurationSchema,
+  subAgentConfiguration: LightAgentConfigurationSchema.optional(),
+});
+
+export type CreateGenericAgentConfigurationResponseType = z.infer<
+  typeof CreateGenericAgentConfigurationResponseSchema
 >;
 
 export const PostContentFragmentResponseSchema = z.object({

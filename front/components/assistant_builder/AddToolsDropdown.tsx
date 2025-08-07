@@ -29,7 +29,10 @@ import {
   getDefaultMCPServerConfigurationWithId,
 } from "@app/components/assistant_builder/types";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -109,13 +112,17 @@ export function AddToolsDropdown({
   function onChangeSearchText(text: string) {
     setSearchText(text);
     setFilteredNonMCPActions(
-      nonDefaultMCPActions.filter((tool) =>
-        tool.label.toLowerCase().includes(text.toLowerCase())
+      nonDefaultMCPActions.filter(
+        (tool) =>
+          tool.label.toLowerCase().includes(text.toLowerCase()) ||
+          tool.description.toLowerCase().includes(text.toLowerCase())
       )
     );
     setFilteredMCPServerViews(
-      [...defaultMCPServerViews, ...nonDefaultMCPServerViews].filter((view) =>
-        view.label.toLowerCase().includes(text.toLowerCase())
+      [...defaultMCPServerViews, ...nonDefaultMCPServerViews].filter(
+        (view) =>
+          view.label.toLowerCase().includes(text.toLowerCase()) ||
+          view.description?.toLowerCase().includes(text.toLowerCase())
       )
     );
   }
@@ -329,7 +336,7 @@ function MCPDropdownMenuItem({
       truncateText
       icon={getAvatar(view.server)}
       label={getMcpServerViewDisplayName(view)}
-      description={view.server.description}
+      description={getMcpServerViewDescription(view)}
       onClick={() => onClick(view)}
       disabled={
         view.serverType === "remote" &&

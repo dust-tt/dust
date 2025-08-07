@@ -40,7 +40,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Disable logging of agent runs",
   },
   disallow_agent_creation_to_users: {
-    description: "Restrict agent creation to admins only",
+    description:
+      "Prevent users from creating agents, allowing only admins and builders",
   },
   exploded_tables_query: {
     description: "Enhanced table querying with exploded views",
@@ -70,9 +71,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   labs_transcripts: {
     description: "Transcript feature (Labs)",
   },
-  okta_enterprise_connection: {
-    description: "Okta SSO enterprise connection",
-  },
   openai_o1_custom_assistants_feature: {
     description: "OpenAI o1 model for custom assistants",
   },
@@ -99,20 +97,23 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "API for accessing usage data (Means that any builder with an API key can access usage data of the workspace from API)",
   },
-  workos_user_provisioning: {
-    description: "WorkOS user provisioning features",
-  },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
   },
   monday_tool: {
     description: "Monday MCP tool",
   },
-  outlook_tool: {
-    description: "Outlook MCP tool",
+  freshservice_tool: {
+    description: "Freshservice MCP tool",
   },
   async_loop: {
     description: "Asynchronous loop for conversation processing",
+  },
+  agent_management_tool: {
+    description: "MCP tool for creating and managing agent configurations",
+  },
+  jit_tools: {
+    description: "Allow users to add tools to conversations",
   },
 } as const;
 

@@ -1,10 +1,9 @@
 import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { itInTransaction } from "@app/tests/utils/utils";
 import { Ok } from "@app/types";
 
 import handler from "./index";
@@ -28,7 +27,6 @@ vi.mock(
 );
 
 async function setupTest(
-  t: any,
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
@@ -38,7 +36,7 @@ async function setupTest(
   });
 
   // Create a system space to hold the Remote MCP servers
-  await SpaceFactory.system(workspace, t);
+  await SpaceFactory.system(workspace);
 
   // Set up common query parameters
   req.query.wId = workspace.sId;
@@ -59,8 +57,8 @@ vi.mock(import("@app/lib/actions/mcp_actions"), async (importOriginal) => {
 });
 
 describe("GET /api/w/[wId]/mcp/", () => {
-  itInTransaction("should return a list of servers", async (t) => {
-    const { req, res, workspace } = await setupTest(t);
+  it("should return a list of servers", async () => {
+    const { req, res, workspace } = await setupTest();
 
     req.query.filter = "remote";
 
@@ -98,28 +96,25 @@ describe("GET /api/w/[wId]/mcp/", () => {
     expect(responseData.servers).toHaveLength(2);
   });
 
-  itInTransaction(
-    "should return empty array when no servers exist",
-    async (t) => {
-      const { req, res } = await setupTest(t);
+  it("should return empty array when no servers exist", async () => {
+    const { req, res } = await setupTest();
 
-      req.query.filter = "remote";
+    req.query.filter = "remote";
 
-      await handler(req, res);
+    await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(200);
+    expect(res._getStatusCode()).toBe(200);
 
-      const responseData = res._getJSONData();
-      expect(responseData).toHaveProperty("servers");
-      expect(responseData.servers).toBeInstanceOf(Array);
-      expect(responseData.servers).toHaveLength(0);
-    }
-  );
+    const responseData = res._getJSONData();
+    expect(responseData).toHaveProperty("servers");
+    expect(responseData.servers).toBeInstanceOf(Array);
+    expect(responseData.servers).toHaveLength(0);
+  });
 });
 
 describe("POST /api/w/[wId]/mcp/", () => {
-  itInTransaction("should return 400 when URL is missing", async (t) => {
-    const { req, res } = await setupTest(t, "admin", "POST");
+  it("should return 400 when URL is missing", async () => {
+    const { req, res } = await setupTest("admin", "POST");
 
     req.body = {};
 
@@ -133,33 +128,12 @@ describe("POST /api/w/[wId]/mcp/", () => {
       },
     });
   });
-
-  itInTransaction(
-    "should append a number to the name when server with URL already exists",
-    async (t) => {
-      const { req, res, workspace } = await setupTest(t, "admin", "POST");
-
-      const existingUrl = "https://existing-server.example.com";
-      await RemoteMCPServerFactory.create(workspace, {
-        name: "Test Server",
-        url: existingUrl,
-      });
-
-      req.body = { url: existingUrl, serverType: "remote" };
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(201);
-      const responseData = res._getJSONData();
-      expect(responseData.server.name).toContain("Test Server #");
-    }
-  );
 });
 
 describe("Method Support /api/w/[wId]/mcp", () => {
-  itInTransaction("only supports GET and POST methods", async (t) => {
+  it("only supports GET and POST methods", async () => {
     for (const method of ["DELETE", "PUT", "PATCH"] as const) {
-      const { req, res } = await setupTest(t, "admin", method);
+      const { req, res } = await setupTest("admin", method);
 
       await handler(req, res);
 

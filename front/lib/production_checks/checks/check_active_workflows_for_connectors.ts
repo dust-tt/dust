@@ -3,7 +3,7 @@ import { QueryTypes } from "sequelize";
 
 import type { CheckFunction } from "@app/lib/production_checks/types";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
-import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
+import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import type { ConnectorProvider } from "@app/types";
 import {
   getIntercomSyncWorkflowId,
@@ -105,7 +105,7 @@ export const checkActiveWorkflows: CheckFunction = async (
 
     logger.info(`Found ${connectors.length} ${provider} connectors.`);
 
-    const client = await getTemporalConnectorsNamespaceConnection();
+    const client = await getTemporalClientForConnectorsNamespace();
 
     const missingActiveWorkflows: any[] = [];
     for (const connector of connectors) {

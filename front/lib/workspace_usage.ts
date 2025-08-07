@@ -2,7 +2,7 @@ import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { internalMCPServerNameToFirstId } from "@app/lib/actions/mcp_helper";
 import { AVAILABLE_INTERNAL_MCP_SERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -113,7 +113,7 @@ export async function unsafeGetUsageData(
   const wId = workspace.sId;
   const names = AVAILABLE_INTERNAL_MCP_SERVER_NAMES;
   const sids = names.map((name) =>
-    internalMCPServerNameToSId({ name, workspaceId: workspace.id })
+    internalMCPServerNameToFirstId({ name, workspaceId: workspace.id })
   );
 
   const readReplica = getFrontReplicaDbConnection();

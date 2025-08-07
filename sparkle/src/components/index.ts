@@ -45,7 +45,12 @@ export {
 } from "./ConversationMessage";
 export { Counter } from "./Counter";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
-export { DataTable, ScrollableDataTable } from "./DataTable";
+export {
+  createRadioSelectionColumn,
+  createSelectionColumn,
+  DataTable,
+  ScrollableDataTable,
+} from "./DataTable";
 export {
   Dialog,
   DialogClose,
@@ -97,6 +102,18 @@ export { LinkWrapper } from "./LinkWrapper";
 export { LoadingBlock } from "./LoadingBlock";
 export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";
+export type {
+  MultiPageDialogFooterProps,
+  MultiPageDialogPage,
+  MultiPageDialogProps,
+} from "./MultiPageDialog";
+export {
+  MultiPageDialog,
+  MultiPageDialogClose,
+  MultiPageDialogContent,
+  MultiPageDialogFooter,
+  MultiPageDialogTrigger,
+} from "./MultiPageDialog";
 export {
   MultiPageSheet,
   MultiPageSheetClose,
@@ -150,7 +167,7 @@ export { SliderToggle } from "./SliderToggle";
 export { default as Spinner } from "./Spinner";
 export { FlexSplitButton, SplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
-export { TextArea } from "./TextArea";
+export { ReadOnlyTextArea, TextArea } from "./TextArea";
 export {
   Tooltip,
   TooltipContent,

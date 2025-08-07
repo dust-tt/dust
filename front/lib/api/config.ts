@@ -185,6 +185,12 @@ const config = {
   getOAuthHubspotClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_HUBSPOT_CLIENT_ID");
   },
+  getOAuthFreshserviceClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_FRESHWORKS_CLIENT_ID");
+  },
+  getOAuthFreshserviceDomain: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_FRESHWORKS_DOMAIN");
+  },
   getOAuthJiraClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_JIRA_CLIENT_ID");
   },
@@ -236,6 +242,9 @@ const config = {
   },
   getWorkOSActionSigningSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_ACTION_SIGNING_SECRET");
+  },
+  getWorkOSEnvironmentId: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_ENVIRONMENT_ID");
   },
 
   // Profiler.

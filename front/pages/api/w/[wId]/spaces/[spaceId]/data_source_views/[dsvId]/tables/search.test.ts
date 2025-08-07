@@ -1,9 +1,8 @@
-import { describe, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./search";
 
@@ -111,18 +110,14 @@ vi.mock(
 );
 
 describe("GET /api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search", () => {
-  itInTransaction("blocks non-GET methods", async (t) => {
+  it("blocks non-GET methods", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
     });
 
-    const space = await SpaceFactory.global(workspace, t);
-    const dataSourceView = await DataSourceViewFactory.folder(
-      workspace,
-      space,
-      t
-    );
+    const space = await SpaceFactory.global(workspace);
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
     req.query = {
       ...req.query,
@@ -135,18 +130,14 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/sea
     expect(res._getStatusCode()).toBe(405);
   });
 
-  itInTransaction("requires minimum query length", async (t) => {
+  it("requires minimum query length", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
     });
 
-    const space = await SpaceFactory.global(workspace, t);
-    const dataSourceView = await DataSourceViewFactory.folder(
-      workspace,
-      space,
-      t
-    );
+    const space = await SpaceFactory.global(workspace);
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
     req.query = {
       ...req.query,
@@ -159,18 +150,14 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/sea
     expect(res._getStatusCode()).toBe(400);
   });
 
-  itInTransaction("returns tables with search results", async (t) => {
+  it("returns tables with search results", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
     });
 
-    const space = await SpaceFactory.global(workspace, t);
-    const dataSourceView = await DataSourceViewFactory.folder(
-      workspace,
-      space,
-      t
-    );
+    const space = await SpaceFactory.global(workspace);
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
     req.query = {
       ...req.query,
@@ -186,18 +173,14 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/sea
     true; // Skip for now, I have trouble mocking correctly the CoreAPI.searchNodes
   });
 
-  itInTransaction("handles empty results", async (t) => {
+  it("handles empty results", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
     });
 
-    const space = await SpaceFactory.global(workspace, t);
-    const dataSourceView = await DataSourceViewFactory.folder(
-      workspace,
-      space,
-      t
-    );
+    const space = await SpaceFactory.global(workspace);
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
     req.query = {
       ...req.query,
@@ -210,18 +193,14 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/sea
     true; // Skip for now, I have trouble mocking correctly the CoreAPI.searchNodes
   });
 
-  itInTransaction("propagates warnings", async (t) => {
+  it("propagates warnings", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
     });
 
-    const space = await SpaceFactory.global(workspace, t);
-    const dataSourceView = await DataSourceViewFactory.folder(
-      workspace,
-      space,
-      t
-    );
+    const space = await SpaceFactory.global(workspace);
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
     req.query = {
       ...req.query,

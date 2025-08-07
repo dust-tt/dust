@@ -9,19 +9,20 @@ import type {
 import { Op } from "sequelize";
 
 import {
+  autoInternalMCPServerNameToSId,
   getServerTypeAndIdFromSId,
-  internalMCPServerNameToSId,
   remoteMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type {
-  InternalMCPServerNameType,
+  AutoInternalMCPServerNameType,
   MCPServerAvailability,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
+  getAvailabilityOfInternalMCPServerById,
   getAvailabilityOfInternalMCPServerByName,
-  getInternalMCPServerAvailability,
+  isAutoInternalMCPServerName,
   isValidInternalMCPServerId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -369,11 +370,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   // They can be null if ensureAllAutoToolsAreCreated has not been called.
   static async getMCPServerViewForAutoInternalTool(
     auth: Authenticator,
-    name: InternalMCPServerNameType
+    name: AutoInternalMCPServerNameType
   ) {
     const views = await this.listByMCPServer(
       auth,
-      internalMCPServerNameToSId({
+      autoInternalMCPServerNameToSId({
         name,
         workspaceId: auth.getNonNullableWorkspace().id,
       })
@@ -409,6 +410,33 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
   }
 
+  static async getMCPServerViewForGlobalSpace(
+    auth: Authenticator,
+    mcpServerId: string
+  ): Promise<MCPServerViewResource | null> {
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+    if (serverType === "internal") {
+      const views = await this.baseFetch(auth, {
+        where: {
+          serverType: "internal",
+          internalMCPServerId: mcpServerId,
+          vaultId: globalSpace.id,
+        },
+      });
+      return views[0] ?? null;
+    } else {
+      const views = await this.baseFetch(auth, {
+        where: {
+          serverType: "remote",
+          remoteMCPServerId: id,
+          vaultId: globalSpace.id,
+        },
+      });
+      return views[0] ?? null;
+    }
+  }
+
   public async updateOAuthUseCase(
     auth: Authenticator,
     oAuthUseCase: MCPOAuthUseCase
@@ -421,6 +449,29 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
     const [affectedCount] = await this.update({
       oAuthUseCase,
+      editedAt: new Date(),
+      editedByUserId: auth.getNonNullableUser().id,
+    });
+    return new Ok(affectedCount);
+  }
+
+  public async updateNameAndDescription(
+    auth: Authenticator,
+    name?: string,
+    description?: string
+  ): Promise<Result<number, DustError<"unauthorized">>> {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Not allowed to update name and description."
+        )
+      );
+    }
+
+    const [affectedCount] = await this.update({
+      name,
+      description,
       editedAt: new Date(),
       editedByUserId: auth.getNonNullableUser().id,
     });
@@ -545,7 +596,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       return "manual";
     }
 
-    return getInternalMCPServerAvailability(this.internalMCPServerId);
+    return getAvailabilityOfInternalMCPServerById(this.internalMCPServerId);
   }
 
   static async ensureAllAutoToolsAreCreated(auth: Authenticator) {
@@ -554,12 +605,16 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
       const autoInternalMCPServerIds: string[] = [];
       for (const name of names) {
+        if (!isAutoInternalMCPServerName(name)) {
+          continue;
+        }
+
         const isEnabled = await isEnabledForWorkspace(auth, name);
         const availability = getAvailabilityOfInternalMCPServerByName(name);
 
         if (isEnabled && availability !== "manual") {
           autoInternalMCPServerIds.push(
-            internalMCPServerNameToSId({
+            autoInternalMCPServerNameToSId({
               name,
               workspaceId: auth.getNonNullableWorkspace().id,
             })
@@ -684,8 +739,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return {
       id: this.id,
       sId: this.sId,
-      name: null,
-      description: null,
+      name: this.name,
+      description: this.description,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,

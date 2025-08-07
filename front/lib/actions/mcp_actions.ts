@@ -4,7 +4,10 @@ import type {
   CallToolResult,
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
-import { ProgressNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolResultSchema,
+  ProgressNotificationSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import EventEmitter from "events";
 import type { JSONSchema7 } from "json-schema";
@@ -29,10 +32,9 @@ import type {
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
-import { CallToolResultSchemaWithoutBase64Validation } from "@app/lib/actions/mcp_call_tool_result_schema";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
-  getInternalMCPServerAvailability,
+  getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -277,8 +279,7 @@ export async function* tryCallMCPTool(
           progressToken,
         },
       },
-      // Use custom schema to avoid Zod base64 validation stack overflow with large images
-      CallToolResultSchemaWithoutBase64Validation,
+      CallToolResultSchema,
       {
         timeout:
           agentLoopRunContext.actionConfiguration.timeoutMs ??
@@ -330,13 +331,17 @@ export async function* tryCallMCPTool(
         if (jsonContent?.type === "text") {
           try {
             const parsed = JSON.parse(jsonContent.text);
-            if (parsed?.__dust_auth_required) {
+            if (
+              parsed?.__dust_auth_required &&
+              connectionParamsRes.value.type === "mcpServerId" &&
+              connectionParamsRes.value.oAuthUseCase === "personal_actions"
+            ) {
               const authReq = parsed.__dust_auth_required;
               yield {
                 type: "result",
                 result: new Err(
                   new MCPServerPersonalAuthenticationRequiredError(
-                    authReq.mcpServerId,
+                    connectionParamsRes.value.mcpServerId,
                     authReq.provider
                   )
                 ),
@@ -375,7 +380,7 @@ export async function* tryCallMCPTool(
     const generateContentMetadata = (
       content: CallToolResult["content"]
     ): {
-      type: "text" | "image" | "resource" | "audio";
+      type: "text" | "image" | "resource" | "audio" | "resource_link";
       byteSize: number;
       maxSize: number;
     }[] => {
@@ -498,7 +503,12 @@ export function getPrefixedToolName(
   originalName: string
 ): Result<string, Error> {
   const slugifiedConfigName = slugify(config.name);
-  const slugifiedOriginalName = slugify(originalName);
+  const slugifiedOriginalName = slugify(originalName).replaceAll(
+    // Remove anything that is not a-zA-Z0-9_.- because it's not supported by the LLMs.
+    /[^a-zA-Z0-9_.-]/g,
+    ""
+  );
+
   const separator = TOOL_NAME_SEPARATOR;
 
   // If the original name is already too long, we can't use it.
@@ -592,12 +602,46 @@ export async function tryListMCPTools(
       const processedTools = [];
 
       for (const toolConfig of rawToolsFromServer) {
+        // Fix the tool name to be valid for the model.
         const toolName = getPrefixedToolName(action, toolConfig.name);
         if (toolName.isErr()) {
-          // If one tool name fails for a server, we skip this server entirely, we might want to
-          // revisit this in the future.
-          // For now, returning an error for the whole server batch.
-          return new Err(toolName.error);
+          logger.warn(
+            {
+              workspaceId: owner.sId,
+              conversationId: agentLoopListToolsContext.conversation.sId,
+              messageId: agentLoopListToolsContext.agentMessage.sId,
+              actionId: action.sId,
+              mcpServerName: action.name,
+              toolName: toolConfig.name,
+              error: toolName.error,
+            },
+            `Invalid tool name, skipping the tool.`
+          );
+          continue;
+        }
+
+        // Check that all tools arguments names are valid for the model (a-zA-Z0-9_.-).
+        const toolArgumentsNames = Object.keys(
+          toolConfig.inputSchema?.properties ?? {}
+        );
+
+        const invalidArgumentNames = toolArgumentsNames.filter(
+          (argumentName) => !/^[a-zA-Z0-9_.-]+$/.test(argumentName)
+        );
+        if (invalidArgumentNames.length > 0) {
+          logger.warn(
+            {
+              workspaceId: owner.sId,
+              conversationId: agentLoopListToolsContext.conversation.sId,
+              messageId: agentLoopListToolsContext.agentMessage.sId,
+              actionId: action.sId,
+              mcpServerName: action.name,
+              toolName: toolConfig.name,
+              invalidArgumentNames,
+            },
+            `Invalid argument name(s), skipping the tool.`
+          );
+          continue;
         }
 
         // This handles the case where the MCP server configuration is using pre-configured data sources
@@ -743,7 +787,7 @@ async function listToolsForServerSideMCPServer(
     return new Ok(serverSideToolConfigs);
   }
 
-  const availability = getInternalMCPServerAvailability(
+  const availability = getAvailabilityOfInternalMCPServerById(
     connectionParams.mcpServerId
   );
   const { serverType, id } = getServerTypeAndIdFromSId(
@@ -762,7 +806,7 @@ async function listToolsForServerSideMCPServer(
         return r;
       }
       const serverName = r.value.name;
-      toolsStakes = INTERNAL_MCP_SERVERS[serverName]?.tools_stakes || {};
+      toolsStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes || {};
       serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
       break;
     }
