@@ -429,11 +429,20 @@ async function _checkRoleGrants(
         "STREAM",
       ].includes(grantOn)
     ) {
-      if (g.privilege !== "SELECT") {
+      if (!["SELECT", "REFERENCES"].includes(g.privilege)) {
         return new Err(
           new TestConnectionError(
             "NOT_READONLY",
-            `Non-select grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+            `Non-select or references grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+          )
+        );
+      }
+    } else if (grantOn === "WAREHOUSE") {
+      if (!["USAGE", "READ", "MONITOR"].includes(g.privilege)) {
+        return new Err(
+          new TestConnectionError(
+            "NOT_READONLY",
+            `Non-usage, read, or monitor grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
           )
         );
       }
@@ -441,7 +450,6 @@ async function _checkRoleGrants(
       [
         "SCHEMA",
         "DATABASE",
-        "WAREHOUSE",
         "FILE_FORMAT",
         "FUNCTION",
         "PROCEDURE",
