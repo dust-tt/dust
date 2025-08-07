@@ -1,5 +1,11 @@
 import { useRouter } from "next/router";
-import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 interface NavigationLoadingContextType {
   isLoading: boolean;
@@ -67,7 +73,13 @@ export function NavigationLoadingProvider({
 
   return (
     <NavigationLoadingContext.Provider
-      value={{ isLoading, setLoading, startNavigation, takeOverLoading, releaseLoading }}
+      value={{
+        isLoading,
+        setLoading,
+        startNavigation,
+        takeOverLoading,
+        releaseLoading,
+      }}
     >
       {children}
     </NavigationLoadingContext.Provider>

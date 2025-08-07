@@ -1,9 +1,4 @@
-import {
-  Chip,
-  classNames,
-  DataTable,
-  EmptyCTA,
-} from "@dust-tt/sparkle";
+import { Chip, classNames, DataTable, EmptyCTA } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 import { useMemo, useState } from "react";
@@ -299,8 +294,8 @@ export const AdminActionsList = ({
           />
         )}
 
-      {!showLoader && (
-        rows.length === 0 ? (
+      {!showLoader &&
+        (rows.length === 0 ? (
           <EmptyCTA
             message="You don't have any tools yet."
             action={
@@ -322,8 +317,7 @@ export const AdminActionsList = ({
             filter={filter}
             filterColumn="name"
           />
-        )
-      )}
+        ))}
     </>
   );
 };
