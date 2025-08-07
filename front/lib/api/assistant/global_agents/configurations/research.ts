@@ -24,12 +24,13 @@ export function _getResearchGlobalAgent(
     preFetchedDataSources,
     webSearchBrowseMCPServerView,
     searchMCPServerView,
+    dataSourcesFileSystemMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    agentRouterMCPServerView: MCPServerViewResource | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     searchMCPServerView: MCPServerViewResource | null;
+    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -219,7 +220,7 @@ Output required:
 \`\`\`
 ### BAD Examples:
 \`\`\`
-Task: "Generate comprehensive business metrics for Dust over the last 30 days:
+Task: "Generate comprehensive business metrics over the last 30 days:
 - User growth metrics (new signups, active users, user retention)
 - Product usage metrics (feature adoption, session metrics, engagement)
 - Revenue metrics (new customers, revenue growth, churn)
@@ -237,7 +238,7 @@ Task: "Analyze business performance with revenue, users, and churn metrics"
 </launch_analytics_task_instructions>
 
 <data_source_file_system_api_instructions>
-You can use the data_sources_file_system_api to explore the internal data of the company "Dust".
+You can use the data_sources_file_system_api to explore the internal data of the company.
 
 <data_source_file_system_hierarchy>
 The data sources are organized in a directed graph.
@@ -297,7 +298,7 @@ You must never output text outside of \`<thinking>\` tags between tool use. Only
       status: "disabled_by_admin",
       actions: [
         ..._getDefaultWebActionsForGlobalAgent({
-          agentId: GLOBAL_AGENTS_SID.DUST,
+          agentId: GLOBAL_AGENTS_SID.RESEARCH,
           webSearchBrowseMCPServerView,
         }),
       ],
@@ -384,6 +385,35 @@ You must never output text outside of \`<thinking>\` tags between tool use. Only
           dustAppConfiguration: null,
           jsonSchema: null,
         });
+        if (dataSourcesFileSystemMCPServerView) {
+          actions.push({
+            id: -1,
+            sId:
+              GLOBAL_AGENTS_SID.RESEARCH +
+              "-datasource-action-" +
+              dsView.dataSource.sId,
+            type: "mcp_server_configuration",
+            name: "hidden_dust_search_file_system_" + dsView.dataSource.name,
+            description: `The user's ${dsView.dataSource.connectorProvider} data source (file system).`,
+            mcpServerViewId: dataSourcesFileSystemMCPServerView.sId,
+            internalMCPServerId:
+              dataSourcesFileSystemMCPServerView.internalMCPServerId,
+            dataSources: [
+              {
+                workspaceId: preFetchedDataSources.workspaceId,
+                dataSourceViewId: dsView.sId,
+                filter: { parents: null, tags: null },
+              },
+            ],
+            tables: null,
+            childAgentId: null,
+            reasoningModel: null,
+            additionalConfiguration: {},
+            timeFrame: null,
+            dustAppConfiguration: null,
+            jsonSchema: null,
+          });
+        }
       }
     });
   }

@@ -64,6 +64,7 @@ function getGlobalAgent({
   agentRouterMCPServerView,
   webSearchBrowseMCPServerView,
   searchMCPServerView,
+  dataSourcesFileSystemMCPServerView,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -73,6 +74,7 @@ function getGlobalAgent({
   agentRouterMCPServerView: MCPServerViewResource | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
+  dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -257,9 +259,9 @@ function getGlobalAgent({
       agentConfiguration = _getResearchGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
-        agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
         searchMCPServerView,
+        dataSourcesFileSystemMCPServerView,
       });
       break;
     default:
@@ -316,6 +318,7 @@ export async function getGlobalAgents(
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
     searchMCPServerView,
+    dataSourcesFileSystemMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -340,6 +343,12 @@ export async function getGlobalAgents(
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
           "search"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "data_sources_file_system"
         )
       : null,
   ]);
@@ -392,6 +401,7 @@ export async function getGlobalAgents(
       agentRouterMCPServerView,
       webSearchBrowseMCPServerView,
       searchMCPServerView,
+      dataSourcesFileSystemMCPServerView,
     })
   );
 
