@@ -482,7 +482,7 @@ export const GPT_5_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "high",
-  defaultReasoningEffort: "none",
+  defaultReasoningEffort: "medium",
   supportsResponseFormat: true,
 };
 export const O1_MODEL_CONFIG: ModelConfigurationType = {
@@ -1461,6 +1461,7 @@ export enum GLOBAL_AGENTS_SID {
   INTERCOM = "intercom",
   GPT35_TURBO = "gpt-3.5-turbo",
   GPT4 = "gpt-4",
+  GPT5 = "gpt-5",
   O1 = "o1",
   O1_MINI = "o1-mini",
   O1_HIGH_REASONING = "o1_high",
@@ -1490,6 +1491,7 @@ export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
 export function getGlobalAgentAuthorName(agentId: string): string {
   switch (agentId) {
     case GLOBAL_AGENTS_SID.GPT4:
+    case GLOBAL_AGENTS_SID.GPT5:
     case GLOBAL_AGENTS_SID.O1:
     case GLOBAL_AGENTS_SID.O1_MINI:
     case GLOBAL_AGENTS_SID.O1_HIGH_REASONING:
@@ -1559,6 +1561,14 @@ export function compareAgentsForSort(
     return -1;
   }
   if (b.sId === GLOBAL_AGENTS_SID.DUST) {
+    return 1;
+  }
+
+  // Check for 'gpt5'
+  if (a.sId === GLOBAL_AGENTS_SID.GPT5) {
+    return -1;
+  }
+  if (b.sId === GLOBAL_AGENTS_SID.GPT5) {
     return 1;
   }
 
