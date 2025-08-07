@@ -7,7 +7,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -20,6 +20,64 @@ import type {
 
 interface AgentTableData extends LightAgentConfigurationType {
   onClick?: () => void;
+}
+
+interface AgentSelectionTableProps {
+  tableData: AgentTableData[];
+  columns: ColumnDef<AgentTableData>[];
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  rowSelection: RowSelectionState;
+  handleRowSelectionChange: (newSelection: RowSelectionState) => void;
+}
+
+function AgentSelectionTable({
+  tableData,
+  columns,
+  searchQuery,
+  setSearchQuery,
+  rowSelection,
+  handleRowSelectionChange,
+}: AgentSelectionTableProps) {
+  return (
+    <div className="flex flex-col">
+      <SearchInput
+        name="search"
+        placeholder="Search"
+        value={searchQuery}
+        onChange={setSearchQuery}
+      />
+      <DataTable
+        data={tableData}
+        columns={columns}
+        enableRowSelection
+        enableMultiRowSelection={false}
+        rowSelection={rowSelection}
+        setRowSelection={handleRowSelectionChange}
+        getRowId={(row, index) => index.toString()}
+        filter={searchQuery}
+        filterColumn="name"
+      />
+    </div>
+  );
+}
+
+interface AgentMessageProps {
+  title: string;
+  children: string;
+}
+
+function AgentMessage({ title, children }: AgentMessageProps) {
+  return (
+    <ContentMessage
+      title={title}
+      icon={InformationCircleIcon}
+      variant="warning"
+      size="sm"
+    >
+      {children}
+    </ContentMessage>
+  );
 }
 
 interface ChildAgentSectionProps {
@@ -43,40 +101,28 @@ export function ChildAgentSection({ owner }: ChildAgentSectionProps) {
     agentsGetView: "list",
   });
 
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    if (field.value) {
-      const selectedIndex = agentConfigurations.findIndex(
-        (agent) => agent.sId === field.value
-      );
-      if (selectedIndex >= 0) {
-        setRowSelection({ [selectedIndex]: true });
-      } else {
-        setRowSelection({});
-      }
-    } else {
-      setRowSelection({});
+  const rowSelection: RowSelectionState = field.value
+    ? (() => {
+        const selectedIndex = agentConfigurations.findIndex(
+          (agent) => agent.sId === field.value
+        );
+        return selectedIndex >= 0 ? { [selectedIndex]: true } : {};
+      })()
+    : {};
+
+  const handleRowSelectionChange = (newSelection: RowSelectionState) => {
+    const selectedIndex = Object.keys(newSelection)[0];
+    const selectedAgent = agentConfigurations[parseInt(selectedIndex, 10)];
+    if (selectedAgent) {
+      field.onChange(selectedAgent.sId);
     }
-  }, [field.value, agentConfigurations]);
+  };
 
-  const handleRowSelectionChange = useCallback(
-    (newSelection: RowSelectionState) => {
-      setRowSelection(newSelection);
-      const selectedIndex = Object.keys(newSelection)[0];
-      const selectedAgent = agentConfigurations[parseInt(selectedIndex, 10)];
-      if (selectedAgent) {
-        field.onChange(selectedAgent.sId);
-      }
-    },
-    [agentConfigurations, field]
-  );
-
-  const tableData: AgentTableData[] = useMemo(
-    () => agentConfigurations.map((agent) => ({ ...agent })),
-    [agentConfigurations]
-  );
+  const tableData: AgentTableData[] = agentConfigurations.map((agent) => ({
+    ...agent,
+  }));
 
   const columns: ColumnDef<AgentTableData>[] = useMemo(
     () => [
@@ -102,88 +148,59 @@ export function ChildAgentSection({ owner }: ChildAgentSectionProps) {
     []
   );
 
-  const renderContent = () => {
-    if (isAgentConfigurationsLoading) {
-      return (
-        <div className="flex h-full w-full items-center justify-center">
-          <Spinner />
-        </div>
-      );
-    }
+  const selectedAgent = agentConfigurations.find(
+    (agent) => agent.sId === field.value
+  );
 
-    const selectedAgent = agentConfigurations.find(
-      (agent) => agent.sId === field.value
-    );
+  const shouldShowTable =
+    !isAgentConfigurationsError &&
+    agentConfigurations.length > 0 &&
+    (!field.value || selectedAgent);
 
-    if (
-      !isAgentConfigurationsError &&
-      agentConfigurations.length > 0 &&
-      (!field.value || selectedAgent)
-    ) {
-      return (
-        <div className="flex flex-col">
-          <SearchInput
-            name="search"
-            placeholder="Search"
-            value={searchQuery}
-            onChange={setSearchQuery}
-          />
-          <DataTable
-            data={tableData}
-            columns={columns}
-            enableRowSelection
-            enableMultiRowSelection={false}
-            rowSelection={rowSelection}
-            setRowSelection={handleRowSelectionChange}
-            getRowId={(row, index) => index.toString()}
-            filter={searchQuery}
-            filterColumn="name"
-          />
-        </div>
-      );
-    }
-
-    let messageProps: {
-      title: string;
-      children: string;
+  let messageProps: { title: string; children: string };
+  if (isAgentConfigurationsError) {
+    messageProps = {
+      title: "Error loading agents",
+      children: "Failed to load available agents. Please try again later.",
     };
-
-    if (isAgentConfigurationsError) {
-      messageProps = {
-        title: "Error loading agents",
-        children: "Failed to load available agents. Please try again later.",
-      };
-    } else if (agentConfigurations.length === 0) {
-      messageProps = {
-        title: "No agents available",
-        children:
-          "There are no agents available to select. Please create an agent first.",
-      };
-    } else {
-      messageProps = {
-        title: "The agent selected is not available to you",
-        children: `The agent (${field.value}) selected is not available to you, either because it was archived or because you have lost access to it (based on a restricted space you're not a part of). As an editor you can still remove the Run Agent tool to add a new one pointing to another agent.`,
-      };
-    }
-
-    return (
-      <ContentMessage
-        title={messageProps.title}
-        icon={InformationCircleIcon}
-        variant="warning"
-        size="sm"
-      >
-        {messageProps.children}
-      </ContentMessage>
-    );
-  };
+  } else if (agentConfigurations.length === 0) {
+    messageProps = {
+      title: "No agents available",
+      children:
+        "There are no agents available to select. Please create an agent first.",
+    };
+  } else {
+    messageProps = {
+      title: "The agent selected is not available to you",
+      children: `The agent (${field.value}) selected is not available to you, either because it was archived or because you have lost access to it (based on a restricted space you're not a part of). As an editor you can still remove the Run Agent tool to add a new one pointing to another agent.`,
+    };
+  }
 
   return (
     <ConfigurationSectionContainer
       title="Select Agent"
       error={fieldState.error?.message}
     >
-      {renderContent()}
+      {isAgentConfigurationsLoading && (
+        <div className="flex h-full w-full items-center justify-center">
+          <Spinner />
+        </div>
+      )}
+
+      {!isAgentConfigurationsLoading && shouldShowTable && (
+        <AgentSelectionTable
+          tableData={tableData}
+          columns={columns}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          rowSelection={rowSelection}
+          handleRowSelectionChange={handleRowSelectionChange}
+        />
+      )}
+
+      {!isAgentConfigurationsLoading && !shouldShowTable && (
+        <AgentMessage {...messageProps} />
+      )}
     </ConfigurationSectionContainer>
   );
 }
