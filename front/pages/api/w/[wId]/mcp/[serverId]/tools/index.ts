@@ -7,7 +7,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { assertNever } from "@app/types";
 
 export type GetMCPServerToolsSettingsResponseBody = {
   toolsSettings: {
@@ -51,39 +50,33 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const { serverType, id } = getServerTypeAndIdFromSId(serverId);
-      switch (serverType) {
-        case "internal":
-          return res.status(200).json({ toolsSettings: {} });
-        case "remote":
-          const resources =
-            await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id);
 
-          const toolsSettings = resources.reduce(
-            (
-              acc: {
-                [key: string]: {
-                  permission: MCPToolStakeLevelType;
-                  enabled: boolean;
-                };
-              },
-              resource
-            ) => {
-              acc[resource.toolName] = {
-                permission: resource.permission,
-                enabled: resource.enabled,
-              };
-              return acc;
-            },
-            {}
-          );
+      const resources =
+        await RemoteMCPServerToolMetadataResource.fetchByServerId(
+          auth,
+          id,
+          serverType
+        );
 
-          return res.status(200).json({
-            toolsSettings,
-          });
-        default:
-          assertNever(serverType);
-      }
-      break;
+      const toolsSettings = resources.reduce(
+        (
+          acc: {
+            [key: string]: {
+              permission: MCPToolStakeLevelType;
+              enabled: boolean;
+            };
+          },
+          resource
+        ) => {
+          acc[resource.toolName] = {
+            permission: resource.permission,
+            enabled: resource.enabled,
+          };
+          return acc;
+        },
+        {}
+      );
+      return res.status(200).json({ toolsSettings });
     }
     default:
       return apiError(req, res, {
