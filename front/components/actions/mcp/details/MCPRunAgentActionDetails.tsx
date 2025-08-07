@@ -36,7 +36,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 
-// Separate component for each query result to properly handle hooks
 function QueryResult({
   queryData,
   index,
@@ -289,21 +288,13 @@ export function MCPRunAgentActionDetails({
     return null;
   }, [queryResource, progressInfo]);
 
-  // Prepare data array from resources
   const queryDataArray = useMemo(() => {
-    const queryRes = queryResource?.resource as any;
-    const resultRes = resultResource?.resource as any;
-    const queries =
-      queryRes && "queries" in queryRes
-        ? queryRes.queries || []
-        : [];
-    const results =
-      resultRes && "results" in resultRes
-        ? resultRes.results || []
-        : [];
+    const queryRes = queryResource?.resource;
+    const resultRes = resultResource?.resource;
+    const queries = queryRes?.queries || [];
+    const results = resultRes?.results || [];
     const progressQueries = progressInfo?.activeQueries || [];
 
-    // If we have progress queries but no query resource yet (during execution), use progress queries
     const allQueries =
       queries.length > 0 ? queries : progressQueries.map((pq) => pq.query);
 
