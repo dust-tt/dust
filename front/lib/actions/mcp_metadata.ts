@@ -221,6 +221,15 @@ export const connectToMCPServer = async (
                 client.setAuthInfo(authInfo);
                 server.setAuthInfo(authInfo);
               } else {
+                // For now, keeping iso.
+                logger.warn(
+                  {
+                    workspaceId: auth.getNonNullableWorkspace().sId,
+                    mcpServerId: params.mcpServerId,
+                    oAuthUseCase: params.oAuthUseCase,
+                  },
+                  "Internal server requires workspace authentication but no connection found"
+                );
                 if (params.oAuthUseCase === "personal_actions") {
                   return new Err(
                     new MCPServerPersonalAuthenticationRequiredError(
@@ -231,7 +240,6 @@ export const connectToMCPServer = async (
                   );
                 } else {
                   // TODO(mcp): We return an result to display a message to the user saying that the server requires the admin to setup the connection.
-                  // For now, keeping iso.
                 }
               }
             }
