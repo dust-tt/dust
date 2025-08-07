@@ -273,6 +273,14 @@ export type ConfigurationSheetPageId =
 export type ConfigurationPagePageId =
   (typeof CONFIGURATION_DIALOG_PAGE_IDS)[keyof typeof CONFIGURATION_DIALOG_PAGE_IDS];
 
+export const TRIGGERS_CONFIGURATION_DIALOG_PAGE_IDS = {
+  TRIGGER_CONFIG: "trigger-config",
+  TOOL_CONNECTION: "tool-connection",
+};
+
+export type TriggersConfigurationPageId =
+  (typeof TRIGGERS_CONFIGURATION_DIALOG_PAGE_IDS)[keyof typeof TRIGGERS_CONFIGURATION_DIALOG_PAGE_IDS];
+
 // Zod validation schema for data source configuration - defines the contract/shape
 export const dataSourceConfigurationSchema = z.object({
   sId: z.string().optional(),

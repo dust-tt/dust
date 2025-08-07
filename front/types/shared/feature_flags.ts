@@ -115,6 +115,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   jit_tools: {
     description: "Allow users to add tools to conversations",
   },
+  hootl: {
+    description: "Humans Out Of The Loop",
+  },
 } as const;
 
 export const WHITELISTABLE_FEATURES = Object.keys(
