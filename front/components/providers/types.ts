@@ -31,6 +31,7 @@ import {
   GPT_4_TURBO_MODEL_CONFIG,
   GPT_4O_MINI_MODEL_CONFIG,
   GPT_4O_MODEL_CONFIG,
+  GPT_5_MODEL_CONFIG,
   GROK_3_MINI_MODEL_CONFIG,
   GROK_3_MODEL_CONFIG,
   MISTRAL_CODESTRAL_MODEL_CONFIG,
@@ -87,6 +88,7 @@ export const getModelProviderLogo = (
   return isDark && logos.dark ? logos.dark : logos.light;
 };
 export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
+  GPT_5_MODEL_CONFIG,
   GPT_4O_MODEL_CONFIG,
   GPT_4O_MINI_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
