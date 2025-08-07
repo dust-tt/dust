@@ -1,4 +1,12 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  FILESYSTEM_FIND_TOOL_NAME,
+  FILESYSTEM_LIST_TOOL_NAME,
+  FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+  FILESYSTEM_SERVER_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
 import { _getDefaultWebActionsForGlobalAgent } from "@app/lib/api/assistant/global_agents/tools";
@@ -235,27 +243,27 @@ Task: "Analyze business performance with revenue, users, and churn metrics"
 \`\`\`
 </launch_analytics_task_instructions>
 
-<data_source_file_system_api_instructions>
-You can use the data_sources_file_system_api to explore the internal data of the company.
+<${FILESYSTEM_SERVER_NAME}_tools_instructions>
+You have access to several tools to explore the internal data of the company:
 
-<data_source_file_system_hierarchy>
+<${FILESYSTEM_SERVER_NAME}_hierarchy>
 The data sources are organized in a directed graph.
 Each root node represents a data source. Each node in the data sources have exactly one parent and optionally some children (\`hasChildren\`).
 
-- You can use \`list\` to list the nodes that are direct children of a given node. This will return the nodeId and title for each node. Note that documents can also have children in some data sources.
-- You can use \`locate_in_tree\` to view the whole path leading to a given node (you will see the whole subtree that contains the node, from the root up to the node)
-</data_source_file_system_hierarchy>
+- You can use the \`${FILESYSTEM_LIST_TOOL_NAME}\` tool to list the nodes that are direct children of a given node. Pass \`nodeId: null\` to list all root data sources. This will return the nodeId and title for each node. Note that documents can also have children in some data sources.
+- You can use the \`${FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME}\` tool to view the whole path leading to a given node (you will see the whole path from the root up to the node)
+</${FILESYSTEM_SERVER_NAME}_hierarchy>
 
-<data_source_file_system_find_a_node>
-- You search for a node by title using the \`find\` tool on a given node (will explore all children of this node recursively)
-- You can search by running a semantic search (recursively) against the content of all children of a node
-</data_source_file_system_find_a_node>
+<${FILESYSTEM_SERVER_NAME}_find_a_node>
+- You can use the \`${FILESYSTEM_FIND_TOOL_NAME}\` tool to search for nodes by title starting from a specific node (will explore all children of this node recursively). Omit the rootNodeId to search across all data sources.
+- You can use the \`${SEARCH_TOOL_NAME}\` tool to run a semantic search against the content of documents within specified nodes
+</${FILESYSTEM_SERVER_NAME}_find_a_node>
 
-<data_source_file_system_read_content>
+<${FILESYSTEM_SERVER_NAME}_read_content>
 - You can read the actual content in a document node using the \`cat\` tool
-</data_source_file_system_read_content>
+</${FILESYSTEM_SERVER_NAME}_read_content>
 
-</data_source_file_system_api_instructions>
+</${FILESYSTEM_SERVER_NAME}_tools_instructions>
 
 <parallel_tool_calling_instructions>
 You can use parallel tool calling in order to speed-up your work, when applicable. Tasks that can be done in parallel should be done in parallel.
@@ -325,7 +333,7 @@ You must never output text outside of \`<thinking>\` tags between tool use. Only
       id: -1,
       sId: GLOBAL_AGENTS_SID.RESEARCH + "-file-system-action",
       type: "mcp_server_configuration",
-      name: "search_file_system",
+      name: "data_sources_file_system" satisfies InternalMCPServerNameType,
       description: "Our company's internal data sources",
       mcpServerViewId: dataSourcesFileSystemMCPServerView.sId,
       internalMCPServerId:
