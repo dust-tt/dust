@@ -199,9 +199,8 @@ export function ZendeskConfigView({
       >
         <ContextItem.Description>
           <div className="mb-4 flex items-start justify-between gap-4 text-muted-foreground dark:text-muted-foreground-night">
-            <span>
-              Set the retention period, outdated tickets will be cleaned on a daily basis.
-            </span>
+            Set the retention period (in days), tickets older than the retention
+            period will not be synced with Dust.
             <div className="flex items-center gap-2">
               <Input
                 value={retentionInput}
