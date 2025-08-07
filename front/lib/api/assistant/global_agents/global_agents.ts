@@ -260,7 +260,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         webSearchBrowseMCPServerView,
-        searchMCPServerView,
         dataSourcesFileSystemMCPServerView,
       });
       break;

@@ -23,13 +23,11 @@ export function _getResearchGlobalAgent(
     settings,
     preFetchedDataSources,
     webSearchBrowseMCPServerView,
-    searchMCPServerView,
     dataSourcesFileSystemMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
-    searchMCPServerView: MCPServerViewResource | null;
     dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
@@ -327,8 +325,8 @@ You must never output text outside of \`<thinking>\` tags between tool use. Only
       id: -1,
       sId: GLOBAL_AGENTS_SID.RESEARCH + "-file-system-action",
       type: "mcp_server_configuration",
-      name: "hidden_dust_search_file_system",
-      description: `The user's data sources (file system).`,
+      name: "search_file_system",
+      description: "Our company's internal data sources",
       mcpServerViewId: dataSourcesFileSystemMCPServerView.sId,
       internalMCPServerId:
         dataSourcesFileSystemMCPServerView.internalMCPServerId,
@@ -344,73 +342,6 @@ You must never output text outside of \`<thinking>\` tags between tool use. Only
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
-    });
-  }
-
-  // Only add the action if there are data sources and the search MCPServer is available.
-  if (dataSourceViews.length > 0 && searchMCPServerView) {
-    // We push one action with all data sources
-    actions.push({
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.RESEARCH + "-datasource-action",
-      type: "mcp_server_configuration",
-      name: "search_all_data_sources",
-      description: "The user's entire workspace data sources",
-      mcpServerViewId: searchMCPServerView.sId,
-      internalMCPServerId: searchMCPServerView.internalMCPServerId,
-      dataSources: dataSourceViews.map((dsView) => ({
-        dataSourceViewId: dsView.sId,
-        workspaceId: preFetchedDataSources.workspaceId,
-        filter: { parents: null, tags: null },
-      })),
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-    });
-
-    // Add one action per managed data source to improve search results for queries like
-    // "search in <data_source>".
-    // Only include data sources from the global space to limit actions for the same
-    // data source.
-    // Hack: Prefix action names with "hidden_" to prevent them from appearing in the UI,
-    // avoiding duplicate display of data sources.
-    dataSourceViews.forEach((dsView) => {
-      if (
-        dsView.dataSource.connectorProvider &&
-        dsView.dataSource.connectorProvider !== "webcrawler" &&
-        dsView.isInGlobalSpace
-      ) {
-        actions.push({
-          id: -1,
-          sId:
-            GLOBAL_AGENTS_SID.RESEARCH +
-            "-datasource-action-" +
-            dsView.dataSource.sId,
-          type: "mcp_server_configuration",
-          name: "hidden_dust_search_" + dsView.dataSource.name,
-          description: `The user's ${dsView.dataSource.connectorProvider} data source.`,
-          mcpServerViewId: searchMCPServerView.sId,
-          internalMCPServerId: searchMCPServerView.internalMCPServerId,
-          dataSources: [
-            {
-              workspaceId: preFetchedDataSources.workspaceId,
-              dataSourceViewId: dsView.sId,
-              filter: { parents: null, tags: null },
-            },
-          ],
-          tables: null,
-          childAgentId: null,
-          reasoningModel: null,
-          additionalConfiguration: {},
-          timeFrame: null,
-          dustAppConfiguration: null,
-          jsonSchema: null,
-        });
-      }
     });
   }
 
