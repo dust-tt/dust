@@ -391,6 +391,18 @@ export const slack = async ({
           continue;
         }
 
+        if (channel.is_member) {
+          logger.info(
+            {
+              connectorId: connector.id,
+              channelId: channel.id,
+              channelName: channel.name,
+            },
+            "Channel is already joined, skipping"
+          );
+          continue;
+        }
+
         try {
           const autoReadResult = await autoReadChannel(
             slackConfiguration.slackTeamId,
