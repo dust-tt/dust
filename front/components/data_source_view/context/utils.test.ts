@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import {
   addNodeToTree,
   isNodeSelected,
@@ -7,9 +8,13 @@ import {
 } from "@app/components/data_source_view/context/utils";
 
 // Helper function to create tree items
-const createTreeItem = (path: string, name?: string) => ({
+const createTreeItem = (
+  path: string,
+  name?: string
+): DataSourceBuilderTreeItemType => ({
   path,
   name: name || path.split("/").pop() || path,
+  type: "root",
 });
 
 describe("DataSourceBuilder utilities", () => {
@@ -17,10 +22,10 @@ describe("DataSourceBuilder utilities", () => {
     it("should add a node to an empty tree", () => {
       const result = addNodeToTree(
         { in: [], notIn: [] },
-        { path: ["root", "a"], name: "a" }
+        { path: "root/a", name: "a", type: "root" }
       );
       expect(result).toEqual({
-        in: [{ path: "root/a", name: "a" }],
+        in: [{ path: "root/a", name: "a", type: "root" }],
         notIn: [],
       });
     });
@@ -31,8 +36,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [createTreeItem("root/a")],
       };
       const result = addNodeToTree(tree, {
-        path: ["root", "a"],
+        path: "root/a",
         name: "a",
+        type: "root",
       });
       expect(result).toEqual({
         in: [],
@@ -46,8 +52,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [],
       };
       const result = addNodeToTree(tree, {
-        path: ["root", "a"],
+        path: "root/a",
         name: "a",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("root/a")],
@@ -61,8 +68,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [],
       };
       const result = addNodeToTree(tree, {
-        path: ["root", "a", "b"],
+        path: "root/a/b",
         name: "b",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("root")],
@@ -77,8 +85,9 @@ describe("DataSourceBuilder utilities", () => {
       };
 
       const result = addNodeToTree(tree, {
-        path: ["a", "b", "c"],
+        path: "a/b/c",
         name: "c",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("a/b/c", "c")],
@@ -93,8 +102,9 @@ describe("DataSourceBuilder utilities", () => {
       };
 
       const result = addNodeToTree(tree, {
-        path: ["root", "a", "b", "c"],
+        path: "root/a/b/c",
         name: "c",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("root/a")],
@@ -108,8 +118,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [],
       };
       const result = addNodeToTree(tree, {
-        path: ["root", "a", "b", "c", "d"],
+        path: "root/a/b/c/d",
         name: "d",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("root")],
@@ -123,8 +134,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [],
       };
       const result = addNodeToTree(tree, {
-        path: ["root", "b"],
+        path: "root/b",
         name: "b",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("root/a"), createTreeItem("root/b", "b")],
@@ -138,8 +150,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [createTreeItem("other")],
       };
       const result = addNodeToTree(tree, {
-        path: ["root"],
+        path: "root",
         name: "root",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("root", "root")],
@@ -157,8 +170,9 @@ describe("DataSourceBuilder utilities", () => {
         ],
       };
       const result = addNodeToTree(tree, {
-        path: ["root", "a"],
+        path: "root/a",
         name: "a",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("root/a", "a")],
@@ -172,8 +186,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [createTreeItem("root/a"), createTreeItem("root/a/x")],
       };
       const result = addNodeToTree(tree, {
-        path: ["root", "a", "y"],
+        path: "root/a/y",
         name: "y",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("root/b"), createTreeItem("root/a/y", "y")],
@@ -187,8 +202,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [createTreeItem("root/b"), createTreeItem("root/d/x")],
       };
       const result = addNodeToTree(tree, {
-        path: ["root", "d"],
+        path: "root/d",
         name: "d",
+        type: "root",
       });
       expect(result).toEqual({
         in: [
@@ -206,8 +222,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [createTreeItem("a")],
       };
       const result = addNodeToTree(tree, {
-        path: ["a"],
+        path: "a",
         name: "a",
+        type: "root",
       });
       expect(result).toEqual({
         in: [],
@@ -221,8 +238,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [createTreeItem("temp/cache"), createTreeItem("logs/old")],
       };
       const result = addNodeToTree(tree, {
-        path: ["src", "main"],
+        path: "src/main",
         name: "main",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("docs"), createTreeItem("src/main", "main")],
@@ -238,8 +256,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [],
       };
       const result = removeNodeFromTree(tree, {
-        path: ["root", "a"],
+        path: "root/a",
         name: "a",
+        type: "root",
       });
       expect(result).toEqual({
         in: [],
@@ -253,8 +272,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [],
       };
       const result = removeNodeFromTree(tree, {
-        path: ["root", "a"],
+        path: "root/a",
         name: "a",
+        type: "root",
       });
       expect(result).toEqual({
         in: [],
@@ -268,8 +288,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [createTreeItem("root/a")],
       };
       const result = removeNodeFromTree(tree, {
-        path: ["root", "a"],
+        path: "root/a",
         name: "a",
+        type: "root",
       });
       expect(result).toEqual({
         in: [],
@@ -283,8 +304,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [],
       };
       const result = removeNodeFromTree(tree, {
-        path: ["root", "a", "b", "c"],
+        path: "root/a/b/c",
         name: "c",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("root/a/b")],
@@ -302,8 +324,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [],
       };
       const result = removeNodeFromTree(tree, {
-        path: ["root", "a"],
+        path: "root/a",
         name: "a",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("root/b")],
@@ -321,8 +344,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [],
       };
       const result = removeNodeFromTree(tree, {
-        path: ["root", "a"],
+        path: "root/a",
         name: "a",
+        type: "root",
       });
       expect(result).toEqual({
         in: [
@@ -341,8 +365,9 @@ describe("DataSourceBuilder utilities", () => {
       };
 
       const result = removeNodeFromTree(tree, {
-        path: ["root", "b"],
+        path: "root/b",
         name: "b",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("root/a")],
@@ -356,8 +381,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [],
       };
       const result = removeNodeFromTree(tree, {
-        path: ["root", "a", "b"],
+        path: "root/a/b",
         name: "b",
+        type: "root",
       });
       expect(result).toEqual({
         in: [],
@@ -376,8 +402,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [],
       };
       const result = removeNodeFromTree(tree, {
-        path: ["root", "a"],
+        path: "root/a",
         name: "a",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("root/b")],
@@ -395,8 +422,9 @@ describe("DataSourceBuilder utilities", () => {
         ],
       };
       const result = removeNodeFromTree(tree, {
-        path: ["root", "a"],
+        path: "root/a",
         name: "a",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("root")],
@@ -414,8 +442,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [createTreeItem("root/excluded")],
       };
       const result = removeNodeFromTree(tree, {
-        path: ["root"],
+        path: "root",
         name: "root",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("other/x")],
@@ -435,8 +464,9 @@ describe("DataSourceBuilder utilities", () => {
         ],
       };
       const result = removeNodeFromTree(tree, {
-        path: ["root", "a"],
+        path: "root/a",
         name: "a",
+        type: "root",
       });
       expect(result).toEqual({
         in: [],
@@ -454,8 +484,9 @@ describe("DataSourceBuilder utilities", () => {
         ],
       };
       const result = removeNodeFromTree(tree, {
-        path: ["other", "branch"],
+        path: "other/branch",
         name: "branch",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("root")],
@@ -478,8 +509,9 @@ describe("DataSourceBuilder utilities", () => {
         ],
       };
       const result = removeNodeFromTree(tree, {
-        path: ["root", "a", "x"],
+        path: "root/a/x",
         name: "x",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("root")],
@@ -497,8 +529,9 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [createTreeItem("root/a")],
       };
       const result = removeNodeFromTree(tree, {
-        path: ["root", "a", "b"],
+        path: "root/a/b",
         name: "b",
+        type: "root",
       });
       expect(result).toEqual({
         in: [createTreeItem("root")],
