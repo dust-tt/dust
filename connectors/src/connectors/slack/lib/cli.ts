@@ -1,4 +1,7 @@
-import { autoReadChannel } from "@connectors/connectors/slack/auto_read_channel";
+import {
+  autoReadChannel,
+  findMatchingChannelPatterns,
+} from "@connectors/connectors/slack/auto_read_channel";
 import {
   getChannelById,
   getChannels,
@@ -377,6 +380,26 @@ export const slack = async ({
 
       for (const channel of allChannels) {
         if (!channel.id || !channel.name) {
+          continue;
+        }
+
+        const matchingPatterns = findMatchingChannelPatterns(
+          channel.name,
+          autoReadChannelPatterns
+        );
+        if (matchingPatterns.length === 0) {
+          continue;
+        }
+
+        if (channel.is_member) {
+          logger.info(
+            {
+              connectorId: connector.id,
+              channelId: channel.id,
+              channelName: channel.name,
+            },
+            "Channel is already joined, skipping"
+          );
           continue;
         }
 
