@@ -1,6 +1,7 @@
 import type { Fetcher } from "swr";
 
 import type { GeoLocationResponse } from "@app/pages/api/geo/location";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 import { fetcher, useSWRWithDefaults } from "./swr";
 
@@ -13,38 +14,47 @@ interface CachedGeoData {
 }
 
 function getCachedGeoData(): GeoLocationResponse | null {
-  if (typeof window === "undefined") return null;
-  
+  if (typeof window === "undefined") {
+    return null;
+  }
+
   try {
     const cached = localStorage.getItem(GEO_CACHE_KEY);
-    if (!cached) return null;
-    
+    if (!cached) {
+      return null;
+    }
+
     const { data, timestamp }: CachedGeoData = JSON.parse(cached);
     const now = Date.now();
-    
+
     if (now - timestamp > CACHE_DURATION) {
       localStorage.removeItem(GEO_CACHE_KEY);
       return null;
     }
-    
+
     return data;
-  } catch {
+  } catch (err) {
+    const error = normalizeError(err);
+    console.warn("Failed to parse cached geo data:", error.message);
     localStorage.removeItem(GEO_CACHE_KEY);
     return null;
   }
 }
 
 function setCachedGeoData(data: GeoLocationResponse): void {
-  if (typeof window === "undefined") return;
-  
+  if (typeof window === "undefined") {
+    return;
+  }
+
   try {
     const cached: CachedGeoData = {
       data,
       timestamp: Date.now(),
     };
     localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cached));
-  } catch {
-    // Silently ignore localStorage errors (private browsing, storage full, etc.)
+  } catch (err) {
+    const error = normalizeError(err);
+    console.warn("Failed to cache geo data:", error.message);
   }
 }
 
