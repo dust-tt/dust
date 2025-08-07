@@ -332,6 +332,7 @@ export default function AppView({
       subscription={subscription}
       hideSidebar
       owner={owner}
+      className="pt-0"
       title={
         <AppLayoutSimpleCloseTitle
           title={app.name}
@@ -342,7 +343,10 @@ export default function AppView({
       }
     >
       <div className="flex w-full flex-col">
-        <Tabs value="specification" className="mt-2">
+        <Tabs
+          value="specification"
+          className="sticky top-0 z-10 bg-background pt-4 dark:bg-background-night"
+        >
           <TabsList>
             {subNavigationApp({ owner, app, current: "specification" }).map(
               (tab) => (
