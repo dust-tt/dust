@@ -7,9 +7,9 @@ interface NavigationLoadingContextType {
   startNavigation: () => void;
 }
 
-const NavigationLoadingContext = React.createContext<NavigationLoadingContextType | undefined>(
-  undefined
-);
+const NavigationLoadingContext = React.createContext<
+  NavigationLoadingContextType | undefined
+>(undefined);
 
 export function NavigationLoadingProvider({
   children,

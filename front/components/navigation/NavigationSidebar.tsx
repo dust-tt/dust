@@ -67,11 +67,14 @@ export const NavigationSidebar = React.forwardRef<
   const { spaceMenuButtonRef } = useWelcomeTourGuide();
   const { startNavigation } = useNavigationLoading();
 
-  const handleTabClick = useCallback((href?: string) => {
-    if (href && href !== router.asPath) {
-      startNavigation();
-    }
-  }, [startNavigation, router.asPath]);
+  const handleTabClick = useCallback(
+    (href?: string) => {
+      if (href && href !== router.asPath) {
+        startNavigation();
+      }
+    },
+    [startNavigation, router.asPath]
+  );
 
   // TODO(2024-06-19 flav): Fix issue with AppLayout changing between pagesg
   const navs = useMemo(
