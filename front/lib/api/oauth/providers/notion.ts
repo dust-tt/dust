@@ -117,10 +117,11 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
         const oauthRes = await oauthApi.getAccessToken({
           connectionId: mcpServerConnectionRes.value.connectionId,
         });
-        
+
         if (oauthRes.isErr()) {
           throw new Error(
-            "Failed to get access token for admin connection: " + oauthRes.error.message
+            "Failed to get access token for admin connection: " +
+              oauthRes.error.message
           );
         }
 
@@ -130,12 +131,14 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
         }
 
         const notionWorkspaceId = oauthRes.value.scrubbed_raw_json.workspace_id;
-        const notionWorkspaceName = oauthRes.value.scrubbed_raw_json.workspace_name;
+        const notionWorkspaceName =
+          oauthRes.value.scrubbed_raw_json.workspace_name;
 
         const updatedConfig = {
           ...restConfig,
           requested_notion_workspace_id: notionWorkspaceId,
-          requested_notion_workspace_name: notionWorkspaceName || "Unknown Workspace",
+          requested_notion_workspace_name:
+            notionWorkspaceName || "Unknown Workspace",
         };
 
         return updatedConfig;
@@ -148,23 +151,25 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
   async checkConnectionValidPostFinalize(connection: OAuthConnectionType) {
     // If a Notion workspace was requested, we need to check that the Notion workspace id is the same as the requested one.
     if ("requested_notion_workspace_id" in connection.metadata) {
-      const requestedNotionWorkspaceId = connection.metadata.requested_notion_workspace_id;
-      const requestedNotionWorkspaceName = connection.metadata.requested_notion_workspace_name;
-      
+      const requestedNotionWorkspaceId =
+        connection.metadata.requested_notion_workspace_id;
+      const requestedNotionWorkspaceName =
+        connection.metadata.requested_notion_workspace_name;
+
       try {
         // Get the current user's OAuth token information to extract their Notion workspace info
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
         const accessTokenRes = await oauthApi.getAccessToken({
           connectionId: connection.connection_id,
         });
-        
+
         if (accessTokenRes.isErr()) {
           return new Err({
             message:
               "Unable to validate Notion workspace. Please try connecting again.",
           });
         }
-        
+
         // Extract current user's Notion workspace info from raw OAuth response
         if (!hasNotionWorkspaceId(accessTokenRes.value.scrubbed_raw_json)) {
           return new Err({
@@ -173,13 +178,15 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
           });
         }
 
-        const currentNotionWorkspaceId = accessTokenRes.value.scrubbed_raw_json.workspace_id;
-        const currentNotionWorkspaceName = accessTokenRes.value.scrubbed_raw_json.workspace_name;
-        
+        const currentNotionWorkspaceId =
+          accessTokenRes.value.scrubbed_raw_json.workspace_id;
+        const currentNotionWorkspaceName =
+          accessTokenRes.value.scrubbed_raw_json.workspace_name;
+
         if (currentNotionWorkspaceId === requestedNotionWorkspaceId) {
           return new Ok(undefined);
         }
-        
+
         return new Err({
           message:
             "You must connect to the Notion workspace configured by your admin (" +
@@ -188,7 +195,6 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
             (currentNotionWorkspaceName || "Unknown") +
             ").",
         });
-        
       } catch (error) {
         return new Err({
           message:
