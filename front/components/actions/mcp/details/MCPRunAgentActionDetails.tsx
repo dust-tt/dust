@@ -86,20 +86,22 @@ export function MCPRunAgentActionDetails({
       queries.length > 0 ? queries : progressQueries.map((pq) => pq.query);
 
     return allQueries.map((query: string, index: number) => {
-      const result = results[index];
       const progress = progressQueries[index];
+      const result = results[index];
+
+      // Use progress data if actively streaming, otherwise use final results.
+      const currentData =
+        progress?.status === "running" ? progress : result || progress;
 
       return {
         query,
-        response: result?.text || progress?.text || null,
-        chainOfThought:
-          result?.chainOfThought || progress?.chainOfThought || null,
-        conversationId:
-          result?.conversationId || progress?.conversationId || null,
+        response: currentData?.text || null,
+        chainOfThought: currentData?.chainOfThought || null,
+        conversationId: currentData?.conversationId || null,
         isStreaming: progress?.status === "running",
-        error: result?.error || progress?.error || null,
+        error: currentData?.error || null,
         status: progress?.status || (result ? "completed" : "pending"),
-        refs: result?.refs || {},
+        refs: ("refs" in currentData && currentData?.refs) || {},
       };
     });
   }, [queryResource, resultResource, lastNotification]);

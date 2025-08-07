@@ -543,25 +543,27 @@ export const isRunAgentQueriesResourceType = (
 
 export const RunAgentResultsResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULTS),
-  results: z.array(z.object({
-    conversationId: z.string(),
-    query: z.string(),
-    text: z.string(),
-    chainOfThought: z.string().optional(),
-    uri: z.string(),
-    error: z.string().optional(),
-    refs: z
-      .record(
-        z.string(),
-        z.object({
-          description: z.string().optional(),
-          href: z.string().optional(),
-          title: z.string(),
-          provider: z.string(),
-        })
-      )
-      .optional(),
-  })),
+  results: z.array(
+    z.object({
+      conversationId: z.string(),
+      query: z.string(),
+      text: z.string(),
+      chainOfThought: z.string().optional(),
+      uri: z.string(),
+      error: z.string().optional(),
+      refs: z
+        .record(
+          z.string(),
+          z.object({
+            description: z.string().optional(),
+            href: z.string().optional(),
+            title: z.string(),
+            provider: z.string(),
+          })
+        )
+        .optional(),
+    })
+  ),
   text: z.string(),
   uri: z.literal(""),
 });
@@ -873,16 +875,18 @@ const NotificationRunAgentProgressSchema = z.object({
   childAgentId: z.string(),
   totalQueries: z.number(),
   completedQueries: z.number(),
-  activeQueries: z.array(z.object({
-    index: z.number(),
-    query: z.string(),
-    conversationId: z.string(),
-    status: z.enum(["pending", "running", "completed", "failed"]),
-    error: z.string().optional(),
-    text: z.string().optional(),
-    chainOfThought: z.string().optional(),
-    uri: z.string().optional(),
-  })),
+  activeQueries: z.array(
+    z.object({
+      index: z.number(),
+      query: z.string(),
+      conversationId: z.string(),
+      status: z.enum(["pending", "running", "completed", "failed"]),
+      error: z.string().optional(),
+      text: z.string().optional(),
+      chainOfThought: z.string().optional(),
+      uri: z.string().optional(),
+    })
+  ),
 });
 
 type RunAgentProgressOutput = z.infer<
