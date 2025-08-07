@@ -16,6 +16,7 @@ import type {
   SearchQueryResourceType,
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/personal_authentication";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   makeMCPToolJSONSuccess,
@@ -267,33 +268,32 @@ function makeQueryResource(
   };
 }
 
+async function withNotionClient<T>(
+  fn: (notion: Client) => Promise<T>,
+  authInfo?: AuthInfo
+): Promise<CallToolResult> {
+  try {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return makePersonalAuthenticationError({ serverInfo });
+    }
+    const notion = new Client({ auth: accessToken });
+
+    const result = await fn(notion);
+    return makeMCPToolJSONSuccess({
+      message: "Success",
+      result: JSON.stringify(result),
+    });
+  } catch (e) {
+    return makeMCPToolTextError(normalizeError(e).message);
+  }
+}
+
 const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
   const server = new McpServer(serverInfo);
-
-  // Consolidated wrapper for Notion client creation and error handling
-  async function withNotionClient<T>(
-    fn: (notion: Client) => Promise<T>,
-    authInfo?: AuthInfo
-  ): Promise<CallToolResult> {
-    try {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        throw new Error("No access token found");
-      }
-      const notion = new Client({ auth: accessToken });
-
-      const result = await fn(notion);
-      return makeMCPToolJSONSuccess({
-        message: "Success",
-        result: JSON.stringify(result),
-      });
-    } catch (e) {
-      return makeMCPToolTextError(normalizeError(e).message);
-    }
-  }
 
   server.tool(
     "search",
@@ -320,7 +320,7 @@ const createServer = (
 
       const accessToken = authInfo?.token;
       if (!accessToken) {
-        throw new Error("No access token found");
+        return makePersonalAuthenticationError({ serverInfo });
       }
       const notion = new Client({ auth: accessToken });
 

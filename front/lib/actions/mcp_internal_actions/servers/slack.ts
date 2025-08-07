@@ -1,6 +1,5 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { WebClient } from "@slack/web-api";
 import type { Match } from "@slack/web-api/dist/response/SearchMessagesResponse";
 import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
@@ -12,6 +11,7 @@ import type {
   SearchQueryResourceType,
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/personal_authentication";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   makeMCPToolJSONSuccess,
@@ -96,22 +96,6 @@ function isSlackTokenRevoked(error: unknown): boolean {
     (error as any).message &&
     (error as any).message.toString().includes("token_revoked")
   );
-}
-
-function makeSlackTokenRevokedError(): CallToolResult {
-  return {
-    isError: true,
-    content: [
-      {
-        type: "text" as const,
-        text: JSON.stringify({
-          __dust_auth_required: {
-            provider: serverInfo.authorization?.provider,
-          },
-        }),
-      },
-    ],
-  };
 }
 
 const createServer = (
@@ -341,7 +325,7 @@ const createServer = (
         }
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
-          return makeSlackTokenRevokedError();
+          return makePersonalAuthenticationError({ serverInfo });
         }
         return makeMCPToolTextError(`Error searching messages: ${error}`);
       }
@@ -471,7 +455,7 @@ const createServer = (
         }
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
-          return makeSlackTokenRevokedError();
+          return makePersonalAuthenticationError({ serverInfo });
         }
         return makeMCPToolTextError(`Error listing threads: ${error}`);
       }
@@ -533,7 +517,7 @@ const createServer = (
         });
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
-          return makeSlackTokenRevokedError();
+          return makePersonalAuthenticationError({ serverInfo });
         }
         return makeMCPToolTextError(`Error posting message: ${error}`);
       }
@@ -609,7 +593,7 @@ const createServer = (
         });
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
-          return makeSlackTokenRevokedError();
+          return makePersonalAuthenticationError({ serverInfo });
         }
         return makeMCPToolTextError(`Error listing users: ${error}`);
       }
@@ -684,7 +668,7 @@ const createServer = (
         });
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
-          return makeSlackTokenRevokedError();
+          return makePersonalAuthenticationError({ serverInfo });
         }
         return makeMCPToolTextError(`Error listing channels: ${error}`);
       }
