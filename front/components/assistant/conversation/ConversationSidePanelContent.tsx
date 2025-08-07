@@ -1,8 +1,7 @@
 import { AgentActionsPanel } from "@app/components/assistant/conversation/actions/AgentActionsPanel";
 import { InteractiveContentContainer } from "@app/components/assistant/conversation/content/InteractiveContentContainer";
 import type { ConversationType, WorkspaceType } from "@app/types";
-import type {
-  ConversationSidePanelType} from "@app/types/conversation_side_panel";
+import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,

@@ -3,8 +3,7 @@ import React, { useEffect, useState } from "react";
 
 import { useHashParam } from "@app/hooks/useHashParams";
 import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
-import type {
-  ConversationSidePanelType} from "@app/types/conversation_side_panel";
+import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
