@@ -35,13 +35,13 @@ import {
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import type { LightWorkspaceType } from "@app/types";
 
 interface AgentInteractionData {
   query: string;
   response: string | null;
   chainOfThought: string | null;
   conversationId: string | null;
-  conversationUrl: string | null;
   isStreaming: boolean;
   error: string | null;
   status: string;
@@ -96,14 +96,13 @@ export function MCPRunAgentActionDetails({
           result?.chainOfThought || progress?.chainOfThought || null,
         conversationId:
           result?.conversationId || progress?.conversationId || null,
-        conversationUrl: buildConversationUrl(result, progress, owner.sId),
         isStreaming: progress?.status === "running",
         error: result?.error || progress?.error || null,
         status: progress?.status || (result ? "completed" : "pending"),
         refs: result?.refs || {},
       };
     });
-  }, [queryResource, resultResource, lastNotification, owner.sId]);
+  }, [queryResource, resultResource, lastNotification]);
 
   const generatedFiles =
     action.output?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
@@ -144,6 +143,7 @@ export function MCPRunAgentActionDetails({
                 index={index}
                 totalQueries={agentInteractions.length}
                 isDark={isDark}
+                owner={owner}
               />
               {agentInteractions.length > 1 &&
                 index < agentInteractions.length - 1 && (
@@ -174,11 +174,13 @@ function AgentQueryItem({
   index,
   totalQueries,
   isDark,
+  owner,
 }: {
   queryData: AgentInteractionData;
   index: number;
   totalQueries: number;
   isDark: boolean;
+  owner: LightWorkspaceType;
 }) {
   const isStreamingChainOfThought =
     queryData.isStreaming &&
@@ -363,7 +365,7 @@ function AgentQueryItem({
       </div>
 
       <div>
-        {queryData.conversationUrl && (
+        {queryData.conversationId && (
           <Button
             icon={ExternalLinkIcon}
             label={
@@ -372,29 +374,16 @@ function AgentQueryItem({
                 : "View conversation in progress"
             }
             variant="outline"
-            onClick={() =>
-              queryData.conversationUrl &&
-              window.open(queryData.conversationUrl, "_blank")
-            }
+            onClick={() => {
+              window.open(
+                `${window.location.origin}/w/${owner.sId}/assistant/${queryData.conversationId}`
+              );
+            }}
             size="xs"
             className="!p-1"
           />
         )}
       </div>
     </div>
-  );
-}
-
-function buildConversationUrl(
-  result: { uri?: string } | undefined,
-  progress: { uri?: string; conversationId?: string } | undefined,
-  ownerSId: string
-) {
-  return (
-    result?.uri ||
-    progress?.uri ||
-    (progress?.conversationId &&
-      `${window.location.origin}/w/${ownerSId}/assistant/${progress.conversationId}`) ||
-    null
   );
 }
