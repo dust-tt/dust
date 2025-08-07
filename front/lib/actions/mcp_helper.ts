@@ -47,17 +47,19 @@ export const getServerTypeAndIdFromSId = (
   }
 };
 
-export const internalMCPServerNameToFirstId = ({
+export const internalMCPServerNameToSId = ({
   name,
   workspaceId,
+  prefix,
 }: {
   name: InternalMCPServerNameType;
   workspaceId: ModelId;
+  prefix: number;
 }): string => {
   return dangerouslyMakeSIdWithCustomFirstPrefix("internal_mcp_server", {
     id: INTERNAL_MCP_SERVERS[name].id,
     workspaceId,
-    firstPrefix: LEGACY_REGION_BIT,
+    firstPrefix: prefix,
   });
 };
 
