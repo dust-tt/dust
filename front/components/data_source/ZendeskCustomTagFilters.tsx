@@ -238,12 +238,9 @@ export function ZendeskCustomFieldFilters({
               ))}
             </div>
           ) : (
-            <div className="rounded-md border border-dashed bg-gray-50 p-4 dark:bg-gray-800">
-              <p className="text-center text-sm text-muted-foreground">
-                No custom fields configured yet. Add your first custom field
-                below.
-              </p>
-            </div>
+            <p className="mb-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              No tag filters configured.
+            </p>
           )}
         </div>
       </div>
