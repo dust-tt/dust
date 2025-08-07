@@ -30,7 +30,9 @@ import { cn } from "@sparkle/lib/utils";
 
 const PRETTY_JSON_PREFERENCE_KEY = "pretty-json-preference";
 
-const getPrettyJsonPreference = (): boolean => {
+// Persist user's JSON display preference (raw vs pretty) in localStorage.
+// Only affects newly rendered JSON blocks, not existing ones on the page.
+const getPrettyJsonPreference = () => {
   if (typeof window === "undefined") {
     return false;
   }
@@ -45,7 +47,7 @@ const getPrettyJsonPreference = (): boolean => {
   }
 };
 
-const setPrettyJsonPreference = (value: boolean): void => {
+const setPrettyJsonPreference = (value: boolean) => {
   if (typeof window === "undefined") {
     return;
   }
