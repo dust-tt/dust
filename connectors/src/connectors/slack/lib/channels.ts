@@ -19,7 +19,11 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ConnectorPermission } from "@connectors/types";
 import type { ModelId } from "@connectors/types";
-import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
+import {
+  cacheWithRedis,
+  INTERNAL_MIME_TYPES,
+  withRetries,
+} from "@connectors/types";
 
 import {
   getSlackClient,
@@ -460,8 +464,14 @@ export async function migrateChannelsFromLegacyBotToNewBot(
       "Migrating channel"
     );
 
-    // Join the new bot to the channel.
-    const joinRes = await joinChannel(slackBotConnector.id, channel.id);
+    const { id: channelId } = channel;
+
+    // Join the new bot to the channel. Wrap with retries to handle rate limits.
+    const joinRes = await withRetries(childLogger, joinChannel, {
+      retries: 10,
+      delayBetweenRetriesMs: 10000,
+    })(slackBotConnector.id, channelId);
+
     if (joinRes.isErr()) {
       childLogger.error(
         { error: joinRes.error, channelId: channel.id },
