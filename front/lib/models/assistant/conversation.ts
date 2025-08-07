@@ -89,6 +89,8 @@ export class ConversationParticipantModel extends WorkspaceAwareModel<Conversati
   declare updatedAt: CreationOptional<Date>;
 
   declare action: ParticipantActionType;
+  declare unread: boolean;
+  declare actionRequired: boolean;
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
@@ -111,6 +113,16 @@ ConversationParticipantModel.init(
     action: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    unread: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    actionRequired: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

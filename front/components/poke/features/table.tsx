@@ -3,7 +3,7 @@ import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditio
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { usePokeFeatureFlags } from "@app/lib/swr/poke";
 import type { WhitelistableFeature, WorkspaceType } from "@app/types";
-import { WHITELISTABLE_FEATURES_CONFIG } from "@app/types";
+import { removeNulls, WHITELISTABLE_FEATURES_CONFIG } from "@app/types";
 
 interface FeatureFlagsDataTableProps {
   owner: WorkspaceType;
@@ -14,16 +14,24 @@ function prepareFeatureFlagsForDisplay(
   workspaceFlags: { name: WhitelistableFeature; createdAt: string }[],
   whitelistableFeatures: WhitelistableFeature[]
 ) {
-  return whitelistableFeatures.map((ff) => {
-    const enabledFlag = workspaceFlags.find((f) => f.name === ff);
-    return {
-      name: ff,
-      description:
-        WHITELISTABLE_FEATURES_CONFIG[ff]?.description ?? "[Unknown feature]",
-      enabled: !!enabledFlag,
-      enabledAt: enabledFlag?.createdAt || null,
-    };
-  });
+  return removeNulls(
+    whitelistableFeatures.map((ff) => {
+      const enabledFlag = workspaceFlags.find((f) => f.name === ff);
+      const config = WHITELISTABLE_FEATURES_CONFIG[ff];
+
+      if (!config) {
+        return null;
+      }
+
+      return {
+        name: ff,
+        description: WHITELISTABLE_FEATURES_CONFIG[ff].description,
+        stage: WHITELISTABLE_FEATURES_CONFIG[ff].stage,
+        enabled: !!enabledFlag,
+        enabledAt: enabledFlag?.createdAt || null,
+      };
+    })
+  );
 }
 
 export function FeatureFlagsDataTable({

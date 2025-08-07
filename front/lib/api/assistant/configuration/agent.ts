@@ -19,7 +19,7 @@ import {
   isSelfHostedImageWithValidContentType,
 } from "@app/lib/api/assistant/configuration/helpers";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
-import { getGlobalAgents } from "@app/lib/api/assistant/global_agents";
+import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";

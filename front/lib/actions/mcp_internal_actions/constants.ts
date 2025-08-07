@@ -642,7 +642,13 @@ export const getAvailabilityOfInternalMCPServerById = (
   return getAvailabilityOfInternalMCPServerByName(r.value.name);
 };
 
-export const getAllowMultipleInstancesOfInternalMCPServerById = (
+export const allowsMultipleInstancesOfInternalMCPServerByName = (
+  name: InternalMCPServerNameType
+): boolean => {
+  return !!INTERNAL_MCP_SERVERS[name].allowMultipleInstances;
+};
+
+export const allowsMultipleInstancesOfInternalMCPServerById = (
   sId: string
 ): boolean => {
   const r = getInternalMCPServerNameAndWorkspaceId(sId);

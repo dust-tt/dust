@@ -105,6 +105,16 @@ export function isMCPConfigurationForAgentMemory(
     isInternalMCPServerOfName(arg.internalMCPServerId, "agent_memory")
   );
 }
+
+export function isMCPConfigurationForRunAgent(
+  arg: MCPServerConfigurationType
+): arg is ServerSideMCPServerConfigurationType {
+  return (
+    isServerSideMCPServerConfiguration(arg) &&
+    isInternalMCPServerOfName(arg.internalMCPServerId, "run_agent")
+  );
+}
+
 // MCP Tools
 
 export function isMCPToolConfiguration(

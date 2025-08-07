@@ -18,8 +18,6 @@ import { getOAuthConnectionAccessToken } from "@connectors/types";
 
 const PAGE_FETCH_LIMIT = 100;
 
-const CONNECTOR_IDS_WITH_FOLDER_SUPPORT: ModelId[] = [1126, 27089];
-
 export async function getConfluenceCloudInformation(accessToken: string) {
   const client = new ConfluenceClient(accessToken);
 
@@ -175,12 +173,10 @@ function getConfluenceContentRef(
 export async function getActiveChildContentRefs(
   client: ConfluenceClient,
   {
-    connectorId,
     pageCursor,
     parentContentId,
     spaceKey,
   }: {
-    connectorId: ModelId;
     pageCursor: string | null;
     parentContentId: string;
     spaceKey: string;
@@ -189,7 +185,6 @@ export async function getActiveChildContentRefs(
   // Fetch the child content of the parent page.
   const { content: childContent, nextPageCursor } =
     await client.getChildContent({
-      includeFolders: CONNECTOR_IDS_WITH_FOLDER_SUPPORT.includes(connectorId),
       limit: PAGE_FETCH_LIMIT,
       pageCursor,
       parentContentId,

@@ -11,6 +11,7 @@ import {
   isMCPConfigurationForInternalNotion,
   isMCPConfigurationForInternalSlack,
   isMCPConfigurationForInternalWebsearch,
+  isMCPConfigurationForRunAgent,
   isMCPConfigurationWithDataSource,
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
@@ -156,12 +157,17 @@ export async function constructPromptMultiActions(
     (action) =>
       isMCPConfigurationWithDataSource(action) ||
       isMCPConfigurationForInternalWebsearch(action) ||
+      isMCPConfigurationForRunAgent(action) ||
       isMCPConfigurationForInternalSlack(action) ||
       isMCPConfigurationForInternalNotion(action)
   );
 
+  const isUsingRunAgent = agentConfiguration.actions.some((action) =>
+    isMCPConfigurationForRunAgent(action)
+  );
+
   if (canRetrieveDocuments) {
-    guidelinesSection += `\n${citationMetaPrompt()}\n`;
+    guidelinesSection += `\n${citationMetaPrompt(isUsingRunAgent)}\n`;
   }
 
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
