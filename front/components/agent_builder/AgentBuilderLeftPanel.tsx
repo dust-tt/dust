@@ -7,6 +7,9 @@ import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/ins
 import { AgentAccessPublicationDialog } from "@app/components/agent_builder/settings/AgentAccessPublicationDialog";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
 import { ConfirmContext } from "@app/components/Confirm";
+import { AgentBuilderTriggersBlock } from "@app/components/agent_builder/triggers/AgentBuilderTriggersBlock";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 
 interface AgentBuilderLeftPanelProps {
   title: string;
@@ -24,6 +27,9 @@ export function AgentBuilderLeftPanel({
   isActionsLoading,
 }: AgentBuilderLeftPanelProps) {
   const confirm = React.useContext(ConfirmContext);
+
+  const { owner } = useAgentBuilderContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const handleCancel = async () => {
     const confirmed = await confirm({
@@ -52,6 +58,7 @@ export function AgentBuilderLeftPanel({
             agentConfigurationId={agentConfigurationId}
           />
           <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
+          {hasFeature("hootl") && <AgentBuilderTriggersBlock />}
           <AgentBuilderSettingsBlock
             isSettingBlocksOpen={!agentConfigurationId}
           />
