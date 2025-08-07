@@ -4,6 +4,7 @@ import type {
   DataSourceBuilderTreeItemType,
   DataSourceBuilderTreeType,
 } from "@app/components/data_source_view/context/types";
+import { isNodeSelected } from "@app/components/data_source_view/context/utils";
 import type {
   DataSourceViewContentNode,
   DataSourceViewSelectionConfigurations,
@@ -59,24 +60,17 @@ export function transformTreeToSelectionConfigurations(
   const existingResourcesMap = new Map<string, Set<string>>();
 
   // Parse the tree paths to extract data source configurations
-  for (const path of tree.in) {
-    const parts = path.path.split("/");
-    if (parts.length < 2 || parts[0] !== "root") {
+  for (const item of tree.in) {
+    if (item.type !== "node" && item.type !== "data_source") {
       continue;
     }
 
+    const parts = item.path.split("/");
     // Find the data source view ID in the path - optimize with early break
-    let dsvIdIndex = -1;
-    let dsvId = "";
-    for (let i = 1; i < parts.length; i++) {
-      if (isDataSourceViewId(parts[i])) {
-        dsvIdIndex = i;
-        dsvId = parts[i];
-        break;
-      }
-    }
+    const dsvIdIndex = parts.findIndex((part) => isDataSourceViewId(part));
+    const dsvId = parts[dsvIdIndex];
 
-    if (dsvIdIndex === -1) {
+    if (dsvId == null) {
       continue;
     }
 
@@ -86,7 +80,9 @@ export function transformTreeToSelectionConfigurations(
     }
 
     // Check if this is a full data source selection or specific nodes
-    const isFullDataSource = dsvIdIndex === parts.length - 1;
+    const isFullDataSource =
+      item.type === "data_source" &&
+      isNodeSelected(tree, item.path.split("/")) === true;
 
     // Initialize configuration if not exists
     if (!configurations[dataSourceView.sId]) {
@@ -103,8 +99,8 @@ export function transformTreeToSelectionConfigurations(
     if (!isFullDataSource) {
       configurations[dataSourceView.sId].isSelectAll = false;
 
-      if (path.type === "node") {
-        configurations[dataSourceView.sId].selectedResources.push(path.node);
+      if (item.type === "node") {
+        configurations[dataSourceView.sId].selectedResources.push(item.node);
       } else {
         // Extract node information from the path
         const nodeIds = parts.slice(dsvIdIndex + 1);
@@ -141,6 +137,7 @@ export function transformTreeToSelectionConfigurations(
 export function transformSelectionConfigurationsToTree(
   configurations: DataSourceViewSelectionConfigurations
 ): DataSourceBuilderTreeType {
+  console.log({ configurations });
   const inPaths: DataSourceBuilderTreeItemType[] = [];
   const notInPaths: DataSourceBuilderTreeItemType[] = [];
 
@@ -160,6 +157,12 @@ export function transformSelectionConfigurationsToTree(
 
       for (const node of config.selectedResources) {
         const parentId = node.parentInternalId || null;
+
+        if (parentId === null) {
+          // TODO: data source view
+        } else {
+          // TODO: node
+        }
         const nodes = resourcesByParent.get(parentId) || [];
         nodes.push(node);
         resourcesByParent.set(parentId, nodes);
@@ -175,8 +178,9 @@ export function transformSelectionConfigurationsToTree(
           inPaths.push({
             path: pathParts.join("/"),
             name: parentId ?? node.title,
+            type: "node",
             node,
-          } as any); // WARN:
+          });
         }
       }
     }
