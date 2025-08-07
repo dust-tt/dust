@@ -679,20 +679,18 @@ export class ConfluenceClient {
   }
 
   async getChildContent({
-    includeFolders = false,
     limit,
     pageCursor,
     parentContentId,
     spaceKey,
   }: {
-    includeFolders?: boolean;
     limit: number;
     pageCursor: string | null;
     parentContentId: string;
     spaceKey: string;
   }) {
     // Build CQL query to get pages with specific IDs.
-    const cqlQuery = `type IN (${includeFolders ? "page, folder" : "page"}) AND space="${spaceKey}" AND parent=${parentContentId}`;
+    const cqlQuery = `type IN (page, folder) AND space="${spaceKey}" AND parent=${parentContentId}`;
 
     const params = new URLSearchParams({
       cql: cqlQuery,
@@ -852,10 +850,29 @@ export class ConfluenceClient {
   }
 
   async getFolderById(folderId: string) {
-    return this.request(
-      `${this.restApiBaseUrl}/folders/${folderId}`,
-      ConfluenceFolderCodec
-    );
+    try {
+      return await this.request(
+        `${this.restApiBaseUrl}/folders/${folderId}`,
+        ConfluenceFolderCodec
+      );
+    } catch (err) {
+      // If the folder scope is not yet granted, throw an ExternalOAuthTokenError so users can
+      // re-authorize to pick up the new scope.
+      if (
+        err instanceof ConfluenceClientError &&
+        (err.status === 401 || err.status === 403)
+      ) {
+        logger.error(
+          {
+            err,
+          },
+          "Missing folder scope, re-authorizing is required"
+        );
+        throw new ExternalOAuthTokenError();
+      }
+
+      throw err;
+    }
   }
 
   async getPageReadRestrictions(pageId: string) {
