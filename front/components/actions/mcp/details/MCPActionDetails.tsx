@@ -38,9 +38,9 @@ import {
   isIncludeResultResourceType,
   isReasoningSuccessOutput,
   isResourceContentWithText,
-  isRunAgentBatchProgressOutput,
-  isRunAgentBatchQueryResourceType,
-  isRunAgentBatchResultResourceType,
+  isRunAgentProgressOutput,
+  isRunAgentQueriesResourceType,
+  isRunAgentResultsResourceType,
   isSearchResultResourceType,
   isSqlQueryOutput,
   isTextContent,
@@ -74,9 +74,9 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   const isExtract = props.action.output?.some(isExtractResultResourceType);
 
   const isRunAgent =
-    props.action.output?.some(isRunAgentBatchResultResourceType) ||
-    props.action.output?.some(isRunAgentBatchQueryResourceType) ||
-    isRunAgentBatchProgressOutput(props.lastNotification?.data.output);
+    props.action.output?.some(isRunAgentResultsResourceType) ||
+    props.action.output?.some(isRunAgentQueriesResourceType) ||
+    isRunAgentProgressOutput(props.lastNotification?.data.output);
 
   const isAgentCreation = props.action.output?.some(
     isAgentCreationResultResourceType

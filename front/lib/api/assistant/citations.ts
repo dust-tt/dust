@@ -2,7 +2,7 @@ import { removeNulls } from "@dust-tt/client";
 
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
-  isRunAgentResultResourceType,
+  isRunAgentResultsResourceType,
   isSearchResultResourceType,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -87,7 +87,7 @@ export const getCitationsFromActions = (
 
   const runAgentResultsWithRefs = removeNulls(
     actions.flatMap((action) =>
-      action.output?.filter(isRunAgentResultResourceType)
+      action.output?.filter(isRunAgentResultsResourceType)
     )
   );
 

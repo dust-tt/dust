@@ -29,9 +29,9 @@ import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation
 import { getCitationIcon } from "@app/components/markdown/MarkdownCitation";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
-  isRunAgentBatchProgressOutput,
-  isRunAgentBatchQueryResourceType,
-  isRunAgentBatchResultResourceType,
+  isRunAgentProgressOutput,
+  isRunAgentQueriesResourceType,
+  isRunAgentResultsResourceType,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
@@ -258,14 +258,14 @@ export function MCPRunAgentActionDetails({
 }: MCPActionDetailsProps) {
   const { isDark } = useTheme();
 
-  const batchQueryResource =
-    action.output?.find(isRunAgentBatchQueryResourceType) || null;
-  const batchResultResource =
-    action.output?.find(isRunAgentBatchResultResourceType) || null;
-  const batchProgressInfo = useMemo(() => {
+  const queryResource =
+    action.output?.find(isRunAgentQueriesResourceType) || null;
+  const resultResource =
+    action.output?.find(isRunAgentResultsResourceType) || null;
+  const progressInfo = useMemo(() => {
     if (
       lastNotification?.data.output &&
-      isRunAgentBatchProgressOutput(lastNotification.data.output)
+      isRunAgentProgressOutput(lastNotification.data.output)
     ) {
       return lastNotification.data.output;
     }
@@ -277,31 +277,31 @@ export function MCPRunAgentActionDetails({
 
   // Get child agent ID
   const childAgentId = useMemo(() => {
-    if (batchQueryResource) {
-      const resource = batchQueryResource.resource as any;
+    if (queryResource) {
+      const resource = queryResource.resource as any;
       if (resource && "childAgentId" in resource) {
         return resource.childAgentId;
       }
     }
-    if (batchProgressInfo) {
-      return batchProgressInfo.childAgentId;
+    if (progressInfo) {
+      return progressInfo.childAgentId;
     }
     return null;
-  }, [batchQueryResource, batchProgressInfo]);
+  }, [queryResource, progressInfo]);
 
-  // Prepare data array from batch resources
+  // Prepare data array from resources
   const queryDataArray = useMemo(() => {
-    const batchQueryRes = batchQueryResource?.resource as any;
-    const batchResultRes = batchResultResource?.resource as any;
+    const queryRes = queryResource?.resource as any;
+    const resultRes = resultResource?.resource as any;
     const queries =
-      batchQueryRes && "queries" in batchQueryRes
-        ? batchQueryRes.queries || []
+      queryRes && "queries" in queryRes
+        ? queryRes.queries || []
         : [];
     const results =
-      batchResultRes && "results" in batchResultRes
-        ? batchResultRes.results || []
+      resultRes && "results" in resultRes
+        ? resultRes.results || []
         : [];
-    const progressQueries = batchProgressInfo?.activeQueries || [];
+    const progressQueries = progressInfo?.activeQueries || [];
 
     // If we have progress queries but no query resource yet (during execution), use progress queries
     const allQueries =
@@ -331,7 +331,7 @@ export function MCPRunAgentActionDetails({
         refs: result?.refs || {},
       };
     });
-  }, [batchQueryResource, batchResultResource, batchProgressInfo, owner.sId]);
+  }, [queryResource, resultResource, progressInfo, owner.sId]);
 
   const { agentConfiguration: childAgent } = useAgentConfiguration({
     workspaceId: owner.sId,
@@ -339,8 +339,8 @@ export function MCPRunAgentActionDetails({
   });
 
   const isBusy = useMemo(() => {
-    return !batchResultResource;
-  }, [batchResultResource]);
+    return !resultResource;
+  }, [resultResource]);
 
   const actionName = childAgent?.name
     ? `Run @${childAgent.name}${queryDataArray.length > 1 ? ` (${queryDataArray.length} queries)` : ""}`

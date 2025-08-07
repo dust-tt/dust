@@ -489,7 +489,7 @@ export default async function createServer(
             data: {
               label: `Running ${queriesToRun.length} queries with ${childAgentBlob.name}\n${queriesToRun.map((q, i) => `• Query ${i + 1}: ${q.length > 50 ? q.substring(0, 50) + "..." : q}`).join("\n")}`,
               output: {
-                type: "run_agent_batch_progress",
+                type: "run_agent_progress",
                 childAgentId,
                 totalQueries: queriesToRun.length,
                 completedQueries: 0,
@@ -517,7 +517,7 @@ export default async function createServer(
                 data: {
                   label: `Running query ${index + 1}/${queriesToRun.length}: ${q.length > 60 ? q.substring(0, 60) + "..." : q}`,
                   output: {
-                    type: "run_agent_batch_progress",
+                    type: "run_agent_progress",
                     childAgentId,
                     totalQueries: queriesToRun.length,
                     completedQueries: activeQueries.filter(
@@ -564,7 +564,7 @@ export default async function createServer(
                     data: {
                       label: `Streaming query ${index + 1}/${queriesToRun.length}`,
                       output: {
-                        type: "run_agent_batch_progress",
+                        type: "run_agent_progress",
                         childAgentId,
                         totalQueries: queriesToRun.length,
                         completedQueries: activeQueries.filter(
@@ -623,7 +623,7 @@ export default async function createServer(
                     })
                     .join("\n")}`,
                   output: {
-                    type: "run_agent_batch_progress",
+                    type: "run_agent_progress",
                     childAgentId,
                     totalQueries: queriesToRun.length,
                     completedQueries: activeQueries.filter(
@@ -676,7 +676,7 @@ export default async function createServer(
           {
             type: "resource",
             resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_BATCH_QUERY,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERIES,
               queries: queriesToRun,
               childAgentId: childAgentId,
               text: `Running ${queriesToRun.length} queries`,
@@ -686,7 +686,7 @@ export default async function createServer(
           {
             type: "resource",
             resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_BATCH_RESULT,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULTS,
               results: batchResults,
               text: `Completed ${batchResults.filter((r) => !r.error).length}/${batchResults.length} queries successfully`,
               uri: "",
