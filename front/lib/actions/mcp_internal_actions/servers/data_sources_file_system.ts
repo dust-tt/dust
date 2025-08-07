@@ -5,7 +5,14 @@ import assert from "assert";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  CAT_TOOL_NAME,
+  FIND_TAGS_TOOL_NAME,
+  FIND_TOOL_NAME,
+  LIST_TOOL_NAME,
+  LOCATE_IN_TREE_TOOL_NAME,
+  SEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
@@ -60,8 +67,6 @@ import {
   stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
-
-const FILESYSTEM_TOOL_NAME = "filesystem_navigation";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "data_sources_file_system",
@@ -379,7 +384,7 @@ const createServer = (
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "cat",
+    CAT_TOOL_NAME,
     "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). " +
       "The nodeId can be obtained using the 'find', 'list' or 'search' tools.",
     {
@@ -411,7 +416,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_TOOL_NAME, agentLoopContext },
+      { toolName: CAT_TOOL_NAME, agentLoopContext },
       async ({ dataSources, nodeId, offset, limit, grep }) => {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
@@ -510,7 +515,7 @@ const createServer = (
   );
 
   server.tool(
-    "find",
+    FIND_TOOL_NAME,
     "Find content based on their title starting from a specific node. Can be used to find specific " +
       "nodes by searching for their titles. The query title can be omitted to list all nodes " +
       "starting from a specific node. This is like using 'find' in Unix.",
@@ -550,7 +555,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_TOOL_NAME, agentLoopContext },
+      { toolName: FIND_TOOL_NAME, agentLoopContext },
       async ({
         query,
         dataSources,
@@ -643,7 +648,7 @@ const createServer = (
   );
 
   server.tool(
-    "list",
+    LIST_TOOL_NAME,
     "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
       "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
       "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
@@ -674,7 +679,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_TOOL_NAME, agentLoopContext },
+      { toolName: LIST_TOOL_NAME, agentLoopContext },
       async ({
         nodeId,
         dataSources,
@@ -810,7 +815,7 @@ const createServer = (
     // If tags are dynamic, then we add a tool for the agent to discover tags and let it pass tags
     // in the search tool.
     server.tool(
-      "find_tags",
+      FIND_TAGS_TOOL_NAME,
       makeFindTagsDescription(SEARCH_TOOL_NAME),
       findTagsSchema,
       makeFindTagsTool(auth)
@@ -854,7 +859,7 @@ const createServer = (
   }
 
   server.tool(
-    "locate_in_tree",
+    LOCATE_IN_TREE_TOOL_NAME,
     "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
       "This is useful for understanding where a specific node is located within the data source structure. " +
       "The path is returned as a list of nodes, with the first node being the data source root and " +
@@ -868,7 +873,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_TOOL_NAME, agentLoopContext },
+      { toolName: LOCATE_IN_TREE_TOOL_NAME, agentLoopContext },
       async ({ nodeId, dataSources }) => {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const fetchResult = await getAgentDataSourceConfigurations(

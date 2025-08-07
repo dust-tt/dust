@@ -135,6 +135,7 @@ async function createActionForTool(
   const actionBaseParams: ActionBaseParams = {
     agentMessageId: agentMessage.agentMessageId,
     citationsAllocated: stepContext.citationsCount,
+    mcpServerId: actionConfiguration.toolServerId,
     functionCallId,
     functionCallName: actionConfiguration.name,
     generatedFiles: [],

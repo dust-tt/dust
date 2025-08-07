@@ -24,9 +24,9 @@ import type {
   ThinkingOutputType,
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isDataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isDataSourceNodeListType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
+  isDataSourceNodeContentType,
+  isDataSourceNodeListType,
   isIncludeQueryResourceType,
   isIncludeResultResourceType,
   isSearchQueryResourceType,
@@ -291,29 +291,31 @@ export function SearchResultDetails({
             />
           )}
         </div>
-        <div>
-          <CollapsibleComponent
-            rootProps={{ defaultOpen }}
-            triggerChildren={
-              <span className="text-sm font-bold text-foreground dark:text-foreground-night">
-                Results
-              </span>
-            }
-            contentChildren={
-              <>
-                {singleFileContentText && (
-                  <Markdown
-                    content={singleFileContentText}
-                    isStreaming={false}
-                    forcedTextSize="text-sm"
-                    textColor="text-muted-foreground dark:text-muted-foreground-night"
-                  />
-                )}
-                <PaginatedCitationsGrid items={citations} />
-              </>
-            }
-          />
-        </div>
+        {actionOutput && (
+          <div>
+            <CollapsibleComponent
+              rootProps={{ defaultOpen }}
+              triggerChildren={
+                <span className="text-sm font-bold text-foreground dark:text-foreground-night">
+                  Results
+                </span>
+              }
+              contentChildren={
+                <>
+                  {singleFileContentText && (
+                    <Markdown
+                      content={singleFileContentText}
+                      isStreaming={false}
+                      forcedTextSize="text-sm"
+                      textColor="text-muted-foreground dark:text-muted-foreground-night"
+                    />
+                  )}
+                  <PaginatedCitationsGrid items={citations} />
+                </>
+              }
+            />
+          </div>
+        )}
       </div>
     </ActionDetailsWrapper>
   );

@@ -9,7 +9,22 @@ import type {
 import { Err, Ok } from "@app/types";
 
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
+
 export const SEARCH_TOOL_NAME = "semantic_search";
+export const INCLUDE_TOOL_NAME = "retrieve_recent_documents";
+export const WEBSEARCH_TOOL_NAME = "websearch";
+export const WEBBROWSER_TOOL_NAME = "webbrowser";
+export const QUERY_TABLES_TOOL_NAME = "query_tables";
+export const GET_DATABASE_SCHEMA_TOOL_NAME = "get_database_schema";
+export const EXECUTE_DATABASE_QUERY_TOOL_NAME = "execute_database_query";
+export const PROCESS_TOOL_NAME = "extract_information_from_documents";
+export const RUN_AGENT_TOOL_NAME = "run_agent";
+export const CREATE_AGENT_TOOL_NAME = "create_agent";
+export const FIND_TAGS_TOOL_NAME = "find_tags";
+export const CAT_TOOL_NAME = "cat";
+export const FIND_TOOL_NAME = "find";
+export const LIST_TOOL_NAME = "list";
+export const LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:

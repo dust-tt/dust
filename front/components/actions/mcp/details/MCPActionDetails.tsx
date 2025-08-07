@@ -23,32 +23,30 @@ import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MC
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { MCPActionType } from "@app/lib/actions/mcp";
-import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  CAT_TOOL_NAME,
+  EXECUTE_DATABASE_QUERY_TOOL_NAME,
+  FIND_TOOL_NAME,
+  GET_DATABASE_SCHEMA_TOOL_NAME,
+  INCLUDE_TOOL_NAME,
+  isInternalMCPServerOfName,
+  LIST_TOOL_NAME,
+  PROCESS_TOOL_NAME,
+  QUERY_TABLES_TOOL_NAME,
+  SEARCH_TOOL_NAME,
+  WEBBROWSER_TOOL_NAME,
+  WEBSEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getOutputText,
-  isAgentCreationResultResourceType,
-  isBrowseResultResourceType,
-  isDataSourceNodeContentType,
-  isDataSourceNodeListType,
-  isExecuteTablesQueryMarkerResourceType,
-  isExtractResultResourceType,
-  isFilesystemPathType,
-  isGetDatabaseSchemaMarkerResourceType,
-  isIncludeResultResourceType,
-  isReasoningSuccessOutput,
   isResourceContentWithText,
-  isRunAgentProgressOutput,
-  isRunAgentResultResourceType,
-  isSearchResultResourceType,
-  isSqlQueryOutput,
   isTextContent,
-  isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
-import { isSupportedImageContentType } from "@app/types";
+import { asDisplayName, isSupportedImageContentType } from "@app/types";
 
 export interface MCPActionDetailsProps {
   action: MCPActionType;
@@ -59,98 +57,128 @@ export interface MCPActionDetailsProps {
 }
 
 export function MCPActionDetails(props: MCPActionDetailsProps) {
-  const isSearch = props.action.output?.some(isSearchResultResourceType);
-  const isInclude = props.action.output?.some(isIncludeResultResourceType);
-  const isWebsearch = props.action.output?.some(isWebsearchResultResourceType);
-  const isBrowse = props.action.output?.some(isBrowseResultResourceType);
-  const isTablesQuery =
-    props.action.output?.some(isSqlQueryOutput) ||
-    props.action.output?.some(isExecuteTablesQueryMarkerResourceType);
-  const isGetDatabaseSchema = props.action.output?.some(
-    isGetDatabaseSchemaMarkerResourceType
-  );
+  const {
+    action: { output, functionCallName, mcpServerId },
+    defaultOpen,
+  } = props;
 
-  const isExtract = props.action.output?.some(isExtractResultResourceType);
-  const isRunAgent =
-    props.action.output?.some(isRunAgentResultResourceType) ||
-    isRunAgentProgressOutput(props.lastNotification?.data.output);
-  const isAgentCreation = props.action.output?.some(
-    isAgentCreationResultResourceType
-  );
+  const parts = functionCallName ? functionCallName.split("__") : [];
+  const toolName = parts[parts.length - 1];
 
-  // TODO(mcp): rationalize the display of results for MCP to remove the need for specific checks.
-  // Hack to find out whether the output comes from the reasoning tool, links back to the TODO above.
-  const isReasoning = props.action.output?.some(isReasoningSuccessOutput);
-  const isDataSourceFileSystem = props.action.output?.some(
-    isDataSourceNodeListType
-  );
+  if (isInternalMCPServerOfName(mcpServerId, "search")) {
+    if (toolName === SEARCH_TOOL_NAME) {
+      return (
+        <SearchResultDetails
+          actionName="Search data"
+          actionOutput={output}
+          defaultOpen={defaultOpen}
+          visual={MagnifyingGlassIcon}
+        />
+      );
+    }
 
-  const isCat = props.action.output?.some(isDataSourceNodeContentType);
-  const isFilesystemPath = props.action.output?.some(isFilesystemPathType);
+    if (toolName === LIST_TOOL_NAME) {
+      return (
+        <SearchResultDetails
+          actionName="Browse data sources"
+          actionOutput={output}
+          defaultOpen={defaultOpen}
+          visual={ActionDocumentTextIcon}
+        />
+      );
+    }
 
-  if (isSearch) {
-    const fcName = props.action.functionCallName;
-    const isSearchTool = fcName?.endsWith(SEARCH_TOOL_NAME);
-    const actionName = fcName && !isSearchTool ? fcName : "Search data";
-    const visual = isSearchTool
-      ? MagnifyingGlassIcon
-      : MCP_SPECIFICATION.cardIcon;
-    return (
-      <SearchResultDetails
-        actionName={actionName}
-        actionOutput={props.action.output}
-        defaultOpen={props.defaultOpen}
-        visual={visual}
-      />
-    );
-  } else if (isInclude) {
-    return (
-      <SearchResultDetails
-        actionName="Include data"
-        actionOutput={props.action.output}
-        defaultOpen={props.defaultOpen}
-        visual={ClockIcon}
-      />
-    );
-  } else if (isWebsearch) {
-    return (
-      <SearchResultDetails
-        actionName="Web search"
-        actionOutput={props.action.output}
-        defaultOpen={props.defaultOpen}
-        visual={GlobeAltIcon}
-      />
-    );
-  } else if (isBrowse) {
-    return <MCPBrowseActionDetails {...props} />;
-  } else if (isGetDatabaseSchema) {
-    return <MCPGetDatabaseSchemaActionDetails {...props} />;
-  } else if (isTablesQuery) {
-    return <MCPTablesQueryActionDetails {...props} />;
-  } else if (isReasoning) {
-    return <MCPReasoningActionDetails {...props} />;
-  } else if (isDataSourceFileSystem) {
-    return (
-      <SearchResultDetails
-        actionName="Browse data sources"
-        actionOutput={props.action.output}
-        defaultOpen={props.defaultOpen}
-        visual={ActionDocumentTextIcon}
-      />
-    );
-  } else if (isCat) {
-    return <DataSourceNodeContentDetails {...props} />;
-  } else if (isFilesystemPath) {
-    return <FilesystemPathDetails {...props} />;
-  } else if (isExtract) {
-    return <MCPExtractActionDetails {...props} />;
-  } else if (isRunAgent) {
-    return <MCPRunAgentActionDetails {...props} />;
-  } else if (isAgentCreation) {
-    return <MCPAgentManagementActionDetails {...props} />;
-  } else {
-    return <GenericActionDetails {...props} />;
+    if (toolName === CAT_TOOL_NAME) {
+      return <DataSourceNodeContentDetails {...props} />;
+    }
+
+    if (toolName === FIND_TOOL_NAME) {
+      return <FilesystemPathDetails {...props} />;
+    }
   }
+
+  if (isInternalMCPServerOfName(mcpServerId, "include_data")) {
+    if (toolName === INCLUDE_TOOL_NAME) {
+      return (
+        <SearchResultDetails
+          actionName="Include data"
+          actionOutput={output}
+          defaultOpen={defaultOpen}
+          visual={ClockIcon}
+        />
+      );
+    }
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "web_search_&_browse")) {
+    if (toolName === WEBSEARCH_TOOL_NAME) {
+      return (
+        <SearchResultDetails
+          actionName="Web search"
+          actionOutput={output}
+          defaultOpen={defaultOpen}
+          visual={GlobeAltIcon}
+        />
+      );
+    }
+    if (toolName === WEBBROWSER_TOOL_NAME) {
+      return <MCPBrowseActionDetails {...props} />;
+    }
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "query_tables")) {
+    if (toolName === QUERY_TABLES_TOOL_NAME) {
+      return <MCPTablesQueryActionDetails {...props} />;
+    }
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "query_tables_v2")) {
+    if (toolName === GET_DATABASE_SCHEMA_TOOL_NAME) {
+      return <MCPGetDatabaseSchemaActionDetails {...props} />;
+    }
+    if (toolName === EXECUTE_DATABASE_QUERY_TOOL_NAME) {
+      return <MCPTablesQueryActionDetails {...props} />;
+    }
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "reasoning")) {
+    return <MCPReasoningActionDetails {...props} />;
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "data_sources_file_system")) {
+    if (toolName === LIST_TOOL_NAME) {
+      return (
+        <SearchResultDetails
+          actionName="Browse data sources"
+          actionOutput={output}
+          defaultOpen={defaultOpen}
+          visual={ActionDocumentTextIcon}
+        />
+      );
+    }
+    if (toolName === CAT_TOOL_NAME) {
+      return <DataSourceNodeContentDetails {...props} />;
+    }
+    if (toolName === FIND_TOOL_NAME) {
+      return <FilesystemPathDetails {...props} />;
+    }
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "extract_data")) {
+    if (toolName === PROCESS_TOOL_NAME) {
+      return <MCPExtractActionDetails {...props} />;
+    }
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "run_agent")) {
+    return <MCPRunAgentActionDetails {...props} />;
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "agent_management")) {
+    return <MCPAgentManagementActionDetails {...props} />;
+  }
+
+  return <GenericActionDetails {...props} />;
 }
 
 export function GenericActionDetails({
@@ -165,7 +193,9 @@ export function GenericActionDetails({
 
   return (
     <ActionDetailsWrapper
-      actionName={action.functionCallName ?? "Calling MCP Server"}
+      actionName={
+        asDisplayName(action.functionCallName) ?? "Calling MCP Server"
+      }
       defaultOpen={defaultOpen}
       visual={MCP_SPECIFICATION.cardIcon}
     >
