@@ -136,20 +136,17 @@ export function ToolsList({
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      {/* We only show the checkbox for remote servers because it's the only one that supports it, for now. */}
-                      {serverType === "remote" && (
-                        <Checkbox
-                          checked={toolEnabled}
-                          disabled={!mayUpdate}
-                          onClick={() =>
-                            handleClick(
-                              tool.name,
-                              getToolPermission(tool.name),
-                              !toolEnabled
-                            )
-                          }
-                        />
-                      )}
+                      <Checkbox
+                        checked={toolEnabled}
+                        disabled={!mayUpdate}
+                        onClick={() =>
+                          handleClick(
+                            tool.name,
+                            getToolPermission(tool.name),
+                            !toolEnabled
+                          )
+                        }
+                      />
                       <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
                         {asDisplayName(tool.name)}
                       </h4>
@@ -159,45 +156,44 @@ export function ToolsList({
                         {tool.description}
                       </p>
                     )}
+                    {/* We only show the tool stake for remote servers */}
                     {serverType === "remote" && toolEnabled && (
-                      <>
-                        <Card variant="primary" className="flex-col">
-                          <div className="heading-sm text-muted-foreground dark:text-muted-foreground-night">
-                            Tool stake setting
-                          </div>
-                          <div className="flex justify-end">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                asChild
-                                disabled={!mayUpdate || !toolEnabled}
-                              >
-                                <Button
-                                  variant="outline"
-                                  label={toolPermissionLabel[toolPermission]}
-                                />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent>
-                                {getAvailableStakeLevelsForTool(tool.name).map(
-                                  (permission) => (
-                                    <DropdownMenuItem
-                                      key={permission}
-                                      onClick={() => {
-                                        handleClick(
-                                          tool.name,
-                                          permission,
-                                          getToolEnabled(tool.name)
-                                        );
-                                      }}
-                                      label={toolPermissionLabel[permission]}
-                                      disabled={!toolEnabled}
-                                    />
-                                  )
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </Card>
-                      </>
+                      <Card variant="primary" className="flex-col">
+                        <div className="heading-sm text-muted-foreground dark:text-muted-foreground-night">
+                          Tool stake setting
+                        </div>
+                        <div className="flex justify-end">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              asChild
+                              disabled={!mayUpdate || !toolEnabled}
+                            >
+                              <Button
+                                variant="outline"
+                                label={toolPermissionLabel[toolPermission]}
+                              />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              {getAvailableStakeLevelsForTool(tool.name).map(
+                                (permission) => (
+                                  <DropdownMenuItem
+                                    key={permission}
+                                    onClick={() => {
+                                      handleClick(
+                                        tool.name,
+                                        permission,
+                                        getToolEnabled(tool.name)
+                                      );
+                                    }}
+                                    label={toolPermissionLabel[permission]}
+                                    disabled={!toolEnabled}
+                                  />
+                                )
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </Card>
                     )}
                   </div>
                 );

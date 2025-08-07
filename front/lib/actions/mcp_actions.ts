@@ -806,7 +806,11 @@ async function listToolsForServerSideMCPServer(
 
     case "remote": {
       const metadata =
-        await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id);
+        await RemoteMCPServerToolMetadataResource.fetchByServerId(
+          auth,
+          id,
+          serverType
+        );
       toolsStakes = metadata.reduce<Record<string, MCPToolStakeLevelType>>(
         (acc, metadata) => {
           acc[metadata.toolName] = metadata.permission;
