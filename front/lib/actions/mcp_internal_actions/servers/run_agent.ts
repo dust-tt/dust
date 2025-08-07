@@ -17,7 +17,7 @@ import {
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getCitationsFromActions } from "@app/lib/api/assistant/citations";
-import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agent_metadata";
+import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
