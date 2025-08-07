@@ -251,7 +251,7 @@ export function ZendeskCustomFieldFilters({
                   trigger={
                     <Chip
                       label={field.name}
-                      color="blue"
+                      color="highlight"
                       size="sm"
                       onRemove={
                         !readOnly && isAdmin
