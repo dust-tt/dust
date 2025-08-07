@@ -858,7 +858,10 @@ export class ConfluenceClient {
     } catch (err) {
       // If the folder scope is not yet granted, throw an ExternalOAuthTokenError so users can
       // re-authorize to pick up the new scope.
-      if (err instanceof ConfluenceClientError && err.status === 401) {
+      if (
+        err instanceof ConfluenceClientError &&
+        (err.status === 401 || err.status === 403)
+      ) {
         logger.error(
           {
             err,
