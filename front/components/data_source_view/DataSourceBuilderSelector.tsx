@@ -1,7 +1,6 @@
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import { Breadcrumbs, SearchInput } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
-import { useWatch } from "react-hook-form";
 
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
@@ -37,7 +36,6 @@ export const DataSourceBuilderSelector = ({
     findDataSourceViewFromNavigationHistory(navigationHistory);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const sources = useWatch({ name: "sources" });
 
   const breadcrumbItems: BreadcrumbItem[] = useMemo(
     () =>
@@ -88,8 +86,6 @@ export const DataSourceBuilderSelector = ({
         selectedDataSourceView !== null && (
           <DataSourceNodeTable viewType={viewType} />
         )}
-
-      <pre>{JSON.stringify(sources, undefined, 2)}</pre>
     </div>
   );
 };

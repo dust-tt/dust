@@ -308,9 +308,9 @@ export function DataSourceBuilderProvider({
 
   const isRowSelected: DataSourceBuilderState["isRowSelected"] = useCallback(
     (rowId) => {
-      const nodePath = computeNavigationPath(state.navigationHistory);
-      nodePath.push(rowId);
-      console.log({ value: field.value, nodePath });
+      const nodePath = computeNavigationPath(state.navigationHistory).concat(
+        rowId
+      );
       return isNodeSelected(field.value, nodePath);
     },
     [field.value, state.navigationHistory]
