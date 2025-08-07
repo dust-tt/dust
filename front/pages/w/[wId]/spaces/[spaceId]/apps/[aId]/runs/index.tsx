@@ -119,6 +119,7 @@ export default function RunsView({
       subscription={subscription}
       owner={owner}
       hideSidebar
+      className="pt-0"
       title={
         <AppLayoutSimpleCloseTitle
           title={app.name}
@@ -129,8 +130,11 @@ export default function RunsView({
       }
     >
       <div className="flex w-full flex-col">
-        <Tabs value="runs" className="mt-2">
-          <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
+        <Tabs
+          value="runs"
+          className="sticky top-0 z-10 bg-background pt-4 dark:bg-background-night"
+        >
+          <TabsList>
             {subNavigationApp({ owner, app, current: "runs" }).map((item) => (
               <TabsTrigger
                 key={item.value}

@@ -103,6 +103,7 @@ export default function DatasetsView({
       subscription={subscription}
       owner={owner}
       hideSidebar
+      className="pt-0"
       title={
         <AppLayoutSimpleCloseTitle
           title={app.name}
@@ -113,7 +114,10 @@ export default function DatasetsView({
       }
     >
       <div className="flex w-full flex-col">
-        <Tabs value="datasets" className="mt-2">
+        <Tabs
+          value="datasets"
+          className="sticky top-0 z-10 bg-background pt-4 dark:bg-background-night"
+        >
           <TabsList>
             {subNavigationApp({ owner, app, current: "datasets" }).map(
               (tab) => (
