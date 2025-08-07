@@ -7,7 +7,7 @@ import {
   CitationTitle,
 } from "@dust-tt/sparkle";
 
-import { useInteractiveContentContext } from "@app/components/assistant/conversation/content/InteractiveContentContext";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
 import type { LightAgentMessageType } from "@app/types";
 import { clientExecutableContentType } from "@app/types";
@@ -62,7 +62,7 @@ interface InteractiveAgentMessageGeneratedFilesProps {
 export function InteractiveAgentMessageGeneratedFiles({
   files,
 }: InteractiveAgentMessageGeneratedFilesProps) {
-  const { openContent } = useInteractiveContentContext();
+  const { openPanel } = useConversationSidePanelContext();
 
   if (files.length === 0) {
     return null;
@@ -73,7 +73,10 @@ export function InteractiveAgentMessageGeneratedFiles({
       {files.map((file) => {
         const handleClick = (e: React.MouseEvent) => {
           e.preventDefault();
-          openContent(file.fileId);
+          openPanel({
+            type: "content",
+            fileId: file.fileId,
+          });
         };
 
         const description = getDescriptionForContentType(file);

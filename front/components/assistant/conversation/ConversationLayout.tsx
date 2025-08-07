@@ -1,9 +1,4 @@
-import {
-  cn,
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@dust-tt/sparkle";
+import { cn, ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
@@ -11,12 +6,10 @@ import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
-import { InteractiveContentContainer } from "@app/components/assistant/conversation/content/InteractiveContentContainer";
-import {
-  InteractiveContentProvider,
-  useInteractiveContentContext,
-} from "@app/components/assistant/conversation/content/InteractiveContentContext";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
+import ConversationSidePanelContainer from "@app/components/assistant/conversation/ConversationSidePanelContainer";
+import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import {
   ConversationsNavigationProvider,
   useConversationsNavigation,
@@ -159,7 +152,7 @@ const ConversationLayoutContent = ({
           owner={owner}
           hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
         >
-          <InteractiveContentProvider>
+          <ConversationSidePanelProvider>
             <ConversationInnerLayout
               activeConversationId={activeConversationId}
               baseUrl={baseUrl}
@@ -169,7 +162,7 @@ const ConversationLayoutContent = ({
             >
               {children}
             </ConversationInnerLayout>
-          </InteractiveContentProvider>
+          </ConversationSidePanelProvider>
         </CoEditionProvider>
         {shouldDisplayWelcomeTourGuide && (
           <WelcomeTourGuide
@@ -204,7 +197,7 @@ function ConversationInnerLayout({
   conversationError,
   activeConversationId,
 }: ConversationInnerLayoutProps) {
-  const { isContentOpen } = useInteractiveContentContext();
+  const { currentPanel } = useConversationSidePanelContext();
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -226,8 +219,8 @@ function ConversationInnerLayout({
                     id={CONVERSATION_VIEW_SCROLL_LAYOUT}
                     className={cn(
                       "h-full overflow-y-auto scroll-smooth px-4",
-                      // Hide conversation on mobile when interactive content is opened.
-                      isContentOpen && "hidden md:block"
+                      // Hide conversation on mobile when any panel is opened.
+                      currentPanel && "hidden md:block"
                     )}
                   >
                     {children}
@@ -238,26 +231,10 @@ function ConversationInnerLayout({
           </div>
         </ResizablePanel>
 
-        {/* Interactive Content Panel */}
-        {isContentOpen && <ResizableHandle className="hidden md:block" />}
-        <ResizablePanel
-          minSize={20}
-          defaultSize={70}
-          className={cn(
-            !isContentOpen && "hidden",
-            // On mobile: overlay full screen with absolute positioning.
-            "md:relative",
-            isContentOpen && "absolute inset-0 md:relative md:inset-auto"
-          )}
-        >
-          {isContentOpen && (
-            <InteractiveContentContainer
-              conversation={conversation}
-              isOpen={isContentOpen}
-              owner={owner}
-            />
-          )}
-        </ResizablePanel>
+        <ConversationSidePanelContainer
+          owner={owner}
+          conversation={conversation}
+        />
       </ResizablePanelGroup>
     </div>
   );

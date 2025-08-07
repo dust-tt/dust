@@ -2,29 +2,25 @@ import { TOOL_RUNNING_LABEL } from "@dust-tt/client";
 import { Button, Chip, CommandLineIcon } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
-import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
 import type { AgentStateClassification } from "@app/lib/assistant/state/messageReducer";
-import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
+import type { LightAgentMessageType } from "@app/types";
 import { assertNever } from "@app/types";
 
 interface AgentMessageActionsProps {
   agentMessage: LightAgentMessageType;
-  conversationId: string;
   lastAgentStateClassification: AgentStateClassification;
   actionProgress: ActionProgressState;
-  owner: LightWorkspaceType;
 }
 
 export function AgentMessageActions({
   agentMessage,
-  conversationId,
   lastAgentStateClassification,
   actionProgress,
-  owner,
 }: AgentMessageActionsProps) {
   const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
-  const [isActionDrawerOpened, setIsActionDrawerOpened] = useState(false);
+  const { openPanel } = useConversationSidePanelContext();
 
   useEffect(() => {
     switch (lastAgentStateClassification) {
@@ -51,20 +47,21 @@ export function AgentMessageActions({
 
   return (
     <div className="flex flex-col items-start gap-y-4">
-      <AgentMessageActionsDrawer
-        conversationId={conversationId}
-        message={agentMessage}
-        isOpened={isActionDrawerOpened}
-        onClose={() => setIsActionDrawerOpened(false)}
-        isActing={lastAgentStateClassification === "acting"}
-        actionProgress={actionProgress}
-        owner={owner}
-      />
       <ActionDetails
         hasActions={agentMessage.actions.length > 0}
         isActionStepDone={!isThinkingOrActing}
         label={chipLabel}
-        onClick={() => setIsActionDrawerOpened(true)}
+        onClick={() =>
+          openPanel({
+            type: "actions",
+            messageId: agentMessage.sId,
+            metadata: {
+              actionProgress,
+              isActing: lastAgentStateClassification === "acting",
+              messageStatus: agentMessage.status,
+            },
+          })
+        }
       />
     </div>
   );
