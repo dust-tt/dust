@@ -648,12 +648,8 @@ export function MCPServerViewsDialog({
         <Button label="Add tools" icon={LightbulbIcon} />
       </MultiPageDialogTrigger>
       <MultiPageDialogContent
+        showNavigation={false}
         isAlertDialog
-        showNavigation={
-          !isEditMode &&
-          !isInfoMode &&
-          currentPageId === CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION
-        }
         size="xl"
         pages={pages}
         currentPageId={currentPageId}
