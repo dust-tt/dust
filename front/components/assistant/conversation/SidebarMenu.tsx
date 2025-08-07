@@ -402,9 +402,9 @@ const RenderConversation = ({
         <NavigationListItem
           selected={router.query.cId === conversation.sId}
           icon={
-            conversation.state === "action_required"
+            conversation.actionRequired
               ? ActionRequiredIcon
-              : conversation.state === "unread"
+              : conversation.unread
                 ? ClockIcon
                 : undefined
           }

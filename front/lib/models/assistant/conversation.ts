@@ -9,7 +9,6 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   AgentMessageStatus,
-  ConversationParticipantState,
   ConversationVisibility,
   MessageVisibility,
   ParticipantActionType,
@@ -90,7 +89,8 @@ export class ConversationParticipantModel extends WorkspaceAwareModel<Conversati
   declare updatedAt: CreationOptional<Date>;
 
   declare action: ParticipantActionType;
-  declare state: ConversationParticipantState;
+  declare unread: boolean;
+  declare actionRequired: boolean;
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
@@ -114,10 +114,15 @@ ConversationParticipantModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    state: {
-      type: DataTypes.STRING,
+    unread: {
+      type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: "read",
+      defaultValue: false,
+    },
+    actionRequired: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {
