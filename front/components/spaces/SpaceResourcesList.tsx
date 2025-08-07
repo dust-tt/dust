@@ -22,7 +22,6 @@ import React, {
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
-import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
@@ -32,6 +31,7 @@ import { EditSpaceStaticDatasourcesViews } from "@app/components/spaces/EditSpac
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
+import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
