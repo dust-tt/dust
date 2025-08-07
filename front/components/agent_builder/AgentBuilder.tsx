@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -15,7 +15,6 @@ import {
   getDefaultAgentFormData,
   transformAgentConfigurationToFormData,
 } from "@app/components/agent_builder/transformAgentConfiguration";
-import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -33,6 +32,7 @@ export default function AgentBuilder({
 }: AgentBuilderProps) {
   const { owner, user } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
+
   const router = useRouter();
   const sendNotification = useSendNotification();
 
@@ -53,58 +53,59 @@ export default function AgentBuilder({
     return getDefaultAgentFormData(user);
   }, [agentConfiguration, user]);
 
-  // Create values object that includes async data (actions and editors)
-  const formValues = useMemo((): AgentBuilderFormData | undefined => {
-    const hasActions = actions && actions.length > 0;
-    const hasEditors = editors && editors.length > 0;
-
-    // Determine Slack provider based on supported data source views
-    const slackProvider = supportedDataSourceViews.find(
-      (dsv) => dsv.dataSource.connectorProvider === "slack_bot"
-    )
-      ? "slack_bot"
-      : supportedDataSourceViews.find(
-            (dsv) => dsv.dataSource.connectorProvider === "slack"
-          )
-        ? "slack"
-        : defaultValues.agentSettings.slackProvider;
-
-    if (
-      !hasActions &&
-      !hasEditors &&
-      slackProvider === defaultValues.agentSettings.slackProvider
-    ) {
-      return undefined; // Let defaultValues handle initial state
-    }
-
-    const updatedValues = { ...defaultValues };
-
-    if (hasActions) {
-      updatedValues.actions = actions;
-    }
-
-    if (hasEditors) {
-      updatedValues.agentSettings = {
-        ...updatedValues.agentSettings,
-        editors,
-      };
-    }
-
-    if (slackProvider !== defaultValues.agentSettings.slackProvider) {
-      updatedValues.agentSettings = {
-        ...updatedValues.agentSettings,
-        slackProvider,
-      };
-    }
-
-    return updatedValues;
-  }, [defaultValues, actions, editors, supportedDataSourceViews]);
-
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
     defaultValues,
-    values: formValues, // Reactive updates when actions are loaded
   });
+
+  const slackProvider = useMemo(() => {
+    const slackBotProvider = supportedDataSourceViews.find(
+      (dsv) => dsv.dataSource.connectorProvider === "slack_bot"
+    );
+    if (slackBotProvider) {
+      return "slack_bot";
+    }
+
+    const slackProvider = supportedDataSourceViews.find(
+      (dsv) => dsv.dataSource.connectorProvider === "slack"
+    );
+    return slackProvider ? "slack" : null;
+  }, [supportedDataSourceViews]);
+
+  // Handle async data loading (actions, editors) without causing form re-initialization
+  useEffect(() => {
+    const currentValues = form.getValues();
+
+    if (
+      actions?.length &&
+      shouldUpdateActions(currentValues.actions, actions)
+    ) {
+      form.setValue("actions", actions, {
+        shouldValidate: false,
+        shouldDirty: false,
+      });
+    }
+
+    if (
+      editors.length &&
+      shouldUpdateEditors(currentValues.agentSettings.editors, editors)
+    ) {
+      form.setValue("agentSettings.editors", editors, {
+        shouldValidate: false,
+        shouldDirty: false,
+      });
+    }
+
+    if (
+      slackProvider &&
+      currentValues.agentSettings.slackProvider !== slackProvider
+    ) {
+      form.setValue("agentSettings.slackProvider", slackProvider, {
+        shouldValidate: false,
+        shouldDirty: false,
+      });
+    }
+  }, [actions, editors, slackProvider, form]);
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
     try {
@@ -123,21 +124,21 @@ export default function AgentBuilder({
           description: result.error.message,
           type: "error",
         });
-      } else {
-        const createdAgent = result.value;
-        sendNotification({
-          title: agentConfiguration ? "Agent saved" : "Agent created",
-          description: agentConfiguration
-            ? "Your agent has been successfully saved"
-            : "Your agent has been successfully created",
-          type: "success",
-        });
+        return;
+      }
 
-        // If this was a new agent creation, update URL without re-rendering
-        if (!agentConfiguration && createdAgent.sId) {
-          const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
-          window.history.replaceState(null, "", newUrl);
-        }
+      const createdAgent = result.value;
+      sendNotification({
+        title: agentConfiguration ? "Agent saved" : "Agent created",
+        description: agentConfiguration
+          ? "Your agent has been successfully saved"
+          : "Your agent has been successfully created",
+        type: "success",
+      });
+
+      if (!agentConfiguration && createdAgent.sId) {
+        const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
+        window.history.replaceState(null, "", newUrl);
       }
     } catch (error) {
       logger.error("Unexpected error:", error);
@@ -148,40 +149,68 @@ export default function AgentBuilder({
     void form.handleSubmit(handleSubmit)();
   };
 
-  // Subscribe to form state changes by destructuring before render
+  const handleCancel = async () => {
+    await appLayoutBack(owner, router);
+  };
+
   const { isDirty, isSubmitting } = form.formState;
+
+  const isSaveDisabled =
+    !isDirty || isSubmitting || isActionsLoading;
+
+  const saveLabel = isSubmitting ? "Saving..." : "Save";
+
+  const title = agentConfiguration
+    ? `Edit agent ${agentConfiguration.name}`
+    : "Create new agent";
 
   return (
     <FormProvider form={form}>
       <AgentBuilderLayout
         leftPanel={
           <AgentBuilderLeftPanel
-            title={
-              agentConfiguration
-                ? `Edit agent ${agentConfiguration.name}`
-                : "Create new agent"
-            }
-            onCancel={async () => {
-              await appLayoutBack(owner, router);
-            }}
+            title={title}
+            onCancel={handleCancel}
             saveButtonProps={{
               size: "sm",
-              label: isSubmitting ? "Saving..." : "Save",
+              label: saveLabel,
               variant: "primary",
               onClick: handleSave,
-              disabled: !isDirty || isSubmitting || isActionsLoading,
+              disabled: isSaveDisabled,
             }}
             agentConfigurationId={agentConfiguration?.sId || null}
           />
         }
         rightPanel={
-          <ConversationSidePanelProvider>
-            <AgentBuilderRightPanel
-              agentConfigurationSId={agentConfiguration?.sId}
-            />
-          </ConversationSidePanelProvider>
+          <AgentBuilderRightPanel
+            agentConfigurationSId={agentConfiguration?.sId}
+          />
         }
       />
     </FormProvider>
+  );
+}
+
+function shouldUpdateActions(
+  currentActions: AgentBuilderFormData["actions"],
+  newActions: AgentBuilderFormData["actions"]
+): boolean {
+  return (
+    currentActions.length !== newActions.length ||
+    !currentActions.every(
+      (action, index) => action.id === newActions[index]?.id
+    )
+  );
+}
+
+function shouldUpdateEditors(
+  currentEditors: AgentBuilderFormData["agentSettings"]["editors"],
+  newEditors: AgentBuilderFormData["agentSettings"]["editors"]
+): boolean {
+  return (
+    currentEditors.length !== newEditors.length ||
+    !currentEditors.every(
+      (editor, index) => editor.sId === newEditors[index]?.sId
+    )
   );
 }
