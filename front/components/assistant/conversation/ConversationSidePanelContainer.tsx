@@ -2,11 +2,11 @@ import { cn, ResizableHandle, ResizablePanel } from "@dust-tt/sparkle";
 
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import type { ConversationType, WorkspaceType } from "@app/types";
+import type { ConversationType, LightWorkspaceType } from "@app/types";
 
 interface ConversationSidePanelContainerProps {
   conversation: ConversationType | null;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
 }
 
 export default function ConversationSidePanelContainer({

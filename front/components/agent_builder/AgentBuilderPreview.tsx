@@ -124,18 +124,16 @@ export function AgentBuilderPreview() {
           )}
           <div className="flex-1 overflow-y-auto px-4">
             {conversation && user && (
-              <>
-                <div className={currentPanel ? "hidden" : "block"}>
-                  <ConversationViewer
-                    owner={owner}
-                    user={user}
-                    conversationId={conversation.sId}
-                    onStickyMentionsChange={setStickyMentions}
-                    isInModal
-                    key={conversation.sId}
-                  />
-                </div>
-              </>
+              <div className={currentPanel ? "hidden" : "block"}>
+                <ConversationViewer
+                  owner={owner}
+                  user={user}
+                  conversationId={conversation.sId}
+                  onStickyMentionsChange={setStickyMentions}
+                  isInModal
+                  key={conversation.sId}
+                />
+              </div>
             )}
           </div>
           <div className="flex-shrink-0 p-4">

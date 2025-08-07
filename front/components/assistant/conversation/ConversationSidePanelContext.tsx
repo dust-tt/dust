@@ -21,7 +21,7 @@ type OpenPanelParams =
       type: "content";
       fileId: string;
       timestamp?: string;
-      metadata?: undefined;
+      metadata?: never;
     };
 
 interface AgentActionState {
@@ -30,7 +30,12 @@ interface AgentActionState {
   messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
 }
 
-type SidePanelMetadata = Pick<OpenPanelParams, "metadata">["metadata"];
+type SidePanelMetadata = OpenPanelParams["metadata"] | undefined;
+
+const isSupportedPanelType = (
+  type: string | undefined
+): type is ConversationSidePanelType =>
+  type === "actions" || type === "content";
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
@@ -73,6 +78,10 @@ export function ConversationSidePanelProvider({
 
     switch (params.type) {
       case AGENT_ACTIONS_SIDE_PANEL_TYPE:
+        /**
+         * If the panel is already open for the same messageId,
+         * we close it.
+         */
         if (params.messageId === data) {
           closePanel();
           return;
@@ -118,10 +127,9 @@ export function ConversationSidePanelProvider({
   return (
     <ConversationSidePanelContext.Provider
       value={{
-        currentPanel:
-          currentPanel !== "content" && currentPanel !== "actions"
-            ? undefined
-            : currentPanel,
+        currentPanel: isSupportedPanelType(currentPanel)
+          ? currentPanel
+          : undefined,
         openPanel,
         closePanel,
         data,

@@ -7,6 +7,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
+  SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
 } from "@app/types/conversation_side_panel";
 
@@ -53,7 +54,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   if (shareScope === "conversation_participants") {
     return {
       redirect: {
-        destination: `/w/${workspace.sId}/assistant/${file.useCaseMetadata?.conversationId}#?${SIDE_PANEL_TYPE_HASH_PARAM}=${INTERACTIVE_CONTENT_SIDE_PANEL_TYPE}&spid=${file.sId}`,
+        destination: `/w/${workspace.sId}/assistant/${file.useCaseMetadata?.conversationId}#?${SIDE_PANEL_TYPE_HASH_PARAM}=${INTERACTIVE_CONTENT_SIDE_PANEL_TYPE}&${SIDE_PANEL_HASH_PARAM}=${file.sId}`,
         permanent: false,
       },
     };
