@@ -40,6 +40,7 @@ function updateMessageWithAction(
 ): LightAgentMessageType {
   return {
     ...m,
+    chainOfThought: "",
     actions: [...m.actions.filter((a) => a.id !== action.id), action],
   };
 }
@@ -77,6 +78,7 @@ export function messageReducer(
   state: MessageTemporaryState,
   event: AgentMessageStateEventWithoutToolApproveExecution | ClearContentEvent
 ): MessageTemporaryState {
+  console.log("event", event);
   switch (event.type) {
     case "clear_content":
       return {
@@ -91,7 +93,6 @@ export function messageReducer(
       return {
         ...state,
         message: updateMessageWithAction(state.message, event.action),
-        // agentState: "thinking",
         // Clean up progress for this specific action.
         actionProgress: new Map(
           Array.from(state.actionProgress.entries()).filter(

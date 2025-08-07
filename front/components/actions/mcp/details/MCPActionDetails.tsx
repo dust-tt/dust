@@ -31,6 +31,7 @@ import {
   INCLUDE_TOOL_NAME,
   isInternalMCPServerOfName,
   LIST_TOOL_NAME,
+  LOCATE_IN_TREE_TOOL_NAME,
   PROCESS_TOOL_NAME,
   QUERY_TABLES_TOOL_NAME,
   SEARCH_TOOL_NAME,
@@ -80,7 +81,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
       );
     }
 
-    if (toolName === LIST_TOOL_NAME) {
+    if (toolName === LIST_TOOL_NAME || toolName === FIND_TOOL_NAME) {
       return (
         <SearchResultDetails
           actionName="Browse data sources"
@@ -96,7 +97,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
       return <DataSourceNodeContentDetails {...props} />;
     }
 
-    if (toolName === FIND_TOOL_NAME) {
+    if (toolName === LOCATE_IN_TREE_TOOL_NAME) {
       return <FilesystemPathDetails {...props} />;
     }
   }
@@ -147,25 +148,6 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
 
   if (isInternalMCPServerOfName(mcpServerId, "reasoning")) {
     return <MCPReasoningActionDetails {...props} />;
-  }
-
-  if (isInternalMCPServerOfName(mcpServerId, "data_sources_file_system")) {
-    if (toolName === LIST_TOOL_NAME) {
-      return (
-        <SearchResultDetails
-          actionName="Browse data sources"
-          actionOutput={output}
-          defaultOpen={defaultOpen}
-          visual={ActionDocumentTextIcon}
-        />
-      );
-    }
-    if (toolName === CAT_TOOL_NAME) {
-      return <DataSourceNodeContentDetails {...props} />;
-    }
-    if (toolName === FIND_TOOL_NAME) {
-      return <FilesystemPathDetails {...props} />;
-    }
   }
 
   if (isInternalMCPServerOfName(mcpServerId, "extract_data")) {

@@ -4,7 +4,9 @@ import {
   Button,
   Card,
   Chip,
+  cn,
   CommandLineIcon,
+  Markdown,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
@@ -63,7 +65,7 @@ export function AgentMessageActions({
   const lastAction = agentMessage.actions[agentMessage.actions.length - 1];
   console.log(lastAgentStateClassification);
   return (
-    <div className="flex max-w-[500px] flex-col gap-y-4">
+    <>
       <AgentMessageActionsDrawer
         conversationId={conversationId}
         message={agentMessage}
@@ -80,9 +82,10 @@ export function AgentMessageActions({
         isActing={lastAgentStateClassification === "acting"}
         label={chipLabel}
         owner={owner}
+        chainOfThought={agentMessage.chainOfThought || "..."}
         onClick={() => setIsActionDrawerOpened(true)}
       />
-    </div>
+    </>
   );
 }
 
@@ -99,6 +102,7 @@ function ActionDetails({
   isActionStepDone,
   isActing,
   owner,
+  chainOfThought,
   onClick,
 }: {
   hasActions: boolean;
@@ -107,6 +111,7 @@ function ActionDetails({
   isActionStepDone: boolean;
   isActing: boolean;
   owner: LightWorkspaceType;
+  chainOfThought: string;
   onClick: () => void;
 }) {
   if (!label && (!isActionStepDone || !hasActions)) {
@@ -117,9 +122,12 @@ function ActionDetails({
     <div
       key={label}
       onClick={lastAction ? onClick : undefined}
-      className={lastAction ? "cursor-pointer" : ""}
+      className={cn(
+        "flex max-w-[500px] flex-col gap-y-4",
+        lastAction ? "cursor-pointer" : ""
+      )}
     >
-      {lastAction && isActing && (
+      {lastAction && isActing ? (
         <Card variant="secondary" size="md">
           <MCPActionDetails
             action={lastAction}
@@ -129,15 +137,35 @@ function ActionDetails({
             hideOutput={true}
           />
         </Card>
+      ) : (
+        <Card variant="secondary" size="md">
+          <ActionDetailsWrapper
+            actionName={"Thinking"}
+            defaultOpen={true}
+            visual={BrainIcon}
+          >
+            <div className="flex flex-col gap-4 pl-6 pt-4 text-red-500 dark:text-muted-foreground-night">
+              <Markdown
+                content={chainOfThought}
+                isStreaming={false}
+                forcedTextSize="text-sm"
+                textColor="text-muted-foreground dark:text-muted-foreground-night"
+                isLastMessage={true}
+              />
+            </div>
+          </ActionDetailsWrapper>
+        </Card>
       )}
     </div>
   ) : (
-    <Button
-      size="sm"
-      label="Tools inspection"
-      icon={CommandLineIcon}
-      variant="outline"
-      onClick={onClick}
-    />
+    <div className="flex flex-col items-start gap-y-4">
+      <Button
+        size="sm"
+        label="Tools inspection"
+        icon={CommandLineIcon}
+        variant="outline"
+        onClick={onClick}
+      />
+    </div>
   );
 }

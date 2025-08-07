@@ -611,29 +611,10 @@ export function AgentMessage({
         !isSupportedImageContentType(file.contentType) &&
         !isInteractiveFileContentType(file.contentType)
     );
-
+    console.log(agentMessage);
     return (
       <div className="flex flex-col gap-y-4">
         <div className="flex flex-col gap-2">
-          {agentMessage.chainOfThought?.trim().length ? (
-            <Tooltip
-              label="Agent thoughts"
-              trigger={
-                <div>
-                  <ContentMessage variant="primary">
-                    <Markdown
-                      content={agentMessage.chainOfThought}
-                      isStreaming={false}
-                      forcedTextSize="text-sm"
-                      textColor="text-muted-foreground"
-                      isLastMessage={false}
-                    />
-                  </ContentMessage>
-                </div>
-              }
-              tooltipTriggerAsChild
-            />
-          ) : null}
           <AgentMessageActions
             conversationId={conversationId}
             agentMessage={agentMessage}
