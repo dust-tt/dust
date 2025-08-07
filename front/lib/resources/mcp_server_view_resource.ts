@@ -163,11 +163,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     {
       systemView,
       space,
-      transaction,
     }: {
       systemView: MCPServerViewResource;
       space: SpaceResource;
-      transaction?: Transaction;
     }
   ) {
     if (systemView.space.kind !== "system") {
@@ -201,8 +199,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         description: systemView.description,
       },
       space,
-      auth.user() ?? undefined,
-      transaction
+      auth.user() ?? undefined
     );
   }
 
@@ -333,6 +330,15 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     options?: ResourceFindOptions<MCPServerViewModel>
   ): Promise<MCPServerViewResource[]> {
     return this.listBySpaces(auth, [space], options);
+  }
+
+  static async listForSystemSpace(
+    auth: Authenticator,
+    options?: ResourceFindOptions<MCPServerViewModel>
+  ) {
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+
+    return this.listBySpace(auth, systemSpace, options);
   }
 
   static async countBySpace(
