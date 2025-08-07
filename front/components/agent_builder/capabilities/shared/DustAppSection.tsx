@@ -14,7 +14,7 @@ import {
 import { Button } from "@dust-tt/sparkle";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import { sortBy } from "lodash";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -139,78 +139,60 @@ export function DustAppSection({ owner, allowedSpaces }: DustAppSectionProps) {
     [apps]
   );
 
-  const rowSelection: RowSelectionState = useMemo(() => {
-    if (!field.value?.appId) {
-      return {};
+  const rowSelection: RowSelectionState = field.value?.appId
+    ? (() => {
+        const selectedIndex = availableApps.findIndex(
+          (app) => app.sId === field.value.appId
+        );
+        return selectedIndex >= 0 ? { [selectedIndex]: true } : {};
+      })()
+    : {};
+
+  const handleRowSelectionChange = (newSelection: RowSelectionState) => {
+    const selectedIndex = Object.keys(newSelection)[0];
+    const selectedApp = availableApps[parseInt(selectedIndex, 10)];
+    if (selectedApp) {
+      const config: DustAppRunConfigurationType = {
+        id: selectedApp.id,
+        sId: selectedApp.sId,
+        appId: selectedApp.sId,
+        appWorkspaceId: owner.sId,
+        name: selectedApp.name,
+        description: selectedApp.description,
+        type: "dust_app_run_configuration",
+      };
+      field.onChange(config);
     }
+  };
 
-    const selectedIndex = availableApps.findIndex(
-      (app) => app.sId === field.value.appId
-    );
-    return selectedIndex >= 0 ? { [selectedIndex]: true } : {};
-  }, [field.value?.appId, availableApps]);
+  const handleSpaceChange = (space: SpaceType) => {
+    setSelectedSpace(space);
+    field.onChange(null); // Clear selection when changing space
+  };
 
-  const handleRowSelectionChange = useCallback(
-    (newSelection: RowSelectionState) => {
-      const selectedIndex = Object.keys(newSelection)[0];
-      const selectedApp = availableApps[parseInt(selectedIndex, 10)];
-      if (selectedApp) {
-        const config: DustAppRunConfigurationType = {
-          id: selectedApp.id,
-          sId: selectedApp.sId,
-          appId: selectedApp.sId,
-          appWorkspaceId: owner.sId,
-          name: selectedApp.name,
-          description: selectedApp.description,
-          type: "dust_app_run_configuration",
-        };
-        field.onChange(config);
-      }
-    },
-    [availableApps, owner.sId, field]
-  );
+  const tableData: AppTableData[] = availableApps.map((app) => ({ ...app }));
 
-  const handleSpaceChange = useCallback(
-    (space: SpaceType) => {
-      setSelectedSpace(space);
-      field.onChange(null); // Clear selection when changing space
-    },
-    [field]
-  );
-
-  const handleSearchQueryChange = useCallback((query: string) => {
-    setSearchQuery(query);
-  }, []);
-
-  const tableData: AppTableData[] = useMemo(
-    () => availableApps.map((app) => ({ ...app })),
-    [availableApps]
-  );
-
-  const columns: ColumnDef<AppTableData>[] = useMemo(
-    () => [
-      createRadioSelectionColumn<AppTableData>(),
-      {
-        id: "name",
-        accessorKey: "name",
-        header: () => null,
-        cell: ({ row }) => (
-          <DataTable.CellContent icon={CommandLineIcon}>
-            <div className="flex flex-col gap-1">
-              <div className="text-sm font-medium">{row.original.name}</div>
-              <div className="line-clamp-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
-                {row.original.description || "No description available"}
-              </div>
+  const columns: ColumnDef<AppTableData>[] = [
+    createRadioSelectionColumn<AppTableData>(),
+    {
+      id: "name",
+      accessorKey: "name",
+      header: () => null,
+      cell: ({ row }) => (
+        <DataTable.CellContent icon={CommandLineIcon}>
+          <div className="flex flex-col gap-1">
+            <div className="text-sm font-medium">{row.original.name}</div>
+            <div className="line-clamp-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+              {row.original.description || "No description available"}
             </div>
-          </DataTable.CellContent>
-        ),
-        meta: {
-          sizeRatio: 100,
-        },
+          </div>
+        </DataTable.CellContent>
+      ),
+      meta: {
+        sizeRatio: 100,
       },
-    ],
-    []
-  );
+    },
+  ];
 
   return (
     <ConfigurationSectionContainer
@@ -268,7 +250,7 @@ export function DustAppSection({ owner, allowedSpaces }: DustAppSectionProps) {
             tableData={tableData}
             columns={columns}
             searchQuery={searchQuery}
-            setSearchQuery={handleSearchQueryChange}
+            setSearchQuery={setSearchQuery}
             rowSelection={rowSelection}
             handleRowSelectionChange={handleRowSelectionChange}
           />
