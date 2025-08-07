@@ -1,14 +1,16 @@
 import { assertNever } from "@dust-tt/client";
 import React, { useEffect, useState } from "react";
 
-import {
-  SIDE_PANEL_HASH_PARAM,
-  SIDE_PANEL_TYPE_HASH_PARAM,
-} from "@app/components/assistant/conversation/constant";
 import { useHashParam } from "@app/hooks/useHashParams";
 import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
-
-export type ConversationSidePanelType = "content" | "actions" | undefined;
+import type {
+  ConversationSidePanelType} from "@app/types/conversation_side_panel";
+import {
+  AGENT_ACTIONS_SIDE_PANEL_TYPE,
+  INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
+  SIDE_PANEL_HASH_PARAM,
+  SIDE_PANEL_TYPE_HASH_PARAM,
+} from "@app/types/conversation_side_panel";
 
 type OpenPanelParams =
   | {
@@ -71,7 +73,7 @@ export function ConversationSidePanelProvider({
     setCurrentPanel(params.type);
 
     switch (params.type) {
-      case "actions":
+      case AGENT_ACTIONS_SIDE_PANEL_TYPE:
         if (params.messageId === data) {
           closePanel();
           return;
@@ -79,7 +81,7 @@ export function ConversationSidePanelProvider({
         setData(params.messageId);
         setMetadata(params.metadata);
         break;
-      case "content":
+      case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
         params.timestamp
           ? setData(`${params.fileId}@${params.timestamp}`)
           : setData(params.fileId);
@@ -98,11 +100,7 @@ export function ConversationSidePanelProvider({
 
   // Initialize panel state from URL hash parameters
   useEffect(() => {
-    if (
-      data &&
-      currentPanel &&
-      (currentPanel === "content" || currentPanel === "actions")
-    ) {
+    if (data && currentPanel) {
       setCurrentPanel(currentPanel);
 
       // Set default metadata for actions panel when opened from URL

@@ -50,7 +50,7 @@ export function AgentActionsPanel({
     : {};
 
   return (
-    <div className="flex flex-col">
+    <div className="flex h-full flex-col">
       <AgentActionsPanelHeader
         title="Breakdown of the tools used"
         onClose={closePanel}

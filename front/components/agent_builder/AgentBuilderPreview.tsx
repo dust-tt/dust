@@ -106,56 +106,59 @@ export function AgentBuilderPreview() {
     }
 
     return (
-      <div className="flex h-full flex-col">
-        {conversation && (
-          <div className="flex items-center justify-between px-6 py-3">
-            <h2 className="font-semibold text-foreground dark:text-foreground-night">
-              {conversation.title}
-            </h2>
-            <Button
-              variant="outline"
-              size="sm"
-              icon={ArrowPathIcon}
-              onClick={resetConversation}
-              label="Reset conversation"
+      <>
+        <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
+          {conversation && (
+            <div className="flex items-center justify-between px-6 py-3">
+              <h2 className="font-semibold text-foreground dark:text-foreground-night">
+                {conversation.title}
+              </h2>
+              <Button
+                variant="outline"
+                size="sm"
+                icon={ArrowPathIcon}
+                onClick={resetConversation}
+                label="Reset conversation"
+              />
+            </div>
+          )}
+          <div className="flex-1 overflow-y-auto px-4">
+            {conversation && user && (
+              <>
+                <div className={currentPanel ? "hidden" : "block"}>
+                  <ConversationViewer
+                    owner={owner}
+                    user={user}
+                    conversationId={conversation.sId}
+                    onStickyMentionsChange={setStickyMentions}
+                    isInModal
+                    key={conversation.sId}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          <div className="flex-shrink-0 p-4">
+            <AssistantInputBar
+              disableButton={isSavingDraftAgent}
+              owner={owner}
+              onSubmit={handleSubmit}
+              stickyMentions={stickyMentions}
+              conversationId={conversation?.sId || null}
+              additionalAgentConfiguration={draftAgent ?? undefined}
+              actions={["attachment"]}
+              disableAutoFocus
+              isFloating={false}
             />
           </div>
-        )}
-        <div className="flex-1 overflow-y-auto">
-          {conversation && user && (
-            <>
-              <div className={currentPanel ? "hidden" : "block"}>
-                <ConversationViewer
-                  owner={owner}
-                  user={user}
-                  conversationId={conversation.sId}
-                  onStickyMentionsChange={setStickyMentions}
-                  isInModal
-                  key={conversation.sId}
-                />
-              </div>
-              <ConversationSidePanelContent
-                conversation={conversation}
-                owner={owner}
-                currentPanel={currentPanel}
-              />
-            </>
-          )}
         </div>
-        <div className="flex-shrink-0 p-4">
-          <AssistantInputBar
-            disableButton={isSavingDraftAgent}
-            owner={owner}
-            onSubmit={handleSubmit}
-            stickyMentions={stickyMentions}
-            conversationId={conversation?.sId || null}
-            additionalAgentConfiguration={draftAgent ?? undefined}
-            actions={["attachment"]}
-            disableAutoFocus
-            isFloating={false}
-          />
-        </div>
-      </div>
+
+        <ConversationSidePanelContent
+          conversation={conversation}
+          owner={owner}
+          currentPanel={currentPanel}
+        />
+      </>
     );
   };
 

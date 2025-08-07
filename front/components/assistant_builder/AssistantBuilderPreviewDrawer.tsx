@@ -221,7 +221,11 @@ export default function AssistantBuilderRightPanel({
               <ConversationsNavigationProvider>
                 <ActionValidationProvider owner={owner}>
                   <GenerationContextProvider>
-                    <div className={"flex h-full flex-col"}>
+                    <div
+                      className={
+                        currentPanel ? "hidden" : "flex h-full flex-col"
+                      }
+                    >
                       {conversation && (
                         <div className="flex items-center justify-between py-3">
                           <h2 className="font-semibold text-foreground dark:text-foreground-night">
@@ -238,23 +242,16 @@ export default function AssistantBuilderRightPanel({
                       )}
                       <div className="flex-grow overflow-y-auto">
                         {conversation && (
-                          <>
-                            <div className={currentPanel ? "hidden" : "block"}>
-                              <ConversationViewer
-                                owner={owner}
-                                user={user}
-                                conversationId={conversation.sId}
-                                onStickyMentionsChange={setStickyMentions}
-                                isInModal
-                                key={conversation.sId}
-                              />
-                            </div>
-                            <ConversationSidePanelContent
-                              conversation={conversation}
+                          <div>
+                            <ConversationViewer
                               owner={owner}
-                              currentPanel={currentPanel}
+                              user={user}
+                              conversationId={conversation.sId}
+                              onStickyMentionsChange={setStickyMentions}
+                              isInModal
+                              key={conversation.sId}
                             />
-                          </>
+                          </div>
                         )}
                       </div>
                       <div className="shrink-0">
@@ -273,6 +270,11 @@ export default function AssistantBuilderRightPanel({
                         />
                       </div>
                     </div>
+                    <ConversationSidePanelContent
+                      conversation={conversation}
+                      owner={owner}
+                      currentPanel={currentPanel}
+                    />
                   </GenerationContextProvider>
                 </ActionValidationProvider>
               </ConversationsNavigationProvider>

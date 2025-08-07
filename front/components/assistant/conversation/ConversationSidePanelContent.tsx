@@ -1,7 +1,12 @@
 import { AgentActionsPanel } from "@app/components/assistant/conversation/actions/AgentActionsPanel";
 import { InteractiveContentContainer } from "@app/components/assistant/conversation/content/InteractiveContentContainer";
-import type { ConversationSidePanelType } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { ConversationType, WorkspaceType } from "@app/types";
+import type {
+  ConversationSidePanelType} from "@app/types/conversation_side_panel";
+import {
+  AGENT_ACTIONS_SIDE_PANEL_TYPE,
+  INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
+} from "@app/types/conversation_side_panel";
 
 interface ConversationSidePanelContentProps {
   conversation: ConversationType | null;
@@ -15,9 +20,9 @@ export default function ConversationSidePanelContent({
   currentPanel,
 }: ConversationSidePanelContentProps) {
   switch (currentPanel) {
-    case "actions":
+    case AGENT_ACTIONS_SIDE_PANEL_TYPE:
       return <AgentActionsPanel conversation={conversation} owner={owner} />;
-    case "content":
+    case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
       return (
         <InteractiveContentContainer
           conversation={conversation}
