@@ -40,6 +40,7 @@ import {
 
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import type {
+  DataSourceBuilderTreeItemType,
   NavigationHistoryEntryType,
   NodeSelectionState,
 } from "@app/components/data_source_view/context/types";
@@ -49,11 +50,13 @@ import {
   getLastNavigationHistoryEntryId,
   isNodeSelected,
   navigationHistoryEntryTitle,
+  pathToString,
   removeNodeFromTree,
 } from "@app/components/data_source_view/context/utils";
 import type {
   DataSourceViewCategoryWithoutApps,
   DataSourceViewContentNode,
+  DataSourceViewType,
   SpaceType,
 } from "@app/types";
 import { assertNever } from "@app/types";
@@ -85,12 +88,12 @@ type DataSourceBuilderState = StateType & {
    * Total path is deduced from the current navigationHistory state.
    * You just have to put the row id of the source you want to select.
    */
-  removeNode: (rowId: string, name: string) => void;
+  removeNode: (entry: NavigationHistoryEntryType) => void;
 
   /**
    * Remove a specific row, but need to include its full path.
    */
-  removeNodeWithPath: (path: string, name: string) => void;
+  removeNodeWithPath: (item: DataSourceBuilderTreeItemType) => void;
 
   /**
    * Remove the current navigationHistory entry
@@ -128,6 +131,11 @@ type DataSourceBuilderState = StateType & {
   setCategoryEntry: (category: DataSourceViewCategoryWithoutApps) => void;
 
   /**
+   * Set the current selected dataSourceView in the navigation
+   */
+  setDataSourceViewEntry: (dataSourceView: DataSourceViewType) => void;
+
+  /**
    * Add a new node to the navigation
    */
   addNodeEntry: (node: DataSourceViewContentNode) => void;
@@ -150,6 +158,10 @@ type ActionType =
   | {
       type: "NAVIGATION_ADD_NODE";
       payload: { node: DataSourceViewContentNode };
+    }
+  | {
+      type: "NAVIGATION_SET_DATA_SOURCE";
+      payload: { dataSourceView: DataSourceViewType };
     }
   | {
       type: "NAVIGATION_NAVIGATE_TO";
@@ -198,6 +210,15 @@ function dataSourceBuilderReducer(
         navigationHistory: state.navigationHistory.slice(0, payload.index + 1),
       };
     }
+    case "NAVIGATION_SET_DATA_SOURCE": {
+      return {
+        ...state,
+        navigationHistory: [
+          ...state.navigationHistory.slice(0, 3),
+          { type: "data_source", dataSourceView: payload.dataSourceView },
+        ],
+      };
+    }
     default:
       assertNever(type);
   }
@@ -218,15 +239,13 @@ export function DataSourceBuilderProvider({
   const selectNode: DataSourceBuilderState["selectNode"] = useCallback(
     (entry) => {
       const nodePath = computeNavigationPath(state.navigationHistory);
-      if (entry) {
-        nodePath.push(getLastNavigationHistoryEntryId(entry));
-      }
+      nodePath.push(getLastNavigationHistoryEntryId(entry));
 
       field.onChange(
         addNodeToTree(field.value, {
-          path: nodePath,
+          path: pathToString(nodePath),
           name: navigationHistoryEntryTitle(entry),
-          node: entry.type === "node" ? entry.node : undefined,
+          ...entry,
         })
       );
     },
@@ -235,37 +254,29 @@ export function DataSourceBuilderProvider({
 
   const selectCurrentNavigationEntry: DataSourceBuilderState["selectCurrentNavigationEntry"] =
     useCallback(() => {
-      const nodePath = computeNavigationPath(state.navigationHistory);
       const lastEntry =
         state.navigationHistory[state.navigationHistory.length - 1];
-      const lastEntryTitle = navigationHistoryEntryTitle(lastEntry);
-
-      const isFirstNode =
-        state.navigationHistory[state.navigationHistory.length - 2].type !==
-        "node";
+      const nodePath = computeNavigationPath(state.navigationHistory);
 
       field.onChange(
         addNodeToTree(field.value, {
-          path: nodePath,
-          name: lastEntryTitle,
-          node:
-            !isFirstNode && lastEntry.type === "node"
-              ? lastEntry.node
-              : undefined,
+          path: pathToString(nodePath),
+          name: navigationHistoryEntryTitle(lastEntry),
+          ...lastEntry,
         })
       );
     }, [field, state.navigationHistory]);
 
   const removeNode: DataSourceBuilderState["removeNode"] = useCallback(
-    (rowId, name) => {
+    (entry) => {
       const nodePath = computeNavigationPath(state.navigationHistory);
-      if (rowId) {
-        nodePath.push(rowId);
-      }
+      nodePath.push(getLastNavigationHistoryEntryId(entry));
+
       field.onChange(
         removeNodeFromTree(field.value, {
-          path: nodePath,
-          name,
+          path: pathToString(nodePath),
+          name: navigationHistoryEntryTitle(entry),
+          ...entry,
         })
       );
     },
@@ -274,13 +285,8 @@ export function DataSourceBuilderProvider({
 
   const removeNodeWithPath: DataSourceBuilderState["removeNodeWithPath"] =
     useCallback(
-      (path, name) => {
-        field.onChange(
-          removeNodeFromTree(field.value, {
-            path: path.split("."),
-            name,
-          })
-        );
+      (item) => {
+        field.onChange(removeNodeFromTree(field.value, item));
       },
       [field]
     );
@@ -288,13 +294,14 @@ export function DataSourceBuilderProvider({
   const removeCurrentNavigationEntry: DataSourceBuilderState["removeCurrentNavigationEntry"] =
     useCallback(() => {
       const nodePath = computeNavigationPath(state.navigationHistory);
-      const lastEntry = navigationHistoryEntryTitle(
-        state.navigationHistory[state.navigationHistory.length - 1]
-      );
+      const lastEntry =
+        state.navigationHistory[state.navigationHistory.length - 1];
+
       field.onChange(
         removeNodeFromTree(field.value, {
-          path: nodePath,
-          name: lastEntry,
+          path: pathToString(nodePath),
+          name: navigationHistoryEntryTitle(lastEntry),
+          ...lastEntry,
         })
       );
     }, [field, state.navigationHistory]);
@@ -303,6 +310,7 @@ export function DataSourceBuilderProvider({
     (rowId) => {
       const nodePath = computeNavigationPath(state.navigationHistory);
       nodePath.push(rowId);
+      console.log({ value: field.value, nodePath });
       return isNodeSelected(field.value, nodePath);
     },
     [field.value, state.navigationHistory]
@@ -361,6 +369,14 @@ export function DataSourceBuilderProvider({
       dispatch({ type: "NAVIGATION_SET_CATEGORY", payload: { category } });
     }, []);
 
+  const setDataSourceViewEntry: DataSourceBuilderState["setDataSourceViewEntry"] =
+    useCallback((dataSourceView) => {
+      dispatch({
+        type: "NAVIGATION_SET_DATA_SOURCE",
+        payload: { dataSourceView },
+      });
+    }, []);
+
   const addNodeEntry: DataSourceBuilderState["addNodeEntry"] = useCallback(
     (node) => {
       dispatch({ type: "NAVIGATION_ADD_NODE", payload: { node } });
@@ -388,6 +404,7 @@ export function DataSourceBuilderProvider({
       isCurrentNavigationEntrySelected,
       setSpaceEntry,
       setCategoryEntry,
+      setDataSourceViewEntry,
       addNodeEntry,
       navigateTo,
     }),
@@ -405,6 +422,7 @@ export function DataSourceBuilderProvider({
       selectNode,
       setCategoryEntry,
       setSpaceEntry,
+      setDataSourceViewEntry,
     ]
   );
 

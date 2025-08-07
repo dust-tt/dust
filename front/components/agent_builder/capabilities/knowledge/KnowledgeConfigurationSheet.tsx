@@ -255,7 +255,7 @@ function KnowledgeConfigurationSheetContent({
             <DataSourceBuilderSelector
               dataSourceViews={supportedDataSourceViews}
               owner={owner}
-              viewType="document"
+              viewType="all"
             />
           </ScrollArea>
         </div>
