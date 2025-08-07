@@ -6,38 +6,9 @@ import type {
 } from "@app/components/data_source_view/context/types";
 import { isNodeSelected } from "@app/components/data_source_view/context/utils";
 import type {
-  DataSourceViewContentNode,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
 } from "@app/types";
-
-/**
- * Creates a placeholder DataSourceViewContentNode with minimal information.
- * The actual content node data will be resolved on the backend when this
- * configuration is used.
- */
-function getPlaceholderResource(
-  nodeId: string,
-  parentId: string | null,
-  dataSourceView: DataSourceViewType
-): DataSourceViewContentNode {
-  return {
-    internalId: nodeId,
-    parentInternalId: parentId,
-    parentInternalIds: parentId ? [parentId] : null,
-    parentTitle: null,
-    title: nodeId,
-    type: "document",
-    mimeType: "application/octet-stream",
-    lastUpdatedAt: null,
-    expandable: false,
-    permission: "read",
-    providerVisibility: null,
-    sourceUrl: null,
-    preventSelection: false,
-    dataSourceView,
-  };
-}
 
 /**
  * Transforms DataSourceBuilderTreeType to DataSourceViewSelectionConfigurations
@@ -96,30 +67,8 @@ export function transformTreeToSelectionConfigurations(
     }
 
     // If it's not a full data source selection, extract the selected nodes
-    if (!isFullDataSource) {
-      configurations[dataSourceView.sId].isSelectAll = false;
-
-      if (item.type === "node") {
-        configurations[dataSourceView.sId].selectedResources.push(item.node);
-      } else {
-        // Extract node information from the path
-        const nodeIds = parts.slice(dsvIdIndex + 1);
-        if (nodeIds.length > 0) {
-          const nodeId = nodeIds[nodeIds.length - 1]; // Last part is the selected node
-          const parentId =
-            nodeIds.length > 1 ? nodeIds[nodeIds.length - 2] : null;
-
-          const existingResources = existingResourcesMap.get(
-            dataSourceView.sId
-          )!;
-          if (!existingResources.has(nodeId)) {
-            existingResources.add(nodeId);
-            configurations[dataSourceView.sId].selectedResources.push(
-              getPlaceholderResource(nodeId, parentId, dataSourceView)
-            );
-          }
-        }
-      }
+    if (item.type === "node") {
+      configurations[dataSourceView.sId].selectedResources.push(item.node);
     }
   }
 
@@ -147,7 +96,12 @@ export function transformSelectionConfigurationsToTree(
 
     if (config.isSelectAll) {
       // If all nodes are selected, just add the data source path
-      inPaths.push(baseParts);
+      inPaths.push({
+        path: baseParts,
+        name: dataSourceView.dataSource.name,
+        type: "data_source",
+        dataSourceView,
+      });
     } else if (config.selectedResources.length > 0) {
       // Group selected resources by parent for efficient processing
       const resourcesByParent = new Map<
@@ -157,12 +111,6 @@ export function transformSelectionConfigurationsToTree(
 
       for (const node of config.selectedResources) {
         const parentId = node.parentInternalId || null;
-
-        if (parentId === null) {
-          // TODO: data source view
-        } else {
-          // TODO: node
-        }
         const nodes = resourcesByParent.get(parentId) || [];
         nodes.push(node);
         resourcesByParent.set(parentId, nodes);
@@ -171,16 +119,23 @@ export function transformSelectionConfigurationsToTree(
       // Add paths for selected resources
       for (const [parentId, nodes] of resourcesByParent) {
         for (const node of nodes) {
-          const pathParts = parentId
-            ? [baseParts.path, parentId, node.internalId]
-            : [baseParts.path, node.internalId];
-
-          inPaths.push({
-            path: pathParts.join("/"),
-            name: parentId ?? node.title,
-            type: "node",
-            node,
-          });
+          if (parentId) {
+            const pathParts = [baseParts, parentId, node.internalId];
+            inPaths.push({
+              path: pathParts.join("/"),
+              name: parentId,
+              type: "node",
+              node,
+            });
+          } else {
+            const pathParts = [baseParts, node.internalId];
+            inPaths.push({
+              path: pathParts.join("/"),
+              name: node.title,
+              type: "data_source",
+              dataSourceView: node.dataSourceView,
+            });
+          }
         }
       }
     }
@@ -219,9 +174,7 @@ function isDataSourceViewId(segment: string): boolean {
 /**
  * Builds a navigation path for a data source view
  */
-function buildDataSourcePath(
-  dataSourceView: DataSourceViewType
-): DataSourceBuilderTreeItemType {
+function buildDataSourcePath(dataSourceView: DataSourceViewType): string {
   const parts = ["root", dataSourceView.spaceId];
 
   if (dataSourceView.category) {
@@ -229,8 +182,5 @@ function buildDataSourcePath(
   }
 
   parts.push(dataSourceView.sId);
-  return {
-    path: parts.join("/"),
-    name: dataSourceView.dataSource.name,
-  } as any; // WARN:
+  return parts.join("/");
 }
