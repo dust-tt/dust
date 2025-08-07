@@ -139,6 +139,7 @@ export default function AgentBuilder({
           type: "error",
         });
       } else {
+        const createdAgent = result.value;
         sendNotification({
           title: agentConfiguration ? "Agent saved" : "Agent created",
           description: agentConfiguration
@@ -146,6 +147,12 @@ export default function AgentBuilder({
             : "Your agent has been successfully created",
           type: "success",
         });
+
+        // If this was a new agent creation, update URL without re-rendering
+        if (!agentConfiguration && createdAgent.sId) {
+          const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
+          window.history.replaceState(null, "", newUrl);
+        }
       }
     } catch (error) {
       logger.error("Unexpected error:", error);
