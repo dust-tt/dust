@@ -574,6 +574,61 @@ export const isRunAgentResultResourceType = (
   );
 };
 
+// Batch run agent schemas
+export const RunAgentBatchQueryResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_BATCH_QUERY),
+  queries: z.array(z.string()),
+  childAgentId: z.string(),
+  text: z.string(),
+  uri: z.literal(""),
+});
+
+export type RunAgentBatchQueryResourceType = z.infer<
+  typeof RunAgentBatchQueryResourceSchema
+>;
+
+export const isRunAgentBatchQueryResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: RunAgentBatchQueryResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    RunAgentBatchQueryResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+export const RunAgentBatchResultResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_BATCH_RESULT),
+  results: z.array(z.object({
+    conversationId: z.string(),
+    query: z.string(),
+    text: z.string(),
+    chainOfThought: z.string().optional(),
+    uri: z.string(),
+    error: z.string().optional(),
+  })),
+  text: z.string(),
+  uri: z.literal(""),
+});
+
+export type RunAgentBatchResultResourceType = z.infer<
+  typeof RunAgentBatchResultResourceSchema
+>;
+
+export const isRunAgentBatchResultResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: RunAgentBatchResultResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    RunAgentBatchResultResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 // Extract data outputs: query and results.
 
 export const ExtractQueryResourceSchema = z.object({
@@ -872,6 +927,38 @@ export function isRunAgentProgressOutput(
   );
 }
 
+// Batch run agent progress notifications
+const NotificationRunAgentBatchProgressSchema = z.object({
+  type: z.literal("run_agent_batch_progress"),
+  childAgentId: z.string(),
+  totalQueries: z.number(),
+  completedQueries: z.number(),
+  activeQueries: z.array(z.object({
+    index: z.number(),
+    query: z.string(),
+    conversationId: z.string(),
+    status: z.enum(["pending", "running", "completed", "failed"]),
+    error: z.string().optional(),
+    text: z.string().optional(),
+    chainOfThought: z.string().optional(),
+    uri: z.string().optional(),
+  })),
+});
+
+type RunAgentBatchProgressOutput = z.infer<
+  typeof NotificationRunAgentBatchProgressSchema
+>;
+
+export function isRunAgentBatchProgressOutput(
+  output: ProgressNotificationOutput
+): output is RunAgentBatchProgressOutput {
+  return (
+    output !== undefined &&
+    output.type === "run_agent_batch_progress" &&
+    "totalQueries" in output
+  );
+}
+
 export const ProgressNotificationOutputSchema = z
   .union([
     NotificationImageContentSchema,
@@ -879,6 +966,7 @@ export const ProgressNotificationOutputSchema = z
     NotificationRunAgentContentSchema,
     NotificationRunAgentChainOfThoughtSchema,
     NotificationRunAgentGenerationTokensSchema,
+    NotificationRunAgentBatchProgressSchema,
     NotificationTextContentSchema,
     NotificationToolApproveBubbleUpContentSchema,
   ])

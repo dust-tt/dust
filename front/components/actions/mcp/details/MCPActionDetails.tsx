@@ -38,6 +38,9 @@ import {
   isIncludeResultResourceType,
   isReasoningSuccessOutput,
   isResourceContentWithText,
+  isRunAgentBatchProgressOutput,
+  isRunAgentBatchQueryResourceType,
+  isRunAgentBatchResultResourceType,
   isRunAgentProgressOutput,
   isRunAgentResultResourceType,
   isSearchResultResourceType,
@@ -71,9 +74,20 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   );
 
   const isExtract = props.action.output?.some(isExtractResultResourceType);
+  
+  // Check for batch first since it's more specific
+  const isRunAgentBatch =
+    props.action.output?.some(isRunAgentBatchResultResourceType) ||
+    props.action.output?.some(isRunAgentBatchQueryResourceType) ||
+    isRunAgentBatchProgressOutput(props.lastNotification?.data.output);
+    
+  // Only consider single agent if it's not batch
   const isRunAgent =
-    props.action.output?.some(isRunAgentResultResourceType) ||
-    isRunAgentProgressOutput(props.lastNotification?.data.output);
+    !isRunAgentBatch && (
+      props.action.output?.some(isRunAgentResultResourceType) ||
+      isRunAgentProgressOutput(props.lastNotification?.data.output)
+    );
+    
   const isAgentCreation = props.action.output?.some(
     isAgentCreationResultResourceType
   );
@@ -144,7 +158,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     return <FilesystemPathDetails {...props} />;
   } else if (isExtract) {
     return <MCPExtractActionDetails {...props} />;
-  } else if (isRunAgent) {
+  } else if (isRunAgent || isRunAgentBatch) {
     return <MCPRunAgentActionDetails {...props} />;
   } else if (isAgentCreation) {
     return <MCPAgentManagementActionDetails {...props} />;

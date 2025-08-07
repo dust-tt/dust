@@ -262,6 +262,8 @@ const TOOL_MIME_TYPES = {
       "WEBSEARCH_RESULT",
       "RUN_AGENT_RESULT",
       "RUN_AGENT_QUERY",
+      "RUN_AGENT_BATCH_QUERY",
+      "RUN_AGENT_BATCH_RESULT",
       "WARNING",
       "AGENT_CREATION_RESULT",
       // Legacy, kept for backwards compatibility.
