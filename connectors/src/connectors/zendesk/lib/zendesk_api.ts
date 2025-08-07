@@ -720,6 +720,30 @@ export async function getOrganizationTagMapForTickets(
 }
 
 /**
+ * Fetches a single ticket field by ID from the Zendesk API.
+ */
+export async function getZendeskTicketFieldById({
+  accessToken,
+  subdomain,
+  fieldId,
+}: {
+  accessToken: string;
+  subdomain: string;
+  fieldId: number;
+}): Promise<ZendeskFetchedTicketField | null> {
+  const url = `https://${subdomain}.zendesk.com/api/v2/ticket_fields/${fieldId}`;
+  try {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    return response?.ticket_field ?? null;
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      return null;
+    }
+    throw e;
+  }
+}
+
+/**
  * Fetches all ticket fields from the Zendesk API.
  */
 export async function listZendeskTicketFields({

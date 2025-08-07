@@ -3,6 +3,7 @@ import {
   Chip,
   ContextItem,
   Input,
+  Tooltip,
   ZendeskLogo,
   ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
@@ -56,21 +57,40 @@ export function ZendeskCustomFieldFilters({
     return (parsingResult.value || []) as CustomField[];
   }, [customFieldsConfigValue]);
 
-  const addCustomFieldByName = useCallback(
-    async (fieldName: string) => {
-      const trimmedFieldName = fieldName.trim();
-      if (!trimmedFieldName) {
+  const addCustomFieldById = useCallback(
+    async (fieldId: string) => {
+      const trimmedFieldId = fieldId.trim();
+      if (!trimmedFieldId) {
         sendNotification({
           type: "info",
-          title: "Invalid field name",
-          description: "Field name cannot be empty.",
+          title: "Invalid field ID",
+          description: "Field ID cannot be empty.",
         });
         return;
       }
 
-      // Get current field names and add the new one.
-      const currentFieldNames = customFields.map((field) => field.name);
-      const updatedFieldNames = [...currentFieldNames, trimmedFieldName];
+      const numericFieldId = parseInt(trimmedFieldId, 10);
+      if (isNaN(numericFieldId) || numericFieldId <= 0) {
+        sendNotification({
+          type: "info",
+          title: "Invalid field ID",
+          description: "Field ID must be a positive number.",
+        });
+        return;
+      }
+
+      if (customFields.some((field) => field.id === numericFieldId)) {
+        sendNotification({
+          type: "info",
+          title: "Field already added",
+          description: "This custom field is already configured.",
+        });
+        return;
+      }
+
+      // Get current field IDs and add the new one.
+      const currentFieldIds = customFields.map((field) => field.id);
+      const updatedFieldIds = [...currentFieldIds, numericFieldId];
 
       const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${ZENDESK_CONFIG_KEYS.CUSTOM_FIELDS_CONFIG}`,
@@ -78,7 +98,7 @@ export function ZendeskCustomFieldFilters({
           headers: { "Content-Type": "application/json" },
           method: "POST",
           body: JSON.stringify({
-            configValue: JSON.stringify(updatedFieldNames),
+            configValue: JSON.stringify(updatedFieldIds),
           }),
         }
       );
@@ -88,7 +108,7 @@ export function ZendeskCustomFieldFilters({
         sendNotification({
           type: "success",
           title: "Custom field added",
-          description: `Added custom field "${trimmedFieldName}".`,
+          description: `Added custom field with ID ${numericFieldId}.`,
         });
       } else {
         const err = await res.json();
@@ -121,16 +141,16 @@ export function ZendeskCustomFieldFilters({
         return;
       }
 
-      const newFields = customFields
+      const newFieldIds = customFields
         .filter((field) => field.id !== fieldId)
-        .map((field) => field.name);
+        .map((field) => field.id);
 
       const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${ZENDESK_CONFIG_KEYS.CUSTOM_FIELDS_CONFIG}`,
         {
           headers: { "Content-Type": "application/json" },
           method: "POST",
-          body: JSON.stringify({ configValue: JSON.stringify(newFields) }),
+          body: JSON.stringify({ configValue: JSON.stringify(newFieldIds) }),
         }
       );
 
@@ -165,7 +185,7 @@ export function ZendeskCustomFieldFilters({
       return;
     }
 
-    await addCustomFieldByName(inputValue.trim());
+    await addCustomFieldById(inputValue.trim());
     setInputValue("");
   };
 
@@ -190,9 +210,9 @@ export function ZendeskCustomFieldFilters({
       <div className="space-y-4">
         <div className="text-muted-foreground dark:text-muted-foreground-night">
           <p className="text-sm">
-            Configure custom ticket field names that should be included as tags
-            when syncing tickets. Custom field values will be added as tags in
-            the format "fieldName:value".
+            Configure custom ticket field that should be included as tags when
+            syncing tickets. Custom field values will be added as tags in the
+            format "fieldName:value".
           </p>
         </div>
 
@@ -201,9 +221,10 @@ export function ZendeskCustomFieldFilters({
             <div className="flex gap-2">
               <Input
                 value={inputValue}
+                type="number"
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Enter custom field name"
+                placeholder="Enter custom field ID"
                 disabled={loading}
               />
               <Button
@@ -214,8 +235,8 @@ export function ZendeskCustomFieldFilters({
               />
             </div>
             <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-              Enter the exact name of the custom field as it appears in Zendesk.
-              The field will be validated when added.
+              Enter the numeric ID of the custom field from Zendesk. You can
+              find this in your Zendesk admin settings under Fields.
             </p>
           </div>
         )}
@@ -224,15 +245,20 @@ export function ZendeskCustomFieldFilters({
           {customFields.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {customFields.map((field: CustomField) => (
-                <Chip
+                <Tooltip
                   key={field.id}
-                  label={field.name}
-                  color="blue"
-                  size="sm"
-                  onRemove={
-                    !readOnly && isAdmin
-                      ? () => handleRemoveField(field.id)
-                      : undefined
+                  label={`Field ID: ${field.id}`}
+                  trigger={
+                    <Chip
+                      label={field.name}
+                      color="blue"
+                      size="sm"
+                      onRemove={
+                        !readOnly && isAdmin
+                          ? () => handleRemoveField(field.id)
+                          : undefined
+                      }
+                    />
                   }
                 />
               ))}

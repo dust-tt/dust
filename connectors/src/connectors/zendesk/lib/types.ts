@@ -200,6 +200,7 @@ export interface ZendeskFetchedOrganization {
 export interface ZendeskFetchedTicketField {
   id: number;
   title: string;
+  active: boolean;
   created_at: string;
   updated_at: string;
 }

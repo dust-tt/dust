@@ -32,8 +32,8 @@ import {
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskCurrentUser,
+  getZendeskTicketFieldById,
   isUserAdmin,
-  listZendeskTicketFields,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import {
   launchZendeskFullSyncWorkflow,
@@ -695,16 +695,16 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         return new Ok(undefined);
       }
       case ZENDESK_CONFIG_KEYS.CUSTOM_FIELDS_CONFIG: {
-        const fieldNames =
+        const fieldIds =
           configValue.trim() === "" ? null : JSON.parse(configValue);
 
-        if (fieldNames !== null && !Array.isArray(fieldNames)) {
+        if (fieldIds !== null && !Array.isArray(fieldIds)) {
           return new Err(
-            new Error("Custom field names must be an array or empty.")
+            new Error("Custom field IDs must be an array or empty.")
           );
         }
 
-        if (fieldNames === null) {
+        if (fieldIds === null) {
           await zendeskConfiguration.update({
             customFieldsConfig: [],
           });
@@ -712,33 +712,42 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           return new Ok(undefined);
         }
 
+        for (const fieldId of fieldIds) {
+          if (typeof fieldId !== "number" || !Number.isInteger(fieldId)) {
+            return new Err(
+              new Error(`Field ID "${fieldId}" must be a number.`)
+            );
+          }
+        }
+
         const { accessToken, subdomain } =
           await getZendeskSubdomainAndAccessToken(connector.connectionId);
 
-        const allTicketFields = await listZendeskTicketFields({
-          accessToken,
-          subdomain,
-        });
-
         const convertedFields: { id: number; name: string }[] = [];
-        for (const fieldName of fieldNames) {
-          const matchingField = allTicketFields.find(
-            (field) =>
-              field.title.toLowerCase() === fieldName.toLowerCase() &&
-              field.active
-          );
+        for (const fieldId of fieldIds) {
+          const field = await getZendeskTicketFieldById({
+            accessToken,
+            subdomain,
+            fieldId,
+          });
 
-          if (!matchingField) {
+          if (!field) {
+            return new Err(
+              new Error(`Field with ID "${fieldId}" not found on Zendesk.`)
+            );
+          }
+
+          if (!field.active) {
             return new Err(
               new Error(
-                `Field "${fieldName}" not found in active Zendesk ticket fields.`
+                `Field with ID "${fieldId}" (${field.title}) is not active in Zendesk.`
               )
             );
           }
 
           convertedFields.push({
-            id: matchingField.id,
-            name: matchingField.title,
+            id: field.id,
+            name: field.title,
           });
         }
 
