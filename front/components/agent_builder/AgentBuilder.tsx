@@ -10,7 +10,6 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
   getDefaultAgentFormData,
@@ -34,8 +33,6 @@ export default function AgentBuilder({
 }: AgentBuilderProps) {
   const { owner, user } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
-  const { mcpServerViews, isMCPServerViewsLoading } =
-    useMCPServerViewsContext();
   const router = useRouter();
   const sendNotification = useSendNotification();
 
@@ -58,12 +55,6 @@ export default function AgentBuilder({
 
   // Create values object that includes async data (actions and editors)
   const formValues = useMemo((): AgentBuilderFormData | undefined => {
-    // Don't show form data until MCP server views are loaded
-    // This prevents transformation errors when data source views are not available
-    if (isMCPServerViewsLoading) {
-      return undefined;
-    }
-
     const hasActions = actions && actions.length > 0;
     const hasEditors = editors && editors.length > 0;
 
@@ -107,13 +98,7 @@ export default function AgentBuilder({
     }
 
     return updatedValues;
-  }, [
-    defaultValues,
-    actions,
-    editors,
-    supportedDataSourceViews,
-    isMCPServerViewsLoading,
-  ]);
+  }, [defaultValues, actions, editors, supportedDataSourceViews]);
 
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
@@ -126,7 +111,6 @@ export default function AgentBuilder({
       const result = await submitAgentBuilderForm({
         formData,
         owner,
-        mcpServerViews,
         isDraft: false,
         agentConfigurationId: agentConfiguration?.sId || null,
       });
@@ -185,11 +169,7 @@ export default function AgentBuilder({
               label: isSubmitting ? "Saving..." : "Save",
               variant: "primary",
               onClick: handleSave,
-              disabled:
-                !isDirty ||
-                isSubmitting ||
-                isMCPServerViewsLoading ||
-                isActionsLoading,
+              disabled: !isDirty || isSubmitting || isActionsLoading,
             }}
             agentConfigurationId={agentConfiguration?.sId || null}
           />
