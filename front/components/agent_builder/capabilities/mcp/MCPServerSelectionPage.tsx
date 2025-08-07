@@ -11,6 +11,7 @@ import type { ActionSpecification } from "@app/components/agent_builder/types";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { isCustomServerIconType } from "@app/lib/actions/mcp_icons";
 import { InternalActionIcons } from "@app/lib/actions/mcp_icons";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { MCPServerViewTypeType } from "@app/lib/api/mcp";
@@ -146,21 +147,23 @@ export function MCPServerSelectionPage({
                   : onDataVisualizationClick
               }
             >
-              <div className="flex w-full flex-col gap-1 text-sm">
-                <div className="mb-2 flex items-center gap-2">
-                  <Avatar
-                    icon={DATA_VISUALIZATION_SPECIFICATION.dropDownIcon}
-                    size="sm"
-                  />
-                  <span className="text-sm font-medium">
-                    {dataVisualization.label}
-                  </span>
-                  {isDataVisualizationSelected && (
-                    <Chip size="xs" color="green" label="ADDED" />
-                  )}
-                </div>
-                <div className="line-clamp-2 w-full text-xs text-gray-600">
-                  {dataVisualization.description}
+              <div className="flex w-full flex-col justify-between gap-1 text-sm">
+                <div>
+                  <div className="mb-2 flex items-center gap-2">
+                    <Avatar
+                      icon={DATA_VISUALIZATION_SPECIFICATION.dropDownIcon}
+                      size="sm"
+                    />
+                    <span className="text-sm font-medium">
+                      {dataVisualization.label}
+                    </span>
+                    {isDataVisualizationSelected && (
+                      <Chip size="xs" color="green" label="ADDED" />
+                    )}
+                  </div>
+                  <div className="line-clamp-2 w-full text-xs text-gray-600">
+                    {dataVisualization.description}
+                  </div>
                 </div>
                 <div>
                   {!isDataVisualizationSelected && (
@@ -177,33 +180,39 @@ export function MCPServerSelectionPage({
           )}
         {filteredServerViews.map((view) => {
           const isSelectedInDialog = selectedMCPIds.has(view.sId);
+          const requirement = getMCPServerRequirements(view);
+          const canAdd = requirement.noRequirement ? !isSelectedInDialog : true;
+
           return (
             <Card
               key={view.id}
               variant={isSelectedInDialog ? "secondary" : "primary"}
-              onClick={isSelectedInDialog ? undefined : () => onItemClick(view)}
-              disabled={isSelectedInDialog}
+              onClick={!canAdd ? undefined : () => onItemClick(view)}
+              disabled={!canAdd}
             >
-              <div className="flex w-full flex-col gap-1 text-sm">
-                <div className="mb-2 flex items-center gap-2">
-                  <Icon
-                    visual={
-                      isCustomServerIconType(view.server.icon)
-                        ? ActionIcons[view.server.icon]
-                        : InternalActionIcons[view.server.icon] || BookOpenIcon
-                    }
-                    size="sm"
-                  />
-                  <span className="text-sm font-medium">{view.label}</span>
-                  {isSelectedInDialog && (
-                    <Chip size="xs" color="green" label="ADDED" />
-                  )}
-                </div>
-                <div className="line-clamp-2 w-full text-xs text-gray-600">
-                  {getMcpServerViewDescription(view)}
+              <div className="flex w-full flex-col justify-between gap-2 text-sm">
+                <div>
+                  <div className="mb-2 flex items-center gap-2">
+                    <Icon
+                      visual={
+                        isCustomServerIconType(view.server.icon)
+                          ? ActionIcons[view.server.icon]
+                          : InternalActionIcons[view.server.icon] ||
+                            BookOpenIcon
+                      }
+                      size="sm"
+                    />
+                    <span className="text-sm font-medium">{view.label}</span>
+                    {isSelectedInDialog && (
+                      <Chip size="xs" color="green" label="ADDED" />
+                    )}
+                  </div>
+                  <div className="line-clamp-2 w-full text-xs text-gray-600">
+                    {getMcpServerViewDescription(view)}
+                  </div>
                 </div>
                 <div>
-                  {!isSelectedInDialog && (
+                  {canAdd && (
                     <Button
                       size="xs"
                       variant="outline"
