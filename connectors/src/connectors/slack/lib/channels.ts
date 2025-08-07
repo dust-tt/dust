@@ -467,10 +467,21 @@ export async function migrateChannelsFromLegacyBotToNewBot(
     const { id: channelId } = channel;
 
     // Join the new bot to the channel. Wrap with retries to handle rate limits.
-    const joinRes = await withRetries(childLogger, joinChannel, {
-      retries: 10,
-      delayBetweenRetriesMs: 10000,
-    })(slackBotConnector.id, channelId);
+    const joinRes = await withRetries(
+      childLogger,
+      async (slackBotConnectorId: ModelId, channelId: string) => {
+        const joinRes = await joinChannel(slackBotConnectorId, channelId);
+        if (joinRes.isErr()) {
+          throw joinRes.error;
+        }
+
+        return joinRes;
+      },
+      {
+        retries: 10,
+        delayBetweenRetriesMs: 10000,
+      }
+    )(slackBotConnector.id, channelId);
 
     if (joinRes.isErr()) {
       childLogger.error(
