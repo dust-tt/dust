@@ -152,9 +152,7 @@ export function ZendeskConfigView({
       >
         <ContextItem.Description>
           <div className="text-muted-foreground dark:text-muted-foreground-night">
-            If activated, Dust will also sync the unresolved tickets. This may
-            significantly increase the number of synced tickets, potentially
-            negatively affecting the response quality due to the added noise.
+            If activated, Dust will also sync the unresolved tickets.
           </div>
         </ContextItem.Description>
       </ContextItem>
@@ -225,8 +223,8 @@ export function ZendeskConfigView({
       >
         <ContextItem.Description>
           <div className="text-muted-foreground dark:text-muted-foreground-night">
-            Set the duration of the retention period: tickets older than the
-            retention period will be cleaned on a daily basis.
+            Set the retention period, outdated tickets will be cleaned on a
+            daily basis.
           </div>
         </ContextItem.Description>
       </ContextItem>
