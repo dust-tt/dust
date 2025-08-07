@@ -27,7 +27,10 @@ import {
   getSectionColumnsPrefix,
   TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
-import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import {
+  getAgentDataSourceConfigurations,
+  makeDataSourceViewFilter,
+} from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
@@ -276,7 +279,7 @@ const createServer = (
     withToolLogging(
       auth,
       { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
-      async ({ tableIds }) => {
+      async ({ tableIds, dataSources }) => {
         // Parse table identifiers and validate they're all from the same warehouse
         const parsedTables: Array<{
           dataSourceSId: string;
@@ -353,8 +356,75 @@ const createServer = (
           table_id: t.nodeId,
         }));
 
-        // Call Core API's getDatabaseSchema endpoint
+        // Validate table access using content node search
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+        // Get agent data source configurations to build view filters
+        const dataSourceConfigurationsResult =
+          await getAgentDataSourceConfigurations(
+            auth,
+            (dataSources || []).map((ds) => ({
+              ...ds,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+            }))
+          );
+
+        if (dataSourceConfigurationsResult.isErr()) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Error retrieving data source configurations: ${dataSourceConfigurationsResult.error.message}`,
+            },
+          ]);
+        }
+
+        const agentDataSourceConfigurations =
+          dataSourceConfigurationsResult.value;
+        const viewFilters = makeDataSourceViewFilter(
+          agentDataSourceConfigurations
+        );
+
+        // Validate table access by searching for the table content nodes with the view filters
+        const tableNodeIds = parsedTables.map((t) => t.nodeId);
+
+        const searchResult = await coreAPI.searchNodes({
+          filter: {
+            data_source_views: viewFilters.map((vf) => ({
+              data_source_id: vf.data_source_id,
+              view_filter: vf.view_filter,
+            })),
+            node_ids: tableNodeIds,
+            node_types: ["table"],
+          },
+        });
+
+        if (searchResult.isErr()) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Error validating table access: ${searchResult.error.message}`,
+            },
+          ]);
+        }
+
+        // Check if all requested tables were found
+        const foundNodeIds = new Set(
+          searchResult.value.nodes.map((n) => n.node_id)
+        );
+        const inaccessibleTables = tableNodeIds.filter(
+          (id) => !foundNodeIds.has(id)
+        );
+
+        if (inaccessibleTables.length > 0) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Access denied: The following tables are not accessible: ${inaccessibleTables.join(", ")}`,
+            },
+          ]);
+        }
+
+        // All tables are accessible, proceed with getting the schema
         const schemaResult = await coreAPI.getDatabaseSchema({
           tables: coreAPITables,
         });
@@ -427,7 +497,7 @@ const createServer = (
     withToolLogging(
       auth,
       { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
-      async ({ tableIds, query, fileName }) => {
+      async ({ tableIds, query, fileName, dataSources }) => {
         if (!agentLoopContext?.runContext) {
           throw new Error("Unreachable: missing agentLoopContext.");
         }
@@ -510,8 +580,75 @@ const createServer = (
           table_id: t.nodeId,
         }));
 
-        // Call Core API's queryDatabase endpoint
+        // Validate table access using content node search
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+        // Get agent data source configurations to build view filters
+        const dataSourceConfigurationsResult =
+          await getAgentDataSourceConfigurations(
+            auth,
+            (dataSources || []).map((ds) => ({
+              ...ds,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+            }))
+          );
+
+        if (dataSourceConfigurationsResult.isErr()) {
+          return new Err(
+            new MCPError(
+              `Error retrieving data source configurations: ${dataSourceConfigurationsResult.error.message}`,
+              { tracked: false }
+            )
+          );
+        }
+
+        const agentDataSourceConfigurations =
+          dataSourceConfigurationsResult.value;
+        const viewFilters = makeDataSourceViewFilter(
+          agentDataSourceConfigurations
+        );
+
+        // Validate table access by searching for the table content nodes with the view filters
+        const tableNodeIds = parsedTables.map((t) => t.nodeId);
+
+        const searchResult = await coreAPI.searchNodes({
+          filter: {
+            data_source_views: viewFilters.map((vf) => ({
+              data_source_id: vf.data_source_id,
+              view_filter: vf.view_filter,
+            })),
+            node_ids: tableNodeIds,
+            node_types: ["table"],
+          },
+        });
+
+        if (searchResult.isErr()) {
+          return new Err(
+            new MCPError(
+              `Error validating table access: ${searchResult.error.message}`,
+              { tracked: false }
+            )
+          );
+        }
+
+        // Check if all requested tables were found
+        const foundNodeIds = new Set(
+          searchResult.value.nodes.map((n) => n.node_id)
+        );
+        const inaccessibleTables = tableNodeIds.filter(
+          (id) => !foundNodeIds.has(id)
+        );
+
+        if (inaccessibleTables.length > 0) {
+          return new Err(
+            new MCPError(
+              `Access denied: The following tables are not accessible: ${inaccessibleTables.join(", ")}`,
+              { tracked: false }
+            )
+          );
+        }
+
+        // All tables are accessible, proceed with the query
         const queryResult = await coreAPI.queryDatabase({
           tables: coreAPITables,
           query,
