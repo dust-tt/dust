@@ -36,13 +36,146 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 
-function QueryResult({
+interface AgentInteractionData {
+  query: string;
+  response: string | null;
+  chainOfThought: string | null;
+  conversationId: string | null;
+  conversationUrl: string | null;
+  isStreaming: boolean;
+  error: string | null;
+  status: string;
+  refs?:
+    | Record<
+        string,
+        {
+          title: string;
+          provider: string;
+          description?: string | undefined;
+          href?: string | undefined;
+        }
+      >
+    | undefined;
+}
+
+export function MCPRunAgentActionDetails({
+  owner,
+  action,
+  lastNotification,
+  defaultOpen,
+}: MCPActionDetailsProps) {
+  const { isDark } = useTheme();
+
+  const queryResource =
+    action.output?.find(isRunAgentQueriesResourceType) || null;
+  const resultResource =
+    action.output?.find(isRunAgentResultsResourceType) || null;
+
+  const agentInteractions = useMemo(() => {
+    const progressInfo =
+      lastNotification?.data.output &&
+      isRunAgentProgressOutput(lastNotification.data.output)
+        ? lastNotification.data.output
+        : null;
+
+    const queries = queryResource?.resource?.queries || [];
+    const results = resultResource?.resource?.results || [];
+    const progressQueries = progressInfo?.activeQueries || [];
+
+    const allQueries =
+      queries.length > 0 ? queries : progressQueries.map((pq) => pq.query);
+
+    return allQueries.map((query: string, index: number) => {
+      const result = results[index];
+      const progress = progressQueries[index];
+
+      return {
+        query,
+        response: result?.text || progress?.text || null,
+        chainOfThought:
+          result?.chainOfThought || progress?.chainOfThought || null,
+        conversationId:
+          result?.conversationId || progress?.conversationId || null,
+        conversationUrl: buildConversationUrl(result, progress, owner.sId),
+        isStreaming: progress?.status === "running",
+        error: result?.error || progress?.error || null,
+        status: progress?.status || (result ? "completed" : "pending"),
+        refs: result?.refs || {},
+      };
+    });
+  }, [queryResource, resultResource, lastNotification, owner.sId]);
+
+  const generatedFiles =
+    action.output?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
+
+  const childAgentId = queryResource?.resource?.childAgentId ?? null;
+
+  const { agentConfiguration: childAgent } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: childAgentId,
+  });
+
+  const isBusy = useMemo(() => {
+    return !resultResource;
+  }, [resultResource]);
+
+  const actionName = childAgent?.name
+    ? `Run @${childAgent.name}${agentInteractions.length > 1 ? ` (${agentInteractions.length} queries)` : ""}`
+    : "Run Agent";
+
+  return (
+    <ActionDetailsWrapper
+      actionName={actionName}
+      defaultOpen={defaultOpen}
+      visual={
+        childAgent?.pictureUrl
+          ? () => (
+              <Avatar visual={childAgent.pictureUrl} size="sm" busy={isBusy} />
+            )
+          : RobotIcon
+      }
+    >
+      <div className="flex flex-col gap-6 pl-6 pt-4">
+        {agentInteractions.map(
+          (queryData: AgentInteractionData, index: number) => (
+            <div key={index} className="flex flex-col gap-4">
+              <AgentQueryItem
+                queryData={queryData}
+                index={index}
+                totalQueries={agentInteractions.length}
+                isDark={isDark}
+              />
+              {agentInteractions.length > 1 &&
+                index < agentInteractions.length - 1 && (
+                  <div className="border-structure-200 border-b" />
+                )}
+            </div>
+          )
+        )}
+        {generatedFiles.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {generatedFiles.map((file) => (
+              <ToolGeneratedFileDetails
+                key={file.fileId}
+                resource={file}
+                icon={DocumentIcon}
+                owner={owner}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </ActionDetailsWrapper>
+  );
+}
+
+function AgentQueryItem({
   queryData,
   index,
   totalQueries,
   isDark,
 }: {
-  queryData: any;
+  queryData: AgentInteractionData;
   index: number;
   totalQueries: number;
   isDark: boolean;
@@ -239,7 +372,10 @@ function QueryResult({
                 : "View conversation in progress"
             }
             variant="outline"
-            onClick={() => window.open(queryData.conversationUrl, "_blank")}
+            onClick={() =>
+              queryData.conversationUrl &&
+              window.open(queryData.conversationUrl, "_blank")
+            }
             size="xs"
             className="!p-1"
           />
@@ -249,123 +385,16 @@ function QueryResult({
   );
 }
 
-export function MCPRunAgentActionDetails({
-  owner,
-  action,
-  lastNotification,
-  defaultOpen,
-}: MCPActionDetailsProps) {
-  const { isDark } = useTheme();
-
-  const queryResource =
-    action.output?.find(isRunAgentQueriesResourceType) || null;
-  const resultResource =
-    action.output?.find(isRunAgentResultsResourceType) || null;
-  const progressInfo = useMemo(() => {
-    if (
-      lastNotification?.data.output &&
-      isRunAgentProgressOutput(lastNotification.data.output)
-    ) {
-      return lastNotification.data.output;
-    }
-    return null;
-  }, [lastNotification]);
-
-  const generatedFiles =
-    action.output?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
-
-  const childAgentId = queryResource?.resource?.childAgentId ?? null;
-
-  const queryDataArray = useMemo(() => {
-    const queries = queryResource?.resource?.queries || [];
-    const results = resultResource?.resource?.results || [];
-    const progressQueries = progressInfo?.activeQueries || [];
-
-    const allQueries =
-      queries.length > 0 ? queries : progressQueries.map((pq) => pq.query);
-
-    return allQueries.map((query: string, index: number) => {
-      const result = results[index];
-      const progress = progressQueries[index];
-
-      const buildConversationUrl = () => {
-        if (result?.uri || progress?.uri) {
-          return result?.uri || progress?.uri;
-        }
-        if (progress?.conversationId) {
-          return `${window.location.origin}/w/${owner.sId}/assistant/${progress.conversationId}`;
-        }
-        return null;
-      };
-
-      return {
-        query,
-        response: result?.text || progress?.text || null,
-        chainOfThought:
-          result?.chainOfThought || progress?.chainOfThought || null,
-        conversationId:
-          result?.conversationId || progress?.conversationId || null,
-        conversationUrl: buildConversationUrl(),
-        isStreaming: progress?.status === "running",
-        error: result?.error || progress?.error || null,
-        status: progress?.status || (result ? "completed" : "pending"),
-        refs: result?.refs || {},
-      };
-    });
-  }, [queryResource, resultResource, progressInfo, owner.sId]);
-
-  const { agentConfiguration: childAgent } = useAgentConfiguration({
-    workspaceId: owner.sId,
-    agentConfigurationId: childAgentId,
-  });
-
-  const isBusy = useMemo(() => {
-    return !resultResource;
-  }, [resultResource]);
-
-  const actionName = childAgent?.name
-    ? `Run @${childAgent.name}${queryDataArray.length > 1 ? ` (${queryDataArray.length} queries)` : ""}`
-    : "Run Agent";
-
+function buildConversationUrl(
+  result: { uri?: string } | undefined,
+  progress: { uri?: string; conversationId?: string } | undefined,
+  ownerSId: string
+) {
   return (
-    <ActionDetailsWrapper
-      actionName={actionName}
-      defaultOpen={defaultOpen}
-      visual={
-        childAgent?.pictureUrl
-          ? () => (
-              <Avatar visual={childAgent.pictureUrl} size="sm" busy={isBusy} />
-            )
-          : RobotIcon
-      }
-    >
-      <div className="flex flex-col gap-6 pl-6 pt-4">
-        {queryDataArray.map((queryData: any, index: number) => (
-          <div key={index} className="flex flex-col gap-4">
-            <QueryResult
-              queryData={queryData}
-              index={index}
-              totalQueries={queryDataArray.length}
-              isDark={isDark}
-            />
-            {queryDataArray.length > 1 && index < queryDataArray.length - 1 && (
-              <div className="border-structure-200 border-b" />
-            )}
-          </div>
-        ))}
-        {generatedFiles.length > 0 && (
-          <div className="flex flex-col gap-2">
-            {generatedFiles.map((file) => (
-              <ToolGeneratedFileDetails
-                key={file.fileId}
-                resource={file}
-                icon={DocumentIcon}
-                owner={owner}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </ActionDetailsWrapper>
+    result?.uri ||
+    progress?.uri ||
+    (progress?.conversationId &&
+      `${window.location.origin}/w/${ownerSId}/assistant/${progress.conversationId}`) ||
+    null
   );
 }
