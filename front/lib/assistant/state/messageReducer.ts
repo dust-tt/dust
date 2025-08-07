@@ -91,7 +91,7 @@ export function messageReducer(
       return {
         ...state,
         message: updateMessageWithAction(state.message, event.action),
-        agentState: "thinking",
+        // agentState: "thinking",
         // Clean up progress for this specific action.
         actionProgress: new Map(
           Array.from(state.actionProgress.entries()).filter(
@@ -142,10 +142,12 @@ export function messageReducer(
         case "tokens":
           newState.message.content =
             (newState.message.content || "") + event.text;
+
           break;
         case "chain_of_thought":
           newState.message.chainOfThought =
             (newState.message.chainOfThought || "") + event.text;
+          console.log("chain of thought", event.text);
           break;
         default:
           assertNever(event);

@@ -178,6 +178,7 @@ interface SearchResultProps {
   defaultOpen: boolean;
   visual: React.ComponentType<{ className?: string }>;
   actionOutput: CallToolResult["content"] | null;
+  hideOutput?: boolean;
 }
 
 export function SearchResultDetails({
@@ -185,6 +186,7 @@ export function SearchResultDetails({
   defaultOpen,
   visual,
   actionOutput,
+  hideOutput,
 }: SearchResultProps) {
   const query =
     actionOutput
@@ -291,7 +293,7 @@ export function SearchResultDetails({
             />
           )}
         </div>
-        {actionOutput && (
+        {actionOutput && !hideOutput && (
           <div>
             <CollapsibleComponent
               rootProps={{ defaultOpen }}

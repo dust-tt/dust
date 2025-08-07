@@ -1,7 +1,14 @@
 import { TOOL_RUNNING_LABEL } from "@dust-tt/client";
-import { Button, Card, Chip, CommandLineIcon } from "@dust-tt/sparkle";
+import {
+  BrainIcon,
+  Button,
+  Card,
+  Chip,
+  CommandLineIcon,
+} from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
+import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
 import type { MCPActionType } from "@app/lib/actions/mcp";
@@ -54,9 +61,9 @@ export function AgentMessageActions({
   );
 
   const lastAction = agentMessage.actions[agentMessage.actions.length - 1];
-
+  console.log(lastAgentStateClassification);
   return (
-    <div className="flex flex-col items-start gap-y-4">
+    <div className="flex max-w-[500px] flex-col gap-y-4">
       <AgentMessageActionsDrawer
         conversationId={conversationId}
         message={agentMessage}
@@ -70,6 +77,7 @@ export function AgentMessageActions({
         hasActions={agentMessage.actions.length > 0}
         lastAction={isMCPActionType(lastAction) ? lastAction : undefined}
         isActionStepDone={!isThinkingOrActing}
+        isActing={lastAgentStateClassification === "acting"}
         label={chipLabel}
         owner={owner}
         onClick={() => setIsActionDrawerOpened(true)}
@@ -89,6 +97,7 @@ function ActionDetails({
   lastAction,
   label,
   isActionStepDone,
+  isActing,
   owner,
   onClick,
 }: {
@@ -96,6 +105,7 @@ function ActionDetails({
   lastAction: MCPActionType | undefined;
   label?: string;
   isActionStepDone: boolean;
+  isActing: boolean;
   owner: LightWorkspaceType;
   onClick: () => void;
 }) {
@@ -109,14 +119,14 @@ function ActionDetails({
       onClick={lastAction ? onClick : undefined}
       className={lastAction ? "cursor-pointer" : ""}
     >
-      <Chip size="sm" isBusy label={label} />
-      {lastAction && (
+      {lastAction && isActing && (
         <Card variant="secondary" size="md">
           <MCPActionDetails
             action={lastAction}
             owner={owner}
             lastNotification={null}
             defaultOpen={true}
+            hideOutput={true}
           />
         </Card>
       )}

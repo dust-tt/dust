@@ -54,12 +54,14 @@ export interface MCPActionDetailsProps {
   lastNotification: ProgressNotificationContentType | null;
   defaultOpen: boolean;
   messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
+  hideOutput?: boolean;
 }
 
 export function MCPActionDetails(props: MCPActionDetailsProps) {
   const {
     action: { output, functionCallName, mcpServerId },
     defaultOpen,
+    hideOutput,
   } = props;
 
   const parts = functionCallName ? functionCallName.split("__") : [];
@@ -73,6 +75,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
           actionOutput={output}
           defaultOpen={defaultOpen}
           visual={MagnifyingGlassIcon}
+          hideOutput={hideOutput}
         />
       );
     }
@@ -84,6 +87,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
           actionOutput={output}
           defaultOpen={defaultOpen}
           visual={ActionDocumentTextIcon}
+          hideOutput={hideOutput}
         />
       );
     }
@@ -185,6 +189,7 @@ export function GenericActionDetails({
   owner,
   action,
   defaultOpen,
+  hideOutput,
 }: MCPActionDetailsProps) {
   const inputs =
     Object.keys(action.params).length > 0
@@ -217,7 +222,7 @@ export function GenericActionDetails({
           }
         />
 
-        {action.output && (
+        {!hideOutput && action.output && (
           <CollapsibleComponent
             rootProps={{ defaultOpen: !action.generatedFiles.length }}
             triggerChildren={
