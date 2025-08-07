@@ -381,7 +381,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     const participations = await ConversationParticipantModel.findAll({
-      attributes: ["userId", "updatedAt", "conversationId"],
+      attributes: [
+        "userId",
+        "updatedAt",
+        "conversationId",
+        "unread",
+        "actionRequired",
+      ],
       where: {
         userId: user.id,
         workspaceId: owner.id,
@@ -407,6 +413,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           id: c.id,
           created: c.createdAt.getTime(),
           updated: p.updatedAt.getTime(),
+          unread: p.unread,
+          actionRequired: p.actionRequired,
           sId: c.sId,
           owner,
           title: c.title,
@@ -458,6 +466,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             action: "posted",
             userId: user.id,
             workspaceId: conversation.owner.id,
+            unread: false,
+            actionRequired: false,
           },
           { transaction: t }
         );
