@@ -3,11 +3,13 @@ import {
   DataTable,
   ScrollableDataTable,
   Spinner,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import React, { useMemo } from "react";
+import React, { useContext, useMemo } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { ConfirmContext } from "@app/components/Confirm";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -45,17 +47,10 @@ export function DataSourceCategoryBrowser({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
-  const {
-    selectNode,
-    setCategoryEntry,
-    selectCurrentNavigationEntry,
-    removeNode,
-    removeCurrentNavigationEntry,
-    isRowSelected,
-    isRowSelectable,
-    isCurrentNavigationEntrySelected,
-  } = useDataSourceBuilderContext();
+  const { setCategoryEntry, removeNode, isRowSelected } =
+    useDataSourceBuilderContext();
 
+  const confirm = useContext(ConfirmContext);
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -77,42 +72,41 @@ export function DataSourceCategoryBrowser({
         id: "select",
         enableSorting: false,
         enableHiding: false,
-        header: () => {
-          const selectionState = isCurrentNavigationEntrySelected();
-
-          return (
-            <Checkbox
-              size="xs"
-              checked={selectionState}
-              disabled={!isRowSelectable()}
-              onClick={(event) => event.stopPropagation()}
-              onCheckedChange={(state) => {
-                if (selectionState === "partial" || state) {
-                  selectCurrentNavigationEntry();
-                } else {
-                  removeCurrentNavigationEntry();
-                }
-              }}
-            />
-          );
-        },
         cell: ({ row }) => {
           const selectionState = isRowSelected(row.original.id);
 
           return (
             <div className="flex h-full items-center">
-              <Checkbox
-                size="xs"
-                checked={selectionState}
-                disabled={!isRowSelectable(row.original.id)}
-                onClick={(event) => event.stopPropagation()}
-                onCheckedChange={(state) => {
-                  if (selectionState === "partial" || state) {
-                    selectNode({ type: "category", category: row.original.id });
-                  } else {
-                    removeNode({ type: "category", category: row.original.id });
-                  }
-                }}
+              <Tooltip
+                trigger={
+                  <Checkbox
+                    size="xs"
+                    checked={selectionState}
+                    disabled={selectionState !== "partial"}
+                    onClick={(event) => event.stopPropagation()}
+                    onCheckedChange={async () => {
+                      if (selectionState === "partial") {
+                        const confirmed = await confirm({
+                          title: "Are you sure?",
+                          message: `Do you want to unselect all of "${row.original.title}"`,
+                          validateLabel: "Unselect all",
+                          validateVariant: "warning",
+                        });
+                        if (confirmed) {
+                          removeNode({
+                            type: "category",
+                            category: row.original.id,
+                          });
+                        }
+                      }
+                    }}
+                  />
+                }
+                label={
+                  selectionState === "partial"
+                    ? `Unselect all of "${row.original.title}"`
+                    : "You cannot select a whole category"
+                }
               />
             </div>
           );
@@ -135,15 +129,7 @@ export function DataSourceCategoryBrowser({
         },
       },
     ],
-    [
-      isCurrentNavigationEntrySelected,
-      isRowSelectable,
-      isRowSelected,
-      removeCurrentNavigationEntry,
-      removeNode,
-      selectCurrentNavigationEntry,
-      selectNode,
-    ]
+    [confirm, isRowSelected, removeNode]
   );
 
   if (isSpaceInfoLoading) {

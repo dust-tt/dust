@@ -43,10 +43,5 @@ export type DataSourceBuilderTreeType = z.infer<
 >;
 
 export type NavigationHistoryEntryType = z.infer<typeof navigationHistoryEntry>;
-// | { type: "root" }
-// | { type: "space"; space: SpaceType }
-// | { type: "category"; category: DataSourceViewCategoryWithoutApps }
-// | { type: "data_source"; dataSourceView: DataSourceViewType }
-// | { type: "node"; node: DataSourceViewContentNode };
 
 export type NodeSelectionState = boolean | "partial";
