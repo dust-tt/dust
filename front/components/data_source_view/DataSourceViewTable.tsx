@@ -1,6 +1,7 @@
 import {
   Checkbox,
   DataTable,
+  FolderIcon,
   Hoverable,
   ScrollableDataTable,
   Spinner,
@@ -15,6 +16,7 @@ import {
   findCategoryFromNavigationHistory,
   findSpaceFromNavigationHistory,
 } from "@app/components/data_source_view/context/utils";
+import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import type { DataSourceViewType } from "@app/types";
 
@@ -136,7 +138,9 @@ export function DataSourceViewTable() {
     title: dsv.dataSource.name,
     onClick: () => setDataSourceViewEntry(dsv),
     dataSourceView: dsv,
-    // TODO: Put icon
+    icon: dsv.dataSource.connectorProvider
+      ? CATEGORY_DETAILS[dsv.category].icon
+      : FolderIcon,
   }));
 
   if (isSpaceDataSourceViewsLoading) {

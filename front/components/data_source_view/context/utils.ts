@@ -1,4 +1,4 @@
-import { FolderIcon, ServerIcon } from "@dust-tt/sparkle";
+import { FolderIcon } from "@dust-tt/sparkle";
 
 import type {
   DataSourceBuilderTreeItemType,
@@ -310,7 +310,7 @@ export function getVisualForTreeItem(item: DataSourceBuilderTreeItemType) {
         const category = item.dataSourceView.category;
         return CATEGORY_DETAILS[category].icon;
       }
-      return ServerIcon;
+      return FolderIcon;
 
     case "node":
       return getVisualForDataSourceViewContentNode(item.node);
