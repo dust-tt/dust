@@ -87,7 +87,7 @@ export function KnowledgeFooter() {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="rounded-xl bg-muted dark:bg-muted-night">
-            <ContextItem.List className="max-h-[183px] overflow-x-scroll">
+            <ContextItem.List className="max-h-40 overflow-x-scroll">
               {field.value.in.map((item) => (
                 <KnowledgeFooterItem key={item.path} item={item} />
               ))}
