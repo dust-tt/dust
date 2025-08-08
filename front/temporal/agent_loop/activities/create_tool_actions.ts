@@ -1,7 +1,4 @@
-import type {
-  MCPActionType,
-  MCPToolConfigurationType,
-} from "@app/lib/actions/mcp";
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { createMCPAction } from "@app/lib/actions/mcp";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { StepContext } from "@app/lib/actions/types";
@@ -24,7 +21,6 @@ import { getRunAgentData } from "@app/types/assistant/agent_run";
 interface ActionBlob {
   action: AgentMCPAction;
   actionConfiguration: MCPToolConfigurationType;
-  mcpAction: MCPActionType;
   needsApproval: boolean;
 }
 
@@ -207,7 +203,6 @@ async function createActionForTool(
   return {
     action: agentMCPAction,
     actionConfiguration,
-    mcpAction,
     needsApproval: status === "pending",
   };
 }
