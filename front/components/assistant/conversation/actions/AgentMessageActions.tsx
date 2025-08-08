@@ -1,15 +1,12 @@
 import {
-  BrainIcon,
   Button,
   Card,
   cn,
   CommandLineIcon,
   ContentMessage,
   Markdown,
-  Tooltip,
 } from "@dust-tt/sparkle";
 
-import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { MCPActionType } from "@app/lib/actions/mcp";
