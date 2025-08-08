@@ -43,6 +43,7 @@ interface MCPExtractActionResultsProps {
 export function MCPExtractActionDetails({
   action,
   defaultOpen,
+  hideOutput,
 }: MCPActionDetailsProps) {
   const queryResource = action.output
     ?.filter(isExtractQueryResourceType)
@@ -94,19 +95,21 @@ export function MCPExtractActionDetails({
           </div>
         )}
 
-        <div>
-          <CollapsibleComponent
-            rootProps={{ defaultOpen }}
-            triggerChildren={
-              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                Results
-              </span>
-            }
-            contentChildren={
-              <MCPExtractActionResults resultResource={resultResource} />
-            }
-          />
-        </div>
+        {!hideOutput && (
+          <div>
+            <CollapsibleComponent
+              rootProps={{ defaultOpen }}
+              triggerChildren={
+                <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                  Results
+                </span>
+              }
+              contentChildren={
+                <MCPExtractActionResults resultResource={resultResource} />
+              }
+            />
+          </div>
+        )}
       </div>
     </ActionDetailsWrapper>
   );

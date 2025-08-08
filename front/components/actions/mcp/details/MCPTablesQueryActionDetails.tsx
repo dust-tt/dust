@@ -19,6 +19,7 @@ export function MCPTablesQueryActionDetails({
   action,
   defaultOpen,
   owner,
+  hideOutput,
 }: MCPActionDetailsProps) {
   const thinkingBlocks =
     action.output?.filter(isThinkingOutput).map((o) => o.resource) ?? [];
@@ -74,7 +75,7 @@ export function MCPTablesQueryActionDetails({
           </div>
         )}
 
-        {generatedFiles.length > 0 && (
+        {!hideOutput && generatedFiles.length > 0 && (
           <div className="flex flex-col">
             <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
               Results
@@ -90,7 +91,7 @@ export function MCPTablesQueryActionDetails({
           </div>
         )}
 
-        {errorBlocks.length > 0 && (
+        {!hideOutput && errorBlocks.length > 0 && (
           <div className="flex flex-col gap-1">
             <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
               Error

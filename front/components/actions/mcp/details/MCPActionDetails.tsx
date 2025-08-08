@@ -113,6 +113,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
           actionOutput={output}
           defaultOpen={defaultOpen}
           visual={ClockIcon}
+          hideOutput={hideOutput}
         />
       );
     }
@@ -126,6 +127,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
           actionOutput={output}
           defaultOpen={defaultOpen}
           visual={GlobeAltIcon}
+          hideOutput={hideOutput}
         />
       );
     }
