@@ -92,7 +92,6 @@ const InputBarContainer = ({
 }: InputBarContainerProps) => {
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
@@ -122,7 +121,6 @@ const InputBarContainer = ({
   const { editor, editorService } = useCustomEditor({
     suggestions,
     onEnterKeyDown,
-    resetEditorContainerSize,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
     suggestionHandler: mentionDropdown.getSuggestionHandler(),
@@ -238,27 +236,17 @@ const InputBarContainer = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function handleExpansionToggle() {
-    setIsExpanded((currentExpanded) => !currentExpanded);
-    // Focus at the end of the document when toggling expansion.
-    editorService.focusEnd();
-  }
-
-  function resetEditorContainerSize() {
-    setIsExpanded(false);
-  }
-
   const contentEditableClasses = classNames(
     "inline-block w-full",
     "border-0 px-2 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
     "whitespace-pre-wrap font-normal",
-    "pb-6 pt-4 sm:py-3.5" // Increased padding on mobile
+    "pt-4"
   );
 
   return (
     <div
       id="InputBarContainer"
-      className="relative flex min-h-[100px] flex-1 cursor-text flex-col justify-between sm:pt-0"
+      className="relative flex flex-1 cursor-text flex-col justify-between sm:pt-0"
     >
       <EditorContent
         editor={editor}
@@ -266,13 +254,11 @@ const InputBarContainer = ({
           contentEditableClasses,
           "scrollbar-hide",
           "overflow-y-auto",
-          isExpanded
-            ? "h-[60vh] max-h-[60vh] lg:h-[80vh] lg:max-h-[80vh]"
-            : "max-h-64"
+          "sd:min-h-14 max-h-[40vh] min-h-16"
         )}
       />
 
-      <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-3 pr-3 sm:border-0">
+      <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-3 pr-3 pt-1 sm:border-0">
         <div className="flex items-center py-0">
           {actions.includes("tools") && featureFlags.includes("jit_tools") && (
             <ToolsPicker
@@ -322,16 +308,6 @@ const InputBarContainer = ({
               )}
             />
           )}
-          {/* {actions.includes("fullscreen") && (
-            <div className="hidden sm:flex">
-              <Button
-                variant="ghost-secondary"
-                icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
-                size="xs"
-                onClick={handleExpansionToggle}
-              />
-            </div>
-          )} */}
         </div>
         <Button
           size="xs"
@@ -345,7 +321,6 @@ const InputBarContainer = ({
               editorService.getMarkdownAndMentions(),
               () => {
                 editorService.clearEditor();
-                resetEditorContainerSize();
               },
               editorService.setLoading
             );
