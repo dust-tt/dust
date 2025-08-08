@@ -14,6 +14,34 @@ import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 export type MCPServerViewTypeWithLabel = MCPServerViewType & { label: string };
 
+/**
+ * Sort MCP server views based on priority order.
+ * Order: Search -> Include Data -> Query Tables -> Extract Data -> Others (alphabetically)
+ */
+export const sortMCPServerViewsByPriority = (
+  views: MCPServerViewTypeWithLabel[]
+): MCPServerViewTypeWithLabel[] => {
+  const priorityOrder: Record<string, number> = {
+    search: 1,
+    query_tables: 2,
+    query_tables_v2: 2, // Same priority as query_tables
+    include_data: 3,
+    extract_data: 4,
+  };
+
+  return [...views].sort((a, b) => {
+    const priorityA = priorityOrder[a.server.name] ?? 999;
+    const priorityB = priorityOrder[b.server.name] ?? 999;
+
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+
+    // If priorities are the same, sort alphabetically by label
+    return a.label.localeCompare(b.label);
+  });
+};
+
 interface MCPServerViewsContextType {
   mcpServerViews: MCPServerViewType[];
   mcpServerViewsWithKnowledge: MCPServerViewTypeWithLabel[];
@@ -97,7 +125,9 @@ function getGroupedMCPServerViews({
   );
 
   return {
-    mcpServerViewsWithKnowledge: mcpServerViewsWithKnowledge || [],
+    mcpServerViewsWithKnowledge: sortMCPServerViewsByPriority(
+      mcpServerViewsWithKnowledge || []
+    ),
     defaultMCPServerViews: grouped.auto || [],
     nonDefaultMCPServerViews: grouped.manual || [],
   };
