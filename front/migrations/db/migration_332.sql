@@ -1,0 +1,7 @@
+-- Migration created on Aug 08, 2025
+ALTER TABLE "public"."remote_mcp_server_tool_metadata" ADD COLUMN "internalMCPServerSId" VARCHAR(255);
+ALTER TABLE "public"."remote_mcp_server_tool_metadata" ALTER COLUMN "remoteMCPServerId" DROP NOT NULL;
+ALTER TABLE "remote_mcp_server_tool_metadata" ADD CONSTRAINT "check_mcp_server_id_not_both_null" CHECK (
+    ("internalMCPServerId" IS NOT NULL AND "remoteMCPServerId" IS NULL) OR
+    ("internalMCPServerId" IS NULL AND "remoteMCPServerId" IS NOT NULL)
+);
