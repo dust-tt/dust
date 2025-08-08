@@ -1,10 +1,12 @@
 import {
+  AnimatedText,
   Button,
   Card,
   cn,
   CommandLineIcon,
   ContentMessage,
   Markdown,
+  Spinner,
 } from "@dust-tt/sparkle";
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
@@ -37,7 +39,7 @@ export function AgentMessageActions({
 
   const lastAction = agentMessage.actions[agentMessage.actions.length - 1];
   const hasActions = agentMessage.actions.length > 0;
-  const chainOfThought = agentMessage.chainOfThought || "Thinking...";
+  const chainOfThought = agentMessage.chainOfThought || "";
   const onClick = () => {
     openPanel({
       type: "actions",
@@ -74,17 +76,25 @@ export function AgentMessageActions({
         </Card>
       ) : (
         <div>
-          {chainOfThought && (
-            <ContentMessage variant="primary">
-              <Markdown
-                content={chainOfThought}
-                isStreaming={false}
-                forcedTextSize="text-sm"
-                textColor="text-muted-foreground"
-                isLastMessage={false}
-              />
-            </ContentMessage>
-          )}
+          <ContentMessage variant="primary">
+            <div className="flex w-full flex-row">
+              {!chainOfThought ? (
+                <AnimatedText variant="primary">Thinking...</AnimatedText>
+              ) : (
+                <Markdown
+                  content={chainOfThought}
+                  isStreaming={false}
+                  forcedTextSize="text-sm"
+                  textColor="text-muted-foreground"
+                  isLastMessage={false}
+                />
+              )}
+              <span className="flex-grow"></span>
+              <div className="pl-2self-start">
+                <Spinner size="xs" />
+              </div>
+            </div>
+          </ContentMessage>
         </div>
       )}
     </div>
