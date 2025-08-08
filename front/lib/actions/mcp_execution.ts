@@ -56,6 +56,7 @@ import {
   removeNulls,
   stripNullBytes,
 } from "@app/types";
+import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 
 /**
  * Handles tool approval process and returns the final execution status.
@@ -328,7 +329,11 @@ export async function processToolResults({
               auth,
               block.resource.fileId
             );
-
+            // We need to create the conversation data source in case the file comes from a subagent
+            // who uploaded it to its own conversation but not the main agent's.
+            if (file) {
+              await getOrCreateConversationDataSourceFromFile(auth, file);
+            }
             return {
               content: {
                 type: block.type,
