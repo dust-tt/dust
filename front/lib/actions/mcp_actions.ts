@@ -32,7 +32,12 @@ import type {
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
-import { getAvailabilityOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import {
+  getAvailabilityOfInternalMCPServerById,
+  getInternalMCPServerNameAndWorkspaceId,
+  INTERNAL_MCP_SERVERS,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -786,13 +791,29 @@ async function listToolsForServerSideMCPServer(
     auth,
     connectionParams.mcpServerId
   );
-  toolsStakes = metadata.reduce<Record<string, MCPToolStakeLevelType>>(
-    (acc, metadata) => {
-      acc[metadata.toolName] = metadata.permission;
-      return acc;
-    },
-    {}
+
+  const { serverType } = getServerTypeAndIdFromSId(
+    connectionParams.mcpServerId
   );
+  if (serverType === "internal") {
+    const r = getInternalMCPServerNameAndWorkspaceId(
+      connectionParams.mcpServerId
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    const serverName = r.value.name;
+    toolsStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes || {};
+    serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
+  } else {
+    toolsStakes = metadata.reduce<Record<string, MCPToolStakeLevelType>>(
+      (acc, metadata) => {
+        acc[metadata.toolName] = metadata.permission;
+        return acc;
+      },
+      {}
+    );
+  }
 
   // Filter out tools that are not enabled.
   const toolsEnabled = metadata.reduce<Record<string, boolean>>(
