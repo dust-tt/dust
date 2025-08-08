@@ -1,4 +1,5 @@
 import sgMail from "@sendgrid/mail";
+import { escape } from "html-escaper";
 import { sign } from "jsonwebtoken";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -185,7 +186,8 @@ export async function sendWorkspaceInvitationEmail(
     templateId: config.getInvitationEmailTemplate(),
     dynamic_template_data: {
       inviteLink: getMembershipInvitationUrl(owner, invitation.id),
-      inviterName: user.fullName,
+      // Escape the name to prevent XSS attacks via injected script elements.
+      inviterName: escape(user.fullName),
       workspaceName: owner.name,
     },
   };
