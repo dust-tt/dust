@@ -9,7 +9,6 @@ import type {
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import {
   executeMCPTool,
-  getAugmentedInputs,
   handleToolApproval,
   processToolResults,
 } from "@app/lib/actions/mcp_execution";
@@ -178,7 +177,6 @@ type MCPSuccessEvent = {
   action: MCPActionType;
 };
 
-// TODO(MCP 2025-05-06): Add action to the error event.
 type MCPErrorEvent = {
   type: "tool_error";
   created: number;
@@ -187,7 +185,6 @@ type MCPErrorEvent = {
   error: {
     code: string;
     message: string;
-    // TODO(2025-07-22 aubin): make this non nullable (we can always pass an empty object).
     metadata: Record<string, string | number | boolean> | null;
   };
 };
@@ -487,12 +484,8 @@ export async function* runToolWithStreaming(
     return;
   }
 
-  // We put back the preconfigured inputs (data sources for instance) from the agent configuration if any.
-  const inputs = getAugmentedInputs({
-    auth,
-    rawInputs: actionBaseParams.params,
-    actionConfiguration,
-  });
+  // Use the augmented inputs that were computed and stored during action creation
+  const inputs = action.augmentedInputs;
 
   const agentLoopRunContext: AgentLoopRunContextType = {
     actionConfiguration,
@@ -617,23 +610,26 @@ export async function createMCPAction(
   auth: Authenticator,
   {
     actionBaseParams,
+    augmentedInputs,
     stepContentId,
     stepContext,
   }: {
     actionBaseParams: ActionBaseParams;
+    augmentedInputs: Record<string, unknown>;
     stepContentId: ModelId;
     stepContext: StepContext;
   }
 ): Promise<{ action: AgentMCPAction; mcpAction: MCPActionType }> {
   const action = await AgentMCPAction.create({
     agentMessageId: actionBaseParams.agentMessageId,
-    mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
-    workspaceId: auth.getNonNullableWorkspace().id,
-    isError: false,
-    executionState: "pending",
-    version: 0,
-    stepContentId,
+    augmentedInputs,
     citationsAllocated: stepContext.citationsCount,
+    executionState: "pending",
+    isError: false,
+    mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
+    stepContentId,
+    version: 0,
+    workspaceId: auth.getNonNullableWorkspace().id,
   });
 
   const mcpAction = new MCPActionType({

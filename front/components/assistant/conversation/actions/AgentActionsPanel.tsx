@@ -30,14 +30,19 @@ export function AgentActionsPanel({
       messageId: messageId ?? null,
     });
 
-  if (!messageId || !messageMetadata) {
+  if (
+    !messageId ||
+    !messageMetadata ||
+    !fullAgentMessage ||
+    fullAgentMessage.type !== "agent_message"
+  ) {
     return null;
   }
 
-  const { actionProgress, isActing, messageStatus } = messageMetadata;
+  const { actionProgress } = messageMetadata;
+  const isActing = fullAgentMessage.status === "created";
 
-  const actions =
-    fullAgentMessage?.type === "agent_message" ? fullAgentMessage.actions : [];
+  const actions = fullAgentMessage.actions;
 
   const groupedActionsByStep = actions
     ? actions.reduce<Record<number, MCPActionType[]>>((acc, current) => {
@@ -80,7 +85,7 @@ export function AgentActionsPanel({
                         lastNotification={lastNotification}
                         defaultOpen={idx === 0 && step === "1"}
                         owner={owner}
-                        messageStatus={messageStatus}
+                        messageStatus={fullAgentMessage.status}
                       />
                     </div>
                   );

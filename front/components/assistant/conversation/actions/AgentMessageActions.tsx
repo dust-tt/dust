@@ -75,8 +75,6 @@ export function AgentMessageActions({
           messageId: agentMessage.sId,
           metadata: {
             actionProgress,
-            isActing: lastAgentStateClassification === "acting",
-            messageStatus: agentMessage.status,
           },
         })
       }

@@ -1088,6 +1088,19 @@ const MCPApproveExecutionEventSchema = z.object({
   metadata: MCPValidationMetadataSchema,
 });
 
+const ToolErrorEventSchema = z.object({
+  type: z.literal("tool_error"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+    metadata: z.record(z.any()).nullable(),
+  }),
+});
+export type ToolErrorEvent = z.infer<typeof ToolErrorEventSchema>;
+
 const AgentErrorEventSchema = z.object({
   type: z.literal("agent_error"),
   created: z.number(),

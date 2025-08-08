@@ -29,6 +29,7 @@ import {
   validateMCPActionConfiguration,
 } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
+import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
@@ -52,6 +53,7 @@ import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
+import { useSpaces } from "@app/lib/swr/spaces";
 import { O4_MINI_MODEL_ID } from "@app/types";
 
 export type SelectedTool =
@@ -104,6 +106,7 @@ export function MCPServerViewsDialog({
   getAgentInstructions,
 }: MCPServerViewsDialogProps) {
   const { owner } = useAgentBuilderContext();
+  const { spaces } = useSpaces({ workspaceId: owner.sId });
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
   const {
@@ -408,20 +411,23 @@ export function MCPServerViewsDialog({
                 />
 
                 {requirements.requiresReasoningConfiguration && (
-                  <ReasoningModelSection owner={owner} />
+                  <ReasoningModelSection />
                 )}
 
                 {requirements.requiresChildAgentConfiguration && (
-                  <ChildAgentSection owner={owner} />
+                  <ChildAgentSection />
                 )}
 
                 {requirements.mayRequireTimeFrameConfiguration && (
                   <TimeFrameSection actionType="search" />
                 )}
 
+                {requirements.requiresDustAppConfiguration && (
+                  <DustAppSection allowedSpaces={spaces} />
+                )}
+
                 {requirements.mayRequireJsonSchemaConfiguration && (
                   <JsonSchemaSection
-                    owner={owner}
                     getAgentInstructions={getAgentInstructions}
                   />
                 )}

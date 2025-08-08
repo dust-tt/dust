@@ -1,5 +1,6 @@
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { createMCPAction } from "@app/lib/actions/mcp";
+import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { StepContext } from "@app/lib/actions/types";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
@@ -137,11 +138,19 @@ async function createActionForTool(
     );
   }
 
+  // Compute augmented inputs with preconfigured data sources, etc.
+  const augmentedInputs = getAugmentedInputs({
+    auth,
+    rawInputs: actionBaseParams.params,
+    actionConfiguration,
+  });
+
   // Create the action object in the database and yield an event for the generation of the params.
   // We store the action here as the params have been generated, if an error occurs later on,
   // the error will be stored on the parent agent message.
   const { action: agentMCPAction, mcpAction } = await createMCPAction(auth, {
     actionBaseParams,
+    augmentedInputs,
     stepContentId,
     stepContext,
   });

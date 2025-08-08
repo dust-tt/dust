@@ -2,19 +2,18 @@ import { Button, SparklesIcon, TextArea } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { WorkspaceType } from "@app/types";
 
 interface JsonSchemaSectionProps {
   getAgentInstructions: () => string;
-  owner: WorkspaceType;
 }
 
 export function JsonSchemaSection({
   getAgentInstructions,
-  owner,
 }: JsonSchemaSectionProps) {
+  const { owner } = useAgentBuilderContext();
   const { getValues } = useFormContext();
 
   const { field: jsonSchemaField, fieldState } = useController({
