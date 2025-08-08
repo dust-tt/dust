@@ -9,7 +9,6 @@ import type {
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import {
   executeMCPTool,
-  getAugmentedInputs,
   handleToolApproval,
   processToolResults,
 } from "@app/lib/actions/mcp_execution";
