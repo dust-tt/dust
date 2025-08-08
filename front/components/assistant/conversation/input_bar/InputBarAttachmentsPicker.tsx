@@ -130,7 +130,6 @@ export const InputBarAttachmentsPicker = ({
           size="xs"
           disabled={isLoading}
           onClick={() => setIsOpen(!isOpen)}
-          isSelect
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
