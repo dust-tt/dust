@@ -176,8 +176,8 @@ export function KnowledgeConfigurationSheet({
 
   if (isSpacesLoading) {
     return (
-      <div>
-        <Spinner />
+      <div className="flex justify-center py-8">
+        <Spinner variant="dark" size="md" />
       </div>
     );
   }
