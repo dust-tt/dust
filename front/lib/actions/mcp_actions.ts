@@ -42,6 +42,7 @@ import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/in
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
+  ConnectViaMCPServerId,
   MCPConnectionParams,
   ServerSideMCPConnectionParams,
 } from "@app/lib/actions/mcp_metadata";
@@ -110,6 +111,48 @@ export interface ServerToolsAndInstructions {
   serverName: string;
   instructions?: string;
   tools: MCPToolConfigurationType[];
+}
+
+function makeToolsWithStakesAndTimeout(
+  mcpServerId: string,
+  metadata: RemoteMCPServerToolMetadataResource[]
+) {
+  let toolsStakes: Record<string, MCPToolStakeLevelType> = {};
+  let serverTimeoutMs: number | undefined;
+
+  const { serverType } = getServerTypeAndIdFromSId(mcpServerId);
+  if (serverType === "internal") {
+    const r = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
+    if (r.isErr()) {
+      return r;
+    }
+    const serverName = r.value.name;
+    toolsStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes || {};
+    serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
+  } else {
+    toolsStakes = metadata.reduce<Record<string, MCPToolStakeLevelType>>(
+      (acc, metadata) => {
+        acc[metadata.toolName] = metadata.permission;
+        return acc;
+      },
+      {}
+    );
+  }
+
+  // Filter out tools that are not enabled.
+  const toolsEnabled = metadata.reduce<Record<string, boolean>>(
+    (acc, metadata) => {
+      acc[metadata.toolName] = metadata.enabled;
+      return acc;
+    },
+    {}
+  );
+
+  return new Ok({
+    toolsEnabled,
+    toolsStakes,
+    serverTimeoutMs,
+  });
 }
 
 function makeServerSideMCPToolConfigurations(
@@ -780,52 +823,27 @@ async function listToolsForServerSideMCPServer(
     return new Ok(serverSideToolConfigs);
   }
 
-  const availability = getAvailabilityOfInternalMCPServerById(
-    connectionParams.mcpServerId
-  );
-
-  let toolsStakes: Record<string, MCPToolStakeLevelType> = {};
-  let serverTimeoutMs: number | undefined;
-
   const metadata = await RemoteMCPServerToolMetadataResource.fetchByServerId(
     auth,
     connectionParams.mcpServerId
   );
 
-  const { serverType } = getServerTypeAndIdFromSId(
-    connectionParams.mcpServerId
+  const r = makeToolsWithStakesAndTimeout(
+    connectionParams.mcpServerId,
+    metadata
   );
-  if (serverType === "internal") {
-    const r = getInternalMCPServerNameAndWorkspaceId(
-      connectionParams.mcpServerId
-    );
-    if (r.isErr()) {
-      return r;
-    }
-    const serverName = r.value.name;
-    toolsStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes || {};
-    serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
-  } else {
-    toolsStakes = metadata.reduce<Record<string, MCPToolStakeLevelType>>(
-      (acc, metadata) => {
-        acc[metadata.toolName] = metadata.permission;
-        return acc;
-      },
-      {}
-    );
+  if (r.isErr()) {
+    return r;
   }
+  const { toolsEnabled, toolsStakes, serverTimeoutMs } = r.value;
 
-  // Filter out tools that are not enabled.
-  const toolsEnabled = metadata.reduce<Record<string, boolean>>(
-    (acc, metadata) => {
-      acc[metadata.toolName] = metadata.enabled;
-      return acc;
-    },
-    {}
-  );
   allToolsRaw = allToolsRaw.filter((tool) => {
     return !toolsEnabled[tool.name] || toolsEnabled[tool.name];
   });
+
+  const availability = getAvailabilityOfInternalMCPServerById(
+    connectionParams.mcpServerId
+  );
 
   const toolsWithStakesAndTimeout = allToolsRaw.map((tool) => ({
     ...tool,
