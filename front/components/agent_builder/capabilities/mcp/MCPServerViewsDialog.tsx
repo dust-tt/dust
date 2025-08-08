@@ -1,7 +1,7 @@
 import type { MultiPageDialogPage } from "@dust-tt/sparkle";
 import {
   Button,
-  LightbulbIcon,
+  ListAddIcon,
   MultiPageDialog,
   MultiPageDialogContent,
   MultiPageDialogTrigger,
@@ -702,7 +702,7 @@ export function MCPServerViewsDialog({
       }}
     >
       <MultiPageDialogTrigger asChild>
-        <Button label="Add tools" icon={LightbulbIcon} />
+        <Button label="Add tools" icon={ListAddIcon} />
       </MultiPageDialogTrigger>
       <MultiPageDialogContent
         showNavigation={false}

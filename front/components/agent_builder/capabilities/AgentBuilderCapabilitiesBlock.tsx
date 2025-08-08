@@ -101,7 +101,7 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   return (
     <Card
       variant="primary"
-      className="max-h-40"
+      className="h-32"
       onClick={onEdit}
       action={
         <CardActionButton
@@ -239,11 +239,11 @@ export function AgentBuilderCapabilitiesBlock({
 
   return (
     <div className="flex h-full flex-col gap-4">
-      <Page.H>Tools & Capabilities</Page.H>
+      <Page.H>Knowledge & Tools</Page.H>
       <div className="flex flex-col items-center justify-between sm:flex-row">
         <Page.P>
           <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Add tools and capabilities to enhance your agent's abilities.
+            Add tools and knowledge to enhance your agent's abilities.
           </span>
         </Page.P>
         <div className="flex w-full flex-col gap-2 sm:w-auto">
