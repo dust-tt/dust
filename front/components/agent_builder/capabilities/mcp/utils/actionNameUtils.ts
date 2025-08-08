@@ -21,8 +21,7 @@ export function generateUniqueActionName({
   );
   let isNameUsedInNonSavedActions = selectedToolsInDialog.some(
     (action) =>
-      action.type === "MCP" &&
-      action.configuredAction?.name === newActionName
+      action.type === "MCP" && action.configuredAction?.name === newActionName
   );
 
   while (isNameUsedInAddedActions || isNameUsedInNonSavedActions) {
@@ -33,8 +32,7 @@ export function generateUniqueActionName({
     );
     isNameUsedInNonSavedActions = selectedToolsInDialog.some(
       (action) =>
-        action.type === "MCP" &&
-        action.configuredAction?.name === newActionName
+        action.type === "MCP" && action.configuredAction?.name === newActionName
     );
   }
 
