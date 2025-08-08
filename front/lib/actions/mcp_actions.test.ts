@@ -3,8 +3,10 @@ import { assert, describe, expect, it } from "vitest";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   getPrefixedToolName,
+  makeToolsWithStakesAndTimeout,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/mcp_actions";
+import type { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 
 describe("getPrefixedToolName", () => {
   const mockConfig: ServerSideMCPServerConfigurationType = {
@@ -83,5 +85,88 @@ describe("getPrefixedToolName", () => {
     expect(result.isOk()).toBe(true);
     assert(result.isOk());
     expect(result.value).toBe("a".repeat(60));
+  });
+});
+
+describe("makeToolsWithStakesAndTimeout", () => {
+  it("should process internal MCP server with google_calendar", () => {
+    const metadata: {
+      toolName: string;
+      permission: "high" | "low" | "never_ask";
+      enabled: boolean;
+    }[] = [
+      {
+        toolName: "list_calendars",
+        permission: "high",
+        enabled: true,
+      },
+    ];
+
+    const result = makeToolsWithStakesAndTimeout("ims_XME0qbHbOz7", metadata);
+    assert(result.isOk());
+    expect(result.value).toEqual({
+      toolsEnabled: {
+        list_calendars: true,
+      },
+      toolsStakes: {
+        list_calendars: "never_ask",
+        list_events: "never_ask",
+        get_event: "never_ask",
+        create_event: "low",
+        update_event: "low",
+        delete_event: "low",
+        check_availability: "never_ask",
+      },
+      serverTimeoutMs: undefined,
+    });
+  });
+
+  it("should process remote MCP server", () => {
+    const metadata: {
+      toolName: string;
+      permission: "high" | "low" | "never_ask";
+      enabled: boolean;
+    }[] = [
+      {
+        toolName: "custom_tool",
+        permission: "low",
+        enabled: true,
+      },
+      {
+        toolName: "another_tool",
+        permission: "high",
+        enabled: true,
+      },
+      {
+        toolName: "yet_another_tool",
+        permission: "low",
+        enabled: false,
+      },
+    ];
+
+    const result = makeToolsWithStakesAndTimeout("rms_DzP3svIoVg", metadata);
+    assert(result.isOk());
+    expect(result.value).toEqual({
+      toolsEnabled: {
+        custom_tool: true,
+        another_tool: true,
+        yet_another_tool: false,
+      },
+      toolsStakes: {
+        custom_tool: "low",
+        another_tool: "high",
+        yet_another_tool: "low",
+      },
+      serverTimeoutMs: undefined,
+    });
+  });
+
+  it("should handle errors from invalid server ID format", () => {
+    // Use an invalid server ID format that will cause an error to be thrown
+    const metadata: RemoteMCPServerToolMetadataResource[] = [];
+
+    expect(() => {
+      makeToolsWithStakesAndTimeout("invalid_server_id", metadata);
+    }).toThrow("Invalid MCP server ID: invalid_server_id");
   });
 });
