@@ -245,7 +245,7 @@ export async function finalizeConnection(
   }
 
   if (providerStrategy.checkConnectionValidPostFinalize) {
-    const res = providerStrategy.checkConnectionValidPostFinalize(
+    const res = await providerStrategy.checkConnectionValidPostFinalize(
       cRes.value.connection
     );
     if (res.isErr()) {

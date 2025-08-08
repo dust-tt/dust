@@ -258,7 +258,7 @@ const InputBarContainer = ({
   return (
     <div
       id="InputBarContainer"
-      className="relative flex flex-1 cursor-text flex-col sm:flex-row sm:pt-0"
+      className="relative flex flex-1 cursor-text flex-col sm:pt-0"
     >
       <EditorContent
         editor={editor}
@@ -272,8 +272,8 @@ const InputBarContainer = ({
         )}
       />
 
-      <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-3 pr-3 sm:flex-col sm:border-0">
-        <div className="flex items-center py-0 sm:py-3.5">
+      <div className="flex flex-row items-end justify-end gap-2 self-stretch pb-3 pr-3 sm:border-0">
+        <div className="flex items-center py-0">
           {actions.includes("tools") && featureFlags.includes("jit_tools") && (
             <ToolsPicker
               owner={owner}
@@ -334,7 +334,7 @@ const InputBarContainer = ({
           )}
         </div>
         <Button
-          size="sm"
+          size="xs"
           isLoading={disableSendButton}
           icon={ArrowUpIcon}
           variant="highlight"

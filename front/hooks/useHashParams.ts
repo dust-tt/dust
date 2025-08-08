@@ -3,6 +3,7 @@
  * ISC License
  */
 
+import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 
 const getHashSearchParams = (location: Location): [string, URLSearchParams] => {
@@ -69,6 +70,8 @@ export const useHashParam = (
   key: string,
   defaultValue?: string
 ): [string | undefined, Setter] => {
+  const router = useRouter();
+
   const [innerValue, setInnerValue] = useState<string | undefined>(() =>
     getHashParam(key, defaultValue)
   );
@@ -80,6 +83,28 @@ export const useHashParam = (
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, [key]);
+
+  /**
+   * Fix for shallow routing not closing actions panel.
+   *
+   * Issue: When navigating between conversations, Next.js uses shallow routing which changes
+   * the URL path but doesn't trigger the 'hashchange' event that useHashParam relies on.
+   * This causes the actions panel to remain open when it should close.
+   *
+   * Solution: Listen to Next.js router events and manually detect when the hash is removed
+   * during navigation, then close the panel by clearing the messageId state.
+   */
+  useEffect(() => {
+    const handleRouteChange = () => {
+      // If there's no hash after route change, clear the content.
+      if (!window.location.hash && innerValue) {
+        setInnerValue(undefined);
+      }
+    };
+
+    router.events.on("routeChangeComplete", handleRouteChange);
+    return () => router.events.off("routeChangeComplete", handleRouteChange);
+  }, [router.events, innerValue, setInnerValue]);
 
   const setValue = useCallback<Setter>(
     (

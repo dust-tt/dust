@@ -15,6 +15,7 @@ import {
   GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
+  GPT_5_MODEL_CONFIG,
   MAX_STEPS_USE_PER_RUN_LIMIT,
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
@@ -113,6 +114,65 @@ export function _getGPT4GlobalAgent({
       providerId: GPT_4_1_MODEL_CONFIG.providerId,
       modelId: GPT_4_1_MODEL_CONFIG.modelId,
       temperature: 0.7,
+    },
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    visualizationEnabled: true,
+    templateId: null,
+    requestedGroupIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+}
+
+export function _getGPT5GlobalAgent({
+  auth,
+  settings,
+  webSearchBrowseMCPServerView,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
+}): AgentConfigurationType {
+  let status: AgentConfigurationStatus = "active";
+
+  if (settings) {
+    status = settings.status;
+  }
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  const sId = GLOBAL_AGENTS_SID.GPT5;
+  const metadata = getGlobalAgentMetadata(sId);
+
+  return {
+    id: -1,
+    sId,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: metadata.name,
+    description: metadata.description,
+    instructions:
+      `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}\n` +
+      "Unless the user explicitly requests deeper research, keep the search depth low and" +
+      " aim to provide an answer quickly, with a maximum of 3 steps of tool use.",
+    pictureUrl: metadata.pictureUrl,
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: GPT_5_MODEL_CONFIG.providerId,
+      modelId: GPT_5_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+      reasoningEffort: GPT_5_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({

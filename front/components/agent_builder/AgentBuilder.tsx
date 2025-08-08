@@ -10,17 +10,18 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
   getDefaultAgentFormData,
   transformAgentConfigurationToFormData,
 } from "@app/components/agent_builder/transformAgentConfiguration";
+import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
 import { useEditors } from "@app/lib/swr/editors";
+import { emptyArray } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types";
 
@@ -33,8 +34,7 @@ export default function AgentBuilder({
 }: AgentBuilderProps) {
   const { owner, user } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
-  const { mcpServerViews, isMCPServerViewsLoading } =
-    useMCPServerViewsContext();
+
   const router = useRouter();
   const sendNotification = useSendNotification();
 
@@ -55,69 +55,33 @@ export default function AgentBuilder({
     return getDefaultAgentFormData(user);
   }, [agentConfiguration, user]);
 
-  // Create values object that includes async data (actions and editors)
-  const formValues = useMemo((): AgentBuilderFormData | undefined => {
-    // Don't show form data until MCP server views are loaded
-    // This prevents transformation errors when data source views are not available
-    if (isMCPServerViewsLoading) {
-      return undefined;
-    }
-
-    const hasActions = actions && actions.length > 0;
-    const hasEditors = editors && editors.length > 0;
-
-    // Determine Slack provider based on supported data source views
-    const slackProvider = supportedDataSourceViews.find(
+  const slackProvider = useMemo(() => {
+    const slackBotProvider = supportedDataSourceViews.find(
       (dsv) => dsv.dataSource.connectorProvider === "slack_bot"
-    )
-      ? "slack_bot"
-      : supportedDataSourceViews.find(
-            (dsv) => dsv.dataSource.connectorProvider === "slack"
-          )
-        ? "slack"
-        : defaultValues.agentSettings.slackProvider;
-
-    if (
-      !hasActions &&
-      !hasEditors &&
-      slackProvider === defaultValues.agentSettings.slackProvider
-    ) {
-      return undefined; // Let defaultValues handle initial state
+    );
+    if (slackBotProvider) {
+      return "slack_bot";
     }
 
-    const updatedValues = { ...defaultValues };
-
-    if (hasActions) {
-      updatedValues.actions = actions;
-    }
-
-    if (hasEditors) {
-      updatedValues.agentSettings = {
-        ...updatedValues.agentSettings,
-        editors,
-      };
-    }
-
-    if (slackProvider !== defaultValues.agentSettings.slackProvider) {
-      updatedValues.agentSettings = {
-        ...updatedValues.agentSettings,
-        slackProvider,
-      };
-    }
-
-    return updatedValues;
-  }, [
-    defaultValues,
-    actions,
-    editors,
-    supportedDataSourceViews,
-    isMCPServerViewsLoading,
-  ]);
+    const slackProvider = supportedDataSourceViews.find(
+      (dsv) => dsv.dataSource.connectorProvider === "slack"
+    );
+    return slackProvider ? "slack" : null;
+  }, [supportedDataSourceViews]);
 
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
     defaultValues,
-    values: formValues, // Reactive updates when actions are loaded
+    values: {
+      ...defaultValues,
+      actions: actions ?? emptyArray(),
+      agentSettings: {
+        ...defaultValues.agentSettings,
+        slackProvider,
+        editors,
+      },
+    },
+    resetOptions: { keepDefaultValues: true },
   });
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
@@ -125,7 +89,6 @@ export default function AgentBuilder({
       const result = await submitAgentBuilderForm({
         formData,
         owner,
-        mcpServerViews,
         isDraft: false,
         agentConfigurationId: agentConfiguration?.sId || null,
       });
@@ -138,21 +101,21 @@ export default function AgentBuilder({
           description: result.error.message,
           type: "error",
         });
-      } else {
-        const createdAgent = result.value;
-        sendNotification({
-          title: agentConfiguration ? "Agent saved" : "Agent created",
-          description: agentConfiguration
-            ? "Your agent has been successfully saved"
-            : "Your agent has been successfully created",
-          type: "success",
-        });
+        return;
+      }
 
-        // If this was a new agent creation, update URL without re-rendering
-        if (!agentConfiguration && createdAgent.sId) {
-          const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
-          window.history.replaceState(null, "", newUrl);
-        }
+      const createdAgent = result.value;
+      sendNotification({
+        title: agentConfiguration ? "Agent saved" : "Agent created",
+        description: agentConfiguration
+          ? "Your agent has been successfully saved"
+          : "Your agent has been successfully created",
+        type: "success",
+      });
+
+      if (!agentConfiguration && createdAgent.sId) {
+        const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
+        window.history.replaceState(null, "", newUrl);
       }
     } catch (error) {
       logger.error("Unexpected error:", error);
@@ -163,40 +126,43 @@ export default function AgentBuilder({
     void form.handleSubmit(handleSubmit)();
   };
 
-  // Subscribe to form state changes by destructuring before render
+  const handleCancel = async () => {
+    await appLayoutBack(owner, router);
+  };
+
   const { isDirty, isSubmitting } = form.formState;
+
+  const isSaveDisabled = !isDirty || isSubmitting || isActionsLoading;
+
+  const saveLabel = isSubmitting ? "Saving..." : "Save";
+
+  const title = agentConfiguration
+    ? `Edit agent ${agentConfiguration.name}`
+    : "Create new agent";
 
   return (
     <FormProvider form={form}>
       <AgentBuilderLayout
         leftPanel={
           <AgentBuilderLeftPanel
-            title={
-              agentConfiguration
-                ? `Edit agent ${agentConfiguration.name}`
-                : "Create new agent"
-            }
-            onCancel={async () => {
-              await appLayoutBack(owner, router);
-            }}
+            title={title}
+            onCancel={handleCancel}
             saveButtonProps={{
               size: "sm",
-              label: isSubmitting ? "Saving..." : "Save",
+              label: saveLabel,
               variant: "primary",
               onClick: handleSave,
-              disabled:
-                !isDirty ||
-                isSubmitting ||
-                isMCPServerViewsLoading ||
-                isActionsLoading,
+              disabled: isSaveDisabled,
             }}
             agentConfigurationId={agentConfiguration?.sId || null}
           />
         }
         rightPanel={
-          <AgentBuilderRightPanel
-            agentConfigurationSId={agentConfiguration?.sId}
-          />
+          <ConversationSidePanelProvider>
+            <AgentBuilderRightPanel
+              agentConfigurationSId={agentConfiguration?.sId}
+            />
+          </ConversationSidePanelProvider>
         }
       />
     </FormProvider>

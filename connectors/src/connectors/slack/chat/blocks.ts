@@ -61,11 +61,13 @@ function makeFootnotesBlock(footnotes: SlackMessageFootnotes) {
 }
 
 function makeContextSectionBlocks({
+  state,
   assistantName,
   conversationUrl,
   footnotes,
   workspaceId,
 }: {
+  state: "thinking" | "answered";
   assistantName: string;
   conversationUrl: string | null;
   footnotes: SlackMessageFootnotes | undefined;
@@ -82,6 +84,7 @@ function makeContextSectionBlocks({
 
   blocks.push(
     makeFooterBlock({
+      state,
       assistantName,
       conversationUrl,
       workspaceId,
@@ -155,17 +158,36 @@ export type SlackMessageUpdate = {
 };
 
 export function makeFooterBlock({
+  state,
   assistantName,
   conversationUrl,
   workspaceId,
 }: {
+  state: "thinking" | "error" | "answered";
   assistantName?: string;
   conversationUrl: string | null;
   workspaceId: string;
 }) {
   const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/assistant/new`);
   const baseHeader = `<${assistantsUrl}|Browse agents> | <${SLACK_HELP_URL}|Use Dust in Slack> | <${DUST_URL}|Learn more>`;
-  const attribution = assistantName ? `Answered by *${assistantName}* | ` : "";
+  let attribution = "";
+  if (assistantName) {
+    if (state === "thinking") {
+      attribution = `*${assistantName}* is thinking... | `;
+    } else if (state === "error") {
+      attribution = `*${assistantName}* encountered an error | `;
+    } else if (state === "answered") {
+      attribution = `Answered by *${assistantName}* | `;
+    }
+  } else {
+    if (state === "thinking") {
+      attribution = "Thinking... | ";
+    } else if (state === "error") {
+      attribution = "Error | ";
+    } else if (state === "answered") {
+      attribution = "Answered | ";
+    }
+  }
 
   return {
     type: "context",
@@ -200,6 +222,7 @@ export function makeMessageUpdateBlocksAndText(
       }),
       ...makeMarkdownBlock(text),
       ...makeContextSectionBlocks({
+        state: isThinking ? "thinking" : "answered",
         assistantName,
         conversationUrl,
         footnotes,
@@ -232,6 +255,7 @@ export function makeErrorBlock(
       },
       makeDividerBlock(),
       makeFooterBlock({
+        state: "error",
         conversationUrl,
         workspaceId,
       }),

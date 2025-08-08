@@ -563,11 +563,11 @@ export const INTERNAL_MCP_SERVERS = {
   },
   data_sources_file_system: {
     id: 1010,
-    availability: "auto",
-    allowMultipleInstances: false,
     // This server is hidden for everyone, it is only available through the search tool
     // when the advanced_search mode is enabled.
-    isRestricted: () => true,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,

@@ -8,7 +8,8 @@ import {
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
-import { InteractiveContentProvider } from "@app/components/assistant/conversation/content/InteractiveContentContext";
+import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -55,6 +56,8 @@ export function AgentBuilderPreview() {
   const { user } = useUser();
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
+
+  const { currentPanel } = useConversationSidePanelContext();
 
   const hasContent =
     !!getValues("instructions").trim() || getValues("actions").length > 0;
@@ -103,49 +106,57 @@ export function AgentBuilderPreview() {
     }
 
     return (
-      <div className="flex h-full flex-col">
-        {conversation && (
-          <div className="flex items-center justify-between px-6 py-3">
-            <h2 className="font-semibold text-foreground dark:text-foreground-night">
-              {conversation.title}
-            </h2>
-            <Button
-              variant="outline"
-              size="sm"
-              icon={ArrowPathIcon}
-              onClick={resetConversation}
-              label="Reset conversation"
+      <>
+        <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
+          {conversation && (
+            <div className="flex items-center justify-between px-6 py-3">
+              <h2 className="font-semibold text-foreground dark:text-foreground-night">
+                {conversation.title}
+              </h2>
+              <Button
+                variant="outline"
+                size="sm"
+                icon={ArrowPathIcon}
+                onClick={resetConversation}
+                label="Reset conversation"
+              />
+            </div>
+          )}
+          <div className="flex-1 overflow-y-auto px-4">
+            {conversation && user && (
+              <div className={currentPanel ? "hidden" : "block"}>
+                <ConversationViewer
+                  owner={owner}
+                  user={user}
+                  conversationId={conversation.sId}
+                  onStickyMentionsChange={setStickyMentions}
+                  isInModal
+                  key={conversation.sId}
+                />
+              </div>
+            )}
+          </div>
+          <div className="flex-shrink-0 p-4">
+            <AssistantInputBar
+              disableButton={isSavingDraftAgent}
+              owner={owner}
+              onSubmit={handleSubmit}
+              stickyMentions={stickyMentions}
+              conversationId={conversation?.sId || null}
+              additionalAgentConfiguration={draftAgent ?? undefined}
+              actions={["attachment"]}
+              disableAutoFocus
+              isFloating={false}
             />
           </div>
-        )}
-        <div className="flex-1 overflow-y-auto">
-          {conversation && user && (
-            <InteractiveContentProvider>
-              <ConversationViewer
-                owner={owner}
-                user={user}
-                conversationId={conversation.sId}
-                onStickyMentionsChange={setStickyMentions}
-                isInModal
-                key={conversation.sId}
-              />
-            </InteractiveContentProvider>
-          )}
         </div>
-        <div className="flex-shrink-0 p-4">
-          <AssistantInputBar
-            disableButton={isSavingDraftAgent}
-            owner={owner}
-            onSubmit={handleSubmit}
-            stickyMentions={stickyMentions}
-            conversationId={conversation?.sId || null}
-            additionalAgentConfiguration={draftAgent ?? undefined}
-            actions={["attachment"]}
-            disableAutoFocus
-            isFloating={false}
-          />
-        </div>
-      </div>
+
+        <ConversationSidePanelContent
+          conversation={conversation}
+          owner={owner}
+          currentPanel={currentPanel}
+        />
+      </>
     );
   };
 

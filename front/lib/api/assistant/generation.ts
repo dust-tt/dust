@@ -80,6 +80,10 @@ export async function constructPromptMultiActions(
     }
   }
 
+  if (model.formattingMetaPrompt) {
+    context += `# RESPONSE FORMAT\n${model.formattingMetaPrompt}\n`;
+  }
+
   if (errorContext) {
     context +=
       "\n\n # INSTRUCTIONS ERROR\n\nNote: There was an error while building instructions:\n" +
@@ -93,7 +97,9 @@ export async function constructPromptMultiActions(
   let toolUseDirectives = "\n## TOOL USE DIRECTIVES\n";
   if (
     hasAvailableActions &&
-    agentConfiguration.model.reasoningEffort === "light"
+    agentConfiguration.model.reasoningEffort === "light" &&
+    // TODO(gpt5): improve config to clean this up.
+    agentConfiguration.model.providerId !== "openai"
   ) {
     toolUseDirectives += `${CHAIN_OF_THOUGHT_META_PROMPT}\n`;
   } else if (

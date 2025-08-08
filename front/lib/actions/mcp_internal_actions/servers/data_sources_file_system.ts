@@ -63,8 +63,14 @@ import {
 
 const FILESYSTEM_TOOL_NAME = "filesystem_navigation";
 
+export const FILESYSTEM_SERVER_NAME = "data_sources_file_system";
+export const FILESYSTEM_CAT_TOOL_NAME = "cat";
+export const FILESYSTEM_FIND_TOOL_NAME = "find";
+export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
+export const FILESYSTEM_LIST_TOOL_NAME = "list";
+
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "data_sources_file_system",
+  name: FILESYSTEM_SERVER_NAME,
   version: "1.0.0",
   description:
     "Comprehensive content navigation toolkit for browsing user data sources. Provides Unix-like " +
@@ -379,7 +385,7 @@ const createServer = (
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "cat",
+    FILESYSTEM_CAT_TOOL_NAME,
     "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). " +
       "The nodeId can be obtained using the 'find', 'list' or 'search' tools.",
     {
@@ -510,7 +516,7 @@ const createServer = (
   );
 
   server.tool(
-    "find",
+    FILESYSTEM_FIND_TOOL_NAME,
     "Find content based on their title starting from a specific node. Can be used to find specific " +
       "nodes by searching for their titles. The query title can be omitted to list all nodes " +
       "starting from a specific node. This is like using 'find' in Unix.",
@@ -643,7 +649,7 @@ const createServer = (
   );
 
   server.tool(
-    "list",
+    FILESYSTEM_LIST_TOOL_NAME,
     "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
       "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
       "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
@@ -854,7 +860,7 @@ const createServer = (
   }
 
   server.tool(
-    "locate_in_tree",
+    FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
     "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
       "This is useful for understanding where a specific node is located within the data source structure. " +
       "The path is returned as a list of nodes, with the first node being the data source root and " +
