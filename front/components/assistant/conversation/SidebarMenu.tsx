@@ -31,6 +31,7 @@ import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conve
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
@@ -81,6 +82,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [titleFilter, setTitleFilter] = useState<string>("");
+  const { startNavigation } = useNavigationLoading();
   const sendNotification = useSendNotification();
 
   const toggleMultiSelect = useCallback(() => {
@@ -262,6 +264,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                           label="Create new agent"
                           data-gtm-label="assistantCreationButton"
                           data-gtm-location="sidebarMenu"
+                          onClick={startNavigation}
                         />
                       </>
                     )}
@@ -272,6 +275,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                         label="Manage agents"
                         data-gtm-label="assistantManagementButton"
                         data-gtm-location="sidebarMenu"
+                        onClick={startNavigation}
                       />
                     )}
                     <DropdownMenuLabel>Conversations</DropdownMenuLabel>
