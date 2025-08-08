@@ -1,6 +1,7 @@
 import { InputRule, mergeAttributes, Node } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { Slice } from "@tiptap/pm/model";
+import { Fragment } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { TextSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
@@ -188,12 +189,10 @@ export const InstructionBlockExtension =
                 }
               });
 
-              // Insert the nodes
+              // Insert all nodes at once to preserve order
               const { from } = state.selection;
-              nodes.forEach((node) => {
-                const pos = tr.mapping.map(from);
-                tr.insert(pos, node);
-              });
+              const fragment = Fragment.fromArray(nodes);
+              tr.insert(from, fragment);
 
               view.dispatch(tr);
               return true; // We handled the paste
