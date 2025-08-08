@@ -10,6 +10,7 @@ import {
   MAXED_OUTPUT_FILE_SNIPPET_LENGTH,
 } from "@app/lib/actions/action_output_limits";
 import type {
+  LightMCPToolConfigurationType,
   MCPActionType,
   MCPApproveExecutionEvent,
   MCPExecutionState,
@@ -74,7 +75,7 @@ export async function handleToolApproval(
     localLogger: Logger;
     mcpAction: MCPActionType;
     owner: LightWorkspaceType;
-    toolConfiguration: MCPToolConfigurationType;
+    toolConfiguration: LightMCPToolConfigurationType;
   }
 ): Promise<MCPExecutionState> {
   let newExecutionState: MCPExecutionState = executionState;
@@ -240,7 +241,7 @@ export async function processToolResults(
     conversation: ConversationType;
     localLogger: Logger;
     toolCallResult: CallToolResult["content"];
-    toolConfiguration: MCPToolConfigurationType;
+    toolConfiguration: LightMCPToolConfigurationType;
   }
 ): Promise<{
   outputItems: AgentMCPActionOutputItem[];
