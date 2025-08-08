@@ -214,7 +214,6 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
           <ScrollableDataTable
             data={nodeRows}
             columns={columns}
-            maxHeight="max-h-[600px]"
             getRowId={(row) => row.id}
             onLoadMore={handleLoadMore}
           />
