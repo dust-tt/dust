@@ -392,6 +392,67 @@ impl SnowflakeRemoteDatabase {
             .collect::<Result<Vec<_>>>()?)
     }
 
+    async fn get_view_references(
+        &self,
+        session: &SnowflakeSession,
+        view_id: &str,
+    ) -> Result<HashSet<String>, QueryDatabaseError> {
+        let parts: Vec<&str> = view_id.split('.').collect();
+        if parts.len() != 3 {
+            return Ok(HashSet::new());
+        }
+
+        let query = format!(
+            "SELECT * FROM TABLE(GET_OBJECT_REFERENCES(DATABASE_NAME => '{}', SCHEMA_NAME => '{}', OBJECT_NAME => '{}'))",
+            parts[0], parts[1], parts[2]
+        );
+
+        match self.execute_query(session, &query).await {
+            Ok((rows, _, _)) => {
+                let mut references = HashSet::new();
+                for row in rows {
+                    let obj_name = row
+                        .value
+                        .get("REFERENCED_OBJECT_NAME")
+                        .and_then(|v| v.as_str())
+                        .ok_or_else(|| {
+                            anyhow!(
+                                "Missing REFERENCED_OBJECT_NAME in GET_OBJECT_REFERENCES result"
+                            )
+                        })?;
+
+                    let db = row
+                        .value
+                        .get("REFERENCED_DATABASE_NAME")
+                        .and_then(|v| v.as_str())
+                        .ok_or_else(|| {
+                            anyhow!(
+                                "Missing REFERENCED_DATABASE_NAME in GET_OBJECT_REFERENCES result"
+                            )
+                        })?;
+
+                    let schema = row
+                        .value
+                        .get("REFERENCED_SCHEMA_NAME")
+                        .and_then(|v| v.as_str())
+                        .ok_or_else(|| {
+                            anyhow!(
+                                "Missing REFERENCED_SCHEMA_NAME in GET_OBJECT_REFERENCES result"
+                            )
+                        })?;
+
+                    references.insert(format!("{}.{}.{}", db, schema, obj_name));
+                }
+                Ok(references)
+            }
+            Err(_) => {
+                // If GET_OBJECT_REFERENCES fails (e.g., not a view or references unsupported objects),
+                // return empty set - this object is likely a table.
+                Ok(HashSet::new())
+            }
+        }
+    }
+
     async fn authorize_query(
         &self,
         session: &SnowflakeSession,
@@ -400,22 +461,50 @@ impl SnowflakeRemoteDatabase {
     ) -> Result<(), QueryDatabaseError> {
         // Ensure that query only uses tables that are allowed.
         let plan = self.get_query_plan(&session, query).await?;
-        let used_tables: HashSet<&str> = plan
+        let used_tables_in_plan: HashSet<&str> = plan
             .iter()
             .filter_map(|entry| match &entry.objects {
                 Some(objects) => Some(objects.as_str()),
                 None => None,
             })
             .collect();
+
         let allowed_tables: HashSet<&str> = tables
             .iter()
             .filter_map(|table| table.remote_database_table_id())
             .collect();
 
-        let used_forbidden_tables = used_tables
-            .into_iter()
-            .filter(|table| !allowed_tables.contains(*table))
-            .collect::<Vec<_>>();
+        let mut used_forbidden_tables: Vec<&str> = used_tables_in_plan
+            .iter()
+            .filter(|table| !allowed_tables.contains(**table))
+            .copied()
+            .collect();
+
+        // If there are forbidden tables, check if any allowed objects are views that reference them.
+        if !used_forbidden_tables.is_empty() {
+            let potential_views: Vec<&str> = allowed_tables
+                .iter()
+                .filter(|allowed| !used_tables_in_plan.contains(*allowed))
+                .copied()
+                .collect();
+
+            if !potential_views.is_empty() {
+                let mut view_referenced_tables: HashSet<String> = HashSet::new();
+                for view_id in potential_views {
+                    let references = self.get_view_references(session, view_id).await?;
+                    if !references.is_empty() {
+                        debug!("View {} references tables: {:?}", view_id, references);
+                        view_referenced_tables.extend(references);
+                    }
+                }
+
+                if !view_referenced_tables.is_empty() {
+                    let view_refs_str: HashSet<&str> =
+                        view_referenced_tables.iter().map(|s| s.as_str()).collect();
+                    used_forbidden_tables.retain(|table| !view_refs_str.contains(table));
+                }
+            }
+        }
 
         if !used_forbidden_tables.is_empty() {
             info!(
