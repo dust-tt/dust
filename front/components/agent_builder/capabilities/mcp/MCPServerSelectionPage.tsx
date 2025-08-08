@@ -45,9 +45,10 @@ function DataVisualizationCard({
       variant="primary"
       disabled={isSelected}
       onClick={isSelected ? undefined : onDataVisualizationClick}
+      className="h-32"
     >
       <div className="flex w-full flex-col gap-1 text-sm">
-        <div className="mb-2 flex items-center gap-2">
+        <div className="mb-2 flex h-7 items-center gap-2">
           <Avatar
             icon={DATA_VISUALIZATION_SPECIFICATION.dropDownIcon}
             size="sm"
@@ -84,10 +85,11 @@ function MCPServerCard({ view, onItemClick, isSelected }: MCPServerCardProps) {
       variant={isSelected ? "secondary" : "primary"}
       onClick={!canAdd ? undefined : () => onItemClick(view)}
       disabled={!canAdd}
+      className="h-32"
     >
       <div className="flex w-full flex-col justify-between gap-2 text-sm">
         <div>
-          <div className="mb-2 flex items-center gap-2">
+          <div className="mb-2 flex h-7 items-center gap-2">
             <Icon
               visual={
                 isCustomServerIconType(view.server.icon)
