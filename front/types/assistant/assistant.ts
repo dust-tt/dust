@@ -473,7 +473,7 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
 const OPENAI_FORMATTING_META_PROMPT = `# Response Formats
 SYSTEM STYLE: Rich Markdown by default
 - Always respond using rich Markdown unless the user explicitly requests another format.
-- Use H1 titles (# Title).
+- You can use H1 titles (# Title) when appropriate.
 - Organize content into sections with H2/H3 headings (##, ###). Favor paragraphs and subsections.
 - Use bullet/numbered lists sparingly and never as the sole structure of the response.
 - Include tables when they materially aid clarity; use code blocks for code, configs, or commands.
