@@ -141,6 +141,11 @@ export const InstructionBlockExtension =
           key: new PluginKey("instructionBlockAutoConvert"),
           props: {
             clipboardTextSerializer: (slice: Slice) => {
+              /**
+               * Serializes the content of the text slice into a string format.
+               * This is needed to handle copying the raw content of the XML
+               * instruction blocks and paragraphs correctly.
+               */
               const parts: string[] = [];
               for (let i = 0; i < slice.content.childCount; i++) {
                 const child = slice.content.child(i);
