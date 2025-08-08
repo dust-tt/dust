@@ -693,16 +693,17 @@ export function MCPServerViewsDialog({
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
-        if (!open && !isEditMode && !isInfoMode) {
-          setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
-          setConfigurationTool(null);
-          setConfigurationMCPServerView(null);
-          setSelectedToolsInDialog([]);
+        if (!open) {
+          handleCancel();
         }
       }}
     >
       <MultiPageDialogTrigger asChild>
-        <Button label="Add tools" icon={LightbulbIcon} />
+        <Button
+          onClick={() => onModeChange({ type: "add" })}
+          label="Add tools"
+          icon={LightbulbIcon}
+        />
       </MultiPageDialogTrigger>
       <MultiPageDialogContent
         showNavigation={false}
