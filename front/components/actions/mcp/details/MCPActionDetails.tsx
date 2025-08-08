@@ -59,17 +59,15 @@ export interface MCPActionDetailsProps {
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
   defaultOpen: boolean;
-  collapsible?: boolean;
   messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
-  hideOutput?: boolean;
+  viewType?: "conversation" | "sidebar";
 }
 
 export function MCPActionDetails(props: MCPActionDetailsProps) {
   const {
     action: { output, functionCallName, mcpServerId, params },
     defaultOpen,
-    collapsible,
-    hideOutput,
+    viewType,
   } = props;
 
   const parts = functionCallName ? functionCallName.split("__") : [];
@@ -88,13 +86,12 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
 
       return (
         <SearchResultDetails
-          collapsible={collapsible}
+          viewType={viewType}
           defaultQuery={queryResource.text}
           actionName="Search data"
           actionOutput={output}
           defaultOpen={defaultOpen}
           visual={MagnifyingGlassIcon}
-          hideOutput={hideOutput}
         />
       );
     }
@@ -105,12 +102,11 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     ) {
       return (
         <SearchResultDetails
-          collapsible={collapsible}
+          viewType={viewType}
           actionName="Browse data sources"
           actionOutput={output}
           defaultOpen={defaultOpen}
           visual={ActionDocumentTextIcon}
-          hideOutput={hideOutput}
         />
       );
     }
@@ -128,12 +124,11 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     if (toolName === INCLUDE_TOOL_NAME) {
       return (
         <SearchResultDetails
-          collapsible={collapsible}
+          viewType={viewType}
           actionName="Include data"
           actionOutput={output}
           defaultOpen={defaultOpen}
           visual={ClockIcon}
-          hideOutput={hideOutput}
         />
       );
     }
@@ -143,13 +138,12 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     if (toolName === WEBSEARCH_TOOL_NAME) {
       return (
         <SearchResultDetails
-          collapsible={collapsible}
+          viewType={viewType}
           defaultQuery={params.query as string}
           actionName="Web search"
           actionOutput={output}
           defaultOpen={defaultOpen}
           visual={GlobeAltIcon}
-          hideOutput={hideOutput}
         />
       );
     }
@@ -198,8 +192,7 @@ export function GenericActionDetails({
   owner,
   action,
   defaultOpen,
-  collapsible,
-  hideOutput,
+  viewType,
 }: MCPActionDetailsProps) {
   const inputs =
     Object.keys(action.params).length > 0
@@ -208,32 +201,17 @@ export function GenericActionDetails({
 
   return (
     <ActionDetailsWrapper
-      collapsible={collapsible}
+      viewType={viewType}
       actionName={
         asDisplayName(action.functionCallName) ?? "Calling MCP Server"
       }
       defaultOpen={defaultOpen}
       visual={MCP_SPECIFICATION.cardIcon}
     >
-      <div className="flex flex-col gap-4 py-4 pl-6">
-        <CollapsibleComponent
-          rootProps={{ defaultOpen: !action.generatedFiles.length }}
-          triggerChildren={
-            <div
-              className={cn(
-                "text-foreground dark:text-foreground-night",
-                "flex flex-row items-center gap-x-2"
-              )}
-            >
-              <span className="heading-base">Inputs</span>
-            </div>
-          }
-          contentChildren={
-            <RenderToolItemMarkdown text={inputs} type="input" />
-          }
-        />
-
-        {!hideOutput && action.output && (
+      {viewType === "conversation" ? (
+        <RenderToolItemMarkdown text={inputs} type="input" />
+      ) : (
+        <div className="flex flex-col gap-4 py-4 pl-6">
           <CollapsibleComponent
             rootProps={{ defaultOpen: !action.generatedFiles.length }}
             triggerChildren={
@@ -243,59 +221,78 @@ export function GenericActionDetails({
                   "flex flex-row items-center gap-x-2"
                 )}
               >
-                <span className="heading-base">Output</span>
+                <span className="heading-base">Inputs</span>
               </div>
             }
             contentChildren={
-              <div className="flex flex-col gap-2">
-                {action.output
-                  .filter(
-                    (o) => isTextContent(o) || isResourceContentWithText(o)
-                  )
-                  .map((o, index) => (
-                    <RenderToolItemMarkdown
-                      key={index}
-                      text={getOutputText(o)}
-                      type="output"
-                    />
-                  ))}
-              </div>
+              <RenderToolItemMarkdown text={inputs} type="input" />
             }
           />
-        )}
 
-        {action.generatedFiles.length > 0 && (
-          <>
-            <span className="heading-base">Generated Files</span>
-            <div className="flex flex-col gap-1">
-              {action.generatedFiles.map((file) => {
-                if (isSupportedImageContentType(file.contentType)) {
-                  return (
-                    <div key={file.fileId} className="mr-5">
-                      <img
-                        className="rounded-xl"
-                        src={`/api/w/${owner.sId}/files/${file.fileId}`}
-                        alt={`${file.title}`}
+          {action.output && (
+            <CollapsibleComponent
+              rootProps={{ defaultOpen: !action.generatedFiles.length }}
+              triggerChildren={
+                <div
+                  className={cn(
+                    "text-foreground dark:text-foreground-night",
+                    "flex flex-row items-center gap-x-2"
+                  )}
+                >
+                  <span className="heading-base">Output</span>
+                </div>
+              }
+              contentChildren={
+                <div className="flex flex-col gap-2">
+                  {action.output
+                    .filter(
+                      (o) => isTextContent(o) || isResourceContentWithText(o)
+                    )
+                    .map((o, index) => (
+                      <RenderToolItemMarkdown
+                        key={index}
+                        text={getOutputText(o)}
+                        type="output"
                       />
+                    ))}
+                </div>
+              }
+            />
+          )}
+
+          {action.generatedFiles.length > 0 && (
+            <>
+              <span className="heading-base">Generated Files</span>
+              <div className="flex flex-col gap-1">
+                {action.generatedFiles.map((file) => {
+                  if (isSupportedImageContentType(file.contentType)) {
+                    return (
+                      <div key={file.fileId} className="mr-5">
+                        <img
+                          className="rounded-xl"
+                          src={`/api/w/${owner.sId}/files/${file.fileId}`}
+                          alt={`${file.title}`}
+                        />
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={file.fileId}>
+                      <a
+                        href={`/api/w/${owner.sId}/files/${file.fileId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {file.title}
+                      </a>
                     </div>
                   );
-                }
-                return (
-                  <div key={file.fileId}>
-                    <a
-                      href={`/api/w/${owner.sId}/files/${file.fileId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {file.title}
-                    </a>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
-      </div>
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </ActionDetailsWrapper>
   );
 }

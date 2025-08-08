@@ -179,20 +179,18 @@ interface SearchResultProps {
   actionName: string;
   defaultQuery?: string;
   defaultOpen: boolean;
-  collapsible?: boolean;
   visual: React.ComponentType<{ className?: string }>;
   actionOutput: CallToolResult["content"] | null;
-  hideOutput?: boolean;
+  viewType?: "conversation" | "sidebar";
 }
 
 export function SearchResultDetails({
   actionName,
   defaultQuery,
-  collapsible,
   defaultOpen,
   visual,
+  viewType,
   actionOutput,
-  hideOutput,
 }: SearchResultProps) {
   const query =
     actionOutput
@@ -282,52 +280,58 @@ export function SearchResultDetails({
 
   return (
     <ActionDetailsWrapper
-      collapsible={collapsible}
+      viewType={viewType}
       actionName={actionName}
       defaultOpen={defaultOpen}
       visual={visual}
     >
-      <div className="flex flex-col gap-4 pl-6 pt-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-bold text-foreground dark:text-foreground-night">
-            Query
-          </span>
-          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-            {query}
+      {viewType === "conversation" ? (
+        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+          {query}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4 pl-6 pt-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-bold text-foreground dark:text-foreground-night">
+              Query
+            </span>
+            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+              {query}
+            </div>
+            {warning && (
+              <Tooltip
+                label={warning.text}
+                trigger={<Chip color="warning" label={warning.warningTitle} />}
+              />
+            )}
           </div>
-          {warning && (
-            <Tooltip
-              label={warning.text}
-              trigger={<Chip color="warning" label={warning.warningTitle} />}
-            />
+          {actionOutput && viewType === "sidebar" && (
+            <div>
+              <CollapsibleComponent
+                rootProps={{ defaultOpen }}
+                triggerChildren={
+                  <span className="text-sm font-bold text-foreground dark:text-foreground-night">
+                    Results
+                  </span>
+                }
+                contentChildren={
+                  <>
+                    {singleFileContentText && (
+                      <Markdown
+                        content={singleFileContentText}
+                        isStreaming={false}
+                        forcedTextSize="text-sm"
+                        textColor="text-muted-foreground dark:text-muted-foreground-night"
+                      />
+                    )}
+                    <PaginatedCitationsGrid items={citations} />
+                  </>
+                }
+              />
+            </div>
           )}
         </div>
-        {actionOutput && !hideOutput && (
-          <div>
-            <CollapsibleComponent
-              rootProps={{ defaultOpen }}
-              triggerChildren={
-                <span className="text-sm font-bold text-foreground dark:text-foreground-night">
-                  Results
-                </span>
-              }
-              contentChildren={
-                <>
-                  {singleFileContentText && (
-                    <Markdown
-                      content={singleFileContentText}
-                      isStreaming={false}
-                      forcedTextSize="text-sm"
-                      textColor="text-muted-foreground dark:text-muted-foreground-night"
-                    />
-                  )}
-                  <PaginatedCitationsGrid items={citations} />
-                </>
-              }
-            />
-          </div>
-        )}
-      </div>
+      )}
     </ActionDetailsWrapper>
   );
 }

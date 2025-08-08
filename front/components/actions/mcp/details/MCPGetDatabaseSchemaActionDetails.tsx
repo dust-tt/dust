@@ -13,9 +13,8 @@ import {
 
 export function MCPGetDatabaseSchemaActionDetails({
   action,
-  collapsible,
+  viewType,
   defaultOpen,
-  hideOutput,
 }: MCPActionDetailsProps) {
   const { output } = action;
 
@@ -27,13 +26,13 @@ export function MCPGetDatabaseSchemaActionDetails({
 
   return (
     <ActionDetailsWrapper
-      collapsible={collapsible}
+      viewType={viewType}
       actionName="Get database schema"
       defaultOpen={defaultOpen}
       visual={TableIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
-        {!hideOutput && (
+        {viewType === "sidebar" && (
           <>
             <DatabaseSchemaSection schemas={schemaBlocks} />
             {exampleRowsBlocks.length > 0 && (

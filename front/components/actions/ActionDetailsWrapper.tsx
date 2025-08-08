@@ -11,7 +11,7 @@ interface ActionDetailsWrapperProps {
   actionName: string;
   children: React.ReactNode;
   defaultOpen: boolean;
-  collapsible?: boolean;
+  viewType?: "conversation" | "sidebar";
   visual: ComponentType<{ className?: string }>;
 }
 
@@ -19,10 +19,10 @@ export function ActionDetailsWrapper({
   actionName,
   children,
   defaultOpen,
-  collapsible = true,
+  viewType = "sidebar",
   visual,
 }: ActionDetailsWrapperProps) {
-  if (!collapsible) {
+  if (viewType === "conversation") {
     return (
       <div className="flex w-full flex-col gap-y-2 px-2 py-1">
         <div

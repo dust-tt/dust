@@ -19,9 +19,8 @@ import { formatDataSourceDisplayName } from "@app/types";
 
 export function DataSourceNodeContentDetails({
   action,
-  collapsible,
+  viewType,
   defaultOpen,
-  hideOutput,
 }: MCPActionDetailsProps) {
   const dataSourceNodeContent = action.output
     ?.filter(isDataSourceNodeContentType)
@@ -32,7 +31,7 @@ export function DataSourceNodeContentDetails({
 
   return (
     <ActionDetailsWrapper
-      collapsible={collapsible}
+      viewType={viewType}
       actionName="Retrieve file content"
       defaultOpen={defaultOpen}
       visual={DocumentIcon}
@@ -54,7 +53,7 @@ export function DataSourceNodeContentDetails({
           )}
         </div>
 
-        {!hideOutput && sourceUrl && text && (
+        {viewType === "sidebar" && sourceUrl && text && (
           <Markdown
             content={text}
             isStreaming={false}
@@ -69,7 +68,7 @@ export function DataSourceNodeContentDetails({
 
 export function FilesystemPathDetails({
   action,
-  collapsible,
+  viewType,
   defaultOpen,
 }: MCPActionDetailsProps) {
   const filesystemPath = action.output
@@ -106,7 +105,7 @@ export function FilesystemPathDetails({
 
   return (
     <ActionDetailsWrapper
-      collapsible={collapsible}
+      viewType={viewType}
       actionName="Locate item"
       defaultOpen={defaultOpen}
       visual={ActionPinDistanceIcon}

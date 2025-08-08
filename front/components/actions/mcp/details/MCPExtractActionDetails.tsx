@@ -42,9 +42,8 @@ interface MCPExtractActionResultsProps {
 
 export function MCPExtractActionDetails({
   action,
-  collapsible,
+  viewType,
   defaultOpen,
-  hideOutput,
 }: MCPActionDetailsProps) {
   const queryResource = action.output
     ?.filter(isExtractQueryResourceType)
@@ -58,7 +57,7 @@ export function MCPExtractActionDetails({
 
   return (
     <ActionDetailsWrapper
-      collapsible={collapsible}
+      viewType={viewType}
       actionName="Extract data"
       defaultOpen={defaultOpen}
       visual={ScanIcon}
@@ -97,7 +96,7 @@ export function MCPExtractActionDetails({
           </div>
         )}
 
-        {!hideOutput && (
+        {viewType === "sidebar" && (
           <div>
             <CollapsibleComponent
               rootProps={{ defaultOpen }}

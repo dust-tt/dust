@@ -13,7 +13,7 @@ import {
 
 export function MCPReasoningActionDetails({
   action,
-  collapsible,
+  viewType,
   defaultOpen,
 }: MCPActionDetailsProps) {
   const { output } = action;
@@ -26,7 +26,7 @@ export function MCPReasoningActionDetails({
 
   return (
     <ActionDetailsWrapper
-      collapsible={collapsible}
+      viewType={viewType}
       actionName="Reasoning"
       defaultOpen={defaultOpen}
       visual={ChatBubbleThoughtIcon}

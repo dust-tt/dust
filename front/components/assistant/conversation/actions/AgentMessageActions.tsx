@@ -66,12 +66,11 @@ export function AgentMessageActions({
       lastAgentStateClassification === "acting" ? (
         <Card variant="secondary" size="sm">
           <MCPActionDetails
-            collapsible={false}
+            viewType="conversation"
             action={lastAction}
             owner={owner}
             lastNotification={null}
             defaultOpen={true}
-            hideOutput={true}
           />
         </Card>
       ) : (

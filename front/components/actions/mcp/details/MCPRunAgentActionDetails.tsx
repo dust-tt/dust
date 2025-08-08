@@ -42,7 +42,7 @@ export function MCPRunAgentActionDetails({
   owner,
   action,
   lastNotification,
-  collapsible,
+  viewType,
   defaultOpen,
 }: MCPActionDetailsProps) {
   const { isDark } = useTheme();
@@ -175,7 +175,7 @@ export function MCPRunAgentActionDetails({
   );
   return (
     <ActionDetailsWrapper
-      collapsible={collapsible}
+      viewType={viewType}
       actionName={childAgent?.name ? `Run @${childAgent.name}` : "Run Agent"}
       defaultOpen={defaultOpen}
       visual={
