@@ -62,7 +62,7 @@ RemoteMCPServerToolMetadataModel.init(
       {
         unique: true,
         fields: ["workspaceId", "remoteMCPServerId", "toolName"],
-        name: "remote_mcp_server_tool_metadata_wid_remoteserverid_serverid_tool_name",
+        name: "remote_mcp_server_tool_metadata_wid_serverid_tool_name",
       },
       {
         unique: true,
