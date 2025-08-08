@@ -411,11 +411,11 @@ export function MCPServerViewsDialog({
                 />
 
                 {requirements.requiresReasoningConfiguration && (
-                  <ReasoningModelSection owner={owner} />
+                  <ReasoningModelSection />
                 )}
 
                 {requirements.requiresChildAgentConfiguration && (
-                  <ChildAgentSection owner={owner} />
+                  <ChildAgentSection />
                 )}
 
                 {requirements.mayRequireTimeFrameConfiguration && (
@@ -423,12 +423,11 @@ export function MCPServerViewsDialog({
                 )}
 
                 {requirements.requiresDustAppConfiguration && (
-                  <DustAppSection owner={owner} allowedSpaces={spaces} />
+                  <DustAppSection allowedSpaces={spaces} />
                 )}
 
                 {requirements.mayRequireJsonSchemaConfiguration && (
                   <JsonSchemaSection
-                    owner={owner}
                     getAgentInstructions={getAgentInstructions}
                   />
                 )}

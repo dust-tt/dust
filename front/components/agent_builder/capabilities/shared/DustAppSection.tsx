@@ -17,13 +17,13 @@ import { sortBy } from "lodash";
 import React, { useEffect, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { useApps } from "@app/lib/swr/apps";
 import type {
   AppType,
   DustAppRunConfigurationType,
-  LightWorkspaceType,
   SpaceType,
 } from "@app/types";
 
@@ -90,11 +90,11 @@ function AppMessage({ title, children }: AppMessageProps) {
 }
 
 interface DustAppSectionProps {
-  owner: LightWorkspaceType;
   allowedSpaces: SpaceType[];
 }
 
-export function DustAppSection({ owner, allowedSpaces }: DustAppSectionProps) {
+export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
+  const { owner } = useAgentBuilderContext();
   const { field, fieldState } = useController<
     MCPFormData,
     "configuration.dustAppConfiguration"
