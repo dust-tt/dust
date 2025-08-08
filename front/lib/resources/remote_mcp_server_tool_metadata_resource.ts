@@ -199,14 +199,14 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
 
   toJSON(): {
     remoteMCPServerId?: number;
-    internalMCPServerId?: string;
+    internalMCPServerSId?: string;
     toolName: string;
     permission: MCPToolStakeLevelType;
     enabled: boolean;
   } {
     return {
       remoteMCPServerId: this.remoteMCPServerId,
-      internalMCPServerId: this.internalMCPServerSId,
+      internalMCPServerSId: this.internalMCPServerSId,
       toolName: this.toolName,
       permission: this.permission,
       enabled: this.enabled,
