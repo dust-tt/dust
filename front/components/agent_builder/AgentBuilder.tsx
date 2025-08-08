@@ -15,6 +15,7 @@ import {
   getDefaultAgentFormData,
   transformAgentConfigurationToFormData,
 } from "@app/components/agent_builder/transformAgentConfiguration";
+import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -22,7 +23,6 @@ import { useAgentConfigurationActions } from "@app/lib/swr/actions";
 import { useEditors } from "@app/lib/swr/editors";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types";
-import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
