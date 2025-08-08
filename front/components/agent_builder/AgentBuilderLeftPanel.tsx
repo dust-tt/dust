@@ -3,6 +3,7 @@ import {
   BarFooter,
   BarHeader,
   Button,
+  ScrollArea,
   Separator,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -58,19 +59,18 @@ export function AgentBuilderLeftPanel({
           />
         }
       />
-      <div className="flex-1 overflow-y-auto">
+      <ScrollArea className="flex-1">
         <div className="space-y-4 p-4">
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
-          <Separator />
           <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
           <Separator />
           <AgentBuilderSettingsBlock
             isSettingBlocksOpen={!agentConfigurationId}
           />
         </div>
-      </div>
+      </ScrollArea>
       <BarFooter
         variant="default"
         rightActions={

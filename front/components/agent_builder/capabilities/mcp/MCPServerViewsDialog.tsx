@@ -1,7 +1,7 @@
 import type { MultiPageDialogPage } from "@dust-tt/sparkle";
 import {
+  BoltIcon,
   Button,
-  LightbulbIcon,
   MultiPageDialog,
   MultiPageDialogContent,
   MultiPageDialogTrigger,
@@ -417,7 +417,7 @@ export function MCPServerViewsDialog({
   const pages: MultiPageDialogPage[] = [
     {
       id: CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION,
-      title: "Add tools",
+      title: actions.length === 0 ? "Add tools" : "Add more",
       description: "",
       icon: undefined,
       content: isMCPServerViewsLoading ? (
@@ -702,7 +702,7 @@ export function MCPServerViewsDialog({
       }}
     >
       <MultiPageDialogTrigger asChild>
-        <Button label="Add tools" icon={LightbulbIcon} />
+        <Button label="Add tools" icon={BoltIcon} variant="outline" />
       </MultiPageDialogTrigger>
       <MultiPageDialogContent
         showNavigation={false}
