@@ -1,10 +1,13 @@
+import { FolderIcon, ServerIcon } from "@dust-tt/sparkle";
+
 import type {
   DataSourceBuilderTreeItemType,
   DataSourceBuilderTreeType,
   NavigationHistoryEntryType,
   NodeSelectionState,
 } from "@app/components/data_source_view/context/types";
-import { CATEGORY_DETAILS } from "@app/lib/spaces";
+import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
+import { CATEGORY_DETAILS, getSpaceIcon } from "@app/lib/spaces";
 import type {
   DataSourceViewCategoryWithoutApps,
   DataSourceViewContentNode,
@@ -285,4 +288,34 @@ export function getLatestNodeFromNavigationHistory(
   }
 
   return null;
+}
+
+export function getVisualForTreeItem(item: DataSourceBuilderTreeItemType) {
+  switch (item.type) {
+    case "root":
+      // Root doesn't have a specific visual, use a default folder icon
+      return FolderIcon;
+
+    case "space":
+      return getSpaceIcon(item.space);
+
+    case "category":
+      return CATEGORY_DETAILS[item.category].icon;
+
+    case "data_source":
+      // For data sources, we can use the connector provider logo or fall back to a generic icon
+      if (item.dataSourceView.dataSource.connectorProvider) {
+        // We could import getConnectorProviderLogoWithFallback but for simplicity,
+        // let's use category-based icons as fallback
+        const category = item.dataSourceView.category;
+        return CATEGORY_DETAILS[category].icon;
+      }
+      return ServerIcon;
+
+    case "node":
+      return getVisualForDataSourceViewContentNode(item.node);
+
+    default:
+      return FolderIcon;
+  }
 }

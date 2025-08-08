@@ -4,7 +4,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
   ContextItem,
-  GithubLogo,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -12,6 +11,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
+import { getVisualForTreeItem } from "@app/components/data_source_view/context/utils";
 import { useNodePath } from "@app/hooks/useNodePath";
 import type { DataSourceViewContentNode } from "@app/types";
 import { pluralize } from "@app/types";
@@ -50,12 +50,13 @@ function KnowledgeFooterItem({
   item: DataSourceBuilderTreeItemType;
 }) {
   const { removeNodeWithPath } = useDataSourceBuilderContext();
+  const VisualComponent = getVisualForTreeItem(item);
 
   return (
     <ContextItem
       key={item.path}
       title={item.name}
-      visual={<ContextItem.Visual visual={GithubLogo} />}
+      visual={<ContextItem.Visual visual={VisualComponent} />}
       action={
         <Checkbox checked onCheckedChange={() => removeNodeWithPath(item)} />
       }
