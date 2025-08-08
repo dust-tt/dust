@@ -34,8 +34,6 @@ interface AppTableData extends AppType {
 interface AppSelectionTableProps {
   tableData: AppTableData[];
   columns: ColumnDef<AppTableData>[];
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
   rowSelection: RowSelectionState;
   handleRowSelectionChange: (newSelection: RowSelectionState) => void;
 }
@@ -43,11 +41,10 @@ interface AppSelectionTableProps {
 function AppSelectionTable({
   tableData,
   columns,
-  searchQuery,
-  setSearchQuery,
   rowSelection,
   handleRowSelectionChange,
 }: AppSelectionTableProps) {
+  const [searchQuery, setSearchQuery] = useState("");
   return (
     <div className="flex flex-col">
       <SearchInput
@@ -102,7 +99,6 @@ export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
     name: "configuration.dustAppConfiguration",
   });
 
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedSpace, setSelectedSpace] = useState<SpaceType>(
     () => allowedSpaces[0]
   );
@@ -249,8 +245,6 @@ export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
           <AppSelectionTable
             tableData={tableData}
             columns={columns}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
             rowSelection={rowSelection}
             handleRowSelectionChange={handleRowSelectionChange}
           />
