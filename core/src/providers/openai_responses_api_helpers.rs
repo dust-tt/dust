@@ -77,6 +77,8 @@ pub struct OpenAIResponseAPITool {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parameters: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strict: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -437,6 +439,7 @@ pub async fn openai_responses_api_completion(
             name: f.name.clone(),
             description: f.description.clone(),
             parameters: f.parameters.clone(),
+            strict: Some(false),
         })
         .collect();
 
