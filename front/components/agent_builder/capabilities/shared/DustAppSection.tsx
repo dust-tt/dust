@@ -1,33 +1,97 @@
 import {
-  Card,
   CommandLineIcon,
-  Icon,
-  Label,
-  RadioGroup,
-  RadioGroupCustomItem,
-  Separator,
+  ContentMessage,
+  createRadioSelectionColumn,
+  DataTable,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  InformationCircleIcon,
+  SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import { sortBy } from "lodash";
-import React, { useMemo } from "react";
+import { Button } from "@dust-tt/sparkle";
+import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
+import sortBy from "lodash/sortBy";
+import React, { useEffect, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
+import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { useApps } from "@app/lib/swr/apps";
-import { useSpaces } from "@app/lib/swr/spaces";
 import type {
+  AppType,
   DustAppRunConfigurationType,
-  LightWorkspaceType,
   SpaceType,
 } from "@app/types";
 
+interface AppTableData extends AppType {
+  onClick?: () => void;
+}
+
+interface AppSelectionTableProps {
+  tableData: AppTableData[];
+  columns: ColumnDef<AppTableData>[];
+  rowSelection: RowSelectionState;
+  handleRowSelectionChange: (newSelection: RowSelectionState) => void;
+}
+
+function AppSelectionTable({
+  tableData,
+  columns,
+  rowSelection,
+  handleRowSelectionChange,
+}: AppSelectionTableProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  return (
+    <div className="flex flex-col">
+      <SearchInput
+        name="search"
+        placeholder="Search"
+        value={searchQuery}
+        onChange={setSearchQuery}
+      />
+      <DataTable
+        data={tableData}
+        columns={columns}
+        enableRowSelection
+        enableMultiRowSelection={false}
+        rowSelection={rowSelection}
+        setRowSelection={handleRowSelectionChange}
+        getRowId={(row, index) => index.toString()}
+        filter={searchQuery}
+        filterColumn="name"
+      />
+    </div>
+  );
+}
+
+interface AppMessageProps {
+  title: string;
+  children: string;
+}
+
+function AppMessage({ title, children }: AppMessageProps) {
+  return (
+    <ContentMessage
+      title={title}
+      icon={InformationCircleIcon}
+      variant="warning"
+      size="sm"
+    >
+      {children}
+    </ContentMessage>
+  );
+}
+
 interface DustAppSectionProps {
-  owner: LightWorkspaceType;
   allowedSpaces: SpaceType[];
 }
 
-export function DustAppSection({ owner, allowedSpaces }: DustAppSectionProps) {
+export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
+  const { owner } = useAgentBuilderContext();
   const { field, fieldState } = useController<
     MCPFormData,
     "configuration.dustAppConfiguration"
@@ -35,166 +99,175 @@ export function DustAppSection({ owner, allowedSpaces }: DustAppSectionProps) {
     name: "configuration.dustAppConfiguration",
   });
 
-  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
-
-  return (
-    <div className="space-y-2">
-      <h3 className="text-element-900 text-base font-medium">
-        Select a Dust App
-      </h3>
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        The agent will execute a{" "}
-        <a
-          href="https://docs.dust.tt"
-          target="_blank"
-          rel="noreferrer"
-          className="font-bold"
-        >
-          Dust Application
-        </a>{" "}
-        of your design before replying. The output of the app (last block) is
-        injected in context for the model to generate an answer.
-      </div>
-
-      {isSpacesLoading ? (
-        <Spinner />
-      ) : (
-        <SpaceSelector
-          spaces={spaces}
-          allowedSpaces={allowedSpaces}
-          defaultSpace={allowedSpaces[0]?.sId}
-          renderChildren={(space) => {
-            if (!space) {
-              return <>No Dust Apps available.</>;
-            }
-
-            return (
-              <SpaceAppsRadioGroup
-                owner={owner}
-                space={space}
-                selectedConfig={field.value}
-                onConfigSelect={(config) => field.onChange(config)}
-              />
-            );
-          }}
-        />
-      )}
-      {fieldState.error && (
-        <p className="text-sm text-red-500">{fieldState.error.message}</p>
-      )}
-    </div>
+  const [selectedSpace, setSelectedSpace] = useState<SpaceType>(
+    () => allowedSpaces[0]
   );
-}
 
-interface SpaceAppsRadioGroupProps {
-  owner: LightWorkspaceType;
-  space: SpaceType;
-  selectedConfig: DustAppRunConfigurationType | null;
-  onConfigSelect: (config: DustAppRunConfigurationType) => void;
-}
+  const { apps, isAppsLoading } = useApps({
+    owner,
+    space: selectedSpace,
+  });
 
-function SpaceAppsRadioGroup({
-  owner,
-  space,
-  selectedConfig,
-  onConfigSelect,
-}: SpaceAppsRadioGroupProps) {
-  const { apps, isAppsLoading } = useApps({ owner, space });
+  useEffect(() => {
+    const configuredAppId = field.value?.appId;
+    if (!configuredAppId || isAppsLoading) {
+      return;
+    }
 
-  const sortedApps = useMemo(
+    const appInCurrentSpace = apps.find((app) => app.sId === configuredAppId);
+    if (!appInCurrentSpace && selectedSpace) {
+      const currentIndex = allowedSpaces.findIndex(
+        (space) => space.sId === selectedSpace.sId
+      );
+      const nextSpace = allowedSpaces[currentIndex + 1];
+      if (nextSpace) {
+        setSelectedSpace(nextSpace);
+      }
+    }
+  }, [field.value?.appId, apps, isAppsLoading, selectedSpace, allowedSpaces]);
+
+  const availableApps = useMemo(
     () =>
-      sortBy(apps, [
-        (app) => !app.description || app.description.length === 0,
-        "name",
-      ]),
+      sortBy(
+        apps.filter((app) => app.description && app.description.length > 0),
+        "name"
+      ),
     [apps]
   );
 
-  if (isAppsLoading) {
-    return <Spinner />;
-  }
+  const rowSelection: RowSelectionState = field.value?.appId
+    ? (() => {
+        const selectedIndex = availableApps.findIndex(
+          (app) => app.sId === field.value.appId
+        );
+        return selectedIndex >= 0 ? { [selectedIndex]: true } : {};
+      })()
+    : {};
 
-  if (sortedApps.length === 0) {
-    return <>No Dust Apps available.</>;
-  }
+  const handleRowSelectionChange = (newSelection: RowSelectionState) => {
+    const selectedIndex = Object.keys(newSelection)[0];
+    const selectedApp = availableApps[parseInt(selectedIndex, 10)];
+    if (selectedApp) {
+      const config: DustAppRunConfigurationType = {
+        id: selectedApp.id,
+        sId: selectedApp.sId,
+        appId: selectedApp.sId,
+        appWorkspaceId: owner.sId,
+        name: selectedApp.name,
+        description: selectedApp.description,
+        type: "dust_app_run_configuration",
+      };
+      field.onChange(config);
+    }
+  };
+
+  const handleSpaceChange = (space: SpaceType) => {
+    setSelectedSpace(space);
+    field.onChange(null); // Clear selection when changing space
+  };
+
+  const tableData: AppTableData[] = availableApps.map((app) => ({ ...app }));
+
+  const columns: ColumnDef<AppTableData>[] = [
+    createRadioSelectionColumn<AppTableData>(),
+    {
+      id: "name",
+      accessorKey: "name",
+      header: () => null,
+      cell: ({ row }) => (
+        <DataTable.CellContent icon={CommandLineIcon}>
+          <div className="flex flex-col gap-1">
+            <div className="text-sm font-medium">{row.original.name}</div>
+            <div className="line-clamp-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+              {row.original.description || "No description available"}
+            </div>
+          </div>
+        </DataTable.CellContent>
+      ),
+      meta: {
+        sizeRatio: 100,
+      },
+    },
+  ];
 
   return (
-    <>
-      {sortedApps.some(
-        (app) => !app.description || app.description.length === 0
-      ) && (
+    <ConfigurationSectionContainer
+      title="Select a Dust App"
+      error={fieldState.error?.message}
+    >
+      <div className="flex flex-col gap-3">
         <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Dust apps without a description are not selectable. To make a Dust App
-          selectable, edit it and add a description.
+          The agent will execute a{" "}
+          <a
+            href="https://docs.dust.tt"
+            target="_blank"
+            rel="noreferrer"
+            className="font-bold"
+          >
+            Dust Application
+          </a>{" "}
+          of your design before replying. The output of the app (last block) is
+          injected in context for the model to generate an answer.
         </div>
-      )}
-      <RadioGroup defaultValue={selectedConfig?.appId || undefined}>
-        {sortedApps.map((app, idx, arr) => (
-          <React.Fragment key={app.sId}>
-            <RadioGroupCustomItem
-              value={app.sId}
-              id={app.sId}
-              disabled={!app.description || app.description.length === 0}
-              iconPosition="start"
-              customItem={
-                <Label htmlFor={app.sId} className="w-full font-normal">
-                  <Card
-                    variant="tertiary"
-                    size="sm"
-                    onClick={() => {
-                      if (app.description && app.description.length > 0) {
-                        onConfigSelect({
-                          id: app.id,
-                          sId: app.sId,
-                          appId: app.sId,
-                          appWorkspaceId: owner.sId,
-                          name: app.name,
-                          description: app.description,
-                          type: "dust_app_run_configuration",
-                        });
-                      }
-                    }}
-                    disabled={!app.description || app.description.length === 0}
-                    className={
-                      !app.description || app.description.length === 0
-                        ? "opacity-50"
-                        : ""
-                    }
-                  >
-                    <div className="flex flex-row items-center gap-2">
-                      <Icon visual={CommandLineIcon} size="md" />
-                      <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
-                        <div className="flex flex-col gap-1">
-                          <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                            {app.name}
-                          </div>
-                          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                            {app.description || "No description"}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                </Label>
-              }
-              onClick={() => {
-                if (app.description && app.description.length > 0) {
-                  onConfigSelect({
-                    id: app.id,
-                    sId: app.sId,
-                    appId: app.sId,
-                    appWorkspaceId: owner.sId,
-                    name: app.name,
-                    description: app.description,
-                    type: "dust_app_run_configuration",
-                  });
-                }
-              }}
-            />
-            {idx !== arr.length - 1 && <Separator />}
-          </React.Fragment>
-        ))}
-      </RadioGroup>
-    </>
+
+        <div className="flex flex-row items-center gap-2">
+          <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+            Space:
+          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="xs"
+                variant="outline"
+                isSelect
+                label={selectedSpace ? selectedSpace.name : "Select a space..."}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-full">
+              {allowedSpaces.map((space) => (
+                <DropdownMenuItem
+                  key={space.sId}
+                  onClick={() => handleSpaceChange(space)}
+                >
+                  {space.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        {isAppsLoading ? (
+          <div className="flex h-full w-full items-center justify-center">
+            <Spinner />
+          </div>
+        ) : allowedSpaces.length > 0 &&
+          selectedSpace &&
+          availableApps.length > 0 ? (
+          <AppSelectionTable
+            tableData={tableData}
+            columns={columns}
+            rowSelection={rowSelection}
+            handleRowSelectionChange={handleRowSelectionChange}
+          />
+        ) : (
+          <AppMessage
+            title={
+              allowedSpaces.length === 0
+                ? "No spaces available"
+                : !selectedSpace
+                  ? "Select a space"
+                  : "No Dust apps available"
+            }
+          >
+            {allowedSpaces.length === 0
+              ? "You need access to at least one space to select Dust apps."
+              : !selectedSpace
+                ? "Please select a space to view available Dust apps."
+                : apps.length > 0
+                  ? "Dust apps without a description are not selectable. To make a Dust App selectable, edit it and add a description."
+                  : "No Dust apps found in this space. Create a Dust app first."}
+          </AppMessage>
+        )}
+      </div>
+    </ConfigurationSectionContainer>
   );
 }

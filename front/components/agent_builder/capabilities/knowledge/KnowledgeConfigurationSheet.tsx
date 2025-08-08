@@ -289,10 +289,7 @@ function KnowledgeConfigurationSheetContent({
             )}
 
             {requirements.mayRequireJsonSchemaConfiguration && (
-              <JsonSchemaSection
-                owner={owner}
-                getAgentInstructions={getAgentInstructions}
-              />
+              <JsonSchemaSection getAgentInstructions={getAgentInstructions} />
             )}
 
             {config && <DescriptionSection {...config?.descriptionConfig} />}
