@@ -32,6 +32,7 @@ import type {
   ActionGeneratedFileType,
   AgentLoopRunContextType,
 } from "@app/lib/actions/types";
+import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
@@ -56,7 +57,6 @@ import {
   removeNulls,
   stripNullBytes,
 } from "@app/types";
-import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 
 /**
  * Handles tool approval process and returns the final execution status.
