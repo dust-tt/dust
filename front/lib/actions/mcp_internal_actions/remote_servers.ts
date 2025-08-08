@@ -10,7 +10,7 @@ export type DefaultRemoteMCPServerConfig = {
   icon: InternalAllowedIconType;
   documentationUrl?: string;
   connectionInstructions?: string;
-  authMethod: "bearer" | "oauth" | null;
+  authMethod: "bearer" | "oauth-dynamic" | null;
   supportedOAuthUseCases?: MCPOAuthUseCase[];
   toolStakes?: Record<string, "high" | "low" | "never_ask">;
 };
@@ -60,7 +60,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     url: "https://mcp.linear.app/sse",
     icon: "LinearLogo",
     documentationUrl: "https://linear.app/docs",
-    authMethod: "oauth",
+    authMethod: "oauth-dynamic",
     toolStakes: {
       search_documentation: "never_ask",
       list_comments: "never_ask",
