@@ -64,7 +64,7 @@ export function AgentBuilderSectionContainer({
   }
 
   return (
-    <section className="flex flex-col gap-2 px-6">
+    <section className="flex flex-col gap-3 px-6">
       {header}
       {children}
     </section>

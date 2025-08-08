@@ -30,6 +30,7 @@ import {
   getDescriptionSuggestion,
   getNameSuggestions,
 } from "@app/components/agent_builder/settings/utils";
+import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import {
   buildSelectedEmojiType,
   makeUrlForEmojiAndBackground,
@@ -134,10 +135,7 @@ function AgentNameInput() {
   };
 
   return (
-    <div className="space-y-2">
-      <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
-        Name
-      </label>
+    <SettingSectionContainer title="Name">
       <div className="relative">
         <Input placeholder="Enter agent name" {...field} className="pr-10" />
         <DropdownMenu
@@ -185,7 +183,7 @@ function AgentNameInput() {
       {fieldState.error && (
         <p className="text-sm text-warning-500">{fieldState.error.message}</p>
       )}
-    </div>
+    </SettingSectionContainer>
   );
 }
 
@@ -253,10 +251,7 @@ function AgentDescriptionInput() {
   };
 
   return (
-    <div className="space-y-2">
-      <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
-        Description
-      </label>
+    <SettingSectionContainer title="Description">
       <div className="relative">
         <Input
           placeholder="Enter agent description"
@@ -287,7 +282,7 @@ function AgentDescriptionInput() {
       {fieldState.error && (
         <p className="text-sm text-warning-500">{fieldState.error.message}</p>
       )}
-    </div>
+    </SettingSectionContainer>
   );
 }
 
@@ -356,8 +351,8 @@ function AgentPictureInput() {
         spiritAvatarUrls={SPIRIT_AVATAR_URLS}
         avatarUrl={field.value || null}
       />
-      <div className="group relative py-2">
-        <Avatar size="xl" visual={field.value || null} />
+      <div className="group relative">
+        <Avatar size="lg" visual={field.value || null} />
         <Button
           variant="outline"
           size="sm"
@@ -373,16 +368,13 @@ function AgentPictureInput() {
 
 function AgentAccessAndPublication() {
   return (
-    <div className="flex h-full flex-col space-y-2">
-      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
-        Access and Publication
-      </label>
+    <SettingSectionContainer title="Access and Publication" className="h-full">
       <div className="flex flex-wrap items-center gap-2">
         <AgentBuilderEditors />
         <AgentBuilderScopeSelector />
         <AgentBuilderSlackSelector />
       </div>
-    </div>
+    </SettingSectionContainer>
   );
 }
 
@@ -399,8 +391,8 @@ export function AgentBuilderSettingsBlock({
       collapsible
       defaultOpen={isSettingBlocksOpen}
     >
-      <div className="space-y-4">
-        <div className="flex items-start gap-8">
+      <div className="space-y-5">
+        <div className="flex items-end gap-8">
           <div className="flex-grow">
             <AgentNameInput />
           </div>
