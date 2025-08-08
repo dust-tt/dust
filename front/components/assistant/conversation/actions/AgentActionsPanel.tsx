@@ -95,7 +95,8 @@ export function AgentActionsPanel({
     return null;
   }
 
-  const { actionProgress, isActing, messageStatus } = messageMetadata;
+  const { actionProgress } = messageMetadata;
+  const isActing = fullAgentMessage.status === "created";
   const steps = groupContentsByStep(fullAgentMessage);
 
   return (
@@ -150,7 +151,7 @@ export function AgentActionsPanel({
                               lastNotification={lastNotification}
                               defaultOpen={true}
                               owner={owner}
-                              messageStatus={messageStatus}
+                              messageStatus={fullAgentMessage.status}
                             />
                           </div>
                         );
