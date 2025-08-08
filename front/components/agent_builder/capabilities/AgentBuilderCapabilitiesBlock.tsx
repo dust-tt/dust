@@ -8,7 +8,7 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, LayoutGroup } from "framer-motion";
 import React, { useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -45,20 +45,21 @@ const BACKGROUND_IMAGE_STYLE_PROPS = {
 
 const CARD_HEIGHT = "h-32";
 
-const ANIMATION_VARIANTS = {
+// Animation variants for smooth tool addition/removal
+const TOOL_ANIMATION_VARIANTS = {
   container: {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        delayChildren: 0.05,
-        staggerChildren: 0.04,
+        delayChildren: 0,
+        staggerChildren: 0.03,
       },
     },
     exit: {
       opacity: 0,
       transition: {
-        staggerChildren: 0.03,
+        staggerChildren: 0.02,
         staggerDirection: -1,
       },
     },
@@ -66,61 +67,58 @@ const ANIMATION_VARIANTS = {
   item: {
     hidden: {
       opacity: 0,
+      scale: 0.95,
       y: 8,
     },
     visible: {
       opacity: 1,
+      scale: 1,
       y: 0,
       transition: {
-        duration: 0.3,
-        ease: [0.25, 0.46, 0.45, 0.94], // Custom easing curve
+        type: "spring",
+        stiffness: 500,
+        damping: 35,
       },
     },
     exit: {
       opacity: 0,
-      y: -4,
+      scale: 0.95,
+      y: -8,
       transition: {
         duration: 0.15,
-        ease: "easeInOut",
+        ease: "easeIn",
       },
     },
   },
   emptyState: {
+    hidden: { opacity: 0, scale: 0.98 },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      transition: {
+        type: "spring",
+        stiffness: 500,
+        damping: 35,
+      },
+    },
+    exit: {
+      opacity: 0,
+      scale: 0.98,
+      transition: { duration: 0.15 },
+    },
+  },
+  cardGrid: {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        duration: 0.25,
+        duration: 0.2,
         ease: "easeOut",
       },
     },
     exit: {
       opacity: 0,
-      transition: {
-        duration: 0.15,
-        ease: "easeInOut",
-      },
-    },
-  },
-  cardGrid: {
-    hidden: { opacity: 0, y: 12 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.4,
-        ease: [0.25, 0.46, 0.45, 0.94],
-        delayChildren: 0.05,
-        staggerChildren: 0.03,
-      },
-    },
-    exit: {
-      opacity: 0,
-      y: -8,
-      transition: {
-        duration: 0.2,
-        ease: "easeInOut",
-      },
+      transition: { duration: 0.15 },
     },
   },
 } as const;
@@ -335,63 +333,66 @@ export function AgentBuilderCapabilitiesBlock() {
             <Spinner />
           </div>
         ) : (
-          <AnimatePresence mode="wait">
-            {fields.length === 0 ? (
-              <motion.div
-                key="empty-state"
-                variants={ANIMATION_VARIANTS.emptyState}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                <EmptyCTA
-                  action={
-                    <div className="flex items-center gap-2">
-                      {dropdownButtons}
-                    </div>
-                  }
-                  style={BACKGROUND_IMAGE_STYLE_PROPS}
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="card-grid"
-                variants={ANIMATION_VARIANTS.cardGrid}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                <motion.div
-                  variants={ANIMATION_VARIANTS.container}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                >
-                  <CardGrid>
-                    {fields.map((field, index) => (
-                      <motion.div
-                        key={field.id}
-                        variants={ANIMATION_VARIANTS.item}
-                        layout
-                        layoutId={field.id}
-                        whileHover={{
-                          y: -2,
-                          transition: { duration: 0.15, ease: "easeOut" },
-                        }}
-                        whileTap={{ scale: 0.995 }}
-                      >
-                        <ActionCard
-                          action={field}
-                          onRemove={() => remove(index)}
-                          onEdit={() => handleActionEdit(field, index)}
-                        />
-                      </motion.div>
-                    ))}
-                  </CardGrid>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <div className="min-h-[200px]">
+            <LayoutGroup>
+              <AnimatePresence mode="wait">
+                {fields.length === 0 ? (
+                  <motion.div
+                    key="empty-state"
+                    variants={TOOL_ANIMATION_VARIANTS.emptyState}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    layout
+                    className="h-full"
+                  >
+                    <EmptyCTA
+                      action={
+                        <div className="flex items-center gap-2">
+                          {dropdownButtons}
+                        </div>
+                      }
+                      style={BACKGROUND_IMAGE_STYLE_PROPS}
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="card-grid"
+                    variants={TOOL_ANIMATION_VARIANTS.cardGrid}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    layout
+                    className="h-full"
+                  >
+                    <motion.div
+                      variants={TOOL_ANIMATION_VARIANTS.container}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                    >
+                      <CardGrid>
+                        {fields.map((field, index) => (
+                          <motion.div
+                            key={field.id}
+                            variants={TOOL_ANIMATION_VARIANTS.item}
+                            layout
+                            layoutId={field.id}
+                          >
+                            <ActionCard
+                              action={field}
+                              onRemove={() => remove(index)}
+                              onEdit={() => handleActionEdit(field, index)}
+                            />
+                          </motion.div>
+                        ))}
+                      </CardGrid>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </LayoutGroup>
+          </div>
         )}
       </div>
     </div>
