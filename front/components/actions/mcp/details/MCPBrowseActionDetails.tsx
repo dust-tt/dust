@@ -9,6 +9,7 @@ export function MCPBrowseActionDetails({
   defaultOpen,
   hideOutput,
 }: MCPActionDetailsProps) {
+  const urls = action.params.urls as string[];
   const browseResults =
     action.output?.filter(isBrowseResultResourceType).map((o) => o.resource) ??
     [];
@@ -22,6 +23,18 @@ export function MCPBrowseActionDetails({
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
           <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+            {(hideOutput || browseResults.length === 0) &&
+              urls &&
+              urls.map((url, idx) => (
+                <div
+                  className="flex max-h-60 flex-col gap-2 overflow-y-auto overflow-x-hidden pb-4"
+                  key={idx}
+                >
+                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    {url}
+                  </span>
+                </div>
+              ))}
             {!hideOutput &&
               browseResults.map((r, idx) => (
                 <div

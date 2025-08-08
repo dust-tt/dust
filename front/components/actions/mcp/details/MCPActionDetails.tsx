@@ -44,10 +44,15 @@ import {
   isResourceContentWithText,
   isTextContent,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
-import { asDisplayName, isSupportedImageContentType } from "@app/types";
+import {
+  asDisplayName,
+  isSupportedImageContentType,
+  parseTimeFrame,
+} from "@app/types";
 
 export interface MCPActionDetailsProps {
   action: MCPActionType;
@@ -60,7 +65,7 @@ export interface MCPActionDetailsProps {
 
 export function MCPActionDetails(props: MCPActionDetailsProps) {
   const {
-    action: { output, functionCallName, mcpServerId },
+    action: { output, functionCallName, mcpServerId, params },
     defaultOpen,
     hideOutput,
   } = props;
@@ -70,8 +75,18 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
 
   if (isInternalMCPServerOfName(mcpServerId, "search")) {
     if (toolName === SEARCH_TOOL_NAME) {
+      const timeFrame = parseTimeFrame(params.relativeTimeFrame as string);
+      const queryResource = makeQueryResource({
+        query: params.query as string,
+        timeFrame: timeFrame,
+        tagsIn: params.tagsIn as string[],
+        tagsNot: params.tagsNot as string[],
+        nodeIds: params.nodeIds as string[],
+      });
+
       return (
         <SearchResultDetails
+          defaultQuery={queryResource.text}
           actionName="Search data"
           actionOutput={output}
           defaultOpen={defaultOpen}
@@ -123,6 +138,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     if (toolName === WEBSEARCH_TOOL_NAME) {
       return (
         <SearchResultDetails
+          defaultQuery={params.query as string}
           actionName="Web search"
           actionOutput={output}
           defaultOpen={defaultOpen}

@@ -177,6 +177,7 @@ export function ToolGeneratedFileDetails({
 
 interface SearchResultProps {
   actionName: string;
+  defaultQuery?: string;
   defaultOpen: boolean;
   visual: React.ComponentType<{ className?: string }>;
   actionOutput: CallToolResult["content"] | null;
@@ -185,6 +186,7 @@ interface SearchResultProps {
 
 export function SearchResultDetails({
   actionName,
+  defaultQuery,
   defaultOpen,
   visual,
   actionOutput,
@@ -203,7 +205,9 @@ export function SearchResultDetails({
         return null;
       })
       .filter(Boolean)
-      .join("\n") || "No query provided";
+      .join("\n") ||
+    defaultQuery ||
+    "No query provided";
 
   const warning = actionOutput
     ?.filter(isWarningResourceType)
