@@ -42,7 +42,6 @@ export function MCPRunAgentActionDetails({
   owner,
   action,
   lastNotification,
-  defaultOpen,
 }: MCPActionDetailsProps) {
   const { isDark } = useTheme();
 

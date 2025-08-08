@@ -1,4 +1,4 @@
-import { Avatar, cn, CollapsibleComponent, Icon } from "@dust-tt/sparkle";
+import { Avatar, cn, Icon } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
 interface ActionDetailsWrapperProps {

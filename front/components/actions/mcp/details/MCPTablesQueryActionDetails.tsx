@@ -17,7 +17,6 @@ import {
 
 export function MCPTablesQueryActionDetails({
   action,
-  defaultOpen,
   owner,
 }: MCPActionDetailsProps) {
   const thinkingBlocks =

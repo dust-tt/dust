@@ -6,10 +6,10 @@ import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import { useConversationMessage } from "@app/lib/swr/conversations";
-import {
-  type ConversationType,
-  type LightWorkspaceType,
-  type MessageWithRankType,
+import type {
+  ConversationType,
+  LightWorkspaceType,
+  MessageWithRankType,
 } from "@app/types";
 import {
   isFunctionCallContent,
@@ -33,7 +33,9 @@ function groupContentsByStep(
   const steps: Steps = {};
   for (const c of fullAgentMessage.contents) {
     const step = c.step + 1;
-    if (!steps[step]) steps[step] = [];
+    if (!steps[step]) {
+      steps[step] = [];
+    }
 
     if (isReasoningContent(c.content)) {
       const reasoning = c.content.value.reasoning;

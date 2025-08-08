@@ -13,7 +13,6 @@ import {
 
 export function MCPGetDatabaseSchemaActionDetails({
   action,
-  defaultOpen,
 }: MCPActionDetailsProps) {
   const { output } = action;
 

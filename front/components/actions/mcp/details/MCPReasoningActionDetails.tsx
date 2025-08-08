@@ -11,10 +11,7 @@ import {
   isThinkingOutput,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
-export function MCPReasoningActionDetails({
-  action,
-  defaultOpen,
-}: MCPActionDetailsProps) {
+export function MCPReasoningActionDetails({ action }: MCPActionDetailsProps) {
   const { output } = action;
 
   const thinkingBlocks =

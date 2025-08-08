@@ -16,7 +16,6 @@ import { isAgentCreationResultResourceType } from "@app/lib/actions/mcp_internal
 
 export function MCPAgentManagementActionDetails({
   action,
-  defaultOpen,
   owner,
   messageStatus,
 }: MCPActionDetailsProps) {

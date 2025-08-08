@@ -4,10 +4,7 @@ import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapp
 import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { isBrowseResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
-export function MCPBrowseActionDetails({
-  action,
-  defaultOpen,
-}: MCPActionDetailsProps) {
+export function MCPBrowseActionDetails({ action }: MCPActionDetailsProps) {
   const browseResults =
     action.output?.filter(isBrowseResultResourceType).map((o) => o.resource) ??
     [];

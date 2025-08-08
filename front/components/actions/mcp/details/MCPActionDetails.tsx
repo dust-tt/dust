@@ -1,12 +1,10 @@
 import {
   ActionDocumentTextIcon,
-  Avatar,
   ClockIcon,
   cn,
   CollapsibleComponent,
   ContentMessage,
   GlobeAltIcon,
-  Icon,
   MagnifyingGlassIcon,
   Markdown,
 } from "@dust-tt/sparkle";
