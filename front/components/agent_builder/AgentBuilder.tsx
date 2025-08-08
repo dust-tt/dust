@@ -137,7 +137,7 @@ export default function AgentBuilder({
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 
   const title = agentConfiguration
-    ? `Edit agent ${agentConfiguration.name}`
+    ? `Edit agent @${agentConfiguration.name}`
     : "Create new agent";
 
   return (
