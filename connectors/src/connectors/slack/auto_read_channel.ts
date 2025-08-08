@@ -181,11 +181,16 @@ export async function autoReadChannel(
               error: searchRes.error.message,
             });
 
-            return new Err(new Error("Failed to join Slack channel in Dust."));
+            throw new Error("Failed to join Slack channel in Dust.");
           }
 
           const [dataSourceView] = searchRes.value;
-          if (!dataSourceView) {
+
+          if (
+            !dataSourceView ||
+            dataSourceView.spaceId !== p.spaceId ||
+            dataSourceView.dataSource.sId !== connector.dataSourceId
+          ) {
             logger.error({
               connectorId,
               channelId: slackChannelId,
@@ -193,9 +198,7 @@ export async function autoReadChannel(
                 "Failed to join Slack channel, there was an issue retrieving dataSourceViews",
             });
 
-            return new Err(
-              new Error("There was an issue retrieving dataSourceViews")
-            );
+            throw new Error("There was an issue retrieving dataSourceViews");
           }
 
           const updateDataSourceViewRes = await dustAPI.patchDataSourceView(
@@ -216,10 +219,8 @@ export async function autoReadChannel(
               channelId: slackChannelId,
               error: updateDataSourceViewRes.error.message,
             });
-            return new Err(
-              new Error(
-                `Failed to update Slack data source view for space ${p.spaceId}.`
-              )
+            throw new Error(
+              `Failed to update Slack data source view for space ${p.spaceId}.`
             );
           }
 
