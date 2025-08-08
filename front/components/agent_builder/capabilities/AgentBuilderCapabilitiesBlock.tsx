@@ -269,7 +269,7 @@ export function AgentBuilderCapabilitiesBlock({
             action={
               <div className="flex items-center gap-2">{dropdownButtons}</div>
             }
-            className="pb-4"
+            className="pb-5"
             style={BACKGROUND_IMAGE_STYLE_PROPS}
           />
         ) : (
