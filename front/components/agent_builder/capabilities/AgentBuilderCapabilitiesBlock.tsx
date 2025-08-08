@@ -86,7 +86,6 @@ interface ActionCardProps {
   onEdit?: () => void;
 }
 
-// TODO: Merge this with ActionCard.
 function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
@@ -130,7 +129,13 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   );
 }
 
-export function AgentBuilderCapabilitiesBlock() {
+interface AgentBuilderCapabilitiesBlockProps {
+  isActionsLoading: boolean;
+}
+
+export function AgentBuilderCapabilitiesBlock({
+  isActionsLoading,
+}: AgentBuilderCapabilitiesBlockProps) {
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { fields, remove, append, update } = useFieldArray<
     AgentBuilderFormData,
@@ -247,7 +252,7 @@ export function AgentBuilderCapabilitiesBlock() {
         </div>
       </div>
       <div className="flex-1">
-        {isMCPServerViewsLoading ? (
+        {isMCPServerViewsLoading || isActionsLoading ? (
           <div className="flex h-40 w-full items-center justify-center">
             <Spinner />
           </div>
