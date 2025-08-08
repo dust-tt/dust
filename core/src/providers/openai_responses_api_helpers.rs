@@ -102,6 +102,8 @@ pub struct OpenAIResponsesRequest {
     pub include: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub previous_response_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_tier: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -444,6 +446,13 @@ pub async fn openai_responses_api_completion(
         (None, None)
     };
 
+    // TODO(gpt-5): remove this once we have a proper service tier system
+    let service_tier = if model_id.starts_with("gpt-5") {
+        Some("priority".to_string())
+    } else {
+        None
+    };
+
     let request = OpenAIResponsesRequest {
         model: model_id.clone(),
         input: Some(input),
@@ -456,6 +465,7 @@ pub async fn openai_responses_api_completion(
         store: Some(store),
         include,
         previous_response_id: None,
+        service_tier,
     };
 
     let (response, request_id) = if event_sender.is_some() {
