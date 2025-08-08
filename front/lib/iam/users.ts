@@ -23,6 +23,14 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
 
+/**
+ * Soft HTML escaping that prevents HTML tag injection while preserving apostrophes and other common characters
+ * Only escapes < and > which are the minimal characters needed to prevent HTML tag injection
+ */
+function softHtmlEscape(str: string): string {
+  return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 export async function fetchUserFromSession(session: SessionWithUser) {
   const { workOSUserId } = session.user;
 
@@ -70,14 +78,14 @@ export async function createOrUpdateUser({
     updateArgs.username = externalUser.nickname;
 
     if (externalUser.given_name && externalUser.family_name) {
-      updateArgs.firstName = externalUser.given_name;
-      updateArgs.lastName = externalUser.family_name;
+      updateArgs.firstName = softHtmlEscape(externalUser.given_name);
+      updateArgs.lastName = softHtmlEscape(externalUser.family_name);
     } else {
       const { firstName, lastName } = guessFirstAndLastNameFromFullName(
         externalUser.name
       );
-      updateArgs.firstName = firstName;
-      updateArgs.lastName = lastName || "";
+      updateArgs.firstName = softHtmlEscape(firstName);
+      updateArgs.lastName = softHtmlEscape(lastName || "");
     }
 
     if (
@@ -125,8 +133,11 @@ export async function createOrUpdateUser({
       externalUser.name
     );
 
-    firstName = externalUser.given_name || firstName;
+    firstName = softHtmlEscape(externalUser.given_name || firstName);
     lastName = externalUser.family_name || lastName;
+    if (lastName) {
+      lastName = softHtmlEscape(lastName);
+    }
 
     // If worksOSUserId is already taken, we don't want to take it - only one user can have the same workOSUserId.
     const existingWorkOSUser = externalUser.workOSUserId
