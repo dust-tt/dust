@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -15,14 +15,15 @@ import {
   getDefaultAgentFormData,
   transformAgentConfigurationToFormData,
 } from "@app/components/agent_builder/transformAgentConfiguration";
+import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
 import { useEditors } from "@app/lib/swr/editors";
+import { emptyArray } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types";
-import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
@@ -54,11 +55,6 @@ export default function AgentBuilder({
     return getDefaultAgentFormData(user);
   }, [agentConfiguration, user]);
 
-  const form = useForm<AgentBuilderFormData>({
-    resolver: zodResolver(agentBuilderFormSchema),
-    defaultValues,
-  });
-
   const slackProvider = useMemo(() => {
     const slackBotProvider = supportedDataSourceViews.find(
       (dsv) => dsv.dataSource.connectorProvider === "slack_bot"
@@ -73,40 +69,20 @@ export default function AgentBuilder({
     return slackProvider ? "slack" : null;
   }, [supportedDataSourceViews]);
 
-  // Handle async data loading (actions, editors) without causing form re-initialization
-  useEffect(() => {
-    const currentValues = form.getValues();
-
-    if (
-      actions?.length &&
-      shouldUpdateActions(currentValues.actions, actions)
-    ) {
-      form.setValue("actions", actions, {
-        shouldValidate: false,
-        shouldDirty: false,
-      });
-    }
-
-    if (
-      editors.length &&
-      shouldUpdateEditors(currentValues.agentSettings.editors, editors)
-    ) {
-      form.setValue("agentSettings.editors", editors, {
-        shouldValidate: false,
-        shouldDirty: false,
-      });
-    }
-
-    if (
-      slackProvider &&
-      currentValues.agentSettings.slackProvider !== slackProvider
-    ) {
-      form.setValue("agentSettings.slackProvider", slackProvider, {
-        shouldValidate: false,
-        shouldDirty: false,
-      });
-    }
-  }, [actions, editors, slackProvider, form]);
+  const form = useForm<AgentBuilderFormData>({
+    resolver: zodResolver(agentBuilderFormSchema),
+    defaultValues,
+    values: {
+      ...defaultValues,
+      actions: actions ?? emptyArray(),
+      agentSettings: {
+        ...defaultValues.agentSettings,
+        slackProvider,
+        editors,
+      },
+    },
+    resetOptions: { keepDefaultValues: true },
+  });
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
     try {
@@ -156,8 +132,7 @@ export default function AgentBuilder({
 
   const { isDirty, isSubmitting } = form.formState;
 
-  const isSaveDisabled =
-    !isDirty || isSubmitting || isActionsLoading;
+  const isSaveDisabled = !isDirty || isSubmitting || isActionsLoading;
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 
@@ -191,29 +166,5 @@ export default function AgentBuilder({
         }
       />
     </FormProvider>
-  );
-}
-
-function shouldUpdateActions(
-  currentActions: AgentBuilderFormData["actions"],
-  newActions: AgentBuilderFormData["actions"]
-): boolean {
-  return (
-    currentActions.length !== newActions.length ||
-    !currentActions.every(
-      (action, index) => action.id === newActions[index]?.id
-    )
-  );
-}
-
-function shouldUpdateEditors(
-  currentEditors: AgentBuilderFormData["agentSettings"]["editors"],
-  newEditors: AgentBuilderFormData["agentSettings"]["editors"]
-): boolean {
-  return (
-    currentEditors.length !== newEditors.length ||
-    !currentEditors.every(
-      (editor, index) => editor.sId === newEditors[index]?.sId
-    )
   );
 }
