@@ -32,6 +32,7 @@ import type {
   ActionGeneratedFileType,
   AgentLoopRunContextType,
 } from "@app/lib/actions/types";
+import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
@@ -328,7 +329,11 @@ export async function processToolResults({
               auth,
               block.resource.fileId
             );
-
+            // We need to create the conversation data source in case the file comes from a subagent
+            // who uploaded it to its own conversation but not the main agent's.
+            if (file) {
+              await getOrCreateConversationDataSourceFromFile(auth, file);
+            }
             return {
               content: {
                 type: block.type,
