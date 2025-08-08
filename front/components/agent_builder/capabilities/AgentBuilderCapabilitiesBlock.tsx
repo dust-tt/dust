@@ -8,6 +8,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { Spinner } from "@dust-tt/sparkle";
+import { isEmpty } from "lodash";
 import React, { useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -85,7 +86,6 @@ interface ActionCardProps {
   onEdit?: () => void;
 }
 
-// TODO: Merge this with ActionCard.
 function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
@@ -129,7 +129,13 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   );
 }
 
-export function AgentBuilderCapabilitiesBlock() {
+interface AgentBuilderCapabilitiesBlockProps {
+  isActionsLoading: boolean;
+}
+
+export function AgentBuilderCapabilitiesBlock({
+  isActionsLoading,
+}: AgentBuilderCapabilitiesBlockProps) {
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { fields, remove, append, update } = useFieldArray<
     AgentBuilderFormData,
@@ -169,8 +175,8 @@ export function AgentBuilderCapabilitiesBlock() {
     const isDataSourceSelectionRequired =
       action.type === "MCP" &&
       Boolean(
-        action.configuration.dataSourceConfigurations ||
-          action.configuration.tablesConfigurations
+        !isEmpty(action.configuration.dataSourceConfigurations) ||
+          !isEmpty(action.configuration.tablesConfigurations)
       );
 
     if (isDataSourceSelectionRequired) {
@@ -246,7 +252,7 @@ export function AgentBuilderCapabilitiesBlock() {
         </div>
       </div>
       <div className="flex-1">
-        {isMCPServerViewsLoading ? (
+        {isMCPServerViewsLoading || isActionsLoading ? (
           <div className="flex h-40 w-full items-center justify-center">
             <Spinner />
           </div>

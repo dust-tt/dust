@@ -155,6 +155,7 @@ export default function AgentBuilder({
               disabled: isSaveDisabled,
             }}
             agentConfigurationId={agentConfiguration?.sId || null}
+            isActionsLoading={isActionsLoading}
           />
         }
         rightPanel={

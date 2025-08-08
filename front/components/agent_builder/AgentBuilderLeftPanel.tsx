@@ -18,6 +18,7 @@ interface AgentBuilderLeftPanelProps {
   onCancel: () => void;
   agentConfigurationId: string | null;
   saveButtonProps?: ButtonProps;
+  isActionsLoading: boolean;
 }
 
 export function AgentBuilderLeftPanel({
@@ -25,6 +26,7 @@ export function AgentBuilderLeftPanel({
   onCancel,
   agentConfigurationId,
   saveButtonProps,
+  isActionsLoading,
 }: AgentBuilderLeftPanelProps) {
   const confirm = React.useContext(ConfirmContext);
 
@@ -62,7 +64,7 @@ export function AgentBuilderLeftPanel({
             agentConfigurationId={agentConfigurationId}
           />
           <Separator />
-          <AgentBuilderCapabilitiesBlock />
+          <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
           <Separator />
           <AgentBuilderSettingsBlock
             isSettingBlocksOpen={!agentConfigurationId}
