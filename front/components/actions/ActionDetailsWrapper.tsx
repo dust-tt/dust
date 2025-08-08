@@ -5,7 +5,7 @@ interface ActionDetailsWrapperProps {
   actionName: string;
   children: React.ReactNode;
   defaultOpen: boolean;
-  collapsible: boolean;
+  collapsible?: boolean;
   visual: ComponentType<{ className?: string }>;
 }
 
@@ -13,7 +13,7 @@ export function ActionDetailsWrapper({
   actionName,
   children,
   defaultOpen,
-  collapsible,
+  collapsible = true,
   visual,
 }: ActionDetailsWrapperProps) {
   if (!collapsible) {

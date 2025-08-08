@@ -179,7 +179,7 @@ interface SearchResultProps {
   actionName: string;
   defaultQuery?: string;
   defaultOpen: boolean;
-  collapsible: boolean;
+  collapsible?: boolean;
   visual: React.ComponentType<{ className?: string }>;
   actionOutput: CallToolResult["content"] | null;
   hideOutput?: boolean;

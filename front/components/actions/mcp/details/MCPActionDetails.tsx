@@ -59,7 +59,7 @@ export interface MCPActionDetailsProps {
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
   defaultOpen: boolean;
-  collapsible: boolean;
+  collapsible?: boolean;
   messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
   hideOutput?: boolean;
 }
