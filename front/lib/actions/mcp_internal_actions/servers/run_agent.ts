@@ -15,6 +15,7 @@ import type {
   AgentLoopContextType,
 } from "@app/lib/actions/types";
 import {
+  isLightServerSideMCPToolConfiguration,
   isMCPActionArray,
   isServerSideMCPServerConfiguration,
   isServerSideMCPToolConfiguration,
@@ -127,7 +128,7 @@ export default async function createServer(
   if (
     agentLoopContext &&
     agentLoopContext.runContext &&
-    isServerSideMCPToolConfiguration(
+    isLightServerSideMCPToolConfiguration(
       agentLoopContext.runContext.toolConfiguration
     ) &&
     agentLoopContext.runContext.toolConfiguration.childAgentId

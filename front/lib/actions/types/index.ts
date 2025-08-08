@@ -1,7 +1,7 @@
 import type {
   ClientSideMCPServerConfigurationType,
+  LightMCPToolConfigurationType,
   MCPServerConfigurationType,
-  MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import type {
   AgentConfigurationType,
@@ -30,7 +30,7 @@ export type AgentLoopRunContextType = {
   clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
   conversation: ConversationType;
   stepContext: StepContext;
-  toolConfiguration: MCPToolConfigurationType;
+  toolConfiguration: LightMCPToolConfigurationType;
 };
 
 export type AgentLoopListToolsContextType = {

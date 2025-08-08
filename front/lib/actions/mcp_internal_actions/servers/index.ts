@@ -37,8 +37,8 @@ import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/se
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
+  isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
-  isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
@@ -50,7 +50,7 @@ import { assertNever } from "@app/types";
 function isAdvancedSearchMode(agentLoopContext?: AgentLoopContextType) {
   return (
     (agentLoopContext?.runContext &&
-      isServerSideMCPToolConfiguration(
+      isLightServerSideMCPToolConfiguration(
         agentLoopContext.runContext.toolConfiguration
       ) &&
       agentLoopContext.runContext.toolConfiguration.additionalConfiguration[

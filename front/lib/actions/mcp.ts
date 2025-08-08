@@ -1,6 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { omit } from "lodash";
 
 import type {
   MCPToolStakeLevelType,
@@ -132,6 +133,26 @@ export type ClientSideMCPToolConfigurationType =
 export type MCPToolConfigurationType =
   | ServerSideMCPToolConfigurationType
   | ClientSideMCPToolConfigurationType;
+
+const MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT = [
+  "description",
+  "inputSchema",
+] as const;
+
+type LightMCPToolType<T> = Omit<
+  T,
+  (typeof MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT)[number]
+>;
+
+export type LightServerSideMCPToolConfigurationType =
+  LightMCPToolType<ServerSideMCPToolConfigurationType>;
+
+export type LightClientSideMCPToolConfigurationType =
+  LightMCPToolType<ClientSideMCPToolConfigurationType>;
+
+export type LightMCPToolConfigurationType =
+  | LightServerSideMCPToolConfigurationType
+  | LightClientSideMCPToolConfigurationType;
 
 export type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
@@ -594,18 +615,23 @@ export async function createMCPAction(
   auth: Authenticator,
   {
     actionBaseParams,
+    actionConfiguration,
     augmentedInputs,
     stepContentId,
     stepContext,
-    toolConfiguration,
   }: {
     actionBaseParams: ActionBaseParams;
+    actionConfiguration: MCPToolConfigurationType;
     augmentedInputs: Record<string, unknown>;
     stepContentId: ModelId;
     stepContext: StepContext;
-    toolConfiguration: MCPToolConfigurationType;
   }
 ): Promise<{ action: AgentMCPAction; mcpAction: MCPActionType }> {
+  const toolConfiguration = omit(
+    actionConfiguration,
+    MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT
+  ) as LightMCPToolConfigurationType;
+
   const action = await AgentMCPAction.create({
     agentMessageId: actionBaseParams.agentMessageId,
     augmentedInputs,

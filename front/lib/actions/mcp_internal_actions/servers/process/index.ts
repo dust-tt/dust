@@ -32,8 +32,8 @@ import type {
   AgentLoopContextType,
 } from "@app/lib/actions/types";
 import {
+  isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
-  isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
@@ -241,7 +241,7 @@ function createServer(
       agentLoopContext.listToolsContext.agentActionConfiguration.jsonSchema !==
         null) ||
     (agentLoopContext?.runContext &&
-      isServerSideMCPToolConfiguration(
+      isLightServerSideMCPToolConfiguration(
         agentLoopContext.runContext.toolConfiguration
       ) &&
       agentLoopContext.runContext.toolConfiguration.jsonSchema !== null);
@@ -254,7 +254,7 @@ function createServer(
       agentLoopContext.listToolsContext.agentActionConfiguration.timeFrame !==
         null) ||
     (agentLoopContext?.runContext &&
-      isServerSideMCPToolConfiguration(
+      isLightServerSideMCPToolConfiguration(
         agentLoopContext.runContext.toolConfiguration
       ) &&
       agentLoopContext.runContext.toolConfiguration.timeFrame !== null);

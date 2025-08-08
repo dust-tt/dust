@@ -148,10 +148,10 @@ async function createActionForTool(
   // the error will be stored on the parent agent message.
   const { action: agentMCPAction, mcpAction } = await createMCPAction(auth, {
     actionBaseParams,
+    actionConfiguration,
     augmentedInputs,
     stepContentId,
     stepContext,
-    toolConfiguration: actionConfiguration,
   });
 
   // Publish the tool params event.
