@@ -15,6 +15,7 @@ import { HubspotOAuthProvider } from "@app/lib/api/oauth/providers/hubspot";
 import { IntercomOAuthProvider } from "@app/lib/api/oauth/providers/intercom";
 import { JiraOAuthProvider } from "@app/lib/api/oauth/providers/jira";
 import { MCPOAuthProvider } from "@app/lib/api/oauth/providers/mcp";
+import { MCPOAuthStaticOAuthProvider } from "@app/lib/api/oauth/providers/mcp_static";
 import { MicrosoftOAuthProvider } from "@app/lib/api/oauth/providers/microsoft";
 import { MicrosoftToolsOAuthProvider } from "@app/lib/api/oauth/providers/microsoft_tools";
 import { MondayOAuthProvider } from "@app/lib/api/oauth/providers/monday";
@@ -56,6 +57,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   intercom: new IntercomOAuthProvider(),
   jira: new JiraOAuthProvider(),
   mcp: new MCPOAuthProvider(),
+  mcp_static: new MCPOAuthStaticOAuthProvider(),
   microsoft: new MicrosoftOAuthProvider(),
   microsoft_tools: new MicrosoftToolsOAuthProvider(),
   monday: new MondayOAuthProvider(),

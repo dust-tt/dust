@@ -149,6 +149,7 @@ pub mod oauth {
         pub mod intercom;
         pub mod jira;
         pub mod mcp;
+        pub mod mcp_static;
         pub mod microsoft;
         pub mod microsoft_tools;
         pub mod mock;
