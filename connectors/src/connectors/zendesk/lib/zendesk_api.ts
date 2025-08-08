@@ -32,9 +32,14 @@ function extractMetadataFromZendeskUrl(url: string): {
   endpoint: string;
 } {
   const regex = /^https?:\/\/(.*)\.zendesk\.com([^?]*).*/;
+  const rawEndpoint = url.replace(regex, "$2");
+
+  // Replace numeric IDs with placeholders to normalize endpoints.
+  const normalizedEndpoint = rawEndpoint.replace(/\/\d+/g, "/{id}");
+
   return {
     subdomain: url.replace(regex, "$1"),
-    endpoint: url.replace(regex, "$2"),
+    endpoint: normalizedEndpoint,
   };
 }
 
