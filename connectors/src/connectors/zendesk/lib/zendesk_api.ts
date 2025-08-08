@@ -27,16 +27,18 @@ const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
 const ZENDESK_TICKET_PAGE_SIZE = 300;
 const ZENDESK_COMMENT_PAGE_SIZE = 100;
 
+const ZENDESK_URL_REGEX = /^https?:\/\/(.*)\.zendesk\.com([^?]*).*/;
+const ZENDESK_ENDPOINT_REGEX = /\/([a-zA-Z_]+)\/(\d+)/g;
+
 function extractMetadataFromZendeskUrl(url: string): {
   subdomain: string;
   endpoint: string;
 } {
-  const regex = /^https?:\/\/(.*)\.zendesk\.com([^?]*).*/;
-  const rawEndpoint = url.replace(regex, "$2");
+  const rawEndpoint = url.replace(ZENDESK_URL_REGEX, "$2");
 
   // Replace numeric IDs with placeholders using the first letter of the previous word.
   const normalizedEndpoint = rawEndpoint.replace(
-    /\/([a-zA-Z_]+)\/(\d+)/g,
+    ZENDESK_ENDPOINT_REGEX,
     (_, word) => {
       const firstLetter = word.charAt(0).toLowerCase();
       return `/${word}/{${firstLetter}Id}`;
@@ -44,7 +46,7 @@ function extractMetadataFromZendeskUrl(url: string): {
   );
 
   return {
-    subdomain: url.replace(regex, "$1"),
+    subdomain: url.replace(ZENDESK_URL_REGEX, "$1"),
     endpoint: normalizedEndpoint,
   };
 }
