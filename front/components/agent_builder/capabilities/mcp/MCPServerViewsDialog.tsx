@@ -440,7 +440,6 @@ export function MCPServerViewsDialog({
     },
     {
       id: CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION,
-      title: mcpServerView?.name || "Configure Tool",
       description: "",
       icon: undefined,
       content:
