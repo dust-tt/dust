@@ -404,7 +404,9 @@ pub async fn openai_responses_api_completion(
             match v.get("reasoning_effort") {
                 Some(Value::String(r)) => Some(r.to_string()),
                 _ => {
-                    if is_reasoning_model {
+                    if model_id.starts_with("gpt-5") {
+                        Some("minimal".to_string())
+                    } else if is_reasoning_model {
                         Some("medium".to_string())
                     } else {
                         None

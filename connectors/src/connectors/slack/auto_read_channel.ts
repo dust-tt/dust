@@ -26,7 +26,7 @@ export function findMatchingChannelPatterns(
   autoReadChannelPatterns: SlackAutoReadPattern[]
 ): SlackAutoReadPattern[] {
   return autoReadChannelPatterns.filter((pattern) => {
-    const regex = new RegExp(pattern.pattern);
+    const regex = new RegExp(`^${pattern.pattern}$`);
     return regex.test(remoteChannelName);
   });
 }
@@ -37,19 +37,32 @@ export async function autoReadChannel(
   slackChannelId: string,
   provider: Extract<ConnectorProvider, "slack_bot" | "slack"> = "slack"
 ): Promise<Result<boolean, Error>> {
-  const slackConfiguration =
-    await SlackConfigurationResource.fetchByTeamId(teamId);
+  const slackConfigurations =
+    await SlackConfigurationResource.listForTeamId(teamId);
+  const connectorIds = slackConfigurations.map((c) => c.connectorId);
+  const connectors = await ConnectorResource.fetchByIds(provider, connectorIds);
+  const connector = connectors.find((c) => c.type === provider);
+
+  if (!connector) {
+    return new Err(
+      new Error(
+        `Connector not found for teamId ${teamId} and provider ${provider}`
+      )
+    );
+  }
+
+  const slackConfiguration = slackConfigurations.find(
+    (c) => c.connectorId === connector.id
+  );
+
   if (!slackConfiguration) {
     return new Err(
       new Error(`Slack configuration not found for teamId ${teamId}`)
     );
   }
+
   const { connectorId } = slackConfiguration;
 
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    return new Err(new Error(`Connector ${connectorId} not found`));
-  }
   const slackClient = await getSlackClient(connectorId);
 
   reportSlackUsage({

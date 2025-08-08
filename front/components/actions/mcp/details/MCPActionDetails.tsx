@@ -24,14 +24,14 @@ import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
-  CAT_TOOL_NAME,
   EXECUTE_DATABASE_QUERY_TOOL_NAME,
-  FIND_TOOL_NAME,
+  FILESYSTEM_CAT_TOOL_NAME,
+  FILESYSTEM_FIND_TOOL_NAME,
+  FILESYSTEM_LIST_TOOL_NAME,
+  FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
   GET_DATABASE_SCHEMA_TOOL_NAME,
   INCLUDE_TOOL_NAME,
   isInternalMCPServerOfName,
-  LIST_TOOL_NAME,
-  LOCATE_IN_TREE_TOOL_NAME,
   PROCESS_TOOL_NAME,
   QUERY_TABLES_TOOL_NAME,
   SEARCH_TOOL_NAME,
@@ -81,7 +81,10 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
       );
     }
 
-    if (toolName === LIST_TOOL_NAME || toolName === FIND_TOOL_NAME) {
+    if (
+      toolName === FILESYSTEM_LIST_TOOL_NAME ||
+      toolName === FILESYSTEM_FIND_TOOL_NAME
+    ) {
       return (
         <SearchResultDetails
           actionName="Browse data sources"
@@ -93,11 +96,11 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
       );
     }
 
-    if (toolName === CAT_TOOL_NAME) {
+    if (toolName === FILESYSTEM_CAT_TOOL_NAME) {
       return <DataSourceNodeContentDetails {...props} />;
     }
 
-    if (toolName === LOCATE_IN_TREE_TOOL_NAME) {
+    if (toolName === FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME) {
       return <FilesystemPathDetails {...props} />;
     }
   }

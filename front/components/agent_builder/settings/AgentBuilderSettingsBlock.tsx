@@ -408,7 +408,7 @@ export function AgentBuilderSettingsBlock({
           <Page.H>Settings</Page.H>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="flex flex-col gap-4 pt-4">
+          <div className="flex flex-col gap-4 px-1 pt-4">
             <Page.P>
               <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Configure tags and access settings for your agent.

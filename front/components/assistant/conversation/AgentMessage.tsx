@@ -4,13 +4,11 @@ import {
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
-  ContentMessage,
   ConversationMessage,
   DocumentIcon,
   InteractiveImageGrid,
   Markdown,
   Separator,
-  Tooltip,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { marked } from "marked";
@@ -616,7 +614,6 @@ export function AgentMessage({
       <div className="flex flex-col gap-y-4">
         <div className="flex flex-col gap-2">
           <AgentMessageActions
-            conversationId={conversationId}
             agentMessage={agentMessage}
             lastAgentStateClassification={messageStreamState.agentState}
             actionProgress={messageStreamState.actionProgress}

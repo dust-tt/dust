@@ -11,6 +11,7 @@ import {
   isMCPConfigurationForInternalNotion,
   isMCPConfigurationForInternalSlack,
   isMCPConfigurationForInternalWebsearch,
+  isMCPConfigurationForRunAgent,
   isMCPConfigurationWithDataSource,
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
@@ -92,7 +93,9 @@ export async function constructPromptMultiActions(
   let toolUseDirectives = "\n## TOOL USE DIRECTIVES\n";
   if (
     hasAvailableActions &&
-    agentConfiguration.model.reasoningEffort === "light"
+    agentConfiguration.model.reasoningEffort === "light" &&
+    // TODO(gpt5): improve config to clean this up.
+    agentConfiguration.model.providerId !== "openai"
   ) {
     toolUseDirectives += `${CHAIN_OF_THOUGHT_META_PROMPT}\n`;
   } else if (
@@ -156,12 +159,17 @@ export async function constructPromptMultiActions(
     (action) =>
       isMCPConfigurationWithDataSource(action) ||
       isMCPConfigurationForInternalWebsearch(action) ||
+      isMCPConfigurationForRunAgent(action) ||
       isMCPConfigurationForInternalSlack(action) ||
       isMCPConfigurationForInternalNotion(action)
   );
 
+  const isUsingRunAgent = agentConfiguration.actions.some((action) =>
+    isMCPConfigurationForRunAgent(action)
+  );
+
   if (canRetrieveDocuments) {
-    guidelinesSection += `\n${citationMetaPrompt()}\n`;
+    guidelinesSection += `\n${citationMetaPrompt(isUsingRunAgent)}\n`;
   }
 
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());

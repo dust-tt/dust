@@ -182,7 +182,7 @@ export function TagsSection() {
                 tooltip={buttonTooltip}
               />
             </PopoverTrigger>
-            <PopoverContent className="w-64 p-3">
+            <PopoverContent className="w-64 p-3" side="top" align="start">
               {isTagsSuggestionLoading ? (
                 <div className="flex items-center justify-center p-4">
                   <Spinner size="sm" />

@@ -159,6 +159,7 @@ export const GPT_4_1_MODEL_ID = "gpt-4.1-2025-04-14" as const;
 export const GPT_4_1_MINI_MODEL_ID = "gpt-4.1-mini-2025-04-14" as const;
 export const GPT_4O_20240806_MODEL_ID = "gpt-4o-2024-08-06" as const;
 export const GPT_4O_MINI_MODEL_ID = "gpt-4o-mini" as const;
+export const GPT_5_MODEL_ID = "gpt-5" as const;
 export const O1_MODEL_ID = "o1" as const;
 export const O1_MINI_MODEL_ID = "o1-mini" as const;
 export const O3_MINI_MODEL_ID = "o3-mini" as const;
@@ -236,6 +237,7 @@ export const MODEL_IDS = [
   GPT_4_1_MINI_MODEL_ID,
   GPT_4O_20240806_MODEL_ID,
   GPT_4O_MINI_MODEL_ID,
+  GPT_5_MODEL_ID,
   O1_MODEL_ID,
   O1_MINI_MODEL_ID,
   O3_MODEL_ID,
@@ -463,6 +465,25 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
+};
+export const GPT_5_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_5_MODEL_ID,
+  displayName: "GPT 5",
+  contextSize: 400_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64, // 32_768
+  largeModel: true,
+  description: "OpenAI's GPT 5 model (400k context).",
+  shortDescription: "OpenAI's latest model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 128_000,
+  supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "high",
+  defaultReasoningEffort: "medium",
+  supportsResponseFormat: true,
 };
 export const O1_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -1349,6 +1370,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_4O_MINI_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
+  GPT_5_MODEL_CONFIG,
   O1_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   O3_MODEL_CONFIG,
@@ -1432,6 +1454,7 @@ export type ReasoningModelConfigurationType = {
 export enum GLOBAL_AGENTS_SID {
   HELPER = "helper",
   DUST = "dust",
+  RESEARCH = "research",
   SLACK = "slack",
   GOOGLE_DRIVE = "google_drive",
   NOTION = "notion",
@@ -1439,6 +1462,7 @@ export enum GLOBAL_AGENTS_SID {
   INTERCOM = "intercom",
   GPT35_TURBO = "gpt-3.5-turbo",
   GPT4 = "gpt-4",
+  GPT5 = "gpt-5",
   O1 = "o1",
   O1_MINI = "o1-mini",
   O1_HIGH_REASONING = "o1_high",
@@ -1468,6 +1492,7 @@ export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
 export function getGlobalAgentAuthorName(agentId: string): string {
   switch (agentId) {
     case GLOBAL_AGENTS_SID.GPT4:
+    case GLOBAL_AGENTS_SID.GPT5:
     case GLOBAL_AGENTS_SID.O1:
     case GLOBAL_AGENTS_SID.O1_MINI:
     case GLOBAL_AGENTS_SID.O1_HIGH_REASONING:
@@ -1537,6 +1562,14 @@ export function compareAgentsForSort(
     return -1;
   }
   if (b.sId === GLOBAL_AGENTS_SID.DUST) {
+    return 1;
+  }
+
+  // Check for 'gpt5'
+  if (a.sId === GLOBAL_AGENTS_SID.GPT5) {
+    return -1;
+  }
+  if (b.sId === GLOBAL_AGENTS_SID.GPT5) {
     return 1;
   }
 

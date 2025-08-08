@@ -1,5 +1,5 @@
 import { Button, SparklesIcon, TextArea } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -7,50 +7,35 @@ import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_acti
 import type { WorkspaceType } from "@app/types";
 
 interface JsonSchemaSectionProps {
-  initialSchemaString?: string | null;
-  agentInstructions?: string;
+  getAgentInstructions: () => string;
   owner: WorkspaceType;
-  fieldName: string;
 }
 
 export function JsonSchemaSection({
-  initialSchemaString,
-  agentInstructions,
+  getAgentInstructions,
   owner,
-  fieldName,
 }: JsonSchemaSectionProps) {
   const { getValues } = useFormContext();
 
-  const { field } = useController({
-    name: fieldName,
+  const { field: jsonSchemaField, fieldState } = useController({
+    name: "configuration.jsonSchema",
+  });
+
+  const { field: jsonSchemaStringField } = useController({
+    name: "configuration._jsonSchemaString",
   });
 
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
   const sendNotification = useSendNotification();
 
-  const [jsonSchemaString, setJsonSchemaString] = useState(() => {
-    return (
-      initialSchemaString ||
-      (field.value ? JSON.stringify(field.value, null, 2) : "")
-    );
-  });
-
-  // Sync internal state when the external value changes
-  useEffect(() => {
-    if (!initialSchemaString) {
-      const newString = field.value ? JSON.stringify(field.value, null, 2) : "";
-      setJsonSchemaString(newString);
-    }
-  }, [field.value, initialSchemaString]);
-
-  const schemaValidationResult = jsonSchemaString
-    ? validateConfiguredJsonSchema(jsonSchemaString)
-    : null;
-
   const generateSchemaFromInstructions = async () => {
+    const agentInstructions = getAgentInstructions();
     if (!agentInstructions) {
-      setJsonSchemaString("");
-      field.onChange(null);
+      sendNotification({
+        title: "Instructions required",
+        type: "error",
+        description: "Please add agent instructions first.",
+      });
       return;
     }
 
@@ -86,8 +71,8 @@ export function JsonSchemaSection({
         ? JSON.stringify(schemaObject, null, 2)
         : null;
 
-      setJsonSchemaString(schemaString || "");
-      field.onChange(schemaObject);
+      jsonSchemaField.onChange(schemaObject);
+      jsonSchemaStringField.onChange(schemaString);
     } catch (e) {
       sendNotification({
         title: "Failed to generate schema.",
@@ -100,21 +85,23 @@ export function JsonSchemaSection({
   };
 
   const handleChange = (newSchemaString: string) => {
-    setJsonSchemaString(newSchemaString);
-
     // If the new schema string is empty, we reset the jsonSchema to
     // null. Storing a null jsonSchema in the database indicates that
     // the model will auto-generate the schema.
     if (newSchemaString === "") {
-      field.onChange(null);
+      jsonSchemaField.onChange(null);
+      jsonSchemaStringField.onChange(null);
       return;
     }
+
+    jsonSchemaStringField.onChange(newSchemaString);
+
     const parsedSchema = validateConfiguredJsonSchema(newSchemaString);
+
+    // We validate the jsonSchemaString when the form is submitted, so it's okay to not update the jsonSchema value
+    // when we cannot parse it.
     if (parsedSchema.isOk()) {
-      field.onChange(newSchemaString ? parsedSchema.value : null);
-    } else {
-      // If parsing fails, don't update the form value
-      // Let user continue typing to fix the JSON
+      jsonSchemaField.onChange(parsedSchema.value);
     }
   };
 
@@ -134,22 +121,18 @@ export function JsonSchemaSection({
         variant="primary"
         icon={SparklesIcon}
         size="sm"
-        disabled={isGeneratingSchema || !agentInstructions}
+        disabled={isGeneratingSchema}
         onClick={generateSchemaFromInstructions}
         className="mb-4"
       />
       <div className="space-y-2">
         <TextArea
-          error={
-            schemaValidationResult?.isErr()
-              ? schemaValidationResult.error.message
-              : undefined
-          }
+          error={fieldState.error?.message}
           showErrorLabel={true}
           placeholder={
             '{\n  "type": "object",\n  "properties": {\n    "name": { "type": "string" },\n    ...\n  }\n}'
           }
-          value={jsonSchemaString}
+          value={jsonSchemaStringField.value}
           disabled={isGeneratingSchema}
           onChange={(e) => handleChange(e.target.value)}
         />

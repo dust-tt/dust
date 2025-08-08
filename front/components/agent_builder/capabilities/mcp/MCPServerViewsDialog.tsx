@@ -92,6 +92,7 @@ interface MCPServerViewsDialogProps {
   mode: DialogMode | null;
   onModeChange: (mode: DialogMode | null) => void;
   onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
+  getAgentInstructions: () => string;
 }
 
 export function MCPServerViewsDialog({
@@ -100,6 +101,7 @@ export function MCPServerViewsDialog({
   mode,
   onModeChange,
   onActionUpdate,
+  getAgentInstructions,
 }: MCPServerViewsDialogProps) {
   const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
@@ -420,7 +422,7 @@ export function MCPServerViewsDialog({
                 {requirements.mayRequireJsonSchemaConfiguration && (
                   <JsonSchemaSection
                     owner={owner}
-                    fieldName="configuration.jsonSchema"
+                    getAgentInstructions={getAgentInstructions}
                   />
                 )}
               </div>
@@ -607,11 +609,6 @@ export function MCPServerViewsDialog({
             variant: "outline",
             onClick: handleBackToSelection,
           },
-          centerButton: {
-            label: "Cancel",
-            variant: "outline",
-            onClick: handleCancel,
-          },
           rightButton: {
             label: "Save Configuration",
             variant: "primary",
@@ -634,7 +631,7 @@ export function MCPServerViewsDialog({
     return {};
   };
 
-  const { leftButton, centerButton, rightButton } = getFooterButtons();
+  const { leftButton, rightButton } = getFooterButtons();
 
   return (
     <MultiPageDialog
@@ -653,11 +650,8 @@ export function MCPServerViewsDialog({
         <Button label="Add tools" icon={LightbulbIcon} />
       </MultiPageDialogTrigger>
       <MultiPageDialogContent
-        showNavigation={
-          !isEditMode &&
-          !isInfoMode &&
-          currentPageId === CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION
-        }
+        showNavigation={false}
+        isAlertDialog
         size="xl"
         pages={pages}
         currentPageId={currentPageId}
@@ -669,7 +663,6 @@ export function MCPServerViewsDialog({
           }
         }}
         leftButton={leftButton}
-        centerButton={centerButton}
         rightButton={rightButton}
       />
     </MultiPageDialog>

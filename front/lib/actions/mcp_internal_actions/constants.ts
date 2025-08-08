@@ -21,10 +21,10 @@ export const PROCESS_TOOL_NAME = "extract_information_from_documents";
 export const RUN_AGENT_TOOL_NAME = "run_agent";
 export const CREATE_AGENT_TOOL_NAME = "create_agent";
 export const FIND_TAGS_TOOL_NAME = "find_tags";
-export const CAT_TOOL_NAME = "cat";
-export const FIND_TOOL_NAME = "find";
-export const LIST_TOOL_NAME = "list";
-export const LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
+export const FILESYSTEM_CAT_TOOL_NAME = "cat";
+export const FILESYSTEM_FIND_TOOL_NAME = "find";
+export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
+export const FILESYSTEM_LIST_TOOL_NAME = "list";
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
@@ -578,11 +578,11 @@ export const INTERNAL_MCP_SERVERS = {
   },
   data_sources_file_system: {
     id: 1010,
-    availability: "auto",
-    allowMultipleInstances: false,
     // This server is hidden for everyone, it is only available through the search tool
     // when the advanced_search mode is enabled.
-    isRestricted: () => true,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
@@ -657,7 +657,13 @@ export const getAvailabilityOfInternalMCPServerById = (
   return getAvailabilityOfInternalMCPServerByName(r.value.name);
 };
 
-export const getAllowMultipleInstancesOfInternalMCPServerById = (
+export const allowsMultipleInstancesOfInternalMCPServerByName = (
+  name: InternalMCPServerNameType
+): boolean => {
+  return !!INTERNAL_MCP_SERVERS[name].allowMultipleInstances;
+};
+
+export const allowsMultipleInstancesOfInternalMCPServerById = (
   sId: string
 ): boolean => {
   const r = getInternalMCPServerNameAndWorkspaceId(sId);

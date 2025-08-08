@@ -334,7 +334,7 @@ const InputBarContainer = ({
           )}
         </div>
         <Button
-          size="sm"
+          size="xs"
           isLoading={disableSendButton}
           icon={ArrowUpIcon}
           variant="highlight"

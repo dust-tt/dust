@@ -44,8 +44,6 @@ import { isSlackAutoReadPatterns, safeParseJSON } from "@connectors/types";
 
 const { SLACK_BOT_CLIENT_ID, SLACK_BOT_CLIENT_SECRET } = process.env;
 
-const NEW_SCOPE_ADDED_AT = new Date("2025-07-30T00:00:00Z").getTime();
-
 export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigurationType> {
   readonly provider: ConnectorProvider = "slack_bot";
 
@@ -446,12 +444,6 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
             return new Err(new Error("Legacy Slack connector not found"));
           }
 
-          // Best effort to check if the legacy connector was updated after the new scope was added.
-          if (legacySlackConnector.updatedAt.getTime() < NEW_SCOPE_ADDED_AT) {
-            return res;
-          }
-
-          // TODO(slack 2025-07-30): Launch the workflow to migrate channels from legacy bot to new bot.
           await launchSlackMigrateChannelsFromLegacyBotToNewBotWorkflow(
             legacySlackConnector.id,
             this.connectorId

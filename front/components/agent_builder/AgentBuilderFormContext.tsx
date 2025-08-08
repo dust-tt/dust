@@ -24,10 +24,6 @@ export const generationSettingsSchema = z.object({
   responseFormat: z.string().optional(),
 });
 
-export type AgentBuilderGenerationSettings = z.infer<
-  typeof generationSettingsSchema
->;
-
 export const mcpServerViewIdSchema = z.string();
 
 export const childAgentIdSchema = z.string().nullable();
@@ -73,11 +69,6 @@ export const dataSourceConfigurationSchema = z
   .record(z.string(), dataSourceViewSelectionConfigurationSchema)
   .nullable();
 
-const searchActionConfigurationSchema = z.object({
-  type: z.literal("SEARCH"),
-  dataSourceConfigurations: dataSourceConfigurationSchema,
-});
-
 export const timeFrameSchema = z
   .object({
     duration: z.number().min(1),
@@ -86,25 +77,6 @@ export const timeFrameSchema = z
   .nullable();
 
 export const mcpTimeFrameSchema = timeFrameSchema;
-
-const includeDataActionConfigurationSchema = z.object({
-  type: z.literal("INCLUDE_DATA"),
-  dataSourceConfigurations: dataSourceConfigurationSchema,
-  timeFrame: timeFrameSchema,
-});
-
-const extractDataActionConfigurationSchema = z.object({
-  type: z.literal("EXTRACT_DATA"),
-  dataSourceConfigurations: dataSourceConfigurationSchema,
-  timeFrame: timeFrameSchema,
-  jsonSchema: z.custom<JSONSchema>().nullable(),
-});
-
-const queryTablesActionConfigurationSchema = z.object({
-  type: z.literal("QUERY_TABLES"),
-  dataSourceConfigurations: dataSourceConfigurationSchema,
-  timeFrame: timeFrameSchema,
-});
 
 const baseActionSchema = z.object({
   id: z.string(),
@@ -121,11 +93,6 @@ const tagSchema = z.object({
   kind: TAG_KINDS,
 });
 
-const searchActionSchema = baseActionSchema.extend({
-  type: z.literal("SEARCH"),
-  configuration: searchActionConfigurationSchema,
-});
-
 const dataVisualizationActionSchema = baseActionSchema.extend({
   type: z.literal("DATA_VISUALIZATION"),
   configuration: z.null(),
@@ -140,7 +107,7 @@ export const reasoningModelSchema = z
   })
   .nullable();
 
-const mcpServerConfigurationSchema = z.object({
+export const mcpServerConfigurationSchema = z.object({
   mcpServerViewId: mcpServerViewIdSchema,
   dataSourceConfigurations: dataSourceConfigurationSchema,
   tablesConfigurations: dataSourceConfigurationSchema,
@@ -162,28 +129,8 @@ const mcpActionSchema = baseActionSchema.extend({
   configuration: mcpServerConfigurationSchema,
 });
 
-const includeDataActionSchema = baseActionSchema.extend({
-  type: z.literal("INCLUDE_DATA"),
-  configuration: includeDataActionConfigurationSchema,
-});
-
-const extractDataActionSchema = baseActionSchema.extend({
-  type: z.literal("EXTRACT_DATA"),
-  configuration: extractDataActionConfigurationSchema,
-});
-
-const queryTablesActionSchema = baseActionSchema.extend({
-  type: z.literal("QUERY_TABLES"),
-  configuration: queryTablesActionConfigurationSchema,
-});
-
-// TODO: the goal is to have only two schema: mcpActionSchema and dataVizSchema.
 const actionSchema = z.discriminatedUnion("type", [
-  searchActionSchema,
   dataVisualizationActionSchema,
-  includeDataActionSchema,
-  extractDataActionSchema,
-  queryTablesActionSchema,
   mcpActionSchema,
 ]);
 
@@ -219,12 +166,11 @@ const agentSettingsSchema = z.object({
   tags: z.array(tagSchema),
 });
 
-// TODO: only have mcpActionSchema.
 export const agentBuilderFormSchema = z.object({
   agentSettings: agentSettingsSchema,
   instructions: z.string().min(1, "Instructions are required"),
   generationSettings: generationSettingsSchema,
-  actions: z.union([z.array(actionSchema), z.array(mcpActionSchema)]),
+  actions: z.array(actionSchema),
   maxStepsPerRun: z
     .number()
     .min(1, "Max steps per run must be at least 1")
@@ -237,18 +183,6 @@ export type AgentBuilderAction = z.infer<typeof actionSchema>;
 export type AgentBuilderDataVizAction = z.infer<
   typeof dataVisualizationActionSchema
 >;
-
-export const mcpFormConfigurationSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  configuration: mcpServerConfigurationSchema,
-});
-
-export type MCPFormConfigurationData = z.infer<
-  typeof mcpFormConfigurationSchema
->;
-
-export type BaseActionData = z.infer<typeof baseActionSchema>;
 
 // TODO: create types from schema
 export interface MCPFormData {

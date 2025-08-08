@@ -14,7 +14,9 @@ import type {
   RemoteMCPServerType,
 } from "@app/lib/api/mcp";
 import {
+  dangerouslyMakeSIdWithCustomFirstPrefix,
   getResourceNameAndIdFromSId,
+  LEGACY_REGION_BIT,
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ModelId } from "@app/types";
@@ -45,16 +47,19 @@ export const getServerTypeAndIdFromSId = (
   }
 };
 
-export const internalMCPServerNameToFirstId = ({
+export const internalMCPServerNameToSId = ({
   name,
   workspaceId,
+  prefix,
 }: {
   name: InternalMCPServerNameType;
   workspaceId: ModelId;
+  prefix: number;
 }): string => {
-  return makeSId("internal_mcp_server", {
+  return dangerouslyMakeSIdWithCustomFirstPrefix("internal_mcp_server", {
     id: INTERNAL_MCP_SERVERS[name].id,
     workspaceId,
+    firstPrefix: prefix,
   });
 };
 
@@ -65,9 +70,10 @@ export const autoInternalMCPServerNameToSId = ({
   name: AutoInternalMCPServerNameType;
   workspaceId: ModelId;
 }): string => {
-  return makeSId("internal_mcp_server", {
+  return dangerouslyMakeSIdWithCustomFirstPrefix("internal_mcp_server", {
     id: INTERNAL_MCP_SERVERS[name].id,
     workspaceId,
+    firstPrefix: LEGACY_REGION_BIT,
   });
 };
 

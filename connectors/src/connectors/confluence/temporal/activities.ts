@@ -299,7 +299,6 @@ export async function confluenceGetActiveChildContentRefsActivity({
   localLogger.info("Fetching Confluence child pages in space.");
 
   return getActiveChildContentRefs(client, {
-    connectorId,
     pageCursor,
     parentContentId,
     spaceKey,
@@ -426,7 +425,6 @@ export async function confluenceGetTopLevelContentIdsActivity({
   const { childContentRefs, nextPageCursor } = await getActiveChildContentRefs(
     client,
     {
-      connectorId,
       pageCursor,
       parentContentId: rootContentId,
       spaceKey,

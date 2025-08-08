@@ -1,10 +1,4 @@
-import assert from "assert";
-
-import type {
-  ActionBaseParams,
-  MCPActionType,
-  MCPToolConfigurationType,
-} from "@app/lib/actions/mcp";
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { createMCPAction } from "@app/lib/actions/mcp";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { StepContext } from "@app/lib/actions/types";
@@ -13,23 +7,20 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import type { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
-import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
 import type {
   AgentActionsEvent,
   AgentConfigurationType,
   AgentMessageType,
   ModelId,
 } from "@app/types";
-import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type { RunAgentArgs } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
 
 interface ActionBlob {
   action: AgentMCPAction;
-  actionBaseParams: ActionBaseParams;
   actionConfiguration: MCPToolConfigurationType;
-  mcpAction: MCPActionType;
   needsApproval: boolean;
 }
 
@@ -115,36 +106,16 @@ async function createActionForTool(
     step: number;
   }
 ): Promise<ActionBlob | void> {
-  // Fetch step content to derive inputs, functionCallId, and step.
-  const stepContent =
-    await AgentStepContentResource.fetchByModelId(stepContentId);
-  assert(
-    stepContent,
-    `Step content not found for stepContentId: ${stepContentId}`
-  );
-
-  if (!isFunctionCallContent(stepContent.value)) {
-    throw new Error(
-      `Expected step content to be a function call, got: ${stepContent.value.type}`
-    );
-  }
-
-  const rawInputs = JSON.parse(stepContent.value.value.arguments);
-  const { id: functionCallId } = stepContent.value.value;
-
-  const actionBaseParams: ActionBaseParams = {
+  const actionBaseParams = await buildActionBaseParams({
     agentMessageId: agentMessage.agentMessageId,
     citationsAllocated: stepContext.citationsCount,
     mcpServerId: actionConfiguration.toolServerId,
-    functionCallId,
-    functionCallName: actionConfiguration.name,
-    generatedFiles: [],
     mcpServerConfigurationId: actionConfiguration.id.toString(),
-    params: rawInputs,
     step,
-  };
+    stepContentId,
+  });
 
-  const validateToolInputsResult = validateToolInputs(rawInputs);
+  const validateToolInputsResult = validateToolInputs(actionBaseParams.params);
   if (validateToolInputsResult.isErr()) {
     return updateResourceAndPublishEvent(
       {
@@ -232,9 +203,7 @@ async function createActionForTool(
 
   return {
     action: agentMCPAction,
-    actionBaseParams,
     actionConfiguration,
-    mcpAction,
     needsApproval: status === "pending",
   };
 }

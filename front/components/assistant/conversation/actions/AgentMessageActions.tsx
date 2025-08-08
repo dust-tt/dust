@@ -3,7 +3,6 @@ import {
   BrainIcon,
   Button,
   Card,
-  Chip,
   cn,
   CommandLineIcon,
   Markdown,
@@ -12,7 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
-import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import type {
   ActionProgressState,
@@ -23,7 +22,6 @@ import { assertNever } from "@app/types";
 
 interface AgentMessageActionsProps {
   agentMessage: LightAgentMessageType;
-  conversationId: string;
   lastAgentStateClassification: AgentStateClassification;
   actionProgress: ActionProgressState;
   owner: LightWorkspaceType;
@@ -31,13 +29,12 @@ interface AgentMessageActionsProps {
 
 export function AgentMessageActions({
   agentMessage,
-  conversationId,
   lastAgentStateClassification,
   actionProgress,
   owner,
 }: AgentMessageActionsProps) {
   const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
-  const [isActionDrawerOpened, setIsActionDrawerOpened] = useState(false);
+  const { openPanel } = useConversationSidePanelContext();
 
   useEffect(() => {
     switch (lastAgentStateClassification) {
@@ -63,29 +60,27 @@ export function AgentMessageActions({
   );
 
   const lastAction = agentMessage.actions[agentMessage.actions.length - 1];
-  console.log(lastAgentStateClassification);
   return (
-    <>
-      <AgentMessageActionsDrawer
-        conversationId={conversationId}
-        message={agentMessage}
-        isOpened={isActionDrawerOpened}
-        onClose={() => setIsActionDrawerOpened(false)}
-        isActing={lastAgentStateClassification === "acting"}
-        actionProgress={actionProgress}
-        owner={owner}
-      />
-      <ActionDetails
-        hasActions={agentMessage.actions.length > 0}
-        lastAction={isMCPActionType(lastAction) ? lastAction : undefined}
-        isActionStepDone={!isThinkingOrActing}
-        isActing={lastAgentStateClassification === "acting"}
-        label={chipLabel}
-        owner={owner}
-        chainOfThought={agentMessage.chainOfThought || "..."}
-        onClick={() => setIsActionDrawerOpened(true)}
-      />
-    </>
+    <ActionDetails
+      hasActions={agentMessage.actions.length > 0}
+      lastAction={isMCPActionType(lastAction) ? lastAction : undefined}
+      isActionStepDone={!isThinkingOrActing}
+      isActing={lastAgentStateClassification === "acting"}
+      label={chipLabel}
+      owner={owner}
+      chainOfThought={agentMessage.chainOfThought || "..."}
+      onClick={() =>
+        openPanel({
+          type: "actions",
+          messageId: agentMessage.sId,
+          metadata: {
+            actionProgress,
+            isActing: lastAgentStateClassification === "acting",
+            messageStatus: agentMessage.status,
+          },
+        })
+      }
+    />
   );
 }
 

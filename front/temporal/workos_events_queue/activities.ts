@@ -601,6 +601,8 @@ async function handleCreateOrUpdateWorkOSUser(
     name: workOSUser.email ?? "",
     nickname: getUserNicknameFromEmail(workOSUser.email) ?? "",
     workOSUserId: workOSUser.id,
+    given_name: workOSUser.firstName ?? undefined,
+    family_name: workOSUser.lastName ?? undefined,
     picture: workOSUser.profilePictureUrl ?? undefined,
   };
 
