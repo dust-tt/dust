@@ -160,7 +160,9 @@ export const InstructionBlockExtension =
                 } else {
                   parts.push(child.textBetween(0, child.content.size, "\n"));
                 }
-                if (i < slice.content.childCount - 1) parts.push("\n");
+                if (i < slice.content.childCount - 1) {
+                  parts.push("\n");
+                }
               }
               return parts.join("");
             },
