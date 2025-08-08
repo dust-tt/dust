@@ -42,7 +42,6 @@ import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/in
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
-  ConnectViaMCPServerId,
   MCPConnectionParams,
   ServerSideMCPConnectionParams,
 } from "@app/lib/actions/mcp_metadata";
@@ -113,9 +112,13 @@ export interface ServerToolsAndInstructions {
   tools: MCPToolConfigurationType[];
 }
 
-function makeToolsWithStakesAndTimeout(
+export function makeToolsWithStakesAndTimeout(
   mcpServerId: string,
-  metadata: RemoteMCPServerToolMetadataResource[]
+  metadata: {
+    toolName: string;
+    permission: "high" | "low" | "never_ask";
+    enabled: boolean;
+  }[]
 ) {
   let toolsStakes: Record<string, MCPToolStakeLevelType> = {};
   let serverTimeoutMs: number | undefined;
