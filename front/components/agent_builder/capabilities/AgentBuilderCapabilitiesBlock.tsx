@@ -265,6 +265,7 @@ export function AgentBuilderCapabilitiesBlock() {
         mode={dialogMode}
         onModeChange={setDialogMode}
         onActionUpdate={handleMcpActionUpdate}
+        actions={fields}
       />
     </>
   );
