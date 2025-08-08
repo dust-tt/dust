@@ -69,17 +69,15 @@ export async function createOrUpdateUser({
     // Update the user object from the updated session information.
     updateArgs.username = externalUser.nickname;
 
-    if (!user.firstName && !user.lastName) {
-      if (externalUser.given_name && externalUser.family_name) {
-        updateArgs.firstName = externalUser.given_name;
-        updateArgs.lastName = externalUser.family_name;
-      } else {
-        const { firstName, lastName } = guessFirstAndLastNameFromFullName(
-          externalUser.name
-        );
-        updateArgs.firstName = firstName;
-        updateArgs.lastName = lastName || "";
-      }
+    if (externalUser.given_name && externalUser.family_name) {
+      updateArgs.firstName = externalUser.given_name;
+      updateArgs.lastName = externalUser.family_name;
+    } else {
+      const { firstName, lastName } = guessFirstAndLastNameFromFullName(
+        externalUser.name
+      );
+      updateArgs.firstName = firstName;
+      updateArgs.lastName = lastName || "";
     }
 
     if (
