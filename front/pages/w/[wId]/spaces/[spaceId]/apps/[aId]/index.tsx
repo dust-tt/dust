@@ -3,9 +3,6 @@ import {
   Button,
   DocumentTextIcon,
   PlayIcon,
-  Tabs,
-  TabsList,
-  TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -15,15 +12,12 @@ import { useSWRConfig } from "swr";
 import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
-import { subNavigationApp } from "@app/components/navigation/config";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { extractConfig } from "@app/lib/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { dustAppsListUrl } from "@app/lib/spaces";
 import {
   addBlock,
   deleteBlock,
@@ -328,66 +322,144 @@ export default function AppView({
   const router = useRouter();
 
   return (
-    <AppCenteredLayout
-      subscription={subscription}
-      hideSidebar
+    <DustAppPageLayout
       owner={owner}
-      className="pt-0"
-      title={
-        <AppLayoutSimpleCloseTitle
-          title={app.name}
-          onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.space));
-          }}
-        />
-      }
+      subscription={subscription}
+      app={app}
+      currentTab="specification"
     >
-      <div className="flex w-full flex-col">
-        <Tabs
-          value="specification"
-          className="sticky top-0 z-10 bg-background pt-4 dark:bg-background-night"
-        >
-          <TabsList>
-            {subNavigationApp({ owner, app, current: "specification" }).map(
-              (tab) => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  label={tab.label}
-                  icon={tab.icon}
-                  onClick={() => {
-                    if (tab.href) {
-                      void router.push(tab.href);
-                    }
-                  }}
-                />
-              )
-            )}
-          </TabsList>
-        </Tabs>
-        <div className="mt-8 flex flex-auto flex-col">
-          <div className="mb-4 flex flex-row items-center space-x-2">
-            <NewBlock
-              disabled={readOnly}
-              onClick={async (blockType) => {
-                await handleNewBlock(null, blockType);
-              }}
-              spec={spec}
-              small={false}
-            />
-            <Button
-              variant="outline"
-              disabled={
-                !runnable || runRequested || run?.status.run == "running"
-              }
-              label={
-                runRequested || run?.status.run == "running" ? "Running" : "Run"
-              }
-              onClick={() => handleRun()}
-              icon={PlayIcon}
-            />
+      <div className="mt-8 flex flex-auto flex-col">
+        <div className="mb-4 flex flex-row items-center space-x-2">
+          <NewBlock
+            disabled={readOnly}
+            onClick={async (blockType) => {
+              await handleNewBlock(null, blockType);
+            }}
+            spec={spec}
+            small={false}
+          />
+          <Button
+            variant="outline"
+            disabled={!runnable || runRequested || run?.status.run == "running"}
+            label={
+              runRequested || run?.status.run == "running" ? "Running" : "Run"
+            }
+            onClick={() => handleRun()}
+            icon={PlayIcon}
+          />
+          {runError ? (
+            <div className="flex-initial px-2 text-sm font-bold text-warning">
+              {(() => {
+                switch (runError.code) {
+                  case "invalid_specification_error":
+                    return `Specification error: ${runError.message}`;
+                  default:
+                    return `Error: ${runError.message}`;
+                }
+              })()}
+            </div>
+          ) : null}
+          <div className="flex-1"></div>
+          {!readOnly ? (
+            <div className="hidden flex-initial space-x-2 sm:block">
+              <Button
+                variant="outline"
+                icon={BracesIcon}
+                label="Secrets"
+                onClick={() => {
+                  void router.push(`/w/${owner.sId}/developers/dev-secrets`);
+                }}
+              />
+              <Button
+                variant="ghost"
+                icon={DocumentTextIcon}
+                label="Documentation"
+                onClick={() => {
+                  window.open(
+                    "https://docs.dust.tt/reference/introduction-to-dust-apps",
+                    "_blank"
+                  );
+                }}
+              />
+            </div>
+          ) : null}
+          {!readOnly && run ? (
+            <div className="hidden flex-initial sm:block">
+              <ViewAppAPIModal
+                disabled={readOnly || !(run?.status.run == "succeeded")}
+                owner={owner}
+                app={app}
+                run={run}
+              />
+            </div>
+          ) : null}
+        </div>
+
+        <SpecRunView
+          owner={owner}
+          app={app}
+          readOnly={readOnly}
+          isAdmin={isAdmin}
+          showOutputs={!readOnly}
+          spec={spec}
+          run={run}
+          runRequested={runRequested}
+          handleSetBlock={handleSetBlock}
+          handleDeleteBlock={handleDeleteBlock}
+          handleMoveBlockUp={handleMoveBlockUp}
+          handleMoveBlockDown={handleMoveBlockDown}
+          handleNewBlock={handleNewBlock}
+        />
+
+        {spec.length == 0 ? (
+          <div className="mx-auto mt-8 text-sm text-gray-400">
+            <p className="">Welcome to your new Dust app.</p>
+            <p className="mt-4">To get started, add your first block or:</p>
+            <p className="mt-4">
+              <Button
+                variant="ghost"
+                icon={DocumentTextIcon}
+                label="Follow the QuickStart Guide"
+                onClick={() => {
+                  window.open(
+                    "https://docs.dust.tt/reference/developer-platform-overview",
+                    "_blank"
+                  );
+                }}
+              />
+            </p>
+          </div>
+        ) : null}
+
+        {spec.length > 2 && !readOnly ? (
+          <div className="my-4 flex flex-row items-center space-x-2">
+            <div className="flex">
+              <NewBlock
+                disabled={readOnly}
+                onClick={async (blockType) => {
+                  await handleNewBlock(null, blockType);
+                }}
+                spec={spec}
+                small={false}
+              />
+            </div>
+            <div className="flex">
+              <Button
+                variant="outline"
+                disabled={
+                  !runnable || runRequested || run?.status.run == "running"
+                }
+                label={
+                  runRequested || run?.status.run == "running"
+                    ? "Running"
+                    : "Run"
+                }
+                onClick={() => handleRun()}
+                icon={PlayIcon}
+              />
+            </div>
             {runError ? (
-              <div className="flex-initial px-2 text-sm font-bold text-warning">
+              <div className="flex px-2 text-sm font-bold text-warning">
                 {(() => {
                   switch (runError.code) {
                     case "invalid_specification_error":
@@ -398,123 +470,11 @@ export default function AppView({
                 })()}
               </div>
             ) : null}
-            <div className="flex-1"></div>
-            {!readOnly ? (
-              <div className="hidden flex-initial space-x-2 sm:block">
-                <Button
-                  variant="outline"
-                  icon={BracesIcon}
-                  label="Secrets"
-                  onClick={() => {
-                    void router.push(`/w/${owner.sId}/developers/dev-secrets`);
-                  }}
-                />
-                <Button
-                  variant="ghost"
-                  icon={DocumentTextIcon}
-                  label="Documentation"
-                  onClick={() => {
-                    window.open(
-                      "https://docs.dust.tt/reference/introduction-to-dust-apps",
-                      "_blank"
-                    );
-                  }}
-                />
-              </div>
-            ) : null}
-            {!readOnly && run ? (
-              <div className="hidden flex-initial sm:block">
-                <ViewAppAPIModal
-                  disabled={readOnly || !(run?.status.run == "succeeded")}
-                  owner={owner}
-                  app={app}
-                  run={run}
-                />
-              </div>
-            ) : null}
           </div>
-
-          <SpecRunView
-            owner={owner}
-            app={app}
-            readOnly={readOnly}
-            isAdmin={isAdmin}
-            showOutputs={!readOnly}
-            spec={spec}
-            run={run}
-            runRequested={runRequested}
-            handleSetBlock={handleSetBlock}
-            handleDeleteBlock={handleDeleteBlock}
-            handleMoveBlockUp={handleMoveBlockUp}
-            handleMoveBlockDown={handleMoveBlockDown}
-            handleNewBlock={handleNewBlock}
-          />
-
-          {spec.length == 0 ? (
-            <div className="mx-auto mt-8 text-sm text-gray-400">
-              <p className="">Welcome to your new Dust app.</p>
-              <p className="mt-4">To get started, add your first block or:</p>
-              <p className="mt-4">
-                <Button
-                  variant="ghost"
-                  icon={DocumentTextIcon}
-                  label="Follow the QuickStart Guide"
-                  onClick={() => {
-                    window.open(
-                      "https://docs.dust.tt/reference/developer-platform-overview",
-                      "_blank"
-                    );
-                  }}
-                />
-              </p>
-            </div>
-          ) : null}
-
-          {spec.length > 2 && !readOnly ? (
-            <div className="my-4 flex flex-row items-center space-x-2">
-              <div className="flex">
-                <NewBlock
-                  disabled={readOnly}
-                  onClick={async (blockType) => {
-                    await handleNewBlock(null, blockType);
-                  }}
-                  spec={spec}
-                  small={false}
-                />
-              </div>
-              <div className="flex">
-                <Button
-                  variant="outline"
-                  disabled={
-                    !runnable || runRequested || run?.status.run == "running"
-                  }
-                  label={
-                    runRequested || run?.status.run == "running"
-                      ? "Running"
-                      : "Run"
-                  }
-                  onClick={() => handleRun()}
-                  icon={PlayIcon}
-                />
-              </div>
-              {runError ? (
-                <div className="flex px-2 text-sm font-bold text-warning">
-                  {(() => {
-                    switch (runError.code) {
-                      case "invalid_specification_error":
-                        return `Specification error: ${runError.message}`;
-                      default:
-                        return `Error: ${runError.message}`;
-                    }
-                  })()}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        <div ref={bottomRef} className="mt-4"></div>
+        ) : null}
       </div>
-    </AppCenteredLayout>
+      <div ref={bottomRef} className="mt-4"></div>
+    </DustAppPageLayout>
   );
 }
 

@@ -1,20 +1,11 @@
-import {
-  Button,
-  Input,
-  Label,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@dust-tt/sparkle";
+import { Button, Input, Label } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 import { useEffect } from "react";
 
+import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { ConfirmContext } from "@app/components/Confirm";
-import { subNavigationApp } from "@app/components/navigation/config";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -169,89 +160,57 @@ export default function SettingsView({
   }, [appName]);
 
   return (
-    <AppCenteredLayout
-      subscription={subscription}
+    <DustAppPageLayout
       owner={owner}
-      hideSidebar
-      className="pt-0"
-      title={
-        <AppLayoutSimpleCloseTitle
-          title={app.name}
-          onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.space));
-          }}
-        />
-      }
+      subscription={subscription}
+      app={app}
+      currentTab="settings"
     >
-      <div className="flex flex-col">
-        <Tabs
-          value="settings"
-          className="sticky top-0 z-10 bg-background pt-4 dark:bg-background-night"
-        >
-          <TabsList>
-            {subNavigationApp({ owner, app, current: "settings" }).map(
-              (tab) => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  label={tab.label}
-                  icon={tab.icon}
-                  onClick={() => {
-                    if (tab.href) {
-                      void router.push(tab.href);
-                    }
-                  }}
-                />
-              )
-            )}
-          </TabsList>
-        </Tabs>
-        <div className="mt-8 flex flex-1">
-          <div className="flex flex-col">
-            <div className="flex flex-col gap-6">
-              <div className="flex w-64 flex-col gap-2">
-                <Label>App Name</Label>
-                <Input
-                  type="text"
-                  name="name"
-                  id="appName"
-                  value={appName}
-                  onChange={(e) => setAppName(e.target.value)}
-                  message="Use only a-z, 0-9, - or _. Must be unique."
-                  messageStatus={appNameError ? "error" : "default"}
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label>Description</Label>
-                <Input
-                  type="text"
-                  name="description"
-                  id="appDescription"
-                  value={appDescription}
-                  onChange={(e) => setAppDescription(e.target.value)}
-                  message="Description needed to use in Agent Builder - helps agents understand when to use your app."
-                  messageStatus="default"
-                />
-              </div>
-            </div>
-            <div className="flex justify-between py-6">
-              <Button
-                disabled={disable || isUpdating || isDeleting}
-                onClick={handleUpdate}
-                label={isUpdating ? "Updating..." : "Update"}
+      <div className="mt-8 flex flex-1">
+        <div className="flex flex-col">
+          <div className="flex flex-col gap-6">
+            <div className="flex w-64 flex-col gap-2">
+              <Label>App Name</Label>
+              <Input
+                type="text"
+                name="name"
+                id="appName"
+                value={appName}
+                onChange={(e) => setAppName(e.target.value)}
+                message="Use only a-z, 0-9, - or _. Must be unique."
+                messageStatus={appNameError ? "error" : "default"}
               />
-              <Button
-                variant="warning"
-                onClick={handleDelete}
-                disabled={isDeleting || isUpdating}
-                label={isDeleting ? "Deleting..." : "Delete"}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>Description</Label>
+              <Input
+                type="text"
+                name="description"
+                id="appDescription"
+                value={appDescription}
+                onChange={(e) => setAppDescription(e.target.value)}
+                message="Description needed to use in Agent Builder - helps agents understand when to use your app."
+                messageStatus="default"
               />
             </div>
           </div>
+          <div className="flex justify-between py-6">
+            <Button
+              disabled={disable || isUpdating || isDeleting}
+              onClick={handleUpdate}
+              label={isUpdating ? "Updating..." : "Update"}
+            />
+            <Button
+              variant="warning"
+              onClick={handleDelete}
+              disabled={isDeleting || isUpdating}
+              label={isDeleting ? "Deleting..." : "Delete"}
+            />
+          </div>
         </div>
       </div>
-    </AppCenteredLayout>
+    </DustAppPageLayout>
   );
 }
 
