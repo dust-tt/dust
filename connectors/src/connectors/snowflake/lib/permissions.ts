@@ -5,6 +5,7 @@ import {
   fetchDatabases,
   fetchSchemas,
   fetchTables,
+  fetchViews,
 } from "@connectors/connectors/snowflake/lib/snowflake_api";
 import {
   RemoteDatabaseModel,
@@ -127,8 +128,19 @@ export const fetchAvailableChildrenInSnowflake = async ({
     if (allTablesRes.isErr()) {
       return new Err(allTablesRes.error);
     }
+
+    const allViewsRes = await fetchViews({
+      credentials,
+      fromSchema: parentInternalId,
+    });
+    if (allViewsRes.isErr()) {
+      return new Err(allViewsRes.error);
+    }
+
+    const allTablesAndViews = [...allTablesRes.value, ...allViewsRes.value];
+
     return new Ok(
-      allTablesRes.value.map((row) => {
+      allTablesAndViews.map((row) => {
         const internalId = buildInternalId({
           databaseName,
           schemaName,

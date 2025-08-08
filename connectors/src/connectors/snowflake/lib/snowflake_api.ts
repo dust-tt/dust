@@ -94,6 +94,7 @@ export const testConnection = async ({
 
   const connection = connectionRes.value;
   const tablesRes = await fetchTables({ credentials, connection });
+  const viewsRes = await fetchViews({ credentials, connection });
   const grantsRes = await isConnectionReadonly({ credentials, connection });
 
   const closeConnectionRes = await _closeConnection(connection);
@@ -109,14 +110,26 @@ export const testConnection = async ({
   if (tablesRes.isErr()) {
     return new Err(new TestConnectionError("UNKNOWN", tablesRes.error.message));
   }
+  if (viewsRes.isErr()) {
+    return new Err(new TestConnectionError("UNKNOWN", viewsRes.error.message));
+  }
 
   const tables = tablesRes.value.filter(
     (t) =>
       !EXCLUDE_DATABASES.includes(t.database_name) &&
       !EXCLUDE_SCHEMAS.includes(t.schema_name)
   );
-  if (tables.length === 0) {
-    return new Err(new TestConnectionError("NO_TABLES", "No tables found."));
+  const views = viewsRes.value.filter(
+    (v) =>
+      !EXCLUDE_DATABASES.includes(v.database_name) &&
+      !EXCLUDE_SCHEMAS.includes(v.schema_name)
+  );
+
+  const allTablesAndViews = [...tables, ...views];
+  if (allTablesAndViews.length === 0) {
+    return new Err(
+      new TestConnectionError("NO_TABLES", "No tables or views found.")
+    );
   }
 
   return new Ok("Connection successful");
@@ -268,6 +281,31 @@ export const fetchTables = async ({
   });
 };
 
+export const fetchViews = async ({
+  credentials,
+  fromDatabase,
+  fromSchema,
+  connection,
+}: {
+  credentials: SnowflakeCredentials;
+  fromDatabase?: string;
+  fromSchema?: string;
+  connection?: Connection;
+}): Promise<Result<Array<RemoteDBTable>, Error>> => {
+  const query = fromSchema
+    ? `SHOW VIEWS IN SCHEMA ${fromSchema}`
+    : fromDatabase
+      ? `SHOW VIEWS IN DATABASE ${fromDatabase}`
+      : "SHOW VIEWS";
+
+  return _fetchRows<RemoteDBTable>({
+    credentials,
+    query,
+    codec: remoteDBTableCodec,
+    connection,
+  });
+};
+
 export const fetchTree = async (
   {
     credentials,
@@ -297,6 +335,7 @@ export const fetchTree = async (
 
   const allSchemas: RemoteDBSchema[] = [];
   const allTables: RemoteDBTable[] = [];
+  const allViews: RemoteDBTable[] = [];
 
   for (const db of databases) {
     const schemasRes = await fetchSchemas({
@@ -318,6 +357,16 @@ export const fetchTree = async (
       return tablesRes;
     }
     allTables.push(...tablesRes.value);
+
+    const viewsRes = await fetchViews({
+      credentials,
+      fromDatabase: db.name,
+      connection,
+    });
+    if (viewsRes.isErr()) {
+      return viewsRes;
+    }
+    allViews.push(...viewsRes.value);
   }
 
   const schemas = allSchemas.filter((s) => !EXCLUDE_SCHEMAS.includes(s.name));
@@ -329,11 +378,16 @@ export const fetchTree = async (
   );
 
   const tables = allTables;
+  const views = allViews;
+  const allTablesAndViews = [...tables, ...views];
+
   localLogger.info(
     {
       tablesCount: tables.length,
+      viewsCount: views.length,
+      totalCount: allTablesAndViews.length,
     },
-    "Found tables in Snowflake"
+    "Found tables and views in Snowflake"
   );
 
   const tree = {
@@ -343,7 +397,9 @@ export const fetchTree = async (
         .filter((s) => s.database_name === db.name)
         .map((schema) => ({
           ...schema,
-          tables: tables.filter((t) => t.schema_name === schema.name),
+          tables: allTablesAndViews.filter(
+            (t) => t.schema_name === schema.name
+          ),
         })),
     })),
   };
