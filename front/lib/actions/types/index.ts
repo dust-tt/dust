@@ -50,3 +50,7 @@ export type AgentLoopContextType =
       runContext?: never;
       listToolsContext: AgentLoopListToolsContextType;
     };
+
+export type AgentLoopMaybeContinueAsync = void | {
+  resumeAsyncFromStep: number;
+};

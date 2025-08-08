@@ -1,5 +1,6 @@
 import assert from "assert";
 
+import type { AgentLoopMaybeContinueAsync } from "@app/lib/actions/types";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { wakeLock } from "@app/lib/wake_lock";
@@ -20,7 +21,7 @@ async function runAgentSynchronousWithStreaming(
   authType: AuthenticatorType,
   runAgentSynchronousArgs: RunAgentSynchronousArgs,
   startStep: number
-): Promise<void> {
+): Promise<AgentLoopMaybeContinueAsync> {
   const runAgentArgs: RunAgentArgs = {
     sync: true,
     inMemoryData: runAgentSynchronousArgs,
@@ -28,8 +29,8 @@ async function runAgentSynchronousWithStreaming(
 
   const titlePromise = ensureConversationTitle(authType, runAgentArgs);
 
-  await wakeLock(async () => {
-    await executeAgentLoop(
+  const result = await wakeLock(async () =>
+    executeAgentLoop(
       authType,
       runAgentArgs,
       {
@@ -38,8 +39,8 @@ async function runAgentSynchronousWithStreaming(
         createToolActionsActivity,
       },
       startStep
-    );
-  });
+    )
+  );
 
   await titlePromise;
 
@@ -50,6 +51,8 @@ async function runAgentSynchronousWithStreaming(
   await launchUpdateUsageWorkflow({
     workspaceId: authType.workspaceId,
   });
+
+  return result;
 }
 
 /**
@@ -64,13 +67,18 @@ export async function runAgentLoop(
     startStep,
   }: { forceAsynchronousLoop?: boolean; startStep: number }
 ): Promise<void> {
+  let maybeContinueAsync: AgentLoopMaybeContinueAsync = undefined;
   if (runAgentArgs.sync && !forceAsynchronousLoop) {
-    await runAgentSynchronousWithStreaming(
+    maybeContinueAsync = await runAgentSynchronousWithStreaming(
       authType,
       runAgentArgs.inMemoryData,
       startStep
     );
-  } else if (runAgentArgs.sync) {
+    if (!maybeContinueAsync) {
+      return;
+    }
+  }
+  if (runAgentArgs.sync) {
     const { agentMessage, conversation, userMessage } =
       runAgentArgs.inMemoryData;
 
@@ -84,7 +92,9 @@ export async function runAgentLoop(
         userMessageId: userMessage.sId,
         userMessageVersion: userMessage.version,
       },
-      startStep,
+      startStep: maybeContinueAsync
+        ? maybeContinueAsync.resumeAsyncFromStep
+        : startStep,
     });
   } else {
     await launchAgentLoopWorkflow({
