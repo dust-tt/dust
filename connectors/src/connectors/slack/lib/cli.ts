@@ -390,14 +390,14 @@ export const slack = async ({
           continue;
         }
 
-        logger.info({ channel }, "Processing channel");
+        logger.info({ channelName: channel.name }, "Processing channel");
 
         const matchingPatterns = findMatchingChannelPatterns(
           channel.name,
           autoReadChannelPatterns
         );
         if (matchingPatterns.length === 0) {
-          logger.info({ channel }, "No match, skipping");
+          logger.info({ channelName: channel.name }, "No match, skipping");
           continue;
         }
 

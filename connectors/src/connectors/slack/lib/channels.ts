@@ -17,8 +17,7 @@ import { SlackChannel } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import type { ConnectorPermission } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
+import type { ConnectorPermission, ModelId } from "@connectors/types";
 import {
   cacheWithRedis,
   INTERNAL_MIME_TYPES,

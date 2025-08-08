@@ -467,10 +467,12 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         switch (key) {
           case "dataSourceId":
           case "vaultId":
-            const vaultModelId = getResourceIdFromSId(value);
+            const resourceModelId = getResourceIdFromSId(value);
 
-            if (vaultModelId) {
-              whereClause[key] = vaultModelId;
+            if (resourceModelId) {
+              whereClause[key] = resourceModelId;
+            } else {
+              return [];
             }
             break;
 
