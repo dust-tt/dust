@@ -349,7 +349,10 @@ export async function runModelActivity({
   const reasoningEffort =
     agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
 
-  if (reasoningEffort !== "none" && reasoningEffort !== "light") {
+  if (
+    reasoningEffort !== "none" &&
+    (reasoningEffort !== "light" || model.useNativeLightReasoning)
+  ) {
     runConfig.MODEL.reasoning_effort = reasoningEffort;
   }
 
