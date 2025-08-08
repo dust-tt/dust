@@ -24,11 +24,7 @@ export function MCPReasoningActionDetails({
     output?.filter(isReasoningSuccessOutput).map((o) => o.resource) ?? [];
 
   return (
-    <ActionDetailsWrapper
-      actionName="Reasoning"
-      defaultOpen={defaultOpen}
-      visual={ChatBubbleThoughtIcon}
-    >
+    <ActionDetailsWrapper actionName="Reasoning" visual={ChatBubbleThoughtIcon}>
       <div className="flex flex-col gap-4 pl-6 pt-4">
         {thinkingBlocks.map((block) => (
           <ThinkingBlock key={block.text} resource={block} />

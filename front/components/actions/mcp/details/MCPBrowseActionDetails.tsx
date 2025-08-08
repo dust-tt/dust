@@ -13,11 +13,7 @@ export function MCPBrowseActionDetails({
     [];
 
   return (
-    <ActionDetailsWrapper
-      actionName="Web navigation"
-      defaultOpen={defaultOpen}
-      visual={GlobeAltIcon}
-    >
+    <ActionDetailsWrapper actionName="Web navigation" visual={GlobeAltIcon}>
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
           <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">

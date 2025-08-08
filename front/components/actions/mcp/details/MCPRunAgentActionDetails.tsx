@@ -175,7 +175,6 @@ export function MCPRunAgentActionDetails({
   return (
     <ActionDetailsWrapper
       actionName={childAgent?.name ? `Run @${childAgent.name}` : "Run Agent"}
-      defaultOpen={defaultOpen}
       visual={
         childAgent?.pictureUrl
           ? () => (

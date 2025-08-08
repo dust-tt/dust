@@ -1,10 +1,12 @@
 import {
   ActionDocumentTextIcon,
+  Avatar,
   ClockIcon,
   cn,
   CollapsibleComponent,
   ContentMessage,
   GlobeAltIcon,
+  Icon,
   MagnifyingGlassIcon,
   Markdown,
 } from "@dust-tt/sparkle";
@@ -153,11 +155,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   }
 }
 
-export function GenericActionDetails({
-  owner,
-  action,
-  defaultOpen,
-}: MCPActionDetailsProps) {
+export function GenericActionDetails({ owner, action }: MCPActionDetailsProps) {
   const inputs =
     Object.keys(action.params).length > 0
       ? JSON.stringify(action.params, undefined, 2)
@@ -166,26 +164,11 @@ export function GenericActionDetails({
   return (
     <ActionDetailsWrapper
       actionName={action.functionCallName ?? "Calling MCP Server"}
-      defaultOpen={defaultOpen}
       visual={MCP_SPECIFICATION.cardIcon}
     >
       <div className="flex flex-col gap-4 py-4 pl-6">
-        <CollapsibleComponent
-          rootProps={{ defaultOpen: !action.generatedFiles.length }}
-          triggerChildren={
-            <div
-              className={cn(
-                "text-foreground dark:text-foreground-night",
-                "flex flex-row items-center gap-x-2"
-              )}
-            >
-              <span className="heading-base">Inputs</span>
-            </div>
-          }
-          contentChildren={
-            <RenderToolItemMarkdown text={inputs} type="input" />
-          }
-        />
+        <span className="heading-base">Inputs</span>
+        <RenderToolItemMarkdown text={inputs} type="input" />
 
         {action.output && (
           <CollapsibleComponent

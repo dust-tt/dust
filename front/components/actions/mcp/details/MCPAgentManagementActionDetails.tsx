@@ -51,11 +51,7 @@ export function MCPAgentManagementActionDetails({
   if (!creationResult) {
     // Fallback to showing the raw output if no structured data
     return (
-      <ActionDetailsWrapper
-        actionName="Create Agent"
-        defaultOpen={defaultOpen}
-        visual={ActionRobotIcon}
-      >
+      <ActionDetailsWrapper actionName="Create Agent" visual={ActionRobotIcon}>
         <div className="flex flex-col gap-4 pl-6 pt-4">
           <ContentMessage variant="primary" size="lg">
             <Markdown
@@ -74,11 +70,7 @@ export function MCPAgentManagementActionDetails({
   const { mainAgent, subAgent } = creationResult.resource;
 
   return (
-    <ActionDetailsWrapper
-      actionName="Create Agent"
-      defaultOpen={defaultOpen}
-      visual={ActionRobotIcon}
-    >
+    <ActionDetailsWrapper actionName="Create Agent" visual={ActionRobotIcon}>
       <div className="flex flex-col gap-6 pl-6 pt-4">
         {/* Main Agent Details */}
         <div className="flex flex-col gap-4">

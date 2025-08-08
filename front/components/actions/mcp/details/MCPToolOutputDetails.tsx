@@ -273,11 +273,7 @@ export function SearchResultDetails({
   })();
 
   return (
-    <ActionDetailsWrapper
-      actionName={actionName}
-      defaultOpen={defaultOpen}
-      visual={visual}
-    >
+    <ActionDetailsWrapper actionName={actionName} visual={visual}>
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
           <span className="text-sm font-bold text-foreground dark:text-foreground-night">

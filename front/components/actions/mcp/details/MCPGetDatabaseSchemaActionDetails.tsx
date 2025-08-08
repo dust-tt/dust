@@ -24,11 +24,7 @@ export function MCPGetDatabaseSchemaActionDetails({
     output?.filter(isExampleRowsResourceType).map((o) => o.resource) ?? [];
 
   return (
-    <ActionDetailsWrapper
-      actionName="Get database schema"
-      defaultOpen={defaultOpen}
-      visual={TableIcon}
-    >
+    <ActionDetailsWrapper actionName="Get database schema" visual={TableIcon}>
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <>
           <DatabaseSchemaSection schemas={schemaBlocks} />
