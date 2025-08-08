@@ -122,8 +122,6 @@ export function JsonSchemaSection({
         className="mb-4"
       />
       <TextArea
-        error={fieldState.error?.message}
-        showErrorLabel={true}
         placeholder={
           '{\n  "type": "object",\n  "properties": {\n    "name": { "type": "string" },\n    ...\n  }\n}'
         }
