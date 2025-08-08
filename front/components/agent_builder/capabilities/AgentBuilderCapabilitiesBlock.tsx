@@ -44,9 +44,9 @@ const BACKGROUND_IMAGE_PATH = "/static/IconBar.svg";
 const BACKGROUND_IMAGE_STYLE_PROPS = {
   backgroundImage: `url("${BACKGROUND_IMAGE_PATH}")`,
   backgroundRepeat: "no-repeat",
-  backgroundPosition: "center 10px",
+  backgroundPosition: "center 14px",
   backgroundSize: "auto 60px",
-  paddingTop: "80px",
+  paddingTop: "90px",
 };
 
 function actionIcon(
