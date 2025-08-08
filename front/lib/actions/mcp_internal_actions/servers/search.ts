@@ -5,7 +5,10 @@ import assert from "assert";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  FIND_TAGS_TOOL_NAME,
+  SEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -296,7 +299,7 @@ function createServer(
     );
 
     server.tool(
-      "find_tags",
+      FIND_TAGS_TOOL_NAME,
       makeFindTagsDescription(SEARCH_TOOL_NAME),
       findTagsSchema,
       makeFindTagsTool(auth)

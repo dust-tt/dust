@@ -5,6 +5,10 @@ import assert from "assert";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  FIND_TAGS_TOOL_NAME,
+  INCLUDE_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
@@ -53,8 +57,6 @@ const serverInfo: InternalMCPServerDefinitionType = {
   authorization: null,
   documentationUrl: null,
 };
-
-const INCLUDE_TOOL_NAME = "retrieve_recent_documents";
 
 function createServer(
   auth: Authenticator,
@@ -295,7 +297,7 @@ function createServer(
     );
 
     server.tool(
-      "find_tags",
+      FIND_TAGS_TOOL_NAME,
       makeFindTagsDescription(INCLUDE_TOOL_NAME),
       findTagsSchema,
       makeFindTagsTool(auth)

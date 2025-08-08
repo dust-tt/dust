@@ -6,6 +6,7 @@ import {
   generateSectionFile,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
+import { QUERY_TABLES_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   ExecuteTablesQueryErrorResourceType,
@@ -57,7 +58,7 @@ function createServer(
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "query_tables",
+    QUERY_TABLES_TOOL_NAME,
     "Query data tables described below by executing a SQL query automatically generated from the conversation context. " +
       "The function does not require any inputs, the SQL query will be inferred from the conversation history.",
     {

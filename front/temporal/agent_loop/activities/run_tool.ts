@@ -65,6 +65,7 @@ export async function runToolActivity(
     agentMessageId: action.agentMessageId,
     citationsAllocated: action.citationsAllocated,
     mcpServerConfigurationId: action.mcpServerConfigurationId,
+    mcpServerId: actionConfiguration.toolServerId,
     step,
     stepContentId: action.stepContentId,
   });
