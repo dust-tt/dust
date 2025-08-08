@@ -1,6 +1,7 @@
 import * as t from "io-ts";
 
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 
 export const OAUTH_USE_CASES = [
   "connection",
@@ -38,7 +39,8 @@ export const OAUTH_PROVIDERS = [
   "zendesk",
   "salesforce",
   "hubspot",
-  "mcp", // MCP is a special provider for MCP servers
+  "mcp", // MCP is a special provider for MCP servers.
+  "mcp_static", // MCP static is a special provider for MCP servers requiring static OAuth credentials.
 ] as const;
 
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
@@ -59,6 +61,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   salesforce: "Salesforce",
   hubspot: "Hubspot",
   mcp: "MCP",
+  mcp_static: "MCP",
 };
 
 const SUPPORTED_OAUTH_CREDENTIALS = [
@@ -68,6 +71,8 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "code_verifier",
   "code_challenge",
   "scope",
+  "token_endpoint",
+  "authorization_endpoint",
   "freshservice_domain",
   "freshworks_org_url",
 ] as const;
@@ -185,6 +190,43 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "jira":
     case "mcp":
       return null;
+    case "mcp_static":
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
+        const result: OAuthCredentialInputs = {
+          client_id: {
+            label: "OAuth Client ID",
+            value: undefined,
+            helpMessage: "The client ID from your MCP server.",
+            validator: isValidClientIdOrSecret,
+          },
+          client_secret: {
+            label: "OAuth Client Secret",
+            value: undefined,
+            helpMessage: "The client secret from your MCP server.",
+            validator: isValidClientIdOrSecret,
+          },
+          token_endpoint: {
+            label: "OAuth Token Endpoint",
+            value: undefined,
+            helpMessage: "The token endpoint from your MCP server.",
+            validator: isValidUrl,
+          },
+          authorization_endpoint: {
+            label: "OAuth Authorization Endpoint",
+            value: undefined,
+            helpMessage: "The authorization endpoint from your MCP server.",
+            validator: isValidUrl,
+          },
+          scope: {
+            label: "OAuth Scope(s)",
+            value: undefined,
+            helpMessage: "The scope(s) to request (comma-separated list).",
+            validator: isValidScope,
+          },
+        };
+        return result;
+      }
+      return null;
     default:
       assertNever(provider);
   }
@@ -238,6 +280,10 @@ export function isValidSalesforceDomain(s: unknown): s is string {
 
 export function isValidClientIdOrSecret(s: unknown): s is string {
   return typeof s === "string" && s.trim().length > 0;
+}
+
+export function isValidUrl(s: unknown): s is string {
+  return typeof s === "string" && validateUrl(s).valid;
 }
 
 // Credentials Providers

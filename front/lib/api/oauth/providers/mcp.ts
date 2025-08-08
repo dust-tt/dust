@@ -16,7 +16,11 @@ import { getPKCEConfig } from "@app/lib/utils/pkce";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
 import { OAuthAPI } from "@app/types";
-import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import type {
+  OAuthConnectionType,
+  OAuthProvider,
+  OAuthUseCase,
+} from "@app/types/oauth/lib";
 
 export const MCP_OAUTH_RESPONSE_TYPE = "code";
 export const MCP_OAUTH_CODE_CHALLENGE_METHOD = "S256";
@@ -43,6 +47,8 @@ export type MCPOAuthConnectionMetadataType = z.infer<
 type MCPMetadataType = z.infer<typeof MCPMetadataSchema>;
 
 export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
+  provider: OAuthProvider = "mcp";
+
   setupUri({
     connection,
   }: {
@@ -72,7 +78,10 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
       "code_challenge_method",
       MCP_OAUTH_CODE_CHALLENGE_METHOD
     );
-    authUrl.searchParams.set("redirect_uri", finalizeUriForProvider("mcp"));
+    authUrl.searchParams.set(
+      "redirect_uri",
+      finalizeUriForProvider(this.provider)
+    );
     authUrl.searchParams.set("state", connection.connection_id);
 
     return authUrl.toString();
