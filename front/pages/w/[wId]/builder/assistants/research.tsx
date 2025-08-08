@@ -242,7 +242,7 @@ export default function EditResearchAssistant({
                 title="Enable the Research agent for this workspace."
                 visual={
                   <Avatar
-                    visual="https://dust.tt/static/systemavatar/dust_avatar_full.png" // TODO: add research avatar.
+                    visual="https://dust.tt/static/systemavatar/research_avatar_full.png"
                     size="xs"
                   />
                 }
