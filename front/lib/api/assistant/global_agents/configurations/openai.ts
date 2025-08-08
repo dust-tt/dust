@@ -160,7 +160,10 @@ export function _getGPT5GlobalAgent({
     versionAuthorId: null,
     name: metadata.name,
     description: metadata.description,
-    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    instructions:
+      `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}\n` +
+      "Unless the user explictly requests deeper research, keep the search depth low and" +
+      " aim to provide an answer quickly, with a maximum of 3 steps of tool use.",
     pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
