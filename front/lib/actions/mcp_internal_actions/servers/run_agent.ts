@@ -128,11 +128,11 @@ export default async function createServer(
     agentLoopContext &&
     agentLoopContext.runContext &&
     isServerSideMCPToolConfiguration(
-      agentLoopContext.runContext.actionConfiguration
+      agentLoopContext.runContext.toolConfiguration
     ) &&
-    agentLoopContext.runContext.actionConfiguration.childAgentId
+    agentLoopContext.runContext.toolConfiguration.childAgentId
   ) {
-    childAgentId = agentLoopContext.runContext.actionConfiguration.childAgentId;
+    childAgentId = agentLoopContext.runContext.toolConfiguration.childAgentId;
   }
 
   let childAgentBlob: {

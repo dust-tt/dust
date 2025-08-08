@@ -51,9 +51,9 @@ function isAdvancedSearchMode(agentLoopContext?: AgentLoopContextType) {
   return (
     (agentLoopContext?.runContext &&
       isServerSideMCPToolConfiguration(
-        agentLoopContext.runContext.actionConfiguration
+        agentLoopContext.runContext.toolConfiguration
       ) &&
-      agentLoopContext.runContext.actionConfiguration.additionalConfiguration[
+      agentLoopContext.runContext.toolConfiguration.additionalConfiguration[
         ADVANCED_SEARCH_SWITCH
       ] === true) ||
     (agentLoopContext?.listToolsContext &&

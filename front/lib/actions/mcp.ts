@@ -382,7 +382,6 @@ export function buildToolSpecification(
  */
 export async function* runToolWithStreaming(
   auth: Authenticator,
-  actionConfiguration: MCPToolConfigurationType,
   {
     action,
     actionBaseParams,
@@ -410,26 +409,28 @@ export async function* runToolWithStreaming(
 > {
   const owner = auth.getNonNullableWorkspace();
 
+  const { toolConfiguration } = action;
+
   const localLogger = logger.child({
-    actionConfigurationId: actionConfiguration.sId,
+    actionConfigurationId: toolConfiguration.sId,
     conversationId: conversation.sId,
     messageId: agentMessage.sId,
     workspaceId: conversation.owner.sId,
   });
 
   const tags = [
-    `action:${actionConfiguration.name}`,
-    `mcp_server:${actionConfiguration.mcpServerName}`,
+    `action:${toolConfiguration.name}`,
+    `mcp_server:${toolConfiguration.mcpServerName}`,
     `workspace:${owner.sId}`,
     `workspace_name:${owner.name}`,
   ];
 
   const executionState = await handleToolApproval(auth, {
-    actionConfiguration,
     executionState: action.executionState,
     localLogger,
     mcpAction,
     owner,
+    toolConfiguration,
   });
 
   await action.update({
@@ -438,13 +439,7 @@ export async function* runToolWithStreaming(
 
   if (executionState === "timeout") {
     statsDClient.increment("mcp_actions_timeout.count", 1, tags);
-    localLogger.info(
-      {
-        workspaceId: owner.sId,
-        actionName: actionConfiguration.name,
-      },
-      "Tool validation timed out"
-    );
+    localLogger.info("Tool validation timed out");
 
     yield await handleMCPActionError({
       action,
@@ -461,13 +456,7 @@ export async function* runToolWithStreaming(
 
   if (executionState === "denied") {
     statsDClient.increment("mcp_actions_denied.count", 1, tags);
-    localLogger.info(
-      {
-        workspaceId: owner.sId,
-        actionName: actionConfiguration.name,
-      },
-      "Action execution rejected by user"
-    );
+    localLogger.info("Action execution rejected by user");
 
     yield await handleMCPActionError({
       action,
@@ -486,11 +475,11 @@ export async function* runToolWithStreaming(
   const inputs = action.augmentedInputs;
 
   const agentLoopRunContext: AgentLoopRunContextType = {
-    actionConfiguration,
     agentConfiguration,
-    conversation,
     agentMessage,
+    conversation,
     stepContext,
+    toolConfiguration,
   };
 
   const toolCallResult = yield* executeMCPTool({
@@ -508,8 +497,6 @@ export async function* runToolWithStreaming(
     statsDClient.increment("mcp_actions_error.count", 1, tags);
     localLogger.error(
       {
-        workspaceId: owner.sId,
-        actionName: actionConfiguration.name,
         error: toolCallResult
           ? toolCallResult.error.message
           : "No tool call result",
@@ -524,7 +511,7 @@ export async function* runToolWithStreaming(
       MCPServerPersonalAuthenticationRequiredError.is(toolCallResult?.error)
     ) {
       const authErrorMessage =
-        `The tool ${actionConfiguration.originalName} requires personal ` +
+        `The tool ${actionBaseParams.functionCallName} requires personal ` +
         `authentication, please authenticate to use it.`;
 
       yield await handleMCPActionError({
@@ -554,9 +541,9 @@ export async function* runToolWithStreaming(
     // We don't want to expose the MCP full error message to the user.
     if (toolErr && toolErr instanceof McpError && toolErr.code === -32001) {
       // MCP Error -32001: Request timed out.
-      errorMessage = `The tool ${actionConfiguration.originalName} timed out. `;
+      errorMessage = `The tool ${actionBaseParams.functionCallName} timed out. `;
     } else {
-      errorMessage = `The tool ${actionConfiguration.originalName} returned an error. `;
+      errorMessage = `The tool ${actionBaseParams.functionCallName} returned an error. `;
     }
     errorMessage +=
       "An error occurred while executing the tool. You can inform the user of this issue.";
@@ -573,13 +560,12 @@ export async function* runToolWithStreaming(
     return;
   }
 
-  const { outputItems, generatedFiles } = await processToolResults({
-    auth,
-    toolCallResult: toolCallResult.value,
-    conversation,
+  const { outputItems, generatedFiles } = await processToolResults(auth, {
     action,
-    actionConfiguration,
+    conversation,
     localLogger,
+    toolCallResult: toolCallResult.value,
+    toolConfiguration,
   });
 
   statsDClient.increment("mcp_actions_success.count", 1, tags);
@@ -611,16 +597,19 @@ export async function createMCPAction(
     augmentedInputs,
     stepContentId,
     stepContext,
+    toolConfiguration,
   }: {
     actionBaseParams: ActionBaseParams;
     augmentedInputs: Record<string, unknown>;
     stepContentId: ModelId;
     stepContext: StepContext;
+    toolConfiguration: MCPToolConfigurationType;
   }
 ): Promise<{ action: AgentMCPAction; mcpAction: MCPActionType }> {
   const action = await AgentMCPAction.create({
     agentMessageId: actionBaseParams.agentMessageId,
     augmentedInputs,
+    toolConfiguration,
     citationsAllocated: stepContext.citationsCount,
     executionState: "pending",
     isError: false,

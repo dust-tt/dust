@@ -242,9 +242,9 @@ function createServer(
         null) ||
     (agentLoopContext?.runContext &&
       isServerSideMCPToolConfiguration(
-        agentLoopContext.runContext.actionConfiguration
+        agentLoopContext.runContext.toolConfiguration
       ) &&
-      agentLoopContext.runContext.actionConfiguration.jsonSchema !== null);
+      agentLoopContext.runContext.toolConfiguration.jsonSchema !== null);
 
   const isTimeFrameConfigured =
     (agentLoopContext?.listToolsContext &&
@@ -255,9 +255,9 @@ function createServer(
         null) ||
     (agentLoopContext?.runContext &&
       isServerSideMCPToolConfiguration(
-        agentLoopContext.runContext.actionConfiguration
+        agentLoopContext.runContext.toolConfiguration
       ) &&
-      agentLoopContext.runContext.actionConfiguration.timeFrame !== null);
+      agentLoopContext.runContext.toolConfiguration.timeFrame !== null);
 
   const areTagsDynamic = agentLoopContext
     ? shouldAutoGenerateTags(agentLoopContext)

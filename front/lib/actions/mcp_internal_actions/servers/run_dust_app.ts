@@ -382,14 +382,14 @@ export default async function createServer(
     );
   } else if (agentLoopContext && agentLoopContext.runContext) {
     if (
-      !isMCPInternalDustAppRun(agentLoopContext.runContext.actionConfiguration)
+      !isMCPInternalDustAppRun(agentLoopContext.runContext.toolConfiguration)
     ) {
       throw new Error("Invalid Dust app run tool configuration");
     }
 
     const { app, schema, appConfig } = await prepareAppContext(
       auth,
-      agentLoopContext.runContext.actionConfiguration
+      agentLoopContext.runContext.toolConfiguration
     );
 
     if (!app.description) {

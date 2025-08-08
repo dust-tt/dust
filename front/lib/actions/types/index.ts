@@ -26,11 +26,11 @@ export type ActionGeneratedFileType = {
 
 export type AgentLoopRunContextType = {
   agentConfiguration: AgentConfigurationType;
-  actionConfiguration: MCPToolConfigurationType;
+  agentMessage: AgentMessageType;
   clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
   conversation: ConversationType;
-  agentMessage: AgentMessageType;
   stepContext: StepContext;
+  toolConfiguration: MCPToolConfigurationType;
 };
 
 export type AgentLoopListToolsContextType = {

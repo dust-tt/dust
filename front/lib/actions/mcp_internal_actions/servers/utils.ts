@@ -523,11 +523,11 @@ export function shouldAutoGenerateTags(
       listToolsContext.agentActionConfiguration.dataSources
     );
   } else if (
-    !!runContext?.actionConfiguration &&
-    isServerSideMCPToolConfiguration(runContext.actionConfiguration) &&
-    !!runContext.actionConfiguration.dataSources
+    !!runContext?.toolConfiguration &&
+    isServerSideMCPToolConfiguration(runContext.toolConfiguration) &&
+    !!runContext.toolConfiguration.dataSources
   ) {
-    return hasTagAutoMode(runContext.actionConfiguration.dataSources);
+    return hasTagAutoMode(runContext.toolConfiguration.dataSources);
   }
 
   return false;

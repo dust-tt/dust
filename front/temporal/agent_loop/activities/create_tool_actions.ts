@@ -21,7 +21,6 @@ import { getRunAgentData } from "@app/types/assistant/agent_run";
 
 interface ActionBlob {
   action: AgentMCPAction;
-  actionConfiguration: MCPToolConfigurationType;
   needsApproval: boolean;
 }
 
@@ -152,6 +151,7 @@ async function createActionForTool(
     augmentedInputs,
     stepContentId,
     stepContext,
+    toolConfiguration: actionConfiguration,
   });
 
   // Publish the tool params event.
@@ -211,7 +211,6 @@ async function createActionForTool(
 
   return {
     action: agentMCPAction,
-    actionConfiguration,
     needsApproval: status === "pending",
   };
 }
