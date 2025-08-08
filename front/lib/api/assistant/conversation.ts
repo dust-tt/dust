@@ -403,7 +403,7 @@ export async function postUserMessage(
       agentIds: mentions
         .filter(isAgentMention)
         .map((mention) => mention.configurationId),
-      variant: "full",
+      variant: "light",
     }),
     (() => {
       // If the origin of the user message is "run_agent", we do not want to update the
@@ -826,7 +826,7 @@ export async function editUserMessage(
       mentions.filter(isAgentMention).map((mention) =>
         getAgentConfiguration(auth, {
           agentId: mention.configurationId,
-          variant: "full",
+          variant: "light",
         })
       )
     ),
