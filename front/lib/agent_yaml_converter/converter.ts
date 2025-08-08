@@ -262,8 +262,8 @@ export class AgentYAMLConverter {
     };
   }
 
-// Gets the MCP server name from an MCP action configuration.
-// Looks up the MCP server view to get the actual server name.
+  // Gets the MCP server name from an MCP action configuration.
+  // Looks up the MCP server view to get the actual server name.
   private static async getMCPServerNameFromConfig(
     auth: Authenticator,
     configuration: { mcpServerViewId: string | null }
