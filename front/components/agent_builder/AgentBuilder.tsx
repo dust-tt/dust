@@ -156,8 +156,7 @@ export default function AgentBuilder({
 
   const { isDirty, isSubmitting } = form.formState;
 
-  const isSaveDisabled =
-    !isDirty || isSubmitting || isActionsLoading;
+  const isSaveDisabled = !isDirty || isSubmitting || isActionsLoading;
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 

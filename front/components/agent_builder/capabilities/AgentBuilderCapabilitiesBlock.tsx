@@ -5,9 +5,10 @@ import {
   CardGrid,
   EmptyCTA,
   Page,
+  Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { Spinner } from "@dust-tt/sparkle";
+import { AnimatePresence, motion } from "framer-motion";
 import React, { useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -33,11 +34,6 @@ import {
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { asDisplayName } from "@app/types";
 
-const dataVisualizationAction = {
-  type: "DATA_VISUALIZATION",
-  ...DATA_VISUALIZATION_SPECIFICATION,
-};
-
 const BACKGROUND_IMAGE_PATH = "/static/IconBar.svg";
 const BACKGROUND_IMAGE_STYLE_PROPS = {
   backgroundImage: `url("${BACKGROUND_IMAGE_PATH}")`,
@@ -45,9 +41,96 @@ const BACKGROUND_IMAGE_STYLE_PROPS = {
   backgroundPosition: "center 20px",
   backgroundSize: "auto 60px",
   paddingTop: "100px",
+} as const;
+
+const CARD_HEIGHT = "h-32";
+
+const ANIMATION_VARIANTS = {
+  container: {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        delayChildren: 0.05,
+        staggerChildren: 0.04,
+      },
+    },
+    exit: {
+      opacity: 0,
+      transition: {
+        staggerChildren: 0.03,
+        staggerDirection: -1,
+      },
+    },
+  },
+  item: {
+    hidden: {
+      opacity: 0,
+      y: 8,
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.3,
+        ease: [0.25, 0.46, 0.45, 0.94], // Custom easing curve
+      },
+    },
+    exit: {
+      opacity: 0,
+      y: -4,
+      transition: {
+        duration: 0.15,
+        ease: "easeInOut",
+      },
+    },
+  },
+  emptyState: {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.25,
+        ease: "easeOut",
+      },
+    },
+    exit: {
+      opacity: 0,
+      transition: {
+        duration: 0.15,
+        ease: "easeInOut",
+      },
+    },
+  },
+  cardGrid: {
+    hidden: { opacity: 0, y: 12 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.4,
+        ease: [0.25, 0.46, 0.45, 0.94],
+        delayChildren: 0.05,
+        staggerChildren: 0.03,
+      },
+    },
+    exit: {
+      opacity: 0,
+      y: -8,
+      transition: {
+        duration: 0.2,
+        ease: "easeInOut",
+      },
+    },
+  },
+} as const;
+
+const dataVisualizationAction = {
+  type: "DATA_VISUALIZATION",
+  ...DATA_VISUALIZATION_SPECIFICATION,
 };
 
-function actionIcon(
+function getActionIcon(
   action: AgentBuilderAction | AgentBuilderDataVizAction,
   mcpServerView: MCPServerViewType | null
 ) {
@@ -60,9 +143,11 @@ function actionIcon(
       <Avatar icon={DATA_VISUALIZATION_SPECIFICATION.cardIcon} size="xs" />
     );
   }
+
+  return null;
 }
 
-function actionDisplayName(
+function getActionDisplayName(
   action: AgentBuilderAction | AgentBuilderDataVizAction,
   mcpServerView: MCPServerViewType | null
 ) {
@@ -85,7 +170,6 @@ interface ActionCardProps {
   onEdit?: () => void;
 }
 
-// TODO: Merge this with ActionCard.
 function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
@@ -101,7 +185,7 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   return (
     <Card
       variant="primary"
-      className="max-h-40"
+      className={CARD_HEIGHT}
       onClick={onEdit}
       action={
         <CardActionButton
@@ -116,9 +200,9 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
     >
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          {actionIcon(action, mcpServerView)}
+          {getActionIcon(action, mcpServerView)}
           <div className="w-full truncate">
-            {actionDisplayName(action, mcpServerView)}
+            {getActionDisplayName(action, mcpServerView)}
           </div>
         </div>
         <div className="line-clamp-4 text-muted-foreground dark:text-muted-foreground-night">
@@ -250,24 +334,64 @@ export function AgentBuilderCapabilitiesBlock() {
           <div className="flex h-40 w-full items-center justify-center">
             <Spinner />
           </div>
-        ) : fields.length === 0 ? (
-          <EmptyCTA
-            action={
-              <div className="flex items-center gap-2">{dropdownButtons}</div>
-            }
-            style={BACKGROUND_IMAGE_STYLE_PROPS}
-          />
         ) : (
-          <CardGrid>
-            {fields.map((field, index) => (
-              <ActionCard
-                key={field.id}
-                action={field}
-                onRemove={() => remove(index)}
-                onEdit={() => handleActionEdit(field, index)}
-              />
-            ))}
-          </CardGrid>
+          <AnimatePresence mode="wait">
+            {fields.length === 0 ? (
+              <motion.div
+                key="empty-state"
+                variants={ANIMATION_VARIANTS.emptyState}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <EmptyCTA
+                  action={
+                    <div className="flex items-center gap-2">
+                      {dropdownButtons}
+                    </div>
+                  }
+                  style={BACKGROUND_IMAGE_STYLE_PROPS}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="card-grid"
+                variants={ANIMATION_VARIANTS.cardGrid}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <motion.div
+                  variants={ANIMATION_VARIANTS.container}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                >
+                  <CardGrid>
+                    {fields.map((field, index) => (
+                      <motion.div
+                        key={field.id}
+                        variants={ANIMATION_VARIANTS.item}
+                        layout
+                        layoutId={field.id}
+                        whileHover={{
+                          y: -2,
+                          transition: { duration: 0.15, ease: "easeOut" },
+                        }}
+                        whileTap={{ scale: 0.995 }}
+                      >
+                        <ActionCard
+                          action={field}
+                          onRemove={() => remove(index)}
+                          onEdit={() => handleActionEdit(field, index)}
+                        />
+                      </motion.div>
+                    ))}
+                  </CardGrid>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         )}
       </div>
     </div>
