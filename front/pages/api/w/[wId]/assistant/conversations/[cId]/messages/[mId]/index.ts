@@ -91,7 +91,6 @@ async function handler(
         });
       }
 
-      console.log(renderedMessages.value[0]);
       res.status(200).json({ message: renderedMessages.value[0] });
       break;
 
