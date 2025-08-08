@@ -17,7 +17,6 @@ import {
 
 export function MCPTablesQueryActionDetails({
   action,
-  defaultOpen,
   owner,
 }: MCPActionDetailsProps) {
   const thinkingBlocks =
@@ -36,11 +35,7 @@ export function MCPTablesQueryActionDetails({
   const hasQueryToDisplay = sqlQueryBlocks.length > 0 || queryFromParams;
 
   return (
-    <ActionDetailsWrapper
-      actionName="Query tables"
-      defaultOpen={defaultOpen}
-      visual={TableIcon}
-    >
+    <ActionDetailsWrapper actionName="Query tables" visual={TableIcon}>
       <div className="flex flex-col gap-4 pl-6 pt-4">
         {thinkingBlocks.length > 0 && (
           <div className="flex flex-col gap-1">

@@ -19,7 +19,6 @@ import { formatDataSourceDisplayName } from "@app/types";
 
 export function DataSourceNodeContentDetails({
   action,
-  defaultOpen,
 }: MCPActionDetailsProps) {
   const dataSourceNodeContent = action.output
     ?.filter(isDataSourceNodeContentType)
@@ -35,7 +34,6 @@ export function DataSourceNodeContentDetails({
   return (
     <ActionDetailsWrapper
       actionName="Retrieve file content"
-      defaultOpen={defaultOpen}
       visual={DocumentIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
@@ -64,10 +62,7 @@ export function DataSourceNodeContentDetails({
   );
 }
 
-export function FilesystemPathDetails({
-  action,
-  defaultOpen,
-}: MCPActionDetailsProps) {
+export function FilesystemPathDetails({ action }: MCPActionDetailsProps) {
   const filesystemPath = action.output
     ?.filter(isFilesystemPathType)
     .map((o) => o.resource)?.[0];
@@ -105,7 +100,6 @@ export function FilesystemPathDetails({
   return (
     <ActionDetailsWrapper
       actionName="Locate item"
-      defaultOpen={defaultOpen}
       visual={ActionPinDistanceIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">

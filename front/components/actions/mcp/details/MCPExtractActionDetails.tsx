@@ -55,11 +55,7 @@ export function MCPExtractActionDetails({
   const jsonSchema = action.params?.jsonSchema as JSONSchema | undefined;
 
   return (
-    <ActionDetailsWrapper
-      actionName="Extract data"
-      defaultOpen={defaultOpen}
-      visual={ScanIcon}
-    >
+    <ActionDetailsWrapper actionName="Extract data" visual={ScanIcon}>
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
           <span className="text-sm font-semibold text-foreground dark:text-foreground-night">

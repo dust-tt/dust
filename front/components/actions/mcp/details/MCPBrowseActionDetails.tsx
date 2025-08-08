@@ -4,20 +4,13 @@ import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapp
 import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { isBrowseResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
-export function MCPBrowseActionDetails({
-  action,
-  defaultOpen,
-}: MCPActionDetailsProps) {
+export function MCPBrowseActionDetails({ action }: MCPActionDetailsProps) {
   const browseResults =
     action.output?.filter(isBrowseResultResourceType).map((o) => o.resource) ??
     [];
 
   return (
-    <ActionDetailsWrapper
-      actionName="Web navigation"
-      defaultOpen={defaultOpen}
-      visual={GlobeAltIcon}
-    >
+    <ActionDetailsWrapper actionName="Web navigation" visual={GlobeAltIcon}>
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
           <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">

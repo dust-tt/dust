@@ -563,7 +563,7 @@ export async function fetchMessageInConversation(
   conversation: ConversationWithoutContentType,
   messageId: string
 ) {
-  return Message.findOne({
+  const message = await Message.findOne({
     where: {
       conversationId: conversation.id,
       sId: messageId,
@@ -579,7 +579,22 @@ export async function fetchMessageInConversation(
         model: AgentMessage,
         as: "agentMessage",
         required: false,
+        include: [
+          {
+            model: AgentStepContentModel,
+            as: "agentStepContents",
+            required: false,
+          },
+        ],
       },
     ],
   });
+
+  if (message?.agentMessage && message.agentMessage.agentStepContents) {
+    message.agentMessage.agentStepContents = getMaximalVersionAgentStepContent(
+      message.agentMessage.agentStepContents
+    );
+  }
+
+  return message;
 }
