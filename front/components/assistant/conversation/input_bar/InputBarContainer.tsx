@@ -258,7 +258,7 @@ const InputBarContainer = ({
   return (
     <div
       id="InputBarContainer"
-      className="relative flex flex-1 cursor-text flex-col sm:pt-0"
+      className="relative flex min-h-[100px] flex-1 cursor-text flex-col justify-between sm:pt-0"
     >
       <EditorContent
         editor={editor}
@@ -272,7 +272,7 @@ const InputBarContainer = ({
         )}
       />
 
-      <div className="flex flex-row items-end justify-end gap-2 self-stretch pb-3 pr-3 sm:border-0">
+      <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-3 pr-3 sm:border-0">
         <div className="flex items-center py-0">
           {actions.includes("tools") && featureFlags.includes("jit_tools") && (
             <ToolsPicker
@@ -322,7 +322,7 @@ const InputBarContainer = ({
               )}
             />
           )}
-          {actions.includes("fullscreen") && (
+          {/* {actions.includes("fullscreen") && (
             <div className="hidden sm:flex">
               <Button
                 variant="ghost-secondary"
@@ -331,7 +331,7 @@ const InputBarContainer = ({
                 onClick={handleExpansionToggle}
               />
             </div>
-          )}
+          )} */}
         </div>
         <Button
           size="xs"
