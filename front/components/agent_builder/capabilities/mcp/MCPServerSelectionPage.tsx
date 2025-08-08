@@ -11,6 +11,7 @@ import type { ActionSpecification } from "@app/components/agent_builder/types";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { isCustomServerIconType } from "@app/lib/actions/mcp_icons";
 import { InternalActionIcons } from "@app/lib/actions/mcp_icons";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { MCPServerViewTypeType } from "@app/lib/api/mcp";
@@ -74,30 +75,36 @@ interface MCPServerCardProps {
 }
 
 function MCPServerCard({ view, onItemClick, isSelected }: MCPServerCardProps) {
+  const requirement = getMCPServerRequirements(view);
+  const canAdd = requirement.noRequirement ? !isSelected : true;
+
   return (
     <Card
+      key={view.id}
       variant={isSelected ? "secondary" : "primary"}
-      onClick={isSelected ? undefined : () => onItemClick(view)}
-      disabled={isSelected}
+      onClick={!canAdd ? undefined : () => onItemClick(view)}
+      disabled={!canAdd}
     >
-      <div className="flex w-full flex-col gap-1 text-sm">
-        <div className="mb-2 flex items-center gap-2">
-          <Icon
-            visual={
-              isCustomServerIconType(view.server.icon)
-                ? ActionIcons[view.server.icon]
-                : InternalActionIcons[view.server.icon] || BookOpenIcon
-            }
-            size="sm"
-          />
-          <span className="text-sm font-medium">{view.label}</span>
-          {isSelected && <Chip size="xs" color="green" label="ADDED" />}
-        </div>
-        <div className="line-clamp-2 w-full text-xs text-gray-600">
-          {getMcpServerViewDescription(view)}
+      <div className="flex w-full flex-col justify-between gap-2 text-sm">
+        <div>
+          <div className="mb-2 flex items-center gap-2">
+            <Icon
+              visual={
+                isCustomServerIconType(view.server.icon)
+                  ? ActionIcons[view.server.icon]
+                  : InternalActionIcons[view.server.icon] || BookOpenIcon
+              }
+              size="sm"
+            />
+            <span className="text-sm font-medium">{view.label}</span>
+            {isSelected && <Chip size="xs" color="green" label="ADDED" />}
+          </div>
+          <div className="line-clamp-2 w-full text-xs text-gray-600">
+            {getMcpServerViewDescription(view)}
+          </div>
         </div>
         <div>
-          {!isSelected && (
+          {canAdd && (
             <Button size="xs" variant="outline" icon={PlusIcon} label="Add" />
           )}
         </div>

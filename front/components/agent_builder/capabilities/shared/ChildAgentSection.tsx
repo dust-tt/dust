@@ -103,7 +103,9 @@ export function ChildAgentSection() {
     : null;
 
   const rowSelection =
-    selectedIndex && selectedIndex >= 0 ? { [selectedIndex]: true } : {};
+    selectedIndex !== null && selectedIndex >= 0
+      ? { [selectedIndex]: true }
+      : {};
 
   const handleRowSelectionChange = (newSelection: RowSelectionState) => {
     const selectedIndex = Object.keys(newSelection)[0];
