@@ -78,7 +78,6 @@ export function messageReducer(
   state: MessageTemporaryState,
   event: AgentMessageStateEventWithoutToolApproveExecution | ClearContentEvent
 ): MessageTemporaryState {
-  console.log("event", event);
   switch (event.type) {
     case "clear_content":
       return {
@@ -148,7 +147,6 @@ export function messageReducer(
         case "chain_of_thought":
           newState.message.chainOfThought =
             (newState.message.chainOfThought || "") + event.text;
-          console.log("chain of thought", event.text);
           break;
         default:
           assertNever(event);
