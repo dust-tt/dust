@@ -11,6 +11,7 @@ import type {
   DataSourceViewType,
   SpaceType,
 } from "@app/types";
+import { assertNever } from "@app/types";
 
 export function pathToString(path: string[]): string {
   return path.join("/");
@@ -213,6 +214,8 @@ export function getLastNavigationHistoryEntryId(
       return entry.dataSourceView.sId;
     case "node":
       return entry.node.internalId;
+    default:
+      assertNever(entry);
   }
 }
 
@@ -236,6 +239,8 @@ export function navigationHistoryEntryTitle(
       return entry.dataSourceView.dataSource.name;
     case "node":
       return entry.node.title;
+    default:
+      assertNever(entry);
   }
 }
 
