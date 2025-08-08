@@ -1,15 +1,11 @@
 import {
   Avatar,
   Button,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
-  Page,
   PencilSquareIcon,
   SparklesIcon,
   Spinner,
@@ -19,6 +15,7 @@ import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { AgentBuilderEditors } from "@app/components/agent_builder/settings/AgentBuilderEditors";
 import { AgentBuilderScopeSelector } from "@app/components/agent_builder/settings/AgentBuilderScopeSelector";
 import { AgentBuilderSlackSelector } from "@app/components/agent_builder/settings/AgentBuilderSlackSelector";
@@ -396,38 +393,24 @@ interface AgentBuilderSettingsBlockProps {
 export function AgentBuilderSettingsBlock({
   isSettingBlocksOpen,
 }: AgentBuilderSettingsBlockProps) {
-  const [isOpen, setIsOpen] = useState(isSettingBlocksOpen);
-
   return (
-    <div className="flex h-full flex-col gap-4">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger
-          isOpen={isOpen}
-          className="flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 hover:bg-transparent focus:outline-none"
-        >
-          <Page.H>Settings</Page.H>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="flex flex-col gap-4 px-1 pt-4">
-            <Page.P>
-              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Configure tags and access settings for your agent.
-              </span>
-            </Page.P>
-            <div className="space-y-4">
-              <div className="flex items-start gap-8">
-                <div className="flex-grow">
-                  <AgentNameInput />
-                </div>
-                <AgentPictureInput />
-              </div>
-              <AgentDescriptionInput />
-              <TagsSection />
-              <AgentAccessAndPublication />
-            </div>
+    <AgentBuilderSectionContainer
+      title="Settings"
+      description="Configure tags and access settings for your agent."
+      collapsible
+      defaultOpen={isSettingBlocksOpen}
+    >
+      <div className="space-y-4">
+        <div className="flex items-start gap-8">
+          <div className="flex-grow">
+            <AgentNameInput />
           </div>
-        </CollapsibleContent>
-      </Collapsible>
-    </div>
+          <AgentPictureInput />
+        </div>
+        <AgentDescriptionInput />
+        <TagsSection />
+        <AgentAccessAndPublication />
+      </div>
+    </AgentBuilderSectionContainer>
   );
 }

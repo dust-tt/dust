@@ -4,7 +4,6 @@ import {
   CardActionButton,
   CardGrid,
   EmptyCTA,
-  Page,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { Spinner } from "@dust-tt/sparkle";
@@ -16,6 +15,7 @@ import type {
   AgentBuilderDataVizAction,
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import type { DialogMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
 import { MCPServerViewsDialog } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
@@ -237,21 +237,14 @@ export function AgentBuilderCapabilitiesBlock({
     </>
   );
 
+  const headerActions = fields.length > 0 && dropdownButtons;
+
   return (
-    <div className="flex h-full flex-col gap-4">
-      <Page.H>Tools & Capabilities</Page.H>
-      <div className="flex flex-col items-center justify-between sm:flex-row">
-        <Page.P>
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Add tools and capabilities to enhance your agent's abilities.
-          </span>
-        </Page.P>
-        <div className="flex w-full flex-col gap-2 sm:w-auto">
-          <div className="flex items-center gap-2">
-            {fields.length > 0 && dropdownButtons}
-          </div>
-        </div>
-      </div>
+    <AgentBuilderSectionContainer
+      title="Knowledge & Tools"
+      description="Add knowledge and tools to enhance your agent's abilities."
+      headerActions={headerActions}
+    >
       <div className="flex-1">
         {isMCPServerViewsLoading || isActionsLoading ? (
           <div className="flex h-40 w-full items-center justify-center">
@@ -277,6 +270,6 @@ export function AgentBuilderCapabilitiesBlock({
           </CardGrid>
         )}
       </div>
-    </div>
+    </AgentBuilderSectionContainer>
   );
 }

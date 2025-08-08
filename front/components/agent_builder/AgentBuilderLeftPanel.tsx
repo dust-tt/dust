@@ -63,7 +63,6 @@ export function AgentBuilderLeftPanel({
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
-          <Separator />
           <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
           <Separator />
           <AgentBuilderSettingsBlock
