@@ -28,6 +28,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
+import { escape } from "html-escaper";
 
 // Make token expires after 7 days
 const INVITATION_EXPIRATION_TIME_SEC = 60 * 60 * 24 * 7;
@@ -185,7 +186,8 @@ export async function sendWorkspaceInvitationEmail(
     templateId: config.getInvitationEmailTemplate(),
     dynamic_template_data: {
       inviteLink: getMembershipInvitationUrl(owner, invitation.id),
-      inviterName: user.fullName,
+      // Escape the name to prevent XSS attacks via injected script elements.
+      inviterName: escape(user.fullName),
       workspaceName: owner.name,
     },
   };

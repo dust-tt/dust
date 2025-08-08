@@ -1,5 +1,3 @@
-import { escape } from "html-escaper";
-
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import type { Authenticator } from "@app/lib/auth";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
@@ -129,11 +127,8 @@ export async function createOrUpdateUser({
       externalUser.name
     );
 
-    firstName = escape(externalUser.given_name || firstName);
+    firstName = externalUser.given_name || firstName;
     lastName = externalUser.family_name || lastName;
-    if (lastName) {
-      lastName = escape(lastName);
-    }
 
     // If worksOSUserId is already taken, we don't want to take it - only one user can have the same workOSUserId.
     const existingWorkOSUser = externalUser.workOSUserId
