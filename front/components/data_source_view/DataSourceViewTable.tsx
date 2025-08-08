@@ -151,7 +151,6 @@ export function DataSourceViewTable() {
     <ScrollableDataTable
       data={rows}
       columns={columns}
-      maxHeight="max-h-[600px]"
       getRowId={(row) => row.id}
     />
   );
