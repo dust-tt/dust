@@ -24,8 +24,8 @@ import type { Result } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
 
 /**
- * Soft HTML escaping that prevents HTML tag injection while preserving apostrophes and other common characters
- * Only escapes < and > which are the minimal characters needed to prevent HTML tag injection
+ * Soft HTML escaping that prevents HTML tag injection while preserving apostrophes and other common characters.
+ * Only escapes < and > which are the minimal characters needed to prevent HTML tag injection.
  */
 function softHtmlEscape(str: string): string {
   return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
