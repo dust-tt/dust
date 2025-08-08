@@ -192,6 +192,7 @@ async function streamAgentAnswerToSlack(
           )
         );
       }
+      case "tool_error":
       case "agent_error": {
         return new Err(
           new Error(

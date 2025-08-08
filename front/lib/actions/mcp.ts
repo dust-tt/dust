@@ -177,7 +177,6 @@ type MCPSuccessEvent = {
   action: MCPActionType;
 };
 
-// TODO(MCP 2025-05-06): Add action to the error event.
 type MCPErrorEvent = {
   type: "tool_error";
   created: number;
@@ -186,7 +185,6 @@ type MCPErrorEvent = {
   error: {
     code: string;
     message: string;
-    // TODO(2025-07-22 aubin): make this non nullable (we can always pass an empty object).
     metadata: Record<string, string | number | boolean> | null;
   };
 };
