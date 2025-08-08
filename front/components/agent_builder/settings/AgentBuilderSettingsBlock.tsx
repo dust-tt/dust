@@ -392,7 +392,7 @@ export function AgentBuilderSettingsBlock({
       defaultOpen={isSettingBlocksOpen}
     >
       <div className="space-y-5">
-        <div className="flex items-end gap-8">
+        <div className="flex items-start gap-8">
           <div className="flex-grow">
             <AgentNameInput />
           </div>
