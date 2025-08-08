@@ -27,7 +27,6 @@ import { getRunAgentData } from "@app/types/assistant/agent_run";
 
 interface ActionBlob {
   action: AgentMCPAction;
-  actionBaseParams: ActionBaseParams;
   actionConfiguration: MCPToolConfigurationType;
   mcpAction: MCPActionType;
   needsApproval: boolean;
@@ -231,7 +230,6 @@ async function createActionForTool(
 
   return {
     action: agentMCPAction,
-    actionBaseParams,
     actionConfiguration,
     mcpAction,
     needsApproval: status === "pending",

@@ -10,10 +10,12 @@ import type { StepContext } from "@app/lib/actions/types";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
+import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type { RunAgentArgs } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
 
@@ -21,7 +23,6 @@ export async function runToolActivity(
   authType: AuthenticatorType,
   {
     actionId,
-    actionBaseParams,
     actionConfiguration,
     rawMcpAction,
     runAgentArgs,
@@ -29,7 +30,6 @@ export async function runToolActivity(
     stepContext,
   }: {
     actionId: ModelId;
-    actionBaseParams: ActionBaseParams;
     actionConfiguration: MCPToolConfigurationType;
     rawMcpAction: MCPActionType;
     runAgentArgs: RunAgentArgs;
@@ -68,6 +68,29 @@ export async function runToolActivity(
   const mcpAction = new MCPActionType(rawMcpAction);
   const action = await AgentMCPAction.findByPk(actionId);
   assert(action, "Action not found");
+
+  const stepContent = await AgentStepContentResource.fetchByModelId(
+    action.stepContentId
+  );
+  assert(stepContent, "Step content not found");
+
+  const stepContentJSON = stepContent.toJSON();
+  const { value: functionCallData } = stepContentJSON;
+  assert(
+    isFunctionCallContent(functionCallData),
+    "Step content is not a function call"
+  );
+
+  const actionBaseParams: ActionBaseParams = {
+    agentMessageId: action.agentMessageId,
+    citationsAllocated: action.citationsAllocated,
+    functionCallId: functionCallData.value.id,
+    functionCallName: actionConfiguration.name,
+    generatedFiles: [],
+    mcpServerConfigurationId: action.mcpServerConfigurationId,
+    params: JSON.parse(functionCallData.value.arguments),
+    step,
+  };
 
   const eventStream = runToolWithStreaming(auth, actionConfiguration, {
     action,
