@@ -19,7 +19,7 @@ import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { SlackAutoReadPattern } from "@connectors/types";
-import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES, withRetries } from "@connectors/types";
 
 export function findMatchingChannelPatterns(
   remoteChannelName: string,
@@ -91,9 +91,26 @@ export async function autoReadChannel(
     autoReadChannelPatterns
   );
   if (matchingPatterns.length > 0) {
-    const joinChannelRes = await joinChannel(connectorId, slackChannelId);
-    if (joinChannelRes.isErr()) {
-      return joinChannelRes;
+    if (!remoteChannel.channel?.is_member) {
+      const joinChannelRes = await withRetries(
+        logger,
+        async (connectorId: ModelId, slackChannelId: string) => {
+          const result = await joinChannel(connectorId, slackChannelId);
+          if (result.isErr()) {
+            // Retry on any error, not just rate limit errors
+            throw result.error; // This will trigger a retry
+          }
+          return result;
+        },
+        {
+          retries: 3,
+          delayBetweenRetriesMs: 10000, // 10 seconds between retries
+        }
+      )(connectorId, slackChannelId);
+
+      if (joinChannelRes.isErr()) {
+        return joinChannelRes;
+      }
     }
 
     let channel: SlackChannel | null = null;
@@ -148,63 +165,72 @@ export async function autoReadChannel(
     // Loop through all the matching patterns. Swallow errors and continue.
     const results = await concurrentExecutor(
       matchingPatterns,
-      async (p) => {
-        const searchParams = new URLSearchParams({
-          vaultId: p.spaceId,
-          dataSourceId: connector.dataSourceId,
-        });
-
-        const searchRes = await dustAPI.searchDataSourceViews(searchParams);
-        if (searchRes.isErr()) {
-          logger.error({
-            connectorId,
-            channelId: slackChannelId,
-            error: searchRes.error.message,
+      withRetries(
+        logger,
+        async (p: SlackAutoReadPattern) => {
+          const searchParams = new URLSearchParams({
+            vaultId: p.spaceId,
+            dataSourceId: connector.dataSourceId,
           });
 
-          return new Err(new Error("Failed to join Slack channel in Dust."));
-        }
+          const searchRes = await dustAPI.searchDataSourceViews(searchParams);
+          if (searchRes.isErr()) {
+            logger.error({
+              connectorId,
+              channelId: slackChannelId,
+              error: searchRes.error.message,
+            });
 
-        const [dataSourceView] = searchRes.value;
-        if (!dataSourceView) {
-          logger.error({
-            connectorId,
-            channelId: slackChannelId,
-            error:
-              "Failed to join Slack channel, there was an issue retrieving dataSourceViews",
-          });
-
-          return new Err(
-            new Error("There was an issue retrieving dataSourceViews")
-          );
-        }
-
-        const updateDataSourceViewRes = await dustAPI.patchDataSourceView(
-          dataSourceView,
-          {
-            parentsToAdd: [
-              slackChannelInternalIdFromSlackChannelId(channel.slackChannelId),
-            ],
-            parentsToRemove: undefined,
+            return new Err(new Error("Failed to join Slack channel in Dust."));
           }
-        );
 
-        if (updateDataSourceViewRes.isErr()) {
-          logger.error({
-            connectorId,
-            channelId: slackChannelId,
-            error: updateDataSourceViewRes.error.message,
-          });
-          return new Err(
-            new Error(
-              `Failed to update Slack data source view for space ${p.spaceId}.`
-            )
+          const [dataSourceView] = searchRes.value;
+          if (!dataSourceView) {
+            logger.error({
+              connectorId,
+              channelId: slackChannelId,
+              error:
+                "Failed to join Slack channel, there was an issue retrieving dataSourceViews",
+            });
+
+            return new Err(
+              new Error("There was an issue retrieving dataSourceViews")
+            );
+          }
+
+          const updateDataSourceViewRes = await dustAPI.patchDataSourceView(
+            dataSourceView,
+            {
+              parentsToAdd: [
+                slackChannelInternalIdFromSlackChannelId(
+                  channel.slackChannelId
+                ),
+              ],
+              parentsToRemove: undefined,
+            }
           );
-        }
 
-        return new Ok(true);
-      },
-      { concurrency: 1 }
+          if (updateDataSourceViewRes.isErr()) {
+            logger.error({
+              connectorId,
+              channelId: slackChannelId,
+              error: updateDataSourceViewRes.error.message,
+            });
+            return new Err(
+              new Error(
+                `Failed to update Slack data source view for space ${p.spaceId}.`
+              )
+            );
+          }
+
+          return new Ok(true);
+        },
+        {
+          retries: 3,
+          delayBetweenRetriesMs: 5000,
+        }
+      ),
+      { concurrency: 5 }
     );
 
     // If any error, return the first error.
