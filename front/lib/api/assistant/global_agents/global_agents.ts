@@ -30,6 +30,7 @@ import {
   _getO3GlobalAgent,
   _getO3MiniGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/openai";
+import { _getResearchGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/research";
 import {
   _getGithubGlobalAgent,
   _getGoogleDriveGlobalAgent,
@@ -63,6 +64,7 @@ function getGlobalAgent({
   agentRouterMCPServerView,
   webSearchBrowseMCPServerView,
   searchMCPServerView,
+  dataSourcesFileSystemMCPServerView,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -72,6 +74,7 @@ function getGlobalAgent({
   agentRouterMCPServerView: MCPServerViewResource | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
+  dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -252,6 +255,14 @@ function getGlobalAgent({
         searchMCPServerView,
       });
       break;
+    case GLOBAL_AGENTS_SID.RESEARCH:
+      agentConfiguration = _getResearchGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        webSearchBrowseMCPServerView,
+        dataSourcesFileSystemMCPServerView,
+      });
+      break;
     default:
       return null;
   }
@@ -306,6 +317,7 @@ export async function getGlobalAgents(
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
     searchMCPServerView,
+    dataSourcesFileSystemMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -330,6 +342,12 @@ export async function getGlobalAgents(
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
           "search"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "data_sources_file_system"
         )
       : null,
   ]);
@@ -364,6 +382,12 @@ export async function getGlobalAgents(
     );
   }
 
+  if (!flags.includes("research_agent")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.RESEARCH
+    );
+  }
+
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
   const agentCandidates = agentsIdsToFetch.map((sId) =>
@@ -376,6 +400,7 @@ export async function getGlobalAgents(
       agentRouterMCPServerView,
       webSearchBrowseMCPServerView,
       searchMCPServerView,
+      dataSourcesFileSystemMCPServerView,
     })
   );
 
