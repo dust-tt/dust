@@ -13,7 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
-import { sortBy } from "lodash";
+import sortBy from "lodash/sortBy";
 import React, { useEffect, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
