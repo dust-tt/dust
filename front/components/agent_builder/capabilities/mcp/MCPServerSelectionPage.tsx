@@ -47,7 +47,7 @@ function DataVisualizationCard({
       onClick={isSelected ? undefined : onDataVisualizationClick}
       className="h-32"
     >
-      <div className="flex w-full flex-col gap-1 text-sm">
+      <div className="flex w-full flex-col justify-between gap-2 text-sm">
         <div className="mb-2 flex h-7 items-center gap-2">
           <Avatar
             icon={DATA_VISUALIZATION_SPECIFICATION.dropDownIcon}
@@ -274,7 +274,7 @@ export function MCPServerSelectionPage({
 
       {selectedToolsInDialog.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Added tools</h2>
+          <h2 className="text-lg font-semibold">Selected tools</h2>
           <div className="flex flex-wrap gap-2">
             {selectedToolsInDialog.map((tool, index) => (
               <Chip
