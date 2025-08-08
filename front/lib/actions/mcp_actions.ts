@@ -32,12 +32,7 @@ import type {
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import {
-  getAvailabilityOfInternalMCPServerById,
-  getInternalMCPServerNameAndWorkspaceId,
-  INTERNAL_MCP_SERVERS,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import { getAvailabilityOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/constants";
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -76,7 +71,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
-import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
+import { Err, normalizeError, Ok, slugify } from "@app/types";
 
 const MAX_OUTPUT_ITEMS = 128;
 
@@ -783,59 +778,33 @@ async function listToolsForServerSideMCPServer(
   const availability = getAvailabilityOfInternalMCPServerById(
     connectionParams.mcpServerId
   );
-  const { serverType, id } = getServerTypeAndIdFromSId(
-    connectionParams.mcpServerId
-  );
 
   let toolsStakes: Record<string, MCPToolStakeLevelType> = {};
   let serverTimeoutMs: number | undefined;
 
-  switch (serverType) {
-    case "internal": {
-      const r = getInternalMCPServerNameAndWorkspaceId(
-        connectionParams.mcpServerId
-      );
-      if (r.isErr()) {
-        return r;
-      }
-      const serverName = r.value.name;
-      toolsStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes || {};
-      serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
-      break;
-    }
+  const metadata = await RemoteMCPServerToolMetadataResource.fetchByServerId(
+    auth,
+    connectionParams.mcpServerId
+  );
+  toolsStakes = metadata.reduce<Record<string, MCPToolStakeLevelType>>(
+    (acc, metadata) => {
+      acc[metadata.toolName] = metadata.permission;
+      return acc;
+    },
+    {}
+  );
 
-    case "remote": {
-      const metadata =
-        await RemoteMCPServerToolMetadataResource.fetchByServerId(
-          auth,
-          id,
-          serverType
-        );
-      toolsStakes = metadata.reduce<Record<string, MCPToolStakeLevelType>>(
-        (acc, metadata) => {
-          acc[metadata.toolName] = metadata.permission;
-          return acc;
-        },
-        {}
-      );
-
-      // Filter out tools that are not enabled.
-      const toolsEnabled = metadata.reduce<Record<string, boolean>>(
-        (acc, metadata) => {
-          acc[metadata.toolName] = metadata.enabled;
-          return acc;
-        },
-        {}
-      );
-      allToolsRaw = allToolsRaw.filter((tool) => {
-        return !toolsEnabled[tool.name] || toolsEnabled[tool.name];
-      });
-
-      break;
-    }
-    default:
-      assertNever(serverType);
-  }
+  // Filter out tools that are not enabled.
+  const toolsEnabled = metadata.reduce<Record<string, boolean>>(
+    (acc, metadata) => {
+      acc[metadata.toolName] = metadata.enabled;
+      return acc;
+    },
+    {}
+  );
+  allToolsRaw = allToolsRaw.filter((tool) => {
+    return !toolsEnabled[tool.name] || toolsEnabled[tool.name];
+  });
 
   const toolsWithStakesAndTimeout = allToolsRaw.map((tool) => ({
     ...tool,

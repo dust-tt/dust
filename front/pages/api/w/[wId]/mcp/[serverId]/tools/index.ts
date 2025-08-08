@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
@@ -49,13 +48,10 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { serverType, id } = getServerTypeAndIdFromSId(serverId);
-
       const resources =
         await RemoteMCPServerToolMetadataResource.fetchByServerId(
           auth,
-          id,
-          serverType
+          serverId
         );
 
       const toolsSettings = resources.reduce(
