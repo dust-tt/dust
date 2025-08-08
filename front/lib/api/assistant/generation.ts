@@ -80,6 +80,10 @@ export async function constructPromptMultiActions(
     }
   }
 
+  if (model.formattingMetaPrompt) {
+    context += `# RESPONSE FORMAT\n${model.formattingMetaPrompt}\n`;
+  }
+
   if (errorContext) {
     context +=
       "\n\n # INSTRUCTIONS ERROR\n\nNote: There was an error while building instructions:\n" +
