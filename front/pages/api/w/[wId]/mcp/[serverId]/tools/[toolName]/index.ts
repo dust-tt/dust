@@ -121,8 +121,7 @@ async function handler(
       }
 
       await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(auth, {
-        serverId: id,
-        serverType,
+        serverSId: serverId,
         toolName,
         permission: permission ?? "high",
         enabled: enabled ?? true,
