@@ -20,14 +20,12 @@ export async function runToolActivity(
   {
     actionId,
     actionConfiguration,
-    rawMcpAction,
     runAgentArgs,
     step,
     stepContext,
   }: {
     actionId: ModelId;
     actionConfiguration: MCPToolConfigurationType;
-    rawMcpAction: MCPActionType;
     runAgentArgs: RunAgentArgs;
     step: number;
     stepContext: StepContext;
@@ -60,8 +58,6 @@ export async function runToolActivity(
       step: step + 1,
     });
 
-  // Temporal activity arguments are serialized as JSON, so we need to deserialize them.
-  const mcpAction = new MCPActionType(rawMcpAction);
   const action = await AgentMCPAction.findByPk(actionId);
   assert(action, "Action not found");
 
@@ -71,6 +67,15 @@ export async function runToolActivity(
     mcpServerConfigurationId: action.mcpServerConfigurationId,
     step,
     stepContentId: action.stepContentId,
+  });
+
+  const mcpAction = new MCPActionType({
+    ...actionBaseParams,
+    id: action.id,
+    isError: action.isError,
+    executionState: action.executionState,
+    type: "tool_action",
+    output: null,
   });
 
   const eventStream = runToolWithStreaming(auth, actionConfiguration, {

@@ -65,12 +65,11 @@ export async function executeAgentLoop(
 
     // Execute tools.
     await Promise.all(
-      actionBlobs.map(({ action, actionConfiguration, mcpAction }, index) =>
+      actionBlobs.map(({ action, actionConfiguration }, index) =>
         activities.runToolActivity(authType, {
           actionId: action.id,
           runAgentArgs,
           actionConfiguration,
-          rawMcpAction: mcpAction,
           step: i,
           stepContext: stepContexts[index],
         })
