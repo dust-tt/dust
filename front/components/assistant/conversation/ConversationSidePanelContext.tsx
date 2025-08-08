@@ -26,8 +26,6 @@ type OpenPanelParams =
 
 interface AgentActionState {
   actionProgress: ActionProgressState;
-  isActing: boolean;
-  messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
 }
 
 type SidePanelMetadata = OpenPanelParams["metadata"] | undefined;
@@ -115,8 +113,6 @@ export function ConversationSidePanelProvider({
       if (currentPanel === "actions" && !metadata) {
         setMetadata({
           actionProgress: new Map(),
-          isActing: false,
-          messageStatus: "succeeded",
         });
       }
     } else if (!data) {
