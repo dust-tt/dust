@@ -17,6 +17,7 @@ import { isAgentCreationResultResourceType } from "@app/lib/actions/mcp_internal
 export function MCPAgentManagementActionDetails({
   action,
   defaultOpen,
+  collapsible,
   owner,
   messageStatus,
 }: MCPActionDetailsProps) {
@@ -52,6 +53,7 @@ export function MCPAgentManagementActionDetails({
     // Fallback to showing the raw output if no structured data
     return (
       <ActionDetailsWrapper
+        collapsible={collapsible}
         actionName="Create Agent"
         defaultOpen={defaultOpen}
         visual={ActionRobotIcon}
@@ -75,6 +77,7 @@ export function MCPAgentManagementActionDetails({
 
   return (
     <ActionDetailsWrapper
+      collapsible={collapsible}
       actionName="Create Agent"
       defaultOpen={defaultOpen}
       visual={ActionRobotIcon}

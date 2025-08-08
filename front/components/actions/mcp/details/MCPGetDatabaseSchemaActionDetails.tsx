@@ -13,6 +13,7 @@ import {
 
 export function MCPGetDatabaseSchemaActionDetails({
   action,
+  collapsible,
   defaultOpen,
   hideOutput,
 }: MCPActionDetailsProps) {
@@ -26,6 +27,7 @@ export function MCPGetDatabaseSchemaActionDetails({
 
   return (
     <ActionDetailsWrapper
+      collapsible={collapsible}
       actionName="Get database schema"
       defaultOpen={defaultOpen}
       visual={TableIcon}

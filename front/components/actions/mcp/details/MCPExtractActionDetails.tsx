@@ -42,6 +42,7 @@ interface MCPExtractActionResultsProps {
 
 export function MCPExtractActionDetails({
   action,
+  collapsible,
   defaultOpen,
   hideOutput,
 }: MCPActionDetailsProps) {
@@ -57,6 +58,7 @@ export function MCPExtractActionDetails({
 
   return (
     <ActionDetailsWrapper
+      collapsible={collapsible}
       actionName="Extract data"
       defaultOpen={defaultOpen}
       visual={ScanIcon}

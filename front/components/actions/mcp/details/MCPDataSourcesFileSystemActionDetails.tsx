@@ -19,6 +19,7 @@ import { formatDataSourceDisplayName } from "@app/types";
 
 export function DataSourceNodeContentDetails({
   action,
+  collapsible,
   defaultOpen,
   hideOutput,
 }: MCPActionDetailsProps) {
@@ -31,6 +32,7 @@ export function DataSourceNodeContentDetails({
 
   return (
     <ActionDetailsWrapper
+      collapsible={collapsible}
       actionName="Retrieve file content"
       defaultOpen={defaultOpen}
       visual={DocumentIcon}
@@ -67,6 +69,7 @@ export function DataSourceNodeContentDetails({
 
 export function FilesystemPathDetails({
   action,
+  collapsible,
   defaultOpen,
 }: MCPActionDetailsProps) {
   const filesystemPath = action.output
@@ -103,6 +106,7 @@ export function FilesystemPathDetails({
 
   return (
     <ActionDetailsWrapper
+      collapsible={collapsible}
       actionName="Locate item"
       defaultOpen={defaultOpen}
       visual={ActionPinDistanceIcon}

@@ -59,6 +59,7 @@ export interface MCPActionDetailsProps {
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
   defaultOpen: boolean;
+  collapsible: boolean;
   messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
   hideOutput?: boolean;
 }
@@ -67,6 +68,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   const {
     action: { output, functionCallName, mcpServerId, params },
     defaultOpen,
+    collapsible,
     hideOutput,
   } = props;
 
@@ -86,6 +88,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
 
       return (
         <SearchResultDetails
+          collapsible={collapsible}
           defaultQuery={queryResource.text}
           actionName="Search data"
           actionOutput={output}
@@ -102,6 +105,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     ) {
       return (
         <SearchResultDetails
+          collapsible={collapsible}
           actionName="Browse data sources"
           actionOutput={output}
           defaultOpen={defaultOpen}
@@ -124,6 +128,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     if (toolName === INCLUDE_TOOL_NAME) {
       return (
         <SearchResultDetails
+          collapsible={collapsible}
           actionName="Include data"
           actionOutput={output}
           defaultOpen={defaultOpen}
@@ -138,6 +143,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     if (toolName === WEBSEARCH_TOOL_NAME) {
       return (
         <SearchResultDetails
+          collapsible={collapsible}
           defaultQuery={params.query as string}
           actionName="Web search"
           actionOutput={output}
@@ -192,6 +198,7 @@ export function GenericActionDetails({
   owner,
   action,
   defaultOpen,
+  collapsible,
   hideOutput,
 }: MCPActionDetailsProps) {
   const inputs =
@@ -201,6 +208,7 @@ export function GenericActionDetails({
 
   return (
     <ActionDetailsWrapper
+      collapsible={collapsible}
       actionName={
         asDisplayName(action.functionCallName) ?? "Calling MCP Server"
       }

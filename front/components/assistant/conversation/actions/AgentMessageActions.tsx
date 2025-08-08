@@ -4,7 +4,9 @@ import {
   Card,
   cn,
   CommandLineIcon,
+  ContentMessage,
   Markdown,
+  Tooltip,
 } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
@@ -38,7 +40,7 @@ export function AgentMessageActions({
 
   const lastAction = agentMessage.actions[agentMessage.actions.length - 1];
   const hasActions = agentMessage.actions.length > 0;
-  const chainOfThought = agentMessage.chainOfThought || "...";
+  const chainOfThought = agentMessage.chainOfThought || "Thinking...";
   const onClick = () => {
     openPanel({
       type: "actions",
@@ -55,7 +57,7 @@ export function AgentMessageActions({
 
   return lastAgentStateClassification !== "done" ? (
     <div
-      // onClick={lastAction ? onClick : undefined}
+      onClick={lastAction ? onClick : undefined}
       className={cn(
         "flex max-w-[500px] flex-col gap-y-4",
         lastAction ? "cursor-pointer" : ""
@@ -65,6 +67,7 @@ export function AgentMessageActions({
       lastAgentStateClassification === "acting" ? (
         <Card variant="secondary" size="sm">
           <MCPActionDetails
+            collapsible={false}
             action={lastAction}
             owner={owner}
             lastNotification={null}
@@ -73,23 +76,19 @@ export function AgentMessageActions({
           />
         </Card>
       ) : (
-        <Card variant="secondary" size="sm">
-          <ActionDetailsWrapper
-            actionName={"Thinking"}
-            defaultOpen={true}
-            visual={BrainIcon}
-          >
-            <div className="flex flex-col gap-4 pl-6 pt-4 text-red-500 dark:text-muted-foreground-night">
+        <div>
+          {chainOfThought && (
+            <ContentMessage variant="primary">
               <Markdown
                 content={chainOfThought}
                 isStreaming={false}
                 forcedTextSize="text-sm"
-                textColor="text-muted-foreground dark:text-muted-foreground-night"
-                isLastMessage={true}
+                textColor="text-muted-foreground"
+                isLastMessage={false}
               />
-            </div>
-          </ActionDetailsWrapper>
-        </Card>
+            </ContentMessage>
+          )}
+        </div>
       )}
     </div>
   ) : (

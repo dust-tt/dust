@@ -6,6 +6,7 @@ import { isBrowseResultResourceType } from "@app/lib/actions/mcp_internal_action
 
 export function MCPBrowseActionDetails({
   action,
+  collapsible,
   defaultOpen,
   hideOutput,
 }: MCPActionDetailsProps) {
@@ -16,6 +17,7 @@ export function MCPBrowseActionDetails({
 
   return (
     <ActionDetailsWrapper
+      collapsible={collapsible}
       actionName="Web navigation"
       defaultOpen={defaultOpen}
       visual={GlobeAltIcon}

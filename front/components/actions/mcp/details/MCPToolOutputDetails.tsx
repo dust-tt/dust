@@ -179,6 +179,7 @@ interface SearchResultProps {
   actionName: string;
   defaultQuery?: string;
   defaultOpen: boolean;
+  collapsible: boolean;
   visual: React.ComponentType<{ className?: string }>;
   actionOutput: CallToolResult["content"] | null;
   hideOutput?: boolean;
@@ -187,6 +188,7 @@ interface SearchResultProps {
 export function SearchResultDetails({
   actionName,
   defaultQuery,
+  collapsible,
   defaultOpen,
   visual,
   actionOutput,
@@ -280,6 +282,7 @@ export function SearchResultDetails({
 
   return (
     <ActionDetailsWrapper
+      collapsible={collapsible}
       actionName={actionName}
       defaultOpen={defaultOpen}
       visual={visual}

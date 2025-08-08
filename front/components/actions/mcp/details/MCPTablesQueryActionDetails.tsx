@@ -17,6 +17,7 @@ import {
 
 export function MCPTablesQueryActionDetails({
   action,
+  collapsible,
   defaultOpen,
   owner,
   hideOutput,
@@ -38,6 +39,7 @@ export function MCPTablesQueryActionDetails({
 
   return (
     <ActionDetailsWrapper
+      collapsible={collapsible}
       actionName="Query tables"
       defaultOpen={defaultOpen}
       visual={TableIcon}
