@@ -68,8 +68,8 @@ export async function executeAgentLoop(
       actionBlobs.map(
         ({ action, actionBaseParams, actionConfiguration, mcpAction }, index) =>
           activities.runToolActivity(authType, {
+            actionId: action.id,
             runAgentArgs,
-            rawAction: action,
             actionBaseParams,
             actionConfiguration,
             rawMcpAction: mcpAction,
