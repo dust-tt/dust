@@ -94,7 +94,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
       where:
         serverType === "remote"
           ? { remoteMCPServerId: serverId }
-          : { internalMCPServerId: serverSId },
+          : { internalMCPServerSId: serverSId },
     });
   }
 
@@ -154,7 +154,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     const [toolMetadata] = await this.model.upsert({
       ...(serverType === "remote"
         ? { remoteMCPServerId: serverId }
-        : { internalMCPServerId: serverSId }),
+        : { internalMCPServerSId: serverSId }),
       toolName,
       permission,
       enabled,
@@ -206,7 +206,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
   } {
     return {
       remoteMCPServerId: this.remoteMCPServerId,
-      internalMCPServerId: this.internalMCPServerId,
+      internalMCPServerId: this.internalMCPServerSId,
       toolName: this.toolName,
       permission: this.permission,
       enabled: this.enabled,
