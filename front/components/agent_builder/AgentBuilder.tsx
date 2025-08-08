@@ -22,6 +22,7 @@ import { useAgentConfigurationActions } from "@app/lib/swr/actions";
 import { useEditors } from "@app/lib/swr/editors";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types";
+import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
@@ -182,9 +183,11 @@ export default function AgentBuilder({
           />
         }
         rightPanel={
-          <AgentBuilderRightPanel
-            agentConfigurationSId={agentConfiguration?.sId}
-          />
+          <ConversationSidePanelProvider>
+            <AgentBuilderRightPanel
+              agentConfigurationSId={agentConfiguration?.sId}
+            />
+          </ConversationSidePanelProvider>
         }
       />
     </FormProvider>
