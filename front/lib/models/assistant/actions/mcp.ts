@@ -196,6 +196,7 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
     | "denied";
 
   declare citationsAllocated: number;
+  declare augmentedInputs: Record<string, unknown>;
 
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
   declare agentMessage?: NonAttribute<AgentMessage>;
@@ -246,6 +247,11 @@ AgentMCPAction.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
+    },
+    augmentedInputs: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: {},
     },
   },
   {
