@@ -245,7 +245,7 @@ export function navigationHistoryEntryTitle(
 export function findSpaceFromNavigationHistory(
   navigationHistory: NavigationHistoryEntryType[]
 ): SpaceType | null {
-  const entry = navigationHistory[1];
+  const entry = navigationHistory[1]; // Index 1 is where we store the space
   if (entry != null && entry.type === "space") {
     return entry.space;
   }
@@ -256,7 +256,7 @@ export function findSpaceFromNavigationHistory(
 export function findCategoryFromNavigationHistory(
   navigationHistory: NavigationHistoryEntryType[]
 ): DataSourceViewCategoryWithoutApps | null {
-  const entry = navigationHistory[2];
+  const entry = navigationHistory[2]; // Index 2 is where we store the category
   if (entry != null && entry.type === "category") {
     return entry.category;
   }
@@ -267,7 +267,7 @@ export function findCategoryFromNavigationHistory(
 export function findDataSourceViewFromNavigationHistory(
   navigationHistory: NavigationHistoryEntryType[]
 ): DataSourceViewType | null {
-  const entry = navigationHistory[3];
+  const entry = navigationHistory[3]; // Index 3 is where we store the data source
   if (entry != null && entry.type === "data_source") {
     return entry.dataSourceView;
   }

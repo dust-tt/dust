@@ -32,6 +32,8 @@ export function transformTreeToSelectionConfigurations(
 
   // Parse the tree paths to extract data source configurations
   for (const item of tree.in) {
+    // We can skip for item that aren't data_source or node. As we only allow those
+    // to be selected, it safe to skip, and make our life easier type wise after that checks
     if (item.type !== "node" && item.type !== "data_source") {
       continue;
     }
