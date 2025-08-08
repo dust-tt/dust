@@ -86,7 +86,6 @@ export function transformTreeToSelectionConfigurations(
 export function transformSelectionConfigurationsToTree(
   configurations: DataSourceViewSelectionConfigurations
 ): DataSourceBuilderTreeType {
-  console.log({ configurations });
   const inPaths: DataSourceBuilderTreeItemType[] = [];
   const notInPaths: DataSourceBuilderTreeItemType[] = [];
 

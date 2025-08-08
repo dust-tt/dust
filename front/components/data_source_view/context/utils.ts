@@ -40,8 +40,6 @@ export function addNodeToTree(
   const { path } = item;
   const pathPrefix = getPathPrefix(path);
 
-  console.log({ item });
-
   const hasParentInclusion = tree.in.some(({ path: inPath }) =>
     isParentOrSamePath(inPath, path)
   );
