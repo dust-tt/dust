@@ -1,20 +1,17 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { Button, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import DatasetView from "@app/components/app/DatasetView";
-import { subNavigationApp } from "@app/components/navigation/config";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getDatasets } from "@app/lib/api/datasets";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { dustAppsListUrl } from "@app/lib/spaces";
 import type { WorkspaceType } from "@app/types";
 import type { AppType } from "@app/types";
 import type { DatasetSchema, DatasetType } from "@app/types";
@@ -123,69 +120,37 @@ export default function NewDatasetView({
   };
 
   return (
-    <AppCenteredLayout
-      subscription={subscription}
+    <DustAppPageLayout
       owner={owner}
-      hideSidebar
-      className="pt-0"
-      title={
-        <AppLayoutSimpleCloseTitle
-          title={app.name}
-          onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.space));
-          }}
-        />
-      }
+      subscription={subscription}
+      app={app}
+      currentTab="datasets"
     >
-      <div className="flex w-full flex-col">
-        <Tabs
-          value="datasets"
-          className="sticky top-0 z-10 bg-background pt-4 dark:bg-background-night"
-        >
-          <TabsList>
-            {subNavigationApp({ owner, app, current: "datasets" }).map(
-              (tab) => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  label={tab.label}
-                  icon={tab.icon}
-                  onClick={() => {
-                    if (tab.href) {
-                      void router.push(tab.href);
-                    }
-                  }}
-                />
-              )
-            )}
-          </TabsList>
-        </Tabs>
-        <div className="mt-8 flex flex-col">
-          <div className="flex flex-1">
-            <div className="space-y-6 divide-y divide-gray-200 dark:divide-gray-200-night">
-              <DatasetView
-                readOnly={false}
-                datasets={datasets}
-                dataset={dataset}
-                schema={schema}
-                onUpdate={onUpdate}
-                nameDisabled={false}
-                viewType="full"
-              />
+      <div className="mt-8 flex flex-col">
+        <div className="flex flex-1">
+          <div className="space-y-6 divide-y divide-gray-200 dark:divide-gray-200-night">
+            <DatasetView
+              readOnly={false}
+              datasets={datasets}
+              dataset={dataset}
+              schema={schema}
+              onUpdate={onUpdate}
+              nameDisabled={false}
+              viewType="full"
+            />
 
-              <div className="flex py-6">
-                <Button
-                  label="Create"
-                  variant="primary"
-                  disabled={disable || loading}
-                  onClick={() => handleSubmit()}
-                />
-              </div>
+            <div className="flex py-6">
+              <Button
+                label="Create"
+                variant="primary"
+                disabled={disable || loading}
+                onClick={() => handleSubmit()}
+              />
             </div>
           </div>
         </div>
       </div>
-    </AppCenteredLayout>
+    </DustAppPageLayout>
   );
 }
 
