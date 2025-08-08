@@ -1,4 +1,3 @@
-import { TOOL_RUNNING_LABEL } from "@dust-tt/client";
 import {
   BrainIcon,
   Button,
@@ -7,7 +6,6 @@ import {
   CommandLineIcon,
   Markdown,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
@@ -18,7 +16,6 @@ import type {
   AgentStateClassification,
 } from "@app/lib/assistant/state/messageReducer";
 import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
 
 interface AgentMessageActionsProps {
   agentMessage: LightAgentMessageType;
@@ -26,102 +23,47 @@ interface AgentMessageActionsProps {
   actionProgress: ActionProgressState;
   owner: LightWorkspaceType;
 }
-
+function isMCPActionType(
+  action: { type: "tool_action"; id: number } | undefined
+): action is MCPActionType {
+  return action !== undefined && "functionCallName" in action;
+}
 export function AgentMessageActions({
   agentMessage,
   lastAgentStateClassification,
   actionProgress,
   owner,
 }: AgentMessageActionsProps) {
-  const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
   const { openPanel } = useConversationSidePanelContext();
 
-  useEffect(() => {
-    switch (lastAgentStateClassification) {
-      case "thinking":
-        setChipLabel("Thinking");
-        break;
-      case "acting":
-        if (agentMessage.actions && agentMessage.actions.length > 0) {
-          setChipLabel(TOOL_RUNNING_LABEL);
-        }
-        break;
-      case "done":
-        setChipLabel(undefined);
-        break;
-      default:
-        assertNever(lastAgentStateClassification);
-    }
-  }, [lastAgentStateClassification, agentMessage.actions]);
-
-  const isThinkingOrActing = useMemo(
-    () => agentMessage.status === "created",
-    [agentMessage.status]
-  );
-
   const lastAction = agentMessage.actions[agentMessage.actions.length - 1];
-  return (
-    <ActionDetails
-      hasActions={agentMessage.actions.length > 0}
-      lastAction={isMCPActionType(lastAction) ? lastAction : undefined}
-      isActionStepDone={!isThinkingOrActing}
-      isActing={lastAgentStateClassification === "acting"}
-      label={chipLabel}
-      owner={owner}
-      chainOfThought={agentMessage.chainOfThought || "..."}
-      onClick={() =>
-        openPanel({
-          type: "actions",
-          messageId: agentMessage.sId,
-          metadata: {
-            actionProgress,
-          },
-        })
-      }
-    />
-  );
-}
+  const hasActions = agentMessage.actions.length > 0;
+  const chainOfThought = agentMessage.chainOfThought || "...";
+  const onClick = () => {
+    openPanel({
+      type: "actions",
+      messageId: agentMessage.sId,
+      metadata: {
+        actionProgress,
+      },
+    });
+  };
 
-function isMCPActionType(
-  action: { type: "tool_action"; id: number } | undefined
-): action is MCPActionType {
-  return action !== undefined && "functionCallName" in action;
-}
-
-function ActionDetails({
-  hasActions,
-  lastAction,
-  label,
-  isActionStepDone,
-  isActing,
-  owner,
-  chainOfThought,
-  onClick,
-}: {
-  hasActions: boolean;
-  lastAction: MCPActionType | undefined;
-  label?: string;
-  isActionStepDone: boolean;
-  isActing: boolean;
-  owner: LightWorkspaceType;
-  chainOfThought: string;
-  onClick: () => void;
-}) {
-  if (!label && (!isActionStepDone || !hasActions)) {
+  if (lastAgentStateClassification === "done" && !hasActions) {
     return null;
   }
 
-  return label ? (
+  return lastAgentStateClassification !== "done" ? (
     <div
-      key={label}
-      onClick={lastAction ? onClick : undefined}
+      // onClick={lastAction ? onClick : undefined}
       className={cn(
         "flex max-w-[500px] flex-col gap-y-4",
         lastAction ? "cursor-pointer" : ""
       )}
     >
-      {lastAction && isActing ? (
-        <Card variant="secondary" size="md">
+      {isMCPActionType(lastAction) &&
+      lastAgentStateClassification === "acting" ? (
+        <Card variant="secondary" size="sm">
           <MCPActionDetails
             action={lastAction}
             owner={owner}
@@ -131,7 +73,7 @@ function ActionDetails({
           />
         </Card>
       ) : (
-        <Card variant="secondary" size="md">
+        <Card variant="secondary" size="sm">
           <ActionDetailsWrapper
             actionName={"Thinking"}
             defaultOpen={true}
