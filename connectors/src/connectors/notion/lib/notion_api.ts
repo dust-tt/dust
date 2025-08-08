@@ -1194,7 +1194,7 @@ export async function getUserName(
 ): Promise<string | null> {
   const nameFromCache = await cacheGet(`notion-user-name:${userId}`);
   if (nameFromCache) {
-    pageLogger.info({ user_id: userId }, "Got user name from cache.");
+    pageLogger.debug({ user_id: userId }, "Got user name from cache.");
     return nameFromCache;
   }
 

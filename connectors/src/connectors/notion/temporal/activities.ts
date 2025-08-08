@@ -399,7 +399,7 @@ export async function getPagesAndDatabasesToSync({
     })
     .map((p) => p.id);
 
-  localLogger.info(
+  localLogger.debug(
     {
       initial_count: existingPages.length,
       filtered_count: existingPages.length - filteredPageIds.length,
@@ -430,7 +430,7 @@ export async function getPagesAndDatabasesToSync({
     })
     .map((p) => p.id);
 
-  localLogger.info(
+  localLogger.debug(
     {
       initial_count: existingDatabases.length,
       filtered_count: existingDatabases.length - filteredDatabaseIds.length,
@@ -1546,7 +1546,7 @@ export async function cacheBlockChildren({
 
   const accessToken = await getNotionAccessToken(connector.id);
 
-  localLogger.info(
+  localLogger.debug(
     "notionBlockChildrenResultPageActivity: Retrieving result page from Notion API."
   );
   const resultPage = await retrieveBlockChildrenResultPage({
@@ -1603,14 +1603,7 @@ export async function cacheBlockChildren({
     .filter((b) => b.hasChildren)
     .map((b) => b.id);
 
-  localLogger.info(
-    {
-      blocksWithChildrenCount: blocksWithChildren.length,
-    },
-    "Found blocks with children."
-  );
-
-  localLogger.info(
+  localLogger.debug(
     "notionBlockChildrenResultPageActivity: Saving blocks in cache."
   );
   await concurrentExecutor(
@@ -1895,7 +1888,7 @@ export async function renderAndUpsertPageFromCache({
     workspaceId: connector.workspaceId,
   });
 
-  localLogger.info(
+  localLogger.debug(
     "notionRenderAndUpsertPageFromCache: Retrieving Notion page from connectors DB."
   );
   const notionPageInDb = await getNotionPageFromConnectorsDb(
@@ -1911,7 +1904,7 @@ export async function renderAndUpsertPageFromCache({
     return;
   }
 
-  localLogger.info(
+  localLogger.debug(
     "notionRenderAndUpsertPageFromCache: Retrieving page from cache."
   );
   const pageCacheEntry = await NotionConnectorPageCacheEntry.findOne({
@@ -1926,7 +1919,7 @@ export async function renderAndUpsertPageFromCache({
   }
 
   if (notionPageInDb?.parentType === "database" && notionPageInDb.parentId) {
-    localLogger.info(
+    localLogger.debug(
       "notionRenderAndUpsertPageFromCache: Retrieving parent database from connectors DB."
     );
     const parentDb = await NotionDatabase.findOne({
@@ -1939,7 +1932,7 @@ export async function renderAndUpsertPageFromCache({
     if (parentDb) {
       // Only do structured data incremental sync if the DB has already been synced as structured data.
       if (parentDb.structuredDataUpsertedTs) {
-        localLogger.info(
+        localLogger.debug(
           "notionRenderAndUpsertPageFromCache: Upserting page in structured data."
         );
         const { tableId, tableName, tableDescription } =
@@ -1989,14 +1982,14 @@ export async function renderAndUpsertPageFromCache({
           })
         );
       } else {
-        localLogger.info(
+        localLogger.debug(
           "notionRenderAndUpsertPageFromCache: Skipping page as parent database has not been synced as structured data."
         );
       }
     }
   }
 
-  localLogger.info(
+  localLogger.debug(
     "notionRenderAndUpsertPageFromCache: Retrieving blocks from cache."
   );
   const blockCacheEntries = await NotionConnectorBlockCacheEntry.findAll({
@@ -2015,7 +2008,7 @@ export async function renderAndUpsertPageFromCache({
     ];
   }
 
-  localLogger.info("notionRenderAndUpsertPageFromCache: Rendering page.");
+  localLogger.debug("notionRenderAndUpsertPageFromCache: Rendering page.");
 
   let renderedPageSection = await renderPageSection({
     dsConfig,
@@ -2043,7 +2036,7 @@ export async function renderAndUpsertPageFromCache({
     });
   }
 
-  localLogger.info(
+  localLogger.debug(
     "notionRenderAndUpsertPageFromCache: Retrieving author and last editor from notion API."
   );
   const author =
@@ -2061,7 +2054,7 @@ export async function renderAndUpsertPageFromCache({
 
   try {
     if (parentType === "block") {
-      localLogger.info(
+      localLogger.debug(
         "notionRenderAndUpsertPageFromCache: Retrieving block parent from notion API."
       );
       const blockParent = await getBlockParentMemoized(
@@ -2155,7 +2148,7 @@ export async function renderAndUpsertPageFromCache({
   const updatedAt = new Date(pageCacheEntry.lastEditedTime);
 
   const documentId = `notion-${pageId}`;
-  localLogger.info(
+  localLogger.debug(
     "notionRenderAndUpsertPageFromCache: Fetching resource parents."
   );
 
@@ -2187,7 +2180,7 @@ export async function renderAndUpsertPageFromCache({
     content: renderedPageSection,
   });
 
-  localLogger.info(
+  localLogger.debug(
     "notionRenderAndUpsertPageFromCache: Upserting to Data Source."
   );
   await upsertDataSourceDocument({
@@ -2216,7 +2209,7 @@ export async function renderAndUpsertPageFromCache({
     async: true,
   });
 
-  localLogger.info(
+  localLogger.debug(
     "notionRenderAndUpsertPageFromCache: Saving page in connectors DB."
   );
   await upsertNotionPageInConnectorsDb({
@@ -2310,7 +2303,7 @@ export async function clearWorkflowCache({
     dataSourceId: connector.dataSourceId,
   });
 
-  localLogger.info("notionClearConnectorCacheActivity: Clearing cache.");
+  localLogger.debug("notionClearConnectorCacheActivity: Clearing cache.");
   await NotionConnectorPageCacheEntry.destroy({
     where: {
       connectorId: connector.id,
