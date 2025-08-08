@@ -4,6 +4,7 @@ import {
   CardActionButton,
   CardGrid,
   EmptyCTA,
+  Hoverable,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { Spinner } from "@dust-tt/sparkle";
@@ -43,9 +44,9 @@ const BACKGROUND_IMAGE_PATH = "/static/IconBar.svg";
 const BACKGROUND_IMAGE_STYLE_PROPS = {
   backgroundImage: `url("${BACKGROUND_IMAGE_PATH}")`,
   backgroundRepeat: "no-repeat",
-  backgroundPosition: "center 20px",
+  backgroundPosition: "center 10px",
   backgroundSize: "auto 60px",
-  paddingTop: "100px",
+  paddingTop: "80px",
 };
 
 function actionIcon(
@@ -242,7 +243,20 @@ export function AgentBuilderCapabilitiesBlock({
   return (
     <AgentBuilderSectionContainer
       title="Knowledge & Tools"
-      description="Add knowledge and tools to enhance your agent's abilities."
+      description={
+        <>
+          Add knowledge and tools to enhance your agent’s abilities. Need help?
+          Check our{" "}
+          <Hoverable
+            variant="primary"
+            href="https://docs.dust.tt/docs/tools"
+            target="_blank"
+          >
+            guide
+          </Hoverable>
+          .
+        </>
+      }
       headerActions={headerActions}
     >
       <div className="flex-1">
@@ -255,6 +269,7 @@ export function AgentBuilderCapabilitiesBlock({
             action={
               <div className="flex items-center gap-2">{dropdownButtons}</div>
             }
+            className="pb-4"
             style={BACKGROUND_IMAGE_STYLE_PROPS}
           />
         ) : (

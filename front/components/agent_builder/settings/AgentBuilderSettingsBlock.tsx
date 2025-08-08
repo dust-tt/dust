@@ -396,7 +396,6 @@ export function AgentBuilderSettingsBlock({
   return (
     <AgentBuilderSectionContainer
       title="Settings"
-      description="Configure tags and access settings for your agent."
       collapsible
       defaultOpen={isSettingBlocksOpen}
     >
