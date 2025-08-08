@@ -340,7 +340,9 @@ function MCPDropdownMenuItem({
       onClick={() => onClick(view)}
       disabled={
         view.serverType === "remote" &&
-        !allowedSpaces.some((s) => s.sId === view.spaceId)
+        !allowedSpaces.some(
+          (s) => s.sId === view.spaceId || s.kind === "global"
+        )
       }
     />
   );
