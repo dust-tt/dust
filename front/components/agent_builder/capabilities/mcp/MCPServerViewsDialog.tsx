@@ -417,7 +417,7 @@ export function MCPServerViewsDialog({
   const pages: MultiPageDialogPage[] = [
     {
       id: CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION,
-      title: actions.length === 0 ? "Add tools" : "Add more tools",
+      title: actions.length === 0 ? "Add tools" : "Add more",
       description: "",
       icon: undefined,
       content: isMCPServerViewsLoading ? (
@@ -440,6 +440,7 @@ export function MCPServerViewsDialog({
     },
     {
       id: CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION,
+      title: mcpServerView?.name || "Configure Tool",
       description: "",
       icon: undefined,
       content:
