@@ -8,6 +8,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { Spinner } from "@dust-tt/sparkle";
+import { isEmpty } from "lodash";
 import React, { useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -169,8 +170,8 @@ export function AgentBuilderCapabilitiesBlock() {
     const isDataSourceSelectionRequired =
       action.type === "MCP" &&
       Boolean(
-        action.configuration.dataSourceConfigurations ||
-          action.configuration.tablesConfigurations
+        !isEmpty(action.configuration.dataSourceConfigurations) ||
+          !isEmpty(action.configuration.tablesConfigurations)
       );
 
     if (isDataSourceSelectionRequired) {
