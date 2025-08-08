@@ -1,9 +1,6 @@
 import assert from "assert";
 
-import type {
-  ActionBaseParams,
-  MCPToolConfigurationType,
-} from "@app/lib/actions/mcp";
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { MCPActionType } from "@app/lib/actions/mcp";
 import { runToolWithStreaming } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
@@ -11,7 +8,9 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
+import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
 import type { RunAgentArgs } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
@@ -19,16 +18,14 @@ import { getRunAgentData } from "@app/types/assistant/agent_run";
 export async function runToolActivity(
   authType: AuthenticatorType,
   {
-    rawAction,
-    actionBaseParams,
+    actionId,
     actionConfiguration,
     rawMcpAction,
     runAgentArgs,
     step,
     stepContext,
   }: {
-    rawAction: AgentMCPAction;
-    actionBaseParams: ActionBaseParams;
+    actionId: ModelId;
     actionConfiguration: MCPToolConfigurationType;
     rawMcpAction: MCPActionType;
     runAgentArgs: RunAgentArgs;
@@ -65,8 +62,16 @@ export async function runToolActivity(
 
   // Temporal activity arguments are serialized as JSON, so we need to deserialize them.
   const mcpAction = new MCPActionType(rawMcpAction);
-  const action = await AgentMCPAction.findByPk(rawAction.id);
+  const action = await AgentMCPAction.findByPk(actionId);
   assert(action, "Action not found");
+
+  const actionBaseParams = await buildActionBaseParams({
+    agentMessageId: action.agentMessageId,
+    citationsAllocated: action.citationsAllocated,
+    mcpServerConfigurationId: action.mcpServerConfigurationId,
+    step,
+    stepContentId: action.stepContentId,
+  });
 
   const eventStream = runToolWithStreaming(auth, actionConfiguration, {
     action,
