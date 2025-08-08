@@ -83,7 +83,7 @@ export function isInternalMCPServerDefinition(
   );
 }
 
-interface ConnectViaMCPServerId {
+export interface ConnectViaMCPServerId {
   type: "mcpServerId";
   mcpServerId: string;
   oAuthUseCase: MCPOAuthUseCase | null;
