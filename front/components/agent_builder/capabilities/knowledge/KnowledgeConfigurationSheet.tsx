@@ -23,6 +23,7 @@ import {
   transformTreeToSelectionConfigurations,
 } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import { CAPABILITY_CONFIGS } from "@app/components/agent_builder/capabilities/knowledge/utils";
+import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { MCPServerViewsKnowledgeDropdown } from "@app/components/agent_builder/capabilities/MCPServerViewsKnowledgeDropdown";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/shared/DescriptionSection";
@@ -51,6 +52,7 @@ interface KnowledgeConfigurationSheetProps {
   onClose: () => void;
   onClickKnowledge: () => void;
   action: AgentBuilderAction | null;
+  actions: AgentBuilderAction[];
   isEditing: boolean;
   mcpServerViews: MCPServerViewType[];
   getAgentInstructions: () => string;
@@ -61,6 +63,7 @@ export function KnowledgeConfigurationSheet({
   onClose,
   onClickKnowledge,
   action,
+  actions,
   isEditing,
   mcpServerViews,
   getAgentInstructions,
@@ -78,10 +81,23 @@ export function KnowledgeConfigurationSheet({
       ? { dataSourceConfigurations: dataSourceConfigurations }
       : { tablesConfigurations: dataSourceConfigurations };
 
+    let newName = name;
+
+    const isNewActionOrNameChanged = isEditing
+      ? defaultValues.name !== formData.name
+      : true;
+
+    newName = isNewActionOrNameChanged
+      ? generateUniqueActionName({
+          baseName: formData.name,
+          existingActions: actions,
+        })
+      : formData.name;
+
     const newAction: AgentBuilderAction = {
       id: uniqueId(),
       type: "MCP",
-      name,
+      name: newName,
       description,
       configuration: {
         ...configuration,
