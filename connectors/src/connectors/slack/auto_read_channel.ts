@@ -186,11 +186,7 @@ export async function autoReadChannel(
 
           const [dataSourceView] = searchRes.value;
 
-          if (
-            !dataSourceView ||
-            dataSourceView.spaceId !== p.spaceId ||
-            dataSourceView.dataSource.sId !== connector.dataSourceId
-          ) {
+          if (!dataSourceView) {
             logger.error({
               connectorId,
               channelId: slackChannelId,
