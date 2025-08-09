@@ -15,6 +15,7 @@ import type {
   AgentLoopContextType,
 } from "@app/lib/actions/types";
 import {
+  isLightServerSideMCPToolConfiguration,
   isMCPActionArray,
   isServerSideMCPServerConfiguration,
   isServerSideMCPToolConfiguration,
@@ -127,12 +128,12 @@ export default async function createServer(
   if (
     agentLoopContext &&
     agentLoopContext.runContext &&
-    isServerSideMCPToolConfiguration(
-      agentLoopContext.runContext.actionConfiguration
+    isLightServerSideMCPToolConfiguration(
+      agentLoopContext.runContext.toolConfiguration
     ) &&
-    agentLoopContext.runContext.actionConfiguration.childAgentId
+    agentLoopContext.runContext.toolConfiguration.childAgentId
   ) {
-    childAgentId = agentLoopContext.runContext.actionConfiguration.childAgentId;
+    childAgentId = agentLoopContext.runContext.toolConfiguration.childAgentId;
   }
 
   let childAgentBlob: {
