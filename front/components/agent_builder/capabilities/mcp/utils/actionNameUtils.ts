@@ -4,14 +4,13 @@ import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 interface GenerateUniqueActionNameParams {
   baseName: string;
   existingActions: AgentBuilderAction[];
-  selectedToolsInDialog: SelectedTool[];
+  selectedToolsInDialog?: SelectedTool[];
 }
 
-// TODO: refactor an make it reusable for mcp tools with data source selection.
 export function generateUniqueActionName({
   baseName,
   existingActions,
-  selectedToolsInDialog,
+  selectedToolsInDialog = [],
 }: GenerateUniqueActionNameParams): string {
   let newActionName = baseName;
   let index = 2;
