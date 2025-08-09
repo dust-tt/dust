@@ -12,50 +12,41 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { DialogTrigger } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 
 import { EditorsTab } from "@app/components/agent_builder/settings/EditorsTab";
 import { SlackTab } from "@app/components/agent_builder/settings/SlackTab";
 
-interface AgentAccessPublicationDialogProps {
-  trigger?: React.ReactNode;
-}
-
-export function AgentAccessPublicationDialog({
-  trigger,
-}: AgentAccessPublicationDialogProps) {
+export function AgentAccessPublicationDialog() {
   const [isOpen, setIsOpen] = useState(false);
-
-  const defaultTrigger = (
-    <Button
-      variant="outline"
-      size="sm"
-      icon={Cog6ToothIcon}
-      onClick={() => setIsOpen(true)}
-      tooltip="Access & Publication Settings"
-    />
-  );
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      {trigger || defaultTrigger}
-      <DialogContent size="xl">
-        <DialogHeader>
-          <DialogTitle>Access & Publication Settings</DialogTitle>
-        </DialogHeader>
-
+      <DialogTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          icon={Cog6ToothIcon}
+          tooltip="Access & Publication Settings"
+        />
+      </DialogTrigger>
+      <DialogContent size="xl" height="xl">
         <DialogContainer>
+          <DialogHeader>
+            <DialogTitle>Access & Publication Settings</DialogTitle>
+          </DialogHeader>
           <Tabs defaultValue="editors" className="w-full">
             <TabsList className="mb-4 inline-flex w-auto">
               <TabsTrigger value="editors" label="Editors" />
               <TabsTrigger value="slack" label="Slack Settings" />
             </TabsList>
 
-            <TabsContent value="editors" className="mt-0">
+            <TabsContent value="editors">
               <EditorsTab />
             </TabsContent>
 
-            <TabsContent value="slack" className="mt-0">
+            <TabsContent value="slack">
               <SlackTab />
             </TabsContent>
           </Tabs>
