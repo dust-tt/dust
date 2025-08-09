@@ -634,9 +634,10 @@ export function MCPServerViewsDialog({
               : "Add tools",
           variant: "primary",
           disabled: selectedToolsInDialog.length === 0,
-          onClick: async () => {
-            await handleAddSelectedTools();
+          onClick: () => {
+            handleAddSelectedTools();
             setIsOpen(false);
+            onModeChange(null);
           },
         },
       };
