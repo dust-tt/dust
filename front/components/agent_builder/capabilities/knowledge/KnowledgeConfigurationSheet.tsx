@@ -143,6 +143,7 @@ export function KnowledgeConfigurationSheet({
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
       <MultiPageSheetTrigger asChild>
         <Button
+          variant="outline"
           label="Add knowledge"
           onClick={onClickKnowledge}
           icon={BookOpenIcon}
