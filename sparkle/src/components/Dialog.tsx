@@ -28,14 +28,26 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
-const DIALOG_SIZES = ["md", "lg", "xl", "full"] as const;
+const DIALOG_SIZES = ["md", "lg", "xl", "2xl", "full"] as const;
 type DialogSizeType = (typeof DIALOG_SIZES)[number];
+
+const DIALOG_HEIGHTS = ["md", "lg", "xl", "2xl", "full"] as const;
+type DialogHeightType = (typeof DIALOG_HEIGHTS)[number];
 
 const sizeClasses: Record<DialogSizeType, string> = {
   md: "sm:s-max-w-md",
   lg: "sm:s-max-w-xl",
   xl: "sm:s-max-w-3xl",
+  "2xl": "sm:s-max-w-5xl",
   full: "sm:s-max-w-full sm:s-h-full",
+};
+
+const heightClasses: Record<DialogHeightType, string> = {
+  md: "s-max-h-[90vh] sm:s-h-md",
+  lg: "s-max-h-[90vh] sm:s-h-lg",
+  xl: "s-max-h-[90vh] sm:s-h-xl",
+  "2xl": "s-max-h-[90vh] sm:s-h-2xl",
+  full: "s-h-full",
 };
 
 const dialogVariants = cva(
@@ -48,6 +60,7 @@ const dialogVariants = cva(
   {
     variants: {
       size: sizeClasses,
+      height: heightClasses,
     },
     defaultVariants: {
       size: "md",
@@ -58,6 +71,7 @@ const dialogVariants = cva(
 interface DialogContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   size?: DialogSizeType;
+  height?: DialogHeightType;
   trapFocusScope?: boolean;
   isAlertDialog?: boolean;
 }
@@ -67,7 +81,15 @@ const DialogContent = React.forwardRef<
   DialogContentProps
 >(
   (
-    { className, children, size, trapFocusScope, isAlertDialog, ...props },
+    {
+      className,
+      children,
+      size,
+      height,
+      trapFocusScope,
+      isAlertDialog,
+      ...props
+    },
     ref
   ) => (
     <DialogPortal>
@@ -75,7 +97,7 @@ const DialogContent = React.forwardRef<
       <FocusScope trapped={trapFocusScope} asChild>
         <DialogPrimitive.Content
           ref={ref}
-          className={cn(dialogVariants({ size }), className)}
+          className={cn(dialogVariants({ size, height }), className)}
           onInteractOutside={
             isAlertDialog ? (e) => e.preventDefault() : props.onInteractOutside
           }

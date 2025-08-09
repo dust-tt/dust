@@ -164,7 +164,7 @@ export const LargeContent: Story = {
       <DialogTrigger asChild>
         <Button label="View Terms" />
       </DialogTrigger>
-      <DialogContent size="xl">
+      <DialogContent size="2xl" height="md">
         <DialogHeader>
           <DialogTitle>Terms of Service</DialogTitle>
         </DialogHeader>
@@ -174,19 +174,34 @@ export const LargeContent: Story = {
             <p className="s-text-sm s-text-muted-foreground">
               Lorem ipsum dolor sit amet consectetur adipisicing elit. Quod
               possimus sit modi reprehenderit sed dolorem nisi nostrum,
-              dignissimos tempora eligendi!
+              dignissimos tempora eligendi! Sed enim sapiente molestias pariatur
+              earum ipsum exercitationem corrupti voluptates?
             </p>
             <h3 className="s-font-semibold">2. Terms of Use</h3>
             <p className="s-text-sm s-text-muted-foreground">
               Lorem ipsum dolor sit amet consectetur adipisicing elit. Quod
               possimus sit modi reprehenderit sed dolorem nisi nostrum,
-              dignissimos tempora eligendi!
+              dignissimos tempora eligendi! Minus voluptatem iste accusantium
+              delectus nesciunt adipisci vitae earum similique.
             </p>
             <h3 className="s-font-semibold">3. Privacy Policy</h3>
             <p className="s-text-sm s-text-muted-foreground">
               Lorem ipsum dolor sit amet consectetur adipisicing elit. Quod
               possimus sit modi reprehenderit sed dolorem nisi nostrum,
-              dignissimos tempora eligendi!
+              dignissimos tempora eligendi! Facere explicabo aliquam corporis
+              error consectetur veniam assumenda.
+            </p>
+            <h3 className="s-font-semibold">4. Data Processing</h3>
+            <p className="s-text-sm s-text-muted-foreground">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit. Dolorem
+              ipsum inventore vel, voluptatem fugiat necessitatibus reiciendis
+              accusantium dignissimos optio error.
+            </p>
+            <h3 className="s-font-semibold">5. User Rights</h3>
+            <p className="s-text-sm s-text-muted-foreground">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit. Deserunt
+              architecto dolorem corrupti accusamus optio neque officia
+              perferendis molestiae.
             </p>
           </div>
         </DialogContainer>
