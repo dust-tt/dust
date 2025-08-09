@@ -5,7 +5,6 @@ import { Ok } from "@app/types";
 
 import handler from "./retry";
 
-// Mock getConversation.
 vi.mock("@app/lib/api/assistant/conversation/fetch", async () => {
   const actual = (await vi.importActual(
     "@app/lib/api/assistant/conversation/fetch"
@@ -31,11 +30,13 @@ vi.mock("@app/lib/api/assistant/conversation/fetch", async () => {
                     id: 786,
                     sId: "VP3f0qXQ15",
                     type: "agent_message",
+                    parentMessageId: "WbrZZgg8Zj",
                   },
                   {
                     id: 813,
                     sId: "Wful9YWRJ1",
                     type: "agent_message",
+                    parentMessageId: "WbrZZgg8Zj",
                   },
                 ],
                 [
@@ -50,6 +51,30 @@ vi.mock("@app/lib/api/assistant/conversation/fetch", async () => {
                     id: 812,
                     sId: "jMqRspKaSf",
                     type: "agent_message",
+                    parentMessageId: "gIi9fM0VjS",
+                  },
+                ],
+              ],
+            })
+          );
+        }
+        if (conversationId === "mockedConversationIdWithCantReadMessage") {
+          return Promise.resolve(
+            new Ok({
+              content: [
+                [
+                  {
+                    id: 785,
+                    sId: "WbrZZgg8Zj",
+                    type: "user_message",
+                  },
+                ],
+                [
+                  {
+                    id: 786,
+                    sId: "cantReadMessage",
+                    type: "agent_message",
+                    parentMessageId: "WbrZZgg8Zj",
                   },
                 ],
               ],
@@ -60,6 +85,18 @@ vi.mock("@app/lib/api/assistant/conversation/fetch", async () => {
       }),
   };
 });
+
+vi.mock("@app/lib/api/assistant/messages", async () => ({
+  canReadMessage: vi.fn().mockImplementation((auth, { sId }) => {
+    if (sId === "cantReadMessage") {
+      return false;
+    }
+    return true;
+  }),
+}));
+vi.mock("@app/lib/api/assistant/conversation/retry_from_step", async () => ({
+  retryAgentMessageFromStep: vi.fn().mockResolvedValue(new Ok({})),
+}));
 
 describe("POST /api/w/[wId]/conversations/[cId]/messages/[mId]/run/steps/[stepIndex]/retry", () => {
   [
@@ -151,6 +188,26 @@ describe("POST /api/w/[wId]/conversations/[cId]/messages/[mId]/run/steps/[stepIn
             type: "invalid_request_error",
             message:
               "The request body is invalid: Expecting boolean at retryBlockedToolsOnly but instead got: undefined.",
+          },
+        },
+      },
+    },
+    {
+      name: "should return 403 when user message can't be read",
+      query: {
+        cId: "mockedConversationIdWithCantReadMessage",
+        mId: "cantReadMessage",
+        stepIndex: "0",
+      },
+      body: {
+        retryBlockedToolsOnly: true,
+      },
+      expected: {
+        statusCode: 403,
+        responseData: {
+          error: {
+            type: "invalid_request_error",
+            message: "The message to retry is not accessible.",
           },
         },
       },
