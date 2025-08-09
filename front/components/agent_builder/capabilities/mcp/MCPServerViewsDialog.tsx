@@ -702,7 +702,7 @@ export function MCPServerViewsDialog({
       }}
     >
       <MultiPageDialogTrigger asChild>
-        <Button label="Add tools" icon={ListAddIcon} />
+        <Button label="Add tools" icon={ListAddIcon} variant="outline" />
       </MultiPageDialogTrigger>
       <MultiPageDialogContent
         showNavigation={false}

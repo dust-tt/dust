@@ -1,5 +1,5 @@
 import type { ButtonProps } from "@dust-tt/sparkle";
-import { BarFooter, BarHeader, Separator } from "@dust-tt/sparkle";
+import { BarFooter, BarHeader, Button, Separator } from "@dust-tt/sparkle";
 import React from "react";
 
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
@@ -61,7 +61,7 @@ export function AgentBuilderLeftPanel({
       <BarFooter
         variant="default"
         leftActions={
-          <BarFooter.ButtonBar variant="close" onClose={handleCancel} />
+          <Button variant="outline" label="Close" onClick={handleCancel} />
         }
         rightActions={
           <BarFooter.ButtonBar
