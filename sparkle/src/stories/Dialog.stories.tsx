@@ -205,6 +205,16 @@ export const LargeContent: Story = {
             </p>
           </div>
         </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Accept",
+            variant: "highlight",
+          }}
+        />
       </DialogContent>
     </Dialog>
   ),
