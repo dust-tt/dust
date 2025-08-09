@@ -190,7 +190,6 @@ export function MCPServerViewsDialog({
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION);
       setConfigurationTool(mode.action);
       setSelectedToolsInDialog([]);
-      setIsOpen(true);
 
       const action = mode.action;
       if (
@@ -204,10 +203,9 @@ export function MCPServerViewsDialog({
           setConfigurationMCPServerView(mcpServerView);
         }
       }
-    } else if (mode && mode.type === "info") {
+    } else if (isInfoMode) {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.INFO);
       setSelectedToolsInDialog([]);
-      setIsOpen(true);
 
       const action = mode.action;
       if (
@@ -221,13 +219,13 @@ export function MCPServerViewsDialog({
           setInfoMCPServerView(mcpServerView);
         }
       }
-    } else if (mode?.type === "add" || !mode) {
+    } else if (isAddMode) {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
       setConfigurationTool(null);
       setConfigurationMCPServerView(null);
       setInfoMCPServerView(null);
-      setIsOpen(Boolean(mode));
     }
+    setIsOpen(!!mode);
   }, [mode, allMcpServerViews, isEditMode]);
 
   const toggleToolSelection = (tool: SelectedTool): void => {
@@ -694,8 +692,16 @@ export function MCPServerViewsDialog({
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
-        if (!open) {
-          handleCancel();
+        onModeChange(open ? mode : null);
+
+        if (open && isAddMode) {
+          setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
+        }
+
+        if (!open && !isAddMode) {
+          setConfigurationTool(null);
+          setConfigurationMCPServerView(null);
+          setSelectedToolsInDialog([]);
         }
       }}
     >
