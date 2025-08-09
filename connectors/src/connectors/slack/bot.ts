@@ -33,6 +33,7 @@ import {
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
   isSlackWebAPIPlatformError,
+  isWebAPIRateLimitedError,
   SlackExternalUserError,
   SlackMessageError,
 } from "@connectors/connectors/slack/lib/errors";
@@ -150,7 +151,7 @@ export async function botAnswerMessage(
         channelId: slackChannel,
         useCase: "bot",
       });
-      if (e instanceof ProviderRateLimitError) {
+      if (e instanceof ProviderRateLimitError || isWebAPIRateLimitedError(e)) {
         await slackClient.chat.postMessage({
           channel: slackChannel,
           blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MESSAGE),
