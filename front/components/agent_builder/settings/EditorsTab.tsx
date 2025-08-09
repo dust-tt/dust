@@ -1,7 +1,18 @@
-import { Avatar, SearchInput, DataTable, Button, Chip } from "@dust-tt/sparkle";
-import { XMarkIcon } from "@dust-tt/sparkle";
-import type { CellContext, PaginationState } from "@tanstack/react-table";
-import React, { useCallback, useMemo, useState } from "react";
+import {
+  Avatar,
+  Button,
+  Chip,
+  DataTable,
+  SearchInput,
+  Spinner,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+import type {
+  CellContext,
+  ColumnDef,
+  PaginationState,
+} from "@tanstack/react-table";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -11,13 +22,14 @@ import type { UserType } from "@app/types";
 
 const DEFAULT_PAGE_SIZE = 25;
 
-type MemberRowData = {
+type RowData = {
   sId: string;
   fullName: string;
   email: string;
   image: string;
   isEditor: boolean;
   onToggleEditor: () => void;
+  onClick?: () => void;
 };
 
 export function EditorsTab() {
@@ -27,6 +39,7 @@ export function EditorsTab() {
     pageSize: DEFAULT_PAGE_SIZE,
   });
   const [searchTerm, setSearchTerm] = useState("");
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const {
     field: { onChange },
@@ -60,10 +73,9 @@ export function EditorsTab() {
     [onChange, editors]
   );
 
-  // Current editors table data
   const editorsTableData = useMemo(() => {
     return (editors || []).map(
-      (editor): MemberRowData => ({
+      (editor): RowData => ({
         sId: editor.sId,
         fullName: editor.fullName,
         email: editor.email,
@@ -80,7 +92,7 @@ export function EditorsTab() {
       return [];
     }
     return workspaceMembers.map(
-      (member): MemberRowData => ({
+      (member): RowData => ({
         sId: member.sId,
         fullName: member.fullName,
         email: member.email,
@@ -93,13 +105,24 @@ export function EditorsTab() {
 
   const showSearchResults = searchTerm.length > 0;
 
-  const columns = useMemo(
+  // Show spinner during transition between search and editors
+  useEffect(() => {
+    setIsTransitioning(true);
+    const timer = setTimeout(() => setIsTransitioning(false), 250);
+    return () => clearTimeout(timer);
+  }, [showSearchResults]);
+
+  // Show spinner if we're transitioning OR if search is loading (when searching)
+  const shouldShowSpinner =
+    isTransitioning || (showSearchResults && isWorkspaceMembersLoading);
+
+  const columns: ColumnDef<RowData>[] = useMemo(
     () => [
       {
         id: "name",
         header: "Name",
         accessorKey: "fullName",
-        cell: (info: CellContext<MemberRowData, string>) => (
+        cell: (info: CellContext<RowData, any>) => (
           <DataTable.CellContent>
             <div className="flex items-center gap-2">
               <Avatar size="xs" visual={info.row.original.image} />
@@ -113,7 +136,7 @@ export function EditorsTab() {
         id: "email",
         accessorKey: "email",
         header: "Email",
-        cell: (info: CellContext<MemberRowData, string>) => (
+        cell: (info: CellContext<RowData, any>) => (
           <DataTable.CellContent>
             {info.row.original.email}
           </DataTable.CellContent>
@@ -122,7 +145,7 @@ export function EditorsTab() {
       {
         id: "action",
         header: "",
-        cell: (info: CellContext<MemberRowData, string>) => (
+        cell: (info: CellContext<RowData, any>) => (
           <DataTable.CellContent>
             {showSearchResults ? (
               // In search results: show "Added" chip or "Add" button
@@ -171,12 +194,19 @@ export function EditorsTab() {
           {showSearchResults ? "Search Results" : "Current Editors"}
         </div>
 
-        <DataTable
-          data={currentData}
-          columns={columns}
-          pagination={pagination}
-          setPagination={setPagination}
-        />
+        {shouldShowSpinner ? (
+          <div className="flex justify-center py-8">
+            <Spinner size="sm" />
+          </div>
+        ) : (
+          <DataTable
+            key={showSearchResults ? "search" : "editors"}
+            data={currentData}
+            columns={columns}
+            pagination={pagination}
+            setPagination={setPagination}
+          />
+        )}
       </div>
     </div>
   );
