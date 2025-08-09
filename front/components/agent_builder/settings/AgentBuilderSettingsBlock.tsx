@@ -137,12 +137,12 @@ function AgentNameInput() {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
         Name
       </label>
-      <div className="relative">
-        <Input placeholder="Enter agent name" {...field} className="pr-10" />
+      <div className="relative max-w-100">
+        <Input placeholder="Enter agent name" {...field} />
         <DropdownMenu
           onOpenChange={(open) => open && handleGenerateNameSuggestions()}
         >
@@ -256,16 +256,12 @@ function AgentDescriptionInput() {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
         Description
       </label>
       <div className="relative">
-        <Input
-          placeholder="Enter agent description"
-          {...field}
-          className="pr-10"
-        />
+        <Input placeholder="Enter agent description" {...field} />
         <Button
           icon={isGenerating ? () => <Spinner size="xs" /> : SparklesIcon}
           variant="outline"
@@ -415,13 +411,13 @@ export function AgentBuilderSettingsBlock({
               </span>
             </Page.P>
             <div className="space-y-4">
-              <div className="flex items-start gap-8">
-                <div className="flex-grow">
+              <div className="flex items-center gap-8">
+                <div className="flex w-full flex-col gap-2">
                   <AgentNameInput />
+                  <AgentDescriptionInput />
                 </div>
                 <AgentPictureInput />
               </div>
-              <AgentDescriptionInput />
               <TagsSection />
               <AgentAccessAndPublication />
             </div>

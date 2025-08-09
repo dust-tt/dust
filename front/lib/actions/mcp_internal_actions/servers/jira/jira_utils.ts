@@ -7,16 +7,19 @@ import { FIELD_MAPPINGS } from "@app/lib/actions/mcp_internal_actions/servers/ji
 
 // Helper function to escape JQL values that contain spaces or special characters
 export const escapeJQLValue = (value: string): string => {
-  // If the value contains spaces, special characters, or reserved words, wrap it in quotes
-  if (
-    /[\s"'\\]/.test(value) ||
+  // JQL special characters that need quoting: space, quotes, backslash, forward slash,
+  const hasSpecialChars = /[\s"'\\/]/.test(value);
+
+  // JQL reserved words that need quoting
+  const isReservedWord =
     /^(and|or|not|in|is|was|from|to|on|by|during|before|after|empty|null|order|asc|desc|changed|was|in|not|to|from|by|before|after|on|during)$/i.test(
       value
-    )
-  ) {
-    // Escape any existing quotes in the value
+    );
+
+  if (hasSpecialChars || isReservedWord) {
     return `"${value.replace(/"/g, '\\"')}"`;
   }
+
   return value;
 };
 
@@ -142,6 +145,11 @@ export function shouldConvertToADF(
     };
   }
 ): boolean {
+  // Only process string values - if it's already an object (like ADF), leave it alone
+  if (typeof fieldValue !== "string") {
+    return false;
+  }
+
   // Description field should always be converted to ADF (it's a rich text field)
   if (fieldKey === "description") {
     return true;

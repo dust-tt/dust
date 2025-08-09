@@ -77,6 +77,8 @@ pub struct OpenAIResponseAPITool {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parameters: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strict: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -175,6 +177,11 @@ pub struct OpenAIResponsesResponse {
 }
 
 // OpenAI Responses API conversion functions
+
+/// Strips Unicode null characters (\u0000) from a string
+fn strip_null_chars(s: &str) -> String {
+    s.chars().filter(|&c| c != '\0').collect()
+}
 
 fn responses_api_input_from_chat_messages(
     messages: &Vec<ChatMessage>,
@@ -350,7 +357,7 @@ fn assistant_chat_message_from_responses_api_output(
                 let fc = ChatFunctionCall {
                     id: call_id,
                     name,
-                    arguments,
+                    arguments: strip_null_chars(&arguments),
                 };
                 function_calls.push(fc.clone());
                 contents.push(AssistantContentItem::FunctionCall { value: fc });
@@ -437,6 +444,7 @@ pub async fn openai_responses_api_completion(
             name: f.name.clone(),
             description: f.description.clone(),
             parameters: f.parameters.clone(),
+            strict: Some(false),
         })
         .collect();
 
@@ -990,16 +998,16 @@ fn handle_output_item_done(
                     }
                     "function_call" => {
                         // Parse as function call item.
-                        if let Ok(fc_item) =
+                        if let Ok(mut fc_item) =
                             serde_json::from_value::<OpenAIResponseOutputItem>(item)
                         {
                             if let OpenAIResponseOutputItem::FunctionCall {
-                                id: _,
-                                name: _,
-                                arguments: _,
-                                call_id: _,
-                            } = &fc_item
+                                ref mut arguments,
+                                ..
+                            } = &mut fc_item
                             {
+                                // Strip null characters from arguments
+                                *arguments = strip_null_chars(arguments);
                                 // Add to state.
                                 state.output_items.push(fc_item);
                             }

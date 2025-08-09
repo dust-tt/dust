@@ -1,7 +1,7 @@
 import type { MultiPageDialogPage } from "@dust-tt/sparkle";
 import {
   Button,
-  LightbulbIcon,
+  ListAddIcon,
   MultiPageDialog,
   MultiPageDialogContent,
   MultiPageDialogTrigger,
@@ -702,7 +702,7 @@ export function MCPServerViewsDialog({
         <Button
           onClick={() => onModeChange({ type: "add" })}
           label="Add tools"
-          icon={LightbulbIcon}
+          icon={ListAddIcon}
         />
       </MultiPageDialogTrigger>
       <MultiPageDialogContent
