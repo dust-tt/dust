@@ -19,9 +19,7 @@ import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AgentBuilderEditors } from "@app/components/agent_builder/settings/AgentBuilderEditors";
 import { AgentBuilderScopeSelector } from "@app/components/agent_builder/settings/AgentBuilderScopeSelector";
-import { AgentBuilderSlackSelector } from "@app/components/agent_builder/settings/AgentBuilderSlackSelector";
 import { AvatarPicker } from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker";
 import {
   DROID_AVATAR_URLS,
@@ -377,9 +375,7 @@ function AgentAccessAndPublication() {
         Access and Publication
       </label>
       <div className="flex flex-wrap items-center gap-2">
-        <AgentBuilderEditors />
         <AgentBuilderScopeSelector />
-        <AgentBuilderSlackSelector />
       </div>
     </div>
   );

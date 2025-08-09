@@ -1,13 +1,8 @@
 import type { ButtonProps } from "@dust-tt/sparkle";
-import {
-  BarFooter,
-  BarHeader,
-  Button,
-  Separator,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
+import { BarFooter, BarHeader, Separator } from "@dust-tt/sparkle";
 import React from "react";
 
+import { AgentAccessPublicationDialog } from "@app/components/agent_builder/AgentAccessPublicationDialog";
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
@@ -48,15 +43,7 @@ export function AgentBuilderLeftPanel({
       <BarHeader
         variant="default"
         title={title}
-        rightActions={
-          <Button
-            size="sm"
-            icon={XMarkIcon}
-            variant="ghost"
-            tooltip="Close"
-            onClick={handleCancel}
-          />
-        }
+        rightActions={<AgentAccessPublicationDialog />}
       />
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-4 p-4">
@@ -73,6 +60,9 @@ export function AgentBuilderLeftPanel({
       </div>
       <BarFooter
         variant="default"
+        leftActions={
+          <BarFooter.ButtonBar variant="close" onClose={handleCancel} />
+        }
         rightActions={
           <BarFooter.ButtonBar
             variant="validate"
