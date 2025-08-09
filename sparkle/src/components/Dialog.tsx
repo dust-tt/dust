@@ -52,7 +52,7 @@ const heightClasses: Record<DialogHeightType, string> = {
 const dialogVariants = cva(
   cn(
     "s-fixed s-left-[50%] s-top-[50%] s-z-50 s-overflow-hidden s-translate-x-[-50%] s-translate-y-[-50%] s-duration-200 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[state=closed]:s-slide-out-to-left-1/2 data-[state=closed]:s-slide-out-to-top-[48%] data-[state=open]:s-slide-in-from-left-1/2 data-[state=open]:s-slide-in-from-top-[48%]",
-    "s-rounded-2xl s-grid s-w-full s-border s-border s-shadow-lg s-sm:rounded-lg",
+    "s-rounded-2xl s-flex s-flex-col s-w-full s-border s-border s-shadow-lg s-sm:rounded-lg",
     "s-bg-background dark:s-bg-background-night",
     "s-border-border dark:s-border-border-night"
   ),
@@ -171,7 +171,7 @@ const DialogFooter = ({
   dialogCloseClassName,
   ...props
 }: DialogFooterProps) => (
-  <div className="s-flex s-flex-col s-gap-0">
+  <div className="s-flex s-flex-none s-flex-col s-gap-0">
     <div
       className={cn(
         "s-flex s-flex-none s-flex-row s-justify-end s-gap-2 s-px-3 s-py-3",
