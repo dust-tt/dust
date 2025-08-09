@@ -219,7 +219,7 @@ export function MCPServerViewsDialog({
           setInfoMCPServerView(mcpServerView);
         }
       }
-    } else if (isAddMode) {
+    } else if (mode?.type === "add") {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
       setConfigurationTool(null);
       setConfigurationMCPServerView(null);
@@ -692,17 +692,18 @@ export function MCPServerViewsDialog({
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
-        onModeChange(open ? mode : null);
 
         if (open && isAddMode) {
           setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
         }
 
-        if (!open && !isAddMode) {
+        if (!open && isAddMode) {
           setConfigurationTool(null);
           setConfigurationMCPServerView(null);
           setSelectedToolsInDialog([]);
         }
+
+        onModeChange(open ? mode : null);
       }}
     >
       <MultiPageDialogTrigger asChild>
