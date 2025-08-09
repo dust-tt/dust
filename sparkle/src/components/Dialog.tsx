@@ -31,7 +31,7 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 const DIALOG_SIZES = ["md", "lg", "xl", "2xl", "full"] as const;
 type DialogSizeType = (typeof DIALOG_SIZES)[number];
 
-const DIALOG_HEIGHTS = ["md", "lg", "xl", "2xl", "full"] as const;
+const DIALOG_HEIGHTS = ["md", "lg", "xl", "2xl"] as const;
 type DialogHeightType = (typeof DIALOG_HEIGHTS)[number];
 
 const sizeClasses: Record<DialogSizeType, string> = {
@@ -47,7 +47,6 @@ const heightClasses: Record<DialogHeightType, string> = {
   lg: "s-max-h-[90vh] sm:s-h-lg",
   xl: "s-max-h-[90vh] sm:s-h-xl",
   "2xl": "s-max-h-[90vh] sm:s-h-2xl",
-  full: "s-h-full",
 };
 
 const dialogVariants = cva(
