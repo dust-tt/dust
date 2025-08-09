@@ -130,13 +130,12 @@ export const InputBarAttachmentsPicker = ({
           size="xs"
           disabled={isLoading}
           onClick={() => setIsOpen(!isOpen)}
-          isSelect
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className="h-80 w-80 xs:h-96 xs:w-96"
         collisionPadding={15}
-        align="end"
+        align="start"
         onInteractOutside={() => setIsOpen(false)}
         onEscapeKeyDown={() => setIsOpen(false)}
         dropdownHeaders={
