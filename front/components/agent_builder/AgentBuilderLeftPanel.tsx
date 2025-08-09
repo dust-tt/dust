@@ -2,9 +2,9 @@ import type { ButtonProps } from "@dust-tt/sparkle";
 import { BarFooter, BarHeader, Separator } from "@dust-tt/sparkle";
 import React from "react";
 
-import { AgentAccessPublicationDialog } from "@app/components/agent_builder/AgentAccessPublicationDialog";
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
+import { AgentAccessPublicationDialog } from "@app/components/agent_builder/settings/AgentAccessPublicationDialog";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
 import { ConfirmContext } from "@app/components/Confirm";
 
