@@ -11,10 +11,7 @@ import type {
   SlackWebhookReqBody,
   SlackWebhookResBody,
 } from "@connectors/api/webhooks/slack/utils";
-import {
-  isSlackWebhookEventReqBody,
-  withTrace,
-} from "@connectors/api/webhooks/slack/utils";
+import { isSlackWebhookEventReqBody } from "@connectors/api/webhooks/slack/utils";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
 import {
