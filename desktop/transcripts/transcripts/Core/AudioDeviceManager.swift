@@ -119,14 +119,16 @@ class AudioDeviceManager {
     guard status == noErr else { return nil }
 
     var deviceName: CFString?
-    status = AudioObjectGetPropertyData(
-      deviceID,
-      &propertyAddress,
-      0,
-      nil,
-      &dataSize,
-      &deviceName
-    )
+    status = withUnsafeMutablePointer(to: &deviceName) { pointer in
+      AudioObjectGetPropertyData(
+        deviceID,
+        &propertyAddress,
+        0,
+        nil,
+        &dataSize,
+        pointer
+      )
+    }
 
     guard status == noErr, let name = deviceName as String? else { return nil }
 
@@ -212,14 +214,16 @@ class AudioDeviceManager {
     guard status == noErr else { return nil }
 
     var deviceName: CFString?
-    status = AudioObjectGetPropertyData(
-      deviceID,
-      &propertyAddress,
-      0,
-      nil,
-      &dataSize,
-      &deviceName
-    )
+    status = withUnsafeMutablePointer(to: &deviceName) { pointer in
+      AudioObjectGetPropertyData(
+        deviceID,
+        &propertyAddress,
+        0,
+        nil,
+        &dataSize,
+        pointer
+      )
+    }
 
     guard status == noErr, let name = deviceName as String? else { return nil }
 
