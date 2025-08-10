@@ -19,7 +19,6 @@ import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AgentBuilderScopeSelector } from "@app/components/agent_builder/settings/AgentBuilderScopeSelector";
 import { AvatarPicker } from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker";
 import {
   DROID_AVATAR_URLS,
@@ -368,19 +367,6 @@ function AgentPictureInput() {
   );
 }
 
-function AgentAccessAndPublication() {
-  return (
-    <div className="flex h-full flex-col space-y-2">
-      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
-        Access and Publication
-      </label>
-      <div className="flex flex-wrap items-center gap-2">
-        <AgentBuilderScopeSelector />
-      </div>
-    </div>
-  );
-}
-
 interface AgentBuilderSettingsBlockProps {
   isSettingBlocksOpen: boolean;
 }
@@ -415,7 +401,6 @@ export function AgentBuilderSettingsBlock({
                 <AgentPictureInput />
               </div>
               <TagsSection />
-              <AgentAccessAndPublication />
             </div>
           </div>
         </CollapsibleContent>

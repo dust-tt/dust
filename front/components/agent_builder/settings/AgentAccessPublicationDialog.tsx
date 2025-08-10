@@ -7,19 +7,27 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
+  Separator,
+  SliderToggle,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import { DialogTrigger } from "@dust-tt/sparkle";
 import React, { useState } from "react";
+import { useController } from "react-hook-form";
 
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { EditorsTab } from "@app/components/agent_builder/settings/EditorsTab";
 import { SlackTab } from "@app/components/agent_builder/settings/SlackTab";
 
 export function AgentAccessPublicationDialog() {
   const [isOpen, setIsOpen] = useState(false);
+
+  const { field } = useController<AgentBuilderFormData, "agentSettings.scope">({
+    name: "agentSettings.scope",
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -31,7 +39,7 @@ export function AgentAccessPublicationDialog() {
           tooltip="Access & Publication Settings"
         />
       </DialogTrigger>
-      <DialogContent size="xl" height="xl">
+      <DialogContent size="xl">
         <DialogContainer>
           <DialogHeader>
             <DialogTitle>Access & Publication Settings</DialogTitle>
@@ -53,11 +61,37 @@ export function AgentAccessPublicationDialog() {
         </DialogContainer>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            label="Close"
-            onClick={() => setIsOpen(false)}
-          />
+          <div className="flex w-full flex-col gap-4">
+            <Separator />
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-col justify-start">
+                <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                  Publish your agent
+                </span>
+                <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                  Make your agent visible and usable by all members of the
+                  workspace.
+                </span>
+              </div>
+              <SliderToggle
+                size="sm"
+                selected={field.value === "visible"}
+                onClick={() =>
+                  field.onChange(
+                    field.value === "visible" ? "hidden" : "visible"
+                  )
+                }
+              />
+            </div>
+            <Separator />
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                label="Close"
+                onClick={() => setIsOpen(false)}
+              />
+            </div>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
