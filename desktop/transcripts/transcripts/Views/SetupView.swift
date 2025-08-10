@@ -38,8 +38,25 @@ struct SetupView: View {
           Text("No folders available")
             .font(.caption)
             .foregroundColor(.secondary)
+
+          Button(action: {
+            Task {
+              await loadFolders()
+            }
+          }) {
+            HStack(spacing: 4) {
+              Image(systemName: "arrow.clockwise")
+                .font(.caption)
+              Text("Retry")
+                .font(.caption)
+            }
+            .padding(.horizontal, 2)
+            .padding(.vertical, 4)
+          }
+          .buttonStyle(.bordered)
+          .controlSize(.small)
         }
-        .frame(height: 80)
+        .frame(height: 110)
       } else {
         VStack(alignment: .leading, spacing: 8) {
           Text("Select Folder:")
