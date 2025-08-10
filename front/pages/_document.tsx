@@ -62,7 +62,7 @@ class MyDocument extends Document {
                  traceContextInjection: 'sampled',
                  sessionSampleRate: 100,
                  sessionReplaySampleRate: 5,
-                 defaultPrivacyLevel: 'mask',
+                 defaultPrivacyLevel: 'mask-user-input',
                  beforeSend: (event) => {
                   if (event.type === 'action' && event.action && event.action.target && event.action.target.name && event.action.target.name.includes('@')) {
                     const el = event._dd && event._dd.target; // Get the actual DOM element from Datadog's internal properties
