@@ -43,7 +43,6 @@ export async function handleDeprecatedChatBot(
   res: Response,
   logger: Logger
 ) {
-  console.log("handleDeprecatedChatBot", req.body);
   const { event, team_id: slackTeamId } = req.body;
   const { channel: slackChannel, ts: slackMessageTs } = event;
 
@@ -71,11 +70,11 @@ export async function handleDeprecatedChatBot(
     )
   );
 
-  const deprecatedSlackConnector = connectors.find((c) => c?.type === "slack");
+  const deprecatedSlackConnector = connectors.find((c) => c.type === "slack");
   const deprecatedSlackConfiguration = slackConfigurations.find(
     (c) => c.connectorId === deprecatedSlackConnector?.id
   );
-  const slackBotConnector = connectors.find((c) => c?.type === "slack_bot");
+  const slackBotConnector = connectors.find((c) => c.type === "slack_bot");
   const slackBotConfiguration = slackConfigurations.find(
     (c) => c.connectorId === slackBotConnector?.id
   );
