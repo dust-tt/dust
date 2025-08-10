@@ -92,6 +92,7 @@ struct ContentView: View {
 
       Button(action: openAudioDeviceSelection) {
         HStack {
+          Image(systemName: "microphone.fill")
           Text("Select input")
         }
       }
