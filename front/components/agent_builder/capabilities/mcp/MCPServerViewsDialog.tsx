@@ -693,17 +693,16 @@ export function MCPServerViewsDialog({
       onOpenChange={(open) => {
         setIsOpen(open);
 
-        if (open && isAddMode) {
-          setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
-        }
-
         if (!open && isAddMode) {
           setConfigurationTool(null);
           setConfigurationMCPServerView(null);
           setSelectedToolsInDialog([]);
+          setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
         }
 
-        onModeChange(open ? mode : null);
+        if (!open) {
+          onModeChange(null);
+        }
       }}
     >
       <MultiPageDialogTrigger asChild>
