@@ -94,6 +94,12 @@ class AudioRecorder: NSObject, ObservableObject {
       if let tempURL = tempURL {
         do {
           recordingData = try Data(contentsOf: tempURL)
+          
+          // In development mode, save a copy to disk for debugging.
+          if AppConfig.isDevelopment {
+            saveRecordingToDisk(from: tempURL)
+          }
+          
           try FileManager.default.removeItem(at: tempURL)
           print(
             "[AudioRecorder] Recording loaded into memory (\(recordingData?.count ?? 0) bytes)"
@@ -206,6 +212,29 @@ class AudioRecorder: NSObject, ObservableObject {
     audioEngine.reset()
     audioFile = nil
     print("[AudioRecorder] Cleanup completed")
+  }
+
+  private func saveRecordingToDisk(from tempURL: URL) {
+    guard let recordingId = recordingId else {
+      print("[AudioRecorder] No recording ID available for disk save")
+      return
+    }
+    
+    do {
+      // Create a recordings directory on the desktop.
+      let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first!
+      let recordingsDir = desktopURL.appendingPathComponent("recordings")
+
+      try FileManager.default.createDirectory(at: recordingsDir, withIntermediateDirectories: true, attributes: nil)
+      
+      let destinationURL = recordingsDir.appendingPathComponent("\(recordingId).m4a")
+
+      try FileManager.default.copyItem(at: tempURL, to: destinationURL)
+      
+      print("[AudioRecorder] Dev mode: Saved recording to \(destinationURL.path)")
+    } catch {
+      print("[AudioRecorder] Failed to save recording to disk: \(error)")
+    }
   }
 
 }
