@@ -21,12 +21,12 @@ import { SlackConfigurationResource } from "@connectors/resources/slack_configur
 import type { SlackAutoReadPattern } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
-function findMatchingChannelPatterns(
+export function findMatchingChannelPatterns(
   remoteChannelName: string,
   autoReadChannelPatterns: SlackAutoReadPattern[]
 ): SlackAutoReadPattern[] {
   return autoReadChannelPatterns.filter((pattern) => {
-    const regex = new RegExp(pattern.pattern);
+    const regex = new RegExp(`^${pattern.pattern}$`);
     return regex.test(remoteChannelName);
   });
 }
@@ -36,20 +36,33 @@ export async function autoReadChannel(
   logger: Logger,
   slackChannelId: string,
   provider: Extract<ConnectorProvider, "slack_bot" | "slack"> = "slack"
-): Promise<Result<undefined, Error>> {
-  const slackConfiguration =
-    await SlackConfigurationResource.fetchByTeamId(teamId);
+): Promise<Result<boolean, Error>> {
+  const slackConfigurations =
+    await SlackConfigurationResource.listForTeamId(teamId);
+  const connectorIds = slackConfigurations.map((c) => c.connectorId);
+  const connectors = await ConnectorResource.fetchByIds(provider, connectorIds);
+  const connector = connectors.find((c) => c.type === provider);
+
+  if (!connector) {
+    return new Err(
+      new Error(
+        `Connector not found for teamId ${teamId} and provider ${provider}`
+      )
+    );
+  }
+
+  const slackConfiguration = slackConfigurations.find(
+    (c) => c.connectorId === connector.id
+  );
+
   if (!slackConfiguration) {
     return new Err(
       new Error(`Slack configuration not found for teamId ${teamId}`)
     );
   }
+
   const { connectorId } = slackConfiguration;
 
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    return new Err(new Error(`Connector ${connectorId} not found`));
-  }
   const slackClient = await getSlackClient(connectorId);
 
   reportSlackUsage({
@@ -106,7 +119,7 @@ export async function autoReadChannel(
 
     // For slack_bot context, only do the basic channel setup without data source operations
     if (provider === "slack_bot") {
-      return new Ok(undefined);
+      return new Ok(true);
     }
 
     // Slack context: perform full data source operations
@@ -189,7 +202,7 @@ export async function autoReadChannel(
           );
         }
 
-        return new Ok(undefined);
+        return new Ok(true);
       },
       { concurrency: 1 }
     );
@@ -198,7 +211,9 @@ export async function autoReadChannel(
     if (results.some((r) => r.isErr())) {
       return results.find((r) => r.isErr())!;
     }
+
+    return new Ok(true);
   }
 
-  return new Ok(undefined);
+  return new Ok(false);
 }

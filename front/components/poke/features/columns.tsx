@@ -1,13 +1,14 @@
-import { IconButton } from "@dust-tt/sparkle";
+import { Chip, IconButton } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
-import type { WhitelistableFeature } from "@app/types";
-import { dateToHumanReadable } from "@app/types";
+import type { FeatureFlagStage, WhitelistableFeature } from "@app/types";
+import { dateToHumanReadable, FEATURE_FLAG_STAGE_LABELS } from "@app/types";
 
 type FeatureFlagsDisplayType = {
   name: WhitelistableFeature;
   description: string;
+  stage: FeatureFlagStage;
   enabled: boolean;
   enabledAt: string | null;
 };
@@ -28,6 +29,36 @@ export function makeColumnsForFeatureFlags(): ColumnDef<FeatureFlagsDisplayType>
               }
             />
           </div>
+        );
+      },
+    },
+    {
+      accessorKey: "stage",
+      header: ({ column }) => {
+        return (
+          <div className="flex items-center space-x-2">
+            <p>Stage</p>
+            <IconButton
+              variant="outline"
+              icon={ArrowsUpDownIcon}
+              onClick={() =>
+                column.toggleSorting(column.getIsSorted() === "asc")
+              }
+            />
+          </div>
+        );
+      },
+      cell: ({ row }) => {
+        const { stage } = row.original;
+        const warningStages: FeatureFlagStage[] = ["dust_only", "rolling_out"];
+
+        return (
+          <Chip
+            color={warningStages.includes(stage) ? "warning" : "highlight"}
+            size="xs"
+          >
+            {FEATURE_FLAG_STAGE_LABELS[stage]}
+          </Chip>
         );
       },
     },

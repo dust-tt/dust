@@ -3,7 +3,7 @@ import {
   ScheduleOverlapPolicy,
 } from "@temporalio/client";
 
-import { getTemporalClient } from "@app/lib/temporal";
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { getPurgeRunExecutionsScheduleId } from "@app/temporal/hard_delete/utils";
 import { purgeRunExecutionsCronWorkflow } from "@app/temporal/hard_delete/workflows";
@@ -18,7 +18,7 @@ import { QUEUE_NAME } from "./config";
 export async function launchPurgeRunExecutionsSchedule(): Promise<
   Result<undefined, Error>
 > {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
   const scheduleId = getPurgeRunExecutionsScheduleId();
 
   try {

@@ -1,10 +1,11 @@
+import type { OrganizationMembership } from "@workos-inc/node";
+
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
-import { OrganizationMembership } from "@workos-inc/node";
 
 async function updateMembershipOriginsForWorkspace(
   workspace: LightWorkspaceType,
@@ -60,10 +61,17 @@ async function updateMembershipOriginsForWorkspace(
       continue;
     }
 
-    if (m.some((mem) => mem.userId === user.workOSUserId)) {
+    const existingMembership = m.find(
+      (mem) => mem.userId === user.workOSUserId
+    );
+    if (
+      existingMembership &&
+      existingMembership.role.slug === membership.role
+    ) {
       workspaceLogger.info(
-        `User ${user.email} already has WorkOS membership for workspace ${workspace.sId} - ${workspace.name}`
+        `User ${user.email} already has WorkOS membership for workspace ${workspace.sId} - ${workspace.name} with role ${membership.role}`
       );
+
       continue;
     }
 
@@ -73,14 +81,29 @@ async function updateMembershipOriginsForWorkspace(
 
       while (retryCount < maxRetries) {
         try {
-          await getWorkOS().userManagement.createOrganizationMembership({
-            userId: user.workOSUserId,
-            organizationId: workspaceWorkOSId,
-          });
+          if (existingMembership) {
+            await getWorkOS().userManagement.updateOrganizationMembership(
+              existingMembership.id,
+              {
+                roleSlug: membership.role,
+              }
+            );
 
-          workspaceLogger.info(
-            `Set WorkOS membership for user ${user.email} for workspace ${workspace.sId} - ${workspace.name}`
-          );
+            workspaceLogger.info(
+              `Updated WorkOS membership for user ${user.email} for workspace ${workspace.sId} - ${workspace.name} with role ${membership.role}`
+            );
+          } else {
+            await getWorkOS().userManagement.createOrganizationMembership({
+              userId: user.workOSUserId,
+              organizationId: workspaceWorkOSId,
+              roleSlug: membership.role,
+            });
+
+            workspaceLogger.info(
+              `Created WorkOS membership for user ${user.email} for workspace ${workspace.sId} - ${workspace.name} with role ${membership.role}`
+            );
+          }
+
           break;
         } catch (error: any) {
           if (error?.status === 429) {

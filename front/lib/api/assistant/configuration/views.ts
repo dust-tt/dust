@@ -6,7 +6,7 @@ import type {
   SortStrategyType,
 } from "@app/lib/api/assistant/configuration/types";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
-import { getGlobalAgents } from "@app/lib/api/assistant/global_agents";
+import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentConfiguration,

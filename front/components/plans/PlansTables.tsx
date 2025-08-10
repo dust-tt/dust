@@ -41,7 +41,7 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
     display: ["landing", "subscribe"],
   },
   {
-    label: "Multiple private spaces",
+    label: "Advanced security and controls",
     variant: "check",
     display: ["landing", "subscribe"],
   },
@@ -81,7 +81,7 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
     display: ["landing"],
   },
   {
-    label: "User provisioning",
+    label: "User provisioning (SCIM)",
     variant: "check",
     display: ["landing"],
   },

@@ -71,7 +71,7 @@ export const CONTENT_NODE_MIME_TYPES = {
   },
   CONFLUENCE: generateConnectorRelativeMimeTypes({
     provider: "confluence",
-    resourceTypes: ["SPACE", "PAGE"],
+    resourceTypes: ["FOLDER", "PAGE", "SPACE"],
   }),
   GITHUB: generateConnectorRelativeMimeTypes({
     provider: "github",
@@ -263,6 +263,7 @@ const TOOL_MIME_TYPES = {
       "RUN_AGENT_RESULT",
       "RUN_AGENT_QUERY",
       "WARNING",
+      "AGENT_CREATION_RESULT",
       // Legacy, kept for backwards compatibility.
       "GET_DATABASE_SCHEMA_MARKER",
       "EXECUTE_TABLES_QUERY_MARKER",

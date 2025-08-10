@@ -1,7 +1,7 @@
 import { createParser } from "eventsource-parser";
 import { z } from "zod";
 
-import type {
+import {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentConfigurationViewType,
@@ -41,6 +41,7 @@ import type {
   PublicRegisterMCPRequestBody,
   RegisterMCPResponseType,
   SearchRequestBodyType,
+  ToolErrorEvent,
   UserMessageErrorEvent,
   ValidateActionRequestBodyType,
   ValidateActionResponseType,
@@ -50,6 +51,7 @@ import {
   AppsCheckResponseSchema,
   CancelMessageGenerationResponseSchema,
   CreateConversationResponseSchema,
+  CreateGenericAgentConfigurationResponseSchema,
   DataSourceViewResponseSchema,
   DeleteFolderResponseSchema,
   Err,
@@ -98,12 +100,13 @@ const DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
 const DEFAULT_RECONNECT_DELAY = 5000;
 
 type AgentEvent =
-  | UserMessageErrorEvent
-  | AgentErrorEvent
+  | AgentActionSpecificEvent
   | AgentActionSuccessEvent
-  | GenerationTokensEvent
+  | AgentErrorEvent
   | AgentMessageSuccessEvent
-  | AgentActionSpecificEvent;
+  | GenerationTokensEvent
+  | UserMessageErrorEvent
+  | ToolErrorEvent;
 
 const textFromResponse = async (response: DustResponse): Promise<string> => {
   if (typeof response.body === "string") {
@@ -634,6 +637,50 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.contentFragment);
+  }
+
+  async createGenericAgentConfiguration({
+    name,
+    description,
+    instructions,
+    emoji,
+    subAgentName,
+    subAgentDescription,
+    subAgentInstructions,
+    subAgentEmoji,
+  }: {
+    name: string;
+    description: string;
+    instructions: string;
+    emoji?: string;
+    subAgentName?: string;
+    subAgentDescription?: string;
+    subAgentInstructions?: string;
+    subAgentEmoji?: string;
+  }) {
+    const res = await this.request({
+      method: "POST",
+      path: "assistant/generic_agents",
+      body: {
+        name,
+        description,
+        instructions,
+        emoji,
+        subAgentName,
+        subAgentDescription,
+        subAgentInstructions,
+        subAgentEmoji,
+      },
+    });
+
+    const r = await this._resultFromResponse(
+      CreateGenericAgentConfigurationResponseSchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value);
   }
 
   // When creating a conversation with a user message, the API returns only after the user message

@@ -56,6 +56,11 @@ export class ZendeskConfigurationModel extends ConnectorBaseModel<ZendeskConfigu
 
   declare ticketTagsToInclude: string[] | null;
   declare ticketTagsToExclude: string[] | null;
+
+  declare customFieldsConfig: {
+    id: number;
+    name: string;
+  }[];
 }
 
 ZendeskConfigurationModel.init(
@@ -104,6 +109,11 @@ ZendeskConfigurationModel.init(
     ticketTagsToExclude: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
+    },
+    customFieldsConfig: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: [],
     },
   },
   {

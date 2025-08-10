@@ -1,7 +1,7 @@
 import type { Logger } from "pino";
 
 import {
-  RETENTION_PERIOD_CONFIG_KEY,
+  ZENDESK_CONFIG_KEYS,
   ZendeskConnectorManager,
 } from "@connectors/connectors/zendesk";
 import {
@@ -45,6 +45,7 @@ import type {
   ZendeskGetRetentionPeriodResponseType,
   ZendeskOrganizationTagResponseType,
 } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
 
 function getTagsArgs(args: ZendeskCommandType["args"]) {
   const tag = args.tag;
@@ -81,7 +82,7 @@ async function checkTicketShouldBeSynced(
   logger: Logger
 ) {
   if (!ticket) {
-    return false;
+    return { shouldSync: false, reason: "Ticket not found" };
   }
 
   let organizationTags: string[] = [];
@@ -232,7 +233,10 @@ export const zendesk = async ({
         } catch (e) {
           return {
             ticket: null,
-            shouldSyncTicket: false,
+            shouldSyncTicket: {
+              shouldSync: false,
+              reason: `Error getting ticket metadata: ${normalizeError(e).message}`,
+            },
             isTicketOnDb: false,
           };
         }
@@ -268,25 +272,27 @@ export const zendesk = async ({
       }
 
       const brandId = args.brandId ?? null;
-      if (!brandId) {
-        throw new Error(`Missing --brandId argument`);
-      }
       const ticketId = args.ticketId ?? null;
       if (!ticketId) {
         throw new Error(`Missing --ticketId argument`);
       }
-      const ticketOnDb = await ZendeskTicketResource.fetchByTicketId({
-        connectorId: connector.id,
-        brandId,
-        ticketId,
-      });
 
-      const brandSubdomain = await getZendeskBrandSubdomain({
-        connectorId: connector.id,
-        brandId,
-        subdomain,
-        accessToken,
-      });
+      let ticketOnDb = null;
+      let brandSubdomain = subdomain;
+
+      if (brandId) {
+        ticketOnDb = await ZendeskTicketResource.fetchByTicketId({
+          connectorId: connector.id,
+          brandId,
+          ticketId,
+        });
+        brandSubdomain = await getZendeskBrandSubdomain({
+          connectorId: connector.id,
+          brandId,
+          subdomain,
+          accessToken,
+        });
+      }
 
       const ticket = await fetchZendeskTicket({
         accessToken,
@@ -297,7 +303,7 @@ export const zendesk = async ({
       const shouldSyncTicket = await checkTicketShouldBeSynced(
         ticket,
         configuration,
-        { brandId, accessToken, brandSubdomain },
+        { brandId: brandId ?? undefined, accessToken, brandSubdomain },
         logger
       );
 
@@ -474,7 +480,7 @@ export const zendesk = async ({
       }
       const manager = new ZendeskConnectorManager(connectorId);
       await manager.setConfigurationKey({
-        configKey: RETENTION_PERIOD_CONFIG_KEY,
+        configKey: ZENDESK_CONFIG_KEYS.RETENTION_PERIOD,
         configValue: retentionPeriodDays.toString(),
       });
       return { success: true };

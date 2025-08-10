@@ -13,8 +13,8 @@ import { isFileUsingConversationFiles } from "@app/lib/files";
 import { useFileContent } from "@app/lib/swr/files";
 import type { ConversationType, LightWorkspaceType } from "@app/types";
 
+import { useConversationSidePanelContext } from "../ConversationSidePanelContext";
 import { ShareInteractiveFilePopover } from "../ShareInteractiveFilePopover";
-import { useInteractiveContentContext } from "./InteractiveContentContext";
 import { InteractiveContentHeader } from "./InteractiveContentHeader";
 
 interface ClientExecutableRendererProps {
@@ -30,7 +30,7 @@ export function ClientExecutableRenderer({
   fileName,
   owner,
 }: ClientExecutableRendererProps) {
-  const { closeContent } = useInteractiveContentContext();
+  const { closePanel } = useConversationSidePanelContext();
   const { fileContent, isFileContentLoading, error } = useFileContent({
     fileId,
     owner,
@@ -64,7 +64,7 @@ export function ClientExecutableRenderer({
       <InteractiveContentHeader
         title={fileName || "Client Executable"}
         subtitle={fileId}
-        onClose={closeContent}
+        onClose={closePanel}
       >
         <Button
           icon={showCode ? SparklesIcon : CommandLineIcon}

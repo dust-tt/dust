@@ -1,5 +1,3 @@
-import { escape } from "html-escaper";
-
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import type { Authenticator } from "@app/lib/auth";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
@@ -24,6 +22,14 @@ import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
+
+/**
+ * Soft HTML escaping that prevents HTML tag injection while preserving apostrophes and other common characters.
+ * Only escapes < and > which are the minimal characters needed to prevent HTML tag injection.
+ */
+function softHtmlEscape(str: string): string {
+  return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
 export async function fetchUserFromSession(session: SessionWithUser) {
   const { workOSUserId } = session.user;
@@ -71,17 +77,15 @@ export async function createOrUpdateUser({
     // Update the user object from the updated session information.
     updateArgs.username = externalUser.nickname;
 
-    if (!user.firstName && !user.lastName) {
-      if (externalUser.given_name && externalUser.family_name) {
-        updateArgs.firstName = externalUser.given_name;
-        updateArgs.lastName = externalUser.family_name;
-      } else {
-        const { firstName, lastName } = guessFirstAndLastNameFromFullName(
-          externalUser.name
-        );
-        updateArgs.firstName = firstName;
-        updateArgs.lastName = lastName || "";
-      }
+    if (externalUser.given_name && externalUser.family_name) {
+      updateArgs.firstName = softHtmlEscape(externalUser.given_name);
+      updateArgs.lastName = softHtmlEscape(externalUser.family_name);
+    } else {
+      const { firstName, lastName } = guessFirstAndLastNameFromFullName(
+        externalUser.name
+      );
+      updateArgs.firstName = softHtmlEscape(firstName);
+      updateArgs.lastName = softHtmlEscape(lastName || "");
     }
 
     if (
@@ -129,10 +133,10 @@ export async function createOrUpdateUser({
       externalUser.name
     );
 
-    firstName = escape(externalUser.given_name || firstName);
+    firstName = softHtmlEscape(externalUser.given_name || firstName);
     lastName = externalUser.family_name || lastName;
     if (lastName) {
-      lastName = escape(lastName);
+      lastName = softHtmlEscape(lastName);
     }
 
     // If worksOSUserId is already taken, we don't want to take it - only one user can have the same workOSUserId.

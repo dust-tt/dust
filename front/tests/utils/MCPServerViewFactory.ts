@@ -1,5 +1,3 @@
-import type { Transaction } from "sequelize";
-
 import { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -9,8 +7,7 @@ export class MCPServerViewFactory {
   static async create(
     workspace: LightWorkspaceType,
     mcpServerId: string,
-    space: SpaceResource,
-    transaction?: Transaction
+    space: SpaceResource
   ): Promise<MCPServerViewResource> {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const systemView =
@@ -28,7 +25,6 @@ export class MCPServerViewFactory {
     const serverView = await MCPServerViewResource.create(auth, {
       systemView,
       space,
-      transaction,
     });
 
     return serverView;

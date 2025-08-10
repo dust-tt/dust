@@ -4,8 +4,13 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import { createJQLFromSearchFilters } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
+import {
+  createJQLFromSearchFilters,
+  processFieldsForJira,
+  textToADF,
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
 import type {
+  ADFDocument,
   JiraConnectionInfoSchema,
   JiraCreateCommentRequestSchema,
   JiraCreateIssueLinkRequestSchema,
@@ -19,6 +24,7 @@ import type {
   SortDirection,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
+  ADFDocumentSchema,
   JiraCommentSchema,
   JiraCreateMetaSchema,
   JiraIssueLinkTypeSchema,
@@ -30,12 +36,19 @@ import {
   JiraTransitionIssueSchema,
   JiraTransitionsSchema,
   JiraUserInfoSchema,
+  JiraUsersSearchResultSchema,
   SEARCH_FILTER_FIELDS,
-  SEARCH_MAX_RESULTS,
+  SEARCH_ISSUES_MAX_RESULTS,
+  SEARCH_USERS_MAX_RESULTS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
+
+// Type guard to check if a value is an ADFDocument
+function isADFDocument(value: unknown): value is ADFDocument {
+  return ADFDocumentSchema.safeParse(value).success;
+}
 
 // Generic helper to handle errors consistently
 function handleResults<T>(
@@ -242,27 +255,29 @@ export async function createComment(
   baseUrl: string,
   accessToken: string,
   issueKey: string,
-  commentBody: string,
+  commentBody: string | ADFDocument,
   visibility?: {
     type: "group" | "role";
     value: string;
   }
 ): Promise<Result<z.infer<typeof JiraCommentSchema> | null, JiraErrorResult>> {
+  let adfBody: ADFDocument;
+
+  if (typeof commentBody === "string") {
+    adfBody = textToADF(commentBody);
+  } else if (isADFDocument(commentBody)) {
+    adfBody = commentBody;
+  } else {
+    return new Err(
+      "Invalid comment body: must be a string or valid ADF document"
+    );
+  }
+
   const requestBody: z.infer<typeof JiraCreateCommentRequestSchema> = {
     body: {
-      type: "doc",
-      version: 1,
-      content: [
-        {
-          type: "paragraph",
-          content: [
-            {
-              type: "text",
-              text: commentBody,
-            },
-          ],
-        },
-      ],
+      type: adfBody.type,
+      version: adfBody.version,
+      content: adfBody.content || [],
     },
   };
   if (visibility) {
@@ -317,7 +332,7 @@ export async function searchIssues(
   const {
     nextPageToken,
     sortBy,
-    maxResults = SEARCH_MAX_RESULTS,
+    maxResults = SEARCH_ISSUES_MAX_RESULTS,
   } = options || {};
 
   const jql = createJQLFromSearchFilters(filters, sortBy);
@@ -500,6 +515,8 @@ export async function createIssue(
   accessToken: string,
   issueData: z.infer<typeof JiraCreateIssueRequestSchema>
 ): Promise<Result<z.infer<typeof JiraIssueSchema>, JiraErrorResult>> {
+  const processedFields = processFieldsForJira(issueData);
+
   const result = await jiraApiCall(
     {
       endpoint: "/rest/api/3/issue",
@@ -508,7 +525,7 @@ export async function createIssue(
     JiraIssueSchema,
     {
       method: "POST",
-      body: { fields: issueData },
+      body: { fields: processedFields },
       baseUrl,
     }
   );
@@ -533,6 +550,8 @@ export async function updateIssue(
 ): Promise<
   Result<{ issueKey: string; browseUrl?: string } | null, JiraErrorResult>
 > {
+  const processedFields = processFieldsForJira(updateData);
+
   const result = await jiraApiCall(
     {
       endpoint: `/rest/api/3/issue/${issueKey}`,
@@ -541,7 +560,7 @@ export async function updateIssue(
     z.void(),
     {
       method: "PUT",
-      body: { fields: updateData },
+      body: { fields: processedFields },
       baseUrl,
     }
   );
@@ -574,28 +593,17 @@ export async function createIssueLink(
   accessToken: string,
   linkData: z.infer<typeof JiraCreateIssueLinkRequestSchema>
 ): Promise<Result<void, JiraErrorResult>> {
-  const requestBody = { ...linkData };
+  const requestBody: Record<string, any> = { ...linkData };
 
-  // If there's a comment, transform it to JIRA document format
+  // If there's a comment, transform it to JIRA document format using ADF helper
   if (
     requestBody.comment?.body &&
     typeof requestBody.comment.body === "string"
   ) {
     const commentText = requestBody.comment.body;
-    (requestBody.comment as any).body = {
-      type: "doc",
-      version: 1,
-      content: [
-        {
-          type: "paragraph",
-          content: [
-            {
-              type: "text",
-              text: commentText,
-            },
-          ],
-        },
-      ],
+    requestBody.comment = {
+      ...requestBody.comment,
+      body: textToADF(commentText),
     };
   }
 
@@ -655,6 +663,40 @@ export async function getIssueLinkTypes(
   }
 
   return new Ok(result.value.issueLinkTypes);
+}
+
+export async function searchUsers(
+  baseUrl: string,
+  accessToken: string,
+  query: string,
+  maxResults: number = SEARCH_USERS_MAX_RESULTS
+): Promise<
+  Result<z.infer<typeof JiraUsersSearchResultSchema>, JiraErrorResult>
+> {
+  const params = new URLSearchParams({
+    query,
+    maxResults: maxResults.toString(),
+  });
+
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/api/3/users/search?${params.toString()}`,
+      accessToken,
+    },
+    JiraUsersSearchResultSchema,
+    { baseUrl }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  // Filter to only include Atlassian users as per documentation https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-user-search/#api-rest-api-3-user-search-get
+  const filteredUsers = result.value.filter(
+    (user) => user.accountType === "atlassian"
+  );
+
+  return new Ok(filteredUsers);
 }
 
 export const withAuth = async ({

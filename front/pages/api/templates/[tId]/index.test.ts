@@ -1,9 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
-import { describe, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
 
@@ -17,7 +16,7 @@ vi.mock(import("../../../../lib/auth"), async (importOriginal) => {
 });
 
 describe("GET /api/templates/[tId]", () => {
-  itInTransaction("returns 404 when template id is not provided", async () => {
+  it("returns 404 when template id is not provided", async () => {
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
       query: {},
@@ -35,7 +34,7 @@ describe("GET /api/templates/[tId]", () => {
     });
   });
 
-  itInTransaction("returns 404 when template does not exist", async () => {
+  it("returns 404 when template does not exist", async () => {
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
       query: { tId: "non-existent-id" },
@@ -53,7 +52,7 @@ describe("GET /api/templates/[tId]", () => {
     });
   });
 
-  itInTransaction("returns 404 when template is not published", async () => {
+  it("returns 404 when template is not published", async () => {
     const template = await TemplateFactory.draft();
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
@@ -73,29 +72,26 @@ describe("GET /api/templates/[tId]", () => {
     });
   });
 
-  itInTransaction(
-    "returns template when it exists and is published",
-    async () => {
-      const template = await TemplateFactory.published();
+  it("returns template when it exists and is published", async () => {
+    const template = await TemplateFactory.published();
 
-      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-        method: "GET",
-        query: { tId: template.sId },
-        headers: {},
-      });
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: { tId: template.sId },
+      headers: {},
+    });
 
-      await handler(req, res);
+    await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(200);
-      expect(res._getJSONData()).toEqual(
-        expect.objectContaining({
-          handle: template.handle,
-        })
-      );
-    }
-  );
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual(
+      expect.objectContaining({
+        handle: template.handle,
+      })
+    );
+  });
 
-  itInTransaction("returns 405 for non-GET methods", async () => {
+  it("returns 405 for non-GET methods", async () => {
     for (const method of ["POST", "PUT", "DELETE", "PATCH"] as const) {
       const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
         method,

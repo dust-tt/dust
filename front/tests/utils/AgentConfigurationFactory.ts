@@ -1,5 +1,4 @@
 import assert from "assert";
-import type { Transaction } from "sequelize";
 
 import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,7 +11,6 @@ import type {
 export class AgentConfigurationFactory {
   static async createTestAgent(
     auth: Authenticator,
-    t?: Transaction,
     overrides: Partial<{
       name: string;
       description: string;
@@ -34,28 +32,24 @@ export class AgentConfigurationFactory {
     const user = auth.user();
     assert(user, "User is required");
 
-    const result = await createAgentConfiguration(
-      auth,
-      {
-        name,
-        description,
-        instructions: "Test Instructions",
-        visualizationEnabled: false,
-        pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
-        status: "active",
-        scope,
-        model: {
-          providerId,
-          modelId,
-          temperature,
-        },
-        templateId: null,
-        requestedGroupIds: [], // Let createAgentConfiguration handle group creation
-        tags: [], // Added missing tags property
-        editors: [user.toJSON()],
+    const result = await createAgentConfiguration(auth, {
+      name,
+      description,
+      instructions: "Test Instructions",
+      visualizationEnabled: false,
+      pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+      status: "active",
+      scope,
+      model: {
+        providerId,
+        modelId,
+        temperature,
       },
-      t
-    );
+      templateId: null,
+      requestedGroupIds: [], // Let createAgentConfiguration handle group creation
+      tags: [], // Added missing tags property
+      editors: [user.toJSON()],
+    });
 
     if (result.isErr()) {
       throw result.error;

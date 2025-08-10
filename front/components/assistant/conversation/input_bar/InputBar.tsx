@@ -10,10 +10,15 @@ import InputBarContainer, {
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { DustError } from "@app/lib/error";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
-import { useConversation } from "@app/lib/swr/conversations";
+import {
+  useAddDeleteConversationTool,
+  useConversation,
+  useConversationTools,
+} from "@app/lib/swr/conversations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 import type {
@@ -38,7 +43,8 @@ interface AssistantInputBarProps {
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragments: ContentFragmentsType
+    contentFragments: ContentFragmentsType,
+    selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
@@ -183,6 +189,41 @@ export function AssistantInputBar({
     };
   }, []);
 
+  // Tools selection
+
+  const [selectedMCPServerViewIds, setSelectedMCPServerViewIds] = useState<
+    string[]
+  >([]);
+
+  const { conversationTools } = useConversationTools({
+    conversationId,
+    workspaceId: owner.sId,
+  });
+
+  // The truth is in the conversationTools, we need to update the selectedMCPServerViewIds when the conversationTools change.
+  useEffect(() => {
+    setSelectedMCPServerViewIds(conversationTools.map((tool) => tool.sId));
+  }, [conversationTools]);
+
+  const { addTool, deleteTool } = useAddDeleteConversationTool({
+    conversationId,
+    workspaceId: owner.sId,
+  });
+
+  const handleMCPServerViewSelect = (serverView: MCPServerViewType) => {
+    // Optimistic update
+    setSelectedMCPServerViewIds((prev) => [...prev, serverView.sId]);
+    void addTool(serverView.sId);
+  };
+
+  const handleMCPServerViewDeselect = (serverView: MCPServerViewType) => {
+    // Optimistic update
+    setSelectedMCPServerViewIds((prev) =>
+      prev.filter((sv) => sv !== serverView.sId)
+    );
+    void deleteTool(serverView.sId);
+  };
+
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
 
@@ -207,15 +248,22 @@ export function AssistantInputBar({
       setLoading(true);
       setDisableSendButton(true);
 
-      const r = await onSubmit(markdown, mentions, {
-        uploaded: fileUploaderService.getFileBlobs().map((cf) => {
-          return {
-            title: cf.filename,
-            fileId: cf.fileId,
-          };
-        }),
-        contentNodes: attachedNodes,
-      });
+      const r = await onSubmit(
+        markdown,
+        mentions,
+        {
+          uploaded: fileUploaderService.getFileBlobs().map((cf) => {
+            return {
+              title: cf.filename,
+              fileId: cf.fileId,
+            };
+          }),
+          contentNodes: attachedNodes,
+        },
+        // Only send the selectedMCPServerViewIds if we are creating a new conversation.
+        // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
+        selectedMCPServerViewIds
+      );
 
       setLoading(false);
       setDisableSendButton(false);
@@ -328,7 +376,7 @@ export function AssistantInputBar({
           <div
             className={classNames(
               "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-3 sm:flex-row",
-              "rounded-3xl transition-all",
+              "rounded-2xl transition-all",
               "bg-muted-background dark:bg-muted-background-night",
               "border",
               "border-border-dark dark:border-border-dark-night",
@@ -371,6 +419,9 @@ export function AssistantInputBar({
                 }
                 onNodeSelect={handleNodesAttachmentSelect}
                 onNodeUnselect={handleNodesAttachmentRemove}
+                selectedMCPServerViewIds={selectedMCPServerViewIds}
+                onMCPServerViewSelect={handleMCPServerViewSelect}
+                onMCPServerViewDeselect={handleMCPServerViewDeselect}
                 attachedNodes={attachedNodes}
               />
             </div>
@@ -394,7 +445,8 @@ export function FixedAssistantInputBar({
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragments: ContentFragmentsType
+    contentFragments: ContentFragmentsType,
+    selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
   stickyMentions?: AgentMention[];
   conversationId: string | null;
@@ -407,7 +459,7 @@ export function FixedAssistantInputBar({
       className={cn(
         "sticky bottom-0 z-20 flex max-h-screen w-full",
         "pb-2",
-        "sm:w-full sm:max-w-3xl sm:pb-8"
+        "sm:w-full sm:max-w-3xl sm:pb-4"
       )}
     >
       <AssistantInputBar

@@ -1,7 +1,7 @@
 import type { Client, WorkflowHandle } from "@temporalio/client";
 
 import type { CheckFunction } from "@app/lib/production_checks/types";
-import { getTemporalClient } from "@app/lib/temporal";
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 
 const WORKFLOW_IDS = ["data-retention-workflow", "tracker-notify-workflow"];
 
@@ -23,7 +23,7 @@ export const checkActiveWorkflowsForFront: CheckFunction = async (
   reportFailure,
   heartbeat
 ) => {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
 
   const missingWorkflows: string[] = [];
   for (const workflowId of WORKFLOW_IDS) {

@@ -335,7 +335,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
           brandId,
           organizationTags,
           ticketTags: ticket.tags,
-        })
+        }).shouldSync
       ) {
         const comments = commentsPerTicket[ticket.id];
         if (!comments) {

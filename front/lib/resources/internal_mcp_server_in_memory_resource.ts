@@ -1,15 +1,21 @@
-import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import {
+  autoInternalMCPServerNameToSId,
+  internalMCPServerNameToSId,
+} from "@app/lib/actions/mcp_helper";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
+  allowsMultipleInstancesOfInternalMCPServerById,
+  allowsMultipleInstancesOfInternalMCPServerByName,
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
+  getAvailabilityOfInternalMCPServerById,
   getAvailabilityOfInternalMCPServerByName,
-  getInternalMCPServerAvailability,
   getInternalMCPServerNameAndWorkspaceId,
+  isAutoInternalMCPServerName,
   isInternalMCPServerName,
+  isInternalMCPServerOfName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   connectToMCPServer,
@@ -75,10 +81,12 @@ export class InternalMCPServerInMemoryResource {
   // SID of the internal MCP server, scoped to a workspace.
   readonly id: string;
 
-  private metadata: Omit<MCPServerType, "sId"> = {
+  private metadata: Omit<
+    MCPServerType,
+    "sId" | "allowMultipleInstances" | "availability"
+  > = {
     ...extractMetadataFromServerVersion(undefined),
     tools: [],
-    availability: "manual",
   };
 
   constructor(id: string) {
@@ -116,8 +124,7 @@ export class InternalMCPServerInMemoryResource {
     }: {
       name: InternalMCPServerNameType;
       useCase: MCPOAuthUseCase | null;
-    },
-    transaction?: Transaction
+    }
   ) {
     const canAdministrate =
       await SpaceResource.canAdministrateSystemSpace(auth);
@@ -128,14 +135,60 @@ export class InternalMCPServerInMemoryResource {
         "The user is not authorized to create an internal MCP server"
       );
     }
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
-    const server = await InternalMCPServerInMemoryResource.init(
-      auth,
-      internalMCPServerNameToSId({
+    let sid: string | null = null;
+
+    if (isAutoInternalMCPServerName(name)) {
+      sid = autoInternalMCPServerNameToSId({
         name,
         workspaceId: auth.getNonNullableWorkspace().id,
-      })
-    );
+      });
+    } else {
+      const alreadyUsedIds = await MCPServerViewModel.findAll({
+        where: {
+          serverType: "internal",
+          workspaceId: auth.getNonNullableWorkspace().id,
+          vaultId: systemSpace.id,
+        },
+      });
+
+      if (!allowsMultipleInstancesOfInternalMCPServerByName(name)) {
+        const alreadyExistsForSameName = alreadyUsedIds.some((r) => {
+          return isInternalMCPServerOfName(r.internalMCPServerId, name);
+        });
+
+        if (alreadyExistsForSameName) {
+          throw new DustError(
+            "internal_error",
+            "The internal MCP server already exists for this name."
+          );
+        }
+      }
+
+      // 100 tries to avoid an infinite loop.
+      for (let i = 1; i < 100; i++) {
+        const prefix = Math.floor(Math.random() * 1000000);
+        const tempSid = internalMCPServerNameToSId({
+          name,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          prefix,
+        });
+        if (!alreadyUsedIds.some((r) => r.internalMCPServerId === tempSid)) {
+          sid = tempSid;
+          break;
+        }
+      }
+    }
+
+    if (!sid) {
+      throw new DustError(
+        "internal_error",
+        "Could not find an available id for the internal MCP server."
+      );
+    }
+
+    const server = await InternalMCPServerInMemoryResource.init(auth, sid);
 
     if (!server) {
       throw new DustError(
@@ -144,20 +197,15 @@ export class InternalMCPServerInMemoryResource {
       );
     }
 
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-
-    await MCPServerViewModel.create(
-      {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        serverType: "internal",
-        internalMCPServerId: server.id,
-        vaultId: systemSpace.id,
-        editedAt: new Date(),
-        editedByUserId: auth.user()?.id,
-        oAuthUseCase: useCase ?? null,
-      },
-      { transaction }
-    );
+    await MCPServerViewModel.create({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      serverType: "internal",
+      internalMCPServerId: server.id,
+      vaultId: systemSpace.id,
+      editedAt: new Date(),
+      editedByUserId: auth.user()?.id,
+      oAuthUseCase: useCase ?? null,
+    });
 
     return server;
   }
@@ -214,7 +262,7 @@ export class InternalMCPServerInMemoryResource {
 
   static async fetchById(auth: Authenticator, id: string) {
     // Fast path : Do not check for default internal MCP servers as they are always available.
-    const availability = getInternalMCPServerAvailability(id);
+    const availability = getAvailabilityOfInternalMCPServerById(id);
     if (availability === "manual") {
       const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
@@ -252,6 +300,7 @@ export class InternalMCPServerInMemoryResource {
       internalMCPServerNameToSId({
         name,
         workspaceId: auth.getNonNullableWorkspace().id,
+        prefix: 1, // We could use any value here.
       })
     );
 
@@ -300,6 +349,10 @@ export class InternalMCPServerInMemoryResource {
     return {
       sId: this.id,
       ...this.metadata,
+      availability: getAvailabilityOfInternalMCPServerById(this.id),
+      allowMultipleInstances: allowsMultipleInstancesOfInternalMCPServerById(
+        this.id
+      ),
     };
   }
 }

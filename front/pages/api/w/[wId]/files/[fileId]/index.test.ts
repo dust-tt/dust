@@ -1,11 +1,9 @@
 import type { RequestMethod } from "node-mocks-http";
-import type { Transaction } from "sequelize";
-import { beforeEach, describe, expect, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FileResource } from "@app/lib/resources/file_resource";
 import handler from "@app/pages/api/w/[wId]/files/[fileId]/index";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 vi.mock("@app/lib/resources/file_resource", () => ({
   FileResource: {
@@ -72,7 +70,6 @@ const mockGetReadStream = vi.fn().mockReturnValue({
 });
 
 async function setupTest(
-  t: Transaction,
   options: {
     userRole?: "admin" | "builder" | "user";
     method?: RequestMethod;
@@ -162,8 +159,8 @@ describe("GET /api/w/[wId]/files/[fileId]", () => {
     vi.clearAllMocks();
   });
 
-  itInTransaction("should return 404 for non-existent file", async (t) => {
-    const { req, res } = await setupTest(t, { fileExists: false });
+  it("should return 404 for non-existent file", async () => {
+    const { req, res } = await setupTest({ fileExists: false });
 
     await handler(req, res);
     expect(res._getStatusCode()).toBe(404);
@@ -175,22 +172,19 @@ describe("GET /api/w/[wId]/files/[fileId]", () => {
     });
   });
 
-  itInTransaction(
-    "should allow any role to view file for GET request",
-    async (t) => {
-      for (const role of ["admin", "builder", "user"] as const) {
-        const { req, res } = await setupTest(t, { userRole: role });
+  it("should allow any role to view file for GET request", async () => {
+    for (const role of ["admin", "builder", "user"] as const) {
+      const { req, res } = await setupTest({ userRole: role });
 
-        // Reset for each test
-        mockGetSignedUrlForDownload.mockClear();
+      // Reset for each test
+      mockGetSignedUrlForDownload.mockClear();
 
-        await handler(req, res);
-        expect(res._getStatusCode()).toBe(302); // Should redirect to the signed URL
-        expect(res._getRedirectUrl()).toBe("http://signed-url.example");
-        expect(mockGetSignedUrlForDownload).toHaveBeenCalledTimes(1);
-      }
+      await handler(req, res);
+      expect(res._getStatusCode()).toBe(302); // Should redirect to the signed URL
+      expect(res._getRedirectUrl()).toBe("http://signed-url.example");
+      expect(mockGetSignedUrlForDownload).toHaveBeenCalledTimes(1);
     }
-  );
+  });
 });
 
 describe("POST /api/w/[wId]/files/[fileId]", () => {
@@ -198,53 +192,47 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
     vi.clearAllMocks();
   });
 
-  itInTransaction(
-    "should return 403 when user cannot write to space for non-conversation files",
-    async (t) => {
-      vi.mock("@app/lib/resources/space_resource", () => ({
-        SpaceResource: {
-          fetchById: vi.fn().mockResolvedValue({
-            id: "test-space-id",
-            canRead: vi.fn().mockReturnValue(true),
-            canWrite: vi.fn().mockReturnValue(false),
-          }),
-        },
-      }));
+  it("should return 403 when user cannot write to space for non-conversation files", async () => {
+    vi.mock("@app/lib/resources/space_resource", () => ({
+      SpaceResource: {
+        fetchById: vi.fn().mockResolvedValue({
+          id: "test-space-id",
+          canRead: vi.fn().mockReturnValue(true),
+          canWrite: vi.fn().mockReturnValue(false),
+        }),
+      },
+    }));
 
-      const { req, res } = await setupTest(t, {
-        userRole: "user",
-        method: "POST",
-        useCase: "folders_document",
-        useCaseMetadata: { spaceId: "test-space-id" },
-      });
+    const { req, res } = await setupTest({
+      userRole: "user",
+      method: "POST",
+      useCase: "folders_document",
+      useCaseMetadata: { spaceId: "test-space-id" },
+    });
 
-      await handler(req, res);
-      expect(res._getStatusCode()).toBe(403);
-      expect(res._getJSONData()).toEqual({
-        error: {
-          type: "workspace_auth_error",
-          message: "You cannot edit files in that space.",
-        },
-      });
-    }
-  );
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "You cannot edit files in that space.",
+      },
+    });
+  });
 
-  itInTransaction(
-    "should allow regular user to modify conversation files",
-    async (t) => {
-      const { req, res } = await setupTest(t, {
-        userRole: "user",
-        method: "POST",
-        useCase: "conversation",
-      });
+  it("should allow regular user to modify conversation files", async () => {
+    const { req, res } = await setupTest({
+      userRole: "user",
+      method: "POST",
+      useCase: "conversation",
+    });
 
-      await handler(req, res);
-      expect(res._getStatusCode()).toBe(200);
-    }
-  );
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+  });
 
-  itInTransaction("should allow admin to modify any file", async (t) => {
-    const { req, res } = await setupTest(t, {
+  it("should allow admin to modify any file", async () => {
+    const { req, res } = await setupTest({
       userRole: "admin",
       method: "POST",
     });
@@ -253,8 +241,8 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
     expect(res._getStatusCode()).toBe(200);
   });
 
-  itInTransaction("should allow builder to modify any file", async (t) => {
-    const { req, res } = await setupTest(t, {
+  it("should allow builder to modify any file", async () => {
+    const { req, res } = await setupTest({
       userRole: "builder",
       method: "POST",
     });
@@ -269,54 +257,48 @@ describe("DELETE /api/w/[wId]/files/[fileId]", () => {
     vi.clearAllMocks();
   });
 
-  itInTransaction(
-    "should return 403 when user is not a builder for non-conversation files",
-    async (t) => {
-      vi.mock("@app/lib/resources/space_resource", () => ({
-        SpaceResource: {
-          fetchById: vi.fn().mockResolvedValue({
-            id: "test-space-id",
-            canRead: vi.fn().mockReturnValue(true),
-            canWrite: vi.fn().mockReturnValue(false),
-          }),
-        },
-      }));
+  it("should return 403 when user is not a builder for non-conversation files", async () => {
+    vi.mock("@app/lib/resources/space_resource", () => ({
+      SpaceResource: {
+        fetchById: vi.fn().mockResolvedValue({
+          id: "test-space-id",
+          canRead: vi.fn().mockReturnValue(true),
+          canWrite: vi.fn().mockReturnValue(false),
+        }),
+      },
+    }));
 
-      const { req, res } = await setupTest(t, {
-        userRole: "user",
-        method: "DELETE",
-        useCase: "folders_document",
-        useCaseMetadata: { spaceId: "test-space-id" },
-      });
+    const { req, res } = await setupTest({
+      userRole: "user",
+      method: "DELETE",
+      useCase: "folders_document",
+      useCaseMetadata: { spaceId: "test-space-id" },
+    });
 
-      await handler(req, res);
-      expect(res._getStatusCode()).toBe(403);
-      expect(res._getJSONData()).toEqual({
-        error: {
-          type: "workspace_auth_error",
-          message: "You cannot edit files in that space.",
-        },
-      });
-    }
-  );
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "You cannot edit files in that space.",
+      },
+    });
+  });
 
-  itInTransaction(
-    "should allow regular user to delete conversation files",
-    async (t) => {
-      const { req, res } = await setupTest(t, {
-        userRole: "user",
-        method: "DELETE",
-        useCase: "conversation",
-      });
+  it("should allow regular user to delete conversation files", async () => {
+    const { req, res } = await setupTest({
+      userRole: "user",
+      method: "DELETE",
+      useCase: "conversation",
+    });
 
-      await handler(req, res);
-      expect(res._getStatusCode()).toBe(204);
-      expect(mockDelete).toHaveBeenCalledTimes(1);
-    }
-  );
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(204);
+    expect(mockDelete).toHaveBeenCalledTimes(1);
+  });
 
-  itInTransaction("should allow admin to delete any file", async (t) => {
-    const { req, res } = await setupTest(t, {
+  it("should allow admin to delete any file", async () => {
+    const { req, res } = await setupTest({
       userRole: "admin",
       method: "DELETE",
     });
@@ -326,8 +308,8 @@ describe("DELETE /api/w/[wId]/files/[fileId]", () => {
     expect(mockDelete).toHaveBeenCalledTimes(1);
   });
 
-  itInTransaction("should allow builder to delete any file", async (t) => {
-    const { req, res } = await setupTest(t, {
+  it("should allow builder to delete any file", async () => {
+    const { req, res } = await setupTest({
       userRole: "builder",
       method: "DELETE",
     });
@@ -339,9 +321,9 @@ describe("DELETE /api/w/[wId]/files/[fileId]", () => {
 });
 
 describe("Method Support /api/w/[wId]/files/[fileId]", () => {
-  itInTransaction("should return 405 for unsupported methods", async (t) => {
+  it("should return 405 for unsupported methods", async () => {
     for (const method of ["PUT", "PATCH"] as const) {
-      const { req, res } = await setupTest(t, { method });
+      const { req, res } = await setupTest({ method });
 
       await handler(req, res);
 

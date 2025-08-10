@@ -22,21 +22,21 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { AgentBuilderEditors } from "@app/components/agent_builder/settings/AgentBuilderEditors";
 import { AgentBuilderScopeSelector } from "@app/components/agent_builder/settings/AgentBuilderScopeSelector";
 import { AgentBuilderSlackSelector } from "@app/components/agent_builder/settings/AgentBuilderSlackSelector";
+import { AvatarPicker } from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker";
+import {
+  DROID_AVATAR_URLS,
+  SPIRIT_AVATAR_URLS,
+} from "@app/components/agent_builder/settings/avatar_picker/types";
 import { TagsSection } from "@app/components/agent_builder/settings/TagsSection";
 import {
   fetchWithErr,
   getDescriptionSuggestion,
   getNameSuggestions,
 } from "@app/components/agent_builder/settings/utils";
-import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
 import {
   buildSelectedEmojiType,
   makeUrlForEmojiAndBackground,
 } from "@app/components/assistant_builder/avatar_picker/utils";
-import {
-  DROID_AVATAR_URLS,
-  SPIRIT_AVATAR_URLS,
-} from "@app/components/assistant_builder/shared";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   APIError,
@@ -137,12 +137,12 @@ function AgentNameInput() {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
         Name
       </label>
-      <div className="relative">
-        <Input placeholder="Enter agent name" {...field} className="pr-10" />
+      <div className="relative max-w-100">
+        <Input placeholder="Enter agent name" {...field} />
         <DropdownMenu
           onOpenChange={(open) => open && handleGenerateNameSuggestions()}
         >
@@ -256,16 +256,12 @@ function AgentDescriptionInput() {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
         Description
       </label>
       <div className="relative">
-        <Input
-          placeholder="Enter agent description"
-          {...field}
-          className="pr-10"
-        />
+        <Input placeholder="Enter agent description" {...field} />
         <Button
           icon={isGenerating ? () => <Spinner size="xs" /> : SparklesIcon}
           variant="outline"
@@ -408,20 +404,20 @@ export function AgentBuilderSettingsBlock({
           <Page.H>Settings</Page.H>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="flex flex-col gap-4 pt-4">
+          <div className="flex flex-col gap-4 px-1 pt-4">
             <Page.P>
               <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Configure tags and access settings for your agent.
               </span>
             </Page.P>
             <div className="space-y-4">
-              <div className="flex items-start gap-8">
-                <div className="flex-grow">
+              <div className="flex items-center gap-8">
+                <div className="flex w-full flex-col gap-2">
                   <AgentNameInput />
+                  <AgentDescriptionInput />
                 </div>
                 <AgentPictureInput />
               </div>
-              <AgentDescriptionInput />
               <TagsSection />
               <AgentAccessAndPublication />
             </div>

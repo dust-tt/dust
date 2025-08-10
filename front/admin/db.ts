@@ -1,3 +1,4 @@
+import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentChildAgentConfiguration,
@@ -51,7 +52,10 @@ import {
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { FileModel } from "@app/lib/resources/storage/models/files";
+import {
+  FileModel,
+  ShareableFileModel,
+} from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -101,6 +105,7 @@ async function main() {
   await Clone.sync({ alter: true });
   await KeyModel.sync({ alter: true });
   await FileModel.sync({ alter: true });
+  await ShareableFileModel.sync({ alter: true });
   await DustAppSecret.sync({ alter: true });
   await GroupSpaceModel.sync({ alter: true });
 
@@ -133,6 +138,8 @@ async function main() {
   await MCPServerViewModel.sync({ alter: true });
   await MCPServerConnection.sync({ alter: true });
   await RemoteMCPServerToolMetadataModel.sync({ alter: true });
+
+  await ConversationMCPServerViewModel.sync({ alter: true });
 
   await AgentMCPServerConfiguration.sync({ alter: true });
   await AgentTablesQueryConfigurationTable.sync({ alter: true });

@@ -2,6 +2,7 @@ import { removeNulls } from "@dust-tt/client";
 
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
+  isRunAgentResultResourceType,
   isSearchResultResourceType,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -35,38 +36,36 @@ export const getRefs = () => {
 /**
  * Prompt to remind agents how to cite documents or web pages.
  */
-export function citationMetaPrompt() {
+export function citationMetaPrompt(isUsingRunAgent: boolean) {
   return (
     "## CITING DOCUMENTS\n" +
     "To cite documents or web pages retrieved with a 3-character REFERENCE, " +
     "use the markdown directive :cite[REFERENCE] " +
     "(eg :cite[xxx] or :cite[xxx,xxx] but not :cite[xxx][xxx]). " +
-    "Ensure citations are placed as close as possible to the related information."
+    "Ensure citations are placed as close as possible to the related information." +
+    (isUsingRunAgent
+      ? " If you use information from a run_agent that is related to a document or a web page, you MUST include the citation markers exactly as they appear."
+      : "")
   );
 }
 
 export const getCitationsFromActions = (
   actions: MCPActionType[]
 ): Record<string, CitationType> => {
-  // MCP actions with search results.
   const searchResultsWithDocs = removeNulls(
     actions.flatMap((action) =>
       action.output?.filter(isSearchResultResourceType).map((o) => o.resource)
     )
   );
-  const allMCPSearchResultsReferences = searchResultsWithDocs.reduce<{
-    [key: string]: CitationType;
-  }>(
-    (acc, d) => ({
-      ...acc,
-      [d.ref]: {
-        href: d.uri,
-        title: d.text,
-        provider: d.source.provider ?? "document",
-      },
-    }),
-    {}
-  );
+
+  const searchRefs: Record<string, CitationType> = {};
+  searchResultsWithDocs.forEach((d) => {
+    searchRefs[d.ref] = {
+      href: d.uri,
+      title: d.text,
+      provider: d.source.provider ?? "document",
+    };
+  });
 
   const websearchResultsWithDocs = removeNulls(
     actions.flatMap((action) =>
@@ -74,24 +73,38 @@ export const getCitationsFromActions = (
     )
   );
 
-  const allMCPWebsearchResultsReferences = websearchResultsWithDocs.reduce<{
-    [key: string]: CitationType;
-  }>(
-    (acc, d) => ({
-      ...acc,
-      [d.resource.reference]: {
-        href: d.resource.uri,
-        title: d.resource.title,
-        provider: "document",
-      },
-    }),
-    {}
+  const websearchRefs: Record<string, CitationType> = {};
+  websearchResultsWithDocs.forEach((d) => {
+    websearchRefs[d.resource.reference] = {
+      href: d.resource.uri,
+      title: d.resource.title,
+      provider: "document",
+    };
+  });
+
+  const runAgentResultsWithRefs = removeNulls(
+    actions.flatMap((action) =>
+      action.output?.filter(isRunAgentResultResourceType)
+    )
   );
 
-  // Merge all references.
+  const runAgentRefs: Record<string, CitationType> = {};
+  runAgentResultsWithRefs.forEach((result) => {
+    if (result.resource.refs) {
+      Object.entries(result.resource.refs).forEach(([ref, citation]) => {
+        runAgentRefs[ref] = {
+          href: citation.href ?? "",
+          title: citation.title,
+          provider: citation.provider,
+        };
+      });
+    }
+  });
+
   return {
-    ...allMCPSearchResultsReferences,
-    ...allMCPWebsearchResultsReferences,
+    ...searchRefs,
+    ...websearchRefs,
+    ...runAgentRefs,
   };
 };
 

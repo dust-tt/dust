@@ -3,6 +3,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
@@ -196,6 +197,8 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
     | "denied";
 
   declare citationsAllocated: number;
+  declare augmentedInputs: Record<string, unknown>;
+  declare toolConfiguration: LightMCPToolConfigurationType;
 
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
   declare agentMessage?: NonAttribute<AgentMessage>;
@@ -246,6 +249,16 @@ AgentMCPAction.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
+    },
+    augmentedInputs: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: {},
+    },
+    toolConfiguration: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: {},
     },
   },
   {

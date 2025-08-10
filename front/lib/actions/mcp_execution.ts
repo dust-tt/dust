@@ -10,8 +10,10 @@ import {
   MAXED_OUTPUT_FILE_SNIPPET_LENGTH,
 } from "@app/lib/actions/action_output_limits";
 import type {
+  LightMCPToolConfigurationType,
   MCPActionType,
   MCPApproveExecutionEvent,
+  MCPExecutionState,
   MCPToolConfigurationType,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
@@ -31,7 +33,7 @@ import type {
   ActionGeneratedFileType,
   AgentLoopRunContextType,
 } from "@app/lib/actions/types";
-import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
+import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
@@ -61,76 +63,31 @@ import {
  * Handles tool approval process and returns the final execution status.
  * Yields approval events during the process.
  */
-export async function* handleToolApproval({
-  auth,
-  actionConfiguration,
-  agentConfiguration,
-  conversation,
-  agentMessage,
-  mcpAction,
-  owner,
-  localLogger,
-}: {
-  auth: Authenticator;
-  actionConfiguration: MCPToolConfigurationType;
-  agentConfiguration: AgentConfigurationType;
-  conversation: ConversationType;
-  agentMessage: AgentMessageType;
-  mcpAction: MCPActionType;
-  owner: LightWorkspaceType;
-  localLogger: Logger;
-}): AsyncGenerator<
-  MCPApproveExecutionEvent,
-  | "allowed_implicitly"
-  | "allowed_explicitly"
-  | "pending"
-  | "timeout"
-  | "denied",
-  unknown
-> {
-  const { status: s } = await getExecutionStatusFromConfig(
-    auth,
-    actionConfiguration,
-    agentMessage
-  );
-  let status:
-    | "allowed_implicitly"
-    | "allowed_explicitly"
-    | "pending"
-    | "timeout"
-    | "denied" = s;
+export async function handleToolApproval(
+  auth: Authenticator,
+  {
+    executionState,
+    localLogger,
+    mcpAction,
+    owner,
+    toolConfiguration,
+  }: {
+    executionState: MCPExecutionState;
+    localLogger: Logger;
+    mcpAction: MCPActionType;
+    owner: LightWorkspaceType;
+    toolConfiguration: LightMCPToolConfigurationType;
+  }
+): Promise<MCPExecutionState> {
+  let newExecutionState: MCPExecutionState = executionState;
 
-  if (status === "pending") {
-    yield {
-      type: "tool_approve_execution",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      conversationId: conversation.sId,
-      actionId: mcpAction.getSId(owner),
-      action: mcpAction,
-      inputs: mcpAction.params,
-      stake: actionConfiguration.permission,
-      metadata: {
-        toolName: actionConfiguration.originalName,
-        mcpServerName: actionConfiguration.mcpServerName,
-        agentName: agentConfiguration.name,
-        icon: actionConfiguration.icon,
-      },
-    };
-
+  if (executionState === "pending") {
     try {
       const actionEventGenerator = getMCPEvents({
         actionId: mcpAction.getSId(owner),
       });
 
-      localLogger.info(
-        {
-          workspaceId: owner.sId,
-          actionName: actionConfiguration.name,
-        },
-        "Waiting for action validation"
-      );
+      localLogger.info("Waiting for action validation");
 
       // Start listening for action events
       for await (const event of actionEventGenerator) {
@@ -138,23 +95,23 @@ export async function* handleToolApproval({
 
         // Check that the event is indeed for this action.
         if (getResourceIdFromSId(data.actionId) !== mcpAction.id) {
-          status = "denied";
+          newExecutionState = "denied";
           break;
         }
 
         if (data.type === "always_approved") {
           const user = auth.getNonNullableUser();
           await user.appendToMetadata(
-            `toolsValidations:${actionConfiguration.toolServerId}`,
-            `${actionConfiguration.name}`
+            `toolsValidations:${toolConfiguration.toolServerId}`,
+            `${mcpAction.functionCallName}`
           );
         }
 
         if (data.type === "approved" || data.type === "always_approved") {
-          status = "allowed_explicitly";
+          newExecutionState = "allowed_explicitly";
           break;
         } else if (data.type === "rejected") {
-          status = "denied";
+          newExecutionState = "denied";
           break;
         }
       }
@@ -166,11 +123,11 @@ export async function* handleToolApproval({
 
   // The status was not updated by the event, or no event was received.
   // In this case, we set the status to timeout.
-  if (status === "pending") {
-    status = "timeout";
+  if (newExecutionState === "pending") {
+    newExecutionState = "timeout";
   }
 
-  return status;
+  return newExecutionState;
 }
 
 /**
@@ -272,21 +229,22 @@ export async function* executeMCPTool({
  * Processes tool results, handles file uploads, and creates output items.
  * Returns the processed content and generated files.
  */
-export async function processToolResults({
-  auth,
-  toolCallResult,
-  conversation,
-  action,
-  actionConfiguration,
-  localLogger,
-}: {
-  auth: Authenticator;
-  toolCallResult: CallToolResult["content"];
-  conversation: ConversationType;
-  action: AgentMCPAction;
-  actionConfiguration: MCPToolConfigurationType;
-  localLogger: Logger;
-}): Promise<{
+export async function processToolResults(
+  auth: Authenticator,
+  {
+    action,
+    conversation,
+    localLogger,
+    toolCallResult,
+    toolConfiguration,
+  }: {
+    action: AgentMCPAction;
+    conversation: ConversationType;
+    localLogger: Logger;
+    toolCallResult: CallToolResult["content"];
+    toolConfiguration: LightMCPToolConfigurationType;
+  }
+): Promise<{
   outputItems: AgentMCPActionOutputItem[];
   generatedFiles: ActionGeneratedFileType[];
 }> {
@@ -306,9 +264,9 @@ export async function processToolResults({
           // If the text is too large we create a file and return a resource block that references the file.
           if (
             computeTextByteSize(block.text) > MAX_TEXT_CONTENT_SIZE &&
-            actionConfiguration.mcpServerName !== "conversation_files"
+            toolConfiguration.mcpServerName !== "conversation_files"
           ) {
-            const fileName = `${actionConfiguration.mcpServerName}_${Date.now()}.txt`;
+            const fileName = `${toolConfiguration.mcpServerName}_${Date.now()}.txt`;
             const snippet =
               block.text.substring(0, MAXED_OUTPUT_FILE_SNIPPET_LENGTH) +
               "... (truncated)";
@@ -367,7 +325,11 @@ export async function processToolResults({
               auth,
               block.resource.fileId
             );
-
+            // We need to create the conversation data source in case the file comes from a subagent
+            // who uploaded it to its own conversation but not the main agent's.
+            if (file) {
+              await getOrCreateConversationDataSourceFromFile(auth, file);
+            }
             return {
               content: {
                 type: block.type,
@@ -472,6 +434,12 @@ export async function processToolResults({
               file: null,
             };
           }
+        }
+        case "resource_link": {
+          return {
+            content: block,
+            file: null,
+          };
         }
         default:
           assertNever(block);

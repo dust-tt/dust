@@ -33,7 +33,29 @@ export async function getConnectionForMCPServer(
       logger,
       connectionId: connection.value.connectionId,
     });
-    return token.isOk() ? token.value : null;
+    if (token.isOk()) {
+      return token.value;
+    } else {
+      logger.warn(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          mcpServerId,
+          connectionType,
+          error: token.error,
+        },
+        "Failed to get access token for MCP server"
+      );
+    }
+  } else {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        mcpServerId,
+        connectionType,
+        error: connection.error,
+      },
+      "No connection found for MCP server"
+    );
   }
   return null;
 }

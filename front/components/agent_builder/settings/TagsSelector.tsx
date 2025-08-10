@@ -96,6 +96,8 @@ export const TagsSelector = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               className="h-96 w-96"
+              side="top"
+              align="start"
               dropdownHeaders={
                 <>
                   <DropdownMenuSearchbar

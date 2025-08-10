@@ -1,6 +1,7 @@
 import {
   Button,
   Card,
+  Checkbox,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +30,7 @@ import { asDisplayName, isAdmin } from "@app/types";
 interface ToolsListProps {
   owner: LightWorkspaceType;
   mcpServerView: MCPServerViewType;
-  forcedCanUpdate?: boolean;
+  disableUpdates?: boolean;
 }
 
 // We disable buttons for Assistant Builder view because it would feel like
@@ -37,11 +38,11 @@ interface ToolsListProps {
 export function ToolsList({
   owner,
   mcpServerView,
-  forcedCanUpdate,
+  disableUpdates,
 }: ToolsListProps) {
-  const canUpdate = useMemo(
-    () => (forcedCanUpdate !== undefined ? forcedCanUpdate : isAdmin(owner)),
-    [owner, forcedCanUpdate]
+  const mayUpdate = useMemo(
+    () => (disableUpdates ? false : isAdmin(owner)),
+    [owner, disableUpdates]
   );
   const serverType = useMemo(
     () => getServerTypeAndIdFromSId(mcpServerView.server.sId).serverType,
@@ -135,20 +136,20 @@ export function ToolsList({
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={toolEnabled}
-                        disabled={!canUpdate}
-                        onChange={(e) =>
-                          handleClick(
-                            tool.name,
-                            getToolPermission(tool.name),
-                            e.target.checked
-                          )
-                        }
-                        className="form-checkbox h-4 w-4"
-                        style={{ pointerEvents: "auto" }}
-                      />
+                      {/* We only show the checkbox for remote servers because it's the only one that supports it, for now. */}
+                      {serverType === "remote" && (
+                        <Checkbox
+                          checked={toolEnabled}
+                          disabled={!mayUpdate}
+                          onClick={() =>
+                            handleClick(
+                              tool.name,
+                              getToolPermission(tool.name),
+                              !toolEnabled
+                            )
+                          }
+                        />
+                      )}
                       <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
                         {asDisplayName(tool.name)}
                       </h4>
@@ -168,7 +169,7 @@ export function ToolsList({
                             <DropdownMenu>
                               <DropdownMenuTrigger
                                 asChild
-                                disabled={!canUpdate || !toolEnabled}
+                                disabled={!mayUpdate || !toolEnabled}
                               >
                                 <Button
                                   variant="outline"

@@ -218,11 +218,12 @@ export async function listEvents(
 
   const urlParams = new URLSearchParams();
   urlParams.append("$top", Math.min(top, 999).toString());
-  urlParams.append("$skip", skip.toString());
   urlParams.append("$orderby", "start/dateTime");
 
   if (search) {
     urlParams.append("$search", `"${search}"`);
+  } else {
+    urlParams.append("$skip", skip.toString());
   }
 
   if (startTime || endTime) {

@@ -2,7 +2,11 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import type { WhitelistableFeature } from "@app/types";
 import { Ok } from "@app/types";
-import { WHITELISTABLE_FEATURES } from "@app/types/shared/feature_flags";
+import {
+  FEATURE_FLAG_STAGE_LABELS,
+  WHITELISTABLE_FEATURES,
+  WHITELISTABLE_FEATURES_CONFIG,
+} from "@app/types/shared/feature_flags";
 
 export const toggleFeatureFlagPlugin = createPlugin({
   manifest: {
@@ -33,11 +37,14 @@ export const toggleFeatureFlagPlugin = createPlugin({
     const enabledFlagNames = new Set(enabledFlags.map((flag) => flag.name));
 
     return new Ok({
-      feature: WHITELISTABLE_FEATURES.map((feature) => ({
-        label: feature,
-        value: feature,
-        checked: enabledFlagNames.has(feature),
-      })),
+      feature: WHITELISTABLE_FEATURES.map((feature) => {
+        const config = WHITELISTABLE_FEATURES_CONFIG[feature];
+        return {
+          label: `[${FEATURE_FLAG_STAGE_LABELS[config.stage]}] ${feature} `,
+          value: feature,
+          checked: enabledFlagNames.has(feature),
+        };
+      }),
     });
   },
   execute: async (auth, _, args) => {

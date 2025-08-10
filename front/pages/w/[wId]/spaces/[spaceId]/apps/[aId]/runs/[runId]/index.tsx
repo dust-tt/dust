@@ -1,26 +1,15 @@
-import {
-  Button,
-  CheckCircleIcon,
-  ClockIcon,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@dust-tt/sparkle";
+import { Button, CheckCircleIcon, ClockIcon } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
 import CopyRun from "@app/components/app/CopyRun";
 import SpecRunView from "@app/components/app/SpecRunView";
+import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { ConfirmContext } from "@app/components/Confirm";
-import { subNavigationApp } from "@app/components/navigation/config";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { cleanSpecificationFromCore, getRun } from "@app/lib/api/run";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { dustAppsListUrl } from "@app/lib/spaces";
 import type {
   AppType,
   RunType,
@@ -134,122 +123,96 @@ export default function AppRun({
     setSavedRunId(run.run_id);
   };
 
-  const router = useRouter();
-
   return (
-    <AppCenteredLayout
-      subscription={subscription}
+    <DustAppPageLayout
       owner={owner}
-      hideSidebar
-      title={
-        <AppLayoutSimpleCloseTitle
-          title={app.name}
-          onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.space));
-          }}
-        />
-      }
+      subscription={subscription}
+      app={app}
+      currentTab="runs"
     >
-      <div className="flex w-full flex-col">
-        <Tabs value="runs" className="mt-2">
-          <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
-            {subNavigationApp({ owner, app, current: "runs" }).map((item) => (
-              <TabsTrigger
-                key={item.value}
-                value={item.value}
-                label={item.label}
-                icon={item.icon}
-                onClick={() => {
-                  void router.push(item.href);
-                }}
-              />
-            ))}
-          </TabsList>
-        </Tabs>
-        <div className="mt-8 flex flex-col">
-          <div className="mb-4 flex flex-row items-center justify-between space-x-2 text-sm">
-            <div className="flex flex-col items-start">
-              <div className="flex items-center">
+      <div className="mt-8 flex flex-col">
+        <div className="mb-4 flex flex-row items-center justify-between space-x-2 text-sm">
+          <div className="flex flex-col items-start">
+            <div className="flex items-center">
+              <span>
+                Viewing run:{" "}
+                <span className="ml-1 hidden font-mono text-gray-600 sm:inline">
+                  {run.run_id}
+                </span>
+                <span className="ml-1 font-mono text-gray-600 sm:hidden">
+                  {run.run_id.slice(0, 8)}...{run.run_id.slice(-8)}
+                </span>
+              </span>
+            </div>
+            {run.app_hash ? (
+              <div className="flex items-center text-xs italic text-gray-400">
                 <span>
-                  Viewing run:{" "}
-                  <span className="ml-1 hidden font-mono text-gray-600 sm:inline">
-                    {run.run_id}
+                  Specification Hash:{" "}
+                  <span className="ml-1 hidden font-mono text-gray-400 sm:inline">
+                    {run.app_hash}
                   </span>
-                  <span className="ml-1 font-mono text-gray-600 sm:hidden">
-                    {run.run_id.slice(0, 8)}...{run.run_id.slice(-8)}
+                  <span className="ml-1 font-mono text-gray-400 sm:hidden">
+                    {run.app_hash.slice(0, 8)}...{run.app_hash.slice(-8)}
                   </span>
                 </span>
               </div>
-              {run.app_hash ? (
-                <div className="flex items-center text-xs italic text-gray-400">
-                  <span>
-                    Specification Hash:{" "}
-                    <span className="ml-1 hidden font-mono text-gray-400 sm:inline">
-                      {run.app_hash}
-                    </span>
-                    <span className="ml-1 font-mono text-gray-400 sm:hidden">
-                      {run.app_hash.slice(0, 8)}...{run.app_hash.slice(-8)}
-                    </span>
-                  </span>
-                </div>
-              ) : null}
-            </div>
-            <p className="flex items-center gap-x-2 text-xs text-gray-400">
-              {savedRunId !== run.run_id ? (
-                <Button
-                  onClick={restore}
-                  disabled={isLoading}
-                  icon={ClockIcon}
-                  label={isLoading ? "Restoring..." : "Restore"}
-                />
-              ) : (
-                <Button
-                  disabled={true}
-                  icon={CheckCircleIcon}
-                  label="Latest version"
-                  variant="outline"
-                />
-              )}
-              <CopyRun
-                owner={owner}
-                app={app}
-                run={run}
-                disabled={false}
-                spec={spec}
-              />
-            </p>
+            ) : null}
           </div>
+          <p className="flex items-center gap-x-2 text-xs text-gray-400">
+            {savedRunId !== run.run_id ? (
+              <Button
+                onClick={restore}
+                disabled={isLoading}
+                icon={ClockIcon}
+                label={isLoading ? "Restoring..." : "Restore"}
+              />
+            ) : (
+              <Button
+                disabled={true}
+                icon={CheckCircleIcon}
+                label="Latest version"
+                variant="outline"
+              />
+            )}
+            <CopyRun
+              owner={owner}
+              app={app}
+              run={run}
+              disabled={false}
+              spec={spec}
+            />
+          </p>
         </div>
-        <div className="mt-2 flex flex-auto flex-col">
-          <SpecRunView
-            owner={owner}
-            app={app}
-            isAdmin={isAdmin}
-            readOnly={true}
-            showOutputs={isBuilder}
-            spec={spec}
-            run={run}
-            runRequested={false}
-            handleSetBlock={() => {
-              // no-op
-            }}
-            handleDeleteBlock={() => {
-              // no-op
-            }}
-            handleMoveBlockUp={() => {
-              // no-op
-            }}
-            handleMoveBlockDown={() => {
-              // no-op
-            }}
-            handleNewBlock={() => {
-              // no-op
-            }}
-          />
-        </div>
-        <div className="mt-4"></div>
       </div>
-    </AppCenteredLayout>
+      <div className="mt-2 flex flex-auto flex-col">
+        <SpecRunView
+          owner={owner}
+          app={app}
+          isAdmin={isAdmin}
+          readOnly={true}
+          showOutputs={isBuilder}
+          spec={spec}
+          run={run}
+          runRequested={false}
+          handleSetBlock={() => {
+            // no-op
+          }}
+          handleDeleteBlock={() => {
+            // no-op
+          }}
+          handleMoveBlockUp={() => {
+            // no-op
+          }}
+          handleMoveBlockDown={() => {
+            // no-op
+          }}
+          handleNewBlock={() => {
+            // no-op
+          }}
+        />
+      </div>
+      <div className="mt-4"></div>
+    </DustAppPageLayout>
   );
 }
 
