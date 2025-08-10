@@ -397,13 +397,13 @@ export function AgentBuilderSettingsBlock({
           isOpen={isOpen}
           className="flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 hover:bg-transparent focus:outline-none"
         >
-          <Page.H>Settings</Page.H>
+          <Page.H>Information</Page.H>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="flex flex-col gap-4 px-1 pt-4">
             <Page.P>
               <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Configure tags and access settings for your agent.
+                Set tags and general information about your agent.
               </span>
             </Page.P>
             <div className="space-y-4">
