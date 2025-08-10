@@ -92,7 +92,7 @@ struct ContentView: View {
 
       Button(action: openAudioDeviceSelection) {
         HStack {
-          Text("Select microphone")
+          Text("Select input")
         }
       }
       .font(.caption2)
