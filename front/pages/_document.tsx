@@ -49,7 +49,7 @@ class MyDocument extends Document {
                  clientToken: '${process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN}',
                  applicationId: '5e9735e7-87c8-4093-b09f-49d708816bfd',
                  site: 'datadoghq.eu',
-                 service: '${process.env.NEXT_PUBLIC_DATADOG_SERVICE}-browser',
+                 service: '${process.env.NEXT_PUBLIC_DATADOG_SERVICE || "front"}-browser',
                  env: '${process.env.NODE_ENV === "production" ? "prod" : "dev"}',
                  version: '${process.env.NEXT_PUBLIC_COMMIT_HASH || ""}',
                  allowedTracingUrls: [
