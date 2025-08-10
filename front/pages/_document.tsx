@@ -63,20 +63,36 @@ class MyDocument extends Document {
                  sessionSampleRate: 100,
                  sessionReplaySampleRate: 5,
                  defaultPrivacyLevel: 'mask-user-input',
-                 beforeSend: (event) => {
-                  if (event.type === 'action' && event.action && event.action.target && event.action.target.name && event.action.target.name.includes('@')) {
-                    const el = event._dd && event._dd.target; // Get the actual DOM element from Datadog's internal properties
-                    if (el) {
-                      var selector = el.tagName.toLowerCase();
-                      if (el.id) selector += '#' + el.id;
-                      if (el.className) selector += '.' + el.className.trim().replace(/\\s+/g, '.');
-                      event.action.target.name = selector;
-                    } else {
-                      event.action.target.name = '[redacted]';
-                    }
-                  }
-                  return true;
-                }
+                 beforeSend: function (event) {
+                   if (event.type === "action" && event.action && event.action.target && event.action.type === "click") {
+                     if (event._dd && event._dd.action && event._dd.action.name_source === "text_content") {
+                       var elSelector = event._dd.action.target && event._dd.action.target.selector;
+                       if (elSelector && typeof elSelector === "string") {
+                         try {
+                           var el = document.querySelector(elSelector);
+                           if (el) {
+                             var parentWithPrivacyMask = el.closest(".dd-privacy-mask");
+                             if (parentWithPrivacyMask) {
+                               // Initially redact with a generic string
+                               event.action.target.name = "[text element within dd-privacy-mask]";
+                               // Now attempt to provide a better, less generic name, still respecting privacy
+                               var buttonParent = el.closest("button");
+                               if (buttonParent) {
+                                 var ariaLabel = buttonParent.getAttribute("aria-label");
+                                 if (ariaLabel) {
+                                   event.action.target.name = ariaLabel;  // More specific, but still protecting privacy
+                                 }
+                               }
+                             }
+                           }
+                         } catch (error) {
+                           // Invalid selector - silently ignore
+                         }
+                       }
+                     }
+                   }
+                   return true;
+                 }
                });
              })
            `}
