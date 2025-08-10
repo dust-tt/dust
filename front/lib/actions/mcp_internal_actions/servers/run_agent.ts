@@ -18,7 +18,6 @@ import {
   isLightServerSideMCPToolConfiguration,
   isMCPActionArray,
   isServerSideMCPServerConfiguration,
-  isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getCitationsFromActions } from "@app/lib/api/assistant/citations";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
