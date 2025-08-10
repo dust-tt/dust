@@ -38,10 +38,6 @@ struct SetupView: View {
           Text("No folders available")
             .font(.caption)
             .foregroundColor(.secondary)
-          Text("Make sure you have manual data sources in your Dust workspace.")
-            .font(.caption2)
-            .foregroundColor(.secondary)
-            .multilineTextAlignment(.center)
         }
         .frame(height: 80)
       } else {
