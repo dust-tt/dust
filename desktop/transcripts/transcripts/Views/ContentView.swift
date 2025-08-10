@@ -1,10 +1,11 @@
 import SwiftUI
 
 struct ContentView: View {
-  @StateObject private var audioRecorder = AudioRecorder()
+  @StateObject private var combinedRecorder = CombinedAudioRecorder()
   @StateObject private var viewModel = TranscriptViewModel()
   @State private var hasPermission = false
   @State private var showingLoginDialog = false
+  @State private var recordingMode: CombinedAudioRecorder.RecordingMode = .microphoneOnly
 
   var body: some View {
     VStack(spacing: 8) {
@@ -13,14 +14,25 @@ struct ContentView: View {
         .aspectRatio(contentMode: .fit)
         .frame(height: 32)
 
+      // Recording mode selector
+      Picker("Recording Mode", selection: $recordingMode) {
+        Text("Microphone Only").tag(CombinedAudioRecorder.RecordingMode.microphoneOnly)
+        if combinedRecorder.isSystemAudioAvailable {
+          Text("System Audio Only").tag(CombinedAudioRecorder.RecordingMode.systemAudioOnly)
+          Text("Both (Microphone + System)").tag(CombinedAudioRecorder.RecordingMode.combined)
+        }
+      }
+      .pickerStyle(MenuPickerStyle())
+      .font(.caption)
+
       Button(action: startRecording) {
         HStack {
-          Image(systemName: "record.circle")
+          Image(systemName: recordingModeIcon)
           Text("Start Recording")
         }
       }
       .disabled(
-        audioRecorder.isRecording || !viewModel.isLoggedIn
+        combinedRecorder.isRecording || !viewModel.isLoggedIn
           || !viewModel.isSetupComplete
       )
 
@@ -30,7 +42,7 @@ struct ContentView: View {
           Text("Stop Recording")
         }
       }
-      .disabled(!audioRecorder.isRecording)
+      .disabled(!combinedRecorder.isRecording)
 
       Divider()
 
@@ -111,43 +123,56 @@ struct ContentView: View {
       viewModel.checkSetupStatus()
     }
   }
+  
+  private var recordingModeIcon: String {
+    switch recordingMode {
+    case .microphoneOnly:
+      return "record.circle"
+    case .systemAudioOnly:
+      return "speaker.wave.3.fill"
+    case .combined:
+      return "waveform.and.mic"
+    }
+  }
 
-  private func requestMicrophonePermission() {
+  private func requestPermission() {
     Task {
-      hasPermission = await audioRecorder.requestPermission()
+      hasPermission = await combinedRecorder.requestPermissions(for: recordingMode)
     }
   }
 
   private func startRecording() {
     Task {
       if !hasPermission {
-        hasPermission = await audioRecorder.requestPermission()
+        hasPermission = await combinedRecorder.requestPermissions(for: recordingMode)
       }
 
       if hasPermission {
-        await audioRecorder.startRecording()
+        await combinedRecorder.startRecording(mode: recordingMode)
       }
     }
   }
 
   private func stopRecording() {
-    audioRecorder.stopRecording()
+    Task {
+      await combinedRecorder.stopRecording()
+      
+      // Wait a moment for the recording data to be processed
+      try? await Task.sleep(nanoseconds: UInt64(AudioSettings.recordingDataProcessingDelay * 1_000_000_000))
+      
+      await MainActor.run {
+        guard let recordingData = combinedRecorder.combinedRecordingData,
+          let recordingId = combinedRecorder.recordingId
+        else {
+          print("No recording data available")
+          return
+        }
 
-    // Wait a moment for the recording data to be processed
-    DispatchQueue.main.asyncAfter(
-      deadline: .now() + AudioSettings.recordingDataProcessingDelay
-    ) {
-      guard let recordingData = audioRecorder.recordingData,
-        let recordingId = audioRecorder.recordingId
-      else {
-        print("No recording data available")
-        return
+        viewModel.handleRecordingCompletion(
+          recordingData: recordingData,
+          recordingId: recordingId
+        )
       }
-
-      viewModel.handleRecordingCompletion(
-        recordingData: recordingData,
-        recordingId: recordingId
-      )
     }
   }
 
