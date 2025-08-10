@@ -7,16 +7,13 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import {
-  DEFAULT_MCP_ACTION_DESCRIPTION,
-  DEFAULT_MCP_ACTION_NAME,
-} from "@app/lib/actions/constants";
+import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type {
   CustomServerIconType,
   InternalAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
-import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
+import type { MCPToolType, RemoteMCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
@@ -69,8 +66,6 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
 
     const serverData: CreationAttributes<RemoteMCPServerModel> = {
       ...blob,
-      name: blob.cachedName || DEFAULT_MCP_ACTION_NAME,
-      description: blob.cachedDescription || DEFAULT_MCP_ACTION_DESCRIPTION,
       sharedSecret: blob.sharedSecret,
       lastSyncAt: new Date(),
       authorization: blob.authorization,
@@ -157,34 +152,6 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
 
   static async listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth);
-  }
-
-  /**
-   * Find remote MCP servers by URL within the authenticated workspace.
-   * Note: Multiple servers with the same URL can exist per workspace,
-   * as users may configure the same remote server with different settings
-   * (e.g., different authentication methods, use cases, or permissions).
-   */
-  static async findByUrl(auth: Authenticator, url: string) {
-    return this.baseFetch(auth, {
-      where: {
-        url,
-      },
-    });
-  }
-
-  /**
-   * Find a remote MCP server by name within the authenticated workspace.
-   * Note: Only one server with the same name can exist per workspace,
-   * as server names must be unique within a workspace scope.
-   */
-  static async findByName(auth: Authenticator, name: string) {
-    const servers = await this.baseFetch(auth, {
-      where: {
-        name,
-      },
-    });
-    return servers.length > 0 ? servers[0] : null;
   }
 
   // Admin operations - don't use in non-temporal code.
@@ -298,8 +265,6 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
   async updateMetadata(
     auth: Authenticator,
     {
-      name,
-      description,
       icon,
       sharedSecret,
       cachedName,
@@ -308,8 +273,6 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       lastSyncAt,
       clearError,
     }: {
-      name?: string;
-      description?: string;
       icon?: CustomServerIconType | InternalAllowedIconType;
       sharedSecret?: string;
       cachedName?: string;
@@ -331,18 +294,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       );
     }
 
-    // If we update the cachedName or cachedDescription, and the name is currently the default one,
-    // we need to update the name and description as well.
-    if (cachedName && this.name === this.cachedName) {
-      name = cachedName;
-    }
-    if (cachedDescription && this.description === this.cachedDescription) {
-      description = cachedDescription;
-    }
-
     await this.update({
-      name,
-      description,
       icon,
       sharedSecret,
       cachedName,
@@ -381,10 +333,12 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
   }
 
   // Serialization.
-  toJSON(): MCPServerType & {
+  toJSON(): Omit<
+    RemoteMCPServerType,
+    "url" | "lastSyncAt" | "lastError" | "sharedSecret"
+  > & {
     // Remote MCP Server specifics
-    cachedName: string;
-    cachedDescription: string | null;
+
     url: string;
     lastSyncAt: number | null;
     lastError: string | null;
@@ -405,17 +359,15 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     return {
       sId: this.sId,
 
-      name: this.name,
-      description: this.description,
+      name: this.cachedName,
+      description: this.cachedDescription ?? DEFAULT_MCP_ACTION_DESCRIPTION,
       version: this.version,
       icon: this.icon,
       tools: this.cachedTools,
 
-      cachedName: this.cachedName,
-      cachedDescription:
-        this.cachedDescription ?? DEFAULT_MCP_ACTION_DESCRIPTION,
       authorization: this.authorization,
-      availability: "manual", // So far we don't have auto remote MCP servers.
+      availability: "manual",
+      allowMultipleInstances: true,
 
       // Remote MCP Server specifics
       url: this.url,

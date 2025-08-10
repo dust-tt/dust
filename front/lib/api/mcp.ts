@@ -48,18 +48,22 @@ export type MCPServerType = {
   authorization: AuthorizationInfo | null;
   tools: MCPToolType[];
   availability: MCPServerAvailability;
+  allowMultipleInstances: boolean;
   documentationUrl: string | null;
 };
 
 export type RemoteMCPServerType = MCPServerType & {
   url?: string;
-  cachedName?: string;
-  cachedDescription?: string | null;
   sharedSecret?: string | null;
   lastSyncAt?: Date | null;
   lastError?: string | null;
   icon: CustomServerIconType | InternalAllowedIconType;
+  // Always manual and allow multiple instances.
+  availability: "manual";
+  allowMultipleInstances: true;
 };
+
+export type MCPServerViewTypeType = "remote" | "internal";
 
 export interface MCPServerViewType {
   id: ModelId;
@@ -69,7 +73,7 @@ export interface MCPServerViewType {
   createdAt: number;
   updatedAt: number;
   spaceId: string;
-  serverType: "remote" | "internal";
+  serverType: MCPServerViewTypeType;
   server: MCPServerType;
   oAuthUseCase: MCPOAuthUseCase | null;
   editedByUser: EditedByUser | null;
@@ -77,7 +81,7 @@ export interface MCPServerViewType {
 
 export type MCPServerDefinitionType = Omit<
   MCPServerType,
-  "tools" | "sId" | "availability"
+  "tools" | "sId" | "availability" | "allowMultipleInstances"
 >;
 
 type InternalMCPServerType = MCPServerType & {
@@ -87,7 +91,7 @@ type InternalMCPServerType = MCPServerType & {
 
 export type InternalMCPServerDefinitionType = Omit<
   InternalMCPServerType,
-  "tools" | "sId" | "availability"
+  "tools" | "sId" | "availability" | "allowMultipleInstances"
 >;
 
 export type MCPServerTypeWithViews = MCPServerType & {

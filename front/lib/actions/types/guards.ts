@@ -1,5 +1,8 @@
 import type {
   ClientSideMCPToolConfigurationType,
+  LightMCPToolConfigurationType,
+  LightServerSideMCPToolConfigurationType,
+  MCPActionType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
@@ -86,12 +89,31 @@ export function isMCPConfigurationForInternalNotion(
     isInternalMCPServerOfName(arg.internalMCPServerId, "notion")
   );
 }
+
 export function isMCPConfigurationForDustAppRun(
   arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
     isInternalMCPServerOfName(arg.internalMCPServerId, "run_dust_app")
+  );
+}
+
+export function isMCPConfigurationForAgentMemory(
+  arg: MCPServerConfigurationType
+): arg is ServerSideMCPServerConfigurationType {
+  return (
+    isServerSideMCPServerConfiguration(arg) &&
+    isInternalMCPServerOfName(arg.internalMCPServerId, "agent_memory")
+  );
+}
+
+export function isMCPConfigurationForRunAgent(
+  arg: MCPServerConfigurationType
+): arg is ServerSideMCPServerConfigurationType {
+  return (
+    isServerSideMCPServerConfiguration(arg) &&
+    isInternalMCPServerOfName(arg.internalMCPServerId, "run_agent")
   );
 }
 
@@ -166,10 +188,10 @@ export function isMCPInternalNotion(
 }
 
 export function isMCPInternalDustAppRun(
-  arg: MCPToolConfigurationType
-): arg is ServerSideMCPToolConfigurationType {
+  arg: LightMCPToolConfigurationType
+): arg is LightServerSideMCPToolConfigurationType {
   return (
-    isServerSideMCPToolConfiguration(arg) &&
+    isLightServerSideMCPToolConfiguration(arg) &&
     isInternalMCPServerOfName(arg.internalMCPServerId, "run_dust_app")
   );
 }
@@ -178,6 +200,16 @@ export function isServerSideMCPToolConfiguration(
   arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return isMCPToolConfiguration(arg) && "mcpServerViewId" in arg;
+}
+
+export function isLightServerSideMCPToolConfiguration(
+  arg: unknown
+): arg is LightServerSideMCPToolConfigurationType {
+  return (
+    isMCPToolConfiguration(arg) &&
+    "mcpServerViewId" in arg &&
+    !("inputSchema" in arg)
+  );
 }
 
 export function isClientSideMCPToolConfiguration(
@@ -207,4 +239,26 @@ export function throwIfInvalidAgentConfiguration(
       throw new Error("Cannot edit archived agent");
     }
   }
+}
+
+function isMCPActionType(action: unknown): action is MCPActionType {
+  return (
+    typeof action === "object" &&
+    action !== null &&
+    "id" in action &&
+    typeof action.id === "number" &&
+    "agentMessageId" in action &&
+    typeof action.agentMessageId === "number" &&
+    "output" in action &&
+    "step" in action &&
+    typeof action.step === "number" &&
+    "isError" in action &&
+    typeof action.isError === "boolean" &&
+    "citationsAllocated" in action &&
+    typeof action.citationsAllocated === "number"
+  );
+}
+
+export function isMCPActionArray(actions: unknown): actions is MCPActionType[] {
+  return Array.isArray(actions) && actions.every(isMCPActionType);
 }

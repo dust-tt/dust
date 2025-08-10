@@ -12,7 +12,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
@@ -22,6 +21,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { launchUpdateSpacePermissionsWorkflow } from "@app/temporal/permissions_queue/client";
 import type {
   CombinedResourcePermissions,
@@ -62,7 +62,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     groups: GroupResource[],
     transaction?: Transaction
   ) {
-    const createSpace = async (t: Transaction) => {
+    return withTransaction(async (t: Transaction) => {
       const space = await SpaceModel.create(blob, { transaction: t });
 
       for (const group of groups) {
@@ -77,13 +77,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       }
 
       return new this(SpaceModel, space.get(), groups);
-    };
-
-    if (transaction) {
-      return createSpace(transaction);
-    }
-
-    return frontSequelize.transaction(createSpace);
+    }, transaction);
   }
 
   static async makeDefaultsForWorkspace(
@@ -94,7 +88,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }: {
       systemGroup: GroupResource;
       globalGroup: GroupResource;
-    }
+    },
+    transaction?: Transaction
   ) {
     assert(auth.isAdmin(), "Only admins can call `makeDefaultsForWorkspace`");
 
@@ -109,7 +104,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           kind: "system",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        [systemGroup]
+        [systemGroup],
+        transaction
       ));
 
     const globalSpace =
@@ -120,7 +116,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           kind: "global",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        [globalGroup]
+        [globalGroup],
+        transaction
       ));
 
     const conversationsSpace =
@@ -131,7 +128,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           kind: "conversations",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        [globalGroup]
+        [globalGroup],
+        transaction
       ));
 
     return {
@@ -489,7 +487,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     const globalGroup = groupRes.value;
 
-    return frontSequelize.transaction(async (t) => {
+    return withTransaction(async (t) => {
       // Update managementMode if provided
       if (isRestricted) {
         const { managementMode } = params;

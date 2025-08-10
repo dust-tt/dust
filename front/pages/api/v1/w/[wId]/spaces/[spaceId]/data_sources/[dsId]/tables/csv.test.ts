@@ -1,5 +1,5 @@
 import { Readable } from "stream";
-import { describe, vi } from "vitest";
+import { describe, it, vi } from "vitest";
 import { expect } from "vitest";
 
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
@@ -10,7 +10,6 @@ import {
 } from "@app/tests/utils/generic_public_api_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./csv";
 
@@ -101,20 +100,16 @@ vi.mock("@app/lib/file_storage", () => ({
 }));
 
 describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv", () => {
-  itInTransaction("successfully upserts a CSV received as file", async (t) => {
+  it("successfully upserts a CSV received as file", async () => {
     const { req, res, workspace, globalGroup } =
       await createPublicApiMockRequest({
         systemKey: true,
         method: "POST",
       });
 
-    const space = await SpaceFactory.global(workspace, t);
+    const space = await SpaceFactory.global(workspace);
     await GroupSpaceFactory.associate(space, globalGroup);
-    const dataSourceView = await DataSourceViewFactory.folder(
-      workspace,
-      space,
-      t
-    );
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
     const file = await FileFactory.csv(workspace, null, {
       useCase: "upsert_table",
@@ -192,62 +187,55 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
     expect(res._getStatusCode()).toBe(200);
   });
 
-  itInTransaction(
-    "errors if the file provided has the wrong use-case",
-    async (t) => {
-      const { req, res, workspace, globalGroup } =
-        await createPublicApiMockRequest({
-          systemKey: true,
-          method: "POST",
-        });
-
-      const space = await SpaceFactory.global(workspace, t);
-      await GroupSpaceFactory.associate(space, globalGroup);
-      const dataSourceView = await DataSourceViewFactory.folder(
-        workspace,
-        space,
-        t
-      );
-
-      const file = await FileFactory.csv(workspace, null, {
-        useCase: "avatar",
+  it("errors if the file provided has the wrong use-case", async () => {
+    const { req, res, workspace, globalGroup } =
+      await createPublicApiMockRequest({
+        systemKey: true,
+        method: "POST",
       });
 
-      // Set specific content for this test
-      mockFileContent.setContent("foo,bar,baz\n1,2,3\n4,5,6");
+    const space = await SpaceFactory.global(workspace);
+    await GroupSpaceFactory.associate(space, globalGroup);
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
-      req.query.spaceId = space.sId;
-      req.query.dsId = dataSourceView.dataSource.sId;
+    const file = await FileFactory.csv(workspace, null, {
+      useCase: "avatar",
+    });
 
-      req.body = {
-        name: "footable",
-        truncate: true,
-        title: "Wonderful table",
-        mimeType: "text/csv",
-        description: "desc",
-        fileId: file.sId,
-        tableId: "fooTable-1",
-        allowEmptySchema: true,
-      };
+    // Set specific content for this test
+    mockFileContent.setContent("foo,bar,baz\n1,2,3\n4,5,6");
 
-      global.fetch = vi.fn().mockImplementation(async (url: string) => {
-        if (url.endsWith("/validate_csv_content")) {
-          return Promise.resolve(
-            new Response(JSON.stringify(CORE_VALIDATE_CSV_FAKE_RESPONSE), {
-              status: 200,
-              headers: { "Content-Type": "application/json" },
-            })
-          );
-        }
-      });
+    req.query.spaceId = space.sId;
+    req.query.dsId = dataSourceView.dataSource.sId;
 
-      await handler(req, res);
+    req.body = {
+      name: "footable",
+      truncate: true,
+      title: "Wonderful table",
+      mimeType: "text/csv",
+      description: "desc",
+      fileId: file.sId,
+      tableId: "fooTable-1",
+      allowEmptySchema: true,
+    };
 
-      expect(res._getStatusCode()).toBe(400);
-      expect(res._getJSONData().error.message).toContain(
-        "The file provided has not the expected use-case"
-      );
-      expect(res._getJSONData().error.type).toBe("invalid_request_error");
-    }
-  );
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url.endsWith("/validate_csv_content")) {
+        return Promise.resolve(
+          new Response(JSON.stringify(CORE_VALIDATE_CSV_FAKE_RESPONSE), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
+        );
+      }
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain(
+      "The file provided has not the expected use-case"
+    );
+    expect(res._getJSONData().error.type).toBe("invalid_request_error");
+  });
 });

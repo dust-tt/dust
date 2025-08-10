@@ -9,35 +9,33 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
+import {
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
 interface MCPServerViewsKnowledgeDropdownProps {
   mcpServerViewsWithKnowledge: (MCPServerViewType & { label: string })[];
-  onItemClick: (serverName: string) => void;
+  onItemClick: (mcpServerView: MCPServerViewType) => void;
   isMCPServerViewsLoading: boolean;
-  selectedServerName?: string | null;
+  selectedMcpServerView?: MCPServerViewType | null;
 }
 
 export function MCPServerViewsKnowledgeDropdown({
   mcpServerViewsWithKnowledge = [],
   onItemClick,
   isMCPServerViewsLoading,
-  selectedServerName,
+  selectedMcpServerView,
 }: MCPServerViewsKnowledgeDropdownProps) {
   const handleDropdownItemClick = (view: MCPServerViewType) => {
-    onItemClick(view.server.name);
+    onItemClick(view);
   };
 
-  const selectedView = selectedServerName
-    ? mcpServerViewsWithKnowledge.find(
-        (view) => view.server.name === selectedServerName
-      )
-    : null;
-
   const icon =
-    selectedView && getAvatar(selectedView.server, "sm")
-      ? () => getAvatar(selectedView.server, "xs")
+    selectedMcpServerView && getAvatar(selectedMcpServerView.server, "sm")
+      ? () => getAvatar(selectedMcpServerView.server, "xs")
       : BookOpenIcon;
 
   return (
@@ -45,8 +43,11 @@ export function MCPServerViewsKnowledgeDropdown({
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          label={selectedView ? selectedView.label : "Select knowledge type"}
-          size="md"
+          label={
+            selectedMcpServerView
+              ? getMcpServerViewDisplayName(selectedMcpServerView)
+              : "Select knowledge type"
+          }
           icon={icon}
           isSelect
         />
@@ -64,7 +65,7 @@ export function MCPServerViewsKnowledgeDropdown({
               key={view.id}
               icon={getAvatar(view.server, "sm")}
               label={view.label}
-              description={view.server.description}
+              description={getMcpServerViewDescription(view)}
               onClick={() => handleDropdownItemClick(view)}
             />
           ))}

@@ -9,10 +9,10 @@ import {
   createConversationWithMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
-import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
+import { useConversation } from "@app/lib/swr/conversations";
 import { useUser } from "@app/lib/swr/user";
 import type {
   AgentMention,
@@ -26,8 +26,6 @@ import { Err, Ok } from "@app/types";
 
 export function useDraftAgent() {
   const { owner } = useAgentBuilderContext();
-  const { mcpServerViews, isMCPServerViewsLoading } =
-    useMCPServerViewsContext();
   const sendNotification = useSendNotification();
   const { getValues } = useFormContext<AgentBuilderFormData>();
 
@@ -77,11 +75,6 @@ export function useDraftAgent() {
 
   const createDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
-      // Don't create draft if MCP server views are still loading
-      if (isMCPServerViewsLoading) {
-        return null;
-      }
-
       setIsSavingDraftAgent(true);
       setDraftCreationFailed(false);
 
@@ -97,7 +90,6 @@ export function useDraftAgent() {
           },
         },
         owner,
-        mcpServerViews,
         agentConfigurationId: null,
         isDraft: true,
       });
@@ -117,13 +109,7 @@ export function useDraftAgent() {
       setStickyMentions([{ configurationId: aRes.value.sId }]);
       setIsSavingDraftAgent(false);
       return aRes.value;
-    }, [
-      owner,
-      mcpServerViews,
-      sendNotification,
-      isMCPServerViewsLoading,
-      getValues,
-    ]);
+    }, [owner, sendNotification, getValues]);
 
   const getDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
@@ -139,10 +125,6 @@ export function useDraftAgent() {
     }, [draftAgent, createDraftAgent, getValues]);
 
   useEffect(() => {
-    if (isMCPServerViewsLoading) {
-      return;
-    }
-
     // Create the first version here, after that we will update the draft agent on form submission or name changes.
     if (!draftAgent) {
       const hasContent =
@@ -171,7 +153,6 @@ export function useDraftAgent() {
     debouncedAgentName,
     draftAgent,
     createDraftAgent,
-    isMCPServerViewsLoading,
     isSavingDraftAgent,
     getValues,
   ]);
@@ -197,11 +178,17 @@ export function useDraftConversation({
   const { user } = useUser();
   const sendNotification = useSendNotification();
 
-  const [conversation, setConversation] = useState<ConversationType | null>(
-    null
-  );
+  const [conversationId, setConversationId] = useState<string | null>(null);
 
-  const conversationTitle = `Trying @${draftAgent?.name || "your agent"}`;
+  const { conversation: swrConversation } = useConversation({
+    conversationId: conversationId || "",
+    workspaceId: owner.sId,
+    options: {
+      disabled: !conversationId,
+    },
+  });
+
+  const conversation = swrConversation || null;
 
   const handleSubmit = async (
     input: string,
@@ -248,11 +235,10 @@ export function useDraftConversation({
         user,
         messageData,
         visibility: "test",
-        title: conversationTitle,
       });
 
       if (result.isOk()) {
-        setConversation(result.value);
+        setConversationId(result.value.sId);
         return new Ok(undefined);
       }
 
@@ -296,6 +282,10 @@ export function useDraftConversation({
   const resetConversation = useCallback(() => {
     setConversation(null);
   }, []);
+
+  const setConversation = (newConversation: ConversationType | null) => {
+    setConversationId(newConversation?.sId || null);
+  };
 
   return {
     conversation,

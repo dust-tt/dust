@@ -1,4 +1,6 @@
 // Types.
+import { z } from "zod";
+
 import { removeNulls } from "./shared/utils/general";
 
 const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
@@ -27,6 +29,13 @@ export type FileUseCaseMetadata = {
   spaceId?: string;
   generatedTables?: string[];
 };
+
+export const fileShareScopeSchema = z.enum([
+  "conversation_participants",
+  "workspace",
+  "public",
+]);
+export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 
 export interface FileType {
   contentType: AllSupportedFileContentType;

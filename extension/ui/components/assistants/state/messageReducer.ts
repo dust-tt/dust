@@ -7,6 +7,7 @@ import type {
   AgentMessagePublicType,
   AgentMessageSuccessEvent,
   GenerationTokensEvent,
+  ToolErrorEvent,
   ToolNotificationEvent,
   ToolNotificationProgress,
 } from "@dust-tt/client";
@@ -35,6 +36,7 @@ export type AgentMessageStateEvent =
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
   | GenerationTokensEvent
+  | ToolErrorEvent
   | ToolNotificationEvent;
 
 type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
@@ -99,6 +101,7 @@ export function messageReducer(
       return updateProgress(state, event);
     }
 
+    case "tool_error":
     case "agent_error":
       return {
         ...state,

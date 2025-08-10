@@ -1,5 +1,5 @@
-use crate::info;
 use std::collections::{HashMap, HashSet};
+use tracing::info;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -316,7 +316,7 @@ impl BigQueryRemoteDatabase {
             None => Vec::new(),
         }
         .iter()
-        .map(|t| format!("{}.{}.{}", self.project_id, t.dataset_id, t.table_id))
+        .map(|t| format!("{}.{}.{}", t.project_id, t.dataset_id, t.table_id))
         .collect();
 
         Ok(BigQueryQueryPlan {

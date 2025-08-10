@@ -14,7 +14,6 @@ describe("getPrefixedToolName", () => {
     id: 1,
     description: "Test server description",
     mcpServerViewId: "test-view-id",
-    mcpServerName: "test_server",
     dataSources: null,
     tables: null,
     childAgentId: null,
@@ -31,6 +30,13 @@ describe("getPrefixedToolName", () => {
     expect(result.isOk()).toBe(true);
     assert(result.isOk());
     expect(result.value).toBe(`test_server${TOOL_NAME_SEPARATOR}my_tool`);
+  });
+
+  it("should correctly prefix and slugify tool names with special characters", () => {
+    const result = getPrefixedToolName(mockConfig, "My Tool (123) $");
+    expect(result.isOk()).toBe(true);
+    assert(result.isOk());
+    expect(result.value).toBe(`test_server${TOOL_NAME_SEPARATOR}my_tool_123_`);
   });
 
   it("should handle tool names that are too long for prefixing", () => {

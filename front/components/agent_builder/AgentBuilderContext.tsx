@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useMemo } from "react";
 
 import { DataSourceViewsProvider } from "@app/components/agent_builder/DataSourceViewsContext";
 import { MCPServerViewsProvider } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -11,27 +11,31 @@ type AgentBuilderContextType = {
   user: UserType;
 };
 
-export const AgentBuilderContext = createContext<AgentBuilderContextType>({
-  owner: {} as WorkspaceType,
-  user: {} as UserType,
-});
+export const AgentBuilderContext = createContext<
+  AgentBuilderContextType | undefined
+>(undefined);
 
 interface AgentBuilderContextProps extends AgentBuilderContextType {
   children: React.ReactNode;
 }
 
+// TODO: Move all the components from Assistant Builder to Agent builder
+// and remove the context providers from /assistant_builder
 export function AgentBuilderProvider({
   owner,
   user,
   children,
 }: AgentBuilderContextProps) {
+  const value = useMemo(
+    () => ({
+      owner,
+      user,
+    }),
+    [owner, user]
+  );
+
   return (
-    <AgentBuilderContext.Provider
-      value={{
-        owner,
-        user,
-      }}
-    >
+    <AgentBuilderContext.Provider value={value}>
       <PreviewPanelProvider>
         <SpacesProvider owner={owner}>
           <MCPServerViewsProvider owner={owner}>

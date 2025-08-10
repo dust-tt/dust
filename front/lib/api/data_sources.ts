@@ -31,6 +31,7 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
@@ -68,7 +69,6 @@ import {
 } from "@app/types";
 
 import { ConversationResource } from "../resources/conversation_resource";
-import { frontSequelize } from "../resources/storage";
 
 // Number of files we pull from GCS at once for deletion.
 // If we have 10k documents of 100kB each (which is a lot) we are at 1GB here.
@@ -950,7 +950,7 @@ export async function createDataSourceWithoutProvider(
     });
   }
 
-  return frontSequelize.transaction(
+  return withTransaction(
     async (
       t
     ): Promise<Result<DataSourceViewResource, DataSourceCreationError>> => {

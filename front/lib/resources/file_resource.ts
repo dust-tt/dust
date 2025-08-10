@@ -1,14 +1,11 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
+import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import type { Readable, Writable } from "stream";
 
 import config from "@app/lib/api/config";
-import {
-  generateSignedToken,
-  verifySignedToken,
-} from "@app/lib/api/files/share_tokens";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getPrivateUploadBucket,
@@ -17,12 +14,16 @@ import {
 } from "@app/lib/file_storage";
 import { isFileUsingConversationFiles } from "@app/lib/files";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { FileModel } from "@app/lib/resources/storage/models/files";
+import {
+  FileModel,
+  ShareableFileModel,
+} from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
+  FileShareScope,
   FileType,
   FileTypeWithUploadUrl,
   FileUseCaseMetadata,
@@ -58,7 +59,7 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "sharedAt">
+    blob: Omit<CreationAttributes<FileModel>, "status" | "sId">
   ) {
     const key = await FileResource.model.create({
       ...blob,
@@ -123,42 +124,39 @@ export class FileResource extends BaseResource<FileModel> {
     return file ? new this(this.model, file.get()) : null;
   }
 
-  static async fetchByShareTokenWithContent(
-    token: string
-  ): Promise<{ file: FileResource; content: string } | null> {
-    const tokenRes = verifySignedToken(token, config.getFileShareSecret());
-    if (tokenRes.isErr()) {
+  static async fetchByShareTokenWithContent(token: string): Promise<{
+    file: FileResource;
+    content: string;
+    shareScope: FileShareScope;
+  } | null> {
+    const shareableFile = await ShareableFileModel.findOne({
+      where: { token },
+    });
+
+    if (!shareableFile) {
       return null;
     }
 
-    const workspace = await WorkspaceResource.fetchById(tokenRes.value.wId);
+    const [workspace] = await WorkspaceResource.fetchByModelIds([
+      shareableFile.workspaceId,
+    ]);
     if (!workspace) {
       return null;
     }
 
-    const fileId = getResourceIdFromSId(tokenRes.value.fId);
-    if (!fileId) {
-      return null;
-    }
-
-    const blob = await this.model.findOne({
+    const file = await this.model.findOne({
       where: {
-        id: fileId,
+        id: shareableFile.fileId,
         workspaceId: workspace.id,
       },
     });
 
-    const file = blob ? new this(this.model, blob.get()) : null;
-    if (!file || !file.isShared) {
+    const fileRes = file ? new this(this.model, file.get()) : null;
+    if (!fileRes) {
       return null;
     }
 
-    // Validate that the token's sharedAt timestamp matches the file's current sharedAt timestamp.
-    if (!file.sharedAt || tokenRes.value.sAt !== file.sharedAt.getTime()) {
-      return null;
-    }
-
-    const content = await file.getFileContent(
+    const content = await fileRes.getFileContent(
       renderLightWorkspaceType({ workspace }),
       "original"
     );
@@ -168,15 +166,14 @@ export class FileResource extends BaseResource<FileModel> {
     }
 
     if (isFileUsingConversationFiles(content)) {
-      // Set the file as not shared.
-      await file.setIsShared(false);
-
+      // If the file is using conversation files, we don't want to make it accessible.
       return null;
     }
 
     return {
-      file,
+      file: fileRes,
       content,
+      shareScope: shareableFile.shareScope,
     };
   }
 
@@ -184,6 +181,14 @@ export class FileResource extends BaseResource<FileModel> {
     workspace: LightWorkspaceType,
     transaction?: Transaction
   ) {
+    // Delete all shareable file records.
+    await ShareableFileModel.destroy({
+      where: {
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
+
     return this.model.destroy({
       where: {
         workspaceId: workspace.id,
@@ -198,6 +203,20 @@ export class FileResource extends BaseResource<FileModel> {
     transaction?: Transaction
   ) {
     // We don't actually delete, instead we set the userId field to null.
+
+    await ShareableFileModel.update(
+      {
+        sharedBy: null,
+      },
+      {
+        where: {
+          sharedBy: user.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+      }
+    );
+
     return this.model.update(
       { userId: null },
       {
@@ -225,6 +244,14 @@ export class FileResource extends BaseResource<FileModel> {
         await this.getBucketForVersion("public")
           .file(this.getCloudStoragePath(auth, "public"))
           .delete({ ignoreNotFound: true });
+
+        // Delete the shareable file record.
+        await ShareableFileModel.destroy({
+          where: {
+            fileId: this.id,
+            workspaceId: this.workspaceId,
+          },
+        });
       }
 
       await this.model.destroy({
@@ -266,7 +293,27 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   async markAsReady() {
-    return this.update({ status: "ready" });
+    // Early return if the file is already ready.
+    if (this.status === "ready") {
+      return;
+    }
+
+    const updateResult = await this.update({ status: "ready" });
+
+    // For interactive conversation files, automatically create a ShareableFileModel with default
+    // conversation_participants scope.
+    if (this.isInteractive) {
+      await ShareableFileModel.upsert({
+        fileId: this.id,
+        shareScope: "conversation_participants",
+        sharedBy: this.userId ?? null,
+        workspaceId: this.workspaceId,
+        sharedAt: new Date(),
+        token: crypto.randomUUID(),
+      });
+    }
+
+    return updateResult;
   }
 
   get isReady(): boolean {
@@ -285,12 +332,11 @@ export class FileResource extends BaseResource<FileModel> {
     return this.updatedAt.getTime();
   }
 
-  get isShared(): boolean {
-    return this.sharedAt !== null;
-  }
-
-  get sharedAtMs(): number | null {
-    return this.sharedAt?.getTime() ?? null;
+  get isInteractive(): boolean {
+    return (
+      this.useCase === "conversation" &&
+      isInteractiveContentType(this.contentType)
+    );
   }
 
   // Cloud storage logic.
@@ -470,37 +516,58 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ snippet });
   }
 
-  setIsShared(isShared: boolean) {
+  // Sharing logic.
+
+  async setShareScope(
+    auth: Authenticator,
+    scope: FileShareScope
+  ): Promise<void> {
     // Only interactive files can be shared.
-    if (
-      this.useCase !== "conversation" ||
-      !isInteractiveContentType(this.contentType)
-    ) {
+    if (!this.isInteractive) {
       throw new Error("Only interactive files can be shared");
     }
 
-    return this.update({ sharedAt: isShared ? new Date() : null });
-  }
+    const user = auth.getNonNullableUser();
 
-  // Sharing logic.
+    // Always update the existing ShareableFileModel record (never delete).
+    const existingShare = await ShareableFileModel.findOne({
+      where: { fileId: this.id, workspaceId: this.workspaceId },
+    });
 
-  private getShareToken(auth: Authenticator): string | null {
-    return generateSignedToken(auth, this, {
-      secret: config.getFileShareSecret(),
+    assert(
+      existingShare,
+      `ShareableFileModel record not found for file ${this.sId}`
+    );
+
+    await existingShare.update({
+      shareScope: scope,
+      sharedBy: user.id,
+      sharedAt: new Date(),
     });
   }
 
-  getShareUrl(auth: Authenticator): string | null {
-    if (!this.isShared) {
+  async getShareInfo(): Promise<{
+    scope: FileShareScope;
+    sharedAt: Date;
+    shareUrl: string;
+  } | null> {
+    if (!this.isInteractive) {
       return null;
     }
 
-    const token = this.getShareToken(auth);
-    if (!token) {
-      return null;
+    const shareableFile = await ShareableFileModel.findOne({
+      where: { fileId: this.id, workspaceId: this.workspaceId },
+    });
+
+    if (shareableFile) {
+      return {
+        scope: shareableFile.shareScope,
+        sharedAt: shareableFile.sharedAt,
+        shareUrl: `${config.getClientFacingUrl()}/share/file/${shareableFile.token}`,
+      };
     }
 
-    return `${config.getClientFacingUrl()}/share/file/${token}`;
+    return null;
   }
 
   // Serialization logic.

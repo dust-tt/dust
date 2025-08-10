@@ -1,6 +1,6 @@
 import type { Transaction } from "sequelize";
 
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -11,37 +11,32 @@ import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 export class AgentMCPServerConfigurationFactory {
   static async create(
     auth: Authenticator,
-    space: SpaceResource,
-    t: Transaction
+    space: SpaceResource
   ): Promise<AgentMCPServerConfiguration> {
     const owner = auth.getNonNullableWorkspace();
 
-    const agent = await AgentConfigurationFactory.createTestAgent(auth, t);
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const mcpServerView = await MCPServerViewFactory.create(
       owner,
-      internalMCPServerNameToSId({
+      autoInternalMCPServerNameToSId({
         name: "search",
         workspaceId: owner.id,
       }),
-      space,
-      t
+      space
     );
 
-    return AgentMCPServerConfiguration.create(
-      {
-        sId: generateRandomModelSId(),
-        agentConfigurationId: agent.id,
-        workspaceId: owner.id,
-        mcpServerViewId: mcpServerView.id,
-        internalMCPServerId: "internal_mcp_server_id",
-        additionalConfiguration: {},
-        timeFrame: null,
-        jsonSchema: null,
-        name: null,
-        singleToolDescriptionOverride: null,
-        appId: null,
-      },
-      { transaction: t }
-    );
+    return AgentMCPServerConfiguration.create({
+      sId: generateRandomModelSId(),
+      agentConfigurationId: agent.id,
+      workspaceId: owner.id,
+      mcpServerViewId: mcpServerView.id,
+      internalMCPServerId: "internal_mcp_server_id",
+      additionalConfiguration: {},
+      timeFrame: null,
+      jsonSchema: null,
+      name: null,
+      singleToolDescriptionOverride: null,
+      appId: null,
+    });
   }
 }

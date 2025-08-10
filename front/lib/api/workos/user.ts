@@ -274,6 +274,7 @@ export async function addUserToWorkOSOrganization(
     await getWorkOS().userManagement.createOrganizationMembership({
       organizationId: workspace.workOSOrganizationId,
       userId: workOSUser.id,
+      roleSlug: "user",
     });
     return new Ok(undefined);
   }

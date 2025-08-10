@@ -1,11 +1,15 @@
-import { DataTable, Spinner, usePaginationFromUrl } from "@dust-tt/sparkle";
+import { DataTable, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
+import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
@@ -125,7 +129,7 @@ export const SpaceActionsList = ({
       serverViews.map((serverView) => ({
         id: serverView.sId,
         name: getMcpServerViewDisplayName(serverView),
-        description: serverView.server.description,
+        description: getMcpServerViewDescription(serverView),
         avatar: getAvatar(serverView.server),
       })) || [],
     [serverViews]

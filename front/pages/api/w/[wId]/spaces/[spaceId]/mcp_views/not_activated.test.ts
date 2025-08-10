@@ -1,30 +1,29 @@
-import { describe, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./not_activated";
 
 describe("GET /api/w/[wId]/spaces/[spaceId]/mcp_views/not_activated", () => {
-  itInTransaction("returns activable MCP servers views", async (t) => {
+  it("returns activable MCP servers views", async () => {
     const { req, res, workspace, globalGroup } =
       await createPrivateApiMockRequest({
         role: "admin",
       });
 
     // Create a system space
-    const systemSpace = await SpaceFactory.system(workspace, t);
+    const systemSpace = await SpaceFactory.system(workspace);
     req.query.spaceId = systemSpace.sId;
 
     // Create global space
-    const globalSpace = await SpaceFactory.global(workspace, t);
+    const globalSpace = await SpaceFactory.global(workspace);
 
     // Create a regular space to test the endpoint on
-    const space = await SpaceFactory.regular(workspace, t);
+    const space = await SpaceFactory.regular(workspace);
     await GroupSpaceFactory.associate(space, globalGroup);
 
     // Create two test servers

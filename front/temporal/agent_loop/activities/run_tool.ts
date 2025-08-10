@@ -1,51 +1,36 @@
-import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
+import assert from "assert";
+
+import { MCPActionType } from "@app/lib/actions/mcp";
 import { runToolWithStreaming } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
+import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
+import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
-import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type { RunAgentArgs } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
-import type { ModelId } from "@app/types/shared/model_id";
 
 export async function runToolActivity(
   authType: AuthenticatorType,
   {
+    actionId,
     runAgentArgs,
-    action,
+    step,
     stepContext,
-    stepContentId,
   }: {
+    actionId: ModelId;
     runAgentArgs: RunAgentArgs;
-    action: MCPToolConfigurationType;
+    step: number;
     stepContext: StepContext;
-    stepContentId: ModelId;
   }
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
 
-  // Fetch step content to derive inputs, functionCallId, and step
-  const stepContent =
-    await AgentStepContentResource.fetchByModelId(stepContentId);
-  if (!stepContent) {
-    throw new Error(
-      `Step content not found for stepContentId: ${stepContentId}`
-    );
-  }
-  if (!isFunctionCallContent(stepContent.value)) {
-    throw new Error(
-      `Expected step content to be a function call, got: ${stepContent.value.type}`
-    );
-  }
-
-  const { step } = stepContent;
-
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
-
   if (runAgentDataRes.isErr()) {
     throw runAgentDataRes.error;
   }
@@ -70,15 +55,34 @@ export async function runToolActivity(
       step: step + 1,
     });
 
-  const eventStream = runToolWithStreaming(auth, action, {
-    agentConfiguration: agentConfiguration,
-    conversation,
-    agentMessage,
-    rawInputs: JSON.parse(stepContent.value.value.arguments),
-    functionCallId: stepContent.value.value.id,
+  const action = await AgentMCPAction.findByPk(actionId);
+  assert(action, "Action not found");
+
+  const actionBaseParams = await buildActionBaseParams({
+    agentMessageId: action.agentMessageId,
+    citationsAllocated: action.citationsAllocated,
+    mcpServerConfigurationId: action.mcpServerConfigurationId,
     step,
+    stepContentId: action.stepContentId,
+  });
+
+  const mcpAction = new MCPActionType({
+    ...actionBaseParams,
+    id: action.id,
+    isError: action.isError,
+    executionState: action.executionState,
+    type: "tool_action",
+    output: null,
+  });
+
+  const eventStream = runToolWithStreaming(auth, {
+    action,
+    actionBaseParams,
+    agentConfiguration,
+    agentMessage,
+    conversation,
+    mcpAction,
     stepContext,
-    stepContentId,
   });
 
   for await (const event of eventStream) {
@@ -96,9 +100,11 @@ export async function runToolActivity(
               metadata: event.error.metadata,
             },
           },
-          conversation,
           agentMessageRow,
-          step
+          {
+            conversationId: conversation.sId,
+            step,
+          }
         );
         return;
 
@@ -111,9 +117,11 @@ export async function runToolActivity(
             messageId: agentMessage.sId,
             action: event.action,
           },
-          conversation,
           agentMessageRow,
-          step
+          {
+            conversationId: conversation.sId,
+            step,
+          }
         );
 
         // We stitch the action into the agent message. The conversation is expected to include
@@ -124,12 +132,10 @@ export async function runToolActivity(
       case "tool_params":
       case "tool_approve_execution":
       case "tool_notification":
-        await updateResourceAndPublishEvent(
-          event,
-          conversation,
-          agentMessageRow,
-          step
-        );
+        await updateResourceAndPublishEvent(event, agentMessageRow, {
+          conversationId: conversation.sId,
+          step,
+        });
         break;
 
       default:

@@ -683,7 +683,8 @@ export async function syncZendeskTicketBatchActivity({
     return shouldSyncTicket(t, configuration, {
       brandId,
       organizationTags,
-    });
+      ticketTags: t.tags,
+    }).shouldSync;
   });
 
   const comments2d = await concurrentExecutor(

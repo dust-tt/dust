@@ -2,7 +2,7 @@ import type { Client } from "@temporalio/client";
 import { ScheduleNotFoundError } from "@temporalio/client";
 
 import type { CheckFunction } from "@app/lib/production_checks/types";
-import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
+import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 
 async function isTemporalSchedulerRunning(client: Client, workflowId: string) {
   try {
@@ -28,7 +28,7 @@ export const checkWebcrawlerSchedulerActiveWorkflow: CheckFunction = async (
   reportSuccess,
   reportFailure
 ) => {
-  const client = await getTemporalConnectorsNamespaceConnection();
+  const client = await getTemporalClientForConnectorsNamespace();
 
   logger.info("Checking if webcrawler scheduler exists and it not paused");
   const existsAndNotPaused = await isTemporalSchedulerRunning(

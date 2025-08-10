@@ -140,6 +140,7 @@ pub mod oauth {
 
     pub mod providers {
         pub mod confluence;
+        pub mod freshservice;
         pub mod github;
         pub mod gmail;
         pub mod gong;
@@ -166,6 +167,8 @@ pub mod oauth {
 
 pub mod api_keys;
 
+pub mod local_log_format;
 pub mod open_telemetry;
+pub mod otel_log_format;
 
 pub mod mem_check;

@@ -23,6 +23,7 @@ export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
 
 export const OAUTH_PROVIDERS = [
   "confluence",
+  "freshservice",
   "github",
   "google_drive",
   "gmail",
@@ -42,6 +43,7 @@ export const OAUTH_PROVIDERS = [
 
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
+  freshservice: "Freshservice",
   github: "GitHub",
   gmail: "Gmail",
   google_drive: "Google",
@@ -66,6 +68,8 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "code_verifier",
   "code_challenge",
   "scope",
+  "freshservice_domain",
+  "freshworks_org_url",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -142,6 +146,25 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
             value: undefined,
             helpMessage: "The client secret from your Gmail connected app.",
             validator: isValidClientIdOrSecret,
+          },
+        };
+        return result;
+      }
+      return null;
+    case "freshservice":
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
+        const result: OAuthCredentialInputs = {
+          freshworks_org_url: {
+            label: "Freshworks Organization URL",
+            value: undefined,
+            helpMessage:
+              "Your Freshworks organization URL (e.g., yourcompany.myfreshworks.com).",
+          },
+          freshservice_domain: {
+            label: "Freshservice Domain URL",
+            value: undefined,
+            helpMessage:
+              "Your Freshservice domain URL (e.g., yourcompany.freshservice.com).",
           },
         };
         return result;

@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
   Spinner,
   Tooltip,
-  useHashParam,
 } from "@dust-tt/sparkle";
 import type {
   CellContext,
@@ -47,6 +46,7 @@ import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHea
 import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
+import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
@@ -310,10 +310,12 @@ export const SpaceDataSourceViewContentList = ({
     [resetPagination, setViewType, viewType]
   );
 
+  const sortingAsString = useMemo(() => JSON.stringify(sorting), [sorting]);
+
   // Reset pagination when sorting changes
   useEffect(() => {
     resetPagination();
-  }, [JSON.stringify(sorting), resetPagination]);
+  }, [sortingAsString, resetPagination]);
 
   const { setIsSearchDisabled } = useContext(SpaceSearchContext);
 

@@ -7,13 +7,13 @@ import type {
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   LightAgentConfigurationType,
   ModelId,
@@ -205,7 +205,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       indexes: number[];
     }
   ): Promise<{ lastUpdated: Date; content: string }[]> {
-    await frontSequelize.transaction(async (t) => {
+    await withTransaction(async (t) => {
       const memories = (
         await this.findByAgentConfigurationAndUser(
           auth,
@@ -244,7 +244,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       edits: { index: number; content: string }[];
     }
   ): Promise<{ lastUpdated: Date; content: string }[]> {
-    await frontSequelize.transaction(async (t) => {
+    await withTransaction(async (t) => {
       const memories = (
         await this.findByAgentConfigurationAndUser(
           auth,

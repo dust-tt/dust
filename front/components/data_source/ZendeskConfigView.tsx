@@ -8,8 +8,12 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { ZendeskCustomFieldFilters } from "@app/components/data_source/ZendeskCustomTagFilters";
+import { ZendeskOrganizationTagFilters } from "@app/components/data_source/ZendeskOrganizationTagFilters";
+import { ZendeskTicketTagFilters } from "@app/components/data_source/ZendeskTicketTagFilters";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 
@@ -26,17 +30,13 @@ export function ZendeskConfigView({
 }) {
   const { isDark } = useTheme();
 
-  const unresolvedTicketsConfigKey = "zendeskSyncUnresolvedTicketsEnabled";
-  const hideCustomerDetailsConfigKey = "zendeskHideCustomerDetails";
-  const retentionPeriodConfigKey = "zendeskRetentionPeriodDays";
-
   const {
     configValue: syncUnresolvedTicketsConfigValue,
     mutateConfig: mutateSyncUnresolvedTicketsConfig,
   } = useConnectorConfig({
     owner,
     dataSource,
-    configKey: unresolvedTicketsConfigKey,
+    configKey: ZENDESK_CONFIG_KEYS.SYNC_UNRESOLVED_TICKETS,
   });
   const {
     configValue: hideCustomerDetailsConfigValue,
@@ -44,7 +44,7 @@ export function ZendeskConfigView({
   } = useConnectorConfig({
     owner,
     dataSource,
-    configKey: hideCustomerDetailsConfigKey,
+    configKey: ZENDESK_CONFIG_KEYS.HIDE_CUSTOMER_DETAILS,
   });
   const {
     configValue: retentionPeriodDays,
@@ -52,7 +52,7 @@ export function ZendeskConfigView({
   } = useConnectorConfig({
     owner,
     dataSource,
-    configKey: retentionPeriodConfigKey,
+    configKey: ZENDESK_CONFIG_KEYS.RETENTION_PERIOD,
   });
 
   const syncUnresolvedTicketsEnabled =
@@ -85,7 +85,7 @@ export function ZendeskConfigView({
       setLoading(false);
 
       // Show a notif only for the retention period (the others are toggles).
-      if (configKey === retentionPeriodConfigKey) {
+      if (configKey === ZENDESK_CONFIG_KEYS.RETENTION_PERIOD) {
         sendNotification({
           type: "success",
           title: "Retention period updated",
@@ -119,7 +119,7 @@ export function ZendeskConfigView({
         });
         return;
       }
-      await handleSetNewConfig(retentionPeriodConfigKey, numValue);
+      await handleSetNewConfig(ZENDESK_CONFIG_KEYS.RETENTION_PERIOD, numValue);
     }
   };
 
@@ -138,7 +138,7 @@ export function ZendeskConfigView({
               size="xs"
               onClick={async () => {
                 await handleSetNewConfig(
-                  unresolvedTicketsConfigKey,
+                  ZENDESK_CONFIG_KEYS.SYNC_UNRESOLVED_TICKETS,
                   !syncUnresolvedTicketsEnabled
                 );
               }}
@@ -150,9 +150,7 @@ export function ZendeskConfigView({
       >
         <ContextItem.Description>
           <div className="text-muted-foreground dark:text-muted-foreground-night">
-            If activated, Dust will also sync the unresolved tickets. This may
-            significantly increase the number of synced tickets, potentially
-            negatively affecting the response quality due to the added noise.
+            If activated, Dust will also sync the unresolved tickets.
           </div>
         </ContextItem.Description>
       </ContextItem>
@@ -170,7 +168,7 @@ export function ZendeskConfigView({
               size="xs"
               onClick={async () => {
                 await handleSetNewConfig(
-                  hideCustomerDetailsConfigKey,
+                  ZENDESK_CONFIG_KEYS.HIDE_CUSTOMER_DETAILS,
                   !hideCustomerDetailsEnabled
                 );
               }}
@@ -196,38 +194,57 @@ export function ZendeskConfigView({
             visual={isDark ? ZendeskWhiteLogo : ZendeskLogo}
           />
         }
-        action={
-          <div className="flex items-center gap-2">
-            <Input
-              value={retentionInput}
-              type="number"
-              onChange={(e) => setRetentionInput(e.target.value)}
-              disabled={readOnly || !isAdmin || loading}
-              placeholder={retentionPeriodDays ?? undefined}
-              className="w-20"
-            />
-            <span className="text-sm text-muted-foreground">days</span>
-            <Button
-              size="sm"
-              onClick={handleRetentionPeriodSave}
-              disabled={
-                readOnly ||
-                !isAdmin ||
-                loading ||
-                retentionInput === retentionPeriodDays?.toString()
-              }
-              label="Save"
-            />
-          </div>
-        }
       >
         <ContextItem.Description>
-          <div className="text-muted-foreground dark:text-muted-foreground-night">
-            Set the duration of the retention period: tickets older than the
-            retention period will be cleaned on a daily basis.
+          <div className="mb-4 flex items-start justify-between gap-4 text-muted-foreground dark:text-muted-foreground-night">
+            Set the retention period (in days), tickets older than the retention
+            period will not be synced with Dust.
+            <div className="flex items-center gap-2">
+              <Input
+                value={retentionInput}
+                type="number"
+                onChange={(e) => setRetentionInput(e.target.value)}
+                disabled={readOnly || !isAdmin || loading}
+                placeholder={
+                  retentionPeriodDays
+                    ? `${retentionPeriodDays} days`
+                    : undefined
+                }
+                className="w-24"
+              />
+              <Button
+                size="sm"
+                onClick={handleRetentionPeriodSave}
+                disabled={
+                  readOnly ||
+                  !isAdmin ||
+                  loading ||
+                  retentionInput === retentionPeriodDays?.toString()
+                }
+                label="Save"
+              />
+            </div>
           </div>
         </ContextItem.Description>
       </ContextItem>
+      <ZendeskTicketTagFilters
+        owner={owner}
+        readOnly={readOnly}
+        isAdmin={isAdmin}
+        dataSource={dataSource}
+      />
+      <ZendeskOrganizationTagFilters
+        owner={owner}
+        readOnly={readOnly}
+        isAdmin={isAdmin}
+        dataSource={dataSource}
+      />
+      <ZendeskCustomFieldFilters
+        owner={owner}
+        readOnly={readOnly}
+        isAdmin={isAdmin}
+        dataSource={dataSource}
+      />
     </ContextItem.List>
   );
 }

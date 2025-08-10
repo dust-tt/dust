@@ -43,6 +43,7 @@ export default function AppRootLayout({
       <WelcomeTourGuideProvider>
         <Head>
           <link rel="shortcut icon" href="/static/favicon.png" />
+          <link rel="icon" type="image/png" href="/static/favicon.png" />
 
           <meta name="apple-mobile-web-app-title" content="Dust" />
           <link rel="apple-touch-icon" href="/static/AppIcon.png" />

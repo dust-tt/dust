@@ -203,7 +203,8 @@ export function ConversationContainer({
     async (
       input: string,
       mentions: MentionType[],
-      contentFragments: ContentFragmentsType
+      contentFragments: ContentFragmentsType,
+      selectedMCPServerViewIds?: string[]
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
         return new Err({
@@ -223,6 +224,7 @@ export function ConversationContainer({
           mentions,
           contentFragments,
           clientSideMCPServerIds: removeNulls([serverId]),
+          selectedMCPServerViewIds,
         },
         forceAsync: async === "true",
       });
@@ -327,7 +329,7 @@ export function ConversationContainer({
       ) : (
         <div
           id="assistant-input-header"
-          className="flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end gap-8 py-2"
+          className="flex h-fit min-h-[20vh] w-full max-w-3xl flex-col justify-end gap-8 py-2"
           ref={startConversationRef}
         >
           <Page.Header title={greeting} />

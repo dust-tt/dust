@@ -25,12 +25,15 @@ import { useMentionDropdown } from "@app/components/assistant/conversation/input
 import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -41,6 +44,7 @@ import type {
 import { getSupportedFileExtensions } from "@app/types";
 
 export const INPUT_BAR_ACTIONS = [
+  "tools",
   "attachment",
   "assistants-list",
   "assistants-list-with-actions",
@@ -63,6 +67,9 @@ export interface InputBarContainerProps {
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   attachedNodes: DataSourceViewContentNode[];
+  onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
+  onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
+  selectedMCPServerViewIds: string[];
 }
 
 const InputBarContainer = ({
@@ -79,7 +86,11 @@ const InputBarContainer = ({
   onNodeSelect,
   onNodeUnselect,
   attachedNodes,
+  onMCPServerViewSelect,
+  onMCPServerViewDeselect,
+  selectedMCPServerViewIds,
 }: InputBarContainerProps) => {
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const [isExpanded, setIsExpanded] = useState(false);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
@@ -247,7 +258,7 @@ const InputBarContainer = ({
   return (
     <div
       id="InputBarContainer"
-      className="relative flex flex-1 cursor-text flex-col sm:flex-row sm:pt-0"
+      className="relative flex flex-1 cursor-text flex-col sm:pt-0"
     >
       <EditorContent
         editor={editor}
@@ -261,8 +272,16 @@ const InputBarContainer = ({
         )}
       />
 
-      <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-3 pr-3 sm:flex-col sm:border-0">
-        <div className="flex items-center py-0 sm:py-3.5">
+      <div className="flex flex-row items-end justify-end gap-2 self-stretch pb-3 pr-3 sm:border-0">
+        <div className="flex items-center py-0">
+          {actions.includes("tools") && featureFlags.includes("jit_tools") && (
+            <ToolsPicker
+              owner={owner}
+              selectedMCPServerViewIds={selectedMCPServerViewIds}
+              onSelect={onMCPServerViewSelect}
+              onDeselect={onMCPServerViewDeselect}
+            />
+          )}
           {actions.includes("attachment") && (
             <>
               <input
@@ -315,7 +334,7 @@ const InputBarContainer = ({
           )}
         </div>
         <Button
-          size="sm"
+          size="xs"
           isLoading={disableSendButton}
           icon={ArrowUpIcon}
           variant="highlight"

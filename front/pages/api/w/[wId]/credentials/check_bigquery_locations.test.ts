@@ -1,8 +1,7 @@
 import { BigQuery } from "@google-cloud/bigquery";
-import { describe, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./check_bigquery_locations";
 
@@ -37,143 +36,134 @@ const MOCK_CREDENTIALS = {
 };
 
 describe("POST /api/w/[wId]/credentials/check_bigquery_locations", () => {
-  itInTransaction(
-    "returns locations with tables when called with valid credentials",
-    async () => {
-      const mockDatasets = [
-        {
-          id: "dataset1",
-          location: "uS",
-          getTables: vi.fn().mockResolvedValue([
-            [
-              {
-                id: "table1",
-              },
-              {
-                id: "table2",
-              },
-            ],
-          ]),
-        },
-        {
-          id: "dataset2",
-          location: "EU",
-          getTables: vi.fn().mockResolvedValue([
-            [
-              {
-                id: "table3",
-              },
-            ],
-          ]),
-        },
-        {
-          id: "dataset3",
-          location: "EU-central1",
-          getTables: vi.fn().mockResolvedValue([
-            [
-              {
-                id: "table4",
-              },
-            ],
-          ]),
-        },
-        {
-          id: "dataset4",
-          location: "EU-central1",
-          getTables: vi.fn().mockResolvedValue([
-            [
-              {
-                id: "table5",
-              },
-            ],
-          ]),
-        },
-      ];
-
-      vi.mocked(BigQuery).mockImplementation(
-        () =>
-          ({
-            getDatasets: vi.fn().mockResolvedValue([mockDatasets]),
-          }) as any
-      );
-
-      const { req, res } = await createPrivateApiMockRequest({
-        method: "POST",
-        role: "admin",
-      });
-
-      req.body = {
-        credentials: MOCK_CREDENTIALS,
-      };
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      expect(JSON.parse(res._getData())).toEqual({
-        locations: {
-          us: ["dataset1.table1", "dataset1.table2"],
-          eu: ["dataset2.table3"],
-          "eu-central1": [
-            "dataset2.table3",
-            "dataset3.table4",
-            "dataset4.table5",
+  it("returns locations with tables when called with valid credentials", async () => {
+    const mockDatasets = [
+      {
+        id: "dataset1",
+        location: "uS",
+        getTables: vi.fn().mockResolvedValue([
+          [
+            {
+              id: "table1",
+            },
+            {
+              id: "table2",
+            },
           ],
-        },
-      });
-    }
-  );
+        ]),
+      },
+      {
+        id: "dataset2",
+        location: "EU",
+        getTables: vi.fn().mockResolvedValue([
+          [
+            {
+              id: "table3",
+            },
+          ],
+        ]),
+      },
+      {
+        id: "dataset3",
+        location: "EU-central1",
+        getTables: vi.fn().mockResolvedValue([
+          [
+            {
+              id: "table4",
+            },
+          ],
+        ]),
+      },
+      {
+        id: "dataset4",
+        location: "EU-central1",
+        getTables: vi.fn().mockResolvedValue([
+          [
+            {
+              id: "table5",
+            },
+          ],
+        ]),
+      },
+    ];
 
-  itInTransaction(
-    "returns 400 when called with invalid credentials",
-    async () => {
-      const { req, res } = await createPrivateApiMockRequest({
-        method: "POST",
-        role: "admin",
-      });
+    vi.mocked(BigQuery).mockImplementation(
+      () =>
+        ({
+          getDatasets: vi.fn().mockResolvedValue([mockDatasets]),
+        }) as any
+    );
 
-      req.body = {
-        credentials: {
-          invalid: "credentials",
-        },
-      };
+    const { req, res } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
 
-      await handler(req, res);
+    req.body = {
+      credentials: MOCK_CREDENTIALS,
+    };
 
-      expect(res._getStatusCode()).toBe(400);
-    }
-  );
+    await handler(req, res);
 
-  itInTransaction(
-    "returns 400 when BigQuery client throws an error",
-    async () => {
-      vi.mocked(BigQuery).mockImplementation(
-        () =>
-          ({
-            getDatasets: vi.fn().mockRejectedValue(new Error("BigQuery error")),
-          }) as any
-      );
+    expect(res._getStatusCode()).toBe(200);
+    expect(JSON.parse(res._getData())).toEqual({
+      locations: {
+        us: ["dataset1.table1", "dataset1.table2"],
+        eu: ["dataset2.table3"],
+        "eu-central1": [
+          "dataset2.table3",
+          "dataset3.table4",
+          "dataset4.table5",
+        ],
+      },
+    });
+  });
 
-      const { req, res } = await createPrivateApiMockRequest({
-        method: "POST",
-        role: "admin",
-      });
+  it("returns 400 when called with invalid credentials", async () => {
+    const { req, res } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
 
-      req.body = {
-        credentials: MOCK_CREDENTIALS,
-      };
+    req.body = {
+      credentials: {
+        invalid: "credentials",
+      },
+    };
 
-      await handler(req, res);
+    await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(400);
-      expect(JSON.parse(res._getData())).toMatchObject({
-        error: {
-          message: "Failed to check BigQuery locations: BigQuery error",
-        },
-      });
-    }
-  );
+    expect(res._getStatusCode()).toBe(400);
+  });
 
-  itInTransaction("returns 405 when called with invalid method", async () => {
+  it("returns 400 when BigQuery client throws an error", async () => {
+    vi.mocked(BigQuery).mockImplementation(
+      () =>
+        ({
+          getDatasets: vi.fn().mockRejectedValue(new Error("BigQuery error")),
+        }) as any
+    );
+
+    const { req, res } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    req.body = {
+      credentials: MOCK_CREDENTIALS,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(JSON.parse(res._getData())).toMatchObject({
+      error: {
+        message: "Failed to check BigQuery locations: BigQuery error",
+      },
+    });
+  });
+
+  it("returns 405 when called with invalid method", async () => {
     const { req, res } = await createPrivateApiMockRequest();
 
     await handler(req, res);
@@ -181,7 +171,7 @@ describe("POST /api/w/[wId]/credentials/check_bigquery_locations", () => {
     expect(res._getStatusCode()).toBe(405);
   });
 
-  itInTransaction("returns 403 when user is not workspace admin", async () => {
+  it("returns 403 when user is not workspace admin", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",

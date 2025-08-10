@@ -30,6 +30,7 @@ interface MultiPageSheetProps {
   side?: React.ComponentProps<typeof SheetContent>["side"];
   trapFocusScope?: boolean;
   showNavigation?: boolean;
+  showHeaderNavigation?: boolean;
   footerContent?: React.ReactNode;
   onSave?: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
   className?: string;
@@ -58,6 +59,7 @@ const MultiPageSheetContent = React.forwardRef<
       side = "right",
       trapFocusScope,
       showNavigation = true,
+      showHeaderNavigation = true,
       footerContent,
       onSave,
       className,
@@ -110,7 +112,7 @@ const MultiPageSheetContent = React.forwardRef<
         <SheetHeader hideButton={true}>
           <div className="s-flex s-items-center s-justify-between s-pr-8">
             <div className="s-flex s-items-center s-gap-3">
-              {showNavigation && (
+              {showNavigation && showHeaderNavigation && (
                 <div className="s-flex s-items-center s-gap-1">
                   <Button
                     icon={ChevronLeftIcon}

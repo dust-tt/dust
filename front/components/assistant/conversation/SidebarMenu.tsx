@@ -2,11 +2,14 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   Checkbox,
+  ClockIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  Icon,
+  InformationCircleIcon,
   Label,
   ListCheckIcon,
   MoreIcon,
@@ -374,6 +377,10 @@ const RenderConversation = ({
       ? "New Conversation"
       : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
+  const ActionRequiredIcon = () => (
+    <Icon visual={InformationCircleIcon} className="text-golden-700" />
+  );
+
   return (
     <>
       {isMultiSelect ? (
@@ -394,6 +401,13 @@ const RenderConversation = ({
       ) : (
         <NavigationListItem
           selected={router.query.cId === conversation.sId}
+          icon={
+            conversation.actionRequired
+              ? ActionRequiredIcon
+              : conversation.unread
+                ? ClockIcon
+                : undefined
+          }
           label={conversationLabel}
           href={`/w/${owner.sId}/assistant/${conversation.sId}`}
           shallow

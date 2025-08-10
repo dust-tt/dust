@@ -1,15 +1,13 @@
 import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./sync";
 
 async function setupTest(
-  t: any,
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
@@ -18,7 +16,7 @@ async function setupTest(
     method,
   });
 
-  const space = await SpaceFactory.system(workspace, t);
+  const space = await SpaceFactory.system(workspace);
 
   // Set up common query parameters
   req.query.wId = workspace.sId;
@@ -42,8 +40,8 @@ vi.mock(import("@app/lib/actions/mcp_actions"), async (importOriginal) => {
 });
 
 describe("POST /api/w/[wId]/mcp/[serverId]/sync", () => {
-  itInTransaction("should return 404 when server doesn't exist", async (t) => {
-    const { req, res } = await setupTest(t, "admin", "POST");
+  it("should return 404 when server doesn't exist", async () => {
+    const { req, res } = await setupTest("admin", "POST");
     req.query.serverId = "non-existent-server-id";
 
     await handler(req, res);
@@ -57,8 +55,8 @@ describe("POST /api/w/[wId]/mcp/[serverId]/sync", () => {
     });
   });
 
-  itInTransaction("should return 403 when user is not an admin", async (t) => {
-    const { req, res, workspace, space } = await setupTest(t, "user", "POST");
+  it("should return 403 when user is not an admin", async () => {
+    const { req, res, workspace, space } = await setupTest("user", "POST");
     const server = await RemoteMCPServerFactory.create(workspace, space);
     req.query.serverId = server.sId;
 
@@ -73,13 +71,9 @@ describe("POST /api/w/[wId]/mcp/[serverId]/sync", () => {
     });
   });
 
-  itInTransaction("only POST method is supported", async (t) => {
+  it("only POST method is supported", async () => {
     for (const method of ["GET", "DELETE", "PUT", "PATCH"] as const) {
-      const { req, res, workspace, space } = await setupTest(
-        t,
-        "admin",
-        method
-      );
+      const { req, res, workspace, space } = await setupTest("admin", method);
       const server = await RemoteMCPServerFactory.create(workspace, space);
       req.query.serverId = server.sId;
 

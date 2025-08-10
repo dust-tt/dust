@@ -45,6 +45,7 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid, normalizeArrays } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   AgentMessageType,
@@ -461,7 +462,7 @@ export async function postUserMessage(
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
-    await frontSequelize.transaction(async (t) => {
+    await withTransaction(async (t) => {
       // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
       // this transaction, otherwise this other query will be competing for a connection in the database
       // connection pool, resulting in a deadlock.
@@ -863,7 +864,7 @@ export async function editUserMessage(
 
   try {
     // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
-    const result = await frontSequelize.transaction(async (t) => {
+    const result = await withTransaction(async (t) => {
       // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
       // this transaction, otherwise this other query will be competing for a connection in the database
       // connection pool, resulting in a deadlock.
@@ -1198,7 +1199,7 @@ export async function retryAgentMessage(
     agentMessageRow: AgentMessage;
   } | null = null;
   try {
-    agentMessageResult = await frontSequelize.transaction(async (t) => {
+    agentMessageResult = await withTransaction(async (t) => {
       await getConversationRankVersionLock(conversation, t);
 
       const messageRow = await Message.findOne({
@@ -1437,63 +1438,61 @@ export async function postNewContentFragment(
     }
   }
 
-  const { contentFragment, messageRow } = await frontSequelize.transaction(
-    async (t) => {
-      await getConversationRankVersionLock(conversation, t);
+  const { contentFragment, messageRow } = await withTransaction(async (t) => {
+    await getConversationRankVersionLock(conversation, t);
 
-      const fullBlob = {
-        ...cfBlobRes.value,
-        userId: auth.user()?.id,
-        userContextProfilePictureUrl: context?.profilePictureUrl,
-        userContextEmail: context?.email,
-        userContextFullName: context?.fullName,
-        userContextUsername: context?.username,
-        workspaceId: owner.id,
-      };
+    const fullBlob = {
+      ...cfBlobRes.value,
+      userId: auth.user()?.id,
+      userContextProfilePictureUrl: context?.profilePictureUrl,
+      userContextEmail: context?.email,
+      userContextFullName: context?.fullName,
+      userContextUsername: context?.username,
+      workspaceId: owner.id,
+    };
 
-      const contentFragment = await (() => {
-        if (supersededContentFragmentId) {
-          return ContentFragmentResource.makeNewVersion(
-            supersededContentFragmentId,
-            fullBlob,
-            t
-          );
-        } else {
-          return ContentFragmentResource.makeNew(fullBlob, t);
-        }
-      })();
-
-      const nextMessageRank =
-        ((await Message.max<number | null, Message>("rank", {
-          where: {
-            conversationId: conversation.id,
-          },
-          transaction: t,
-        })) ?? -1) + 1;
-      const messageRow = await Message.create(
-        {
-          sId: messageId,
-          rank: nextMessageRank,
-          conversationId: conversation.id,
-          contentFragmentId: contentFragment.id,
-          workspaceId: owner.id,
-        },
-        {
-          transaction: t,
-        }
-      );
-
-      if (isContentFragmentInputWithContentNode(cf)) {
-        await updateConversationRequestedGroupIds(auth, {
-          contentFragment: cf,
-          conversation,
-          t,
-        });
+    const contentFragment = await (() => {
+      if (supersededContentFragmentId) {
+        return ContentFragmentResource.makeNewVersion(
+          supersededContentFragmentId,
+          fullBlob,
+          t
+        );
+      } else {
+        return ContentFragmentResource.makeNew(fullBlob, t);
       }
+    })();
 
-      return { contentFragment, messageRow };
+    const nextMessageRank =
+      ((await Message.max<number | null, Message>("rank", {
+        where: {
+          conversationId: conversation.id,
+        },
+        transaction: t,
+      })) ?? -1) + 1;
+    const messageRow = await Message.create(
+      {
+        sId: messageId,
+        rank: nextMessageRank,
+        conversationId: conversation.id,
+        contentFragmentId: contentFragment.id,
+        workspaceId: owner.id,
+      },
+      {
+        transaction: t,
+      }
+    );
+
+    if (isContentFragmentInputWithContentNode(cf)) {
+      await updateConversationRequestedGroupIds(auth, {
+        contentFragment: cf,
+        conversation,
+        t,
+      });
     }
-  );
+
+    return { contentFragment, messageRow };
+  });
   const render = await contentFragment.renderFromMessage({
     auth,
     conversationId: conversation.sId,
@@ -1597,7 +1596,7 @@ export async function updateConversationRequestedGroupIds(
   }: {
     agents?: LightAgentConfigurationType[];
     contentFragment?: ContentFragmentInputWithContentNode;
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     t: Transaction;
   }
 ): Promise<void> {

@@ -1,4 +1,4 @@
-import type { CallToolResult } from "@dust-tt/client/dist/raw_mcp_types";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 // Size limits for MCP tool outputs
 export const MAX_TEXT_CONTENT_SIZE = 2 * 1024 * 1024; // 2MB.

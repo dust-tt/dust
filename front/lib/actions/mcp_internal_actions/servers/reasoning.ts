@@ -239,7 +239,11 @@ async function* runReasoning(
 
   const reasoningEffort =
     reasoningModel.reasoningEffort ?? supportedModel.defaultReasoningEffort;
-  if (reasoningEffort !== "none" && reasoningEffort !== "light") {
+
+  if (
+    reasoningEffort !== "none" &&
+    (reasoningEffort !== "light" || supportedModel.useNativeLightReasoning)
+  ) {
     config.MODEL.reasoning_effort = reasoningEffort;
   }
 

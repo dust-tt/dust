@@ -10,6 +10,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
+import { isGlobalAgentId } from "@app/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
@@ -135,7 +136,10 @@ export async function getRunAgentData(
   // Fetch the agent configuration as we need the full version of the agent configuration.
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: agentMessage.configuration.sId,
-    agentVersion: agentMessage.configuration.version,
+    // We do define agentMessage.configuration.version for global agent, ignoring this value here.
+    agentVersion: isGlobalAgentId(agentMessage.configuration.sId)
+      ? undefined
+      : agentMessage.configuration.version,
     variant: "full",
   });
   if (!agentConfiguration) {

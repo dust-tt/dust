@@ -4,7 +4,10 @@ import { keyBy } from "lodash";
 import { useCallback, useMemo, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
@@ -84,17 +87,17 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
     return serverViews
       .filter(
         (serverView) =>
-          serverView.server.name
+          (serverView.name ?? serverView.server.name)
             .toLowerCase()
             .includes(searchQuery.toLowerCase()) ||
-          serverView.server.description
+          getMcpServerViewDescription(serverView)
             .toLowerCase()
             .includes(searchQuery.toLowerCase())
       )
       .map((serverView) => ({
         id: serverView.sId,
-        name: serverView.server.name,
-        description: serverView.server.description,
+        name: getMcpServerViewDisplayName(serverView),
+        description: getMcpServerViewDescription(serverView),
         serverView: serverView,
         connection: connectionsByServerId[serverView.server.sId],
         visual: getAvatar(serverView.server),
@@ -123,7 +126,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
                   {getMcpServerViewDisplayName(row.original.serverView)}
                 </div>
                 <div className="truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  {row.original.serverView.server.description}
+                  {getMcpServerViewDescription(row.original.serverView)}
                 </div>
               </div>
 
