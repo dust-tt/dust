@@ -63,7 +63,7 @@ export async function launchUpsertAudioTranscriptionWorkflow({
   upsertQueueId: string;
   workspaceId: string;
 }): Promise<Result<string, Error>> {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
 
   const workflowId = `upsert-queue-audio-transcription-${workspaceId}-${dataSourceId}-${upsertQueueId}`;
 
