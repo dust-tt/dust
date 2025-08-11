@@ -226,7 +226,7 @@ export function MCPServerViewsDialog({
       setInfoMCPServerView(null);
     }
     setIsOpen(!!mode);
-  }, [mode, allMcpServerViews, isEditMode]);
+  }, [mode, allMcpServerViews, isEditMode, isInfoMode]);
 
   const toggleToolSelection = (tool: SelectedTool): void => {
     setSelectedToolsInDialog((prev) => {
@@ -415,7 +415,7 @@ export function MCPServerViewsDialog({
   const pages: MultiPageDialogPage[] = [
     {
       id: CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION,
-      title: "Add tools",
+      title: actions.length === 0 ? "Add tools" : "Add more",
       description: "",
       icon: undefined,
       content: isMCPServerViewsLoading ? (
@@ -710,12 +710,14 @@ export function MCPServerViewsDialog({
           onClick={() => onModeChange({ type: "add" })}
           label="Add tools"
           icon={ListAddIcon}
+          variant="outline"
         />
       </MultiPageDialogTrigger>
       <MultiPageDialogContent
         showNavigation={false}
         isAlertDialog
-        size="xl"
+        size="2xl"
+        height="xl"
         pages={pages}
         currentPageId={currentPageId}
         onPageChange={(pageId) => {

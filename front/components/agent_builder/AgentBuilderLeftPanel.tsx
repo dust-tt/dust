@@ -1,5 +1,5 @@
 import type { ButtonProps } from "@dust-tt/sparkle";
-import { BarFooter, BarHeader, Button, Separator } from "@dust-tt/sparkle";
+import { BarFooter, BarHeader, Button, ScrollArea } from "@dust-tt/sparkle";
 import React from "react";
 
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
@@ -42,24 +42,24 @@ export function AgentBuilderLeftPanel({
     <div className="flex h-full flex-col">
       <BarHeader
         variant="default"
+        className="mx-4"
         title={title}
         rightActions={<AgentAccessPublicationDialog />}
       />
-      <div className="flex-1 overflow-y-auto">
-        <div className="space-y-4 p-4">
+      <ScrollArea className="flex-1">
+        <div className="space-y-10 p-4">
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
-          <Separator />
           <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
-          <Separator />
           <AgentBuilderSettingsBlock
             isSettingBlocksOpen={!agentConfigurationId}
           />
         </div>
-      </div>
+      </ScrollArea>
       <BarFooter
         variant="default"
+        className="mx-4"
         leftActions={
           <Button variant="outline" label="Close" onClick={handleCancel} />
         }

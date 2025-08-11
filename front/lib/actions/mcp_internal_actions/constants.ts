@@ -64,6 +64,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "outlook_calendar",
   "slack",
   "agent_memory",
+  "data_warehouses",
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -598,6 +599,17 @@ export const INTERNAL_MCP_SERVERS = {
     tools_stakes: {
       create_agent: "high",
     },
+    timeoutMs: undefined,
+  },
+  data_warehouses: {
+    id: 1012,
+    availability: "auto",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("data_warehouses_tool");
+    },
+    tools_stakes: undefined,
     timeoutMs: undefined,
   },
   // Using satisfies here instead of : type to avoid typescript widening the type and breaking the type inference for AutoInternalMCPServerNameType.

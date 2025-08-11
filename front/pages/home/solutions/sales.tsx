@@ -10,6 +10,7 @@ import {
   Metrics,
   pageSettings,
   Quote,
+  salesFAQItems,
   Stories,
   UseCases,
 } from "@app/components/home/content/Solutions/configs/salesConfig";
@@ -22,6 +23,7 @@ import {
   QuoteSection,
 } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
+import { FAQ } from "@app/components/home/FAQ";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import {
@@ -76,6 +78,9 @@ export default function Sales() {
             />
           </div>
           <TrustedBy />
+          <div className={GRID_SECTION_CLASSES}>
+            <FAQ title="FAQ" items={salesFAQItems} />
+          </div>
           <div className={GRID_SECTION_CLASSES}>
             {Hero.ctaButtons && (
               <div className="mt-4 flex justify-center gap-4">
