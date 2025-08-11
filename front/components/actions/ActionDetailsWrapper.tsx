@@ -38,7 +38,8 @@ export function ActionDetailsWrapper({
           />
           <span className="heading-base">{actionName}</span>
           <span className="flex-grow"></span>
-          <div className="self-start">
+          {/* TODO: Align spinner with CoT spinner: <div className="self-start"> */}
+          <div>
             <Spinner size="xs" />
           </div>
         </div>

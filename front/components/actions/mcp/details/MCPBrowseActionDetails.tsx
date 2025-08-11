@@ -27,7 +27,7 @@ export function MCPBrowseActionDetails({
             {(viewType === "conversation" || browseResults.length === 0) && urls
               ? urls.map((url, idx) => (
                   <div
-                    className="flex max-h-60 flex-col gap-2 overflow-y-auto overflow-x-hidden pb-4"
+                    className="flex max-h-60 flex-col overflow-y-auto overflow-x-hidden pb-1"
                     key={idx}
                   >
                     <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
