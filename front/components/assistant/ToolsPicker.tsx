@@ -4,9 +4,11 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Icon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -57,8 +59,15 @@ export function ToolsPicker({
     globalSpaces
   );
 
-  const filteredServerViews = useMemo(() => {
-    return [...autoServerViews, ...manualServerViews].filter(
+  const {
+    filteredServerViews,
+    filteredServerViewsUnselected,
+    filteredServerViewsSelected,
+  } = useMemo(() => {
+    const filteredServerViews = [
+      ...autoServerViews,
+      ...manualServerViews,
+    ].filter(
       (v) =>
         // Only tools that do not require any configuration can be enabled directly in a conversation.
         getMCPServerRequirements(v).noRequirement &&
@@ -70,7 +79,22 @@ export function ToolsPicker({
             .toLowerCase()
             .includes(searchText.toLowerCase()))
     );
-  }, [autoServerViews, manualServerViews, searchText]);
+
+    return {
+      filteredServerViews,
+      filteredServerViewsUnselected: filteredServerViews.filter(
+        (v) => !selectedMCPServerViewIds.includes(v.sId)
+      ),
+      filteredServerViewsSelected: filteredServerViews.filter((v) =>
+        selectedMCPServerViewIds.includes(v.sId)
+      ),
+    };
+  }, [
+    autoServerViews,
+    manualServerViews,
+    searchText,
+    selectedMCPServerViewIds,
+  ]);
 
   return (
     <DropdownMenu
@@ -122,28 +146,60 @@ export function ToolsPicker({
         }
       >
         {filteredServerViews.length > 0 ? (
-          filteredServerViews.sort(mcpServerViewSortingFn).map((v) => {
-            const isSelected = selectedMCPServerViewIds.includes(v.sId);
-            return (
+          <>
+            <DropdownMenuLabel label="Selected" />
+            {filteredServerViewsSelected.length > 0 ? (
+              filteredServerViewsSelected
+                .sort(mcpServerViewSortingFn)
+                .map((v) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={`tools-picker-${v.sId}`}
+                      icon={() => getAvatar(v.server, "xs")}
+                      label={getMcpServerViewDisplayName(v)}
+                      description={getMcpServerViewDescription(v)}
+                      truncateText
+                      checked={true}
+                      onClick={(e) => {
+                        onDeselect(v);
+                        e.stopPropagation();
+                        e.preventDefault();
+                      }}
+                    />
+                  );
+                })
+            ) : (
               <DropdownMenuCheckboxItem
-                key={`tools-picker-${v.sId}`}
-                icon={() => getAvatar(v.server, "xs")}
-                label={getMcpServerViewDisplayName(v)}
-                description={getMcpServerViewDescription(v)}
-                truncateText
-                checked={isSelected}
-                onClick={(e) => {
-                  if (isSelected) {
-                    onDeselect(v);
-                  } else {
-                    onSelect(v);
-                  }
-                  e.stopPropagation();
-                  e.preventDefault();
-                }}
+                id="tools-picker-no-selected"
+                icon={() => <Icon visual={BoltIcon} size="xs" />}
+                label="No tools selected"
+                description="Enable tools to use in this conversation"
+                disabled
               />
-            );
-          })
+            )}
+            {filteredServerViewsUnselected.length > 0 && (
+              <DropdownMenuLabel label="All" />
+            )}
+            {filteredServerViewsUnselected
+              .sort(mcpServerViewSortingFn)
+              .map((v) => {
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={`tools-picker-${v.sId}`}
+                    icon={() => getAvatar(v.server, "xs")}
+                    label={getMcpServerViewDisplayName(v)}
+                    description={getMcpServerViewDescription(v)}
+                    truncateText
+                    checked={false}
+                    onClick={(e) => {
+                      onSelect(v);
+                      e.stopPropagation();
+                      e.preventDefault();
+                    }}
+                  />
+                );
+              })}
+          </>
         ) : (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
             No results found
