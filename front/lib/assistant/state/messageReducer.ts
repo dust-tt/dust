@@ -44,7 +44,8 @@ function updateMessageWithAction(
 ): LightAgentMessageType {
   return {
     ...m,
-    chainOfThought: "",
+    // TODO: uncomment this once we have a way to display chain of thought
+    // chainOfThought: "",
     actions: [...m.actions.filter((a) => a.id !== action.id), action],
   };
 }
@@ -149,12 +150,17 @@ export function messageReducer(
           newState.agentState = "writing";
           break;
         case "chain_of_thought":
-          if (event.text === "\n\n") {
-            newState.message.chainOfThought = "";
-          } else {
-            newState.message.chainOfThought =
-              (newState.message.chainOfThought || "") + event.text;
-          }
+          // TODO: uncomment this once we have a way to display chain of thought
+          // if (event.text === "\n\n") {
+          //   newState.message.chainOfThought = "";
+          // } else {
+          // newState.message.chainOfThought =
+          //   (newState.message.chainOfThought || "") + event.text;
+          // // }
+
+          newState.message.chainOfThought =
+            (newState.message.chainOfThought || "") + event.text;
+
           newState.agentState = "thinking";
           break;
         default:
