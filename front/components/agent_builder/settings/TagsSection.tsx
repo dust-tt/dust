@@ -14,6 +14,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { TagsSelector } from "@app/components/agent_builder/settings/TagsSelector";
 import { fetchWithErr } from "@app/components/agent_builder/settings/utils";
+import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useTags } from "@app/lib/swr/tags";
 import type {
@@ -162,10 +163,7 @@ export function TagsSection() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
-        Tags
-      </label>
+    <SettingSectionContainer title="Tags" className="h-full">
       <TagsSelector
         owner={owner}
         tags={selectedTags}
@@ -219,6 +217,6 @@ export function TagsSection() {
           </PopoverRoot>
         }
       />
-    </div>
+    </SettingSectionContainer>
   );
 }
