@@ -239,6 +239,7 @@ export async function autoReadChannel(
         } catch (e) {
           return new Err(normalizeError(e));
         }
+
         return new Ok(true);
       },
       { concurrency: 5 }
