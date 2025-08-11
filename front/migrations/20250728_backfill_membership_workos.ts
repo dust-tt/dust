@@ -21,9 +21,8 @@ async function updateMembershipOriginsForWorkspace(
     return;
   }
 
-  const { memberships } = await MembershipResource.getMembershipsForWorkspace({
+  const { memberships } = await MembershipResource.getActiveMemberships({
     workspace,
-    includeUser: true,
   });
 
   let m: OrganizationMembership[] = [];
