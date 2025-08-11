@@ -15,7 +15,7 @@ import {
   InformationCircleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { partition } from "lodash";
+import partition from "lodash/partition";
 import { useMemo } from "react";
 import { useController } from "react-hook-form";
 
