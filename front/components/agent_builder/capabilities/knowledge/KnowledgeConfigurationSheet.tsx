@@ -80,20 +80,18 @@ export function KnowledgeConfigurationSheet({
     formData: CapabilityFormData,
     dataSourceConfigurations: DataSourceViewSelectionConfigurations
   ) => {
-    const { name, description, configuration, mcpServerView } = formData;
+    const { description, configuration, mcpServerView } = formData;
     const requirements = getMCPServerRequirements(mcpServerView);
 
     const datasource = requirements.requiresDataSourceConfiguration
       ? { dataSourceConfigurations: dataSourceConfigurations }
       : { tablesConfigurations: dataSourceConfigurations };
 
-    let newName = name;
-
     const isNewActionOrNameChanged = isEditing
       ? defaultValues.name !== formData.name
       : true;
 
-    newName = isNewActionOrNameChanged
+    const newName = isNewActionOrNameChanged
       ? generateUniqueActionName({
           baseName: formData.name,
           existingActions: actions || [],
