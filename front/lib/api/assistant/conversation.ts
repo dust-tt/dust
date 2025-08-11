@@ -599,6 +599,7 @@ export async function postUserMessage(
                   rank: messageRow.rank,
                   skipToolsValidation: agentMessageRow.skipToolsValidation,
                   contents: [],
+                  parsedContents: {},
                 } satisfies AgentMessageWithRankType,
               };
             })();
@@ -1047,6 +1048,7 @@ export async function editUserMessage(
                 rank: messageRow.rank,
                 skipToolsValidation: agentMessageRow.skipToolsValidation,
                 contents: [],
+                parsedContents: {},
               } satisfies AgentMessageWithRankType,
             };
           })();
@@ -1286,6 +1288,7 @@ export async function retryAgentMessage(
         rank: m.rank,
         skipToolsValidation: agentMessageRow.skipToolsValidation,
         contents: [],
+        parsedContents: {},
       };
 
       return {

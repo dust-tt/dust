@@ -1,74 +1,20 @@
-import { ContentMessage, Markdown, Separator, Spinner } from "@dust-tt/sparkle";
+import {
+  ContentMessage,
+  Markdown,
+  Separator,
+  Spinner,
+} from "@dust-tt/sparkle";
 import React from "react";
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import type { MCPActionType } from "@app/lib/actions/mcp";
 import { useConversationMessage } from "@app/lib/swr/conversations";
-import type {
-  ConversationType,
-  LightWorkspaceType,
-  MessageWithRankType,
-} from "@app/types";
-import {
-  isFunctionCallContent,
-  isReasoningContent,
-  isTextContent,
-} from "@app/types/assistant/agent_message_content";
+import type { ConversationType, LightWorkspaceType } from "@app/types";
 
 interface AgentActionsPanelProps {
   conversation: ConversationType | null;
   owner: LightWorkspaceType;
-}
-
-type Content =
-  | { kind: "reasoning"; content: string }
-  | { kind: "action"; action: MCPActionType };
-type Steps = Record<number, Array<Content>>;
-
-function groupContentsByStep(
-  fullAgentMessage: Extract<MessageWithRankType, { type: "agent_message" }>
-): Steps {
-  const steps: Steps = {};
-  for (const c of fullAgentMessage.contents) {
-    const step = c.step + 1;
-    if (!steps[step]) {
-      steps[step] = [];
-    }
-
-    if (isReasoningContent(c.content)) {
-      const reasoning = c.content.value.reasoning;
-      if (reasoning && reasoning.trim()) {
-        steps[step].push({ kind: "reasoning", content: reasoning });
-      }
-      continue;
-    }
-
-    if (isTextContent(c.content)) {
-      const thinkingRegex = /<thinking>([\s\S]*?)<\/thinking>/g;
-      let match: RegExpExecArray | null;
-      while ((match = thinkingRegex.exec(c.content.value)) !== null) {
-        const extracted = match[1].trim();
-        if (extracted) {
-          steps[step].push({ kind: "reasoning", content: extracted });
-        }
-      }
-      continue;
-    }
-
-    if (isFunctionCallContent(c.content)) {
-      const functionCallId = c.content.value.id;
-      const matchingAction = fullAgentMessage.actions.find(
-        (a) => a.functionCallId === functionCallId
-      );
-      if (matchingAction) {
-        steps[step].push({ kind: "action", action: matchingAction });
-      }
-      continue;
-    }
-  }
-  return steps;
 }
 
 export function AgentActionsPanel({
@@ -99,7 +45,7 @@ export function AgentActionsPanel({
 
   const { actionProgress } = messageMetadata;
   const isActing = fullAgentMessage.status === "created";
-  const steps = groupContentsByStep(fullAgentMessage);
+  const steps = fullAgentMessage.parsedContents;
 
   return (
     <div className="flex h-full flex-col">
@@ -115,6 +61,9 @@ export function AgentActionsPanel({
         ) : (
           <div className="flex flex-col gap-4">
             {Object.entries(steps).map(([step, entries]) => {
+              if (!entries || entries.length === 0) {
+                return null;
+              }
               return (
                 <>
                   {step !== "1" && <Separator className="my-4" />}
@@ -122,9 +71,9 @@ export function AgentActionsPanel({
                     className="flex flex-col gap-4 duration-1000 animate-in fade-in"
                     key={step}
                   >
-                    <p className="self-center font-semibold text-muted-foreground dark:text-muted-foreground-night">
+                    <span className="text-size w-fit self-start text-lg font-semibold">
                       Step {step}
-                    </p>
+                    </span>
 
                     {entries.map((entry, idx) => {
                       if (entry.kind === "reasoning") {

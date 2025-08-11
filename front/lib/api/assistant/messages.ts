@@ -1,6 +1,7 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
+import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -39,6 +40,12 @@ import type {
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
+import {
+  isFunctionCallContent,
+  isReasoningContent,
+  isTextContent,
+} from "@app/types/assistant/agent_message_content";
+import type { ParsedContentItem } from "@app/types/assistant/conversation";
 
 export function getMaximalVersionAgentStepContent(
   agentStepContents: AgentStepContentModel[]
@@ -53,6 +60,80 @@ export function getMaximalVersionAgentStepContent(
   }, new Map<string, AgentStepContentModel>());
 
   return Array.from(maxVersionStepContents.values());
+}
+
+export async function generateParsedContents(
+  auth: Authenticator,
+  agentMessageId: ModelId,
+  actions: MCPActionType[],
+  agentConfiguration: LightAgentConfigurationType,
+  messageId: string
+): Promise<Record<number, Array<ParsedContentItem>>> {
+  const parsedContents: Record<number, Array<ParsedContentItem>> = {};
+
+  const agentStepContents = await AgentStepContentResource.fetchByAgentMessages(
+    auth,
+    {
+      agentMessageIds: [agentMessageId],
+      includeMCPActions: false,
+      latestVersionsOnly: true,
+    }
+  );
+
+  const contents = agentStepContents
+    .sort((a, b) => a.step - b.step || a.index - b.index)
+    .map((sc) => ({
+      step: sc.step,
+      content: sc.value,
+    }));
+
+  for (const c of contents) {
+    const step = c.step + 1; // Convert to 1-indexed for display
+    if (!parsedContents[step]) {
+      parsedContents[step] = [];
+    }
+
+    if (isReasoningContent(c.content)) {
+      const reasoning = c.content.value.reasoning;
+      if (reasoning && reasoning.trim()) {
+        parsedContents[step].push({ kind: "reasoning", content: reasoning });
+      }
+      continue;
+    }
+
+    if (isTextContent(c.content)) {
+      // Use the same parser approach as the existing code
+      const contentParser = new AgentMessageContentParser(
+        agentConfiguration,
+        messageId,
+        getDelimitersConfiguration({ agentConfiguration })
+      );
+      const parsedContent = await contentParser.parseContents([
+        c.content.value,
+      ]);
+
+      if (parsedContent.chainOfThought && parsedContent.chainOfThought.trim()) {
+        parsedContents[step].push({
+          kind: "reasoning",
+          content: parsedContent.chainOfThought,
+        });
+      }
+      continue;
+    }
+
+    if (isFunctionCallContent(c.content)) {
+      const functionCallId = c.content.value.id;
+      const matchingAction = actions.find(
+        (a) => a.functionCallId === functionCallId
+      );
+      if (matchingAction) {
+        parsedContents[step].push({ kind: "action", action: matchingAction });
+      }
+      continue;
+    }
+  }
+
+  return parsedContents;
 }
 
 async function batchRenderUserMessages(
@@ -128,7 +209,8 @@ async function batchRenderUserMessages(
 async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   messages: Message[],
-  viewType: V
+  viewType: V,
+  { withContentParsing }: { withContentParsing?: boolean } = {}
 ): Promise<
   Result<
     V extends "full"
@@ -273,6 +355,16 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         }
       })();
 
+      const parsedContents = withContentParsing
+        ? await generateParsedContents(
+            auth,
+            agentMessage.id,
+            actions,
+            agentConfiguration,
+            message.sId
+          )
+        : {};
+
       const m = {
         id: message.id,
         agentMessageId: agentMessage.id,
@@ -292,6 +384,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           content: c.content.value,
         })),
         contents: agentStepContents,
+        parsedContents,
         error,
         configuration: agentConfiguration,
         skipToolsValidation: agentMessage.skipToolsValidation,
@@ -464,7 +557,8 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   conversationId: string,
   messages: Message[],
-  viewType: V
+  viewType: V,
+  { withContentParsing }: { withContentParsing?: boolean } = {}
 ): Promise<
   Result<
     V extends "full" ? MessageWithRankType[] : LightMessageWithRankType[],
@@ -473,7 +567,7 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
 > {
   const [userMessages, agentMessagesRes, contentFragments] = await Promise.all([
     batchRenderUserMessages(auth, messages),
-    batchRenderAgentMessages(auth, messages, viewType),
+    batchRenderAgentMessages(auth, messages, viewType, { withContentParsing }),
     batchRenderContentFragment(auth, conversationId, messages),
   ]);
 
@@ -579,22 +673,9 @@ export async function fetchMessageInConversation(
         model: AgentMessage,
         as: "agentMessage",
         required: false,
-        include: [
-          {
-            model: AgentStepContentModel,
-            as: "agentStepContents",
-            required: false,
-          },
-        ],
       },
     ],
   });
-
-  if (message?.agentMessage && message.agentMessage.agentStepContents) {
-    message.agentMessage.agentStepContents = getMaximalVersionAgentStepContent(
-      message.agentMessage.agentStepContents
-    );
-  }
 
   return message;
 }

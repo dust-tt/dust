@@ -78,7 +78,8 @@ async function handler(
         auth,
         cId,
         [message],
-        "full"
+        "full",
+        { withContentParsing: true }
       );
 
       if (renderedMessages.isErr()) {
