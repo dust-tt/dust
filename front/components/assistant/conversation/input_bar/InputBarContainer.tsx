@@ -259,6 +259,12 @@ const InputBarContainer = ({
     <div
       id="InputBarContainer"
       className="relative flex flex-1 cursor-text flex-row sm:pt-0"
+      onClick={(e) => {
+        // If e.target is not a child of a div with class "tiptap", then focus on the editor
+        if (!(e.target instanceof HTMLElement && e.target.closest(".tiptap"))) {
+          editorService.focusEnd();
+        }
+      }}
     >
       <div className="flex flex-grow flex-col">
         <EditorContent
