@@ -23,7 +23,7 @@ const barVariants = cva(
       variant: {
         full: "s-fixed s-left-0 s-right-0 s-z-30 s-backdrop-blur s-border-border-dark/70 s-bg-background/80 dark:s-border-border-dark-night/70 dark:s-bg-background-night/80",
         default:
-          "s-relative s-z-10 s-border-structure-200 s-bg-structure-50 dark:s-border-structure-200-night dark:s-bg-structure-50-night",
+          "s-relative s-z-10 s-border-border s-bg-structure-50 dark:s-border-structure-200-night dark:s-bg-structure-50-night",
       },
     },
     compoundVariants: [
