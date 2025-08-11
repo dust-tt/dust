@@ -86,9 +86,20 @@ export function KnowledgeConfigurationSheet({
     return CAPABILITY_CONFIGS["search"];
   });
 
-  const handleClose = () => {
-    onClose();
-  };
+  // Custom open hook to only have debounce when we close.
+  // We use this value to unmount the Sheet Content, and we need
+  // debounce when closing to avoid messing up the closing animation.
+  // 300ms is vibe based.
+  const [debouncedOpen, setDebouncedOpen] = useState(() => open);
+  useEffect(() => {
+    if (open) {
+      setDebouncedOpen(true);
+    } else {
+      setTimeout(() => {
+        setDebouncedOpen(false);
+      }, 300);
+    }
+  }, [open]);
 
   const handleSave = (
     formData: CapabilityFormData,
@@ -163,10 +174,16 @@ export function KnowledgeConfigurationSheet({
     defaultValues,
   });
 
+  const handleClose = () => {
+    onClose();
+  };
+
+  const { reset } = formMethods;
+
   // Reset form when action changes (recommended pattern for dynamic data)
   useEffect(() => {
-    formMethods.reset(defaultValues);
-  }, [defaultValues, formMethods]);
+    reset(defaultValues);
+  }, [defaultValues, reset]);
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
@@ -185,15 +202,17 @@ export function KnowledgeConfigurationSheet({
   return (
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
       <FormProvider {...formMethods}>
-        <DataSourceBuilderProvider spaces={spaces}>
-          <KnowledgeConfigurationSheetContent
-            config={config}
-            setConfig={setConfig}
-            action={action}
-            onSave={handleSave}
-            isOpen={open}
-          />
-        </DataSourceBuilderProvider>
+        {debouncedOpen && (
+          <DataSourceBuilderProvider spaces={spaces}>
+            <KnowledgeConfigurationSheetContent
+              config={config}
+              setConfig={setConfig}
+              action={action}
+              onSave={handleSave}
+              isOpen={open}
+            />
+          </DataSourceBuilderProvider>
+        )}
       </FormProvider>
     </MultiPageSheet>
   );
