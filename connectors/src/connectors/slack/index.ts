@@ -19,7 +19,6 @@ import {
 import { getBotEnabled } from "@connectors/connectors/slack/bot";
 import {
   getChannels,
-  joinChannel,
   joinChannelWithRetries,
 } from "@connectors/connectors/slack/lib/channels";
 import { slackConfig } from "@connectors/connectors/slack/lib/config";
