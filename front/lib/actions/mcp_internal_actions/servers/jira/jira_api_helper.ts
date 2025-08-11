@@ -116,6 +116,95 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
   }
 }
 
+async function listUsersPage(
+  baseUrl: string,
+  accessToken: string,
+  startAt: number,
+  perPage: number
+): Promise<
+  Result<z.infer<typeof JiraUsersSearchResultSchema>, JiraErrorResult>
+> {
+  const params = new URLSearchParams({
+    startAt: String(startAt),
+    maxResults: String(perPage),
+  });
+
+  return jiraApiCall(
+    {
+      endpoint: `/rest/api/3/users/search?${params.toString()}`,
+      accessToken,
+    },
+    JiraUsersSearchResultSchema,
+    { baseUrl }
+  );
+}
+
+export async function listUsers(
+  baseUrl: string,
+  accessToken: string,
+  {
+    name,
+    maxResults,
+    startAt = 0,
+  }: {
+    name?: string;
+    maxResults: number;
+    startAt?: number;
+  }
+): Promise<
+  Result<
+    {
+      users: z.infer<typeof JiraUsersSearchResultSchema>;
+      nextStartAt: number | null;
+    },
+    JiraErrorResult
+  >
+> {
+  const perPage = 100;
+  let cursor = startAt;
+  const results: z.infer<typeof JiraUsersSearchResultSchema> = [];
+  const hasName = !!name && name.trim().length > 0;
+  const normalizedName = (name || "").trim().toLowerCase();
+
+  while (results.length < maxResults) {
+    const pageResult = await listUsersPage(
+      baseUrl,
+      accessToken,
+      cursor,
+      perPage
+    );
+    if (pageResult.isErr()) {
+      return pageResult;
+    }
+    const page = pageResult.value || [];
+    if (page.length === 0) {
+      return new Ok({ users: results, nextStartAt: null });
+    }
+
+    for (const u of page) {
+      if (u.accountType !== "atlassian") {
+        continue;
+      }
+      if (
+        !hasName ||
+        (u.displayName || "").toLowerCase().includes(normalizedName)
+      ) {
+        results.push(u);
+        if (results.length >= maxResults) {
+          break;
+        }
+      }
+    }
+
+    cursor += page.length;
+    if (page.length < perPage) {
+      return new Ok({ users: results, nextStartAt: null });
+    }
+  }
+
+  return new Ok({ users: results, nextStartAt: cursor });
+}
+
 export async function getIssue({
   baseUrl,
   accessToken,
@@ -665,38 +754,62 @@ export async function getIssueLinkTypes(
   return new Ok(result.value.issueLinkTypes);
 }
 
-export async function searchUsers(
+export async function searchUsersByEmailExact(
   baseUrl: string,
   accessToken: string,
-  query: string,
-  maxResults: number = SEARCH_USERS_MAX_RESULTS
+  emailAddress: string,
+  {
+    maxResults = SEARCH_USERS_MAX_RESULTS,
+    startAt = 0,
+  }: { maxResults?: number; startAt?: number } = {}
 ): Promise<
-  Result<z.infer<typeof JiraUsersSearchResultSchema>, JiraErrorResult>
-> {
-  const params = new URLSearchParams({
-    query,
-    maxResults: maxResults.toString(),
-  });
-
-  const result = await jiraApiCall(
+  Result<
     {
-      endpoint: `/rest/api/3/users/search?${params.toString()}`,
-      accessToken,
+      users: z.infer<typeof JiraUsersSearchResultSchema>;
+      nextStartAt: number | null;
     },
-    JiraUsersSearchResultSchema,
-    { baseUrl }
-  );
+    JiraErrorResult
+  >
+> {
+  const perPage = 100;
+  let cursor = startAt;
+  const matches: z.infer<typeof JiraUsersSearchResultSchema> = [];
+  const normalized = emailAddress.trim().toLowerCase();
 
-  if (result.isErr()) {
-    return result;
+  while (matches.length < maxResults) {
+    const pageResult = await listUsersPage(
+      baseUrl,
+      accessToken,
+      cursor,
+      perPage
+    );
+    if (pageResult.isErr()) {
+      return pageResult;
+    }
+    const page = pageResult.value || [];
+    if (page.length === 0) {
+      return new Ok({ users: matches, nextStartAt: null });
+    }
+
+    for (const u of page) {
+      if (
+        u.accountType === "atlassian" &&
+        (u.emailAddress || "").toLowerCase() === normalized
+      ) {
+        matches.push(u);
+        if (matches.length >= maxResults) {
+          return new Ok({ users: matches, nextStartAt: cursor + page.length });
+        }
+      }
+    }
+
+    cursor += page.length;
+    if (page.length < perPage) {
+      return new Ok({ users: matches, nextStartAt: null });
+    }
   }
 
-  // Filter to only include Atlassian users as per documentation https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-user-search/#api-rest-api-3-user-search-get
-  const filteredUsers = result.value.filter(
-    (user) => user.accountType === "atlassian"
-  );
-
-  return new Ok(filteredUsers);
+  return new Ok({ users: matches, nextStartAt: cursor });
 }
 
 export const withAuth = async ({
