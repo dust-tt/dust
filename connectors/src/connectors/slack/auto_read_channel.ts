@@ -18,7 +18,7 @@ import { SlackChannel } from "@connectors/lib/models/slack";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import type { SlackAutoReadPattern } from "@connectors/types";
+import type { ModelId, SlackAutoReadPattern } from "@connectors/types";
 import { INTERNAL_MIME_TYPES, withRetries } from "@connectors/types";
 
 export function findMatchingChannelPatterns(

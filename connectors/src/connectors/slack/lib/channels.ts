@@ -21,6 +21,7 @@ import type { ConnectorPermission, ModelId } from "@connectors/types";
 import {
   cacheWithRedis,
   INTERNAL_MIME_TYPES,
+  normalizeError,
   withRetries,
 } from "@connectors/types";
 
@@ -253,6 +254,36 @@ export async function joinChannel(
   }
 }
 
+export async function joinChannelWithRetries(
+  connectorId: ModelId,
+  slackChannelId: string
+): Promise<
+  Result<
+    { result: "ok" | "already_joined" | "is_archived"; channel: Channel },
+    Error
+  >
+> {
+  try {
+    return await withRetries(
+      logger,
+      async (connectorId: ModelId, slackChannelId: string) => {
+        const result = await joinChannel(connectorId, slackChannelId);
+        if (result.isErr()) {
+          // Retry on any error, not just rate limit errors
+          throw result.error; // This will trigger a retry
+        }
+        return result;
+      },
+      {
+        retries: 3,
+        delayBetweenRetriesMs: 10000, // 10 seconds between retries
+      }
+    )(connectorId, slackChannelId);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
 /**
  * Slack API rate limit TLDR:
  * Slack has different rate limits for different endpoints.
@@ -469,7 +500,10 @@ export async function migrateChannelsFromLegacyBotToNewBot(
     const joinRes = await withRetries(
       childLogger,
       async (slackBotConnectorId: ModelId, channelId: string) => {
-        const joinRes = await joinChannel(slackBotConnectorId, channelId);
+        const joinRes = await joinChannelWithRetries(
+          slackBotConnectorId,
+          channelId
+        );
         if (joinRes.isErr()) {
           throw joinRes.error;
         }
