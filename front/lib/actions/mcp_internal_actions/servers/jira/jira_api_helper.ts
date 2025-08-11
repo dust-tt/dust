@@ -27,6 +27,7 @@ import {
   ADFDocumentSchema,
   JiraCommentSchema,
   JiraCreateMetaSchema,
+  JiraFieldsSchema,
   JiraIssueLinkTypeSchema,
   JiraIssueSchema,
   JiraIssueTypeSchema,
@@ -510,12 +511,85 @@ export async function transitionIssue(
   return handleResults(result, null);
 }
 
+export async function getAllFields(
+  baseUrl: string,
+  accessToken: string
+): Promise<
+  Result<
+    Record<string, { schema?: { type?: string; custom?: string } }>,
+    JiraErrorResult
+  >
+> {
+  const result = await jiraApiCall(
+    {
+      endpoint: "/rest/api/3/field",
+      accessToken,
+    },
+    JiraFieldsSchema,
+    { baseUrl }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const fieldsMetadata: Record<
+    string,
+    { schema?: { type?: string; custom?: string } }
+  > = {};
+
+  for (const field of result.value) {
+    const fieldKey = field.key || field.id;
+    fieldsMetadata[fieldKey] = {
+      schema: field.schema
+        ? {
+            type: field.schema.type,
+            custom: field.schema.custom,
+          }
+        : undefined,
+    };
+  }
+
+  return new Ok(fieldsMetadata);
+}
+
+async function processFieldsWithMetadata(
+  baseUrl: string,
+  accessToken: string,
+  fields: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  let fieldsMetadata: Record<
+    string,
+    {
+      schema?: { type?: string; custom?: string };
+    }
+  > = {};
+
+  // Check if we have custom fields that might need metadata for accurate processing
+  const hasCustomFields = Object.keys(fields).some((key) =>
+    key.startsWith("customfield_")
+  );
+
+  if (hasCustomFields) {
+    const metadataResult = await getAllFields(baseUrl, accessToken);
+    if (metadataResult.isOk()) {
+      fieldsMetadata = metadataResult.value;
+    }
+  }
+
+  return processFieldsForJira(fields, fieldsMetadata);
+}
+
 export async function createIssue(
   baseUrl: string,
   accessToken: string,
   issueData: z.infer<typeof JiraCreateIssueRequestSchema>
 ): Promise<Result<z.infer<typeof JiraIssueSchema>, JiraErrorResult>> {
-  const processedFields = processFieldsForJira(issueData);
+  const processedFields = await processFieldsWithMetadata(
+    baseUrl,
+    accessToken,
+    issueData
+  );
 
   const result = await jiraApiCall(
     {
@@ -550,7 +624,11 @@ export async function updateIssue(
 ): Promise<
   Result<{ issueKey: string; browseUrl?: string } | null, JiraErrorResult>
 > {
-  const processedFields = processFieldsForJira(updateData);
+  const processedFields = await processFieldsWithMetadata(
+    baseUrl,
+    accessToken,
+    updateData
+  );
 
   const result = await jiraApiCall(
     {
