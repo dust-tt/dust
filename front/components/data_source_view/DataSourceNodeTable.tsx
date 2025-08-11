@@ -76,8 +76,17 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
     }
   }, [hasNextPage, isNodesLoading, loadMore]);
 
-  const nodeRows = useMemo(
-    () => getTableRows(childNodes, (node) => addNodeEntry(node)),
+  const nodeRows: NodeRowData[] = useMemo(
+    () =>
+      childNodes.map((node) => {
+        return {
+          id: node.internalId,
+          title: node.title,
+          icon: getVisualForDataSourceViewContentNode(node),
+          onClick: node.expandable ? () => addNodeEntry(node) : undefined,
+          rawNodeData: node,
+        };
+      }),
     [childNodes, addNodeEntry]
   );
 
@@ -172,30 +181,13 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
           <Spinner size="md" />
         </div>
       ) : (
-        <>
-          <ScrollableDataTable
-            data={nodeRows}
-            columns={columns}
-            getRowId={(row) => row.id}
-            onLoadMore={handleLoadMore}
-          />
-        </>
+        <ScrollableDataTable
+          data={nodeRows}
+          columns={columns}
+          getRowId={(row) => row.id}
+          onLoadMore={handleLoadMore}
+        />
       )}
     </div>
   );
-}
-
-function getTableRows(
-  nodes: DataSourceViewContentNode[],
-  onNodeClick: (node: DataSourceViewContentNode) => void
-): NodeRowData[] {
-  return nodes.map((node) => {
-    return {
-      id: node.internalId,
-      title: node.title,
-      icon: getVisualForDataSourceViewContentNode(node),
-      onClick: node.expandable ? () => onNodeClick(node) : undefined,
-      rawNodeData: node,
-    };
-  });
 }

@@ -15,7 +15,10 @@ import {
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
 import type { PostTagSearchBody } from "@app/pages/api/w/[wId]/data_source_views/tags/search";
-import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
+import type {
+  GetContentNodesOrChildrenRequestBodyType,
+  GetDataSourceViewContentNodes,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
 import type { GetDataSourceConfigurationResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/configuration";
 import type {
   ContentNodesViewType,
@@ -209,6 +212,18 @@ type FetchDataSourceViewContentNodesOptions = {
   swrOptions?: SWRConfiguration;
 };
 
+const makeURLDataSourceViewContentNodes = (
+  {
+    owner,
+    dataSourceView,
+  }: Required<
+    Pick<FetchDataSourceViewContentNodesOptions, "owner" | "dataSourceView">
+  >,
+  searchParams: URLSearchParams
+): string => {
+  return `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${searchParams}`;
+};
+
 export function useDataSourceViewContentNodes({
   owner,
   dataSourceView,
@@ -237,9 +252,8 @@ export function useDataSourceViewContentNodes({
   if (pagination?.limit) {
     params.append("limit", pagination.limit.toString());
   }
-
   const url = dataSourceView
-    ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
+    ? makeURLDataSourceViewContentNodes({ owner, dataSourceView }, params)
     : null;
 
   const body = {
@@ -249,7 +263,7 @@ export function useDataSourceViewContentNodes({
     sorting,
   };
 
-  const fetchKey = JSON.stringify([url + "?" + params.toString(), body]);
+  const fetchKey = JSON.stringify([url, body]);
 
   const { data, error, mutate, isValidating, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
@@ -295,16 +309,28 @@ export function useInfinitDataSourceViewContentNodes({
   sorting,
   swrOptions,
 }: FetchDataSourceViewContentNodesOptions) {
+  const body: GetContentNodesOrChildrenRequestBodyType = {
+    internalIds,
+    parentId,
+    viewType: viewType ?? "all",
+    sorting,
+  };
+
   const { data, error, isLoading, size, setSize, mutate, isValidating } =
-    useSWRInfiniteWithDefaults<string | null, GetDataSourceViewContentNodes>(
+    useSWRInfiniteWithDefaults<
+      [string, GetContentNodesOrChildrenRequestBodyType] | null,
+      GetDataSourceViewContentNodes
+    >(
       (_pageIndex, previousPageData) => {
         // If we reached the end, stop fetching
-        if (previousPageData && !previousPageData.nextPageCursor) {
+        if (
+          (previousPageData && !previousPageData.nextPageCursor) ||
+          !dataSourceView
+        ) {
           return null;
         }
 
         const params = new URLSearchParams();
-
         if (previousPageData?.nextPageCursor) {
           params.append("cursor", previousPageData.nextPageCursor);
         }
@@ -313,20 +339,13 @@ export function useInfinitDataSourceViewContentNodes({
           params.append("limit", pagination.limit.toString());
         }
 
-        return dataSourceView
-          ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
-          : null;
+        return [
+          makeURLDataSourceViewContentNodes({ owner, dataSourceView }, params),
+          body,
+        ];
       },
-      async (url) => {
-        if (!url) {
-          return undefined;
-        }
-
-        return fetcherWithBody([
-          url,
-          { internalIds, parentId, viewType, sorting },
-          "POST",
-        ]);
+      async ([url, body]) => {
+        return fetcherWithBody([url, body, "POST"]);
       },
       swrOptions
     );
