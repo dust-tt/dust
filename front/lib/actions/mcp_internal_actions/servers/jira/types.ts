@@ -185,6 +185,21 @@ export const JiraCreateMetaSchema = z.object({
   fields: z.array(z.unknown()), // JIRA returns an array of field definitions, not an object
 });
 
+export const JiraFieldSchema = z.object({
+  id: z.string(),
+  key: z.string().optional(),
+  name: z.string(),
+  custom: z.boolean(),
+  schema: z
+    .object({
+      type: z.string(),
+      custom: z.string().optional(),
+    })
+    .optional(),
+});
+
+export const JiraFieldsSchema = z.array(JiraFieldSchema);
+
 export const JiraSearchResultSchema = z.object({
   issues: z.array(
     z.object({
