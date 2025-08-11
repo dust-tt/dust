@@ -9,6 +9,7 @@ import {
   emptyArray,
   fetcher,
   fetcherWithBody,
+  useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -196,6 +197,18 @@ export function useMultipleDataSourceViewsContentNodes({
   );
 }
 
+type FetchDataSourceViewContentNodesOptions = {
+  owner: LightWorkspaceType;
+  dataSourceView?: DataSourceViewType;
+  internalIds?: string[];
+  parentId?: string;
+  pagination?: CursorPaginationParams;
+  viewType?: ContentNodesViewType;
+  sorting?: SortingParams;
+  disabled?: boolean;
+  swrOptions?: SWRConfiguration;
+};
+
 export function useDataSourceViewContentNodes({
   owner,
   dataSourceView,
@@ -206,17 +219,7 @@ export function useDataSourceViewContentNodes({
   sorting,
   disabled = false,
   swrOptions,
-}: {
-  owner: LightWorkspaceType;
-  dataSourceView?: DataSourceViewType;
-  internalIds?: string[];
-  parentId?: string;
-  pagination?: CursorPaginationParams;
-  viewType?: ContentNodesViewType;
-  sorting?: SortingParams;
-  disabled?: boolean;
-  swrOptions?: SWRConfiguration;
-}): {
+}: FetchDataSourceViewContentNodesOptions): {
   isNodesError: boolean;
   isNodesLoading: boolean;
   isNodesValidating: boolean;
@@ -279,6 +282,71 @@ export function useDataSourceViewContentNodes({
     totalNodesCount: data ? data.total : 0,
     totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
     nextPageCursor: data?.nextPageCursor || null,
+  };
+}
+
+export function useInfinitDataSourceViewContentNodes({
+  owner,
+  dataSourceView,
+  pagination,
+  internalIds,
+  parentId,
+  viewType,
+  sorting,
+  swrOptions,
+}: FetchDataSourceViewContentNodesOptions) {
+  const { data, error, isLoading, size, setSize, mutate, isValidating } =
+    useSWRInfiniteWithDefaults<string | null, GetDataSourceViewContentNodes>(
+      (_pageIndex, previousPageData) => {
+        // If we reached the end, stop fetching
+        if (previousPageData && !previousPageData.nextPageCursor) {
+          return null;
+        }
+
+        const params = new URLSearchParams();
+
+        if (previousPageData?.nextPageCursor) {
+          params.append("cursor", previousPageData.nextPageCursor);
+        }
+
+        if (pagination?.limit) {
+          params.append("limit", pagination.limit.toString());
+        }
+
+        return dataSourceView
+          ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
+          : null;
+      },
+      async (url) => {
+        if (!url) {
+          return undefined;
+        }
+
+        return fetcherWithBody([
+          url,
+          { internalIds, parentId, viewType, sorting },
+          "POST",
+        ]);
+      },
+      swrOptions
+    );
+
+  const nodes = data?.flatMap((page) => page.nodes) ?? emptyArray();
+  const lastPage = data?.[data.length - 1];
+  const hasNextPage =
+    lastPage?.nextPageCursor !== null && lastPage?.nextPageCursor !== undefined;
+
+  return {
+    isNodesLoading: isLoading,
+    isNodesValidating: isValidating,
+    nodesError: error,
+    nodes,
+    nextPageCursor: lastPage?.nextPageCursor || null,
+    hasNextPage,
+    loadMore: () => setSize(size + 1),
+    mutate,
+    totalNodesCount: lastPage?.total || 0,
+    totalNodesCountIsAccurate: lastPage?.totalIsAccurate || true,
   };
 }
 

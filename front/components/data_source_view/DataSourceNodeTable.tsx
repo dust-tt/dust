@@ -6,7 +6,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
@@ -14,9 +14,8 @@ import {
   findDataSourceViewFromNavigationHistory,
   getLatestNodeFromNavigationHistory,
 } from "@app/components/data_source_view/context/utils";
-import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
-import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import { useInfinitDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import type {
   ContentNodesViewType,
   DataSourceViewContentNode,
@@ -38,7 +37,6 @@ interface NodeRowData {
 
 export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
   const { owner } = useAgentBuilderContext();
-  const [nodeRows, setNodeRows] = useState<NodeRowData[]>([]);
   const {
     navigationHistory,
     selectNode,
@@ -56,17 +54,11 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
     findDataSourceViewFromNavigationHistory(navigationHistory);
 
   const {
-    cursorPagination,
-    resetPagination,
-    handlePaginationChange,
-    tablePagination,
-  } = useCursorPaginationForDataTable(PAGE_SIZE);
-
-  const {
     nodes: childNodes,
     isNodesLoading,
-    nextPageCursor,
-  } = useDataSourceViewContentNodes({
+    hasNextPage,
+    loadMore,
+  } = useInfinitDataSourceViewContentNodes({
     owner,
     dataSourceView:
       traversedNode?.dataSourceView ?? dataSourceView ?? undefined,
@@ -75,49 +67,19 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
         ? traversedNode.internalId
         : undefined,
     viewType,
-    pagination: { cursor: cursorPagination.cursor, limit: PAGE_SIZE },
+    pagination: { limit: PAGE_SIZE, cursor: null },
   });
 
-  useEffect(() => {
-    resetPagination();
-  }, [traversedNode, resetPagination]);
-
-  const handleLoadMore = useCallback(() => {
-    if (nextPageCursor && !isNodesLoading) {
-      handlePaginationChange(
-        {
-          pageIndex: tablePagination.pageIndex + 1,
-          pageSize: PAGE_SIZE,
-        },
-        nextPageCursor
-      );
+  const handleLoadMore = useCallback(async () => {
+    if (hasNextPage && !isNodesLoading) {
+      await loadMore();
     }
-  }, [
-    nextPageCursor,
-    isNodesLoading,
-    handlePaginationChange,
-    tablePagination.pageIndex,
-  ]);
+  }, [hasNextPage, isNodesLoading, loadMore]);
 
-  useEffect(() => {
-    if (childNodes.length > 0) {
-      // Handle child nodes
-      if (tablePagination.pageIndex === 0) {
-        const rows = getTableRows(childNodes, (node) => {
-          addNodeEntry(node);
-        });
-        setNodeRows(rows);
-      } else {
-        // Append new nodes when paginating
-        const newRows = getTableRows(childNodes, (node) => {
-          addNodeEntry(node);
-        });
-        setNodeRows((prev) => [...prev, ...newRows]);
-      }
-    } else {
-      setNodeRows([]);
-    }
-  }, [childNodes, tablePagination.pageIndex, addNodeEntry]);
+  const nodeRows = useMemo(
+    () => getTableRows(childNodes, (node) => addNodeEntry(node)),
+    [childNodes, addNodeEntry]
+  );
 
   const columns: ColumnDef<NodeRowData>[] = useMemo(
     () => [
