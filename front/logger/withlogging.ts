@@ -245,6 +245,11 @@ export function withGetServerSidePropsLogging<
   >
 ): CustomGetServerSideProps<T, any, any, RequireUserPrivilege> {
   return async (context, auth, session) => {
+    // Get the parent span inside the async function where it's active
+    const parentSpan = tracer.scope().active();
+    const resourceName = parentSpan
+      ? (parentSpan.context() as any)._tags?.["resource.name"]
+      : null;
     return tracer.trace("getServerSideProps", async (span) => {
       const now = new Date();
 
@@ -256,6 +261,8 @@ export function withGetServerSidePropsLogging<
         }
       }
       span.setTag("route", route);
+      span.setTag("resource.name", resourceName || route);
+      span.setTag("resource.source", resourceName ? "resourceName" : "route");
 
       try {
         const res = await getServerSideProps(context, auth, session);
