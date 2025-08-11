@@ -19,9 +19,6 @@ import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AgentBuilderEditors } from "@app/components/agent_builder/settings/AgentBuilderEditors";
-import { AgentBuilderScopeSelector } from "@app/components/agent_builder/settings/AgentBuilderScopeSelector";
-import { AgentBuilderSlackSelector } from "@app/components/agent_builder/settings/AgentBuilderSlackSelector";
 import { AvatarPicker } from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker";
 import {
   DROID_AVATAR_URLS,
@@ -370,21 +367,6 @@ function AgentPictureInput() {
   );
 }
 
-function AgentAccessAndPublication() {
-  return (
-    <div className="flex h-full flex-col space-y-2">
-      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
-        Access and Publication
-      </label>
-      <div className="flex flex-wrap items-center gap-2">
-        <AgentBuilderEditors />
-        <AgentBuilderScopeSelector />
-        <AgentBuilderSlackSelector />
-      </div>
-    </div>
-  );
-}
-
 interface AgentBuilderSettingsBlockProps {
   isSettingBlocksOpen: boolean;
 }
@@ -401,13 +383,13 @@ export function AgentBuilderSettingsBlock({
           isOpen={isOpen}
           className="flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 hover:bg-transparent focus:outline-none"
         >
-          <Page.H>Settings</Page.H>
+          <Page.H>Information</Page.H>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="flex flex-col gap-4 px-1 pt-4">
             <Page.P>
               <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Configure tags and access settings for your agent.
+                Set tags and general information about your agent.
               </span>
             </Page.P>
             <div className="space-y-4">
@@ -419,7 +401,6 @@ export function AgentBuilderSettingsBlock({
                 <AgentPictureInput />
               </div>
               <TagsSection />
-              <AgentAccessAndPublication />
             </div>
           </div>
         </CollapsibleContent>

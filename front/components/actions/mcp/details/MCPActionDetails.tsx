@@ -208,10 +208,8 @@ export function GenericActionDetails({
       defaultOpen={defaultOpen}
       visual={MCP_SPECIFICATION.cardIcon}
     >
-      {viewType === "conversation" ? (
-        <RenderToolItemMarkdown text={inputs} type="input" />
-      ) : (
-        <div className="flex flex-col gap-4 py-4 pl-6">
+      {viewType !== "conversation" && (
+        <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
           <CollapsibleComponent
             rootProps={{ defaultOpen: !action.generatedFiles.length }}
             triggerChildren={

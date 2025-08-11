@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import type { Logger } from "pino";
 
 import { makeMarkdownBlock } from "@connectors/connectors/slack/chat/blocks";
+import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -32,11 +33,21 @@ async function sendSlackMessage(
   }
 }
 
-const SLACK_DEPRECATED_BOT_ERROR_MESSAGE =
-  "Oops! That's the deprecated version of Dust. Mention @dust instead!";
-
 const REQUIRE_SLACK_BOT_INSTALLATION_MESSAGE =
   "Hi there! This version of Dust is deprecated. You can ask a Slack admin to install the new version of Dust on your Slack workspace!";
+
+async function makeSlackDeprecatedBotErrorMessage(
+  slackBotConnector: ConnectorResource
+) {
+  const slackClient = await getSlackClient(slackBotConnector.id);
+
+  const slackBotUserId = await getBotUserIdMemoized(
+    slackClient,
+    slackBotConnector.id
+  );
+
+  return `Oops! That's the deprecated version of Dust. Mention <@${slackBotUserId}> instead!`;
+}
 
 export async function handleDeprecatedChatBot(
   req: Request,
@@ -129,12 +140,14 @@ export async function handleDeprecatedChatBot(
       "New bot is enabled but they are using the deprecated bot mention."
     );
 
+    const message = await makeSlackDeprecatedBotErrorMessage(slackBotConnector);
+
     return sendSlackMessage(
       deprecatedSlackClient,
       {
         channel: slackChannel,
         threadTs: slackMessageTs,
-        message: SLACK_DEPRECATED_BOT_ERROR_MESSAGE,
+        message,
       },
       localLogger
     );
