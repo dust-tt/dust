@@ -33,7 +33,6 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -90,7 +89,6 @@ const InputBarContainer = ({
   onMCPServerViewDeselect,
   selectedMCPServerViewIds,
 }: InputBarContainerProps) => {
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const [isExpanded, setIsExpanded] = useState(false);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
@@ -279,7 +277,7 @@ const InputBarContainer = ({
           )}
         />
         <div className="flex items-center pb-3 pt-0">
-          {actions.includes("tools") && featureFlags.includes("jit_tools") && (
+          {actions.includes("tools") && (
             <ToolsPicker
               owner={owner}
               selectedMCPServerViewIds={selectedMCPServerViewIds}
