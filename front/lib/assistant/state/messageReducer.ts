@@ -145,8 +145,12 @@ export function messageReducer(
 
           break;
         case "chain_of_thought":
-          newState.message.chainOfThought =
-            (newState.message.chainOfThought || "") + event.text;
+          if (event.text === "\n\n") {
+            newState.message.chainOfThought = "";
+          } else {
+            newState.message.chainOfThought =
+              (newState.message.chainOfThought || "") + event.text;
+          }
           break;
         default:
           assertNever(event);
