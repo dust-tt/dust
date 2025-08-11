@@ -62,6 +62,16 @@ export const Basic: Story = {
   },
 };
 
+export const MiniChip: Story = {
+  args: {
+    label: "label",
+    size: "mini",
+    color: "primary",
+    isBusy: false,
+    onRemove: undefined,
+  },
+};
+
 export const ThinkingChip = () => (
   <Chip
     size="sm"
@@ -73,6 +83,12 @@ export const ThinkingChip = () => (
 
 export const RemovableChip = () => (
   <div className="s-space-x-2">
+    <Chip
+      size="mini"
+      color="golden"
+      label="Remove me"
+      onRemove={() => alert("Removed")}
+    />
     <Chip
       size="xs"
       color="golden"
@@ -90,6 +106,11 @@ export const RemovableChip = () => (
 
 export const AllColors = () => (
   <div className="s-flex s-flex-col s-gap-4">
+    <div className="s-flex s-flex-wrap s-gap-2">
+      <Chip size="mini" color="primary" label="Primary" />
+      <Chip size="xs" color="primary" label="Primary" />
+      <Chip size="sm" color="primary" label="Primary" />
+    </div>
     <div className="s-flex s-flex-wrap s-gap-2">
       <Chip size="sm" color="primary" label="Primary" />
       <Chip size="sm" color="highlight" label="Highlight" />
