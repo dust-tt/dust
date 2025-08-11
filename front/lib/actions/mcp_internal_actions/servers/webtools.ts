@@ -127,17 +127,9 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
     {
       urls: z.string().array().describe("List of urls to browse"),
       format: z
-        .enum(["markdown", "html", "extract"])
+        .enum(["markdown", "html"])
         .optional()
-        .describe(
-          "Format to return content: 'markdown' (default), 'html', or 'extract' (structured data)."
-        ),
-      extractPrompt: z
-        .string()
-        .optional()
-        .describe(
-          "Natural-language prompt guiding the extraction when format is 'extract'. Required and should only be used when format is 'extract'."
-        ),
+        .describe("Format to return content: 'markdown' (default) or 'html'."),
       screenshotMode: z
         .enum(["none", "viewport", "fullPage"])
         .optional()
@@ -149,14 +141,8 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         .optional()
         .describe("If true, also retrieve outgoing links from the page."),
     },
-    async ({
-      urls,
-      format = "markdown",
-      extractPrompt,
-      screenshotMode = "none",
-      links,
-    }) => {
-      const results = await browseUrls(urls, 8, format, extractPrompt, {
+    async ({ urls, format = "markdown", screenshotMode = "none", links }) => {
+      const results = await browseUrls(urls, 8, format, {
         screenshotMode,
         links,
       });
@@ -182,18 +168,12 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         const {
           markdown,
           html,
-          extract,
           title,
           description,
           screenshots: allScreenshots,
           links: outLinks,
         } = result;
-        const contentText =
-          format === "html"
-            ? html
-            : format === "extract"
-              ? JSON.stringify(extract, null, 2)
-              : markdown;
+        const contentText = format === "html" ? html : markdown;
 
         const tokensRes = await tokenCountForTexts([contentText ?? ""], {
           providerId: "openai",
@@ -241,11 +221,6 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         // Include HTML content when format is HTML
         if (format === "html" && html) {
           browseResult.html = html.slice(0, maxCharacters);
-        }
-
-        // Include extracted data when format is extract
-        if (format === "extract" && extract) {
-          browseResult.extract = extract;
         }
 
         toolContent.push({

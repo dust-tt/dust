@@ -1,4 +1,8 @@
-import type { ScrapeResponse } from "@mendable/firecrawl-js";
+import type {
+  ErrorResponse,
+  ScrapeParams,
+  ScrapeResponse,
+} from "@mendable/firecrawl-js";
 import FirecrawlApp from "@mendable/firecrawl-js";
 
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -6,6 +10,9 @@ import logger from "@app/logger/logger";
 import { dustManagedCredentials, errorToString } from "@app/types";
 
 const credentials = dustManagedCredentials();
+
+// Firecrawl scrape options we use locally: require formats only
+type ScrapeOptionsMinimal = Required<Pick<ScrapeParams, "formats">>;
 
 type BrowserScrapeMetadata = {
   status: number;
@@ -15,7 +22,6 @@ type BrowserScrapeMetadata = {
 export type BrowseScrapeSuccessResponse = BrowserScrapeMetadata & {
   markdown?: string;
   html?: string;
-  extract?: unknown;
   screenshots?: string[];
   links?: string[];
   title: string | undefined;
@@ -29,7 +35,7 @@ export type BrowseScrapeErrorResponse = BrowserScrapeMetadata & {
 export function isBrowseScrapeSuccessResponse(
   response: BrowseScrapeSuccessResponse | BrowseScrapeErrorResponse
 ): response is BrowseScrapeSuccessResponse {
-  return "markdown" in response || "html" in response || "extract" in response;
+  return "markdown" in response || "html" in response;
 }
 
 /**
@@ -37,8 +43,7 @@ export function isBrowseScrapeSuccessResponse(
  */
 export const browseUrl = async (
   url: string,
-  format: "markdown" | "html" | "extract" = "markdown",
-  extractPrompt?: string,
+  format: "markdown" | "html" = "markdown",
   options?: {
     screenshotMode?: "none" | "viewport" | "fullPage";
     links?: boolean;
@@ -54,53 +59,14 @@ export const browseUrl = async (
     apiKey: credentials.FIRECRAWL_API_KEY,
   });
 
-  type FirecrawlFormat =
-    | "markdown"
-    | "rawHtml"
-    | "links"
-    | "screenshot"
-    | "screenshot@fullPage"
-    | "extract";
-
-  interface ScrapeOptionsMinimal {
-    formats?: FirecrawlFormat[];
-    extract?: { prompt: string };
-  }
-
-  type ExtendedScrapeResponse = ScrapeResponse & {
-    markdown?: string;
-    rawHtml?: string;
-    extract?: unknown;
-    screenshot?: string;
-    links?: string[];
-    metadata?: { statusCode?: number; title?: string; description?: string };
-    actions?: unknown;
-    error?: string;
-    success?: boolean;
-  };
-
-  let scrapeResult: ScrapeResponse;
+  let scrapeResult: ScrapeResponse | ErrorResponse;
   try {
-    const scrapeOptions: ScrapeOptionsMinimal = {};
-    const formats: FirecrawlFormat[] = [];
+    const formats: ScrapeOptionsMinimal["formats"] = [];
 
-    if (format === "extract") {
-      if (!extractPrompt) {
-        return {
-          error:
-            "When format is 'extract', provide extractPrompt (natural language).",
-          status: 400,
-          url: url,
-        };
-      }
-      formats.push("extract");
-      scrapeOptions.extract = { prompt: extractPrompt };
+    if (format === "html") {
+      formats.push("rawHtml");
     } else {
-      if (format === "html") {
-        formats.push("rawHtml");
-      } else {
-        formats.push("markdown");
-      }
+      formats.push("markdown");
     }
 
     if (options?.screenshotMode && options.screenshotMode !== "none") {
@@ -116,9 +82,9 @@ export const browseUrl = async (
       formats.push("links");
     }
 
-    scrapeOptions.formats = formats;
+    const scrapeOptions: ScrapeOptionsMinimal = { formats };
 
-    scrapeResult = (await fc.scrapeUrl(url, scrapeOptions)) as ScrapeResponse;
+    scrapeResult = await fc.scrapeUrl(url, scrapeOptions);
   } catch (error) {
     logger.error(
       {
@@ -141,112 +107,69 @@ export const browseUrl = async (
         url,
         format,
         error: errorMessage,
-        metadata: scrapeResult.metadata,
       },
       "[Firecrawl] Scrape request failed"
     );
     return {
       error: errorMessage,
-      status: scrapeResult.metadata?.statusCode || 500,
+      status: 500,
       url: url,
     };
   }
 
-  const extended = scrapeResult as ExtendedScrapeResponse;
   let actionsScreenshots: string[] | undefined = undefined;
   if (
-    extended.actions &&
-    typeof extended.actions === "object" &&
-    "screenshots" in (extended.actions as Record<string, unknown>)
+    scrapeResult.actions &&
+    typeof scrapeResult.actions === "object" &&
+    "screenshots" in (scrapeResult.actions as Record<string, unknown>)
   ) {
-    const v = (extended.actions as { screenshots?: unknown }).screenshots;
+    const v = (scrapeResult.actions as { screenshots?: unknown }).screenshots;
     if (Array.isArray(v) && v.every((x) => typeof x === "string")) {
       actionsScreenshots = v as string[];
     }
   }
 
-  if (
-    format === "extract" &&
-    (scrapeResult as ExtendedScrapeResponse).extract
-  ) {
-    const sr = scrapeResult as ExtendedScrapeResponse;
+  if (format === "html" && scrapeResult.rawHtml) {
     const screenshots: string[] = [];
-    if (typeof sr.screenshot === "string") {
-      screenshots.push(sr.screenshot);
+    if (typeof scrapeResult.screenshot === "string") {
+      screenshots.push(scrapeResult.screenshot);
     }
     if (Array.isArray(actionsScreenshots)) {
       screenshots.push(...actionsScreenshots);
     }
     return {
-      extract: sr.extract,
+      html: scrapeResult.rawHtml,
       screenshots: screenshots.length ? screenshots : undefined,
-      links: sr.links,
-      title: sr.metadata?.title,
-      description: sr.metadata?.description,
-      status: sr.metadata?.statusCode ?? 200,
-      url: url,
-    };
-  } else if (format === "extract" && !scrapeResult.extract) {
-    logger.error(
-      {
-        url,
-        scrapeResult: JSON.stringify(scrapeResult),
-      },
-      "[Firecrawl] Extract format requested but no extract data returned"
-    );
-    return {
-      error:
-        "Extract format requested but no extract data was returned from Firecrawl",
-      status: scrapeResult.metadata?.statusCode ?? 500,
-      url: url,
-    };
-  } else if (
-    format === "html" &&
-    (scrapeResult as ExtendedScrapeResponse).rawHtml
-  ) {
-    const sr = scrapeResult as ExtendedScrapeResponse;
-    const screenshots: string[] = [];
-    if (typeof sr.screenshot === "string") {
-      screenshots.push(sr.screenshot);
-    }
-    if (Array.isArray(actionsScreenshots)) {
-      screenshots.push(...actionsScreenshots);
-    }
-    return {
-      html: sr.rawHtml,
-      screenshots: screenshots.length ? screenshots : undefined,
-      links: sr.links,
-      title: sr.metadata?.title,
-      description: sr.metadata?.description,
-      status: sr.metadata?.statusCode ?? 200,
+      links: scrapeResult.links,
+      title: scrapeResult.metadata?.title,
+      description: scrapeResult.metadata?.description,
+      status: scrapeResult.metadata?.statusCode ?? 200,
       url: url,
     };
   } else if (format === "markdown" && scrapeResult.markdown) {
-    const sr = scrapeResult as ExtendedScrapeResponse;
     const screenshots: string[] = [];
-    if (typeof sr.screenshot === "string") {
-      screenshots.push(sr.screenshot);
+    if (typeof scrapeResult.screenshot === "string") {
+      screenshots.push(scrapeResult.screenshot);
     }
     if (Array.isArray(actionsScreenshots)) {
       screenshots.push(...actionsScreenshots);
     }
     return {
-      markdown: sr.markdown,
+      markdown: scrapeResult.markdown,
       screenshots: screenshots.length ? screenshots : undefined,
-      links: sr.links,
-      title: sr.metadata?.title,
-      description: sr.metadata?.description,
-      status: sr.metadata?.statusCode ?? 200,
+      links: scrapeResult.links,
+      title: scrapeResult.metadata?.title,
+      description: scrapeResult.metadata?.description,
+      status: scrapeResult.metadata?.statusCode ?? 200,
       url: url,
     };
   }
 
   // If no primary format matched, but we asked for screenshots, still return them if present
   if (options?.screenshotMode && options.screenshotMode !== "none") {
-    const sr = scrapeResult as ExtendedScrapeResponse;
     const screenshots: string[] = [];
-    if (typeof sr.screenshot === "string") {
-      screenshots.push(sr.screenshot);
+    if (typeof scrapeResult.screenshot === "string") {
+      screenshots.push(scrapeResult.screenshot);
     }
     if (Array.isArray(actionsScreenshots)) {
       screenshots.push(...actionsScreenshots);
@@ -254,9 +177,9 @@ export const browseUrl = async (
     if (screenshots.length) {
       return {
         screenshots,
-        title: sr.metadata?.title,
-        description: sr.metadata?.description,
-        status: sr.metadata?.statusCode ?? 200,
+        title: scrapeResult.metadata?.title,
+        description: scrapeResult.metadata?.description,
+        status: scrapeResult.metadata?.statusCode ?? 200,
         url,
       };
     }
@@ -275,8 +198,7 @@ export const browseUrl = async (
 export const browseUrls = async (
   urls: string[],
   chunkSize = 8,
-  format: "markdown" | "html" | "extract" = "markdown",
-  extractPrompt?: string,
+  format: "markdown" | "html" = "markdown",
   options?: {
     screenshotMode?: "none" | "viewport" | "fullPage";
     links?: boolean;
@@ -285,7 +207,7 @@ export const browseUrls = async (
   const results = await concurrentExecutor(
     urls,
     async (url) => {
-      return browseUrl(url, format, extractPrompt, options);
+      return browseUrl(url, format, options);
     },
     { concurrency: chunkSize }
   );
