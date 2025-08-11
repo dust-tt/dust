@@ -179,7 +179,7 @@ interface SearchResultProps {
   defaultOpen: boolean;
   visual: React.ComponentType<{ className?: string }>;
   actionOutput: CallToolResult["content"] | null;
-  viewType?: "conversation" | "sidebar";
+  viewType: "conversation" | "sidebar";
 }
 
 export function SearchResultDetails({
