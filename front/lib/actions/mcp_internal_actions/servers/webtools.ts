@@ -1,5 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import {
@@ -125,74 +126,209 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
     "A tool to browse websites, you can provide a list of urls to browse all at once.",
     {
       urls: z.string().array().describe("List of urls to browse"),
+      format: z
+        .enum(["markdown", "html", "extract"])
+        .optional()
+        .describe(
+          "Format to return content: 'markdown' (default), 'html', or 'extract' (structured data)."
+        ),
+      extractPrompt: z
+        .string()
+        .optional()
+        .describe(
+          "Natural-language prompt guiding the extraction when format is 'extract'. Required and should only be used when format is 'extract'."
+        ),
+      screenshotMode: z
+        .enum(["none", "viewport", "fullPage"])
+        .optional()
+        .describe(
+          "Screenshot mode: 'none' (default), 'viewport', or 'fullPage'."
+        ),
+      links: z
+        .boolean()
+        .optional()
+        .describe("If true, also retrieve outgoing links from the page."),
     },
-    async ({ urls }) => {
-      const results = await browseUrls(urls);
+    async ({
+      urls,
+      format = "markdown",
+      extractPrompt,
+      screenshotMode = "none",
+      links,
+    }) => {
+      const results = await browseUrls(urls, 8, format, extractPrompt, {
+        screenshotMode,
+        links,
+      });
 
-      const content: BrowseResultResourceType[] = [];
+      const toolContent: CallToolResult["content"] = [];
       for (const result of results) {
         if (!isBrowseScrapeSuccessResponse(result)) {
-          content.push({
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-            requestedUrl: result.url,
-            uri: result.url,
-            text: "There was an error while browsing the website.",
-            responseCode: result.status.toString(),
-            errorMessage: result.error,
+          const errText = `Browse error (${result.status}) for ${result.url}: ${result.error}`;
+          toolContent.push({
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+              requestedUrl: result.url,
+              uri: result.url,
+              text: errText,
+              responseCode: result.status.toString(),
+              errorMessage: result.error,
+            },
           });
           continue;
         }
 
-        const { markdown, title, description } = result;
+        const {
+          markdown,
+          html,
+          extract,
+          title,
+          description,
+          screenshots: allScreenshots,
+          links: outLinks,
+        } = result;
+        const contentText =
+          format === "html"
+            ? html
+            : format === "extract"
+              ? JSON.stringify(extract, null, 2)
+              : markdown;
 
-        const tokensRes = await tokenCountForTexts([markdown], {
+        const tokensRes = await tokenCountForTexts([contentText ?? ""], {
           providerId: "openai",
           modelId: "gpt-4o",
         });
 
         if (tokensRes.isErr()) {
-          content.push({
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-            requestedUrl: result.url,
-            uri: result.url,
-            text: "There was an error while browsing the website.",
-            title: title,
-            description: description,
-            responseCode: result.status.toString(),
-            errorMessage: tokensRes.error.message,
+          toolContent.push({
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+              requestedUrl: result.url,
+              uri: result.url,
+              text: "There was an error while browsing the website.",
+              title: title,
+              description: description,
+              responseCode: result.status.toString(),
+              errorMessage: tokensRes.error.message,
+            },
           });
           continue;
         }
 
         const tokensCount = tokensRes.value[0];
-        const avgCharactersPerToken = (markdown?.length ?? 0) / tokensCount;
+        const avgCharactersPerToken = (contentText?.length ?? 0) / tokensCount;
         const maxCharacters = BROWSE_MAX_TOKENS_LIMIT * avgCharactersPerToken;
-        let truncatedMarkdown = markdown?.slice(0, maxCharacters);
+        let truncatedContent = contentText?.slice(0, maxCharacters);
 
-        if (truncatedMarkdown?.length !== markdown?.length) {
-          truncatedMarkdown += `\n\n[...output truncated to ${BROWSE_MAX_TOKENS_LIMIT} tokens]`;
+        if (truncatedContent?.length !== contentText?.length) {
+          truncatedContent += `\n\n[...output truncated to ${BROWSE_MAX_TOKENS_LIMIT} tokens]`;
         }
 
-        content.push({
+        const browseResult: BrowseResultResourceType = {
           mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
           requestedUrl: result.url,
           uri: result.url,
           text:
-            truncatedMarkdown ??
+            truncatedContent ??
             "There was an error while browsing the website.",
           title: title,
           description: description,
           responseCode: result.status.toString(),
+        };
+
+        // Include HTML content when format is HTML
+        if (format === "html" && html) {
+          browseResult.html = html.slice(0, maxCharacters);
+        }
+
+        // Include extracted data when format is extract
+        if (format === "extract" && extract) {
+          browseResult.extract = extract;
+        }
+
+        toolContent.push({
+          type: "resource" as const,
+          resource: browseResult,
         });
+
+        if (Array.isArray(outLinks) && outLinks.length > 0) {
+          toolContent.push({
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+              requestedUrl: result.url,
+              uri: result.url,
+              text: `Links (first 50):\n${outLinks.slice(0, 50).join("\n")}`,
+              title,
+              description,
+              responseCode: result.status.toString(),
+            },
+          });
+        }
+
+        if (Array.isArray(allScreenshots) && allScreenshots.length > 0) {
+          for (const raw of allScreenshots) {
+            const isUrl = /^https?:\/\//i.test(raw);
+            let base64 = raw;
+            if (raw.startsWith("data:image")) {
+              base64 = raw.split(",")[1] ?? "";
+            }
+            base64 = base64.replace(/\s+/g, "");
+            const isValidBase64 =
+              base64.length > 0 &&
+              base64.length % 4 === 0 &&
+              /^[A-Za-z0-9+/]+={0,2}$/.test(base64);
+
+            if (isValidBase64) {
+              toolContent.push({
+                type: "image",
+                mimeType: "image/png",
+                data: base64,
+              });
+            } else if (isUrl) {
+              toolContent.push({
+                type: "resource",
+                resource: {
+                  mimeType: "image/png",
+                  uri: raw,
+                  text: "Screenshot (remote URL)",
+                },
+              });
+            } else if (screenshotMode !== "none") {
+              toolContent.push({
+                type: "resource",
+                resource: {
+                  mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+                  requestedUrl: result.url,
+                  uri: result.url,
+                  text: "Screenshot returned but not valid base64 or URL; skipping upload.",
+                  title,
+                  description,
+                  responseCode: result.status.toString(),
+                },
+              });
+            }
+          }
+        } else if (screenshotMode !== "none") {
+          // If screenshot was requested but not returned, surface a diagnostic message
+          toolContent.push({
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+              requestedUrl: result.url,
+              uri: result.url,
+              text: `Screenshot requested (mode=${screenshotMode}) but none was returned by Firecrawl.`,
+              title,
+              description,
+              responseCode: result.status.toString(),
+            },
+          });
+        }
       }
 
-      return {
-        isError: false,
-        content: content.map((result) => ({
-          type: "resource" as const,
-          resource: result,
-        })),
-      };
+      return { isError: false, content: toolContent };
     }
   );
 

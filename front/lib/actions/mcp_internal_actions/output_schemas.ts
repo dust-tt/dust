@@ -452,6 +452,8 @@ export const BrowseResultResourceSchema = z.object({
   requestedUrl: z.string(),
   uri: z.string(), // Browsed url, might differ from the requested url
   text: z.string(),
+  html: z.string().optional(),
+  extract: z.any().optional(),
   title: z.string().optional(),
   description: z.string().optional(),
   responseCode: z.string(),
