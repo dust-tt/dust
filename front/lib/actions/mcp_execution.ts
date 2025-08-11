@@ -331,6 +331,18 @@ export async function processToolResults(
             // who uploaded it to its own conversation but not the main agent's.
             if (file) {
               await uploadFileToConversationDataSource({ auth, file });
+            } else {
+              localLogger.error(
+                { fileId: block.resource.fileId },
+                "Error creating conversation data source for file"
+              );
+              return {
+                content: {
+                  type: "text",
+                  text: "Failed to upload file",
+                },
+                file: null,
+              };
             }
             return {
               content: {
