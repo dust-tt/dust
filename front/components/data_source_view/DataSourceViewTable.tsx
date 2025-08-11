@@ -16,6 +16,8 @@ import {
   findCategoryFromNavigationHistory,
   findSpaceFromNavigationHistory,
 } from "@app/components/data_source_view/context/utils";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import type { DataSourceViewType } from "@app/types";
@@ -42,6 +44,7 @@ export function DataSourceViewTable() {
     setDataSourceViewEntry,
   } = useDataSourceBuilderContext();
   const space = findSpaceFromNavigationHistory(navigationHistory);
+  const { isDark } = useTheme();
 
   const selectedCategory = findCategoryFromNavigationHistory(navigationHistory);
   const { spaceDataSourceViews, isSpaceDataSourceViewsLoading } =
@@ -139,7 +142,11 @@ export function DataSourceViewTable() {
     onClick: () => setDataSourceViewEntry(dsv),
     dataSourceView: dsv,
     icon: dsv.dataSource.connectorProvider
-      ? CATEGORY_DETAILS[dsv.category].icon
+      ? getConnectorProviderLogoWithFallback({
+          provider: dsv.dataSource.connectorProvider,
+          isDark,
+          fallback: CATEGORY_DETAILS[dsv.category].icon,
+        })
       : FolderIcon,
   }));
 
