@@ -1,4 +1,4 @@
-import { DashIcon, Markdown, PlusIcon, Separator } from "@dust-tt/sparkle";
+import { DashIcon, PlusIcon, Separator } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 
 import { H2 } from "@app/components/home/ContentComponents";

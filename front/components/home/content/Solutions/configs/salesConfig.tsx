@@ -4,26 +4,6 @@ import {
   RocketIcon,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
-import {
-  ArrowRightIcon,
-  ChartBarIcon,
-  CloudArrowUpIcon,
-  CogIcon,
-  CommandLineIcon,
-  CpuChipIcon,
-  DocumentTextIcon,
-  GlobeAltIcon,
-  LockClosedIcon,
-  MagnifyingGlassIcon,
-  MapIcon,
-  MegaphoneIcon,
-  NoSymbolIcon,
-  PaintBrushIcon,
-  PuzzlePieceIcon,
-  RocketLaunchIcon,
-  ShieldCheckIcon,
-  SparklesIcon,
-} from "@heroicons/react/24/outline";
 
 import type {
   BenefitsProps,
