@@ -23,32 +23,36 @@ import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MC
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { MCPActionType } from "@app/lib/actions/mcp";
-import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  EXECUTE_DATABASE_QUERY_TOOL_NAME,
+  FILESYSTEM_CAT_TOOL_NAME,
+  FILESYSTEM_FIND_TOOL_NAME,
+  FILESYSTEM_LIST_TOOL_NAME,
+  FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+  GET_DATABASE_SCHEMA_TOOL_NAME,
+  INCLUDE_TOOL_NAME,
+  isInternalMCPServerOfName,
+  PROCESS_TOOL_NAME,
+  QUERY_TABLES_TOOL_NAME,
+  SEARCH_TOOL_NAME,
+  WEBBROWSER_TOOL_NAME,
+  WEBSEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getOutputText,
-  isAgentCreationResultResourceType,
-  isBrowseResultResourceType,
-  isDataSourceNodeContentType,
-  isDataSourceNodeListType,
-  isExecuteTablesQueryMarkerResourceType,
-  isExtractResultResourceType,
-  isFilesystemPathType,
-  isGetDatabaseSchemaMarkerResourceType,
-  isIncludeResultResourceType,
-  isReasoningSuccessOutput,
   isResourceContentWithText,
-  isRunAgentProgressOutput,
-  isRunAgentResultResourceType,
-  isSearchResultResourceType,
-  isSqlQueryOutput,
   isTextContent,
-  isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
-import { isSupportedImageContentType } from "@app/types";
+import {
+  asDisplayName,
+  isSupportedImageContentType,
+  parseTimeFrame,
+} from "@app/types";
 
 export interface MCPActionDetailsProps {
   action: MCPActionType;
@@ -56,107 +60,139 @@ export interface MCPActionDetailsProps {
   lastNotification: ProgressNotificationContentType | null;
   defaultOpen: boolean;
   messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
+  viewType?: "conversation" | "sidebar";
 }
 
 export function MCPActionDetails(props: MCPActionDetailsProps) {
-  const isSearch = props.action.output?.some(isSearchResultResourceType);
-  const isInclude = props.action.output?.some(isIncludeResultResourceType);
-  const isWebsearch = props.action.output?.some(isWebsearchResultResourceType);
-  const isBrowse = props.action.output?.some(isBrowseResultResourceType);
-  const isTablesQuery =
-    props.action.output?.some(isSqlQueryOutput) ||
-    props.action.output?.some(isExecuteTablesQueryMarkerResourceType);
-  const isGetDatabaseSchema = props.action.output?.some(
-    isGetDatabaseSchemaMarkerResourceType
-  );
+  const {
+    action: { output, functionCallName, mcpServerId, params },
+    defaultOpen,
+    viewType,
+  } = props;
 
-  const isExtract = props.action.output?.some(isExtractResultResourceType);
-  const isRunAgent =
-    props.action.output?.some(isRunAgentResultResourceType) ||
-    isRunAgentProgressOutput(props.lastNotification?.data.output);
-  const isAgentCreation = props.action.output?.some(
-    isAgentCreationResultResourceType
-  );
+  const parts = functionCallName ? functionCallName.split("__") : [];
+  const toolName = parts[parts.length - 1];
 
-  // TODO(mcp): rationalize the display of results for MCP to remove the need for specific checks.
-  // Hack to find out whether the output comes from the reasoning tool, links back to the TODO above.
-  const isReasoning = props.action.output?.some(isReasoningSuccessOutput);
-  const isDataSourceFileSystem = props.action.output?.some(
-    isDataSourceNodeListType
-  );
+  if (isInternalMCPServerOfName(mcpServerId, "search")) {
+    if (toolName === SEARCH_TOOL_NAME) {
+      const timeFrame = parseTimeFrame(params.relativeTimeFrame as string);
+      const queryResource = makeQueryResource({
+        query: params.query as string,
+        timeFrame: timeFrame,
+        tagsIn: params.tagsIn as string[],
+        tagsNot: params.tagsNot as string[],
+        nodeIds: params.nodeIds as string[],
+      });
 
-  const isCat = props.action.output?.some(isDataSourceNodeContentType);
-  const isFilesystemPath = props.action.output?.some(isFilesystemPathType);
+      return (
+        <SearchResultDetails
+          viewType={viewType}
+          defaultQuery={queryResource.text}
+          actionName="Search data"
+          actionOutput={output}
+          defaultOpen={defaultOpen}
+          visual={MagnifyingGlassIcon}
+        />
+      );
+    }
 
-  if (isSearch) {
-    const fcName = props.action.functionCallName;
-    const isSearchTool = fcName?.endsWith(SEARCH_TOOL_NAME);
-    const actionName = fcName && !isSearchTool ? fcName : "Search data";
-    const visual = isSearchTool
-      ? MagnifyingGlassIcon
-      : MCP_SPECIFICATION.cardIcon;
-    return (
-      <SearchResultDetails
-        actionName={actionName}
-        actionOutput={props.action.output}
-        defaultOpen={props.defaultOpen}
-        visual={visual}
-      />
-    );
-  } else if (isInclude) {
-    return (
-      <SearchResultDetails
-        actionName="Include data"
-        actionOutput={props.action.output}
-        defaultOpen={props.defaultOpen}
-        visual={ClockIcon}
-      />
-    );
-  } else if (isWebsearch) {
-    return (
-      <SearchResultDetails
-        actionName="Web search"
-        actionOutput={props.action.output}
-        defaultOpen={props.defaultOpen}
-        visual={GlobeAltIcon}
-      />
-    );
-  } else if (isBrowse) {
-    return <MCPBrowseActionDetails {...props} />;
-  } else if (isGetDatabaseSchema) {
-    return <MCPGetDatabaseSchemaActionDetails {...props} />;
-  } else if (isTablesQuery) {
-    return <MCPTablesQueryActionDetails {...props} />;
-  } else if (isReasoning) {
-    return <MCPReasoningActionDetails {...props} />;
-  } else if (isDataSourceFileSystem) {
-    return (
-      <SearchResultDetails
-        actionName="Browse data sources"
-        actionOutput={props.action.output}
-        defaultOpen={props.defaultOpen}
-        visual={ActionDocumentTextIcon}
-      />
-    );
-  } else if (isCat) {
-    return <DataSourceNodeContentDetails {...props} />;
-  } else if (isFilesystemPath) {
-    return <FilesystemPathDetails {...props} />;
-  } else if (isExtract) {
-    return <MCPExtractActionDetails {...props} />;
-  } else if (isRunAgent) {
-    return <MCPRunAgentActionDetails {...props} />;
-  } else if (isAgentCreation) {
-    return <MCPAgentManagementActionDetails {...props} />;
-  } else {
-    return <GenericActionDetails {...props} />;
+    if (
+      toolName === FILESYSTEM_LIST_TOOL_NAME ||
+      toolName === FILESYSTEM_FIND_TOOL_NAME
+    ) {
+      return (
+        <SearchResultDetails
+          viewType={viewType}
+          actionName="Browse data sources"
+          actionOutput={output}
+          defaultOpen={defaultOpen}
+          visual={ActionDocumentTextIcon}
+        />
+      );
+    }
+
+    if (toolName === FILESYSTEM_CAT_TOOL_NAME) {
+      return <DataSourceNodeContentDetails {...props} />;
+    }
+
+    if (toolName === FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME) {
+      return <FilesystemPathDetails {...props} />;
+    }
   }
+
+  if (isInternalMCPServerOfName(mcpServerId, "include_data")) {
+    if (toolName === INCLUDE_TOOL_NAME) {
+      return (
+        <SearchResultDetails
+          viewType={viewType}
+          actionName="Include data"
+          actionOutput={output}
+          defaultOpen={defaultOpen}
+          visual={ClockIcon}
+        />
+      );
+    }
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "web_search_&_browse")) {
+    if (toolName === WEBSEARCH_TOOL_NAME) {
+      return (
+        <SearchResultDetails
+          viewType={viewType}
+          defaultQuery={params.query as string}
+          actionName="Web search"
+          actionOutput={output}
+          defaultOpen={defaultOpen}
+          visual={GlobeAltIcon}
+        />
+      );
+    }
+    if (toolName === WEBBROWSER_TOOL_NAME) {
+      return <MCPBrowseActionDetails {...props} />;
+    }
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "query_tables")) {
+    if (toolName === QUERY_TABLES_TOOL_NAME) {
+      return <MCPTablesQueryActionDetails {...props} />;
+    }
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "query_tables_v2")) {
+    if (toolName === GET_DATABASE_SCHEMA_TOOL_NAME) {
+      return <MCPGetDatabaseSchemaActionDetails {...props} />;
+    }
+    if (toolName === EXECUTE_DATABASE_QUERY_TOOL_NAME) {
+      return <MCPTablesQueryActionDetails {...props} />;
+    }
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "reasoning")) {
+    return <MCPReasoningActionDetails {...props} />;
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "extract_data")) {
+    if (toolName === PROCESS_TOOL_NAME) {
+      return <MCPExtractActionDetails {...props} />;
+    }
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "run_agent")) {
+    return <MCPRunAgentActionDetails {...props} />;
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "agent_management")) {
+    return <MCPAgentManagementActionDetails {...props} />;
+  }
+
+  return <GenericActionDetails {...props} />;
 }
 
 export function GenericActionDetails({
   owner,
   action,
   defaultOpen,
+  viewType,
 }: MCPActionDetailsProps) {
   const inputs =
     Object.keys(action.params).length > 0
@@ -165,29 +201,15 @@ export function GenericActionDetails({
 
   return (
     <ActionDetailsWrapper
-      actionName={action.functionCallName ?? "Calling MCP Server"}
+      viewType={viewType}
+      actionName={
+        asDisplayName(action.functionCallName) ?? "Calling MCP Server"
+      }
       defaultOpen={defaultOpen}
       visual={MCP_SPECIFICATION.cardIcon}
     >
-      <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
-        <CollapsibleComponent
-          rootProps={{ defaultOpen: !action.generatedFiles.length }}
-          triggerChildren={
-            <div
-              className={cn(
-                "text-foreground dark:text-foreground-night",
-                "flex flex-row items-center gap-x-2"
-              )}
-            >
-              <span className="heading-base">Inputs</span>
-            </div>
-          }
-          contentChildren={
-            <RenderToolItemMarkdown text={inputs} type="input" />
-          }
-        />
-
-        {action.output && (
+      {viewType !== "conversation" && (
+        <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
           <CollapsibleComponent
             rootProps={{ defaultOpen: !action.generatedFiles.length }}
             triggerChildren={
@@ -197,59 +219,78 @@ export function GenericActionDetails({
                   "flex flex-row items-center gap-x-2"
                 )}
               >
-                <span className="heading-base">Output</span>
+                <span className="heading-base">Inputs</span>
               </div>
             }
             contentChildren={
-              <div className="flex flex-col gap-2">
-                {action.output
-                  .filter(
-                    (o) => isTextContent(o) || isResourceContentWithText(o)
-                  )
-                  .map((o, index) => (
-                    <RenderToolItemMarkdown
-                      key={index}
-                      text={getOutputText(o)}
-                      type="output"
-                    />
-                  ))}
-              </div>
+              <RenderToolItemMarkdown text={inputs} type="input" />
             }
           />
-        )}
 
-        {action.generatedFiles.length > 0 && (
-          <>
-            <span className="heading-base">Generated Files</span>
-            <div className="flex flex-col gap-1">
-              {action.generatedFiles.map((file) => {
-                if (isSupportedImageContentType(file.contentType)) {
-                  return (
-                    <div key={file.fileId} className="mr-5">
-                      <img
-                        className="rounded-xl"
-                        src={`/api/w/${owner.sId}/files/${file.fileId}`}
-                        alt={`${file.title}`}
+          {action.output && (
+            <CollapsibleComponent
+              rootProps={{ defaultOpen: !action.generatedFiles.length }}
+              triggerChildren={
+                <div
+                  className={cn(
+                    "text-foreground dark:text-foreground-night",
+                    "flex flex-row items-center gap-x-2"
+                  )}
+                >
+                  <span className="heading-base">Output</span>
+                </div>
+              }
+              contentChildren={
+                <div className="flex flex-col gap-2">
+                  {action.output
+                    .filter(
+                      (o) => isTextContent(o) || isResourceContentWithText(o)
+                    )
+                    .map((o, index) => (
+                      <RenderToolItemMarkdown
+                        key={index}
+                        text={getOutputText(o)}
+                        type="output"
                       />
+                    ))}
+                </div>
+              }
+            />
+          )}
+
+          {action.generatedFiles.length > 0 && (
+            <>
+              <span className="heading-base">Generated Files</span>
+              <div className="flex flex-col gap-1">
+                {action.generatedFiles.map((file) => {
+                  if (isSupportedImageContentType(file.contentType)) {
+                    return (
+                      <div key={file.fileId} className="mr-5">
+                        <img
+                          className="rounded-xl"
+                          src={`/api/w/${owner.sId}/files/${file.fileId}`}
+                          alt={`${file.title}`}
+                        />
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={file.fileId}>
+                      <a
+                        href={`/api/w/${owner.sId}/files/${file.fileId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {file.title}
+                      </a>
                     </div>
                   );
-                }
-                return (
-                  <div key={file.fileId}>
-                    <a
-                      href={`/api/w/${owner.sId}/files/${file.fileId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {file.title}
-                    </a>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
-      </div>
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </ActionDetailsWrapper>
   );
 }

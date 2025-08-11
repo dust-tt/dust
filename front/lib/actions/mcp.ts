@@ -248,6 +248,7 @@ export class MCPActionType {
   readonly executionState: MCPExecutionState = "pending";
 
   readonly mcpServerConfigurationId: string;
+  readonly mcpServerId: string | null;
   readonly params: Record<string, unknown>; // Hold the inputs for the action.
   readonly output: CallToolResult["content"] | null;
   // TODO(durable-agents): drop this column.
@@ -266,6 +267,7 @@ export class MCPActionType {
 
     this.agentMessageId = blob.agentMessageId;
     this.mcpServerConfigurationId = blob.mcpServerConfigurationId;
+    this.mcpServerId = blob.mcpServerId;
     this.executionState = blob.executionState;
     this.isError = blob.isError;
     this.params = blob.params;

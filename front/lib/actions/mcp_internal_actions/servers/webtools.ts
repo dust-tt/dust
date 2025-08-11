@@ -6,6 +6,10 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import {
+  WEBBROWSER_TOOL_NAME,
+  WEBSEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   BrowseResultResourceType,
   WebsearchResultResourceType,
@@ -36,7 +40,7 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "websearch",
+    WEBSEARCH_TOOL_NAME,
     "A tool that performs a Google web search based on a string query.",
     {
       query: z
@@ -117,7 +121,7 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
   );
 
   server.tool(
-    "webbrowser",
+    WEBBROWSER_TOOL_NAME,
     "A tool to browse websites, you can provide a list of urls to browse all at once.",
     {
       urls: z.string().array().describe("List of urls to browse"),

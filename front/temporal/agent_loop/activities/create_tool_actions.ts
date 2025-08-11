@@ -109,6 +109,7 @@ async function createActionForTool(
   const actionBaseParams = await buildActionBaseParams({
     agentMessageId: agentMessage.agentMessageId,
     citationsAllocated: stepContext.citationsCount,
+    mcpServerId: actionConfiguration.toolServerId,
     mcpServerConfigurationId: actionConfiguration.id.toString(),
     step,
     stepContentId,
