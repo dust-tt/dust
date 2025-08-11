@@ -1,7 +1,10 @@
 import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
 
-import { joinChannel } from "@connectors/connectors/slack/lib/channels";
+import {
+  joinChannel,
+  joinChannelWithRetries,
+} from "@connectors/connectors/slack/lib/channels";
 import {
   getSlackClient,
   reportSlackUsage,
@@ -95,7 +98,10 @@ export async function autoReadChannel(
       const joinChannelRes = await withRetries(
         logger,
         async (connectorId: ModelId, slackChannelId: string) => {
-          const result = await joinChannel(connectorId, slackChannelId);
+          const result = await joinChannelWithRetries(
+            connectorId,
+            slackChannelId
+          );
           if (result.isErr()) {
             // Retry on any error, not just rate limit errors
             throw result.error; // This will trigger a retry
