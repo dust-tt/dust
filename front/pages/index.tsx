@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import { getSession } from "@app/lib/auth";
 import {
   getUserFromSession,
@@ -23,6 +24,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
   const organizationId = session?.organizationId;
+  const currentRegion = multiRegionsConfig.getCurrentRegion();
 
   const { inviteToken } = context.query;
 
@@ -55,11 +57,11 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     }
 
     if (organizationId) {
-      const workspace = user.organizations?.find(
+      const organization = user.organizations?.find(
         (o) => o.id === organizationId
       );
-      if (workspace) {
-        url = `/w/${workspace.externalId}`;
+      if (organization && organization.metadata.region === currentRegion) {
+        url = `/w/${organization.externalId}`;
       }
     }
 
@@ -84,6 +86,30 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
         permanent: false,
       },
     };
+  } else if (user) {
+    const organization = user.organizations?.find(
+      (org) => org.id === session?.organizationId
+    );
+    if (organization) {
+      const targetRegion = organization.metadata.region;
+
+      if (targetRegion && targetRegion !== currentRegion) {
+        logger.info(
+          {
+            targetRegion,
+            currentRegion,
+          },
+          "Redirecting to correct region"
+        );
+        const targetRegionInfo = multiRegionsConfig.getOtherRegionInfo();
+        return {
+          redirect: {
+            destination: `${targetRegionInfo.url}/w/${organization.externalId}`,
+            permanent: false,
+          },
+        };
+      }
+    }
   }
 
   let postLoginCallbackUrl = "/api/login";
