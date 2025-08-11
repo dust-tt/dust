@@ -18,10 +18,12 @@ export async function generatePlainTextFile(
     title,
     conversationId,
     content,
+    snippet,
   }: {
     title: string;
     conversationId: string;
     content: string;
+    snippet?: string;
   }
 ): Promise<FileResource> {
   const workspace = auth.getNonNullableWorkspace();
@@ -37,6 +39,7 @@ export async function generatePlainTextFile(
     useCaseMetadata: {
       conversationId,
     },
+    snippet,
   });
 
   await processAndStoreFile(auth, {
@@ -207,6 +210,7 @@ export async function uploadFileToConversationDataSource({
   if (jitDataSource.isErr()) {
     logger.error(
       {
+        workspaceId: auth.workspace()?.sId,
         code: jitDataSource.error.code,
         message: jitDataSource.error.message,
       },
@@ -219,6 +223,7 @@ export async function uploadFileToConversationDataSource({
     if (r.isErr()) {
       logger.error(
         {
+          workspaceId: auth.workspace()?.sId,
           code: r.error.code,
           message: r.error.message,
         },

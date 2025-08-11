@@ -1,3 +1,4 @@
+import { cva } from "class-variance-authority";
 import React, { useCallback } from "react";
 
 import { Button } from "@sparkle/components/";
@@ -15,6 +16,51 @@ const contentTypeExtensions: Record<SupportedContentType, string> = {
   "application/json": ".json",
   "text/csv": ".csv",
 };
+
+const wrapperVariants = cva("s-group s-relative s-w-full !s-overflow-visible", {
+  variants: {
+    buttonDisplay: {
+      inside: "s-mt-0",
+      outside: "s-mt-11",
+    },
+  },
+  defaultVariants: {
+    buttonDisplay: "outside",
+  },
+});
+
+const stickyContainerVariants = cva("s-sticky s-z-[1] s-h-0", {
+  variants: {
+    buttonDisplay: {
+      inside: "s-top-0",
+      outside: "s-top-11",
+    },
+  },
+  defaultVariants: {
+    buttonDisplay: "outside",
+  },
+});
+
+const actionsVariants = cva(
+  "s-absolute s-right-2 s-flex s-items-center s-gap-1 s-py-2",
+  {
+    variants: {
+      buttonDisplay: {
+        inside: "",
+        outside: "s-bottom-0 s-h-11",
+      },
+      displayActions: {
+        hover:
+          "s-opacity-0 s-transition-opacity s-duration-200 group-hover:s-opacity-100",
+        always: "",
+      },
+    },
+    defaultVariants: {
+      buttonDisplay: "outside",
+      displayActions: "always",
+    },
+  }
+);
 
 export interface ContentToDownload {
   content: string;
@@ -36,6 +82,8 @@ interface ContentBlockWrapperProps {
   content?: ClipboardContent | string;
   getContentToDownload?: GetContentToDownloadFunction;
   actions?: React.ReactNode[] | React.ReactNode;
+  displayActions?: "hover" | "always";
+  buttonDisplay?: "inside" | "outside";
 }
 
 export function ContentBlockWrapper({
@@ -44,7 +92,9 @@ export function ContentBlockWrapper({
   innerClassName,
   content,
   actions,
+  displayActions = "always",
   getContentToDownload,
+  buttonDisplay = "outside",
 }: ContentBlockWrapperProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
 
@@ -90,15 +140,12 @@ export function ContentBlockWrapper({
   return (
     <div
       id="BlockWrapper"
-      className={cn(
-        "s-relative s-mt-11 s-w-full !s-overflow-visible",
-        className
-      )}
+      className={cn(wrapperVariants({ buttonDisplay }), className)}
     >
-      <div className="s-sticky s-top-11 s-z-[1] s-h-0">
+      <div className={stickyContainerVariants({ buttonDisplay })}>
         <div
           id="BlockActions"
-          className="s-absolute s-bottom-0 s-right-2 s-flex s-h-11 s-items-center s-gap-1 s-py-2"
+          className={actionsVariants({ buttonDisplay, displayActions })}
         >
           {actions && actions}
           {getContentToDownload && (

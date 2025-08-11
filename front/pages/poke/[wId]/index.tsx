@@ -61,6 +61,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   whitelistableFeatures: WhitelistableFeature[];
   workspaceVerifiedDomains: WorkspaceDomain[];
   workspaceCreationDay: string;
+  workosEnvironmentId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const activeSubscription = auth.subscription();
@@ -108,6 +109,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       workspaceCreationDay: format(workspaceCreationDay, "yyyy-MM-dd"),
       extensionConfig: extensionConfig?.toJSON() ?? null,
       baseUrl: config.getClientFacingUrl(),
+      workosEnvironmentId: config.getWorkOSEnvironmentId(),
     },
   };
 });
@@ -122,6 +124,7 @@ const WorkspacePage = ({
   workspaceCreationDay,
   extensionConfig,
   baseUrl,
+  workosEnvironmentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
 
@@ -211,6 +214,7 @@ const WorkspacePage = ({
                 workspaceCreationDay={workspaceCreationDay}
                 extensionConfig={extensionConfig}
                 workspaceRetention={workspaceRetention}
+                workosEnvironmentId={workosEnvironmentId}
               />
               <div className="flex flex-grow flex-col gap-4">
                 <PluginList

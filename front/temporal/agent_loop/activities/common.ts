@@ -2,7 +2,6 @@ import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streamin
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
-import type { ConversationType } from "@app/types";
 
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(
@@ -67,14 +66,19 @@ async function processEventForDatabase(
 
 export async function updateResourceAndPublishEvent(
   event: AgentMessageEvents,
-  conversation: ConversationType,
   agentMessageRow: AgentMessage,
-  step: number
+  {
+    conversationId,
+    step,
+  }: {
+    conversationId: string;
+    step: number;
+  }
 ): Promise<void> {
   // Process database operations BEFORE publishing to Redis.
   await processEventForDatabase(event, agentMessageRow, step);
 
   await publishConversationRelatedEvent(event, {
-    conversationId: conversation.sId,
+    conversationId,
   });
 }

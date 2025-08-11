@@ -4,7 +4,11 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
-import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  FIND_TAGS_TOOL_NAME,
+  SEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -19,7 +23,6 @@ import {
   getCoreSearchArgs,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
@@ -29,6 +32,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 import {
   CoreAPI,
   dustManagedCredentials,
@@ -63,7 +68,7 @@ export async function searchFunction({
   tagsNot?: string[];
   auth: Authenticator;
   agentLoopContext?: AgentLoopContextType;
-}): Promise<CallToolResult> {
+}): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = dustManagedCredentials();
   const timeFrame = parseTimeFrame(relativeTimeFrame);
@@ -87,15 +92,17 @@ export async function searchFunction({
 
   // If any of the data sources are invalid, return an error message.
   if (coreSearchArgsResults.some((res) => res.isErr())) {
-    return {
-      isError: false,
-      content: removeNulls(
-        coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
-      ).map((error) => ({
-        type: "text",
-        text: error.message,
-      })),
-    };
+    return new Err(
+      new MCPError(
+        "Invalid data sources: " +
+          removeNulls(
+            coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
+          )
+            .map((error) => error.message)
+            .join("\n"),
+        { tracked: false }
+      )
+    );
   }
 
   const coreSearchArgs = removeNulls(
@@ -103,8 +110,10 @@ export async function searchFunction({
   );
 
   if (coreSearchArgs.length === 0) {
-    return makeMCPToolTextError(
-      "Search action must have at least one data source configured."
+    return new Err(
+      new MCPError(
+        "Search action must have at least one data source configured."
+      )
     );
   }
 
@@ -113,10 +122,7 @@ export async function searchFunction({
     tagsNot,
   });
   if (conflictingTagsError) {
-    return {
-      isError: false,
-      content: [{ type: "text", text: conflictingTagsError }],
-    };
+    return new Err(new MCPError(conflictingTagsError, { tracked: false }));
   }
 
   // Now we can search each data source.
@@ -154,12 +160,14 @@ export async function searchFunction({
   );
 
   if (searchResults.isErr()) {
-    return makeMCPToolTextError(searchResults.error.message);
+    return new Err(new MCPError(searchResults.error.message));
   }
 
   if (citationsOffset + retrievalTopK > getRefs().length) {
-    return makeMCPToolTextError(
-      "The search exhausted the total number of references available for citations"
+    return new Err(
+      new MCPError(
+        "The search exhausted the total number of references available for citations"
+      )
     );
   }
 
@@ -194,24 +202,21 @@ export async function searchFunction({
     }
   );
 
-  return {
-    isError: false,
-    content: [
-      ...results.map((result) => ({
-        type: "resource" as const,
-        resource: result,
-      })),
-      {
-        type: "resource" as const,
-        resource: makeQueryResource({
-          query,
-          timeFrame,
-          tagsIn,
-          tagsNot,
-        }),
-      },
-    ],
-  };
+  return new Ok([
+    ...results.map((result) => ({
+      type: "resource" as const,
+      resource: result,
+    })),
+    {
+      type: "resource" as const,
+      resource: makeQueryResource({
+        query,
+        timeFrame,
+        tagsIn,
+        tagsNot,
+      }),
+    },
+  ]);
 }
 
 function createServer(
@@ -294,7 +299,7 @@ function createServer(
     );
 
     server.tool(
-      "find_tags",
+      FIND_TAGS_TOOL_NAME,
       makeFindTagsDescription(SEARCH_TOOL_NAME),
       findTagsSchema,
       makeFindTagsTool(auth)

@@ -12,8 +12,8 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/actions/constants";
 import type {
+  LightServerSideMCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
-  ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -115,7 +115,7 @@ async function prepareAppContext(
   auth: Authenticator,
   actionConfig:
     | ServerSideMCPServerConfigurationType
-    | ServerSideMCPToolConfigurationType
+    | LightServerSideMCPToolConfigurationType
 ): Promise<{
   app: AppResource;
   schema: DatasetSchema | null;
@@ -326,6 +326,7 @@ async function prepareParamsWithHistory(
         tools: "",
         allowedTokenCount,
         excludeImages: true,
+        checkMissingActions: false,
       });
 
       if (convoRes.isOk()) {
@@ -381,14 +382,14 @@ export default async function createServer(
     );
   } else if (agentLoopContext && agentLoopContext.runContext) {
     if (
-      !isMCPInternalDustAppRun(agentLoopContext.runContext.actionConfiguration)
+      !isMCPInternalDustAppRun(agentLoopContext.runContext.toolConfiguration)
     ) {
       throw new Error("Invalid Dust app run tool configuration");
     }
 
     const { app, schema, appConfig } = await prepareAppContext(
       auth,
-      agentLoopContext.runContext.actionConfiguration
+      agentLoopContext.runContext.toolConfiguration
     );
 
     if (!app.description) {

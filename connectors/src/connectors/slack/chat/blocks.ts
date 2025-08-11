@@ -60,12 +60,19 @@ function makeFootnotesBlock(footnotes: SlackMessageFootnotes) {
   };
 }
 
-function makeContextSectionBlocks(
-  isComplete: boolean,
-  conversationUrl: string | null,
-  footnotes: SlackMessageFootnotes | undefined,
-  workspaceId: string
-) {
+function makeContextSectionBlocks({
+  state,
+  assistantName,
+  conversationUrl,
+  footnotes,
+  workspaceId,
+}: {
+  state: "thinking" | "answered";
+  assistantName: string;
+  conversationUrl: string | null;
+  footnotes: SlackMessageFootnotes | undefined;
+  workspaceId: string;
+}) {
   const blocks = [];
 
   if (footnotes && footnotes.length > 0) {
@@ -75,27 +82,34 @@ function makeContextSectionBlocks(
     }
   }
 
-  blocks.push(makeFooterBlock(conversationUrl, workspaceId));
+  blocks.push(
+    makeFooterBlock({
+      state,
+      assistantName,
+      conversationUrl,
+      workspaceId,
+    })
+  );
 
   const resultBlocks = blocks.length ? [makeDividerBlock(), ...blocks] : [];
 
   return resultBlocks;
 }
 
-function makeThinkingBlock(
-  assistantName: string,
-  isThinking: boolean,
-  thinkingText: string
-) {
-  return assistantName
+function makeThinkingBlock({
+  isThinking,
+  thinkingText,
+}: {
+  isThinking: boolean;
+  thinkingText: string;
+}) {
+  return isThinking
     ? [
         {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: isThinking
-              ? `@${assistantName}: _${thinkingText}_`
-              : `@${assistantName}`,
+            text: `_${thinkingText}_`,
           },
         },
       ]
@@ -135,7 +149,6 @@ export function makeAssistantSelectionBlock(
 }
 
 export type SlackMessageUpdate = {
-  isComplete: boolean;
   isThinking?: boolean;
   thinkingAction?: string;
   assistantName: string;
@@ -144,19 +157,45 @@ export type SlackMessageUpdate = {
   footnotes?: SlackMessageFootnotes;
 };
 
-export function makeFooterBlock(
-  conversationUrl: string | null,
-  workspaceId: string
-) {
+export function makeFooterBlock({
+  state,
+  assistantName,
+  conversationUrl,
+  workspaceId,
+}: {
+  state: "thinking" | "error" | "answered";
+  assistantName?: string;
+  conversationUrl: string | null;
+  workspaceId: string;
+}) {
   const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/assistant/new`);
   const baseHeader = `<${assistantsUrl}|Browse agents> | <${SLACK_HELP_URL}|Use Dust in Slack> | <${DUST_URL}|Learn more>`;
+  let attribution = "";
+  if (assistantName) {
+    if (state === "thinking") {
+      attribution = `*${assistantName}* is thinking... | `;
+    } else if (state === "error") {
+      attribution = `*${assistantName}* encountered an error | `;
+    } else if (state === "answered") {
+      attribution = `Answered by *${assistantName}* | `;
+    }
+  } else {
+    if (state === "thinking") {
+      attribution = "Thinking... | ";
+    } else if (state === "error") {
+      attribution = "Error | ";
+    } else if (state === "answered") {
+      attribution = "Answered | ";
+    }
+  }
+
   return {
     type: "context",
     elements: [
       {
         type: "mrkdwn",
         text: conversationUrl
-          ? `<${conversationUrl}|Go to full conversation> | ${baseHeader}`
+          ? `${attribution}<${conversationUrl}|Go to full conversation> | ${baseHeader}`
           : baseHeader,
       },
     ],
@@ -168,33 +207,27 @@ export function makeMessageUpdateBlocksAndText(
   workspaceId: string,
   messageUpdate: SlackMessageUpdate
 ) {
-  const {
-    isComplete,
-    isThinking,
-    thinkingAction,
-    assistantName,
-    text,
-    footnotes,
-  } = messageUpdate;
-  const thinkingText = "is thinking...";
+  const { isThinking, thinkingAction, assistantName, text, footnotes } =
+    messageUpdate;
+  const thinkingText = "Agent is thinking...";
   const thinkingTextWithAction = thinkingAction
     ? `${thinkingText}... (${thinkingAction})`
     : thinkingText;
 
   return {
     blocks: [
-      ...makeThinkingBlock(
-        assistantName,
-        isThinking ?? false,
-        thinkingTextWithAction
-      ),
+      ...makeThinkingBlock({
+        isThinking: isThinking ?? false,
+        thinkingText: thinkingTextWithAction,
+      }),
       ...makeMarkdownBlock(text),
-      ...makeContextSectionBlocks(
-        isComplete,
+      ...makeContextSectionBlocks({
+        state: isThinking ? "thinking" : "answered",
+        assistantName,
         conversationUrl,
         footnotes,
-        workspaceId
-      ),
+        workspaceId,
+      }),
     ],
     // TODO(2024-06-17 flav) We should not return markdown here.
     // Provide plain text for places where the content cannot be rendered (e.g push notifications).
@@ -221,7 +254,11 @@ export function makeErrorBlock(
         },
       },
       makeDividerBlock(),
-      makeFooterBlock(conversationUrl, workspaceId),
+      makeFooterBlock({
+        state: "error",
+        conversationUrl,
+        workspaceId,
+      }),
     ],
     mrkdwn: true,
     unfurl_links: false,

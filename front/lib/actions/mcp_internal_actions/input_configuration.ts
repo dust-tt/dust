@@ -9,8 +9,10 @@ import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_ac
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import type {
+  DataSourceConfiguration,
+  TableDataSourceConfiguration,
+} from "@app/lib/api/assistant/configuration/types";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   areSchemasEqual,
@@ -61,6 +63,15 @@ function generateConfiguredInput({
 
   switch (mimeType) {
     case INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE: {
+      return (
+        actionConfiguration.dataSources?.map((config) => ({
+          uri: getDataSourceURI(config),
+          mimeType,
+        })) || []
+      );
+    }
+
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE: {
       return (
         actionConfiguration.dataSources?.map((config) => ({
           uri: getDataSourceURI(config),
@@ -357,9 +368,7 @@ export function augmentInputsWithConfiguration({
   return inputs;
 }
 
-export function getMCPServerRequirements(
-  mcpServerView: MCPServerViewType | null | undefined
-): {
+export interface MCPServerRequirements {
   requiresDataSourceConfiguration: boolean;
   requiresTableConfiguration: boolean;
   requiresChildAgentConfiguration: boolean;
@@ -372,7 +381,11 @@ export function getMCPServerRequirements(
   requiredEnums: Record<string, string[]>;
   requiresDustAppConfiguration: boolean;
   noRequirement: boolean;
-} {
+}
+
+export function getMCPServerRequirements(
+  mcpServerView: MCPServerViewType | null | undefined
+): MCPServerRequirements {
   if (!mcpServerView) {
     return {
       requiresDataSourceConfiguration: false,

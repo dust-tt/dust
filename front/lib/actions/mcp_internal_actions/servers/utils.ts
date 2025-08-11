@@ -9,11 +9,13 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
+  isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
-  isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import type {
+  DataSourceConfiguration,
+  TableDataSourceConfiguration,
+} from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
@@ -521,11 +523,11 @@ export function shouldAutoGenerateTags(
       listToolsContext.agentActionConfiguration.dataSources
     );
   } else if (
-    !!runContext?.actionConfiguration &&
-    isServerSideMCPToolConfiguration(runContext.actionConfiguration) &&
-    !!runContext.actionConfiguration.dataSources
+    !!runContext?.toolConfiguration &&
+    isLightServerSideMCPToolConfiguration(runContext.toolConfiguration) &&
+    !!runContext.toolConfiguration.dataSources
   ) {
-    return hasTagAutoMode(runContext.actionConfiguration.dataSources);
+    return hasTagAutoMode(runContext.toolConfiguration.dataSources);
   }
 
   return false;

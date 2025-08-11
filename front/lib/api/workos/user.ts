@@ -177,6 +177,8 @@ export async function getWorkOSSessionFromCookie(
           email: r.user.email,
           email_verified: r.user.emailVerified,
           name: r.user.email ?? "",
+          family_name: r.user.lastName ?? "",
+          given_name: r.user.firstName ?? "",
           nickname: getUserNicknameFromEmail(r.user.email) ?? "",
           auth0Sub: null,
           workOSUserId: r.user.id,
@@ -258,6 +260,7 @@ export async function addUserToWorkOSOrganization(
     await getWorkOS().userManagement.createOrganizationMembership({
       organizationId: workspace.workOSOrganizationId,
       userId: workOSUser.id,
+      roleSlug: "user",
     });
     return new Ok(undefined);
   }

@@ -2,12 +2,15 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import {
   DEFAULT_MCP_SERVER_ICON,
   isCustomServerIconType,
 } from "@app/lib/actions/mcp_icons";
-import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  allowsMultipleInstancesOfInternalMCPServerByName,
+  isInternalMCPServerName,
+  isInternalMCPServerOfName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
@@ -128,21 +131,6 @@ async function handler(
           });
         }
 
-        const existingServer = await RemoteMCPServerResource.findByUrl(
-          auth,
-          url
-        );
-
-        if (existingServer) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "A server with this URL already exists",
-            },
-          });
-        }
-
         // Default to the shared secret if it exists.
         let bearerToken = sharedSecret || null;
         let authorization: AuthorizationInfo | null = null;
@@ -197,10 +185,12 @@ async function handler(
           (config) => config.url === url
         );
 
+        const name = defaultConfig?.name || metadata.name;
+
         const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
           workspaceId: auth.getNonNullableWorkspace().id,
           url: url,
-          cachedName: defaultConfig?.name || metadata.name,
+          cachedName: name,
           cachedDescription: defaultConfig?.description || metadata.description,
           cachedTools: metadata.tools,
           icon:
@@ -235,6 +225,7 @@ async function handler(
               remoteMCPServerId: newRemoteMCPServer.id,
               toolName,
               permission: stakeLevel,
+              enabled: true,
             });
           }
         }
@@ -283,25 +274,28 @@ async function handler(
           });
         }
 
-        const internalMCPServerId = internalMCPServerNameToSId({
-          name,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        });
+        if (!allowsMultipleInstancesOfInternalMCPServerByName(name)) {
+          const installedMCPServers =
+            await MCPServerViewResource.listForSystemSpace(auth, {
+              where: {
+                serverType: "internal",
+              },
+            });
 
-        const existingServer =
-          await InternalMCPServerInMemoryResource.fetchById(
-            auth,
-            internalMCPServerId
+          const alreadyUsed = installedMCPServers.some((mcpServer) =>
+            isInternalMCPServerOfName(mcpServer.internalMCPServerId, name)
           );
 
-        if (existingServer) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "A server with this URL already exists",
-            },
-          });
+          if (alreadyUsed) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "This internal tool has already been added and only one instance is allowed.",
+              },
+            });
+          }
         }
 
         const newInternalMCPServer =

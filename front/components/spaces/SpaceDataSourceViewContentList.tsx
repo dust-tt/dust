@@ -10,9 +10,12 @@ import {
   DropdownMenuTrigger,
   Spinner,
   Tooltip,
-  useHashParam,
 } from "@dust-tt/sparkle";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type {
+  CellContext,
+  ColumnDef,
+  SortingState,
+} from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import * as React from "react";
 import {
@@ -43,6 +46,7 @@ import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHea
 import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
+import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
@@ -179,6 +183,7 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
     header: "Last updated",
     id: "lastUpdatedAt",
     accessorKey: "lastUpdatedAt",
+    enableSorting: true,
     meta: {
       className: "w-20",
     },
@@ -270,6 +275,7 @@ export const SpaceDataSourceViewContentList = ({
 }: SpaceDataSourceViewContentListProps) => {
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
+  const [sorting, setSorting] = useState<SortingState>([]);
   const sendNotification = useSendNotification();
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
@@ -304,12 +310,25 @@ export const SpaceDataSourceViewContentList = ({
     [resetPagination, setViewType, viewType]
   );
 
+  const sortingAsString = useMemo(() => JSON.stringify(sorting), [sorting]);
+
+  // Reset pagination when sorting changes
+  useEffect(() => {
+    resetPagination();
+  }, [sortingAsString, resetPagination]);
+
   const { setIsSearchDisabled } = useContext(SpaceSearchContext);
 
   const columns = useMemo(
     () => getTableColumns(showSpaceUsage),
     [showSpaceUsage]
   );
+
+  // Convert DataTable sorting format to our API format
+  const apiSorting = sorting.map((sort) => ({
+    field: sort.id,
+    direction: sort.desc ? ("desc" as const) : ("asc" as const),
+  }));
 
   const {
     isNodesLoading,
@@ -326,6 +345,7 @@ export const SpaceDataSourceViewContentList = ({
     viewType: isValidContentNodesViewType(viewType)
       ? viewType
       : DEFAULT_VIEW_TYPE,
+    sorting: apiSorting,
   });
 
   const { hasContent: hasDocuments, isNodesValidating: isDocumentsValidating } =
@@ -665,13 +685,16 @@ export const SpaceDataSourceViewContentList = ({
           <DataTable
             data={rows}
             columns={columns}
-            className="pb-4"
+            className="dd-privacy-mask pb-4"
             totalRowCount={totalNodesCount}
             rowCountIsCapped={!totalNodesCountIsAccurate}
             pagination={tablePagination}
             setPagination={(newTablePagination) =>
               handlePaginationChange(newTablePagination, nextPageCursor)
             }
+            sorting={sorting}
+            setSorting={setSorting}
+            isServerSideSorting={true}
             columnsBreakpoints={columnsBreakpoints}
             disablePaginationNumbers
           />

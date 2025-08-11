@@ -6,6 +6,7 @@ import type {
   RelatedCredential,
 } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import { ConfluenceOAuthProvider } from "@app/lib/api/oauth/providers/confluence";
+import { FreshserviceOAuthProvider } from "@app/lib/api/oauth/providers/freshservice";
 import { GithubOAuthProvider } from "@app/lib/api/oauth/providers/github";
 import { GmailOAuthProvider } from "@app/lib/api/oauth/providers/gmail";
 import { GongOAuthProvider } from "@app/lib/api/oauth/providers/gong";
@@ -15,6 +16,7 @@ import { IntercomOAuthProvider } from "@app/lib/api/oauth/providers/intercom";
 import { JiraOAuthProvider } from "@app/lib/api/oauth/providers/jira";
 import { MCPOAuthProvider } from "@app/lib/api/oauth/providers/mcp";
 import { MicrosoftOAuthProvider } from "@app/lib/api/oauth/providers/microsoft";
+import { MicrosoftToolsOAuthProvider } from "@app/lib/api/oauth/providers/microsoft_tools";
 import { MondayOAuthProvider } from "@app/lib/api/oauth/providers/monday";
 import { NotionOAuthProvider } from "@app/lib/api/oauth/providers/notion";
 import { SalesforceOAuthProvider } from "@app/lib/api/oauth/providers/salesforce";
@@ -45,6 +47,7 @@ export type OAuthError = {
 // DO NOT USE THIS DIRECTLY, USE getProviderStrategy instead.
 const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   confluence: new ConfluenceOAuthProvider(),
+  freshservice: new FreshserviceOAuthProvider(),
   github: new GithubOAuthProvider(),
   gmail: new GmailOAuthProvider(),
   gong: new GongOAuthProvider(),
@@ -54,6 +57,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   jira: new JiraOAuthProvider(),
   mcp: new MCPOAuthProvider(),
   microsoft: new MicrosoftOAuthProvider(),
+  microsoft_tools: new MicrosoftToolsOAuthProvider(),
   monday: new MondayOAuthProvider(),
   notion: new NotionOAuthProvider(),
   salesforce: new SalesforceOAuthProvider(),
@@ -241,7 +245,7 @@ export async function finalizeConnection(
   }
 
   if (providerStrategy.checkConnectionValidPostFinalize) {
-    const res = providerStrategy.checkConnectionValidPostFinalize(
+    const res = await providerStrategy.checkConnectionValidPostFinalize(
       cRes.value.connection
     );
     if (res.isErr()) {

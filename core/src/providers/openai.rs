@@ -1028,7 +1028,8 @@ impl LLM for OpenAILLM {
     ) -> Result<LLMChatGeneration> {
         let is_reasoning_model = self.id.as_str().starts_with("o3")
             || self.id.as_str().starts_with("o1")
-            || self.id.as_str().starts_with("o4");
+            || self.id.as_str().starts_with("o4")
+            || self.id.as_str().starts_with("gpt-5");
 
         let api_key = match self.api_key.clone() {
             Some(key) => key,

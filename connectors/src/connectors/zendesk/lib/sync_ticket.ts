@@ -30,18 +30,90 @@ function apiUrlToDocumentUrl(apiUrl: string): string {
 export function shouldSyncTicket(
   ticket: ZendeskFetchedTicket,
   configuration: ZendeskConfigurationResource,
-  { brandId }: { brandId?: number }
-): boolean {
-  return (
-    [
-      "closed",
-      "solved",
-      ...(configuration.syncUnresolvedTickets
-        ? ["new", "open", "pending", "hold"]
-        : []),
-    ].includes(ticket.status) &&
-    (!brandId || brandId === ticket.brand_id)
-  );
+  {
+    brandId,
+    organizationTags = [],
+    ticketTags = [],
+  }: { brandId?: number; organizationTags?: string[]; ticketTags?: string[] }
+): { shouldSync: false; reason: string } | { shouldSync: true; reason: null } {
+  if (ticket.status === "deleted") {
+    return { shouldSync: false, reason: "Ticket is deleted." };
+  }
+  if (
+    !configuration.syncUnresolvedTickets &&
+    !["closed", "solved"].includes(ticket.status)
+  ) {
+    return {
+      shouldSync: false,
+      reason: `Ticket is not resolved, status: ${ticket.status}.`,
+    };
+  }
+  if (brandId && brandId !== ticket.brand_id) {
+    return {
+      shouldSync: false,
+      reason: `Ticket does not belong to the brand, ticket brand: ${ticket.brand_id}, expected: ${brandId}.`,
+    };
+  }
+
+  // If we enforce an inclusion rule on organization tags, all tickets must have at least one of the
+  // mandatory tags.
+  if (
+    configuration.organizationTagsToInclude &&
+    configuration.organizationTagsToInclude.length > 0 &&
+    !configuration.organizationTagsToInclude.some((mandatoryTag) =>
+      organizationTags.includes(mandatoryTag)
+    )
+  ) {
+    return {
+      shouldSync: false,
+      reason: "Ticket does not match any of the required organization tags.",
+    };
+  }
+
+  // If we enforce an exclusion rule on organization tags, we must not have any of the
+  // excluded tags.
+  if (
+    configuration.organizationTagsToExclude &&
+    configuration.organizationTagsToExclude.length > 0 &&
+    configuration.organizationTagsToExclude.some((prohibitedTag) =>
+      organizationTags.includes(prohibitedTag)
+    )
+  ) {
+    return {
+      shouldSync: false,
+      reason: "Ticket contains prohibited organization tags.",
+    };
+  }
+
+  // If we enforce an inclusion rule on ticket tags, we must have at least one of the
+  // mandatory tags.
+  if (
+    configuration.ticketTagsToInclude &&
+    configuration.ticketTagsToInclude.length > 0 &&
+    !configuration.ticketTagsToInclude.some((mandatoryTag) =>
+      ticketTags.includes(mandatoryTag)
+    )
+  ) {
+    return {
+      shouldSync: false,
+      reason: "Ticket does not match any of the required tags.",
+    };
+  }
+
+  // If we enforce an exclusion rule on ticket tags, we must not have any of the
+  // excluded tags.
+  if (
+    configuration.ticketTagsToExclude &&
+    configuration.ticketTagsToExclude.length > 0 &&
+    configuration.ticketTagsToExclude.some((prohibitedTag) =>
+      ticketTags.includes(prohibitedTag)
+    )
+  ) {
+    return { shouldSync: false, reason: "Ticket contains prohibited tags." };
+  }
+
+  // All checks passed.
+  return { shouldSync: true, reason: null };
 }
 
 export function extractMetadataFromDocumentUrl(ticketUrl: string): {
@@ -230,6 +302,23 @@ export async function syncTicket({
       `hasIncidents:${ticket.has_incidents ? "Yes" : "No"}`,
     ];
 
+    // Process custom field tags.
+    const customFieldTags: string[] = [];
+    if (configuration.customFieldsConfig && ticket.custom_fields) {
+      for (const customField of ticket.custom_fields) {
+        // The ticket contains the ID of the custom field and a value for it.
+        // e.g. `{ "id": 1, "value": "yes"}`, we stored the id and the title
+        // of the custom field.
+        const configuredField = configuration.customFieldsConfig.find(
+          (field) => field.id === customField.id
+        );
+        // Case where we did choose to sync this custom field.
+        if (configuredField && customField.value) {
+          customFieldTags.push(`${configuredField.name}:${customField.value}`);
+        }
+      }
+    }
+
     const documentContent = await renderDocumentTitleAndContent({
       dataSourceConfig,
       title: ticketSubject,
@@ -266,6 +355,7 @@ export async function syncTicket({
         `createdAt:${createdAtDate.getTime()}`,
         ...metadata,
         ...filterCustomTags(ticket.tags, logger),
+        ...customFieldTags,
       ],
       parents,
       parentId: parents[1],

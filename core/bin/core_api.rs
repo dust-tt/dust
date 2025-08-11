@@ -26,6 +26,7 @@ use tokio::{
     sync::mpsc::unbounded_channel,
 };
 use tokio_stream::Stream;
+use tracing::{error, info};
 
 use dust::{
     api_keys::validate_api_key,
@@ -41,10 +42,9 @@ use dust::{
         table::{LocalTable, Row, Table},
         table_upserts_background_worker::TableUpsertsBackgroundWorker,
     },
-    databases_store::{self},
+    databases_store::{self, gcs::GoogleCloudStorageDatabasesStore},
     dataset,
     deno::js_executor::JSExecutor,
-    error, info,
     open_telemetry::init_subscribers,
     project,
     providers::provider::{provider, ProviderID},
@@ -190,7 +190,10 @@ impl APIState {
             tokio::time::sleep(std::time::Duration::from_millis(4)).await;
             if loop_count % 1024 == 0 {
                 let manager = self.run_manager.lock();
-                info!(pending_runs = manager.pending_runs.len(), "Pending runs");
+                let runs_count = manager.pending_runs.len();
+                if runs_count > 0 || loop_count % 65536 == 0 {
+                    info!(pending_runs = runs_count, "Pending runs {}", runs_count);
+                }
             }
             // Roughly every 4 minutes, cleanup dead SQLite workers if any.
             if loop_count % 65536 == 0 {
@@ -4144,10 +4147,8 @@ fn main() {
             Err(_) => Err(anyhow!("CORE_DATABASE_URI is required (postgres)"))?,
         };
 
-        // Always use Postgres for databases_store
-        // TODO: once we fully switch to GCS, we'll change this to: GoogleCloudStorageDatabasesStore::new()
         let databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send> = {
-            let store = databases_store::postgres::get_postgres_store().await?;
+            let store = GoogleCloudStorageDatabasesStore::new();
             Box::new(store)
         };
 

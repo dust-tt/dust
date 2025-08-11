@@ -1,4 +1,4 @@
-import { IconButton, LinkWrapper, TrashIcon } from "@dust-tt/sparkle";
+import { IconButton, LinkWrapper } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -15,8 +15,7 @@ interface DataSources {
 }
 
 export function makeColumnsForDataSources(
-  owner: WorkspaceType,
-  onDeleted: () => Promise<void>
+  owner: WorkspaceType
 ): ColumnDef<DataSources>[] {
   return [
     {
@@ -83,62 +82,5 @@ export function makeColumnsForDataSources(
         return formatTimestampToFriendlyDate(editedAt);
       },
     },
-    {
-      id: "actions",
-      cell: ({ row }) => {
-        const dataSource = row.original;
-
-        return (
-          <IconButton
-            icon={TrashIcon}
-            size="xs"
-            variant="outline"
-            onClick={async () => {
-              await deleteDataSource(owner, dataSource.sId, onDeleted);
-            }}
-          />
-        );
-      },
-    },
   ];
-}
-
-async function deleteDataSource(
-  owner: WorkspaceType,
-  dataSourceId: string,
-  onDeleted: () => Promise<void>
-) {
-  if (
-    !window.confirm(
-      `Are you sure you want to delete the ${dataSourceId} data source? There is no going back.`
-    )
-  ) {
-    return;
-  }
-
-  if (!window.confirm(`really, Really, REALLY sure ?`)) {
-    return;
-  }
-
-  try {
-    const r = await fetch(
-      `/api/poke/workspaces/${owner.sId}/data_sources/${dataSourceId}`,
-      {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    if (!r.ok) {
-      const text = await r.text();
-
-      throw new Error(`Failed to delete data source: ${text}`);
-    }
-
-    await onDeleted();
-  } catch (e) {
-    console.error(e);
-    window.alert(e);
-  }
 }

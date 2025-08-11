@@ -105,16 +105,20 @@ export async function gongSyncTranscriptsWorkflow({
   forceResync: boolean;
 }) {
   let pageCursor: string | null = null;
+  let currentRecordCount = 0;
 
   // Do an outer loop to sync all the transcripts. To avoid hitting activity startToCloseTimeout.
   do {
-    const { nextPageCursor } = await gongSyncTranscriptsActivity({
-      connectorId,
-      forceResync,
-      pageCursor,
-    });
+    const { nextPageCursor, processedRecords } =
+      await gongSyncTranscriptsActivity({
+        connectorId,
+        forceResync,
+        pageCursor,
+        currentRecordCount,
+      });
 
     pageCursor = nextPageCursor;
+    currentRecordCount += processedRecords;
   } while (pageCursor !== null);
 }
 

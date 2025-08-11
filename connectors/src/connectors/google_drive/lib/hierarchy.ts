@@ -103,5 +103,7 @@ export const getFileParentsMemoized = cacheWithRedis(
 
     return cacheKey;
   },
-  60 * 10 * 1000
+  {
+    ttlMs: 60 * 10 * 1000,
+  }
 );

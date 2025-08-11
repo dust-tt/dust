@@ -9,6 +9,7 @@ import type {
   ConversationsHistoryResponse,
   MessageElement,
 } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
+import assert from "assert";
 import { Op, Sequelize } from "sequelize";
 
 import {
@@ -20,6 +21,7 @@ import {
   getChannelById,
   getChannels,
   joinChannel,
+  migrateChannelsFromLegacyBotToNewBot,
   updateSlackChannelInConnectorsDb,
   updateSlackChannelInCoreDb,
 } from "@connectors/connectors/slack/lib/channels";
@@ -47,7 +49,10 @@ import {
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
-import { ProviderWorkflowError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
 import { SlackChannel, SlackMessages } from "@connectors/lib/models/slack";
 import {
   reportInitialSyncProgress,
@@ -1010,7 +1015,9 @@ export async function getChannel(
 ): Promise<Channel> {
   const slackClient = await getSlackClient(connectorId);
 
-  return getChannelById(slackClient, connectorId, channelId);
+  return withSlackErrorHandling(() =>
+    getChannelById(slackClient, connectorId, channelId)
+  );
 }
 
 function getTagsForPage({
@@ -1219,4 +1226,53 @@ export async function attemptChannelJoinActivity(
   }
 
   return true;
+}
+
+export async function migrateChannelsFromLegacyBotToNewBotActivity(
+  slackConnectorId: ModelId,
+  slackBotConnectorId: ModelId
+) {
+  const slackConnector = await ConnectorResource.fetchById(slackConnectorId);
+  assert(slackConnector, "Slack connector not found");
+
+  const slackBotConnector =
+    await ConnectorResource.fetchById(slackBotConnectorId);
+  assert(slackBotConnector, "Slack bot connector not found");
+
+  // Only run this activity if the legacy bot is not enabled anymore and new bot is enabled.
+  const slackConfiguration =
+    await SlackConfigurationResource.fetchByConnectorId(slackConnector.id);
+  assert(slackConfiguration, "Slack configuration not found");
+
+  // If enabled, we don't need to migrate.
+  if (slackConfiguration.botEnabled) {
+    return;
+  }
+
+  const slackBotConfiguration =
+    await SlackConfigurationResource.fetchByConnectorId(slackBotConnector.id);
+  assert(slackBotConfiguration, "Slack bot configuration not found");
+
+  // If not enabled, we don't need to migrate.
+  if (!slackBotConfiguration.botEnabled) {
+    return;
+  }
+
+  try {
+    await migrateChannelsFromLegacyBotToNewBot(
+      slackConnector,
+      slackBotConnector
+    );
+  } catch (e) {
+    if (e instanceof ExternalOAuthTokenError) {
+      logger.info(
+        { error: e, slackConnectorId, slackBotConnectorId },
+        "Skipping migration of channels from legacy bot to new bot: external oauth token error"
+      );
+
+      return;
+    }
+
+    throw e;
+  }
 }

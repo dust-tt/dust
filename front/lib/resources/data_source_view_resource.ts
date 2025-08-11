@@ -17,12 +17,12 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
@@ -34,6 +34,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   ConversationType,
@@ -128,7 +129,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     editedByUser?: UserResource | null,
     transaction?: Transaction
   ) {
-    const createDataSourceAndView = async (t: Transaction) => {
+    return withTransaction(async (t: Transaction) => {
       const dataSource = await DataSourceResource.makeNew(
         blob,
         space,
@@ -141,13 +142,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         editedByUser?.toJSON(),
         t
       );
-    };
-
-    if (transaction) {
-      return createDataSourceAndView(transaction);
-    }
-
-    return frontSequelize.transaction(createDataSourceAndView);
+    }, transaction);
   }
 
   static async createViewInSpaceFromDataSource(
@@ -472,10 +467,12 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         switch (key) {
           case "dataSourceId":
           case "vaultId":
-            const vaultModelId = getResourceIdFromSId(value);
+            const resourceModelId = getResourceIdFromSId(value);
 
-            if (vaultModelId) {
-              whereClause[key] = vaultModelId;
+            if (resourceModelId) {
+              whereClause[key] = resourceModelId;
+            } else {
+              return [];
             }
             break;
 
@@ -652,18 +649,58 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     // Mark all content fragments that reference this data source view as expired.
     await this.expireContentFragments(auth, transaction);
 
-    // Delete agent configurations elements pointing to this data source view.
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const agentDataSourceConfigurations =
+      await AgentDataSourceConfiguration.findAll({
+        where: {
+          dataSourceViewId: this.id,
+          workspaceId,
+        },
+      });
+
+    const agentTablesQueryConfigurations =
+      await AgentTablesQueryConfigurationTable.findAll({
+        where: {
+          dataSourceViewId: this.id,
+          workspaceId,
+        },
+      });
+
+    const mcpServerConfigurationIds = removeNulls(
+      [...agentDataSourceConfigurations, ...agentTablesQueryConfigurations].map(
+        (a) => a.mcpServerConfigurationId
+      )
+    );
+
     await AgentDataSourceConfiguration.destroy({
       where: {
         dataSourceViewId: this.id,
+        workspaceId,
       },
       transaction,
     });
+
     await AgentTablesQueryConfigurationTable.destroy({
       where: {
         dataSourceViewId: this.id,
+        workspaceId,
       },
+      transaction,
     });
+
+    // Delete associated MCP server configurations.
+    if (mcpServerConfigurationIds.length > 0) {
+      await AgentMCPServerConfiguration.destroy({
+        where: {
+          id: {
+            [Op.in]: mcpServerConfigurationIds,
+          },
+          workspaceId,
+        },
+        transaction,
+      });
+    }
 
     const deletedCount = await DataSourceViewModel.destroy({
       where: {

@@ -19,6 +19,7 @@ pub enum CredentialProvider {
     Bigquery,
     Salesforce,
     Microsoft,
+    MicrosoftTools,
     Modjo,
     Hubspot,
     Linear,
@@ -27,16 +28,19 @@ pub enum CredentialProvider {
     Monday,
     Mcp,
     Notion,
+    Freshservice,
 }
 
 impl From<ConnectionProvider> for CredentialProvider {
     fn from(provider: ConnectionProvider) -> Self {
         match provider {
             ConnectionProvider::Microsoft => CredentialProvider::Microsoft,
+            ConnectionProvider::MicrosoftTools => CredentialProvider::MicrosoftTools,
             ConnectionProvider::Salesforce => CredentialProvider::Salesforce,
             ConnectionProvider::Gmail => CredentialProvider::Gmail,
             ConnectionProvider::Jira => CredentialProvider::Jira,
             ConnectionProvider::Mcp => CredentialProvider::Mcp,
+            ConnectionProvider::Freshservice => CredentialProvider::Freshservice,
             _ => panic!("Unsupported provider: {:?}", provider),
         }
     }
@@ -204,6 +208,9 @@ impl Credential {
             CredentialProvider::Microsoft => {
                 vec!["client_id", "client_secret"]
             }
+            CredentialProvider::MicrosoftTools => {
+                vec!["client_id", "client_secret"]
+            }
             CredentialProvider::Gmail => {
                 vec!["client_id", "client_secret"]
             }
@@ -214,10 +221,13 @@ impl Credential {
                 vec!["client_id", "client_secret"]
             }
             CredentialProvider::Mcp => {
-                vec!["client_id", "client_secret"]
+                vec!["client_id"]
             }
             CredentialProvider::Notion => {
                 vec!["integration_token"]
+            }
+            CredentialProvider::Freshservice => {
+                vec!["freshservice_domain"]
             }
         };
 

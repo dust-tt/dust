@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import {
   archiveAgentConfiguration,
   getAgentConfiguration,
-} from "@app/lib/api/assistant/configuration";
+} from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -49,11 +49,10 @@ async function handler(
         });
       }
 
-      const agentConfiguration = await getAgentConfiguration(
-        auth,
-        req.query.aId as string,
-        "light"
-      );
+      const agentConfiguration = await getAgentConfiguration(auth, {
+        agentId: req.query.aId as string,
+        variant: "light",
+      });
       if (!agentConfiguration) {
         return apiError(req, res, {
           status_code: 404,

@@ -39,6 +39,10 @@ import {
   Spinner,
   Tooltip,
 } from "@sparkle/components";
+import {
+  radioIndicatorStyles,
+  radioStyles,
+} from "@sparkle/components/RadioGroup";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import {
   ArrowDownIcon,
@@ -107,6 +111,7 @@ interface DataTableProps<TData extends TBaseData> {
   rowSelection?: RowSelectionState;
   setRowSelection?: (rowSelection: RowSelectionState) => void;
   enableRowSelection?: boolean | ((row: Row<TData>) => boolean);
+  enableMultiRowSelection?: boolean;
 }
 
 export function DataTable<TData extends TBaseData>({
@@ -128,6 +133,7 @@ export function DataTable<TData extends TBaseData>({
   rowSelection,
   setRowSelection,
   enableRowSelection = false,
+  enableMultiRowSelection = true,
   getRowId,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
@@ -198,6 +204,7 @@ export function DataTable<TData extends TBaseData>({
     },
     onPaginationChange,
     enableRowSelection,
+    enableMultiRowSelection,
     getRowId,
   });
 
@@ -328,6 +335,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
   rowSelection,
   setRowSelection,
   enableRowSelection,
+  enableMultiRowSelection = true,
   getRowId,
 }: ScrollableDataTableProps<TData>) {
   const windowSize = useWindowSize();
@@ -369,7 +377,6 @@ export function ScrollableDataTable<TData extends TBaseData>({
     rowCount: totalRowCount,
     getCoreRowModel: getCoreRowModel(),
     enableColumnResizing: true,
-    onRowSelectionChange,
     ...(enableRowSelection && {
       onRowSelectionChange,
     }),
@@ -377,6 +384,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
       ...(enableRowSelection && { rowSelection }),
     },
     enableRowSelection,
+    enableMultiRowSelection,
     getRowId,
   });
 
@@ -693,8 +701,7 @@ DataTable.Row = function Row({
         onClick
           ? "s-cursor-pointer hover:s-bg-muted dark:hover:s-bg-muted-night"
           : "",
-        props["data-selected"] &&
-          "s-bg-highlight-50 dark:s-bg-highlight-900/10",
+        props["data-selected"] && "s-bg-muted/50 dark:s-bg-muted/50",
         widthClassName,
         className
       )}
@@ -1112,6 +1119,40 @@ export function createSelectionColumn<TData>(): ColumnDef<TData> {
             row.toggleSelected(state);
           }}
         />
+      </div>
+    ),
+    meta: {
+      className: "s-w-10",
+    },
+  };
+}
+
+export function createRadioSelectionColumn<TData>(): ColumnDef<TData> {
+  return {
+    id: "radio-select",
+    enableSorting: false,
+    enableHiding: false,
+    header: () => null,
+    cell: ({ row }) => (
+      <div className="s-flex s-h-full s-w-full s-items-center">
+        <button
+          type="button"
+          className={cn(
+            radioStyles({ size: "xs" }),
+            row.getIsSelected() && "s-bg-muted/50 dark:s-bg-muted/50",
+            row.getCanSelect() && "s-cursor-pointer"
+          )}
+          onClick={() =>
+            row.getCanSelect() && row.toggleSelected(!row.getIsSelected())
+          }
+          disabled={!row.getCanSelect()}
+          aria-checked={row.getIsSelected()}
+          role="radio"
+        >
+          {row.getIsSelected() && (
+            <div className={radioIndicatorStyles({ size: "xs" })} />
+          )}
+        </button>
       </div>
     ),
     meta: {

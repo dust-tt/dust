@@ -3,22 +3,21 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::info;
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use futures::future::try_join_all;
 use redis::AsyncCommands;
 use rslock::LockManager;
+use serde::de::Error;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tracing::{info, warn};
 
 use crate::databases::table_upserts_background_worker::{
     TableUpsertActivityData, REDIS_CLIENT, REDIS_LOCK_TTL_SECONDS, REDIS_TABLE_UPSERT_HASH_NAME,
     REDIS_URI,
 };
-use crate::databases_store::gcs::GoogleCloudStorageDatabasesStore;
 use crate::databases_store::gcs_background::GoogleCloudStorageBackgroundProcessingStore;
-use crate::databases_store::store::{SAVE_TABLES_TO_GCS, SAVE_TABLES_TO_POSTGRES};
 use crate::search_stores::search_store::NodeItem;
 use crate::{
     data_sources::node::ProviderVisibility,
@@ -108,8 +107,6 @@ pub struct Table {
     schema: Option<TableSchema>,
     schema_stale_at: Option<u64>,
 
-    migrated_to_csv: bool,
-
     remote_database_table_id: Option<String>,
     remote_database_secret_id: Option<String>,
 }
@@ -133,7 +130,6 @@ impl Table {
         source_url: Option<String>,
         schema: Option<TableSchema>,
         schema_stale_at: Option<u64>,
-        migrated_to_csv: bool,
         remote_database_table_id: Option<String>,
         remote_database_secret_id: Option<String>,
     ) -> Self {
@@ -155,7 +151,6 @@ impl Table {
             source_url,
             schema,
             schema_stale_at,
-            migrated_to_csv,
             remote_database_table_id,
             remote_database_secret_id,
         }
@@ -208,9 +203,6 @@ impl Table {
     }
     pub fn unique_id(&self) -> String {
         get_table_unique_id(&self.project, &self.data_source_id, &self.table_id)
-    }
-    pub fn migrated_to_csv(&self) -> bool {
-        self.migrated_to_csv
     }
     pub fn remote_database_table_id(&self) -> Option<&str> {
         self.remote_database_table_id.as_deref()
@@ -277,15 +269,7 @@ impl Table {
             .await?;
 
             // Delete the table rows.
-
-            if SAVE_TABLES_TO_POSTGRES {
-                databases_store.delete_table_data(&self).await?;
-            }
-
-            if SAVE_TABLES_TO_GCS {
-                let gcs_store = GoogleCloudStorageDatabasesStore::new();
-                gcs_store.delete_table_data(&self).await?;
-            }
+            databases_store.delete_table_data(&self).await?;
         }
 
         store
@@ -425,149 +409,13 @@ impl LocalTable {
             "DSSTRUCTSTAT [upsert_rows] validation"
         );
 
-        if SAVE_TABLES_TO_POSTGRES {
-            self.upsert_rows_postgres(&store, &databases_store, rows.as_ref().clone(), truncate)
-                .await?;
-        }
-
-        if SAVE_TABLES_TO_GCS {
-            self.upsert_rows_to_gcs_or_queue_work(
-                &store,
-                &databases_store,
-                rows.as_ref().clone(),
-                truncate,
-            )
-            .await?;
-        }
-
-        Ok(())
-    }
-
-    pub async fn upsert_rows_postgres(
-        &self,
-        store: &Box<dyn Store + Sync + Send>,
-        databases_store: &Box<dyn DatabasesStore + Sync + Send>,
-        rows: Vec<Row>,
-        truncate: bool,
-    ) -> Result<()> {
-        let rows = Arc::new(rows);
-
-        let mut now = utils::now();
-
-        // If we skip all the logic under 'if !SAVE_TABLES_TO_GCS', this will end up getting passed to
-        // batch_upsert_table_rows, which is quirky but ok since the Postgres implementation
-        // ignores this parameter.
-        let mut new_table_schema = TableSchema::empty();
-
-        // We skip all this if saving to GCS, since it does all those same things. In the non-truncate case,
-        // that does mean that it may not happen until a bit later, but it will catch up
-        if !SAVE_TABLES_TO_GCS {
-            new_table_schema = match truncate {
-                // If the new rows replace existing ones, we need to clear the schema cache.
-                true => TableSchema::from_rows_async(rows.clone()).await?,
-                false => match self.table.schema_cached() {
-                    // If there is no existing schema cache, simply use the new schema.
-                    None => TableSchema::from_rows_async(rows.clone()).await?,
-                    Some(existing_table_schema) => {
-                        // If there is an existing schema cache, merge it with the new schema.
-                        existing_table_schema
-                            .merge(&TableSchema::from_rows_async(rows.clone()).await?)?
-                    }
-                },
-            };
-            info!(
-                duration = utils::now() - now,
-                table_id = self.table.table_id(),
-                row_count = rows.len(),
-                "DSSTRUCTSTAT [upsert_rows] table schema"
-            );
-
-            now = utils::now();
-            store
-                .update_data_source_table_schema(
-                    &self.table.project,
-                    &self.table.data_source_id,
-                    &self.table.table_id,
-                    &new_table_schema,
-                )
-                .await?;
-            info!(
-                duration = utils::now() - now,
-                table_id = self.table.table_id(),
-                "DSSTRUCTSTAT [upsert_rows] update table_schema"
-            );
-
-            now = utils::now();
-            if !truncate {
-                // When doing incremental updates to a table's rows, the schema may become too wide.
-                // For example, if a column has only integers, it's an integer column. If a new row has
-                // a string in that column, the column becomes a string column.
-                // However, if that row is later updated to have an integer, the column should become
-                // an integer column again, but we cannot know that without looking at all the rows.
-                // This is why we invalidate the schema when doing incremental updates, and next time
-                // the schema is requested, it will be recomputed from all the rows.
-                store
-                    .invalidate_data_source_table_schema(
-                        &self.table.project,
-                        &self.table.data_source_id,
-                        &self.table.table_id,
-                    )
-                    .await?;
-            }
-            info!(
-                duration = utils::now() - now,
-                table_id = self.table.table_id(),
-                "DSSTRUCTSTAT [upsert_rows] invalidate table schema"
-            );
-        }
-
-        now = utils::now();
-        // Upsert the rows in the table.
-        // Note: if this fails, the Table will still contain the new schema, but the rows will not
-        // be updated. This isn't too bad, because the merged schema is necessarily
-        // backward-compatible with the previous one. The other way around would not be true -- old
-        // schema doesn't necessarily work with the new rows. This is why we cannot `try_join_all`.
-
-        databases_store
-            .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
-            .await?;
-
-        info!(
-            duration = utils::now() - now,
-            table_id = self.table.table_id(),
-            row_count = rows.len(),
-            "DSSTRUCTSTAT [upsert_rows] rows upsert"
-        );
-
-        // We skip all this if saving to GCS, since it does all those same things
-        if !SAVE_TABLES_TO_GCS {
-            now = utils::now();
-            // Invalidate the databases that use the table.
-            try_join_all(
-                (store
-                    .find_databases_using_table(
-                        &self.table.project,
-                        &self.table.data_source_id,
-                        &self.table.table_id,
-                        HEARTBEAT_INTERVAL_MS,
-                    )
-                    .await?)
-                    .into_iter()
-                    .map(|db| {
-                        let store = store.clone();
-                        async move {
-                            db.invalidate(store).await?;
-                            Ok::<_, anyhow::Error>(())
-                        }
-                    }),
-            )
-            .await?;
-            info!(
-                duration = utils::now() - now,
-                table_id = self.table.table_id(),
-                "DSSTRUCTSTAT [upsert_rows] invalidate dbs"
-            );
-        }
+        self.upsert_rows_to_gcs_or_queue_work(
+            &store,
+            &databases_store,
+            rows.as_ref().clone(),
+            truncate,
+        )
+        .await?;
 
         Ok(())
     }
@@ -621,25 +469,15 @@ impl LocalTable {
 
             result
         } else {
-            // We can only handle non-truncate upserts if the table is already migrated.
-            // Otherwise, we have no base data to make the incremental updates against.
-            if self.table.migrated_to_csv() {
-                // For non-truncate, use the background worker
-                self.schedule_background_upsert_or_delete(rows).await
-            } else {
-                info!(
-                    table_id = self.table.table_id(),
-                    "upsert_rows_to_gcs_or_queue_work: table not migrated to CSV, skipping GCS upsert for non-truncate");
-                Ok(())
-            }
+            // For non-truncate, use the background worker
+            self.schedule_background_upsert_or_delete(rows).await
         }
     }
 
     pub async fn upsert_rows_gcs(
         &self,
         store: &Box<dyn Store + Sync + Send>,
-        // TODO: use this as databases_store once we fully migrate to GCS
-        _: &Box<dyn DatabasesStore + Sync + Send>,
+        databases_store: &Box<dyn DatabasesStore + Sync + Send>,
         rows: Vec<Row>,
         truncate: bool,
     ) -> Result<()> {
@@ -711,19 +549,8 @@ impl LocalTable {
         // backward-compatible with the previous one. The other way around would not be true -- old
         // schema doesn't necessarily work with the new rows. This is why we cannot `try_join_all`.
 
-        let gcs_store = GoogleCloudStorageDatabasesStore::new();
-        gcs_store
+        databases_store
             .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
-            .await?;
-
-        store
-            .set_data_source_table_migrated_to_csv(
-                &self.table.project,
-                &self.table.data_source_id,
-                &self.table.table_id,
-                true,
-                None,
-            )
             .await?;
 
         info!(
@@ -858,31 +685,14 @@ impl LocalTable {
 
     pub async fn delete_row(
         &self,
-        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+        _: Box<dyn DatabasesStore + Sync + Send>,
         row_id: &str,
     ) -> Result<()> {
         // Delete the table row.
 
-        if SAVE_TABLES_TO_POSTGRES {
-            databases_store
-                .delete_table_row(&self.table, row_id)
-                .await?;
-        }
-
         // Deletions are conveyed by special rows
-        if SAVE_TABLES_TO_GCS {
-            // We can only handle non-truncate deletes if the table is already migrated.
-            // Otherwise, we have no base data to make the incremental changes against.
-            if self.table.migrated_to_csv() {
-                let rows = vec![Row::new_delete_marker_row(row_id.to_string())];
-                self.schedule_background_upsert_or_delete(rows).await?;
-            } else {
-                info!("delete_row: table not migrated to CSV, skipping GCS delete non-truncate");
-            }
-            Ok(())
-        } else {
-            Ok(())
-        }
+        let rows = vec![Row::new_delete_marker_row(row_id.to_string())];
+        self.schedule_background_upsert_or_delete(rows).await
     }
 
     pub async fn list_rows(
@@ -995,42 +805,83 @@ impl Filterable for Table {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone)]
 pub struct Row {
     pub row_id: String,
-    pub value: serde_json::Map<String, serde_json::Value>,
+
+    pub headers: Arc<Vec<String>>,
+    pub columns: Vec<serde_json::Value>,
+
     // To keep track of pending delete actions, we use a special marker row.
     // This allows us to keep all the row data in the same format, which keeps the
     // implementation simpler.
     // Note that this is internal state, and it is not serialized
-    #[serde(skip_serializing, default)]
     pub is_delete: bool,
 }
 
 impl Row {
-    pub fn new(row_id: String, value: serde_json::Map<String, serde_json::Value>) -> Self {
+    pub fn new(row_id: String, headers: Arc<Vec<String>>, columns: Vec<serde_json::Value>) -> Self {
         Row {
             row_id,
-            value,
+            headers,
+            columns,
             is_delete: false,
         }
     }
 
     pub fn new_delete_marker_row(row_id: String) -> Self {
+        let headers = Arc::new(vec![]);
+        let columns = vec![];
         Row {
             row_id,
-            value: serde_json::Map::new(),
+            headers,
+            columns,
             is_delete: true,
         }
     }
 
+    // Legacy constructor for backward compatibility - converts value map to headers/columns
+    pub fn new_from_value(
+        row_id: String,
+        value: serde_json::Map<String, serde_json::Value>,
+    ) -> Self {
+        let column_names: Vec<String> = value.keys().cloned().collect();
+        let column_values: Vec<serde_json::Value> = column_names
+            .iter()
+            .map(|key| value.get(key).cloned().unwrap_or(serde_json::Value::Null))
+            .collect();
+
+        let headers = Arc::new(column_names);
+
+        Row {
+            row_id,
+            headers,
+            columns: column_values,
+            is_delete: false,
+        }
+    }
+
+    // Compute value from headers and columns on-demand
+    pub fn value(&self) -> serde_json::Map<String, serde_json::Value> {
+        let mut value = serde_json::Map::new();
+        for (i, column_name) in self.headers.iter().enumerate() {
+            let column_value = self
+                .columns
+                .get(i)
+                .cloned()
+                .unwrap_or(serde_json::Value::Null);
+            value.insert(column_name.clone(), column_value);
+        }
+        value
+    }
+
     /// This method implements our interpretation of CSVs into Table rows.
     pub fn from_csv_record(
-        headers: &Vec<String>,
+        headers: Arc<Vec<String>>,
         record: Vec<&str>,
-        row_idx: usize,
+        row_id: String,
     ) -> Result<Row> {
-        let mut value_map = serde_json::Map::new();
+        let mut values = Vec::<serde_json::Value>::new();
 
         fn try_parse_float(s: &str) -> Result<serde_json::Number> {
             if let Ok(float) = s.parse::<f64>() {
@@ -1052,7 +903,7 @@ impl Row {
             let trimmed = field.trim();
 
             if header == "__dust_id" {
-                continue;
+                Err(anyhow!("__dust_id is not a valid header. It should have been filtered out before calling this method."))?;
             }
 
             let parsed_value = if trimmed.is_empty() {
@@ -1106,7 +957,7 @@ impl Row {
                     }) {
                         Ok(result) => result.ok(),
                         Err(e) => {
-                            crate::warn!("Panic while parsing date '{}': {:?}", trimmed, e);
+                            warn!("Panic while parsing date '{}': {:?}", trimmed, e);
                             None
                         }
                     };
@@ -1129,17 +980,10 @@ impl Row {
                 }
             };
 
-            value_map.insert(header.clone(), parsed_value);
+            values.push(parsed_value);
         }
 
-        let row_id = if let Some(pos) = headers.iter().position(|h| h == "__dust_id") {
-            record.get(pos).map(|id| id.trim().to_string())
-        } else {
-            None
-        }
-        .unwrap_or_else(|| row_idx.to_string());
-
-        Ok(Row::new(row_id, value_map))
+        Ok(Row::new(row_id, headers, values))
     }
 
     pub fn to_csv_record(&self, headers: &Vec<String>) -> Result<Vec<String>> {
@@ -1184,14 +1028,45 @@ impl Row {
     pub fn row_id(&self) -> &str {
         &self.row_id
     }
-    pub fn content(&self) -> &serde_json::Map<String, serde_json::Value> {
-        &self.value
+    pub fn content(&self) -> serde_json::Map<String, serde_json::Value> {
+        self.value()
+    }
+}
+
+impl Serialize for Row {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("Row", 3)?;
+        state.serialize_field("row_id", &self.row_id)?;
+        state.serialize_field("value", &self.value())?;
+        // we do not serialize is_delete
+        state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for Row {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = serde_json::Map::deserialize(deserializer)?;
+
+        match value["value"].as_object() {
+            Some(subvalue) => Ok(Row::new_from_value(
+                value["row_id"].to_string(),
+                subvalue.clone(),
+            )),
+            None => Err(D::Error::custom("Missing value in Row")),
+        }
     }
 }
 
 impl HasValue for Row {
-    fn value(&self) -> &serde_json::Map<String, serde_json::Value> {
-        &self.value
+    fn value(&self) -> (Vec<&String>, Vec<&serde_json::Value>) {
+        (self.headers.iter().collect(), self.columns.iter().collect())
     }
 }
 
@@ -1221,8 +1096,8 @@ mod tests {
         ]);
 
         let rows = Arc::new(vec![
-            Row::new("1".to_string(), row_1),
-            Row::new("2".to_string(), row_2),
+            Row::new_from_value("1".to_string(), row_1),
+            Row::new_from_value("2".to_string(), row_2),
         ]);
 
         let schema = TableSchema::from_rows_async(rows).await?;
@@ -1244,7 +1119,6 @@ mod tests {
             None,
             Some(schema),
             None,
-            false,
             None,
             None,
         );
@@ -1267,14 +1141,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_row_from_csv_record() -> anyhow::Result<()> {
-        let headers = vec!["test".to_string(), "date".to_string()];
+        let headers = Arc::new(vec!["test".to_string(), "date".to_string()]);
 
         let record = vec!["1", "2021-01-01T00:00:00Z"];
-        let row = Row::from_csv_record(&headers, record, 0)?;
+        let row = Row::from_csv_record(headers.clone(), record, "0".to_string())?;
         assert_eq!(row.row_id(), "0");
         assert_eq!(
             row.content(),
-            &serde_json::Map::from_iter([
+            serde_json::Map::from_iter([
                 ("test".to_string(), 1.into()),
                 (
                     "date".to_string(),
@@ -1289,7 +1163,7 @@ mod tests {
         );
 
         let record = vec!["123a", "March 2, 2021"];
-        let row = Row::from_csv_record(&headers, record, 0)?;
+        let row = Row::from_csv_record(headers.clone(), record, "0".to_string())?;
         assert_eq!(row.content()["test"], Value::String("123a".to_string()));
         assert_eq!(
             row.content()["date"]["type"],
@@ -1301,7 +1175,7 @@ mod tests {
         );
 
         let record = vec!["true", "02-Jan-2021"];
-        let row = Row::from_csv_record(&headers, record, 0)?;
+        let row = Row::from_csv_record(headers.clone(), record, "0".to_string())?;
         assert_eq!(row.content()["test"], Value::Bool(true));
         assert_eq!(
             row.content()["date"]["string_value"],
@@ -1313,7 +1187,7 @@ mod tests {
         );
 
         let record = vec!["false", "2024-02-19 15:30:45"];
-        let row = Row::from_csv_record(&headers, record, 0)?;
+        let row = Row::from_csv_record(headers.clone(), record, "0".to_string())?;
         assert_eq!(row.content()["test"], Value::Bool(false));
         assert_eq!(
             row.content()["date"]["string_value"],
@@ -1325,7 +1199,7 @@ mod tests {
         );
 
         let record = vec!["", "2-Jan-2021"];
-        let row = Row::from_csv_record(&headers, record, 0)?;
+        let row = Row::from_csv_record(headers.clone(), record, "0".to_string())?;
         assert_eq!(
             row.content()["date"]["string_value"],
             Value::String("2-Jan-2021".to_string())
@@ -1336,7 +1210,7 @@ mod tests {
         );
 
         let record = vec!["", "January 02, 2021"];
-        let row = Row::from_csv_record(&headers, record, 0)?;
+        let row = Row::from_csv_record(headers.clone(), record, "0".to_string())?;
         assert_eq!(
             row.content()["date"]["string_value"],
             Value::String("January 02, 2021".to_string())
@@ -1347,7 +1221,7 @@ mod tests {
         );
 
         let record = vec!["", "Fri, 14 Feb 2025 15:10:34 GMT"];
-        let row = Row::from_csv_record(&headers, record, 0)?;
+        let row = Row::from_csv_record(headers.clone(), record, "0".to_string())?;
         assert_eq!(
             row.content()["date"]["string_value"],
             Value::String("Fri, 14 Feb 2025 15:10:34 GMT".to_string())
@@ -1357,9 +1231,9 @@ mod tests {
             Value::Number(1739545834000_i64.into())
         );
 
-        let headers = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        let headers = Arc::new(vec!["a".to_string(), "b".to_string(), "c".to_string()]);
         let record = vec!["2", "2.0", "0.1"];
-        let row = Row::from_csv_record(&headers, record, 0)?;
+        let row = Row::from_csv_record(headers.clone(), record, "0".to_string())?;
         assert_eq!(row.content()["a"], Value::Number(2.into()));
         assert_eq!(
             row.content()["b"],
@@ -1370,27 +1244,27 @@ mod tests {
             Value::Number(serde_json::Number::from_f64(0.1).unwrap())
         );
 
-        let headers = vec!["a".to_string(), "b".to_string()];
+        let headers = Arc::new(vec!["a".to_string(), "b".to_string()]);
         let record = vec!["true", "false"];
-        let row = Row::from_csv_record(&headers, record, 0)?;
+        let row = Row::from_csv_record(headers, record, "0".to_string())?;
         assert_eq!(row.content()["a"], Value::Bool(true));
         assert_eq!(row.content()["b"], Value::Bool(false));
 
-        let headers = vec!["a".to_string(), "b".to_string()];
+        let headers = Arc::new(vec!["a".to_string(), "b".to_string()]);
         let record = vec!["TRUE", "FALSE"];
-        let row = Row::from_csv_record(&headers, record, 0)?;
+        let row = Row::from_csv_record(headers, record, "0".to_string())?;
         assert_eq!(row.content()["a"], Value::Bool(true));
         assert_eq!(row.content()["b"], Value::Bool(false));
 
-        let headers = vec!["a".to_string(), "b".to_string()];
+        let headers = Arc::new(vec!["a".to_string(), "b".to_string()]);
         let record = vec!["t", "f"];
-        let row = Row::from_csv_record(&headers, record, 0)?;
+        let row = Row::from_csv_record(headers, record, "0".to_string())?;
         assert_eq!(row.content()["a"], Value::Bool(true));
         assert_eq!(row.content()["b"], Value::Bool(false));
 
-        let headers = vec!["a".to_string(), "b".to_string()];
+        let headers = Arc::new(vec!["a".to_string(), "b".to_string()]);
         let record = vec!["trUe", "fALse"];
-        let row = Row::from_csv_record(&headers, record, 0)?;
+        let row = Row::from_csv_record(headers, record, "0".to_string())?;
         assert_eq!(row.content()["a"], Value::Bool(true));
         assert_eq!(row.content()["b"], Value::Bool(false));
 
@@ -1408,19 +1282,21 @@ mod tests {
             ("null_col".to_string(), Value::Null),
         ]);
 
-        let simple_row = Row::new("test_row_id".to_string(), simple_row_data);
+        let simple_row = Row::new_from_value("test_row_id".to_string(), simple_row_data);
 
-        // Extract headers and ensure consistent ordering
-        let mut headers: Vec<String> = simple_row.value().keys().cloned().collect();
-        headers.sort();
+        // Extract headers
+        let headers = simple_row.headers.clone();
 
         // Convert row to CSV record and back
         let csv_record = simple_row.to_csv_record(&headers)?;
-        let reconstructed_row =
-            Row::from_csv_record(&headers, csv_record.iter().map(|s| s.as_str()).collect(), 0)?;
+        let reconstructed_row = Row::from_csv_record(
+            headers.clone(),
+            csv_record.iter().map(|s| s.as_str()).collect(),
+            "test_row_id".to_string(),
+        )?;
 
         // Content should be identical for simple data types
-        assert_eq!(simple_row.content(), reconstructed_row.content());
+        assert_eq!(&simple_row.content(), &reconstructed_row.content());
 
         // Test case 2: Verify expected transformations for edge cases
         let edge_case_data = serde_json::Map::from_iter([
@@ -1428,14 +1304,15 @@ mod tests {
             ("non_empty_string".to_string(), "not empty".into()),
         ]);
 
-        let edge_case_row = Row::new("edge_case_id".to_string(), edge_case_data);
-        let edge_headers: Vec<String> = edge_case_row.value().keys().cloned().collect();
+        let edge_case_row = Row::new_from_value("edge_case_id".to_string(), edge_case_data);
+        let edge_headers: Arc<Vec<String>> =
+            Arc::new(edge_case_row.value().keys().cloned().collect());
 
         let edge_csv_record = edge_case_row.to_csv_record(&edge_headers)?;
         let edge_reconstructed_row = Row::from_csv_record(
-            &edge_headers,
+            edge_headers,
             edge_csv_record.iter().map(|s| s.as_str()).collect(),
-            0,
+            "edge_case_id".to_string(),
         )?;
 
         // Empty strings become null when parsed from CSV - this is expected behavior
@@ -1448,25 +1325,7 @@ mod tests {
             Value::String("not empty".to_string())
         );
 
-        // Test case 3: Test with __dust_id to verify row_id preservation
-        let mut headers_with_id = headers.clone();
-        headers_with_id.insert(0, "__dust_id".to_string());
-
-        let mut csv_record_with_id = csv_record.clone();
-        csv_record_with_id.insert(0, simple_row.row_id().to_string());
-
-        let reconstructed_row_with_id = Row::from_csv_record(
-            &headers_with_id,
-            csv_record_with_id.iter().map(|s| s.as_str()).collect(),
-            0,
-        )?;
-
-        // Row ID should be preserved and content should still match
-        assert_eq!(simple_row.row_id(), "test_row_id");
-        assert_eq!(simple_row.row_id(), reconstructed_row_with_id.row_id());
-        assert_eq!(simple_row.content(), reconstructed_row_with_id.content());
-
-        // Test case 4: Date round trip test (dates may have format changes but should preserve epoch)
+        // Test case 3: Date round trip test (dates may have format changes but should preserve epoch)
         let date_data = serde_json::Map::from_iter([(
             "date_col".to_string(),
             serde_json::Map::from_iter([
@@ -1477,14 +1336,14 @@ mod tests {
             .into(),
         )]);
 
-        let date_row = Row::new("date_test_id".to_string(), date_data);
-        let date_headers: Vec<String> = date_row.value().keys().cloned().collect();
+        let date_row = Row::new_from_value("date_test_id".to_string(), date_data);
+        let date_headers: Arc<Vec<String>> = Arc::new(date_row.value().keys().cloned().collect());
 
         let date_csv_record = date_row.to_csv_record(&date_headers)?;
         let date_reconstructed_row = Row::from_csv_record(
-            &date_headers,
+            date_headers,
             date_csv_record.iter().map(|s| s.as_str()).collect(),
-            0,
+            "date_test_id".to_string(),
         )?;
 
         // The epoch should be preserved even if string format changes
@@ -1498,12 +1357,12 @@ mod tests {
         );
         // Note: string_value may change format during parsing, so we don't assert equality on it
 
-        // Test case 5: Test that the __dust_id field is present in the CSV record at the position of the field in the headers
-        let dust_id_row = Row::new(
+        // Test case 4: Test that the __dust_id field is present in the CSV record at the position of the field in the headers
+        let dust_id_row = Row::new_from_value(
             "dust_id_test_id".to_string(),
             serde_json::Map::from_iter([("property".to_string(), "value".into())]),
         );
-        let headers = vec!["property".to_string(), "__dust_id".to_string()];
+        let headers = Arc::new(vec!["property".to_string(), "__dust_id".to_string()]);
         let dust_id_csv_record = dust_id_row.to_csv_record(&headers)?;
         assert_eq!(
             dust_id_csv_record[dust_id_csv_record.len() - 1],

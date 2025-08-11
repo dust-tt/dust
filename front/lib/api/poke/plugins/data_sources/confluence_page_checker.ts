@@ -122,6 +122,7 @@ async function checkConfluencePage({
       pageId: undefined,
       spaceId: undefined,
       url: pageUrl,
+      skipReason: undefined,
     },
   });
 

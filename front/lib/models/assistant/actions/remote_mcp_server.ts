@@ -16,8 +16,6 @@ export class RemoteMCPServerModel extends WorkspaceAwareModel<RemoteMCPServerMod
   declare updatedAt: CreationOptional<Date>;
 
   declare url: string;
-  declare name: string;
-  declare description: string;
   declare icon: CustomServerIconType | InternalAllowedIconType;
   declare version: string;
 
@@ -44,16 +42,8 @@ RemoteMCPServerModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     url: {
       type: DataTypes.STRING,
-      allowNull: false,
-    },
-    description: {
-      type: DataTypes.TEXT,
       allowNull: false,
     },
     icon: {

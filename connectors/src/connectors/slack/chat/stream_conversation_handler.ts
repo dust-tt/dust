@@ -6,7 +6,13 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/client";
-import { assertNever, Err, Ok, TOOL_RUNNING_LABEL } from "@dust-tt/client";
+import {
+  assertNever,
+  Err,
+  isMCPServerPersonalAuthRequiredError,
+  Ok,
+  TOOL_RUNNING_LABEL,
+} from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import * as t from "io-ts";
 import slackifyMarkdown from "slackify-markdown";
@@ -73,7 +79,6 @@ export async function streamConversationToSlack(
   await postSlackMessageUpdate(
     {
       messageUpdate: {
-        isComplete: false,
         isThinking: true,
         assistantName,
         agentConfigurations,
@@ -133,7 +138,6 @@ async function streamAgentAnswerToSlack(
         await postSlackMessageUpdate(
           {
             messageUpdate: {
-              isComplete: false,
               isThinking: true,
               assistantName,
               agentConfigurations,
@@ -194,6 +198,30 @@ async function streamAgentAnswerToSlack(
           )
         );
       }
+      case "tool_error": {
+        if (isMCPServerPersonalAuthRequiredError(event.error)) {
+          const conversationUrl = makeConversationUrl(
+            connector.workspaceId,
+            conversation.sId
+          );
+          await postSlackMessageUpdate({
+            messageUpdate: {
+              text:
+                "The agent took an action that requires personal authentication. " +
+                `Please go to <${conversationUrl}|the conversation> to authenticate.`,
+              assistantName,
+              agentConfigurations,
+            },
+            ...conversationData,
+          });
+          return new Ok(undefined);
+        }
+        return new Err(
+          new Error(
+            `Tool message error: code: ${event.error.code} message: ${event.error.message}`
+          )
+        );
+      }
       case "agent_error": {
         return new Err(
           new Error(
@@ -231,7 +259,6 @@ async function streamAgentAnswerToSlack(
         }
         await postSlackMessageUpdate({
           messageUpdate: {
-            isComplete: false,
             text: slackContent,
             assistantName,
             agentConfigurations,
@@ -256,7 +283,6 @@ async function streamAgentAnswerToSlack(
         await postSlackMessageUpdate(
           {
             messageUpdate: {
-              isComplete: true,
               text: slackContent,
               assistantName,
               agentConfigurations,

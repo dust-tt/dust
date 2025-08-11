@@ -1,6 +1,6 @@
 import type { Event } from "@workos-inc/node";
 
-import { getTemporalClient } from "@app/lib/temporal";
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { QUEUE_NAME } from "@app/temporal/workos_events_queue/config";
 import {
   workOSEventsWorkflow,
@@ -14,10 +14,10 @@ export async function launchWorkOSEventsWorkflow({
 }: {
   eventPayload: Event;
 }): Promise<Result<string, Error>> {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
 
-  const { event: eventType } = eventPayload;
-  const workflowId = `workos-events-${eventType}-${Date.now()}`;
+  const { event: eventType, id } = eventPayload;
+  const workflowId = `workos-events-${eventType}-${id}-${Date.now()}`;
 
   try {
     await client.workflow.start(workOSEventsWorkflow, {
@@ -40,7 +40,7 @@ export async function launchWorkOSWorkspaceSubscriptionCreatedWorkflow({
 }: {
   workspaceId: string;
 }): Promise<Result<string, Error>> {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
 
   const workflowId = `workos-workspace-subscription-created-${workspaceId}`;
 

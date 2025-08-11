@@ -50,7 +50,9 @@ export const getMyDriveIdCached = cacheWithRedis(
     }
     return auth_credentials.credentials.access_token;
   },
-  60 * 10 * 1000 // 10 minutes
+  {
+    ttlMs: 60 * 10 * 1000, // 10 minutes
+  }
 );
 
 // Turn the labels into a string array of formatted string such as labelTitle:labelValue
@@ -289,7 +291,9 @@ export const getCachedLabels = cacheWithRedis(
     }
     return `${connectorId}-labels`;
   },
-  60 * 10 * 1000 // 10 minutes
+  {
+    ttlMs: 60 * 10 * 1000, // 10 minutes
+  }
 );
 
 // Get the list of published labels

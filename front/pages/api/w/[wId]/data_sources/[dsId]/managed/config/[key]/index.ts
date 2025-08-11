@@ -74,8 +74,6 @@ async function handler(
     });
   }
 
-  // We only allow setting and retrieving `botEnabled` (Slack), `codeSyncEnabled` (GitHub), `useMetadataForDBML` (BigQuery),
-  // `intercomConversationsNotesSyncEnabled` (Intercom), `zendeskSyncUnresolvedTicketsEnabled` and `zendeskHideCustomerDetails`.
   // This is mainly to prevent users from enabling other configs that are not released
   if (
     ![
@@ -86,6 +84,12 @@ async function handler(
       "intercomConversationsNotesSyncEnabled",
       "zendeskSyncUnresolvedTicketsEnabled",
       "zendeskHideCustomerDetails",
+      "zendeskRetentionPeriodDays",
+      "zendeskTicketTagsToInclude",
+      "zendeskTicketTagsToExclude",
+      "zendeskOrganizationTagsToInclude",
+      "zendeskOrganizationTagsToExclude",
+      "zendeskCustomFieldsConfig",
       "gongRetentionPeriodDays",
       "gongTrackersEnabled",
       "privateIntegrationCredentialId",

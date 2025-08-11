@@ -1,4 +1,5 @@
 import { faker } from "@faker-js/faker";
+import { expect } from "vitest";
 
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
@@ -14,7 +15,7 @@ export class WorkspaceFactory {
     const workspace = await WorkspaceModel.create({
       sId: generateRandomModelSId(),
       name: faker.company.name(),
-      description: faker.company.catchPhrase(),
+      description: `[DEBUG] Created for the test: ${expect.getState().currentTestName}\n\n${faker.company.catchPhrase()}`,
       workOSOrganizationId: faker.string.alpha(10),
     });
 

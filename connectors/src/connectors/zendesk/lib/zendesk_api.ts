@@ -8,30 +8,56 @@ import type {
   ZendeskFetchedArticle,
   ZendeskFetchedBrand,
   ZendeskFetchedCategory,
+  ZendeskFetchedOrganization,
   ZendeskFetchedSection,
   ZendeskFetchedTicket,
   ZendeskFetchedTicketComment,
+  ZendeskFetchedTicketField,
   ZendeskFetchedUser,
 } from "@connectors/connectors/zendesk/lib/types";
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
-import logger from "@connectors/logger/logger";
+import mainLogger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
+import { removeNulls } from "@connectors/types/shared/utils/general";
 
-const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
-const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
-const ZENDESK_TICKET_PAGE_SIZE = 300;
-const ZENDESK_COMMENT_PAGE_SIZE = 100;
+const RATE_LIMIT_MAX_RETRIES = 5;
+const RATE_LIMIT_TIMEOUT_SECONDS = 60;
+
+const TICKET_PAGE_SIZE = 300;
+const COMMENT_PAGE_SIZE = 100;
+const CUSTOM_FIELDS_PAGE_SIZE = 100;
+
+const logger = mainLogger.child(
+  {
+    connector: "zendesk",
+  },
+  { msgPrefix: "[Zendesk] " }
+);
+
+const ZENDESK_URL_REGEX = /^https?:\/\/(.*)\.zendesk\.com([^?]*).*/;
+const ZENDESK_ENDPOINT_REGEX = /\/([a-zA-Z_]+)\/(\d+)/g;
 
 function extractMetadataFromZendeskUrl(url: string): {
   subdomain: string;
   endpoint: string;
 } {
-  const regex = /^https?:\/\/(.*)\.zendesk\.com([^?]*).*/;
+  const rawEndpoint = url.replace(ZENDESK_URL_REGEX, "$2");
+
+  // Replace numeric IDs with placeholders using the first letter of the previous word.
+  const normalizedEndpoint = rawEndpoint.replace(
+    ZENDESK_ENDPOINT_REGEX,
+    (_, word) => {
+      const firstLetter = word.charAt(0).toLowerCase();
+      return `/${word}/{${firstLetter}Id}`;
+    }
+  );
+
   return {
-    subdomain: url.replace(regex, "$1"),
-    endpoint: url.replace(regex, "$2"),
+    subdomain: url.replace(ZENDESK_URL_REGEX, "$1"),
+    endpoint: normalizedEndpoint,
   };
 }
 
@@ -85,18 +111,24 @@ async function handleZendeskRateLimit(
         retryAfter = Math.max(delay, 1);
       }
     }
-    if (retryAfter > ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS) {
+
+    statsDClient.increment("zendesk_api.rate_limit.hit.count", 1, [
+      `subdomain:${subdomain}`,
+      `endpoint:${endpoint}`,
+    ]);
+
+    if (retryAfter > RATE_LIMIT_TIMEOUT_SECONDS) {
       logger.info(
         { subdomain, endpoint, response, retryAfter },
-        `[Zendesk] Attempting to wait more than ${ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS} s, aborting.`
+        `Attempting to wait more than ${RATE_LIMIT_TIMEOUT_SECONDS} s, aborting.`
       );
       throw new Error(
-        `Zendesk retry after larger than ${ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS} s, aborting.`
+        `Zendesk retry after larger than ${RATE_LIMIT_TIMEOUT_SECONDS} s, aborting.`
       );
     }
     logger.info(
       { subdomain, endpoint, response, retryAfter },
-      "[Zendesk] Rate limit hit, waiting before retrying."
+      "Rate limit hit, waiting before retrying."
     );
     await setTimeoutAsync(retryAfter * 1000);
     return true;
@@ -115,6 +147,8 @@ async function fetchFromZendeskWithRetries({
   url: string;
   accessToken: string;
 }) {
+  const { subdomain, endpoint } = extractMetadataFromZendeskUrl(url);
+
   const runFetch = async () =>
     fetch(url, {
       method: "GET",
@@ -130,20 +164,25 @@ async function fetchFromZendeskWithRetries({
   while (await handleZendeskRateLimit(rawResponse, url)) {
     rawResponse = await runFetch();
     retryCount++;
-    if (retryCount >= ZENDESK_RATE_LIMIT_MAX_RETRIES) {
+    if (retryCount >= RATE_LIMIT_MAX_RETRIES) {
       logger.info(
         { response: rawResponse },
-        `[Zendesk] Rate limit hit more than ${ZENDESK_RATE_LIMIT_MAX_RETRIES}, aborting.`
+        `Rate limit hit more than ${RATE_LIMIT_MAX_RETRIES}, aborting.`
       );
       throw new Error(
-        `Zendesk rate limit hit more than ${ZENDESK_RATE_LIMIT_MAX_RETRIES} times, aborting.`
+        `Zendesk rate limit hit more than ${RATE_LIMIT_MAX_RETRIES} times, aborting.`
       );
     }
   }
+
+  const tags = [`subdomain:${subdomain}`, `endpoint:${endpoint}`];
+  statsDClient.increment("zendesk_api.requests.count", 1, tags);
+
   let response;
   try {
     response = await rawResponse.json();
   } catch (e) {
+    statsDClient.increment("zendesk_api.requests.error.count", 1, tags);
     throw new ZendeskApiError(
       "Error parsing Zendesk API response",
       rawResponse.status,
@@ -151,6 +190,7 @@ async function fetchFromZendeskWithRetries({
     );
   }
   if (!rawResponse.ok) {
+    statsDClient.increment("zendesk_api.requests.error.count", 1, tags);
     throw new ZendeskApiError("Zendesk API error.", rawResponse.status, {
       response,
       rawResponse,
@@ -349,7 +389,7 @@ export async function listRecentlyUpdatedArticles({
       }
       logger.warn(
         { subdomain, brandSubdomain },
-        "[Zendesk] Could not fetch article diff."
+        "Could not fetch article diff."
       );
       return { articles: [], hasMore: false, endTime: 0 };
     }
@@ -410,7 +450,7 @@ export async function listZendeskTickets(
       url:
         url ?? // using the URL if we got one, reconstructing it otherwise
         `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor?` +
-          `per_page=${ZENDESK_TICKET_PAGE_SIZE}&start_time=${startTime}`,
+          `per_page=${TICKET_PAGE_SIZE}&start_time=${startTime}`,
       accessToken,
     });
     return {
@@ -466,7 +506,7 @@ export async function listZendeskTicketComments({
   ticketId: number;
 }): Promise<ZendeskFetchedTicketComment[]> {
   const comments = [];
-  let url: string = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}/comments?page[size]=${ZENDESK_COMMENT_PAGE_SIZE}`;
+  let url: string = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}/comments?page[size]=${COMMENT_PAGE_SIZE}`;
   let hasMore = true;
 
   while (hasMore) {
@@ -508,6 +548,32 @@ export async function getZendeskTicketCount({
   const url = `https://${brandSubdomain}.zendesk.com/api/v2/search/count?query=${encodeURIComponent(query)}`;
   const response = await fetchFromZendeskWithRetries({ url, accessToken });
   return parseInt(response.count, 10);
+}
+
+/**
+ * Fetches multiple organizations at once from the Zendesk API.
+ * May run multiple queries, more precisely we need organizationCount // 100 + 1 API calls.
+ */
+export async function listZendeskOrganizations({
+  accessToken,
+  brandSubdomain,
+  organizationIds,
+}: {
+  accessToken: string;
+  brandSubdomain: string;
+  organizationIds: number[];
+}): Promise<ZendeskFetchedOrganization[]> {
+  const users: ZendeskFetchedOrganization[] = [];
+  // we can fetch at most 100 organizations at once: https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#show-many-organizations
+  for (const chunk of _.chunk(organizationIds, 100)) {
+    const parameter = `ids=${encodeURIComponent(chunk.join(","))}`;
+    const response = await fetchFromZendeskWithRetries({
+      url: `https://${brandSubdomain}.zendesk.com/api/v2/organizations/show_many?${parameter}`,
+      accessToken,
+    });
+    users.push(...response.organizations);
+  }
+  return users;
 }
 
 /**
@@ -646,4 +712,82 @@ export async function listZendeskCategories({
     }
     throw e;
   }
+}
+
+export async function getOrganizationTagMapForTickets(
+  tickets: ZendeskFetchedTicket[],
+  {
+    accessToken,
+    brandSubdomain,
+  }: { accessToken: string; brandSubdomain: string }
+) {
+  const organizationIds = removeNulls(
+    tickets.map((t) => t.organization_id ?? null)
+  );
+  const organizations = await listZendeskOrganizations({
+    accessToken,
+    brandSubdomain,
+    organizationIds,
+  });
+  return new Map(organizations.map((t) => [t.id, t.tags]));
+}
+
+/**
+ * Fetches a single ticket field by ID from the Zendesk API.
+ */
+export async function getZendeskTicketFieldById({
+  accessToken,
+  subdomain,
+  fieldId,
+}: {
+  accessToken: string;
+  subdomain: string;
+  fieldId: number;
+}): Promise<ZendeskFetchedTicketField | null> {
+  const url = `https://${subdomain}.zendesk.com/api/v2/ticket_fields/${fieldId}`;
+  try {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    return response?.ticket_field ?? null;
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      return null;
+    }
+    throw e;
+  }
+}
+
+/**
+ * Fetches all ticket fields from the Zendesk API.
+ */
+export async function listZendeskTicketFields({
+  accessToken,
+  subdomain,
+}: {
+  accessToken: string;
+  subdomain: string;
+}): Promise<ZendeskFetchedTicketField[]> {
+  let url =
+    `https://${subdomain}.zendesk.com/api/v2/ticket_fields` +
+    +`?page[size]=${CUSTOM_FIELDS_PAGE_SIZE}`;
+  const ticketFields = [];
+  let hasMore = true;
+
+  do {
+    try {
+      const response = await fetchFromZendeskWithRetries({
+        url,
+        accessToken,
+      });
+      ticketFields.push(...response.ticket_fields);
+      hasMore = response.meta?.has_more || false;
+      url = response.links?.next || null;
+    } catch (e) {
+      if (isZendeskNotFoundError(e)) {
+        return ticketFields;
+      }
+      throw e;
+    }
+  } while (hasMore);
+
+  return ticketFields;
 }

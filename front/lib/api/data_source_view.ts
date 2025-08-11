@@ -3,7 +3,10 @@ import {
   FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
   getContentNodeFromCoreNode,
 } from "@app/lib/api/content_nodes";
-import type { CursorPaginationParams } from "@app/lib/api/pagination";
+import type {
+  CursorPaginationParams,
+  SortingParams,
+} from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -27,6 +30,7 @@ interface GetContentNodesForDataSourceViewParams {
   parentId?: string;
   pagination?: CursorPaginationParams;
   viewType: ContentNodesViewType;
+  sorting?: SortingParams;
 }
 
 interface GetContentNodesForDataSourceViewResult {
@@ -135,6 +139,7 @@ export async function getContentNodesForDataSourceView(
     parentId,
     viewType,
     pagination,
+    sorting,
   }: GetContentNodesForDataSourceViewParams
 ): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
   const limit = pagination?.limit ?? DEFAULT_PAGINATION_LIMIT;
@@ -169,6 +174,12 @@ export async function getContentNodesForDataSourceView(
 
   let nextPageCursor: string | null = pagination ? pagination.cursor : null;
 
+  // Convert sorting parameter to CoreAPI format
+  const coreAPISorting = sorting?.map((sort) => ({
+    field: sort.field === "lastUpdatedAt" ? "timestamp" : sort.field,
+    direction: sort.direction,
+  }));
+
   let resultNodes: CoreAPIContentNode[] = [];
   let hitCount;
   let hiddenNodesCount = 0;
@@ -186,6 +197,7 @@ export async function getContentNodesForDataSourceView(
         // we still need to make sure we get a correct nextPageCursor at the end of this loop.
         limit: limit - resultNodes.length,
         cursor: nextPageCursor ?? undefined,
+        sort: coreAPISorting,
       },
     });
 

@@ -20,9 +20,6 @@ export async function executeAgentLoop(
   activities: AgentLoopActivities,
   startStep: number
 ): Promise<void> {
-  // Citations references offset kept up to date across steps.
-  let citationsRefsOffset = 0;
-
   const runIds: string[] = [];
 
   // Track step content IDs by function call ID for later use in actions.
@@ -35,7 +32,6 @@ export async function executeAgentLoop(
       runIds,
       step: i,
       functionCallStepContentIds,
-      citationsRefsOffset,
       autoRetryCount: 0,
     });
 
@@ -44,32 +40,38 @@ export async function executeAgentLoop(
       return;
     }
 
-    const { runId, stepContexts } = result;
-
-    // Update state with results from runMultiActionsAgent.
-    runIds.push(runId);
-    functionCallStepContentIds = result.functionCallStepContentIds;
+    const { actions, runId, stepContexts } = result;
 
     // We received the actions to run, but will enforce a limit on the number of actions
     // which is very high. Over that the latency will just be too high. This is a guardrail
     // against the model outputting something unreasonable.
-    const actionsToRun = result.actions.slice(0, MAX_ACTIONS_PER_STEP);
+    const actionsToRun = actions.slice(0, MAX_ACTIONS_PER_STEP);
 
-    await Promise.all(
-      actionsToRun.map(({ functionCallId, action }, index) =>
-        activities.runToolActivity(authType, {
-          runAgentArgs,
-          action,
-          stepContext: stepContexts[index],
-          stepContentId: functionCallStepContentIds[functionCallId],
-        })
-      )
+    // Update state with results.
+    runIds.push(runId);
+    functionCallStepContentIds = result.functionCallStepContentIds;
+
+    // Create tool actions and check if any of them need approval.
+    const { actionBlobs } = await activities.createToolActionsActivity(
+      authType,
+      {
+        runAgentArgs,
+        actions: actionsToRun,
+        stepContexts,
+        functionCallStepContentIds,
+        step: i,
+      }
     );
 
-    // Update citations offset with pre-computed increment
-    citationsRefsOffset += stepContexts.reduce(
-      (acc, context) => acc + context.citationsCount,
-      0
+    // Execute tools.
+    await Promise.all(
+      actionBlobs.map(({ action }, index) =>
+        activities.runToolActivity(authType, {
+          actionId: action.id,
+          runAgentArgs,
+          step: i,
+        })
+      )
     );
   }
 }

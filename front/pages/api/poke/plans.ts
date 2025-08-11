@@ -44,6 +44,8 @@ export const PlanTypeSchema = t.type({
     }),
     users: t.type({
       maxUsers: t.number,
+      isSSOAllowed: t.boolean,
+      isSCIMAllowed: t.boolean,
     }),
     vaults: t.type({
       maxVaults: t.number,
@@ -122,6 +124,8 @@ async function handler(
         isManagedIntercomAllowed: body.limits.connections.isIntercomAllowed,
         isManagedWebCrawlerAllowed: body.limits.connections.isWebCrawlerAllowed,
         isManagedSalesforceAllowed: body.limits.connections.isSalesforceAllowed,
+        isSSOAllowed: body.limits.users.isSSOAllowed,
+        isSCIMAllowed: body.limits.users.isSCIMAllowed,
         maxDataSourcesCount: body.limits.dataSources.count,
         maxDataSourcesDocumentsCount: body.limits.dataSources.documents.count,
         maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,

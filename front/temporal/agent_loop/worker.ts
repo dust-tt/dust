@@ -2,27 +2,33 @@ import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
-import { getTemporalWorkerConnection } from "@app/lib/temporal";
+import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
+import { createToolActionsActivity } from "@app/temporal/agent_loop/activities/create_tool_actions";
 import { ensureConversationTitleActivity } from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import { runModelActivity } from "@app/temporal/agent_loop/activities/run_model";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
 
+// We need to give the worker some time to finish the current activity before shutting down.
+const SHUTDOWN_GRACE_TIME = "2 minutes";
+
 export async function runAgentLoopWorker() {
-  const { connection, namespace } = await getTemporalWorkerConnection();
+  const { connection, namespace } = await getTemporalAgentWorkerConnection();
 
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities: {
+      createToolActionsActivity,
+      ensureConversationTitleActivity,
       runModelActivity,
       runToolActivity,
-      ensureConversationTitleActivity,
     },
     taskQueue: QUEUE_NAME,
     connection,
     namespace,
+    shutdownGraceTime: SHUTDOWN_GRACE_TIME,
     interceptors: {
       activityInbound: [
         (ctx: Context) => {

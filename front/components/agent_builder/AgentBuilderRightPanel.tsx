@@ -33,7 +33,7 @@ function PanelHeader({
   return (
     <div className="flex h-16 items-end">
       {isPreviewPanelOpen ? (
-        <div className="flex w-full items-center px-6">
+        <div className="flex w-full items-center">
           <ScrollArea aria-orientation="horizontal" className="flex-1">
             <Tabs value={selectedTab} className="w-full">
               <TabsList>
@@ -43,6 +43,7 @@ function PanelHeader({
                   variant="ghost-secondary"
                   tooltip="Hide preview"
                   onClick={onTogglePanel}
+                  className="ml-4"
                 />
                 <TabsTrigger
                   value="testing"
@@ -153,7 +154,7 @@ export function AgentBuilderRightPanel({
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="mx-4 flex h-full flex-col">
       <PanelHeader
         isPreviewPanelOpen={isPreviewPanelOpen}
         selectedTab={selectedTab}

@@ -23,6 +23,7 @@ export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
 
 export const OAUTH_PROVIDERS = [
   "confluence",
+  "freshservice",
   "github",
   "google_drive",
   "gmail",
@@ -33,6 +34,7 @@ export const OAUTH_PROVIDERS = [
   "slack",
   "gong",
   "microsoft",
+  "microsoft_tools",
   "zendesk",
   "salesforce",
   "hubspot",
@@ -41,6 +43,7 @@ export const OAUTH_PROVIDERS = [
 
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
+  freshservice: "Freshservice",
   github: "GitHub",
   gmail: "Gmail",
   google_drive: "Google",
@@ -51,6 +54,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   slack: "Slack",
   gong: "Gong",
   microsoft: "Microsoft",
+  microsoft_tools: "Microsoft Tools",
   zendesk: "Zendesk",
   salesforce: "Salesforce",
   hubspot: "Hubspot",
@@ -64,6 +68,8 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "code_verifier",
   "code_challenge",
   "scope",
+  "freshservice_domain",
+  "freshworks_org_url",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -145,11 +151,31 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
         return result;
       }
       return null;
+    case "freshservice":
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
+        const result: OAuthCredentialInputs = {
+          freshworks_org_url: {
+            label: "Freshworks Organization URL",
+            value: undefined,
+            helpMessage:
+              "Your Freshworks organization URL (e.g., yourcompany.myfreshworks.com).",
+          },
+          freshservice_domain: {
+            label: "Freshservice Domain URL",
+            value: undefined,
+            helpMessage:
+              "Your Freshservice domain URL (e.g., yourcompany.freshservice.com).",
+          },
+        };
+        return result;
+      }
+      return null;
     case "hubspot":
     case "zendesk":
     case "slack":
     case "gong":
     case "microsoft":
+    case "microsoft_tools":
     case "monday":
     case "notion":
     case "confluence":

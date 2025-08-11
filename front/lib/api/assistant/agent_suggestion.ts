@@ -9,7 +9,7 @@ import {
   isProviderWhitelisted,
   removeNulls,
 } from "@app/types";
-import { Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types";
 
 export async function getSuggestedAgentsForContent(
   auth: Authenticator,

@@ -10,7 +10,6 @@ import {
   PencilSquareIcon,
   Spinner,
   TrashIcon,
-  usePaginationFromUrl,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
@@ -36,6 +35,7 @@ import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
+import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import {
   getConnectorProviderLogoWithFallback,
   isConnectorPermissionsEditable,
@@ -136,7 +136,7 @@ function getTableColumns(
     id: "lastSync",
     header: "Last sync",
     meta: {
-      className: "w-48",
+      className: "w-64",
     },
     accessorFn: (row) =>
       row.dataSourceView.dataSource.connector?.lastSyncSuccessfulTime,
@@ -534,6 +534,7 @@ export const SpaceResourcesList = ({
 
       {rows.length > 0 && (
         <DataTable<RowData>
+          className="dd-privacy-mask"
           data={rows}
           columns={getTableColumns(
             setAssistantSId,

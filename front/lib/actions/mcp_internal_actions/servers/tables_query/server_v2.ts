@@ -7,6 +7,11 @@ import {
   generateSectionFile,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  EXECUTE_DATABASE_QUERY_TOOL_NAME,
+  GET_DATABASE_SCHEMA_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   SqlQueryOutputType,
@@ -37,6 +42,7 @@ import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
+import { Err, Ok } from "@app/types";
 import { CoreAPI } from "@app/types/core/core_api";
 
 // Types for the resources that are output by the tools of this server.
@@ -63,7 +69,7 @@ function createServer(
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "get_database_schema",
+    GET_DATABASE_SCHEMA_TOOL_NAME,
     "Retrieves the database schema. You MUST call this tool at least once before attempting to query tables to understand their structure. This tool provides essential information about table columns, types, and relationships needed to write accurate SQL queries.",
     {
       tables:
@@ -146,7 +152,7 @@ function createServer(
   );
 
   server.tool(
-    "execute_database_query",
+    EXECUTE_DATABASE_QUERY_TOOL_NAME,
     "Executes a query on the database. You MUST call the get_database_schema tool for that database at least once before attempting to execute a query. The query must respect the guidelines and schema provided by the get_database_schema tool.",
     {
       tables:
@@ -162,7 +168,7 @@ function createServer(
     },
     withToolLogging(
       auth,
-      { toolName: "tables_query", agentLoopContext },
+      { toolName: EXECUTE_DATABASE_QUERY_TOOL_NAME, agentLoopContext },
       async ({ tables, query, fileName }) => {
         // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
         if (!agentLoopContext?.runContext) {
@@ -177,21 +183,20 @@ function createServer(
           tables
         );
         if (tableConfigurationsRes.isErr()) {
-          return makeMCPToolTextError(
-            `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
+          return new Err(
+            new MCPError(
+              `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
+            )
           );
         }
         const tableConfigurations = tableConfigurationsRes.value;
         if (tableConfigurations.length === 0) {
-          return {
-            isError: false,
-            content: [
-              {
-                type: "text",
-                text: "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool.",
-              },
-            ],
-          };
+          return new Err(
+            new MCPError(
+              "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool.",
+              { tracked: false }
+            )
+          );
         }
         const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
           ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
@@ -222,33 +227,13 @@ function createServer(
           query,
         });
         if (queryResult.isErr()) {
-          return {
+          return new Err(
             // Certain errors we don't track as they can occur in the context of a normal execution.
-            isError: !["too_many_result_rows", "table_not_found"].includes(
-              queryResult.error.code
-            ),
-            content: [
-              {
-                type: "resource",
-                resource: {
-                  text: EXECUTE_TABLES_QUERY_MARKER,
-                  mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOL_MARKER,
-                  uri: "",
-                },
-              },
-              {
-                type: "resource",
-                resource: {
-                  text:
-                    "Error executing database query: " +
-                    queryResult.error.message,
-                  mimeType:
-                    INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_ERROR,
-                  uri: "",
-                },
-              },
-            ],
-          };
+            new MCPError(
+              "Error executing database query: " + queryResult.error.message,
+              { tracked: false }
+            )
+          );
         }
 
         const content: {
@@ -361,10 +346,7 @@ function createServer(
           }
         }
 
-        return {
-          isError: false,
-          content,
-        };
+        return new Ok(content);
       }
     )
   );

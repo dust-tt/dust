@@ -1,12 +1,14 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
+import { MCPActionType } from "@app/lib/actions/mcp";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import { Authenticator } from "@app/lib/auth";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
@@ -22,11 +24,11 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
+  AgentConfigurationType,
   AgentMessageType,
   ContentFragmentType,
   ConversationWithoutContentType,
   FetchConversationMessagesResponse,
-  LightAgentConfigurationType,
   LightAgentMessageType,
   LightMessageWithRankType,
   MessageWithRankType,
@@ -125,6 +127,34 @@ async function batchRenderUserMessages(
   });
 }
 
+function enhanceMCPActionWithServerId(
+  agentMCPActions: MCPActionType[],
+  agentMessages: Message[],
+  agentConfigurations: AgentConfigurationType[]
+) {
+  // Resolve the MCP server id for the actions - only for full view
+  return agentMCPActions.map((agentMCPAction) => {
+    const agentConfigurationId = agentMessages.find(
+      (message) => message.agentMessageId === agentMCPAction.agentMessageId
+    )?.agentMessage?.agentConfigurationId;
+    const agentConfiguration = agentConfigurations.find(
+      (a) => a.sId === agentConfigurationId
+    );
+    const action = agentConfiguration?.actions?.find(
+      (ac) => `${ac.id}` === `${agentMCPAction.mcpServerConfigurationId}`
+    );
+    if (action) {
+      return new MCPActionType({
+        ...agentMCPAction,
+        mcpServerId: isServerSideMCPServerConfiguration(action)
+          ? action.internalMCPServerId
+          : action.clientSideMcpServerId,
+      });
+    }
+    return agentMCPAction;
+  });
+}
+
 async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   messages: Message[],
@@ -141,40 +171,62 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   const agentMessageIds = removeNulls(
     agentMessages.map((m) => m.agentMessageId || null)
   );
-  const [agentConfigurations, agentMCPActions] = await Promise.all([
-    (async () => {
-      const agentConfigurationIds: Set<string> = agentMessages.reduce(
-        (acc: Set<string>, m) => {
-          const agentId = m.agentMessage?.agentConfigurationId;
-          if (agentId) {
-            acc.add(agentId);
-          }
-          return acc;
-        },
-        new Set<string>()
-      );
-      const agents = await getAgentConfigurations({
-        auth,
-        agentsGetView: { agentIds: [...agentConfigurationIds] },
-        variant: "extra_light",
-      });
-      if (agents.some((a) => !a)) {
-        return null;
-      }
-      return agents as LightAgentConfigurationType[];
-    })(),
-    (async () => {
-      const agentStepContents =
-        await AgentStepContentResource.fetchByAgentMessages(auth, {
-          agentMessageIds,
-          includeMCPActions: true,
-          latestVersionsOnly: true,
-        });
-      return agentStepContents.map((sc) => sc.toJSON().mcpActions ?? []).flat();
-    })(),
-  ]);
+  const [{ agentConfigurations, lightAgentConfigurations }, agentMCPActions] =
+    await Promise.all([
+      (async () => {
+        const agentConfigurationIds: Set<string> = agentMessages.reduce(
+          (acc: Set<string>, m) => {
+            const agentId = m.agentMessage?.agentConfigurationId;
+            if (agentId) {
+              acc.add(agentId);
+            }
+            return acc;
+          },
+          new Set<string>()
+        );
+        if (viewType === "full") {
+          const agents = await getAgentConfigurations(auth, {
+            agentIds: [...agentConfigurationIds],
+            variant: "full",
+          });
+          return {
+            agentConfigurations: agents,
+            lightAgentConfigurations: agents,
+          };
+        } else {
+          const agents = await getAgentConfigurations(auth, {
+            agentIds: [...agentConfigurationIds],
+            variant: "extra_light",
+          });
+          return {
+            agentConfigurations: null,
+            lightAgentConfigurations: agents,
+          };
+        }
+      })(),
+      (async () => {
+        const agentStepContents =
+          await AgentStepContentResource.fetchByAgentMessages(auth, {
+            agentMessageIds,
+            includeMCPActions: true,
+            latestVersionsOnly: true,
+          });
+        return agentStepContents
+          .map((sc) => sc.toJSON().mcpActions ?? [])
+          .flat();
+      })(),
+    ]);
 
-  if (!agentConfigurations) {
+  const enhancedAgentMCPActions =
+    viewType === "full" && agentConfigurations
+      ? enhanceMCPActionWithServerId(
+          agentMCPActions,
+          agentMessages,
+          agentConfigurations
+        )
+      : agentMCPActions;
+
+  if (!lightAgentConfigurations) {
     return new Err(
       new ConversationError("conversation_with_unavailable_agent")
     );
@@ -191,11 +243,11 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       const agentMessage = message.agentMessage;
 
-      const actions = agentMCPActions
+      const actions = enhancedAgentMCPActions
         .filter((a) => a.agentMessageId === agentMessage.id)
         .sort((a, b) => a.step - b.step);
 
-      const agentConfiguration = agentConfigurations.find(
+      const agentConfiguration = lightAgentConfigurations.find(
         (a) => a.sId === agentMessage.agentConfigurationId
       );
       if (!agentConfiguration) {

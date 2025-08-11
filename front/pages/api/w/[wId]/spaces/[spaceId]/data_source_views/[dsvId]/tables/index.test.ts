@@ -1,9 +1,8 @@
-import { describe, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { itInTransaction } from "@app/tests/utils/utils";
 import { CoreAPI } from "@app/types";
 
 import handler from "./index";
@@ -111,131 +110,109 @@ const CORE_SEARCH_NODES_FAKE_RESPONSE = [
 ];
 
 describe("GET /api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables", () => {
-  itInTransaction(
-    "returns 404 when user cannot read or administrate",
-    async (t) => {
-      const { req, res, workspace } = await createPrivateApiMockRequest({
-        method: "GET",
-        role: "user",
-      });
+  it("returns 404 when user cannot read or administrate", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
 
-      const space = await SpaceFactory.global(workspace, t);
-      const dataSourceView = await DataSourceViewFactory.folder(
-        workspace,
-        space,
-        t
-      );
+    const space = await SpaceFactory.global(workspace);
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
-      req.query = {
-        ...req.query,
-        spaceId: space.sId,
-        dsvId: dataSourceView.sId,
-      };
+    req.query = {
+      ...req.query,
+      spaceId: space.sId,
+      dsvId: dataSourceView.sId,
+    };
 
-      await handler(req, res);
+    await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(404);
-      expect(res._getJSONData()).toEqual({
-        error: {
-          type: "data_source_view_not_found",
-          message: "The data source view you requested was not found.",
+    expect(res._getStatusCode()).toBe(404);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "data_source_view_not_found",
+        message: "The data source view you requested was not found.",
+      },
+    });
+  });
+
+  it("returns 400 with invalid pagination parameters", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    const space = await SpaceFactory.global(workspace);
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+
+    req.query = {
+      ...req.query,
+      spaceId: space.sId,
+      dsvId: dataSourceView.sId,
+      limit: "invalid",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "invalid_pagination_parameters",
+        message: "Invalid pagination parameters",
+      },
+    });
+  });
+
+  // Skip for now, I have trouble mocking correctly the CoreAPI.searchNodes
+  it.skip("returns tables successfully", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    const space = await SpaceFactory.global(workspace);
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+
+    req.query = {
+      ...req.query,
+      spaceId: space.sId,
+      dsvId: dataSourceView.sId,
+    };
+
+    vi.spyOn(CoreAPI.prototype, "searchNodes").mockImplementation(() => {
+      return {
+        isErr: () => false,
+        value: {
+          nodes: CORE_SEARCH_NODES_FAKE_RESPONSE,
         },
-      });
-    }
-  );
+      } as any;
+    });
+    //     mockResolvedValue({
+    //   isErr: () => false,
+    //   value: {
+    //     CORE_SEARCH_NODES_RESPONSE,
+    //   },
+    // } as any);
 
-  itInTransaction(
-    "returns 400 with invalid pagination parameters",
-    async (t) => {
-      const { req, res, workspace } = await createPrivateApiMockRequest({
-        method: "GET",
-        role: "admin",
-      });
+    await handler(req, res);
 
-      const space = await SpaceFactory.global(workspace, t);
-      const dataSourceView = await DataSourceViewFactory.folder(
-        workspace,
-        space,
-        t
-      );
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      tables: CORE_SEARCH_NODES_FAKE_RESPONSE,
+    });
+  });
 
-      req.query = {
-        ...req.query,
-        spaceId: space.sId,
-        dsvId: dataSourceView.sId,
-        limit: "invalid",
-      };
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(400);
-      expect(res._getJSONData()).toEqual({
-        error: {
-          type: "invalid_pagination_parameters",
-          message: "Invalid pagination parameters",
-        },
-      });
-    }
-  );
-
-  itInTransaction(
-    "returns tables successfully",
-    async (t) => {
-      const { req, res, workspace } = await createPrivateApiMockRequest({
-        method: "GET",
-        role: "admin",
-      });
-
-      const space = await SpaceFactory.global(workspace, t);
-      const dataSourceView = await DataSourceViewFactory.folder(
-        workspace,
-        space,
-        t
-      );
-
-      req.query = {
-        ...req.query,
-        spaceId: space.sId,
-        dsvId: dataSourceView.sId,
-      };
-
-      vi.spyOn(CoreAPI.prototype, "searchNodes").mockImplementation(() => {
-        return {
-          isErr: () => false,
-          value: {
-            nodes: CORE_SEARCH_NODES_FAKE_RESPONSE,
-          },
-        } as any;
-      });
-      //     mockResolvedValue({
-      //   isErr: () => false,
-      //   value: {
-      //     CORE_SEARCH_NODES_RESPONSE,
-      //   },
-      // } as any);
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      expect(res._getJSONData()).toEqual({
-        tables: CORE_SEARCH_NODES_FAKE_RESPONSE,
-      });
-    },
-    true // Skip for now, I have trouble mocking correctly the CoreAPI.searchNodes
-  );
-
-  itInTransaction("returns 405 for non-GET methods", async (t) => {
+  it("returns 405 for non-GET methods", async () => {
     for (const method of ["POST", "PUT", "DELETE"] as const) {
       const { req, res, workspace } = await createPrivateApiMockRequest({
         method,
         role: "admin",
       });
 
-      const space = await SpaceFactory.global(workspace, t);
+      const space = await SpaceFactory.global(workspace);
       const dataSourceView = await DataSourceViewFactory.folder(
         workspace,
-        space,
-        t
+        space
       );
 
       req.query = {

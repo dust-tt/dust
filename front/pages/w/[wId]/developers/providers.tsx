@@ -206,7 +206,9 @@ function ProviderListItem({
           {apiKey && (
             <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground dark:text-muted-foreground-night">
               <span className="shrink-0">API Key:</span>
-              <div className="max-w-72 truncate">{redactString(apiKey, 4)}</div>
+              <div className="dd-privacy-mask max-w-72 truncate">
+                {redactString(apiKey, 4)}
+              </div>
             </div>
           )}
         </div>

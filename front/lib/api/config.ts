@@ -176,11 +176,20 @@ const config = {
   getOAuthMicrosoftClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_MICROSOFT_CLIENT_ID");
   },
+  getOAuthMicrosoftToolsClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_MICROSOFT_TOOLS_CLIENT_ID");
+  },
   getOAuthZendeskClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_ZENDESK_CLIENT_ID");
   },
   getOAuthHubspotClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_HUBSPOT_CLIENT_ID");
+  },
+  getOAuthFreshserviceClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_FRESHWORKS_CLIENT_ID");
+  },
+  getOAuthFreshserviceDomain: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_FRESHWORKS_DOMAIN");
   },
   getOAuthJiraClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_JIRA_CLIENT_ID");
@@ -239,7 +248,9 @@ const config = {
       "WORKOS_SESSION_COOKIE_DOMAIN"
     );
   },
-
+  getWorkOSEnvironmentId: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_ENVIRONMENT_ID");
+  },
   // Profiler.
   getProfilerSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");

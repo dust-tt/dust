@@ -50,6 +50,17 @@ export class ZendeskConfigurationModel extends ConnectorBaseModel<ZendeskConfigu
   declare retentionPeriodDays: number;
   declare syncUnresolvedTickets: boolean;
   declare hideCustomerDetails: boolean;
+
+  declare organizationTagsToInclude: string[] | null;
+  declare organizationTagsToExclude: string[] | null;
+
+  declare ticketTagsToInclude: string[] | null;
+  declare ticketTagsToExclude: string[] | null;
+
+  declare customFieldsConfig: {
+    id: number;
+    name: string;
+  }[];
 }
 
 ZendeskConfigurationModel.init(
@@ -82,6 +93,27 @@ ZendeskConfigurationModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    organizationTagsToInclude: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    organizationTagsToExclude: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    ticketTagsToInclude: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    ticketTagsToExclude: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    customFieldsConfig: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: [],
     },
   },
   {

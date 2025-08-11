@@ -3,7 +3,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -45,11 +45,10 @@ async function handler(
 ): Promise<void> {
   const agentConfigurationId = req.query.aId as string;
 
-  const agent = await getAgentConfiguration(
-    auth,
-    agentConfigurationId,
-    "light"
-  );
+  const agent = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationId,
+    variant: "light",
+  });
   if (!agent) {
     return apiError(req, res, {
       status_code: 404,

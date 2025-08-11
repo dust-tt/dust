@@ -2,6 +2,7 @@ import { Separator } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 import { MCPServerSettings } from "@app/components/actions/mcp/MCPServerSettings";
+import { MCPServerViewForm } from "@app/components/actions/mcp/MCPServerViewForm";
 import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { isRemoteMCPServerType } from "@app/lib/actions/mcp_helper";
@@ -34,8 +35,13 @@ export function MCPServerDetailsInfo({
       {mcpServerView.server.authorization && (
         <MCPServerSettings mcpServerView={mcpServerView} owner={owner} />
       )}
+      <MCPServerViewForm mcpServerView={mcpServerView} owner={owner} />
       {isRemoteMCPServerType(mcpServerView.server) && (
-        <RemoteMCPForm mcpServer={mcpServerView.server} owner={owner} />
+        <RemoteMCPForm
+          mcpServerView={mcpServerView}
+          mcpServer={mcpServerView.server}
+          owner={owner}
+        />
       )}
 
       <Separator className="mb-4 mt-4" />

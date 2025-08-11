@@ -12,7 +12,7 @@ import {
 import { useRouter } from "next/router";
 
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
-import { isBuilder } from "@app/types";
+import { GLOBAL_AGENTS_SID, isBuilder } from "@app/types";
 
 type GlobalAgentActionProps = {
   agent: LightAgentConfigurationType;
@@ -36,7 +36,11 @@ export function GlobalAgentAction({
     return null;
   }
 
-  if (agent.sId === "dust") {
+  const isConfigurable =
+    agent.sId === GLOBAL_AGENTS_SID.RESEARCH ||
+    agent.sId === GLOBAL_AGENTS_SID.DUST;
+
+  if (isConfigurable) {
     return (
       <Button
         variant="outline"
@@ -45,7 +49,7 @@ export function GlobalAgentAction({
         disabled={!isBuilder(owner)}
         onClick={(e: Event) => {
           e.stopPropagation();
-          void router.push(`/w/${owner.sId}/builder/assistants/dust`);
+          void router.push(`/w/${owner.sId}/builder/assistants/${agent.sId}`);
         }}
       />
     );

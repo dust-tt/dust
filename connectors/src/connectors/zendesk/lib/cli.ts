@@ -1,5 +1,7 @@
+import type { Logger } from "pino";
+
 import {
-  RETENTION_PERIOD_CONFIG_KEY,
+  ZENDESK_CONFIG_KEYS,
   ZendeskConnectorManager,
 } from "@connectors/connectors/zendesk";
 import {
@@ -7,6 +9,7 @@ import {
   shouldSyncTicket,
   syncTicket,
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
+import type { ZendeskFetchedTicket } from "@connectors/connectors/zendesk/lib/types";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskBrand,
@@ -14,6 +17,7 @@ import {
   fetchZendeskTicket,
   getZendeskBrandSubdomain,
   getZendeskTicketCount,
+  listZendeskOrganizations,
   listZendeskTicketComments,
   listZendeskUsers,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
@@ -39,7 +43,75 @@ import type {
   ZendeskFetchBrandResponseType,
   ZendeskFetchTicketResponseType,
   ZendeskGetRetentionPeriodResponseType,
+  ZendeskOrganizationTagResponseType,
 } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
+
+function getTagsArgs(args: ZendeskCommandType["args"]) {
+  const tag = args.tag;
+  if (!tag) {
+    throw new Error("Missing --tag argument");
+  }
+
+  const include = args.include === "true";
+  const exclude = args.exclude === "true";
+
+  if (include && exclude) {
+    throw new Error("Cannot specify both --in and --not-in options");
+  }
+
+  if (!include && !exclude) {
+    throw new Error("Must specify either --in or --not-in option");
+  }
+
+  return { tag, include, exclude };
+}
+
+async function checkTicketShouldBeSynced(
+  ticket: ZendeskFetchedTicket | null,
+  configuration: ZendeskConfigurationResource,
+  {
+    brandId,
+    accessToken,
+    brandSubdomain,
+  }: {
+    brandId?: number;
+    brandSubdomain: string;
+    accessToken: string;
+  },
+  logger: Logger
+) {
+  if (!ticket) {
+    return { shouldSync: false, reason: "Ticket not found" };
+  }
+
+  let organizationTags: string[] = [];
+
+  if (
+    configuration.enforcesOrganizationTagConstraint() &&
+    ticket.organization_id
+  ) {
+    const [organization] = await listZendeskOrganizations({
+      accessToken,
+      brandSubdomain,
+      organizationIds: [ticket.organization_id],
+    });
+    if (!organization) {
+      logger.error(
+        { ticketId: ticket.id, organizationId: ticket.organization_id },
+        "Organization not found."
+      );
+    } else {
+      organizationTags = organization.tags;
+    }
+  }
+
+  return shouldSyncTicket(ticket, configuration, {
+    brandId,
+    organizationTags,
+    ticketTags: ticket.tags,
+  });
+}
 
 export const zendesk = async ({
   command,
@@ -50,6 +122,7 @@ export const zendesk = async ({
   | ZendeskFetchTicketResponseType
   | ZendeskFetchBrandResponseType
   | ZendeskGetRetentionPeriodResponseType
+  | ZendeskOrganizationTagResponseType
   | AdminResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "zendesk", command, args });
@@ -160,7 +233,10 @@ export const zendesk = async ({
         } catch (e) {
           return {
             ticket: null,
-            shouldSyncTicket: false,
+            shouldSyncTicket: {
+              shouldSync: false,
+              reason: `Error getting ticket metadata: ${normalizeError(e).message}`,
+            },
             isTicketOnDb: false,
           };
         }
@@ -181,37 +257,42 @@ export const zendesk = async ({
             })
           : null;
 
+        const shouldSyncTicket = await checkTicketShouldBeSynced(
+          ticket,
+          configuration,
+          { accessToken, brandSubdomain },
+          logger
+        );
+
         return {
           ticket: ticket as { [key: string]: unknown } | null,
-          shouldSyncTicket:
-            ticket !== null &&
-            shouldSyncTicket(ticket, configuration, {
-              brandId: brand?.brandId,
-            }),
+          shouldSyncTicket,
           isTicketOnDb: ticketOnDb !== null,
         };
       }
 
       const brandId = args.brandId ?? null;
-      if (!brandId) {
-        throw new Error(`Missing --brandId argument`);
-      }
       const ticketId = args.ticketId ?? null;
       if (!ticketId) {
         throw new Error(`Missing --ticketId argument`);
       }
-      const ticketOnDb = await ZendeskTicketResource.fetchByTicketId({
-        connectorId: connector.id,
-        brandId,
-        ticketId,
-      });
 
-      const brandSubdomain = await getZendeskBrandSubdomain({
-        connectorId: connector.id,
-        brandId,
-        subdomain,
-        accessToken,
-      });
+      let ticketOnDb = null;
+      let brandSubdomain = subdomain;
+
+      if (brandId) {
+        ticketOnDb = await ZendeskTicketResource.fetchByTicketId({
+          connectorId: connector.id,
+          brandId,
+          ticketId,
+        });
+        brandSubdomain = await getZendeskBrandSubdomain({
+          connectorId: connector.id,
+          brandId,
+          subdomain,
+          accessToken,
+        });
+      }
 
       const ticket = await fetchZendeskTicket({
         accessToken,
@@ -219,13 +300,16 @@ export const zendesk = async ({
         brandSubdomain,
       });
 
+      const shouldSyncTicket = await checkTicketShouldBeSynced(
+        ticket,
+        configuration,
+        { brandId: brandId ?? undefined, accessToken, brandSubdomain },
+        logger
+      );
+
       return {
         ticket: ticket as { [key: string]: unknown } | null,
-        shouldSyncTicket:
-          ticket !== null &&
-          shouldSyncTicket(ticket, configuration, {
-            brandId,
-          }),
+        shouldSyncTicket,
         isTicketOnDb: ticketOnDb !== null,
       };
     }
@@ -321,7 +405,14 @@ export const zendesk = async ({
         throw new Error(`Ticket ${ticketId} not found`);
       }
 
-      if (!shouldSyncTicket(ticket, configuration, { brandId })) {
+      const shouldSyncTicket = await checkTicketShouldBeSynced(
+        ticket,
+        configuration,
+        { brandId, accessToken, brandSubdomain },
+        logger
+      );
+
+      if (!shouldSyncTicket) {
         logger.info(
           { ticketId, brandId, status: ticket.status },
           "Ticket should not be synced based on status and configuration."
@@ -389,10 +480,59 @@ export const zendesk = async ({
       }
       const manager = new ZendeskConnectorManager(connectorId);
       await manager.setConfigurationKey({
-        configKey: RETENTION_PERIOD_CONFIG_KEY,
+        configKey: ZENDESK_CONFIG_KEYS.RETENTION_PERIOD,
         configValue: retentionPeriodDays.toString(),
       });
       return { success: true };
+    }
+    case "add-organization-tag": {
+      const { tag, include, exclude } = getTagsArgs(args);
+
+      const { wasAdded, message } = await configuration.addOrganizationTag({
+        tag,
+        includeOrExclude: include ? "include" : "exclude",
+      });
+      logger.info({ wasAdded, tag, include, exclude }, message);
+
+      return { success: true, message };
+    }
+    case "remove-organization-tag": {
+      const { tag, include, exclude } = getTagsArgs(args);
+
+      const { wasRemoved, message } = await configuration.removeOrganizationTag(
+        {
+          tag,
+          includeOrExclude: include ? "include" : "exclude",
+        }
+      );
+      logger.info({ wasRemoved, tag, include, exclude }, message);
+
+      return { success: true, message };
+    }
+    case "add-ticket-tag": {
+      const { tag, include, exclude } = getTagsArgs(args);
+
+      const { wasAdded, message } = await configuration.addTicketTag({
+        tag,
+        includeOrExclude: include ? "include" : "exclude",
+      });
+      logger.info({ wasAdded, tag, include, exclude }, message);
+
+      return { success: true, message };
+    }
+    case "remove-ticket-tag": {
+      const { tag, include, exclude } = getTagsArgs(args);
+
+      const { wasRemoved, message } = await configuration.removeTicketTag({
+        tag,
+        includeOrExclude: include ? "include" : "exclude",
+      });
+      logger.info({ wasRemoved, tag, include, exclude }, message);
+
+      return { success: true, message };
+    }
+    default: {
+      throw new Error(`Unknown command: ${command}`);
     }
   }
 };

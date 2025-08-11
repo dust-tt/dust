@@ -56,7 +56,10 @@ import {
 } from "@app/components/assistant_builder/types";
 import { useBuilderActionInfo } from "@app/components/assistant_builder/useBuilderActionInfo";
 import { useTools } from "@app/components/assistant_builder/useTools";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
   DATA_VISUALIZATION_SPECIFICATION,
@@ -128,7 +131,7 @@ function actionDisplayName(
   }`;
 }
 
-type SpaceIdToActions = Record<string, AssistantBuilderMCPOrVizState[]>;
+export type SpaceIdToActions = Record<string, AssistantBuilderMCPOrVizState[]>;
 
 interface ActionScreenProps {
   owner: WorkspaceType;
@@ -345,7 +348,9 @@ export default function ActionsScreen({
                 mcpServerViewsWithKnowledge={mcpServerViewsWithKnowledge}
                 isLoading={isMCPServerViewsLoading}
               />
+
               <AddToolsDropdown
+                spacesUsedInActions={spaceIdToActions}
                 setBuilderState={setBuilderState}
                 setEdited={setEdited}
                 setAction={setAction}
@@ -831,7 +836,7 @@ function ActionEditor({
         <div className="flex w-full flex-row items-center justify-between px-1">
           {action.type === "MCP" && selectedMCPServerView ? (
             <MCPActionHeader
-              mcpServer={selectedMCPServerView.server}
+              mcpServerView={selectedMCPServerView}
               action={action}
             />
           ) : (
@@ -950,7 +955,7 @@ function AddKnowledgeDropdown({
                 }}
                 icon={getAvatar(view.server)}
                 label={view.label}
-                description={view.server.description}
+                description={getMcpServerViewDescription(view)}
               />
             );
           })

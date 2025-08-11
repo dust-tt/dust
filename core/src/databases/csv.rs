@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::{anyhow, Result};
 use cloud_storage::Object;
 use csv_async::AsyncReaderBuilder;
@@ -5,9 +7,9 @@ use futures::stream::StreamExt;
 use lazy_static::lazy_static;
 use tokio::io::AsyncReadExt;
 
-use crate::info;
 use regex::Regex;
 use tokio_util::compat::TokioAsyncReadCompatExt;
+use tracing::info;
 use unicode_normalization::UnicodeNormalization;
 
 use crate::{databases::table::Row, utils};
@@ -187,6 +189,7 @@ impl GoogleCloudStorageCSVContent {
             .create_reader(TokioAsyncReadCompatExt::compat(rdr));
 
         let headers = Self::sanitize_headers(csv.headers().await?.iter().collect::<Vec<&str>>())?;
+        let headers = Arc::new(headers);
 
         if headers.len() > MAX_TABLE_COLUMNS {
             Err(anyhow!("Too many columns in CSV file"))?;
@@ -195,13 +198,35 @@ impl GoogleCloudStorageCSVContent {
             Err(anyhow!("No columns in CSV file"))?;
         }
 
+        // If we have a __dust_id column, we need to remove it from the headers but save the column index for later.
+        let dust_id_pos = headers.iter().position(|h| h == "__dust_id");
+        let headers = match dust_id_pos {
+            Some(pos) => {
+                let mut headers = headers.iter().cloned().collect::<Vec<String>>();
+                headers.remove(pos);
+                Arc::new(headers)
+            }
+            None => headers,
+        };
+
         let mut rows = Vec::new();
 
         let mut records = csv.records();
         let mut row_idx = 0;
         while let Some(record) = records.next().await {
             let record = record?;
-            let row = Row::from_csv_record(&headers, record.iter().collect::<Vec<_>>(), row_idx)?;
+            let mut record = record.iter().collect::<Vec<_>>();
+
+            // If we have a __dust_id column, we need to remove it from the record and use it as the row id.
+            // It has been removed from the headers already.
+            let (row_id, record) = if let Some(pos) = dust_id_pos {
+                let row_id = record.remove(pos).trim().to_string();
+                (row_id, record)
+            } else {
+                (row_idx.to_string(), record)
+            };
+
+            let row = Row::from_csv_record(headers.clone(), record, row_id)?;
             row_idx += 1;
             if row_idx > MAX_TABLE_ROWS {
                 Err(anyhow!("Too many rows in CSV file"))?;
@@ -313,20 +338,22 @@ BAR,acme";
 
         // Test first row
         assert_eq!(rows[0].row_id, "0");
-        assert_eq!(rows[0].value["hellworld"], 1.0);
-        assert_eq!(rows[0].value["super_fast"], 2.23);
-        assert_eq!(rows[0].value["c_foo"], 3.0);
-        let date = rows[0].value["date"].as_object().unwrap();
+        assert_eq!(rows[0].value()["hellworld"], 1.0);
+        assert_eq!(rows[0].value()["super_fast"], 2.23);
+        assert_eq!(rows[0].value()["c_foo"], 3.0);
+        let value = rows[0].value();
+        let date = value["date"].as_object().unwrap();
         assert_eq!(date["type"], "datetime");
         assert_eq!(date["epoch"], 1739545612380i64);
         assert_eq!(date["string_value"], "2025-02-14T15:06:52.380Z");
 
         // Test second row
         assert_eq!(rows[1].row_id, "1");
-        assert_eq!(rows[1].value["hellworld"], 4.0);
-        assert_eq!(rows[1].value["super_fast"], "hello world");
-        assert_eq!(rows[1].value["c_foo"], 6.0);
-        let date = rows[1].value["date"].as_object().unwrap();
+        assert_eq!(rows[1].value()["hellworld"], 4.0);
+        assert_eq!(rows[1].value()["super_fast"], "hello world");
+        assert_eq!(rows[1].value()["c_foo"], 6.0);
+        let value = rows[1].value();
+        let date = value["date"].as_object().unwrap();
         assert_eq!(date["type"], "datetime");
         assert_eq!(date["epoch"], 1739545834000i64);
         assert_eq!(date["string_value"], "Fri, 14 Feb 2025 15:10:34 GMT");
@@ -341,6 +368,14 @@ BAR,acme";
         assert_eq!(rows.len(), 2);
         assert_eq!(rows[0].row_id, "MYID1");
         assert_eq!(rows[1].row_id, "MYID2");
+        assert_eq!(
+            rows[0].headers.iter().collect::<Vec<&String>>(),
+            &["super_fast", "c_foo", "date"]
+        );
+        assert_eq!(
+            rows[1].headers.iter().collect::<Vec<&String>>(),
+            &["super_fast", "c_foo", "date"]
+        );
 
         Ok(())
     }
@@ -362,7 +397,7 @@ BAR,acme";
 
         // Test that __dust_id is not inserted.
         let row_0_concatenated_keys = rows[0]
-            .value
+            .value()
             .keys()
             .into_iter()
             .map(|k| k.to_string())

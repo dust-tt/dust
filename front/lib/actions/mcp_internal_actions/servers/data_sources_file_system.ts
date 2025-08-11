@@ -4,7 +4,15 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
-import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  FILESYSTEM_CAT_TOOL_NAME,
+  FILESYSTEM_FIND_TOOL_NAME,
+  FILESYSTEM_LIST_TOOL_NAME,
+  FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+  FIND_TAGS_TOOL_NAME,
+  SEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
@@ -24,18 +32,12 @@ import {
   makeFindTagsTool,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
-  getAgentDataSourceConfigurations,
-  makeDataSourceViewFilter,
-} from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import {
   checkConflictingTags,
+  getAgentDataSourceConfigurations,
   getCoreSearchArgs,
+  makeDataSourceViewFilter,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import {
-  makeMCPToolRecoverableErrorSuccess,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
@@ -57,16 +59,18 @@ import {
   CoreAPI,
   DATA_SOURCE_NODE_ID,
   dustManagedCredentials,
+  Err,
+  Ok,
   parseTimeFrame,
   removeNulls,
   stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
 
-const FILESYSTEM_TOOL_NAME = "filesystem_navigation";
+export const FILESYSTEM_SERVER_NAME = "data_sources_file_system";
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "data_sources_file_system",
+  name: FILESYSTEM_SERVER_NAME,
   version: "1.0.0",
   description:
     "Comprehensive content navigation toolkit for browsing user data sources. Provides Unix-like " +
@@ -144,7 +148,7 @@ async function searchCallback(
     relativeTimeFrame,
   }: z.infer<typeof SearchToolInputSchema>,
   { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] } = {}
-): Promise<CallToolResult> {
+): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = dustManagedCredentials();
   const timeFrame = parseTimeFrame(relativeTimeFrame);
@@ -162,8 +166,8 @@ async function searchCallback(
     await getAgentDataSourceConfigurations(auth, dataSources);
 
   if (agentDataSourceConfigurationsResult.isErr()) {
-    return makeMCPToolTextError(
-      agentDataSourceConfigurationsResult.error.message
+    return new Err(
+      new MCPError(agentDataSourceConfigurationsResult.error.message)
     );
   }
   const agentDataSourceConfigurations =
@@ -186,6 +190,19 @@ async function searchCallback(
 
   const regularNodeIds =
     nodeIds?.filter((nodeId: string) => !isDataSourceNodeId(nodeId)) ?? [];
+
+  if (coreSearchArgsResults.some((res) => res.isErr())) {
+    return new Err(
+      new MCPError(
+        "Invalid data sources: " +
+          removeNulls(
+            coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
+          )
+            .map((error) => error.message)
+            .join("\n")
+      )
+    );
+  }
 
   const coreSearchArgs = removeNulls(
     coreSearchArgsResults.map((res) => {
@@ -218,8 +235,10 @@ async function searchCallback(
   );
 
   if (coreSearchArgs.length === 0) {
-    return makeMCPToolTextError(
-      "Search action must have at least one data source configured."
+    return new Err(
+      new MCPError(
+        "Search action must have at least one data source configured."
+      )
     );
   }
 
@@ -228,10 +247,7 @@ async function searchCallback(
     tagsNot,
   });
   if (conflictingTags) {
-    return {
-      isError: false,
-      content: [{ type: "text", text: conflictingTags }],
-    };
+    return new Err(new MCPError(conflictingTags, { tracked: false }));
   }
 
   const searchResults = await coreAPI.searchDataSources(
@@ -267,14 +283,16 @@ async function searchCallback(
   );
 
   if (searchResults.isErr()) {
-    return makeMCPToolTextError(
-      `Failed to search content: ${searchResults.error.message}`
+    return new Err(
+      new MCPError(`Failed to search content: ${searchResults.error.message}`)
     );
   }
 
   if (citationsOffset + retrievalTopK > getRefs().length) {
-    return makeMCPToolTextError(
-      "The search exhausted the total number of references available for citations"
+    return new Err(
+      new MCPError(
+        "The search exhausted the total number of references available for citations"
+      )
     );
   }
 
@@ -329,8 +347,8 @@ async function searchCallback(
     });
 
     if (searchResult.isErr()) {
-      return makeMCPToolTextError(
-        `Failed to search content: ${searchResult.error.message}`
+      return new Err(
+        new MCPError(`Failed to search content: ${searchResult.error.message}`)
       );
     }
     renderedNodes = renderSearchResults(
@@ -339,28 +357,25 @@ async function searchCallback(
     );
   }
 
-  return {
-    isError: false,
-    content: [
-      {
-        type: "resource" as const,
-        resource: makeQueryResource({
-          query,
-          timeFrame,
-          tagsIn,
-          tagsNot,
-          nodeIds,
-        }),
-      },
-      ...(renderedNodes
-        ? [{ type: "resource" as const, resource: renderedNodes }]
-        : []),
-      ...results.map((result) => ({
-        type: "resource" as const,
-        resource: result,
-      })),
-    ],
-  };
+  return new Ok([
+    {
+      type: "resource" as const,
+      resource: makeQueryResource({
+        query,
+        timeFrame,
+        tagsIn,
+        tagsNot,
+        nodeIds,
+      }),
+    },
+    ...(renderedNodes
+      ? [{ type: "resource" as const, resource: renderedNodes }]
+      : []),
+    ...results.map((result) => ({
+      type: "resource" as const,
+      resource: result,
+    })),
+  ]);
 }
 
 const createServer = (
@@ -370,7 +385,7 @@ const createServer = (
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "cat",
+    FILESYSTEM_CAT_TOOL_NAME,
     "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). " +
       "The nodeId can be obtained using the 'find', 'list' or 'search' tools.",
     {
@@ -402,7 +417,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_TOOL_NAME, agentLoopContext },
+      { toolName: FILESYSTEM_CAT_TOOL_NAME, agentLoopContext },
       async ({ dataSources, nodeId, offset, limit, grep }) => {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
@@ -413,7 +428,7 @@ const createServer = (
         );
 
         if (fetchResult.isErr()) {
-          return makeMCPToolTextError(fetchResult.error.message);
+          return new Err(new MCPError(fetchResult.error.message));
         }
         const agentDataSourceConfigurations = fetchResult.value;
 
@@ -428,18 +443,23 @@ const createServer = (
         });
 
         if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
-          return makeMCPToolRecoverableErrorSuccess(
-            `Could not find node: ${nodeId} (error: ${
-              searchResult.isErr() ? searchResult.error : "No nodes found"
-            })`
+          return new Err(
+            new MCPError(
+              `Could not find node: ${nodeId} (error: ${
+                searchResult.isErr() ? searchResult.error : "No nodes found"
+              })`,
+              { tracked: false }
+            )
           );
         }
 
         const node = searchResult.value.nodes[0];
 
         if (node.node_type !== "document") {
-          return makeMCPToolRecoverableErrorSuccess(
-            `Node is of type ${node.node_type}, not a document.`
+          return new Err(
+            new MCPError(`Node is of type ${node.node_type}, not a document.`, {
+              tracked: false,
+            })
           );
         }
 
@@ -450,8 +470,8 @@ const createServer = (
         )?.dataSource;
 
         if (!dataSource) {
-          return makeMCPToolTextError(
-            `Could not find dataSource for node: ${nodeId}`
+          return new Err(
+            new MCPError(`Could not find dataSource for node: ${nodeId}`)
           );
         }
 
@@ -472,32 +492,31 @@ const createServer = (
         });
 
         if (readResult.isErr()) {
-          return makeMCPToolTextError(
-            `Could not read node: ${nodeId} (error: ${readResult.error})`
+          return new Err(
+            new MCPError(
+              `Could not read node: ${nodeId} (error: ${readResult.error})`
+            )
           );
         }
 
-        return {
-          isError: false,
-          content: [
-            {
-              type: "resource" as const,
-              resource: {
-                mimeType:
-                  INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_CONTENT,
-                uri: node.source_url ?? "",
-                text: readResult.value.text,
-                metadata: renderNode(node, dataSourceIdToConnectorMap),
-              },
+        return new Ok([
+          {
+            type: "resource" as const,
+            resource: {
+              mimeType:
+                INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_CONTENT,
+              uri: node.source_url ?? "",
+              text: readResult.value.text,
+              metadata: renderNode(node, dataSourceIdToConnectorMap),
             },
-          ],
-        };
+          },
+        ]);
       }
     )
   );
 
   server.tool(
-    "find",
+    FILESYSTEM_FIND_TOOL_NAME,
     "Find content based on their title starting from a specific node. Can be used to find specific " +
       "nodes by searching for their titles. The query title can be omitted to list all nodes " +
       "starting from a specific node. This is like using 'find' in Unix.",
@@ -537,7 +556,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_TOOL_NAME, agentLoopContext },
+      { toolName: FILESYSTEM_FIND_TOOL_NAME, agentLoopContext },
       async ({
         query,
         dataSources,
@@ -555,7 +574,7 @@ const createServer = (
         );
 
         if (fetchResult.isErr()) {
-          return makeMCPToolTextError(fetchResult.error.message);
+          return new Err(new MCPError(fetchResult.error.message));
         }
         const agentDataSourceConfigurations = fetchResult.value;
 
@@ -600,38 +619,37 @@ const createServer = (
         });
 
         if (searchResult.isErr()) {
-          return makeMCPToolTextError(
-            `Failed to search content: ${searchResult.error.message}`
+          return new Err(
+            new MCPError(
+              `Failed to search content: ${searchResult.error.message}`
+            )
           );
         }
 
-        return {
-          isError: false,
-          content: [
-            {
-              type: "resource" as const,
-              resource: makeQueryResourceForFind(
-                query,
-                rootNodeId,
-                mimeTypes,
-                nextPageCursor
-              ),
-            },
-            {
-              type: "resource" as const,
-              resource: renderSearchResults(
-                searchResult.value,
-                agentDataSourceConfigurations
-              ),
-            },
-          ],
-        };
+        return new Ok([
+          {
+            type: "resource" as const,
+            resource: makeQueryResourceForFind(
+              query,
+              rootNodeId,
+              mimeTypes,
+              nextPageCursor
+            ),
+          },
+          {
+            type: "resource" as const,
+            resource: renderSearchResults(
+              searchResult.value,
+              agentDataSourceConfigurations
+            ),
+          },
+        ]);
       }
     )
   );
 
   server.tool(
-    "list",
+    FILESYSTEM_LIST_TOOL_NAME,
     "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
       "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
       "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
@@ -662,7 +680,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_TOOL_NAME, agentLoopContext },
+      { toolName: FILESYSTEM_LIST_TOOL_NAME, agentLoopContext },
       async ({
         nodeId,
         dataSources,
@@ -678,7 +696,7 @@ const createServer = (
         );
 
         if (fetchResult.isErr()) {
-          return makeMCPToolTextError(fetchResult.error.message);
+          return new Err(new MCPError(fetchResult.error.message));
         }
         const agentDataSourceConfigurations = fetchResult.value;
 
@@ -712,7 +730,7 @@ const createServer = (
           // If it's a data source node ID, extract the data source ID and list its root contents
           const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
           if (!dataSourceId) {
-            return makeMCPToolTextError("Invalid data source node ID format");
+            return new Err(new MCPError("Invalid data source node ID format"));
           }
 
           const dataSourceConfig = agentDataSourceConfigurations.find(
@@ -720,8 +738,8 @@ const createServer = (
           );
 
           if (!dataSourceConfig) {
-            return makeMCPToolTextError(
-              `Data source not found for ID: ${dataSourceId}`
+            return new Err(
+              new MCPError(`Data source not found for ID: ${dataSourceId}`)
             );
           }
 
@@ -753,29 +771,26 @@ const createServer = (
         }
 
         if (searchResult.isErr()) {
-          return makeMCPToolTextError("Failed to list folder contents");
+          return new Err(new MCPError("Failed to list folder contents"));
         }
 
-        return {
-          isError: false,
-          content: [
-            {
-              type: "resource" as const,
-              resource: makeQueryResourceForList(
-                nodeId,
-                mimeTypes,
-                nextPageCursor
-              ),
-            },
-            {
-              type: "resource" as const,
-              resource: renderSearchResults(
-                searchResult.value,
-                agentDataSourceConfigurations
-              ),
-            },
-          ],
-        };
+        return new Ok([
+          {
+            type: "resource" as const,
+            resource: makeQueryResourceForList(
+              nodeId,
+              mimeTypes,
+              nextPageCursor
+            ),
+          },
+          {
+            type: "resource" as const,
+            resource: renderSearchResults(
+              searchResult.value,
+              agentDataSourceConfigurations
+            ),
+          },
+        ]);
       }
     )
   );
@@ -801,7 +816,7 @@ const createServer = (
     // If tags are dynamic, then we add a tool for the agent to discover tags and let it pass tags
     // in the search tool.
     server.tool(
-      "find_tags",
+      FIND_TAGS_TOOL_NAME,
       makeFindTagsDescription(SEARCH_TOOL_NAME),
       findTagsSchema,
       makeFindTagsTool(auth)
@@ -845,7 +860,7 @@ const createServer = (
   }
 
   server.tool(
-    "locate_in_tree",
+    FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
     "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
       "This is useful for understanding where a specific node is located within the data source structure. " +
       "The path is returned as a list of nodes, with the first node being the data source root and " +
@@ -859,7 +874,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_TOOL_NAME, agentLoopContext },
+      { toolName: FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME, agentLoopContext },
       async ({ nodeId, dataSources }) => {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const fetchResult = await getAgentDataSourceConfigurations(
@@ -868,14 +883,14 @@ const createServer = (
         );
 
         if (fetchResult.isErr()) {
-          return makeMCPToolTextError(fetchResult.error.message);
+          return new Err(new MCPError(fetchResult.error.message));
         }
         const agentDataSourceConfigurations = fetchResult.value;
 
         if (isDataSourceNodeId(nodeId)) {
           const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
           if (!dataSourceId) {
-            return makeMCPToolTextError("Invalid data source node ID format");
+            return new Err(new MCPError("Invalid data source node ID format"));
           }
 
           const dataSourceConfig = agentDataSourceConfigurations.find(
@@ -883,31 +898,28 @@ const createServer = (
           );
 
           if (!dataSourceConfig) {
-            return makeMCPToolTextError(
-              `Data source not found for ID: ${dataSourceId}`
+            return new Err(
+              new MCPError(`Data source not found for ID: ${dataSourceId}`)
             );
           }
 
-          return {
-            isError: false,
-            content: [
-              {
-                type: "resource" as const,
-                resource: {
-                  mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILESYSTEM_PATH,
-                  uri: "",
-                  text: "Node is the data source root.",
-                  path: [
-                    {
-                      nodeId: nodeId,
-                      title: dataSourceConfig.dataSource.name,
-                      isCurrentNode: true,
-                    },
-                  ],
-                },
+          return new Ok([
+            {
+              type: "resource" as const,
+              resource: {
+                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILESYSTEM_PATH,
+                uri: "",
+                text: "Node is the data source root.",
+                path: [
+                  {
+                    nodeId: nodeId,
+                    title: dataSourceConfig.dataSource.name,
+                    isCurrentNode: true,
+                  },
+                ],
               },
-            ],
-          };
+            },
+          ]);
         }
 
         // Search for the target node.
@@ -921,8 +933,8 @@ const createServer = (
         });
 
         if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
-          return makeMCPToolRecoverableErrorSuccess(
-            `Could not find node: ${nodeId}`
+          return new Err(
+            new MCPError(`Could not find node: ${nodeId}`, { tracked: false })
           );
         }
 
@@ -948,7 +960,7 @@ const createServer = (
           });
 
           if (pathSearchResult.isErr()) {
-            return makeMCPToolTextError("Failed to fetch nodes in the path");
+            return new Err(new MCPError("Failed to fetch nodes in the path"));
           }
 
           for (const node of pathSearchResult.value.nodes) {
@@ -962,8 +974,8 @@ const createServer = (
         );
 
         if (!dataSourceConfig) {
-          return makeMCPToolTextError(
-            "Could not find data source configuration"
+          return new Err(
+            new MCPError("Could not find data source configuration")
           );
         }
 
@@ -1001,20 +1013,17 @@ const createServer = (
           },
         ]);
 
-        return {
-          isError: false,
-          content: [
-            {
-              type: "resource" as const,
-              resource: {
-                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILESYSTEM_PATH,
-                uri: "",
-                text: "Path located successfully.",
-                path: pathItems,
-              },
+        return new Ok([
+          {
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILESYSTEM_PATH,
+              uri: "",
+              text: "Path located successfully.",
+              path: pathItems,
             },
-          ],
-        };
+          },
+        ]);
       }
     )
   );

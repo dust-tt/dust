@@ -1,5 +1,5 @@
 import assert from "assert";
-import { default as cls } from "cls-hooked";
+//import { default as cls } from "cls-hooked";
 import { Sequelize } from "sequelize";
 
 import { dbConfig } from "@app/lib/resources/storage/config";
@@ -32,13 +32,6 @@ types.setTypeParser(types.builtins.INT8, function (val: unknown) {
   );
   return Number(val);
 });
-
-if (process.env.NODE_ENV === "test") {
-  const namespace = cls.createNamespace("test-namespace");
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  Sequelize.useCLS(namespace);
-}
 
 export const statsDClient = getStatsDClient();
 const CONNECTION_ACQUISITION_THRESHOLD_MS = 100;

@@ -25,6 +25,7 @@ import {
   getSlackClient,
   reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
+import { launchSlackMigrateChannelsFromLegacyBotToNewBotWorkflow } from "@connectors/connectors/slack/temporal/client";
 import {
   SlackBotWhitelistModel,
   SlackChannel,
@@ -429,7 +430,26 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
     switch (configKey) {
       case "botEnabled": {
         if (configValue === "true") {
-          return slackConfig.enableBot();
+          const res = await slackConfig.enableBot();
+          if (res.isErr()) {
+            return res;
+          }
+
+          const legacySlackConnector =
+            await ConnectorResource.findByWorkspaceIdAndType(
+              connector.workspaceId,
+              "slack"
+            );
+          if (!legacySlackConnector) {
+            return new Err(new Error("Legacy Slack connector not found"));
+          }
+
+          await launchSlackMigrateChannelsFromLegacyBotToNewBotWorkflow(
+            legacySlackConnector.id,
+            this.connectorId
+          );
+
+          return res;
         } else {
           return slackConfig.disableBot();
         }

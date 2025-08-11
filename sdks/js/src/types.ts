@@ -40,6 +40,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gpt-4o-mini"
   | "gpt-4.1-2025-04-14"
   | "gpt-4.1-mini-2025-04-14"
+  | "gpt-5"
   | "o1"
   | "o1-mini"
   | "o3"
@@ -64,6 +65,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gemini-2.0-flash"
   | "gemini-2.0-flash-lite"
   | "gemini-2.5-pro-preview-03-25"
+  | "gemini-2.5-pro"
   | "gemini-2.0-flash-exp" // DEPRECATED
   | "gemini-2.0-flash-lite-preview-02-05" // DEPRECATED
   | "gemini-2.0-pro-exp-02-05" // DEPRECATED
@@ -607,20 +609,19 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_transcripts"
   | "monday_tool"
   | "notion_private_integration"
-  | "okta_enterprise_connection"
   | "openai_o1_custom_assistants_feature"
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
-  | "openai_o1_mini_feature"
-  | "pro_plan_salesforce_connector"
+  | "freshservice_tool"
+  | "research_agent"
   | "salesforce_synced_queries"
   | "salesforce_tool"
   | "show_debug_tools"
   | "usage_data_api"
-  | "workos"
-  | "workos_user_provisioning"
   | "xai_feature"
+  | "agent_management_tool"
+  | "data_warehouses_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1023,10 +1024,26 @@ const NotificationRunAgentContentSchema = z.object({
   query: z.string(),
 });
 
+const NotificationRunAgentChainOfThoughtSchema = z.object({
+  type: z.literal("run_agent_chain_of_thought"),
+  childAgentId: z.string(),
+  conversationId: z.string(),
+  chainOfThought: z.string(),
+});
+
+const NotificationRunAgentGenerationTokensSchema = z.object({
+  type: z.literal("run_agent_generation_tokens"),
+  childAgentId: z.string(),
+  conversationId: z.string(),
+  text: z.string(),
+});
+
 const NotificationContentSchema = z.union([
   NotificationImageContentSchema,
   NotificationInteractiveFileContentSchema,
   NotificationRunAgentContentSchema,
+  NotificationRunAgentChainOfThoughtSchema,
+  NotificationRunAgentGenerationTokensSchema,
   NotificationTextContentSchema,
   NotificationToolApproveBubbleUpContentSchema,
 ]);
@@ -1070,6 +1087,29 @@ const MCPApproveExecutionEventSchema = z.object({
   stake: MCPStakeLevelSchema,
   metadata: MCPValidationMetadataSchema,
 });
+
+const ToolErrorEventSchema = z.object({
+  type: z.literal("tool_error"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+    metadata: z.record(z.any()).nullable(),
+  }),
+});
+export type ToolErrorEvent = z.infer<typeof ToolErrorEventSchema>;
+
+export function isMCPServerPersonalAuthRequiredError(
+  error: ToolErrorEvent["error"]
+) {
+  return (
+    error.code === "mcp_server_personal_authentication_required" &&
+    error.metadata &&
+    "mcpServerId" in error.metadata
+  );
+}
 
 const AgentErrorEventSchema = z.object({
   type: z.literal("agent_error"),
@@ -1581,6 +1621,30 @@ export const GetAgentConfigurationsResponseSchema = z.object({
 
 export type GetAgentConfigurationsResponseType = z.infer<
   typeof GetAgentConfigurationsResponseSchema
+>;
+
+export const CreateGenericAgentConfigurationRequestSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  instructions: z.string(),
+  emoji: z.string().optional(),
+  subAgentName: z.string().optional(),
+  subAgentDescription: z.string().optional(),
+  subAgentInstructions: z.string().optional(),
+  subAgentEmoji: z.string().optional(),
+});
+
+export type CreateAgentConfigurationWithDefaultsRequestType = z.infer<
+  typeof CreateGenericAgentConfigurationRequestSchema
+>;
+
+export const CreateGenericAgentConfigurationResponseSchema = z.object({
+  agentConfiguration: LightAgentConfigurationSchema,
+  subAgentConfiguration: LightAgentConfigurationSchema.optional(),
+});
+
+export type CreateGenericAgentConfigurationResponseType = z.infer<
+  typeof CreateGenericAgentConfigurationResponseSchema
 >;
 
 export const PostContentFragmentResponseSchema = z.object({

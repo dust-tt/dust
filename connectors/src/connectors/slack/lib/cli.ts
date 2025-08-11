@@ -1,5 +1,10 @@
 import {
+  autoReadChannel,
+  findMatchingChannelPatterns,
+} from "@connectors/connectors/slack/auto_read_channel";
+import {
   getChannelById,
+  getChannels,
   joinChannel,
   updateSlackChannelInConnectorsDb,
 } from "@connectors/connectors/slack/lib/channels";
@@ -10,6 +15,7 @@ import {
 } from "@connectors/connectors/slack/lib/utils";
 import {
   launchSlackGarbageCollectWorkflow,
+  launchSlackMigrateChannelsFromLegacyBotToNewBotWorkflow,
   launchSlackSyncOneThreadWorkflow,
   launchSlackSyncWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
@@ -18,15 +24,18 @@ import { throwOnError } from "@connectors/lib/cli";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { SlackChannel, SlackMessages } from "@connectors/lib/models/slack";
 import { default as topLogger } from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type {
   AdminSuccessResponseType,
   SlackCommandType,
+  SlackJoinResponseType as SlackJoinResponseType,
 } from "@connectors/types";
 import {
   INTERNAL_MIME_TYPES,
   isSlackbotWhitelistType,
+  normalizeError,
 } from "@connectors/types";
 
 export async function maybeLaunchSlackSyncWorkflowForChannelId(
@@ -51,7 +60,9 @@ export async function maybeLaunchSlackSyncWorkflowForChannelId(
 export const slack = async ({
   command,
   args,
-}: SlackCommandType): Promise<AdminSuccessResponseType> => {
+}: SlackCommandType): Promise<
+  AdminSuccessResponseType | SlackJoinResponseType
+> => {
   const logger = topLogger.child({ majorCommand: "slack", command, args });
   switch (command) {
     case "enable-bot": {
@@ -294,10 +305,176 @@ export const slack = async ({
       );
 
       if (slackConfig) {
-        await slackConfig.whitelistBot(botName, [groupId], whitelistType);
+        // Handle groupId as either a single string or comma-separated string of group IDs
+        const groupIds = groupId.includes(",")
+          ? groupId.split(",").map((id) => id.trim())
+          : [groupId];
+        await slackConfig.whitelistBot(botName, groupIds, whitelistType);
       }
 
       return { success: true };
+    }
+
+    case "run-auto-join": {
+      // Auto-join channels based on autoReadChannelPatterns configuration
+      // Usage: --wId <workspaceId> --providerType <slack|slack_bot>
+      // This command fetches all channels from Slack, matches them against
+      // the configured autoReadChannelPatterns regex patterns, and processes
+      // all matching channels using the autoReadChannel function (same logic
+      // as when a new channel is created via webhook).
+      const { wId, providerType, force } = args;
+      if (!wId) {
+        throw new Error("Missing --wId argument");
+      }
+
+      if (!providerType) {
+        throw new Error("Missing --providerType argument");
+      }
+
+      if (!["slack", "slack_bot"].includes(providerType)) {
+        throw new Error(
+          "--providerType argument must be set to 'slack' or 'slack_bot'"
+        );
+      }
+
+      const connector = await ConnectorModel.findOne({
+        where: {
+          workspaceId: `${args.wId}`,
+          type: providerType,
+        },
+      });
+
+      if (!connector) {
+        throw new Error(`Could not find connector for workspace ${args.wId}`);
+      }
+
+      const slackConfiguration =
+        await SlackConfigurationResource.fetchByConnectorId(connector.id);
+      if (!slackConfiguration) {
+        throw new Error(
+          `Could not find Slack configuration for connector ${connector.id}`
+        );
+      }
+
+      const { autoReadChannelPatterns } = slackConfiguration;
+      if (!autoReadChannelPatterns || autoReadChannelPatterns.length === 0) {
+        logger.info(
+          { connectorId: connector.id },
+          "No autoReadChannelPatterns configured, skipping"
+        );
+        return { success: true };
+      }
+
+      const slackClient = await getSlackClient(connector.id);
+
+      // Fetch all channels from Slack
+      const allChannels = await getChannels(slackClient, connector.id, false);
+      logger.info(
+        { connectorId: connector.id, totalChannels: allChannels.length },
+        "Fetched all channels from Slack"
+      );
+
+      // Process each matching channel using autoReadChannel
+      let processedCount = 0;
+      let errorCount = 0;
+
+      allChannels.sort((a, b) => {
+        if (a.name && b.name) {
+          return a.name.localeCompare(b.name);
+        }
+        return 0;
+      });
+
+      for (const channel of allChannels) {
+        if (!channel.id || !channel.name) {
+          continue;
+        }
+
+        logger.info({ channelName: channel.name }, "Processing channel");
+
+        const matchingPatterns = findMatchingChannelPatterns(
+          channel.name,
+          autoReadChannelPatterns
+        );
+        if (matchingPatterns.length === 0) {
+          logger.info({ channelName: channel.name }, "No match, skipping");
+          continue;
+        }
+
+        if (!force) {
+          if (channel.is_member) {
+            logger.info(
+              {
+                connectorId: connector.id,
+                channelId: channel.id,
+                channelName: channel.name,
+              },
+              "Channel is already joined, skipping"
+            );
+            continue;
+          }
+        }
+
+        try {
+          const autoReadResult = await autoReadChannel(
+            slackConfiguration.slackTeamId,
+            logger,
+            channel.id,
+            providerType as "slack" | "slack_bot"
+          );
+
+          if (autoReadResult.isOk()) {
+            if (autoReadResult.value) {
+              processedCount++;
+              logger.info(
+                {
+                  connectorId: connector.id,
+                  channelId: channel.id,
+                  channelName: channel.name,
+                },
+                "Successfully processed channel with autoReadChannel"
+              );
+            }
+          } else {
+            errorCount++;
+            logger.error(
+              {
+                connectorId: connector.id,
+                channelId: channel.id,
+                channelName: channel.name,
+                error: autoReadResult.error.message,
+              },
+              "Failed to process channel with autoReadChannel"
+            );
+          }
+        } catch (error) {
+          errorCount++;
+          logger.error(
+            {
+              connectorId: connector.id,
+              channelId: channel.id,
+              channelName: channel.name,
+              error: normalizeError(error),
+            },
+            "Exception while processing channel with autoReadChannel"
+          );
+        }
+      }
+
+      logger.info(
+        {
+          connectorId: connector.id,
+          total: allChannels.length,
+          processed: processedCount,
+          errors: errorCount,
+        },
+        "Auto-join channel operation completed"
+      );
+
+      return {
+        total: allChannels.length,
+        processed: processedCount,
+      };
     }
 
     case "sync-channel-metadata": {
@@ -590,6 +767,55 @@ export const slack = async ({
           );
         }
       }
+
+      return { success: true };
+    }
+
+    case "cutover-legacy-bot": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+
+      const legacyConnector = await ConnectorResource.findByWorkspaceIdAndType(
+        args.wId,
+        "slack"
+      );
+      if (!legacyConnector) {
+        throw new Error(
+          `Could not find Slack connector for workspace ${args.wId}`
+        );
+      }
+
+      const slackConfiguration =
+        await SlackConfigurationResource.fetchByConnectorId(legacyConnector.id);
+
+      // Ensure that the legacy bot is not enabled anymore.
+      if (!slackConfiguration || slackConfiguration.botEnabled) {
+        throw new Error("Legacy bot is enabled");
+      }
+
+      const slackBotConnector =
+        await ConnectorResource.findByWorkspaceIdAndType(args.wId, "slack_bot");
+      if (!slackBotConnector) {
+        throw new Error(
+          `Could not find Slack bot connector for workspace ${args.wId}`
+        );
+      }
+
+      const slackBotConfiguration =
+        await SlackConfigurationResource.fetchByConnectorId(
+          slackBotConnector.id
+        );
+
+      // Ensure that the new bot is enabled.
+      if (!slackBotConfiguration?.botEnabled) {
+        throw new Error("Slack bot is not enabled");
+      }
+
+      await launchSlackMigrateChannelsFromLegacyBotToNewBotWorkflow(
+        legacyConnector.id,
+        slackBotConnector.id
+      );
 
       return { success: true };
     }

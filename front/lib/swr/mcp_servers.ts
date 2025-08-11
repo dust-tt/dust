@@ -3,7 +3,10 @@ import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerViewDisplayName,
+  mcpServerViewSortingFn,
+} from "@app/lib/actions/mcp_helper";
 import {
   getMcpServerDisplayName,
   mcpServersSortingFn,
@@ -23,17 +26,25 @@ import type { CreateMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp";
 import type {
   DeleteMCPServerResponseBody,
   GetMCPServerResponseBody,
+  PatchMCPServerBody,
   PatchMCPServerResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/[serverId]";
 import type { SyncMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/sync";
-import type { GetMCPServerToolsPermissionsResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/tools";
-import type { PatchMCPServerToolsPermissionsResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/tools/[toolName]";
+import type { GetMCPServerToolsSettingsResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/tools";
+import type {
+  PatchMCPServerToolsPermissionsResponseBody,
+  UpdateMCPToolSettingsBodyType,
+} from "@app/pages/api/w/[wId]/mcp/[serverId]/tools/[toolName]";
 import type {
   GetConnectionsResponseBody,
   PostConnectionResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/connections/[connectionType]";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/pages/api/w/[wId]/mcp/discover_oauth_metadata";
 import type { GetMCPServerViewsListResponseBody } from "@app/pages/api/w/[wId]/mcp/views";
+import type {
+  PatchMCPServerViewBody,
+  PatchMCPServerViewResponseBody,
+} from "@app/pages/api/w/[wId]/mcp/views/[viewId]";
 import type { GetMCPServerViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views";
 import type { GetMCPServerViewsNotActivatedResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views/not_activated";
 import type {
@@ -437,34 +448,27 @@ export function useSyncRemoteMCPServer(
  */
 export function useUpdateMCPServer(
   owner: LightWorkspaceType,
-  serverId: string
+  // Using the view to get the proper name/description
+  mcpServerView: MCPServerViewType
 ) {
   const sendNotification = useSendNotification();
   const { mutateMCPServer } = useMCPServer({
     disabled: true,
     owner,
-    serverId,
+    serverId: mcpServerView.server.sId,
   });
 
   const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
-  const updateServer = async (
-    data:
-      | {
-          name: string;
-          icon: string;
-          description: string;
-          sharedSecret?: string;
-        }
-      | {
-          oAuthUseCase: MCPOAuthUseCase;
-        }
-  ): Promise<boolean> => {
-    const response = await fetch(`/api/w/${owner.sId}/mcp/${serverId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
+  const updateServer = async (data: PatchMCPServerBody): Promise<boolean> => {
+    const response = await fetch(
+      `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }
+    );
 
     if (!response.ok) {
       const body = await response.json();
@@ -488,11 +492,10 @@ export function useUpdateMCPServer(
       return false;
     }
 
-    const server = result.server;
     sendNotification({
-      title: `${getMcpServerDisplayName(server)} updated`,
+      title: `${getMcpServerViewDisplayName(mcpServerView)} updated`,
       type: "success",
-      description: `${getMcpServerDisplayName(server)} has been successfully updated.`,
+      description: `${getMcpServerViewDisplayName(mcpServerView)} has been successfully updated.`,
     });
 
     void mutateMCPServer();
@@ -501,6 +504,71 @@ export function useUpdateMCPServer(
   };
 
   return { updateServer };
+}
+
+/**
+ * Hook to update an MCP serverView
+ */
+export function useUpdateMCPServerView(
+  owner: LightWorkspaceType,
+  mcpServerView: MCPServerViewType
+) {
+  const sendNotification = useSendNotification();
+  const { mutateMCPServer } = useMCPServer({
+    disabled: true,
+    owner,
+    serverId: mcpServerView.server.sId,
+  });
+
+  const { mutate } = useMutateMCPServersViewsForAdmin(owner);
+
+  const updateServerView = async (
+    data: PatchMCPServerViewBody
+  ): Promise<boolean> => {
+    const response = await fetch(
+      `/api/w/${owner.sId}/mcp/views/${mcpServerView.sId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }
+    );
+
+    if (!response.ok) {
+      const body = await response.json();
+      sendNotification({
+        title: `Error updating server`,
+        type: "error",
+        description: body.error?.message || "An error occurred",
+      });
+
+      return false;
+    }
+
+    const result: WithAPIErrorResponse<PatchMCPServerViewResponseBody> =
+      await response.json();
+    if (isAPIErrorResponse(result)) {
+      sendNotification({
+        title: `Error updating server`,
+        type: "error",
+        description: result.error?.message || "An error occurred",
+      });
+      return false;
+    }
+
+    const serverView = result.serverView;
+    sendNotification({
+      title: `${getMcpServerViewDisplayName(serverView)} updated`,
+      type: "success",
+      description: `${getMcpServerViewDisplayName(serverView)} has been successfully updated.`,
+    });
+
+    void mutateMCPServer();
+    void mutate();
+    return true;
+  };
+
+  return { updateServerView };
 }
 
 export function useMCPServerConnections({
@@ -667,79 +735,85 @@ export function useDeleteMCPServerConnection({
   return { deleteMCPServerConnection };
 }
 
-export function useMCPServerToolsPermissions({
+export function useMCPServerToolsSettings({
   owner,
   serverId,
 }: {
   owner: LightWorkspaceType;
   serverId: string;
 }) {
-  const toolsFetcher: Fetcher<GetMCPServerToolsPermissionsResponseBody> =
-    fetcher;
+  const toolsFetcher: Fetcher<GetMCPServerToolsSettingsResponseBody> = fetcher;
 
   const url = `/api/w/${owner.sId}/mcp/${serverId}/tools`;
 
   const { data, error, mutate } = useSWRWithDefaults(url, toolsFetcher);
 
-  const toolsPermissions = useMemo(
-    () => (data ? data.permissions : {}),
-    [data]
-  );
+  const toolsSettings = useMemo(() => (data ? data.toolsSettings : {}), [data]);
 
   return {
-    toolsPermissions,
-    isToolsPermissionsLoading: !error && !data,
-    isToolsPermissionsError: error,
-    mutateToolsPermissions: mutate,
+    toolsSettings,
+    isToolsSettingsLoading: !error && !data,
+    isToolsSettingsError: error,
+    mutateToolsSettings: mutate,
   };
 }
 
-export function useUpdateMCPServerToolsPermissions({
+export function useUpdateMCPServerToolsSettings({
   owner,
   serverId,
 }: {
   owner: LightWorkspaceType;
   serverId: string;
 }) {
-  const { mutateToolsPermissions } = useMCPServerToolsPermissions({
-    owner,
-    serverId,
-  });
+  const { mutateToolsSettings: mutateToolsSettings } =
+    useMCPServerToolsSettings({
+      owner,
+      serverId,
+    });
 
   const sendNotification = useSendNotification();
 
-  const updateToolPermission = async ({
+  const updateToolSettings = async ({
     toolName,
     permission,
+    enabled,
   }: {
     toolName: string;
     permission: MCPToolStakeLevelType;
+    enabled: boolean;
   }): Promise<PatchMCPServerToolsPermissionsResponseBody> => {
+    const body: UpdateMCPToolSettingsBodyType = {
+      permission,
+      enabled,
+    };
     const response = await fetch(
       `/api/w/${owner.sId}/mcp/${serverId}/tools/${toolName}`,
       {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ permission }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
       }
     );
-
     if (!response.ok) {
       const body = await response.json();
-      throw new Error(body.error?.message || "Failed to update permission");
+      throw new Error(
+        body.error?.message || "Failed to update MCP tool settings"
+      );
     }
 
     sendNotification({
       type: "success",
-      title: "Permission updated",
-      description: `The permission for ${toolName} has been updated.`,
+      title: "Settings updated",
+      description: `The settings for ${toolName} have been updated.`,
     });
 
-    void mutateToolsPermissions();
+    void mutateToolsSettings();
     return response.json();
   };
 
-  return { updateToolPermission };
+  return { updateToolSettings };
 }
 
 export function useCreatePersonalConnection(owner: LightWorkspaceType) {
@@ -856,6 +930,8 @@ const getOptimisticDataForCreate = (
             {
               id: -1, // The ID is not known at optimistic data creation time.
               sId: "global",
+              name: null,
+              description: null,
               createdAt: Date.now(),
               updatedAt: Date.now(),
               serverType: "internal" as const,
@@ -1067,6 +1143,7 @@ export function useMCPServerViewsFromSpaces(
   return useMCPServerViewsFromSpacesBase(owner, spaces, ["manual", "auto"]);
 }
 
+// Note from seb: the name is misleading as manual will return both internal and remote servers. (all remote are manual, some internals are manual too).
 export function useRemoteMCPServerViewsFromSpaces(
   owner: LightWorkspaceType,
   spaces: SpaceType[]
@@ -1074,6 +1151,7 @@ export function useRemoteMCPServerViewsFromSpaces(
   return useMCPServerViewsFromSpacesBase(owner, spaces, ["manual"]);
 }
 
+// Note from seb: on the flip side, auto will return only internal servers but not all of them so the name is also misleading.
 export function useInternalMCPServerViewsFromSpaces(
   owner: LightWorkspaceType,
   spaces: SpaceType[]

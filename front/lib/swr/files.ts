@@ -8,13 +8,17 @@ import {
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { PublicFileResponseBody } from "@app/pages/api/v1/public/files/[shortToken]";
+import type { PublicFileResponseBody } from "@app/pages/api/v1/public/files/[token]";
 import type {
   UpsertFileToDataSourceRequestBody,
   UpsertFileToDataSourceResponseBody,
 } from "@app/pages/api/w/[wId]/data_sources/[dsId]/files";
 import type { ShareFileResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]/share";
-import type { DataSourceViewType, LightWorkspaceType } from "@app/types";
+import type {
+  DataSourceViewType,
+  FileShareScope,
+  LightWorkspaceType,
+} from "@app/types";
 
 export const getFileProcessedUrl = (
   owner: LightWorkspaceType,
@@ -188,13 +192,13 @@ export function useShareInteractiveFile({
 
   const { data, error, mutate } = useSWRWithDefaults(swrKey, fileShareFetcher);
 
-  const doShare = async (isShared: boolean) => {
+  const doShare = async (shareScope: FileShareScope) => {
     const res = await fetch(`/api/w/${owner.sId}/files/${fileId}/share`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ isShared }),
+      body: JSON.stringify({ shareScope }),
     });
 
     if (!res.ok) {

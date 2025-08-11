@@ -5,7 +5,7 @@ import { hardDeleteApp } from "@app/lib/api/apps";
 import {
   getAgentConfigurations,
   updateAgentRequestedGroupIds,
-} from "@app/lib/api/assistant/configuration";
+} from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -16,11 +16,11 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import type { DataSourceWithAgentsUsageType, Result } from "@app/types";
@@ -89,7 +89,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     );
   }
 
-  await frontSequelize.transaction(async (t) => {
+  await withTransaction(async (t) => {
     // Soft delete all data source views.
     await concurrentExecutor(
       dataSourceViews,
@@ -143,12 +143,11 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       await concurrentExecutor(
         agentIds,
         async (agentId) => {
-          const [agentConfig] = await getAgentConfigurations({
-            auth,
-            agentsGetView: { agentIds: [agentId] },
+          const agentConfigs = await getAgentConfigurations(auth, {
+            agentIds: [agentId],
             variant: "full",
-            dangerouslySkipPermissionFiltering: true,
           });
+          const [agentConfig] = agentConfigs;
 
           // Get the required group IDs from the agent's actions
           const requestedGroupIds =
@@ -216,7 +215,7 @@ export async function hardDeleteSpace(
     }
   }
 
-  await frontSequelize.transaction(async (t) => {
+  await withTransaction(async (t) => {
     // Delete all spaces groups.
     for (const group of space.groups) {
       // Skip deleting global groups for regular spaces.
@@ -265,7 +264,7 @@ export async function createRegularSpaceAndGroup(
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
 
-  const result = await frontSequelize.transaction(async (t) => {
+  const result = await withTransaction(async (t) => {
     await getWorkspaceAdministrationVersionLock(owner, t);
 
     const all = await SpaceResource.listWorkspaceSpaces(auth, undefined, t);

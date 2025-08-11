@@ -9,8 +9,11 @@ import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import type {
+  DataSourceConfiguration,
+  TableDataSourceConfiguration,
+} from "@app/lib/api/assistant/configuration/types";
 import type {
   ContentNodeAttachmentType,
   ConversationAttachmentType,
@@ -24,28 +27,82 @@ import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conve
 import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { ConversationType } from "@app/types";
+import type { AgentConfigurationType, ConversationType } from "@app/types";
 import { assertNever, CoreAPI } from "@app/types";
 
 export async function getJITServers(
   auth: Authenticator,
   {
+    agentConfiguration,
     conversation,
     attachments,
   }: {
+    agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
     attachments: ConversationAttachmentType[];
   }
 ): Promise<MCPServerConfigurationType[]> {
   const jitServers: MCPServerConfigurationType[] = [];
 
+  // Get the list of tools from the agent configuration to avoid duplicates.
+  const agentMcpServerViewIds = agentConfiguration.actions
+    .map((action) =>
+      isServerSideMCPServerConfiguration(action) ? action.mcpServerViewId : null
+    )
+    .filter((mcpServerViewId) => mcpServerViewId !== null);
+
+  // Get the conversation MCP server views (aka Tools)
+  const conversationMCPServerViews =
+    await ConversationResource.fetchMCPServerViews(auth, conversation, true);
+
+  for (const conversationMCPServerView of conversationMCPServerViews) {
+    const mcpServerViewResource = await MCPServerViewResource.fetchByModelPk(
+      auth,
+      conversationMCPServerView.mcpServerViewId
+    );
+
+    if (
+      !mcpServerViewResource ||
+      agentMcpServerViewIds.includes(mcpServerViewResource.sId)
+    ) {
+      continue;
+    }
+
+    const mcpServerView = mcpServerViewResource.toJSON();
+
+    const conversationFilesServer: ServerSideMCPServerConfigurationType = {
+      id: -1,
+      sId: generateRandomModelSId(),
+      type: "mcp_server_configuration",
+      name: mcpServerView.name ?? mcpServerView.server.name,
+      description:
+        mcpServerView.description ?? mcpServerView.server.description,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
+      jsonSchema: null,
+      additionalConfiguration: {},
+      mcpServerViewId: mcpServerView.sId,
+      dustAppConfiguration: null,
+      internalMCPServerId:
+        mcpServerView.serverType === "internal"
+          ? mcpServerView.server.sId
+          : null,
+    };
+
+    jitServers.push(conversationFilesServer);
+  }
+
   if (attachments.length === 0) {
-    return [];
+    return jitServers;
   }
 
   // Add conversation_files MCP server if there are conversation files
@@ -74,7 +131,6 @@ export async function getJITServers(
     jsonSchema: null,
     additionalConfiguration: {},
     mcpServerViewId: conversationFilesView.sId,
-    mcpServerName: conversationFilesView.toJSON().server.name,
     dustAppConfiguration: null,
     internalMCPServerId: conversationFilesView.mcpServerId,
   };
@@ -176,7 +232,6 @@ export async function getJITServers(
       jsonSchema: null,
       additionalConfiguration: {},
       mcpServerViewId: queryTablesView.sId,
-      mcpServerName: queryTablesView.toJSON().server.name,
       dustAppConfiguration: null,
       internalMCPServerId: queryTablesView.mcpServerId,
     };
@@ -237,7 +292,6 @@ export async function getJITServers(
       jsonSchema: null,
       additionalConfiguration: {},
       mcpServerViewId: retrievalView.sId,
-      mcpServerName: retrievalView.toJSON().server.name,
       dustAppConfiguration: null,
       internalMCPServerId: retrievalView.mcpServerId,
     };
@@ -288,7 +342,6 @@ export async function getJITServers(
       mcpServerViewId: retrievalView.sId,
       dustAppConfiguration: null,
       internalMCPServerId: retrievalView.mcpServerId,
-      mcpServerName: retrievalView.toJSON().server.name,
     };
     jitServers.push(folderSearchServer);
   }

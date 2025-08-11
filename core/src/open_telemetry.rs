@@ -1,6 +1,7 @@
+use crate::local_log_format::{LocalDevEventFormatter, LocalDevFields};
+use crate::otel_log_format::EnrichedOtelLayer;
 use init_tracing_opentelemetry::Error;
 use opentelemetry::trace::TracerProvider;
-use opentelemetry_appender_tracing::layer;
 use opentelemetry_otlp::LogExporter;
 use opentelemetry_sdk::logs::SdkLoggerProvider;
 use opentelemetry_sdk::trace::{SdkTracerProvider, Tracer};
@@ -9,93 +10,15 @@ use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{filter::EnvFilter, layer::SubscriberExt, registry::LookupSpan, Layer};
 
-/// Macro versions for structured logging with timestamps
-///
-/// These macros solve the timestamp batching issue when using Datadog Agent's OTLP ingestion.
-///
-/// **Problem**: When using Datadog Agent (instead of a full OpenTelemetry Collector),
-/// the OpenTelemetry Rust appender doesn't set individual log timestamps, causing all
-/// logs in a batch to appear with the same timestamp (when the batch was flushed) rather
-/// than their actual creation times.
-///
-/// **Solution**: These macros automatically add a `timestamp` attribute with the real
-/// creation time in UNIX milliseconds format to every log entry.
-///
-/// **Why UNIX milliseconds**:
-/// - Datadog's automatic date remapping recognizes UNIX milliseconds in the `timestamp` field
-/// - This ensures proper chronological ordering in Datadog logs
-/// - Compatible with Datadog's ingestion pipeline without requiring additional configuration
-///
-/// **Usage**: Drop-in replacements for tracing macros:
-/// ```rust
-/// // Before: tracing::info!(field = value, "message");
-/// // After:  info!(field = value, "message");
-/// ```
-#[macro_export]
-macro_rules! debug {
-    ($($arg:tt)*) => {
-        tracing::debug!(
-            timestamp = %std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_else(|_| std::time::Duration::from_secs(0))
-                .as_millis(),
-            $($arg)*
-        )
-    };
-}
-
-#[macro_export]
-macro_rules! info {
-    ($($arg:tt)*) => {
-        tracing::info!(
-            timestamp = %std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_else(|_| std::time::Duration::from_secs(0))
-                .as_millis(),
-            $($arg)*
-        )
-    };
-}
-
-#[macro_export]
-macro_rules! warn {
-    ($($arg:tt)*) => {
-        tracing::warn!(
-            timestamp = %std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_else(|_| std::time::Duration::from_secs(0))
-                .as_millis(),
-            $($arg)*
-        )
-    };
-}
-
-#[macro_export]
-macro_rules! error {
-    ($($arg:tt)*) => {
-        tracing::error!(
-            timestamp = %std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_else(|_| std::time::Duration::from_secs(0))
-                .as_millis(),
-            $($arg)*
-        )
-    };
-}
-
 fn build_logger_text<S>() -> Box<dyn Layer<S> + Send + Sync + 'static>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-    use tracing_subscriber::fmt::format::FmtSpan;
     if cfg!(debug_assertions) {
         Box::new(
             tracing_subscriber::fmt::layer()
-                .pretty()
-                .with_line_number(true)
-                .with_thread_names(true)
-                .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
-                .with_timer(tracing_subscriber::fmt::time::uptime()),
+                .event_format(LocalDevEventFormatter)
+                .fmt_fields(LocalDevFields::new()),
         )
     } else {
         Box::new(
@@ -122,7 +45,9 @@ where
 /// - `otel::setup=debug` set to debug to log detected resources, configuration read (optional)
 ///
 /// see [Directives syntax](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives)
-pub fn build_level_filter_layer(log_directives: &str) -> Result<EnvFilter, Error> {
+pub fn build_global_filter_with_telemetry_loop_prevention(
+    log_directives: &str,
+) -> Result<EnvFilter, Error> {
     let dirs = if log_directives.is_empty() {
         std::env::var("RUST_LOG")
             .or_else(|_| std::env::var("OTEL_LOG_LEVEL"))
@@ -130,12 +55,31 @@ pub fn build_level_filter_layer(log_directives: &str) -> Result<EnvFilter, Error
     } else {
         log_directives.to_string()
     };
+
+    // Allow OTEL tracing at trace level for span context - we'll filter span lifecycle events at layer level
     let directive_to_allow_otel_trace = "otel::tracing=trace".parse()?;
 
     Ok(EnvFilter::builder()
         .with_default_directive(LevelFilter::INFO.into())
         .parse_lossy(dirs)
-        .add_directive(directive_to_allow_otel_trace))
+        .add_directive(directive_to_allow_otel_trace)
+        // To prevent a telemetry-induced-telemetry loop, OpenTelemetry's own internal
+        // logging is properly suppressed. However, logs emitted by external components
+        // (such as reqwest, tonic, etc.) are not suppressed as they do not propagate
+        // OpenTelemetry context. Until this issue is addressed
+        // (https://github.com/open-telemetry/opentelemetry-rust/issues/2877),
+        // filtering like this is the best way to suppress such logs.
+        //
+        // The filter levels are set as follows:
+        // - Allow `info` level and above by default.
+        // - Completely restrict logs from `hyper`, `tonic`, `h2`, and `reqwest`.
+        //
+        // Note: This filtering will also drop logs from these components even when
+        // they are used outside of the OTLP Exporter.
+        .add_directive("hyper=off".parse().expect("valid filter directive"))
+        .add_directive("tonic=off".parse().expect("valid filter directive"))
+        .add_directive("h2=off".parse().expect("valid filter directive"))
+        .add_directive("reqwest=off".parse().expect("valid filter directive")))
 }
 
 pub fn build_otel_layer<S>() -> Result<(OpenTelemetryLayer<S, Tracer>, TracingGuard), Error>
@@ -181,62 +125,59 @@ pub fn init_subscribers() -> Result<TracingGuard, Error> {
     init_subscribers_and_loglevel("")
 }
 
-/// see [`build_level_filter_layer`] for the syntax of `log_directives`
+/// see [`build_global_filter_with_telemetry_loop_prevention`] for the syntax of `log_directives`
 pub fn init_subscribers_and_loglevel(log_directives: &str) -> Result<TracingGuard, Error> {
     //setup a temporary subscriber to log output during setup
     let subscriber = tracing_subscriber::registry()
-        .with(build_level_filter_layer(log_directives)?)
+        .with(build_global_filter_with_telemetry_loop_prevention(
+            log_directives,
+        )?)
         .with(build_logger_text());
     let _guard = tracing::subscriber::set_default(subscriber);
     info!("init logging & tracing");
 
-    let (layer, guard) = build_otel_layer()?;
+    if std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").is_ok() {
+        let (layer, guard) = build_otel_layer()?;
 
-    let exporter = LogExporter::builder()
-        .with_tonic()
-        .build()
-        .expect("failed to install logging");
-    let provider: SdkLoggerProvider = opentelemetry_sdk::logs::SdkLoggerProvider::builder()
-        .with_batch_exporter(exporter)
-        .build();
+        let exporter = LogExporter::builder()
+            .with_tonic()
+            .build()
+            .expect("failed to install logging");
+        let provider: SdkLoggerProvider = opentelemetry_sdk::logs::SdkLoggerProvider::builder()
+            .with_batch_exporter(exporter)
+            .build();
+        let otel_layer = EnrichedOtelLayer::new(&provider);
 
-    let otel_layer_option = if std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").is_ok() {
-        // To prevent a telemetry-induced-telemetry loop, OpenTelemetry's own internal
-        // logging is properly suppressed. However, logs emitted by external components
-        // (such as reqwest, tonic, etc.) are not suppressed as they do not propagate
-        // OpenTelemetry context. Until this issue is addressed
-        // (https://github.com/open-telemetry/opentelemetry-rust/issues/2877),
-        // filtering like this is the best way to suppress such logs.
-        //
-        // The filter levels are set as follows:
-        // - Allow `info` level and above by default.
-        // - Completely restrict logs from `hyper`, `tonic`, `h2`, and `reqwest`.
-        //
-        // Note: This filtering will also drop logs from these components even when
-        // they are used outside of the OTLP Exporter.
-        let filter_otel = EnvFilter::new("info")
-            .add_directive("hyper=off".parse().unwrap())
-            .add_directive("tonic=off".parse().unwrap())
-            .add_directive("h2=off".parse().unwrap())
-            .add_directive("reqwest=off".parse().unwrap());
-        let otel_layer = layer::OpenTelemetryTracingBridge::new(&provider).with_filter(filter_otel);
-        Some(otel_layer)
+        let subscriber = tracing_subscriber::registry()
+            .with(layer) // OTEL trace layer first
+            .with(JsonStorageLayer) // Store span fields
+            .with(otel_layer) // Our enriched OTEL layer - should come AFTER JsonStorageLayer
+            .with(
+                BunyanFormattingLayer::new("dust_api".into(), std::io::stdout)
+                    .skip_fields(vec!["file", "line", "target"].into_iter())
+                    .expect("valid field skip configuration")
+                    .with_filter(
+                        // Only allow INFO and above for the BunyanFormattingLayer
+                        // This should block DEBUG level [HTTP REQUEST - START/END] logs
+                        EnvFilter::new("info"),
+                    ),
+            )
+            .with(build_global_filter_with_telemetry_loop_prevention(
+                log_directives,
+            )?);
+        tracing::subscriber::set_global_default(subscriber)?;
+        Ok(guard)
     } else {
-        None
-    };
-
-    let subscriber = tracing_subscriber::registry()
-        .with(JsonStorageLayer)
-        .with(
-            BunyanFormattingLayer::new("dust_api".into(), std::io::stdout)
-                .skip_fields(vec!["file", "line", "target"].into_iter())
-                .unwrap(),
-        )
-        .with(otel_layer_option)
-        .with(layer)
-        .with(build_level_filter_layer(log_directives)?)
-        .with(build_logger_text());
-    tracing::subscriber::set_global_default(subscriber)?;
-
-    Ok(guard)
+        let subscriber = tracing_subscriber::registry()
+            .with(build_global_filter_with_telemetry_loop_prevention(
+                log_directives,
+            )?)
+            .with(build_logger_text());
+        tracing::subscriber::set_global_default(subscriber)?;
+        // Create a dummy guard since OTEL layer is disabled
+        let dummy_tracer_provider = opentelemetry_sdk::trace::SdkTracerProvider::builder().build();
+        Ok(TracingGuard {
+            tracer_provider: dummy_tracer_provider,
+        })
+    }
 }

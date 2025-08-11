@@ -1,8 +1,7 @@
 import type { Stripe } from "stripe";
-import { beforeEach, describe, expect, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
 
@@ -27,7 +26,7 @@ describe("POST /api/w/[wId]/subscriptions", () => {
     vi.clearAllMocks();
   });
 
-  itInTransaction("returns 400 on invalid request body", async () => {
+  it("returns 400 on invalid request body", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -43,39 +42,36 @@ describe("POST /api/w/[wId]/subscriptions", () => {
     expect(res._getJSONData().error.type).toBe("invalid_request_error");
   });
 
-  itInTransaction(
-    "returns checkoutUrl and plan details for new subscription",
-    async () => {
-      const { req, res } = await createPrivateApiMockRequest({
-        method: "POST",
-        role: "admin",
-      });
+  it("returns checkoutUrl and plan details for new subscription", async () => {
+    const { req, res } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
 
-      req.body = {
-        billingPeriod: "monthly",
-      };
+    req.body = {
+      billingPeriod: "monthly",
+    };
 
-      await handler(req, res);
+    await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(200);
-      const data = res._getJSONData();
-      expect(data.checkoutUrl).toEqual(TEST_CHECKOUT_URL);
-      expect(data.plan).toEqual(
-        expect.objectContaining({
-          code: expect.any(String),
-          name: expect.any(String),
-          limits: expect.objectContaining({
-            users: expect.objectContaining({
-              maxUsers: expect.any(Number),
-            }),
-            dataSources: expect.any(Object),
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.checkoutUrl).toEqual(TEST_CHECKOUT_URL);
+    expect(data.plan).toEqual(
+      expect.objectContaining({
+        code: expect.any(String),
+        name: expect.any(String),
+        limits: expect.objectContaining({
+          users: expect.objectContaining({
+            maxUsers: expect.any(Number),
           }),
-        })
-      );
-    }
-  );
+          dataSources: expect.any(Object),
+        }),
+      })
+    );
+  });
 
-  itInTransaction("handles yearly billing period", async () => {
+  it("handles yearly billing period", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -93,7 +89,7 @@ describe("POST /api/w/[wId]/subscriptions", () => {
     expect(data.plan).toBeDefined();
   });
 
-  itInTransaction("returns 403 when user is not admin", async () => {
+  it("returns 403 when user is not admin", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",

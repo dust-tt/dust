@@ -37,17 +37,17 @@ export type ConnectorsCommandType = t.TypeOf<typeof ConnectorsCommandSchema>;
 export const ConfluenceCommandSchema = t.type({
   majorCommand: t.literal("confluence"),
   command: t.union([
-    t.literal("me"),
-    t.literal("upsert-page"),
-    t.literal("skip-page"),
-    t.literal("upsert-pages"),
-    t.literal("update-parents"),
-    t.literal("ignore-near-rate-limit"),
-    t.literal("unignore-near-rate-limit"),
-    t.literal("check-space-access"),
-    t.literal("resolve-space-from-url"),
-    t.literal("sync-space"),
     t.literal("check-page-exists"),
+    t.literal("check-space-access"),
+    t.literal("ignore-near-rate-limit"),
+    t.literal("me"),
+    t.literal("resolve-space-from-url"),
+    t.literal("skip-page"),
+    t.literal("sync-space"),
+    t.literal("unignore-near-rate-limit"),
+    t.literal("update-parents"),
+    t.literal("upsert-page"),
+    t.literal("upsert-pages"),
   ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
@@ -115,6 +115,7 @@ const ConfluenceAncestorSchema = t.type({
   type: t.string,
   title: t.union([t.undefined, t.string]),
 });
+export type ConfluenceAncestorType = t.TypeOf<typeof ConfluenceAncestorSchema>;
 
 export const ConfluenceCheckPageExistsResponseSchema = t.union([
   t.type({
@@ -130,11 +131,9 @@ export const ConfluenceCheckPageExistsResponseSchema = t.union([
     title: t.string,
   }),
 ]);
-
 export type ConfluenceCheckPageExistsResponseType = t.TypeOf<
   typeof ConfluenceCheckPageExistsResponseSchema
 >;
-
 /**
  * </Confluence>
  */
@@ -544,18 +543,20 @@ export type SalesforceSyncQueryResponseType = t.TypeOf<
 export const SlackCommandSchema = t.type({
   majorCommand: t.literal("slack"),
   command: t.union([
-    t.literal("enable-bot"),
-    t.literal("sync-channel"),
-    t.literal("sync-thread"),
-    t.literal("skip-thread"),
-    t.literal("skip-channel"),
-    t.literal("unskip-channel"),
-    t.literal("uninstall-for-unknown-team-ids"),
-    t.literal("whitelist-domains"),
-    t.literal("whitelist-bot"),
-    t.literal("sync-channel-metadata"),
     t.literal("add-channel-to-sync"),
+    t.literal("cutover-legacy-bot"),
+    t.literal("enable-bot"),
     t.literal("remove-channel-from-sync"),
+    t.literal("skip-channel"),
+    t.literal("skip-thread"),
+    t.literal("sync-channel"),
+    t.literal("sync-channel-metadata"),
+    t.literal("sync-thread"),
+    t.literal("uninstall-for-unknown-team-ids"),
+    t.literal("unskip-channel"),
+    t.literal("run-auto-join"),
+    t.literal("whitelist-bot"),
+    t.literal("whitelist-domains"),
   ]),
   args: t.record(
     t.string,
@@ -563,6 +564,13 @@ export const SlackCommandSchema = t.type({
   ),
 });
 export type SlackCommandType = t.TypeOf<typeof SlackCommandSchema>;
+
+export const SlackJoinResponseSchema = t.type({
+  total: t.number,
+  processed: t.number,
+});
+export type SlackJoinResponseType = t.TypeOf<typeof SlackJoinResponseSchema>;
+
 /**
  * </Slack>
  */
@@ -685,17 +693,24 @@ export const ZendeskCommandSchema = t.type({
     t.literal("sync-ticket"),
     t.literal("get-retention-period"),
     t.literal("set-retention-period"),
+    t.literal("add-organization-tag"),
+    t.literal("remove-organization-tag"),
+    t.literal("add-ticket-tag"),
+    t.literal("remove-ticket-tag"),
   ]),
   args: t.type({
     wId: t.union([t.string, t.undefined]),
     dsId: t.union([t.string, t.undefined]),
     connectorId: t.union([t.number, t.undefined]),
-    brandId: t.union([t.number, t.undefined]),
+    brandId: t.union([t.number, t.null, t.undefined]),
     query: t.union([t.string, t.undefined]),
     forceResync: t.union([t.literal("true"), t.undefined]),
     ticketId: t.union([t.number, t.undefined]),
     ticketUrl: t.union([t.string, t.undefined]),
     retentionPeriodDays: t.union([t.number, t.undefined]),
+    tag: t.union([t.string, t.undefined]),
+    include: t.union([t.literal("true"), t.undefined]),
+    exclude: t.union([t.literal("true"), t.undefined]),
   }),
 });
 export type ZendeskCommandType = t.TypeOf<typeof ZendeskCommandSchema>;
@@ -718,7 +733,10 @@ export type ZendeskCountTicketsResponseType = t.TypeOf<
 
 export const ZendeskFetchTicketResponseSchema = t.type({
   ticket: t.union([t.UnknownRecord, t.null]), // Zendesk type, can't be iots'd,
-  shouldSyncTicket: t.boolean,
+  shouldSyncTicket: t.type({
+    shouldSync: t.boolean,
+    reason: t.union([t.string, t.null]),
+  }),
   isTicketOnDb: t.boolean,
 });
 export type ZendeskFetchTicketResponseType = t.TypeOf<
@@ -738,6 +756,14 @@ export const ZendeskGetRetentionPeriodResponseSchema = t.type({
 });
 export type ZendeskGetRetentionPeriodResponseType = t.TypeOf<
   typeof ZendeskGetRetentionPeriodResponseSchema
+>;
+
+export const ZendeskOrganizationTagResponseSchema = t.type({
+  success: t.literal(true),
+  message: t.union([t.string, t.undefined]),
+});
+export type ZendeskOrganizationTagResponseType = t.TypeOf<
+  typeof ZendeskOrganizationTagResponseSchema
 >;
 /**
  * </Zendesk>
@@ -778,9 +804,9 @@ export const AdminResponseSchema = t.union([
   CheckFileGenericResponseSchema,
   ConfluenceCheckPageExistsResponseSchema,
   ConfluenceCheckSpaceAccessResponseSchema,
-  ConfluenceSkipPageResponseSchema,
   ConfluenceMeResponseSchema,
   ConfluenceResolveSpaceFromUrlResponseSchema,
+  ConfluenceSkipPageResponseSchema,
   ConfluenceUpsertPageResponseSchema,
   GongForceResyncResponseSchema,
   IntercomCheckConversationResponseSchema,
@@ -794,6 +820,7 @@ export const AdminResponseSchema = t.union([
   NotionMeResponseSchema,
   NotionSearchPagesResponseSchema,
   NotionUpsertResponseSchema,
+  SlackJoinResponseSchema,
   SalesforceCheckConnectionResponseSchema,
   SalesforceRunSoqlResponseSchema,
   SalesforceSetupSyncedQueryResponseSchema,
@@ -808,6 +835,7 @@ export const AdminResponseSchema = t.union([
   ZendeskFetchBrandResponseSchema,
   ZendeskFetchTicketResponseSchema,
   ZendeskGetRetentionPeriodResponseSchema,
+  ZendeskOrganizationTagResponseSchema,
 ]);
 export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;
 /**

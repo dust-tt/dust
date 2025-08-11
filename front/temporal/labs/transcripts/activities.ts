@@ -2,7 +2,7 @@ import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { UniqueConstraintError } from "sequelize";
 
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
   postNewContentFragment,
@@ -560,11 +560,10 @@ export async function processTranscriptActivity(
       return;
     }
 
-    const agent = await getAgentConfiguration(
-      auth,
-      agentConfigurationId,
-      "light"
-    );
+    const agent = await getAgentConfiguration(auth, {
+      agentId: agentConfigurationId,
+      variant: "light",
+    });
 
     if (!agent) {
       await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);

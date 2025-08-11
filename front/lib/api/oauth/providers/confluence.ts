@@ -17,18 +17,19 @@ export class ConfluenceOAuthProvider implements BaseOAuthStrategyProvider {
     useCase: OAuthUseCase;
   }) {
     const scopes = [
-      "read:confluence-space.summary",
-      "read:confluence-content.all",
-      "read:confluence-user",
-      "search:confluence",
-      "read:space:confluence",
-      "read:page:confluence",
-      "read:confluence-props",
-      "read:confluence-content.summary",
-      "report:personal-data",
-      "read:me",
-      "read:label:confluence",
       "offline_access",
+      "read:confluence-content.all",
+      "read:confluence-content.summary",
+      "read:confluence-props",
+      "read:confluence-space.summary",
+      "read:confluence-user",
+      "read:folder:confluence",
+      "read:label:confluence",
+      "read:me",
+      "read:page:confluence",
+      "read:space:confluence",
+      "report:personal-data",
+      "search:confluence",
     ];
     return (
       `https://auth.atlassian.com/authorize?audience=api.atlassian.com` +

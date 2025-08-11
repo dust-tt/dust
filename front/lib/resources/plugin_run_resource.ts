@@ -12,6 +12,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import {
   PluginRunModel,
+  POKE_PLUGIN_RUN_MAX_ARGS_LENGTH,
   POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH,
 } from "@app/lib/resources/storage/models/plugin_runs";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -82,7 +83,10 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
     const sanitizedArgs = redactPluginArgs(plugin, args);
 
     const pluginRun = await this.model.create({
-      args: JSON.stringify(sanitizedArgs),
+      args: JSON.stringify(sanitizedArgs).slice(
+        0,
+        POKE_PLUGIN_RUN_MAX_ARGS_LENGTH
+      ),
       author: author.email,
       pluginId: plugin.manifest.id,
       status: "pending",

@@ -1,3 +1,4 @@
+import assert from "assert";
 import _ from "lodash";
 
 import {
@@ -14,6 +15,7 @@ import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendes
 import {
   fetchZendeskBrand,
   fetchZendeskCategory,
+  getOrganizationTagMapForTickets,
   getZendeskBrandSubdomain,
   listZendeskArticlesInCategory,
   listZendeskCategoriesInBrand,
@@ -659,9 +661,31 @@ export async function syncZendeskTicketBatchActivity({
     return { hasMore: false, nextLink: "" };
   }
 
-  const ticketsToSync = tickets.filter((t) =>
-    shouldSyncTicket(t, configuration, { brandId })
-  );
+  let organizationTagsMap = new Map<number, string[]>();
+  if (configuration.enforcesOrganizationTagConstraint()) {
+    organizationTagsMap = await getOrganizationTagMapForTickets(tickets, {
+      accessToken,
+      brandSubdomain,
+    });
+  }
+
+  const ticketsToSync = tickets.filter((t) => {
+    let organizationTags: string[] = [];
+    if (
+      t.organization_id &&
+      configuration.enforcesOrganizationTagConstraint()
+    ) {
+      const mapValue = organizationTagsMap.get(t.organization_id);
+      assert(mapValue, "Organization tags not found.");
+      organizationTags = mapValue;
+    }
+
+    return shouldSyncTicket(t, configuration, {
+      brandId,
+      organizationTags,
+      ticketTags: t.tags,
+    }).shouldSync;
+  });
 
   const comments2d = await concurrentExecutor(
     ticketsToSync,

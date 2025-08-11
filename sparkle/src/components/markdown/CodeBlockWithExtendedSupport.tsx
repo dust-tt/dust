@@ -28,6 +28,37 @@ import {
 import { CommandLineIcon, SparklesIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
+const PRETTY_JSON_PREFERENCE_KEY = "pretty-json-preference";
+
+// Persist user's JSON display preference (raw vs pretty) in localStorage.
+// Only affects newly rendered JSON blocks, not existing ones on the page.
+const getPrettyJsonPreference = () => {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    const prettyJsonPreference = localStorage.getItem(
+      PRETTY_JSON_PREFERENCE_KEY
+    );
+    return prettyJsonPreference === "true";
+  } catch {
+    return false;
+  }
+};
+
+const setPrettyJsonPreference = (value: boolean) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    localStorage.setItem(PRETTY_JSON_PREFERENCE_KEY, String(value));
+  } catch {
+    // do nothing
+  }
+};
+
 // Helper function to ensure we get hex values
 const toHex = (color: string) => {
   if (color.startsWith("#")) {
@@ -330,7 +361,8 @@ export function CodeBlockWithExtendedSupport({
       try {
         const parsed = JSON.parse(validChildrenContent);
         setParsedJson(parsed);
-        setShowPrettyJson(true);
+        const prettyJsonPreference = getPrettyJsonPreference();
+        setShowPrettyJson(prettyJsonPreference);
       } catch (e) {
         setParsedJson(null);
         setShowPrettyJson(false);
@@ -353,6 +385,7 @@ export function CodeBlockWithExtendedSupport({
         getContentToDownload={getContentToDownload}
         actions={
           <Button
+            className="s-font-sans"
             size="xs"
             variant={"outline"}
             label={showMermaid ? "Markdown" : "Mermaid"}
@@ -380,16 +413,23 @@ export function CodeBlockWithExtendedSupport({
         getContentToDownload={getContentToDownload}
         actions={
           <Button
+            className="s-font-sans"
             size="xs"
             variant={"outline"}
             label={showPrettyJson ? "Raw JSON" : "Pretty JSON"}
             icon={showPrettyJson ? CommandLineIcon : SparklesIcon}
-            onClick={() => setShowPrettyJson(!showPrettyJson)}
+            onClick={() => {
+              const newValue = !showPrettyJson;
+              setShowPrettyJson(newValue);
+              setPrettyJsonPreference(newValue);
+            }}
             tooltip={
               showPrettyJson ? "Switch to Raw JSON" : "Switch to Pretty View"
             }
           />
         }
+        displayActions="hover"
+        buttonDisplay="inside"
       >
         {showPrettyJson ? (
           <PrettyJsonViewer data={parsedJson} />

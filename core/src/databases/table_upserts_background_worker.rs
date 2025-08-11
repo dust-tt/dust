@@ -1,14 +1,14 @@
-use crate::{error, info};
 use lazy_static::lazy_static;
 use redis::{AsyncCommands, Client as RedisClient};
 use rslock::LockManager;
 use std::{collections::HashMap, env, sync::Arc, time::Duration};
+use tracing::{error, info};
 
 use crate::{
     databases::table::{LocalTable, Table},
     databases_store::{
         self, gcs::GoogleCloudStorageDatabasesStore,
-        gcs_background::GoogleCloudStorageBackgroundProcessingStore, store::SAVE_TABLES_TO_GCS,
+        gcs_background::GoogleCloudStorageBackgroundProcessingStore,
     },
     project::Project,
     stores::{postgres, store},
@@ -229,11 +229,6 @@ impl TableUpsertsBackgroundWorker {
     }
 
     pub async fn main_loop(&mut self) {
-        if !SAVE_TABLES_TO_GCS {
-            info!("TableUpsertsBackgroundWorker: We're not saving tables to GCS, skipping loop");
-            return;
-        }
-
         info!("TableUpsertsBackgroundWorker: starting main loop");
 
         loop {

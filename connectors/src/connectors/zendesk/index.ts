@@ -32,6 +32,7 @@ import {
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskCurrentUser,
+  getZendeskTicketFieldById,
   isUserAdmin,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import {
@@ -55,10 +56,17 @@ import type {
 } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 
-const SYNC_UNRESOLVED_TICKETS_CONFIG_KEY =
-  "zendeskSyncUnresolvedTicketsEnabled";
-const HIDE_CUSTOMER_DETAILS_CONFIG_KEY = "zendeskHideCustomerDetails";
-export const RETENTION_PERIOD_CONFIG_KEY = "zendeskRetentionPeriodDays";
+export const ZENDESK_CONFIG_KEYS = {
+  TICKET_TAGS_TO_INCLUDE: "zendeskTicketTagsToInclude",
+  TICKET_TAGS_TO_EXCLUDE: "zendeskTicketTagsToExclude",
+  ORGANIZATION_TAGS_TO_INCLUDE: "zendeskOrganizationTagsToInclude",
+  ORGANIZATION_TAGS_TO_EXCLUDE: "zendeskOrganizationTagsToExclude",
+  CUSTOM_FIELDS_CONFIG: "zendeskCustomFieldsConfig",
+  SYNC_UNRESOLVED_TICKETS: "zendeskSyncUnresolvedTicketsEnabled",
+  HIDE_CUSTOMER_DETAILS: "zendeskHideCustomerDetails",
+  RETENTION_PERIOD: "zendeskRetentionPeriodDays",
+} as const;
+
 const MAX_RETENTION_DAYS = 365;
 const DEFAULT_RETENTION_DAYS = 180;
 
@@ -97,6 +105,11 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         retentionPeriodDays: DEFAULT_RETENTION_DAYS,
         syncUnresolvedTickets: false,
         hideCustomerDetails: false,
+        organizationTagsToInclude: null,
+        organizationTagsToExclude: null,
+        ticketTagsToInclude: null,
+        ticketTagsToExclude: null,
+        customFieldsConfig: [],
       }
     );
     const loggerArgs = {
@@ -551,7 +564,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     }
 
     switch (configKey) {
-      case SYNC_UNRESOLVED_TICKETS_CONFIG_KEY: {
+      case ZENDESK_CONFIG_KEYS.SYNC_UNRESOLVED_TICKETS: {
         await zendeskConfiguration.update({
           syncUnresolvedTickets: configValue === "true",
         });
@@ -563,7 +576,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         }
         return new Ok(undefined);
       }
-      case HIDE_CUSTOMER_DETAILS_CONFIG_KEY: {
+      case ZENDESK_CONFIG_KEYS.HIDE_CUSTOMER_DETAILS: {
         await zendeskConfiguration.update({
           hideCustomerDetails: configValue === "true",
         });
@@ -574,7 +587,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         }
         return new Ok(undefined);
       }
-      case RETENTION_PERIOD_CONFIG_KEY: {
+      case ZENDESK_CONFIG_KEYS.RETENTION_PERIOD: {
         const retentionDays = parseInt(configValue.trim(), 10);
         if (
           configValue.trim() !== "" &&
@@ -632,6 +645,118 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         }
         return new Ok(undefined);
       }
+      case ZENDESK_CONFIG_KEYS.TICKET_TAGS_TO_INCLUDE: {
+        const tags = configValue.trim() === "" ? null : JSON.parse(configValue);
+        if (tags !== null && !Array.isArray(tags)) {
+          return new Err(
+            new Error("Ticket tags to include must be an array or empty.")
+          );
+        }
+        await zendeskConfiguration.update({
+          ticketTagsToInclude: tags,
+        });
+        return new Ok(undefined);
+      }
+      case ZENDESK_CONFIG_KEYS.TICKET_TAGS_TO_EXCLUDE: {
+        const tags = configValue.trim() === "" ? null : JSON.parse(configValue);
+        if (tags !== null && !Array.isArray(tags)) {
+          return new Err(
+            new Error("Ticket tags to exclude must be an array or empty.")
+          );
+        }
+        await zendeskConfiguration.update({
+          ticketTagsToExclude: tags,
+        });
+        return new Ok(undefined);
+      }
+      case ZENDESK_CONFIG_KEYS.ORGANIZATION_TAGS_TO_INCLUDE: {
+        const tags = configValue.trim() === "" ? null : JSON.parse(configValue);
+        if (tags !== null && !Array.isArray(tags)) {
+          return new Err(
+            new Error("Organization tags to include must be an array or empty.")
+          );
+        }
+        await zendeskConfiguration.update({
+          organizationTagsToInclude: tags,
+        });
+        return new Ok(undefined);
+      }
+      case ZENDESK_CONFIG_KEYS.ORGANIZATION_TAGS_TO_EXCLUDE: {
+        const tags = configValue.trim() === "" ? null : JSON.parse(configValue);
+        if (tags !== null && !Array.isArray(tags)) {
+          return new Err(
+            new Error("Organization tags to exclude must be an array or empty.")
+          );
+        }
+        await zendeskConfiguration.update({
+          organizationTagsToExclude: tags,
+        });
+
+        return new Ok(undefined);
+      }
+      case ZENDESK_CONFIG_KEYS.CUSTOM_FIELDS_CONFIG: {
+        const fieldIds =
+          configValue.trim() === "" ? null : JSON.parse(configValue);
+
+        if (fieldIds !== null && !Array.isArray(fieldIds)) {
+          return new Err(
+            new Error("Custom field IDs must be an array or empty.")
+          );
+        }
+
+        if (fieldIds === null) {
+          await zendeskConfiguration.update({
+            customFieldsConfig: [],
+          });
+
+          return new Ok(undefined);
+        }
+
+        for (const fieldId of fieldIds) {
+          if (typeof fieldId !== "number" || !Number.isInteger(fieldId)) {
+            return new Err(
+              new Error(`Field ID "${fieldId}" must be a number.`)
+            );
+          }
+        }
+
+        const { accessToken, subdomain } =
+          await getZendeskSubdomainAndAccessToken(connector.connectionId);
+
+        const convertedFields: { id: number; name: string }[] = [];
+        for (const fieldId of fieldIds) {
+          const field = await getZendeskTicketFieldById({
+            accessToken,
+            subdomain,
+            fieldId,
+          });
+
+          if (!field) {
+            return new Err(
+              new Error(`Field with ID "${fieldId}" not found on Zendesk.`)
+            );
+          }
+
+          if (!field.active) {
+            return new Err(
+              new Error(
+                `Field with ID "${fieldId}" (${field.title}) is not active in Zendesk.`
+              )
+            );
+          }
+
+          convertedFields.push({
+            id: field.id,
+            name: field.title,
+          });
+        }
+
+        await zendeskConfiguration.update({
+          customFieldsConfig: convertedFields,
+        });
+
+        return new Ok(undefined);
+      }
       default: {
         return new Err(new Error(`Invalid config key ${configKey}`));
       }
@@ -658,14 +783,49 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     }
 
     switch (configKey) {
-      case SYNC_UNRESOLVED_TICKETS_CONFIG_KEY: {
+      case ZENDESK_CONFIG_KEYS.SYNC_UNRESOLVED_TICKETS: {
         return new Ok(zendeskConfiguration.syncUnresolvedTickets.toString());
       }
-      case HIDE_CUSTOMER_DETAILS_CONFIG_KEY: {
+      case ZENDESK_CONFIG_KEYS.HIDE_CUSTOMER_DETAILS: {
         return new Ok(zendeskConfiguration.hideCustomerDetails.toString());
       }
-      case RETENTION_PERIOD_CONFIG_KEY: {
+      case ZENDESK_CONFIG_KEYS.RETENTION_PERIOD: {
         return new Ok(zendeskConfiguration.retentionPeriodDays.toString());
+      }
+      case ZENDESK_CONFIG_KEYS.TICKET_TAGS_TO_INCLUDE: {
+        return new Ok(
+          zendeskConfiguration.ticketTagsToInclude
+            ? JSON.stringify(zendeskConfiguration.ticketTagsToInclude)
+            : ""
+        );
+      }
+      case ZENDESK_CONFIG_KEYS.TICKET_TAGS_TO_EXCLUDE: {
+        return new Ok(
+          zendeskConfiguration.ticketTagsToExclude
+            ? JSON.stringify(zendeskConfiguration.ticketTagsToExclude)
+            : ""
+        );
+      }
+      case ZENDESK_CONFIG_KEYS.ORGANIZATION_TAGS_TO_INCLUDE: {
+        return new Ok(
+          zendeskConfiguration.organizationTagsToInclude
+            ? JSON.stringify(zendeskConfiguration.organizationTagsToInclude)
+            : ""
+        );
+      }
+      case ZENDESK_CONFIG_KEYS.ORGANIZATION_TAGS_TO_EXCLUDE: {
+        return new Ok(
+          zendeskConfiguration.organizationTagsToExclude
+            ? JSON.stringify(zendeskConfiguration.organizationTagsToExclude)
+            : ""
+        );
+      }
+      case ZENDESK_CONFIG_KEYS.CUSTOM_FIELDS_CONFIG: {
+        return new Ok(
+          zendeskConfiguration.customFieldsConfig
+            ? JSON.stringify(zendeskConfiguration.customFieldsConfig)
+            : ""
+        );
       }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));

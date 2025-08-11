@@ -3,6 +3,7 @@ import { QueryTypes } from "sequelize";
 
 import type { RegionType } from "@app/lib/api/regions/config";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   CoreEntitiesRelocationBlob,
@@ -47,7 +48,7 @@ export async function writeCoreEntitiesToDestinationRegion({
 
   // 2) Create users in transaction.
   for (const { sql, params } of blob.statements.users) {
-    await frontSequelize.transaction(async (transaction) => {
+    await withTransaction(async (transaction) => {
       await frontSequelize.query(sql, {
         bind: params,
         type: QueryTypes.INSERT,
@@ -58,7 +59,7 @@ export async function writeCoreEntitiesToDestinationRegion({
 
   // 3) Create users metadata in transaction.
   for (const { sql, params } of blob.statements.user_metadata) {
-    await frontSequelize.transaction(async (transaction) => {
+    await withTransaction(async (transaction) => {
       await frontSequelize.query(sql, {
         bind: params,
         type: QueryTypes.INSERT,
@@ -69,7 +70,7 @@ export async function writeCoreEntitiesToDestinationRegion({
 
   // 4) Create plans that the workspace uses if not already existing.
   for (const { sql, params } of blob.statements.plans) {
-    await frontSequelize.transaction(async (transaction) => {
+    await withTransaction(async (transaction) => {
       await frontSequelize.query(sql, {
         bind: params,
         type: QueryTypes.INSERT,
@@ -130,7 +131,7 @@ export async function processFrontTableChunk({
     );
 
     for (const { sql, params } of statements) {
-      await frontSequelize.transaction(async (transaction) =>
+      await withTransaction(async (transaction) =>
         frontSequelize.query(sql, {
           bind: params,
           type: QueryTypes.INSERT,

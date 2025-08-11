@@ -21,7 +21,7 @@ const createServer = (
   const server = new McpServer(serverInfo);
   if (agentLoopContext) {
     const actionName = agentLoopContext.runContext
-      ? agentLoopContext.runContext.actionConfiguration.name
+      ? agentLoopContext.runContext.toolConfiguration.name
       : agentLoopContext.listToolsContext?.agentActionConfiguration.name;
 
     if (!actionName) {

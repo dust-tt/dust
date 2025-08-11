@@ -429,19 +429,34 @@ async function _checkRoleGrants(
         "STREAM",
       ].includes(grantOn)
     ) {
-      if (g.privilege !== "SELECT") {
+      if (!["SELECT", "REFERENCES"].includes(g.privilege)) {
         return new Err(
           new TestConnectionError(
             "NOT_READONLY",
-            `Non-select grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+            `Non-select or references grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+          )
+        );
+      }
+    } else if (grantOn === "WAREHOUSE") {
+      if (!["USAGE", "READ", "MONITOR"].includes(g.privilege)) {
+        return new Err(
+          new TestConnectionError(
+            "NOT_READONLY",
+            `Non-usage, read, or monitor grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+          )
+        );
+      }
+    } else if (["SCHEMA", "DATABASE"].includes(grantOn)) {
+      if (!["USAGE", "READ", "MONITOR"].includes(g.privilege)) {
+        return new Err(
+          new TestConnectionError(
+            "NOT_READONLY",
+            `Non-usage, read, or monitor grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
           )
         );
       }
     } else if (
       [
-        "SCHEMA",
-        "DATABASE",
-        "WAREHOUSE",
         "FILE_FORMAT",
         "FUNCTION",
         "PROCEDURE",
@@ -456,6 +471,27 @@ async function _checkRoleGrants(
           new TestConnectionError(
             "NOT_READONLY",
             `Non-usage or read grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+          )
+        );
+      }
+    } else if (
+      [
+        "RESOURCE_MONITOR",
+        "COMPUTE_POOL",
+        "FAILOVER_GROUP",
+        "REPLICATION_GROUP",
+        "USER",
+        "ALERT",
+        "PIPE",
+        "SERVICE",
+        "TASK",
+      ].includes(grantOn)
+    ) {
+      if (g.privilege !== "MONITOR") {
+        return new Err(
+          new TestConnectionError(
+            "NOT_READONLY",
+            `Non-monitor grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
           )
         );
       }

@@ -2,7 +2,7 @@ import assert from "assert";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -64,7 +64,10 @@ async function handler(
     });
   }
 
-  const agentConfiguration = await getAgentConfiguration(auth, aId, "full");
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: aId,
+    variant: "full",
+  });
   if (!agentConfiguration) {
     return apiError(req, res, {
       status_code: 404,

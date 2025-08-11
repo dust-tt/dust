@@ -162,7 +162,7 @@ function JsonValue({
           <div
             key={key}
             className={cn(
-              "s-max-w-full s-border-b s-pb-3 last:s-border-0",
+              "s-max-w-full s-border-b s-pb-3 last:s-border-0 last:s-pb-0",
               "s-border-structure-200 dark:s-border-structure-200-night"
             )}
           >
@@ -211,7 +211,7 @@ export function PrettyJsonViewer({ data, className }: JsonViewerProps) {
     <div
       className={cn(
         "s-bg-structure-50 dark:s-bg-structure-50-night",
-        "s-overflow-hidden s-rounded-lg s-p-6 s-text-base",
+        "s-overflow-hidden s-rounded-lg s-px-4 s-py-4 s-text-base",
         className
       )}
     >

@@ -15,7 +15,7 @@ if (process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN) {
   datadogLogs.init({
     clientToken: process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN,
     env: process.env.NODE_ENV === "production" ? "prod" : "dev",
-    service: process.env.NEXT_PUBLIC_DATADOG_SERVICE,
+    service: `${process.env.NEXT_PUBLIC_DATADOG_SERVICE || "front"}-browser`,
     version: process.env.NEXT_PUBLIC_COMMIT_HASH || "",
     site: "datadoghq.eu",
     forwardErrorsToLogs: true,

@@ -1,15 +1,10 @@
 import type { ButtonProps } from "@dust-tt/sparkle";
-import {
-  BarFooter,
-  BarHeader,
-  Button,
-  Separator,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
+import { BarFooter, BarHeader, Button, ScrollArea } from "@dust-tt/sparkle";
 import React from "react";
 
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
+import { AgentAccessPublicationDialog } from "@app/components/agent_builder/settings/AgentAccessPublicationDialog";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
 import { ConfirmContext } from "@app/components/Confirm";
 
@@ -18,6 +13,7 @@ interface AgentBuilderLeftPanelProps {
   onCancel: () => void;
   agentConfigurationId: string | null;
   saveButtonProps?: ButtonProps;
+  isActionsLoading: boolean;
 }
 
 export function AgentBuilderLeftPanel({
@@ -25,6 +21,7 @@ export function AgentBuilderLeftPanel({
   onCancel,
   agentConfigurationId,
   saveButtonProps,
+  isActionsLoading,
 }: AgentBuilderLeftPanelProps) {
   const confirm = React.useContext(ConfirmContext);
 
@@ -45,41 +42,30 @@ export function AgentBuilderLeftPanel({
     <div className="flex h-full flex-col">
       <BarHeader
         variant="default"
+        className="mx-4"
         title={title}
-        rightActions={
-          <Button
-            size="sm"
-            icon={XMarkIcon}
-            variant="ghost"
-            tooltip="Close"
-            onClick={handleCancel}
-          />
-        }
+        rightActions={<AgentAccessPublicationDialog />}
       />
-      <div className="flex-1 overflow-y-auto">
-        <div className="space-y-4 p-4">
+      <ScrollArea className="flex-1">
+        <div className="space-y-10 p-4">
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
-          <Separator />
-          <AgentBuilderCapabilitiesBlock />
-          <Separator />
+          <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
           <AgentBuilderSettingsBlock
             isSettingBlocksOpen={!agentConfigurationId}
           />
         </div>
-      </div>
+      </ScrollArea>
       <BarFooter
         variant="default"
+        className="mx-4"
+        leftActions={
+          <Button variant="outline" label="Close" onClick={handleCancel} />
+        }
         rightActions={
           <BarFooter.ButtonBar
             variant="validate"
-            cancelButtonProps={{
-              size: "sm",
-              label: "Cancel",
-              variant: "ghost",
-              onClick: handleCancel,
-            }}
             saveButtonProps={saveButtonProps}
           />
         }

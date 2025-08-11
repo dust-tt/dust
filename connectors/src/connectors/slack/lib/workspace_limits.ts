@@ -58,7 +58,9 @@ export const getActiveMemberEmailsMemoized = cacheWithRedis(
   },
   // Caches data for 2 minutes to limit frequent API calls.
   // Note: Updates (e.g., new members added by an admin) may take up to 2 minutes to be reflected.
-  2 * 10 * 1000
+  {
+    ttlMs: 2 * 10 * 1000,
+  }
 );
 
 async function getVerifiedDomainsForWorkspace(
@@ -88,7 +90,9 @@ export const getVerifiedDomainsForWorkspaceMemoized = cacheWithRedis(
   },
   // Caches data for 15 minutes to limit frequent API calls.
   // Note: Updates (e.g., workspace verified domains) may take up to 15 minutes to be reflected.
-  15 * 10 * 1000
+  {
+    ttlMs: 15 * 10 * 1000,
+  }
 );
 
 function getSlackUserEmailFromProfile(

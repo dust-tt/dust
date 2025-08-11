@@ -215,6 +215,7 @@ async function* runReasoning(
     tools: "",
     allowedTokenCount: supportedModel.contextSize - REASONING_GENERATION_TOKENS,
     excludeImages: true,
+    checkMissingActions: false,
   });
   if (renderedConversationRes.isErr()) {
     yield {
@@ -238,7 +239,11 @@ async function* runReasoning(
 
   const reasoningEffort =
     reasoningModel.reasoningEffort ?? supportedModel.defaultReasoningEffort;
-  if (reasoningEffort !== "none" && reasoningEffort !== "light") {
+
+  if (
+    reasoningEffort !== "none" &&
+    (reasoningEffort !== "light" || supportedModel.useNativeLightReasoning)
+  ) {
     config.MODEL.reasoning_effort = reasoningEffort;
   }
 

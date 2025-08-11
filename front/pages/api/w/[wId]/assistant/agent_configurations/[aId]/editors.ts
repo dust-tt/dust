@@ -6,7 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import {
   getAgentConfiguration,
   updateAgentPermissions,
-} from "@app/lib/api/assistant/configuration";
+} from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -59,11 +59,10 @@ async function handler(
 ): Promise<void> {
   const agentConfigurationId = req.query.aId as string;
 
-  const agent = await getAgentConfiguration(
-    auth,
-    agentConfigurationId,
-    "light"
-  );
+  const agent = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationId,
+    variant: "light",
+  });
   if (!agent) {
     return apiError(req, res, {
       status_code: 404,

@@ -1,4 +1,3 @@
-use crate::{error, warn};
 use anyhow::{anyhow, Result};
 use axum::http::Request;
 use axum::middleware::Next;
@@ -9,6 +8,7 @@ use lazy_static::lazy_static;
 use serde::Deserialize;
 use std::{collections::HashMap, env, sync::Arc};
 use tokio::{fs, sync::OnceCell};
+use tracing::{error, warn};
 
 lazy_static! {
     static ref DISABLE_API_KEY_CHECK: bool = env::var("DISABLE_API_KEY_CHECK")

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -18,11 +18,10 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      const agentConfiguration = await getAgentConfiguration(
-        auth,
-        req.query.aId as string,
-        "light"
-      );
+      const agentConfiguration = await getAgentConfiguration(auth, {
+        agentId: req.query.aId as string,
+        variant: "light",
+      });
       if (!agentConfiguration) {
         return apiError(req, res, {
           status_code: 404,

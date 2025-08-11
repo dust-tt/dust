@@ -1,12 +1,11 @@
 import { Readable } from "stream";
-import { describe, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./files";
 
@@ -109,16 +108,12 @@ vi.mock("@app/lib/file_storage", () => ({
 }));
 
 describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
-  itInTransaction("returns 404 when file not found", async (t) => {
+  it("returns 404 when file not found", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
     });
-    const space = await SpaceFactory.global(workspace, t);
-    const dataSourceView = await DataSourceViewFactory.folder(
-      workspace,
-      space,
-      t
-    );
+    const space = await SpaceFactory.global(workspace);
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
     req.query.dsId = dataSourceView.dataSource.sId;
     req.body = {
@@ -136,19 +131,15 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
     });
   });
 
-  itInTransaction("returns 400 on unsupported use-cases", async (t) => {
+  it("returns 400 on unsupported use-cases", async () => {
     const { req, res, workspace, globalGroup, user } =
       await createPrivateApiMockRequest({
         method: "POST",
       });
-    const space = await SpaceFactory.global(workspace, t);
+    const space = await SpaceFactory.global(workspace);
     await GroupSpaceFactory.associate(space, globalGroup);
 
-    const dataSourceView = await DataSourceViewFactory.folder(
-      workspace,
-      space,
-      t
-    );
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
     const file = await FileFactory.csv(workspace, user, {
       useCase: "conversation",
     });
@@ -174,94 +165,87 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
     expect(res._getStatusCode()).toBe(400);
   });
 
-  itInTransaction(
-    "successfully upserts file to data source with the right arguments",
-    async (t) => {
-      const { req, res, workspace, globalGroup, user } =
-        await createPrivateApiMockRequest({
-          method: "POST",
-          role: "admin",
-        });
-      const space = await SpaceFactory.global(workspace, t);
-      await GroupSpaceFactory.associate(space, globalGroup);
-
-      const dataSourceView = await DataSourceViewFactory.folder(
-        workspace,
-        space,
-        t
-      );
-      const file = await FileFactory.csv(workspace, user, {
-        useCase: "upsert_table",
+  it("successfully upserts file to data source with the right arguments", async () => {
+    const { req, res, workspace, globalGroup, user } =
+      await createPrivateApiMockRequest({
+        method: "POST",
+        role: "admin",
       });
+    const space = await SpaceFactory.global(workspace);
+    await GroupSpaceFactory.associate(space, globalGroup);
 
-      req.query.dsId = dataSourceView.dataSource.sId;
-      req.body = {
-        fileId: file.sId,
-        upsertArgs: {
-          tableId: "test-table",
-          name: "Test Table",
-          title: "Test Title",
-          description: "Test Description",
-          tags: ["test"],
-          useAppForHeaderDetection: true,
-        },
-      };
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+    const file = await FileFactory.csv(workspace, user, {
+      useCase: "upsert_table",
+    });
 
-      // Set specific content for this test
-      mockFileContent.setContent("foo,bar,baz\n1,2,3\n4,5,6");
+    req.query.dsId = dataSourceView.dataSource.sId;
+    req.body = {
+      fileId: file.sId,
+      upsertArgs: {
+        tableId: "test-table",
+        name: "Test Table",
+        title: "Test Title",
+        description: "Test Description",
+        tags: ["test"],
+        useAppForHeaderDetection: true,
+      },
+    };
 
-      // First fetch is to create the table
-      global.fetch = vi.fn().mockImplementation(async (url, init) => {
-        const req = JSON.parse(init.body);
-        if ((url as string).endsWith("/tables")) {
-          expect(req.table_id).toBe("test-table");
-          expect(req.name).toBe("Test Table");
-          expect(req.description).toBe("Test Description");
-          return Promise.resolve(
-            new Response(JSON.stringify(CORE_TABLES_FAKE_RESPONSE), {
+    // Set specific content for this test
+    mockFileContent.setContent("foo,bar,baz\n1,2,3\n4,5,6");
+
+    // First fetch is to create the table
+    global.fetch = vi.fn().mockImplementation(async (url, init) => {
+      const req = JSON.parse(init.body);
+      if ((url as string).endsWith("/tables")) {
+        expect(req.table_id).toBe("test-table");
+        expect(req.name).toBe("Test Table");
+        expect(req.description).toBe("Test Description");
+        return Promise.resolve(
+          new Response(JSON.stringify(CORE_TABLES_FAKE_RESPONSE), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
+        );
+        //
+      }
+
+      if ((url as string).endsWith("/csv")) {
+        expect(req.bucket_csv_path).toBe(
+          `files/w/${workspace.sId}/${file.sId}/processed`
+        );
+        expect(req.truncate).toBe(true);
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              response: {
+                success: true,
+              },
+            }),
+            {
               status: 200,
               headers: { "Content-Type": "application/json" },
-            })
-          );
-          //
-        }
+            }
+          )
+        );
+      }
 
-        if ((url as string).endsWith("/csv")) {
-          expect(req.bucket_csv_path).toBe(
-            `files/w/${workspace.sId}/${file.sId}/processed`
-          );
-          expect(req.truncate).toBe(true);
-          return Promise.resolve(
-            new Response(
-              JSON.stringify({
-                response: {
-                  success: true,
-                },
-              }),
-              {
-                status: 200,
-                headers: { "Content-Type": "application/json" },
-              }
-            )
-          );
-        }
+      if ((url as string).endsWith("/validate_csv_content")) {
+        expect(req.bucket_csv_path).toBe(
+          `files/w/${workspace.sId}/${file.sId}/processed`
+        );
+        return Promise.resolve(
+          new Response(JSON.stringify(CORE_VALIDATE_CSV_FAKE_RESPONSE), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
+        );
+      }
+    });
 
-        if ((url as string).endsWith("/validate_csv_content")) {
-          expect(req.bucket_csv_path).toBe(
-            `files/w/${workspace.sId}/${file.sId}/processed`
-          );
-          return Promise.resolve(
-            new Response(JSON.stringify(CORE_VALIDATE_CSV_FAKE_RESPONSE), {
-              status: 200,
-              headers: { "Content-Type": "application/json" },
-            })
-          );
-        }
-      });
+    await handler(req, res);
 
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-    }
-  );
+    expect(res._getStatusCode()).toBe(200);
+  });
 });
