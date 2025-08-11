@@ -203,6 +203,7 @@ export async function syncTicket({
       },
       "[Zendesk] Skipping sync. Ticket does not belong to the correct brand."
     );
+    return;
   }
 
   let ticketInDb = await ZendeskTicketResource.fetchByTicketId({
