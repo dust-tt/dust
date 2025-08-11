@@ -710,12 +710,14 @@ export function MCPServerViewsDialog({
           onClick={() => onModeChange({ type: "add" })}
           label="Add tools"
           icon={ListAddIcon}
+          variant="outline"
         />
       </MultiPageDialogTrigger>
       <MultiPageDialogContent
         showNavigation={false}
         isAlertDialog
-        size="xl"
+        size="2xl"
+        height="xl"
         pages={pages}
         currentPageId={currentPageId}
         onPageChange={(pageId) => {

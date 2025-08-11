@@ -102,7 +102,7 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   return (
     <Card
       variant="primary"
-      className="h-32"
+      className="h-28"
       onClick={onEdit}
       action={
         <CardActionButton
