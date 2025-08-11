@@ -125,6 +125,22 @@ main {
   }
 }
 
+@keyframes fade-collapse {
+  0% {
+    opacity: 1;
+    max-height: 100%;
+  }
+
+  100% {
+    opacity: 0;
+    max-height: 0;
+  }
+}
+
+.animate-fade-collapse {
+  animation: fade-collapse 500ms ease-out forwards;
+}
+
 .s-blinking-cursor > :not(pre):last-child::after {
   /* ... existing code ... */
 }

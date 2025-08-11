@@ -277,14 +277,6 @@ const InputBarContainer = ({
           )}
         />
         <div className="flex items-center pb-3 pt-0">
-          {actions.includes("tools") && (
-            <ToolsPicker
-              owner={owner}
-              selectedMCPServerViewIds={selectedMCPServerViewIds}
-              onSelect={onMCPServerViewSelect}
-              onDeselect={onMCPServerViewDeselect}
-            />
-          )}
           {actions.includes("attachment") && (
             <>
               <input
@@ -310,6 +302,14 @@ const InputBarContainer = ({
                 attachedNodes={attachedNodes}
               />
             </>
+          )}
+          {actions.includes("tools") && (
+            <ToolsPicker
+              owner={owner}
+              selectedMCPServerViewIds={selectedMCPServerViewIds}
+              onSelect={onMCPServerViewSelect}
+              onDeselect={onMCPServerViewDeselect}
+            />
           )}
           {(actions.includes("assistants-list") ||
             actions.includes("assistants-list-with-actions")) && (
