@@ -17,7 +17,7 @@ import {
   findSpaceFromNavigationHistory,
 } from "@app/components/data_source_view/context/utils";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import type { DataSourceViewType } from "@app/types";
@@ -136,19 +136,24 @@ export function DataSourceViewTable() {
     ]
   );
 
-  const rows: RowData[] = spaceDataSourceViews.map((dsv) => ({
-    id: dsv.sId,
-    title: dsv.dataSource.name,
-    onClick: () => setDataSourceViewEntry(dsv),
-    dataSourceView: dsv,
-    icon: dsv.dataSource.connectorProvider
-      ? getConnectorProviderLogoWithFallback({
-          provider: dsv.dataSource.connectorProvider,
-          isDark,
-          fallback: CATEGORY_DETAILS[dsv.category].icon,
-        })
-      : FolderIcon,
-  }));
+  const rows: RowData[] = spaceDataSourceViews.map((dsv) => {
+    const connectorProvider = dsv.dataSource.connectorProvider
+      ? CONNECTOR_CONFIGURATIONS[dsv.dataSource.connectorProvider]
+      : null;
+
+    const icon = dsv.dataSource.connectorProvider
+      ? connectorProvider?.getLogoComponent(isDark) ??
+        CATEGORY_DETAILS[dsv.category].icon
+      : FolderIcon;
+
+    return {
+      id: dsv.sId,
+      title: connectorProvider?.name ?? dsv.dataSource.name,
+      onClick: () => setDataSourceViewEntry(dsv),
+      dataSourceView: dsv,
+      icon,
+    };
+  });
 
   if (isSpaceDataSourceViewsLoading) {
     return (
