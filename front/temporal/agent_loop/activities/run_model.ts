@@ -734,7 +734,7 @@ export async function runModelActivity({
         step,
       }
     );
-    localLogger.error("Agent message generation succeeded");
+    localLogger.info("Agent message generation succeeded");
 
     return null;
   }
