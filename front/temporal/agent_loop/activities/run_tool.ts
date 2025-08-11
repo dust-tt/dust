@@ -1,8 +1,8 @@
 import assert from "assert";
 
-import { MCPActionType } from "@app/lib/actions/mcp";
-import { runToolWithStreaming } from "@app/lib/actions/mcp";
+import { MCPActionType, runToolWithStreaming } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
@@ -58,11 +58,20 @@ export async function runToolActivity(
   const action = await AgentMCPAction.findByPk(actionId);
   assert(action, "Action not found");
 
+  const mcpServerConfiguration = agentConfiguration.actions.find(
+    (ac) => `${ac.id}` === `${action.mcpServerConfigurationId}`
+  );
+  const mcpServerId = mcpServerConfiguration
+    ? isServerSideMCPServerConfiguration(mcpServerConfiguration)
+      ? mcpServerConfiguration.internalMCPServerId
+      : mcpServerConfiguration.clientSideMcpServerId
+    : null;
+
   const actionBaseParams = await buildActionBaseParams({
     agentMessageId: action.agentMessageId,
     citationsAllocated: action.citationsAllocated,
     mcpServerConfigurationId: action.mcpServerConfigurationId,
-    mcpServerId: actionConfiguration.toolServerId,
+    mcpServerId,
     step,
     stepContentId: action.stepContentId,
   });

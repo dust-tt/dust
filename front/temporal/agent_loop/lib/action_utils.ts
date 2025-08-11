@@ -21,7 +21,7 @@ export async function buildActionBaseParams({
   agentMessageId: number;
   citationsAllocated: number;
   mcpServerConfigurationId: string;
-  mcpServerId: string;
+  mcpServerId: string | null;
   step: number;
   stepContentId: ModelId;
 }): Promise<ActionBaseParams> {
