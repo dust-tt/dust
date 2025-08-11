@@ -154,7 +154,7 @@ export function AgentBuilderRightPanel({
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="mx-4 flex h-full flex-col">
       <PanelHeader
         isPreviewPanelOpen={isPreviewPanelOpen}
         selectedTab={selectedTab}
