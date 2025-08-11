@@ -207,6 +207,16 @@ function KnowledgeConfigurationSheetContent({
     return getMCPServerRequirements(mcpServerView);
   }, [mcpServerView]);
 
+  const viewType = useMemo(() => {
+    if (requirements.requiresTableConfiguration) {
+      return "table";
+    }
+    if (requirements.requiresDataSourceConfiguration) {
+      return "document";
+    }
+    return "all";
+  }, [requirements]);
+
   const { owner } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { spaces } = useSpacesContext();
@@ -284,8 +294,12 @@ function KnowledgeConfigurationSheetContent({
     },
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
-      title: "Select Data Sources",
-      description: "Choose the data sources to include in your knowledge base",
+      title: requirements.requiresTableConfiguration
+        ? "Select Tables"
+        : "Select Data Sources",
+      description: requirements.requiresTableConfiguration
+        ? "Choose the tables to query for your processing method"
+        : "Choose the data sources to include in your knowledge base",
       icon: undefined,
       content: (
         <div className="space-y-4">
@@ -295,7 +309,7 @@ function KnowledgeConfigurationSheetContent({
               dataSourceViews={supportedDataSourceViews}
               allowedSpaces={spaces}
               owner={owner}
-              viewType="document"
+              viewType={viewType}
             />
           </ScrollArea>
         </div>
