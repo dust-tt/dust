@@ -17,11 +17,11 @@ import { SlackChannel } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import type { ConnectorPermission } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
+import type { ConnectorPermission, ModelId } from "@connectors/types";
 import {
   cacheWithRedis,
   INTERNAL_MIME_TYPES,
+  normalizeError,
   withRetries,
 } from "@connectors/types";
 
@@ -254,6 +254,36 @@ export async function joinChannel(
   }
 }
 
+export async function joinChannelWithRetries(
+  connectorId: ModelId,
+  slackChannelId: string
+): Promise<
+  Result<
+    { result: "ok" | "already_joined" | "is_archived"; channel: Channel },
+    Error
+  >
+> {
+  try {
+    return await withRetries(
+      logger,
+      async (connectorId: ModelId, slackChannelId: string) => {
+        const result = await joinChannel(connectorId, slackChannelId);
+        if (result.isErr()) {
+          // Retry on any error, not just rate limit errors
+          throw result.error; // This will trigger a retry
+        }
+        return result;
+      },
+      {
+        retries: 3,
+        delayBetweenRetriesMs: 10000, // 10 seconds between retries
+      }
+    )(connectorId, slackChannelId);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
 /**
  * Slack API rate limit TLDR:
  * Slack has different rate limits for different endpoints.
@@ -467,21 +497,10 @@ export async function migrateChannelsFromLegacyBotToNewBot(
     const { id: channelId } = channel;
 
     // Join the new bot to the channel. Wrap with retries to handle rate limits.
-    const joinRes = await withRetries(
-      childLogger,
-      async (slackBotConnectorId: ModelId, channelId: string) => {
-        const joinRes = await joinChannel(slackBotConnectorId, channelId);
-        if (joinRes.isErr()) {
-          throw joinRes.error;
-        }
-
-        return joinRes;
-      },
-      {
-        retries: 10,
-        delayBetweenRetriesMs: 10000,
-      }
-    )(slackBotConnector.id, channelId);
+    const joinRes = await joinChannelWithRetries(
+      slackBotConnector.id,
+      channelId
+    );
 
     if (joinRes.isErr()) {
       childLogger.error(

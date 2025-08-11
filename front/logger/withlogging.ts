@@ -197,25 +197,30 @@ export function apiError<T>(
   error?: Error
 ): void {
   const callstack = new Error().stack;
+  const errorAttrs = {
+    message: (error && error.message) || apiError.api_error.message,
+    kind: apiError.api_error.type,
+    stack: (error && error.stack) || callstack,
+  };
   logger.error(
     {
       method: req.method,
       url: req.url,
       statusCode: apiError.status_code,
-      apiError: apiError,
-      error: error || {
-        message: apiError.api_error.message,
-        kind: apiError.api_error.type,
-        stack: callstack,
-      },
-      apiErrorHandlerCallStack: callstack,
+      apiError: { ...apiError, callstack },
+      error: errorAttrs,
     },
     "API Error"
   );
 
+  const span = tracer.scope().active();
+  if (span) {
+    span.setTag("error.message", errorAttrs.message);
+    span.setTag("error.stack", errorAttrs.stack);
+  }
+
   const tags = [
     `method:${req.method}`,
-    // `url:${req.url}`,
     `status_code:${apiError.status_code}`,
     `error_type:${apiError.api_error.type}`,
   ];

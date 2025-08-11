@@ -325,6 +325,10 @@ export type ModelConfigurationType = {
   maximumReasoningEffort: AgentReasoningEffort;
   defaultReasoningEffort: AgentReasoningEffort;
 
+  // If set to true, we'll pass the "light" reasoning effort to `core`. Otherwise, we'll
+  // use chain of thought prompting.
+  useNativeLightReasoning?: boolean;
+
   // Denotes model is able to take a response format request parameter
   supportsResponseFormat?: boolean;
 
@@ -500,6 +504,7 @@ export const GPT_5_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
   supportsResponseFormat: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
 };

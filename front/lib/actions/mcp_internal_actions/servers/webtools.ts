@@ -41,16 +41,14 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
 
   server.tool(
     WEBSEARCH_TOOL_NAME,
-    "A tool that performs a Google web search based on a string query. " +
-      "The input string query does not support Unicode characters.",
+    "A tool that performs a Google web search based on a string query.",
     {
       query: z
         .string()
         .describe(
           "The query used to perform the Google search. If requested by the " +
             "user, use the Google syntax `site:` to restrict the search " +
-            "to a particular website or domain. " +
-            "Unicode characters are not supported."
+            "to a particular website or domain."
         ),
       page: z
         .number()

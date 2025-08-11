@@ -15,9 +15,9 @@ import type {
   AgentLoopContextType,
 } from "@app/lib/actions/types";
 import {
+  isLightServerSideMCPToolConfiguration,
   isMCPActionArray,
   isServerSideMCPServerConfiguration,
-  isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getCitationsFromActions } from "@app/lib/api/assistant/citations";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
@@ -127,12 +127,12 @@ export default async function createServer(
   if (
     agentLoopContext &&
     agentLoopContext.runContext &&
-    isServerSideMCPToolConfiguration(
-      agentLoopContext.runContext.actionConfiguration
+    isLightServerSideMCPToolConfiguration(
+      agentLoopContext.runContext.toolConfiguration
     ) &&
-    agentLoopContext.runContext.actionConfiguration.childAgentId
+    agentLoopContext.runContext.toolConfiguration.childAgentId
   ) {
-    childAgentId = agentLoopContext.runContext.actionConfiguration.childAgentId;
+    childAgentId = agentLoopContext.runContext.toolConfiguration.childAgentId;
   }
 
   let childAgentBlob: {

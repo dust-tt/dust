@@ -36,8 +36,8 @@ import type {
   AgentLoopContextType,
 } from "@app/lib/actions/types";
 import {
+  isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
-  isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
@@ -243,10 +243,10 @@ function createServer(
       agentLoopContext.listToolsContext.agentActionConfiguration.jsonSchema !==
         null) ||
     (agentLoopContext?.runContext &&
-      isServerSideMCPToolConfiguration(
-        agentLoopContext.runContext.actionConfiguration
+      isLightServerSideMCPToolConfiguration(
+        agentLoopContext.runContext.toolConfiguration
       ) &&
-      agentLoopContext.runContext.actionConfiguration.jsonSchema !== null);
+      agentLoopContext.runContext.toolConfiguration.jsonSchema !== null);
 
   const isTimeFrameConfigured =
     (agentLoopContext?.listToolsContext &&
@@ -256,10 +256,10 @@ function createServer(
       agentLoopContext.listToolsContext.agentActionConfiguration.timeFrame !==
         null) ||
     (agentLoopContext?.runContext &&
-      isServerSideMCPToolConfiguration(
-        agentLoopContext.runContext.actionConfiguration
+      isLightServerSideMCPToolConfiguration(
+        agentLoopContext.runContext.toolConfiguration
       ) &&
-      agentLoopContext.runContext.actionConfiguration.timeFrame !== null);
+      agentLoopContext.runContext.toolConfiguration.timeFrame !== null);
 
   const areTagsDynamic = agentLoopContext
     ? shouldAutoGenerateTags(agentLoopContext)

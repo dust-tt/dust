@@ -1,6 +1,5 @@
 import assert from "assert";
 
-import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { MCPActionType } from "@app/lib/actions/mcp";
 import { runToolWithStreaming } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
@@ -19,13 +18,11 @@ export async function runToolActivity(
   authType: AuthenticatorType,
   {
     actionId,
-    actionConfiguration,
     runAgentArgs,
     step,
     stepContext,
   }: {
     actionId: ModelId;
-    actionConfiguration: MCPToolConfigurationType;
     runAgentArgs: RunAgentArgs;
     step: number;
     stepContext: StepContext;
@@ -79,7 +76,7 @@ export async function runToolActivity(
     output: null,
   });
 
-  const eventStream = runToolWithStreaming(auth, actionConfiguration, {
+  const eventStream = runToolWithStreaming(auth, {
     action,
     actionBaseParams,
     agentConfiguration,

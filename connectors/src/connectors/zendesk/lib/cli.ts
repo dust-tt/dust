@@ -1,7 +1,7 @@
 import type { Logger } from "pino";
 
 import {
-  RETENTION_PERIOD_CONFIG_KEY,
+  ZENDESK_CONFIG_KEYS,
   ZendeskConnectorManager,
 } from "@connectors/connectors/zendesk";
 import {
@@ -480,7 +480,7 @@ export const zendesk = async ({
       }
       const manager = new ZendeskConnectorManager(connectorId);
       await manager.setConfigurationKey({
-        configKey: RETENTION_PERIOD_CONFIG_KEY,
+        configKey: ZENDESK_CONFIG_KEYS.RETENTION_PERIOD,
         configValue: retentionPeriodDays.toString(),
       });
       return { success: true };

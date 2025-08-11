@@ -45,8 +45,8 @@ export function _getResearchGlobalAgent(
   const description =
     "An agent built to do deep research with context on your company data and the internet.";
 
-  // TODO: add research avatar. Edit here and in front/pages/w/[wId]/builder/assistants/research.tsx.
-  const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
+  const pictureUrl =
+    "https://dust.tt/static/systemavatar/research_avatar_full.png";
 
   const modelConfiguration = auth.isUpgraded()
     ? getLargeWhitelistedModel(owner)

@@ -137,7 +137,7 @@ export default function AgentBuilder({
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 
   const title = agentConfiguration
-    ? `Edit agent ${agentConfiguration.name}`
+    ? `Edit @${agentConfiguration.name}`
     : "Create new agent";
 
   return (
@@ -155,6 +155,7 @@ export default function AgentBuilder({
               disabled: isSaveDisabled,
             }}
             agentConfigurationId={agentConfiguration?.sId || null}
+            isActionsLoading={isActionsLoading}
           />
         }
         rightPanel={

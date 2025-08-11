@@ -10,6 +10,7 @@ import {
   MAXED_OUTPUT_FILE_SNIPPET_LENGTH,
 } from "@app/lib/actions/action_output_limits";
 import type {
+  LightMCPToolConfigurationType,
   MCPActionType,
   MCPApproveExecutionEvent,
   MCPExecutionState,
@@ -32,6 +33,7 @@ import type {
   ActionGeneratedFileType,
   AgentLoopRunContextType,
 } from "@app/lib/actions/types";
+import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
@@ -64,17 +66,17 @@ import {
 export async function handleToolApproval(
   auth: Authenticator,
   {
-    actionConfiguration,
     executionState,
     localLogger,
     mcpAction,
     owner,
+    toolConfiguration,
   }: {
-    actionConfiguration: MCPToolConfigurationType;
     executionState: MCPExecutionState;
     localLogger: Logger;
     mcpAction: MCPActionType;
     owner: LightWorkspaceType;
+    toolConfiguration: LightMCPToolConfigurationType;
   }
 ): Promise<MCPExecutionState> {
   let newExecutionState: MCPExecutionState = executionState;
@@ -85,13 +87,7 @@ export async function handleToolApproval(
         actionId: mcpAction.getSId(owner),
       });
 
-      localLogger.info(
-        {
-          workspaceId: owner.sId,
-          actionName: actionConfiguration.name,
-        },
-        "Waiting for action validation"
-      );
+      localLogger.info("Waiting for action validation");
 
       // Start listening for action events
       for await (const event of actionEventGenerator) {
@@ -106,8 +102,8 @@ export async function handleToolApproval(
         if (data.type === "always_approved") {
           const user = auth.getNonNullableUser();
           await user.appendToMetadata(
-            `toolsValidations:${actionConfiguration.toolServerId}`,
-            `${actionConfiguration.name}`
+            `toolsValidations:${toolConfiguration.toolServerId}`,
+            `${mcpAction.functionCallName}`
           );
         }
 
@@ -233,21 +229,22 @@ export async function* executeMCPTool({
  * Processes tool results, handles file uploads, and creates output items.
  * Returns the processed content and generated files.
  */
-export async function processToolResults({
-  auth,
-  toolCallResult,
-  conversation,
-  action,
-  actionConfiguration,
-  localLogger,
-}: {
-  auth: Authenticator;
-  toolCallResult: CallToolResult["content"];
-  conversation: ConversationType;
-  action: AgentMCPAction;
-  actionConfiguration: MCPToolConfigurationType;
-  localLogger: Logger;
-}): Promise<{
+export async function processToolResults(
+  auth: Authenticator,
+  {
+    action,
+    conversation,
+    localLogger,
+    toolCallResult,
+    toolConfiguration,
+  }: {
+    action: AgentMCPAction;
+    conversation: ConversationType;
+    localLogger: Logger;
+    toolCallResult: CallToolResult["content"];
+    toolConfiguration: LightMCPToolConfigurationType;
+  }
+): Promise<{
   outputItems: AgentMCPActionOutputItem[];
   generatedFiles: ActionGeneratedFileType[];
 }> {
@@ -267,9 +264,9 @@ export async function processToolResults({
           // If the text is too large we create a file and return a resource block that references the file.
           if (
             computeTextByteSize(block.text) > MAX_TEXT_CONTENT_SIZE &&
-            actionConfiguration.mcpServerName !== "conversation_files"
+            toolConfiguration.mcpServerName !== "conversation_files"
           ) {
-            const fileName = `${actionConfiguration.mcpServerName}_${Date.now()}.txt`;
+            const fileName = `${toolConfiguration.mcpServerName}_${Date.now()}.txt`;
             const snippet =
               block.text.substring(0, MAXED_OUTPUT_FILE_SNIPPET_LENGTH) +
               "... (truncated)";
@@ -328,7 +325,11 @@ export async function processToolResults({
               auth,
               block.resource.fileId
             );
-
+            // We need to create the conversation data source in case the file comes from a subagent
+            // who uploaded it to its own conversation but not the main agent's.
+            if (file) {
+              await getOrCreateConversationDataSourceFromFile(auth, file);
+            }
             return {
               content: {
                 type: block.type,
