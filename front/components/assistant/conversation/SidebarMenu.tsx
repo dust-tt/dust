@@ -297,7 +297,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               </Label>
             )}
             <NavigationList
-              className="w-full px-3"
+              className="dd-privacy-mask w-full px-3"
               ref={conversationsNavigationRef}
             >
               {conversationsByDate &&
