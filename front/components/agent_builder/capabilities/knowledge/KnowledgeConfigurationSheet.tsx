@@ -24,10 +24,10 @@ import {
 } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import { CAPABILITY_CONFIGS } from "@app/components/agent_builder/capabilities/knowledge/utils";
 import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
+import { isValidPage } from "@app/components/agent_builder/capabilities/mcp/utils/sheetUtils";
 import { MCPServerViewsKnowledgeDropdown } from "@app/components/agent_builder/capabilities/MCPServerViewsKnowledgeDropdown";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
-import { isValidPage } from "@app/components/agent_builder/capabilities/shared/sheetUtils";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -143,6 +143,7 @@ export function KnowledgeConfigurationSheet({
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
       <MultiPageSheetTrigger asChild>
         <Button
+          variant="outline"
           label="Add knowledge"
           onClick={onClickKnowledge}
           icon={BookOpenIcon}
@@ -186,7 +187,7 @@ function KnowledgeConfigurationSheetContent({
     name: "sources",
   });
 
-  const hasSourceSelection = sources.in.length > 0 || sources.notIn.length > 0;
+  const hasSourceSelection = sources.in.length > 0;
 
   const config = useMemo(() => {
     if (mcpServerView !== null) {

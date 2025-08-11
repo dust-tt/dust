@@ -178,6 +178,11 @@ pub struct OpenAIResponsesResponse {
 
 // OpenAI Responses API conversion functions
 
+/// Strips literal Unicode escape sequences like \u0000 and \u0004 from strings
+fn strip_null_chars(s: &str) -> String {
+    s.replace("\\u0000", "").replace("\\u0004", "")
+}
+
 fn responses_api_input_from_chat_messages(
     messages: &Vec<ChatMessage>,
     transform_system_messages: TransformSystemMessages,
@@ -352,7 +357,7 @@ fn assistant_chat_message_from_responses_api_output(
                 let fc = ChatFunctionCall {
                     id: call_id,
                     name,
-                    arguments,
+                    arguments: strip_null_chars(&arguments),
                 };
                 function_calls.push(fc.clone());
                 contents.push(AssistantContentItem::FunctionCall { value: fc });
@@ -993,16 +998,16 @@ fn handle_output_item_done(
                     }
                     "function_call" => {
                         // Parse as function call item.
-                        if let Ok(fc_item) =
+                        if let Ok(mut fc_item) =
                             serde_json::from_value::<OpenAIResponseOutputItem>(item)
                         {
                             if let OpenAIResponseOutputItem::FunctionCall {
-                                id: _,
-                                name: _,
-                                arguments: _,
-                                call_id: _,
-                            } = &fc_item
+                                ref mut arguments,
+                                ..
+                            } = &mut fc_item
                             {
+                                // Strip null characters from arguments
+                                *arguments = strip_null_chars(arguments);
                                 // Add to state.
                                 state.output_items.push(fc_item);
                             }

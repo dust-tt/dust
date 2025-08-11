@@ -685,7 +685,7 @@ export const SpaceDataSourceViewContentList = ({
           <DataTable
             data={rows}
             columns={columns}
-            className="pb-4"
+            className="dd-privacy-mask pb-4"
             totalRowCount={totalNodesCount}
             rowCountIsCapped={!totalNodesCountIsAccurate}
             pagination={tablePagination}

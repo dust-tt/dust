@@ -89,7 +89,6 @@ export function ToolsPicker({
           size="xs"
           tooltip="Tools"
           disabled={isLoading}
-          isSelect
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent

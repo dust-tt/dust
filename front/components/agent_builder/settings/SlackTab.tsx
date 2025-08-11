@@ -1,25 +1,16 @@
-import {
-  ContentMessage,
-  InformationCircleIcon,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { useController, useWatch } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import type { ContentNode, DataSourceType, WorkspaceType } from "@app/types";
-import { isAdmin } from "@app/types";
 
 export type SlackChannel = { slackChannelId: string; slackChannelName: string };
 
-// The "write" permission filter is applied to retrieve all available channels on Slack,
 const getUseResourceHook =
   (owner: WorkspaceType, slackDataSource: DataSourceType) =>
   (parentId: string | null) =>
@@ -38,7 +29,7 @@ interface SlackIntegrationProps {
   slackDataSource: DataSourceType;
 }
 
-export function SlackIntegration({
+function SlackIntegration({
   existingSelection,
   onSelectionChange,
   owner,
@@ -90,7 +81,6 @@ export function SlackIntegration({
 
   return (
     <ContentNodeTree
-      // not limited to those synced with Dust.
       selectedNodes={selectedNodes}
       setSelectedNodes={(updater) => {
         const newModel = updater(selectedNodes);
@@ -125,95 +115,73 @@ export function SlackIntegration({
   );
 }
 
-interface SlackAgentDefaultManagerProps {
-  agentHandle?: string;
-  existingSelection: SlackChannel[];
-  onClose: () => void;
-  onSave: (channels: SlackChannel[]) => void;
-  owner: WorkspaceType;
-  show: boolean;
-  slackDataSource: DataSourceType;
-}
+export function SlackTab() {
+  const { owner } = useAgentBuilderContext();
+  const { supportedDataSourceViews } = useDataSourceViewsContext();
 
-export function SlackAgentDefaultManager({
-  agentHandle,
-  existingSelection,
-  onClose,
-  onSave,
-  owner,
-  show,
-  slackDataSource,
-}: SlackAgentDefaultManagerProps) {
-  const [selectedChannels, setSelectedChannels] =
-    useState<SlackChannel[]>(existingSelection);
-  const [hasChanged, setHasChanged] = useState(false);
+  const slackChannels = useWatch<
+    AgentBuilderFormData,
+    "agentSettings.slackChannels"
+  >({
+    name: "agentSettings.slackChannels",
+  });
 
-  const handleSelectionChange = (newSelection: SlackChannel[]) => {
-    setSelectedChannels(newSelection);
-    setHasChanged(true);
-  };
+  const slackProvider = useWatch<
+    AgentBuilderFormData,
+    "agentSettings.slackProvider"
+  >({
+    name: "agentSettings.slackProvider",
+  });
 
-  const saveChanges = () => {
-    onSave(selectedChannels);
-    setHasChanged(false);
-    onClose();
-  };
+  const {
+    field: { onChange },
+  } = useController<AgentBuilderFormData, "agentSettings.slackChannels">({
+    name: "agentSettings.slackChannels",
+  });
+
+  if (!slackProvider) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          No Slack integration configured for this workspace.
+        </p>
+      </div>
+    );
+  }
+
+  const slackDataSource = supportedDataSourceViews.find(
+    (dsv) => dsv.dataSource.connectorProvider === slackProvider
+  )?.dataSource;
+
+  if (!slackDataSource) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          Slack data source not found.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <Sheet open={show} onOpenChange={onClose}>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>Slack Integration</SheetTitle>
-          <SheetDescription>
-            Configure default Slack channels for this agent
-          </SheetDescription>
-        </SheetHeader>
-        <SheetContainer>
-          <div className="flex flex-col gap-4">
-            <div className="text-sm font-normal text-foreground dark:text-foreground-night">
-              Set this agent as the default agent on one or several of your
-              Slack channels. It will answer by default when the{" "}
-              <span className="font-bold">{agentHandle}</span> Slack bot is
-              mentionned in these channels.
-            </div>
+    <div className="space-y-4">
+      <div className="mb-4 flex flex-col gap-2">
+        <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+          Slack Channel Settings
+        </span>
+        <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+          Select channels in which this agent replies by default.
+        </span>
+      </div>
 
-            {!isAdmin(owner) && (
-              <ContentMessage
-                size="md"
-                variant="warning"
-                title="Admin Access Required"
-                icon={InformationCircleIcon}
-              >
-                <p>
-                  Only administrators can enable default agents for specific
-                  Slack channels.
-                </p>
-              </ContentMessage>
-            )}
-
-            {isAdmin(owner) && (
-              <SlackIntegration
-                existingSelection={existingSelection}
-                onSelectionChange={handleSelectionChange}
-                owner={owner}
-                slackDataSource={slackDataSource}
-              />
-            )}
-          </div>
-        </SheetContainer>
-        <SheetFooter
-          leftButtonProps={{
-            label: "Cancel",
-            onClick: onClose,
-            variant: "outline",
-          }}
-          rightButtonProps={{
-            label: "Save",
-            onClick: saveChanges,
-            disabled: !hasChanged,
-          }}
-        />
-      </SheetContent>
-    </Sheet>
+      <SlackIntegration
+        existingSelection={slackChannels}
+        onSelectionChange={(slackChannels: SlackChannel[]) => {
+          onChange(slackChannels);
+        }}
+        owner={owner}
+        slackDataSource={slackDataSource}
+      />
+    </div>
   );
 }

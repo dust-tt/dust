@@ -102,7 +102,7 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   return (
     <Card
       variant="primary"
-      className="max-h-40"
+      className="h-32"
       onClick={onEdit}
       action={
         <CardActionButton

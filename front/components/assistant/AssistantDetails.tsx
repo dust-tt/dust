@@ -138,7 +138,7 @@ function AssistantDetailsInfo({
           />
 
           {agentConfiguration?.instructions ? (
-            <div className="flex flex-col gap-5">
+            <div className="dd-privacy-mask flex flex-col gap-5">
               <div className="heading-lg text-foreground dark:text-foreground-night">
                 Instructions
               </div>

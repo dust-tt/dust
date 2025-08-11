@@ -82,7 +82,24 @@ impl GoogleCloudStorageDatabasesStore {
             bucket: Self::get_bucket()?,
             bucket_csv_path: Self::get_csv_storage_file_path(table),
         };
-        csv.parse().await
+        match csv.parse().await {
+            Ok(rows) => Ok(rows),
+            Err(e) => match e.downcast_ref::<cloud_storage::Error>() {
+                // Treat a non-existing file as an empty table
+                // Checking for this is trickier than it should be, due to how the cloud_storage crate handles errors.
+                // In particular, when it can't download a file because it doesn't exist, it returns an 'Other' error,
+                // instead of the more meaningful Google(GoogleErrorResponse) with a 404 (which it correctly uses
+                // when trying to *delete* a non-existing file).
+                Some(cloud_storage::Error::Other(s)) if s.contains("No such object") => {
+                    info!(
+                        table_id = table.table_id(),
+                        "DSSTRUCTSTAT [get_rows_from_csv] no GCS file, treating as empty table"
+                    );
+                    Ok(Vec::new())
+                }
+                _ => Err(e),
+            },
+        }
     }
 
     pub async fn write_rows_to_csv(

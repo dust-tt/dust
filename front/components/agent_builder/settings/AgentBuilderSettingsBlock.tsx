@@ -16,9 +16,6 @@ import { useController, useWatch } from "react-hook-form";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
-import { AgentBuilderEditors } from "@app/components/agent_builder/settings/AgentBuilderEditors";
-import { AgentBuilderScopeSelector } from "@app/components/agent_builder/settings/AgentBuilderScopeSelector";
-import { AgentBuilderSlackSelector } from "@app/components/agent_builder/settings/AgentBuilderSlackSelector";
 import { AvatarPicker } from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker";
 import {
   DROID_AVATAR_URLS,
@@ -253,11 +250,7 @@ function AgentDescriptionInput() {
   return (
     <SettingSectionContainer title="Description">
       <div className="relative">
-        <Input
-          placeholder="Enter agent description"
-          {...field}
-          className="pr-10"
-        />
+        <Input placeholder="Enter agent description" {...field} />
         <Button
           icon={isGenerating ? () => <Spinner size="xs" /> : SparklesIcon}
           variant="outline"
@@ -366,18 +359,6 @@ function AgentPictureInput() {
   );
 }
 
-function AgentAccessAndPublication() {
-  return (
-    <SettingSectionContainer title="Access and Publication" className="h-full">
-      <div className="flex flex-wrap items-center gap-2">
-        <AgentBuilderEditors />
-        <AgentBuilderScopeSelector />
-        <AgentBuilderSlackSelector />
-      </div>
-    </SettingSectionContainer>
-  );
-}
-
 interface AgentBuilderSettingsBlockProps {
   isSettingBlocksOpen: boolean;
 }
@@ -400,7 +381,6 @@ export function AgentBuilderSettingsBlock({
         </div>
         <AgentDescriptionInput />
         <TagsSection />
-        <AgentAccessAndPublication />
       </div>
     </AgentBuilderSectionContainer>
   );

@@ -482,7 +482,7 @@ export function DataSourceViewsSelector({
   ]);
 
   return (
-    <div>
+    <div className="dd-privacy-mask">
       <SearchInputWithPopover
         value={searchSpaceText}
         onChange={setSearchSpaceText}

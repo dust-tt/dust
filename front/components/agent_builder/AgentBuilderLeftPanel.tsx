@@ -5,12 +5,12 @@ import {
   Button,
   ScrollArea,
   Separator,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import React from "react";
 
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
+import { AgentAccessPublicationDialog } from "@app/components/agent_builder/settings/AgentAccessPublicationDialog";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
 import { ConfirmContext } from "@app/components/Confirm";
 
@@ -49,15 +49,7 @@ export function AgentBuilderLeftPanel({
       <BarHeader
         variant="default"
         title={title}
-        rightActions={
-          <Button
-            size="sm"
-            icon={XMarkIcon}
-            variant="ghost"
-            tooltip="Close"
-            onClick={handleCancel}
-          />
-        }
+        rightActions={<AgentAccessPublicationDialog />}
       />
       <ScrollArea className="flex-1">
         <div className="space-y-4 p-4">
@@ -73,6 +65,9 @@ export function AgentBuilderLeftPanel({
       </ScrollArea>
       <BarFooter
         variant="default"
+        leftActions={
+          <Button variant="outline" label="Close" onClick={handleCancel} />
+        }
         rightActions={
           <BarFooter.ButtonBar
             variant="validate"

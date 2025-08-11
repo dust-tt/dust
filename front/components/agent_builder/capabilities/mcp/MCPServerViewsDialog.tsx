@@ -1,7 +1,7 @@
 import type { MultiPageDialogPage } from "@dust-tt/sparkle";
 import {
-  BoltIcon,
   Button,
+  ListAddIcon,
   MultiPageDialog,
   MultiPageDialogContent,
   MultiPageDialogTrigger,
@@ -190,7 +190,6 @@ export function MCPServerViewsDialog({
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION);
       setConfigurationTool(mode.action);
       setSelectedToolsInDialog([]);
-      setIsOpen(true);
 
       const action = mode.action;
       if (
@@ -204,10 +203,9 @@ export function MCPServerViewsDialog({
           setConfigurationMCPServerView(mcpServerView);
         }
       }
-    } else if (mode && mode.type === "info") {
+    } else if (isInfoMode) {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.INFO);
       setSelectedToolsInDialog([]);
-      setIsOpen(true);
 
       const action = mode.action;
       if (
@@ -221,13 +219,13 @@ export function MCPServerViewsDialog({
           setInfoMCPServerView(mcpServerView);
         }
       }
-    } else if (mode?.type === "add" || !mode) {
+    } else if (mode?.type === "add") {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
       setConfigurationTool(null);
       setConfigurationMCPServerView(null);
       setInfoMCPServerView(null);
-      setIsOpen(Boolean(mode));
     }
+    setIsOpen(!!mode);
   }, [mode, allMcpServerViews, isEditMode]);
 
   const toggleToolSelection = (tool: SelectedTool): void => {
@@ -634,9 +632,10 @@ export function MCPServerViewsDialog({
               : "Add tools",
           variant: "primary",
           disabled: selectedToolsInDialog.length === 0,
-          onClick: async () => {
-            await handleAddSelectedTools();
+          onClick: () => {
+            handleAddSelectedTools();
             setIsOpen(false);
+            onModeChange(null);
           },
         },
       };
@@ -693,16 +692,25 @@ export function MCPServerViewsDialog({
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
-        if (!open && !isEditMode && !isInfoMode) {
-          setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
+
+        if (!open && isAddMode) {
           setConfigurationTool(null);
           setConfigurationMCPServerView(null);
           setSelectedToolsInDialog([]);
+          setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
+        }
+
+        if (!open) {
+          onModeChange(null);
         }
       }}
     >
       <MultiPageDialogTrigger asChild>
-        <Button label="Add tools" icon={BoltIcon} variant="outline" />
+        <Button
+          onClick={() => onModeChange({ type: "add" })}
+          label="Add tools"
+          icon={ListAddIcon}
+        />
       </MultiPageDialogTrigger>
       <MultiPageDialogContent
         showNavigation={false}

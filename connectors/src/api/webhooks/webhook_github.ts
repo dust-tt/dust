@@ -255,7 +255,7 @@ const _webhookGithubAPIHandler = async (
         const login =
           "organization" in jsonBody
             ? jsonBody.organization.login
-            : jsonBody.user.login;
+            : jsonBody.sender.login;
         if (jsonBody.action === "opened" || jsonBody.action === "edited") {
           return syncIssue(
             enabledConnectors,
