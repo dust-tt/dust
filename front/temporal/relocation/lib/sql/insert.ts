@@ -10,7 +10,7 @@ const JSONB_COLUMNS = [
   },
   {
     tableName: "agent_mcp_actions",
-    columns: ["augmentedInputs"],
+    columns: ["augmentedInputs", "toolConfiguration"],
   },
 ];
 

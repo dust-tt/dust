@@ -62,9 +62,11 @@ export async function maybeUpdateFromExternalUser(
 export async function createOrUpdateUser({
   user,
   externalUser,
+  forceNameUpdate = false,
 }: {
   user: UserResource | null;
   externalUser: ExternalUser;
+  forceNameUpdate?: boolean;
 }): Promise<{ user: UserResource; created: boolean }> {
   if (user) {
     const updateArgs: { [key: string]: string } = {};
@@ -77,15 +79,17 @@ export async function createOrUpdateUser({
     // Update the user object from the updated session information.
     updateArgs.username = externalUser.nickname;
 
-    if (externalUser.given_name && externalUser.family_name) {
-      updateArgs.firstName = softHtmlEscape(externalUser.given_name);
-      updateArgs.lastName = softHtmlEscape(externalUser.family_name);
-    } else {
-      const { firstName, lastName } = guessFirstAndLastNameFromFullName(
-        externalUser.name
-      );
-      updateArgs.firstName = softHtmlEscape(firstName);
-      updateArgs.lastName = softHtmlEscape(lastName || "");
+    if ((!user.firstName && !user.lastName) || forceNameUpdate) {
+      if (externalUser.given_name && externalUser.family_name) {
+        updateArgs.firstName = softHtmlEscape(externalUser.given_name);
+        updateArgs.lastName = softHtmlEscape(externalUser.family_name);
+      } else {
+        const { firstName, lastName } = guessFirstAndLastNameFromFullName(
+          externalUser.name
+        );
+        updateArgs.firstName = softHtmlEscape(firstName);
+        updateArgs.lastName = softHtmlEscape(lastName || "");
+      }
     }
 
     if (

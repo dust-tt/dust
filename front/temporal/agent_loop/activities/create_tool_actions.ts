@@ -21,7 +21,6 @@ import { getRunAgentData } from "@app/types/assistant/agent_run";
 
 interface ActionBlob {
   action: AgentMCPAction;
-  actionConfiguration: MCPToolConfigurationType;
   needsApproval: boolean;
 }
 
@@ -149,6 +148,7 @@ async function createActionForTool(
   // the error will be stored on the parent agent message.
   const { action: agentMCPAction, mcpAction } = await createMCPAction(auth, {
     actionBaseParams,
+    actionConfiguration,
     augmentedInputs,
     stepContentId,
     stepContext,
@@ -211,7 +211,6 @@ async function createActionForTool(
 
   return {
     action: agentMCPAction,
-    actionConfiguration,
     needsApproval: status === "pending",
   };
 }

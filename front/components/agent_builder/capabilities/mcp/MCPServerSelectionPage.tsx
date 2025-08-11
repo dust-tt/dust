@@ -14,20 +14,6 @@ import { InternalActionIcons } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { MCPServerViewTypeType } from "@app/lib/api/mcp";
-
-const MCP_TOOLS_FILTERS = ["All tools", "Capabilities", "Other tools"];
-
-type McpToolsFilterType = (typeof MCP_TOOLS_FILTERS)[number];
-
-const McpServerViewTypeMatch: Record<
-  McpToolsFilterType,
-  MCPServerViewTypeType[]
-> = {
-  "All tools": ["remote", "internal"],
-  Capabilities: ["internal"],
-  "Other tools": ["remote"],
-};
 
 interface DataVisualizationCardProps {
   dataVisualization: ActionSpecification;
@@ -135,7 +121,6 @@ export function MCPServerSelectionPage({
   const [showDataVisualization, setShowDataVisualization] =
     React.useState(true);
 
-  const [filter, setFilter] = React.useState<McpToolsFilterType>("All tools");
   const [searchTerm, setSearchTerm] = React.useState("");
 
   // Optimize selection lookup with Set-based approach
@@ -149,17 +134,9 @@ export function MCPServerSelectionPage({
     return mcpIds;
   }, [selectedToolsInDialog]);
 
-  const applyFiltersAndSearch = (
-    newFilter?: string,
-    newSearchTerm?: string
-  ) => {
-    const filterToUse = newFilter ?? filter;
+  const applySearch = (newSearchTerm?: string) => {
     const searchToUse = newSearchTerm ?? searchTerm;
-    const serverTypeMatch = McpServerViewTypeMatch[filterToUse];
-
-    let filtered = mcpServerViews.filter((v) =>
-      serverTypeMatch.includes(v.serverType)
-    );
+    let filtered = mcpServerViews;
 
     if (searchToUse.trim()) {
       const searchTermLower = searchToUse.toLowerCase();
@@ -172,38 +149,24 @@ export function MCPServerSelectionPage({
 
       setShowDataVisualization(
         dataVisualization?.label.toLowerCase().includes(searchTermLower) ||
-          (dataVisualization?.description
+          dataVisualization?.description
             ?.toLowerCase()
-            .includes(searchTermLower) &&
-            serverTypeMatch.includes("internal")) ||
+            .includes(searchTermLower) ||
           false
       );
     } else {
-      setShowDataVisualization(serverTypeMatch.includes("internal"));
+      setShowDataVisualization(true);
     }
     setFilteredServerViews(filtered);
   };
 
-  const handleFilterClick = (newFilter: string) => {
-    setFilter(newFilter);
-    applyFiltersAndSearch(newFilter);
-  };
-
   const handleSearchTermChange = (term: string) => {
     setSearchTerm(term);
-    applyFiltersAndSearch(undefined, term);
+    applySearch(term);
   };
 
   const isDataVisualizationSelected = selectedToolsInDialog.some(
     (tool) => tool.type === "DATA_VISUALIZATION"
-  );
-
-  const internalFilteredServerViews = filteredServerViews.filter(
-    (view) => view.serverType === "internal"
-  );
-
-  const remoteFilteredServerViews = filteredServerViews.filter(
-    (view) => view.serverType === "remote"
   );
 
   return (
@@ -213,61 +176,29 @@ export function MCPServerSelectionPage({
         onChange={handleSearchTermChange}
         name="Search"
       />
-      <div className="flex flex-row flex-wrap gap-2">
-        {MCP_TOOLS_FILTERS.map((f) => (
-          <Button
-            label={f}
-            variant={filter == f ? "primary" : "outline"}
-            key={f}
-            size="xs"
-            onClick={() => handleFilterClick(f)}
-          />
-        ))}
-      </div>
-      {/* Capabilities Section - Internal servers only */}
-      {(internalFilteredServerViews.length > 0 ||
+      {(filteredServerViews.length > 0 ||
         (dataVisualization &&
           onDataVisualizationClick &&
           showDataVisualization)) && (
-        <>
-          <h2 className="text-lg font-semibold">Capabilities</h2>
-          <div className="grid grid-cols-2 gap-4">
-            {dataVisualization &&
-              onDataVisualizationClick &&
-              showDataVisualization && (
-                <DataVisualizationCard
-                  dataVisualization={dataVisualization}
-                  onDataVisualizationClick={onDataVisualizationClick}
-                  isSelected={isDataVisualizationSelected}
-                />
-              )}
-            {internalFilteredServerViews.map((view) => (
-              <MCPServerCard
-                key={view.id}
-                view={view}
-                onItemClick={onItemClick}
-                isSelected={selectedMCPIds.has(view.sId)}
+        <div className="grid grid-cols-2 gap-4">
+          {dataVisualization &&
+            onDataVisualizationClick &&
+            showDataVisualization && (
+              <DataVisualizationCard
+                dataVisualization={dataVisualization}
+                onDataVisualizationClick={onDataVisualizationClick}
+                isSelected={isDataVisualizationSelected}
               />
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Other tools Section - Remote servers only */}
-      {remoteFilteredServerViews.length > 0 && (
-        <>
-          <h2 className="text-lg font-semibold">Other tools</h2>
-          <div className="grid grid-cols-2 gap-4">
-            {remoteFilteredServerViews.map((view) => (
-              <MCPServerCard
-                key={view.id}
-                view={view}
-                onItemClick={onItemClick}
-                isSelected={selectedMCPIds.has(view.sId)}
-              />
-            ))}
-          </div>
-        </>
+            )}
+          {filteredServerViews.map((view) => (
+            <MCPServerCard
+              key={view.id}
+              view={view}
+              onItemClick={onItemClick}
+              isSelected={selectedMCPIds.has(view.sId)}
+            />
+          ))}
+        </div>
       )}
 
       {selectedToolsInDialog.length > 0 && (

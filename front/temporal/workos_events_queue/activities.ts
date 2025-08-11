@@ -609,6 +609,7 @@ async function handleCreateOrUpdateWorkOSUser(
   const { user: createdOrUpdatedUser } = await createOrUpdateUser({
     user,
     externalUser,
+    forceNameUpdate: !!(workOSUser.firstName && workOSUser.lastName),
   });
 
   const membership =

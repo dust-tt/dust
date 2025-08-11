@@ -178,9 +178,9 @@ pub struct OpenAIResponsesResponse {
 
 // OpenAI Responses API conversion functions
 
-/// Strips Unicode null characters (\u0000) from a string
+/// Strips literal Unicode escape sequences like \u0000 and \u0004 from strings
 fn strip_null_chars(s: &str) -> String {
-    s.chars().filter(|&c| c != '\0').collect()
+    s.replace("\\u0000", "").replace("\\u0004", "")
 }
 
 fn responses_api_input_from_chat_messages(
