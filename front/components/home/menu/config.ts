@@ -338,7 +338,7 @@ export const menuConfig: DocsConfig = {
           href: "/home/chrome-extension",
         },
         {
-          title: "Dust Shareables",
+          title: "Shareables",
           href: "/home/dust-shareables",
         },
       ],
