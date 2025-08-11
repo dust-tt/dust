@@ -3,11 +3,9 @@ import {
   ContextItem,
   MultiPageSheet,
   MultiPageSheetContent,
-  MultiPageSheetTrigger,
   ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
-import { Button } from "@dust-tt/sparkle";
 import { BookOpenIcon } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { uniqueId } from "lodash";
@@ -55,7 +53,6 @@ import type { DataSourceViewSelectionConfigurations } from "@app/types";
 interface KnowledgeConfigurationSheetProps {
   onSave: (action: AgentBuilderAction) => void;
   onClose: () => void;
-  onClickKnowledge: () => void;
   action: AgentBuilderAction | null;
   isEditing: boolean;
   mcpServerViews: MCPServerViewType[];
@@ -65,7 +62,6 @@ interface KnowledgeConfigurationSheetProps {
 export function KnowledgeConfigurationSheet({
   onSave,
   onClose,
-  onClickKnowledge,
   action,
   isEditing,
   mcpServerViews,
@@ -147,14 +143,6 @@ export function KnowledgeConfigurationSheet({
 
   return (
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
-      <MultiPageSheetTrigger asChild>
-        <Button
-          variant="primary"
-          label="Add knowledge"
-          onClick={onClickKnowledge}
-          icon={BookOpenIcon}
-        />
-      </MultiPageSheetTrigger>
       <FormProvider {...formMethods}>
         <KnowledgeConfigurationSheetContent
           onSave={handleSave}

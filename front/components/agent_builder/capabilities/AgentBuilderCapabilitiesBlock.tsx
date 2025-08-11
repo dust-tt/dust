@@ -1,10 +1,13 @@
 import {
   Avatar,
+  BookOpenIcon,
+  Button,
   Card,
   CardActionButton,
   CardGrid,
   EmptyCTA,
   Hoverable,
+  ListAddIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { Spinner } from "@dust-tt/sparkle";
@@ -215,30 +218,22 @@ export function AgentBuilderCapabilitiesBlock({
 
   const getAgentInstructions = () => getValues("instructions");
 
-  const dropdownButtons = (
-    <>
-      <KnowledgeConfigurationSheet
-        onClose={handleCloseSheet}
-        onClickKnowledge={onClickKnowledge}
-        onSave={handleEditSave}
-        action={knowledgeAction?.action ?? null}
-        isEditing={Boolean(knowledgeAction && knowledgeAction.index !== null)}
-        mcpServerViews={mcpServerViewsWithKnowledge}
-        getAgentInstructions={getAgentInstructions}
+  const headerActions = fields.length > 0 && (
+    <div className="flex items-center gap-2">
+      <Button
+        variant="primary"
+        label="Add knowledge"
+        onClick={onClickKnowledge}
+        icon={BookOpenIcon}
       />
-      <MCPServerViewsDialog
-        addTools={append}
-        dataVisualization={dataVisualization}
-        mode={dialogMode}
-        onModeChange={setDialogMode}
-        onActionUpdate={handleMcpActionUpdate}
-        actions={fields}
-        getAgentInstructions={getAgentInstructions}
+      <Button
+        onClick={() => setDialogMode({ type: "add" })}
+        label="Add tools"
+        icon={ListAddIcon}
+        variant="outline"
       />
-    </>
+    </div>
   );
-
-  const headerActions = fields.length > 0 && dropdownButtons;
 
   return (
     <AgentBuilderSectionContainer
@@ -267,7 +262,20 @@ export function AgentBuilderCapabilitiesBlock({
         ) : fields.length === 0 ? (
           <EmptyCTA
             action={
-              <div className="flex items-center gap-2">{dropdownButtons}</div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="primary"
+                  label="Add knowledge"
+                  onClick={onClickKnowledge}
+                  icon={BookOpenIcon}
+                />
+                <Button
+                  onClick={() => setDialogMode({ type: "add" })}
+                  label="Add tools"
+                  icon={ListAddIcon}
+                  variant="outline"
+                />
+              </div>
             }
             className="pb-5"
             style={BACKGROUND_IMAGE_STYLE_PROPS}
@@ -285,6 +293,23 @@ export function AgentBuilderCapabilitiesBlock({
           </CardGrid>
         )}
       </div>
+      <KnowledgeConfigurationSheet
+        onClose={handleCloseSheet}
+        onSave={handleEditSave}
+        action={knowledgeAction?.action ?? null}
+        isEditing={Boolean(knowledgeAction && knowledgeAction.index !== null)}
+        mcpServerViews={mcpServerViewsWithKnowledge}
+        getAgentInstructions={getAgentInstructions}
+      />
+      <MCPServerViewsDialog
+        addTools={append}
+        dataVisualization={dataVisualization}
+        mode={dialogMode}
+        onModeChange={setDialogMode}
+        onActionUpdate={handleMcpActionUpdate}
+        actions={fields}
+        getAgentInstructions={getAgentInstructions}
+      />
     </AgentBuilderSectionContainer>
   );
 }

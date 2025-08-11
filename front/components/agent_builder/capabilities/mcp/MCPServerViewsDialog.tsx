@@ -1,10 +1,7 @@
 import type { MultiPageDialogPage } from "@dust-tt/sparkle";
 import {
-  Button,
-  ListAddIcon,
   MultiPageDialog,
   MultiPageDialogContent,
-  MultiPageDialogTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -705,14 +702,6 @@ export function MCPServerViewsDialog({
         }
       }}
     >
-      <MultiPageDialogTrigger asChild>
-        <Button
-          onClick={() => onModeChange({ type: "add" })}
-          label="Add tools"
-          icon={ListAddIcon}
-          variant="outline"
-        />
-      </MultiPageDialogTrigger>
       <MultiPageDialogContent
         showNavigation={false}
         isAlertDialog
