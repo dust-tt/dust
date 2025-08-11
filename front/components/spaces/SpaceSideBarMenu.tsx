@@ -15,6 +15,7 @@ import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
+import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
@@ -291,6 +292,7 @@ const SystemSpaceItem = ({
   visual: IconType;
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
+  const { startNavigation } = useNavigationLoading();
   const router = useRouter();
 
   const itemPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
@@ -299,6 +301,9 @@ const SystemSpaceItem = ({
     <NavigationListItem
       label={label}
       onClick={async () => {
+        if (router.asPath !== itemPath) {
+          startNavigation();
+        }
         void setNavigationSelection({
           lastSpaceId: space.sId,
           lastSpaceCategory: category,
@@ -349,6 +354,7 @@ const SpaceMenuItem = ({
 }) => {
   const router = useRouter();
   const { setNavigationSelection } = usePersistedNavigationSelection();
+  const { startNavigation } = useNavigationLoading();
 
   const spacePath = `/w/${owner.sId}/spaces/${space.sId}`;
   const isAncestorToCurrentPage =
@@ -374,6 +380,9 @@ const SpaceMenuItem = ({
       label={getSpaceName(space)}
       collapsed={!isExpanded}
       onItemClick={async () => {
+        if (router.asPath !== spacePath) {
+          startNavigation();
+        }
         await setNavigationSelection({
           lastSpaceId: space.sId,
           lastSpaceCategory: undefined,
@@ -444,6 +453,7 @@ const SpaceDataSourceViewItem = ({
 }): ReactElement => {
   const { isDark } = useTheme();
   const { setNavigationSelection } = usePersistedNavigationSelection();
+  const { startNavigation } = useNavigationLoading();
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -509,6 +519,9 @@ const SpaceDataSourceViewItem = ({
       isSelected={router.asPath === dataSourceViewPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
       onItemClick={async () => {
+        if (router.asPath !== dataSourceViewPath) {
+          startNavigation();
+        }
         await setNavigationSelection({
           lastSpaceId: space.sId,
           lastSpaceCategory: item.category,
@@ -535,6 +548,9 @@ const SpaceDataSourceViewItem = ({
             <Tree.Empty
               label={`${expandableNodes.length > 0 ? "and " : ""}${hiddenNodesCount}${totalNodesCountIsAccurate ? "" : "+"} item${hiddenNodesCount > 1 ? "s" : ""}`}
               onItemClick={async () => {
+                if (router.asPath !== dataSourceViewPath) {
+                  startNavigation();
+                }
                 await setNavigationSelection({
                   lastSpaceId: space.sId,
                   lastSpaceCategory: item.category,
@@ -559,6 +575,7 @@ const SpaceDataSourceViewSubMenu = ({
   category: DataSourceViewCategoryWithoutApps;
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
+  const { startNavigation } = useNavigationLoading();
   const router = useRouter();
 
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
@@ -593,6 +610,9 @@ const SpaceDataSourceViewSubMenu = ({
       label={categoryDetails.label}
       collapsed={!isExpanded}
       onItemClick={async () => {
+        if (router.asPath !== spaceCategoryPath) {
+          startNavigation();
+        }
         await setNavigationSelection({
           lastSpaceId: space.sId,
           lastSpaceCategory: category,
@@ -633,6 +653,7 @@ const SpaceAppItem = ({
   owner: LightWorkspaceType;
 }): ReactElement => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
+  const { startNavigation } = useNavigationLoading();
   const router = useRouter();
 
   const appPath = `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`;
@@ -647,6 +668,9 @@ const SpaceAppItem = ({
         router.asPath.includes(appPath + "?")
       }
       onItemClick={async () => {
+        if (router.asPath !== appPath) {
+          startNavigation();
+        }
         await setNavigationSelection({
           lastSpaceId: app.space.sId,
           lastSpaceCategory: "apps",
@@ -686,6 +710,7 @@ const SpaceAppSubMenu = ({
   category: "apps";
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
+  const { startNavigation } = useNavigationLoading();
   const router = useRouter();
 
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
@@ -714,6 +739,9 @@ const SpaceAppSubMenu = ({
       label={categoryDetails.label}
       collapsed={!isExpanded}
       onItemClick={async () => {
+        if (router.asPath !== spaceCategoryPath) {
+          startNavigation();
+        }
         await setNavigationSelection({
           lastSpaceId: space.sId,
           lastSpaceCategory: category,
@@ -747,6 +775,7 @@ const SpaceActionsSubMenu = ({
   category: "actions";
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
+  const { startNavigation } = useNavigationLoading();
   const router = useRouter();
 
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
@@ -775,6 +804,9 @@ const SpaceActionsSubMenu = ({
       label={categoryDetails.label}
       collapsed={!isExpanded}
       onItemClick={async () => {
+        if (router.asPath !== spaceCategoryPath) {
+          startNavigation();
+        }
         await setNavigationSelection({
           lastSpaceId: space.sId,
           lastSpaceCategory: category,

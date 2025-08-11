@@ -1,8 +1,9 @@
-import { DataTable, Spinner } from "@dust-tt/sparkle";
+import { DataTable } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useQueryParams } from "@app/hooks/useQueryParams";
@@ -44,6 +45,7 @@ export const SpaceActionsList = ({
 }: SpaceActionsListProps) => {
   const { q: searchParam } = useQueryParams(["q"]);
   const searchTerm = searchParam.value || "";
+  const { takeOverLoading, releaseLoading } = useNavigationLoading();
 
   const { serverViews, isMCPServerViewsLoading, mutateMCPServerViews } =
     useMCPServerViews({
@@ -139,12 +141,18 @@ export const SpaceActionsList = ({
     containerId: ACTION_BUTTONS_CONTAINER_ID,
   });
 
+  // Take over navigation loading while data is loading
+  React.useEffect(() => {
+    if (isMCPServerViewsLoading) {
+      takeOverLoading();
+    } else {
+      releaseLoading();
+    }
+  }, [isMCPServerViewsLoading, takeOverLoading, releaseLoading]);
+
+  // Don't render anything while loading - let the navigation loader handle it
   if (isMCPServerViewsLoading) {
-    return (
-      <div className="mt-8 flex justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return null;
   }
 
   const columns = getTableColumns();
