@@ -23,7 +23,8 @@ import { useContext, useEffect, useRef, useState } from "react";
 
 import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
-import { InteractiveContentProvider } from "@app/components/assistant/conversation/content/InteractiveContentContext";
+import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -39,7 +40,7 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { getDefaultMCPServerConfigurationWithId } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -103,6 +104,8 @@ export default function AssistantBuilderRightPanel({
     createDraftAgent,
   });
 
+  const { currentPanel } = useConversationSidePanelContext();
+
   const isBuilderStateEmpty =
     !builderState.instructions?.trim() && !builderState.actions.length;
 
@@ -157,7 +160,7 @@ export default function AssistantBuilderRightPanel({
     const mcpServerView = mcpServerViews.find(
       (mcpServerView) =>
         mcpServerView.server.sId ===
-        internalMCPServerNameToSId({
+        autoInternalMCPServerNameToSId({
           name: internalMcpServerName,
           workspaceId: owner.id,
         })
@@ -218,7 +221,11 @@ export default function AssistantBuilderRightPanel({
               <ConversationsNavigationProvider>
                 <ActionValidationProvider owner={owner}>
                   <GenerationContextProvider>
-                    <div className="flex h-full flex-col">
+                    <div
+                      className={
+                        currentPanel ? "hidden" : "flex h-full flex-col"
+                      }
+                    >
                       {conversation && (
                         <div className="flex items-center justify-between py-3">
                           <h2 className="font-semibold text-foreground dark:text-foreground-night">
@@ -235,7 +242,7 @@ export default function AssistantBuilderRightPanel({
                       )}
                       <div className="flex-grow overflow-y-auto">
                         {conversation && (
-                          <InteractiveContentProvider>
+                          <div>
                             <ConversationViewer
                               owner={owner}
                               user={user}
@@ -244,7 +251,7 @@ export default function AssistantBuilderRightPanel({
                               isInModal
                               key={conversation.sId}
                             />
-                          </InteractiveContentProvider>
+                          </div>
                         )}
                       </div>
                       <div className="shrink-0">
@@ -263,6 +270,11 @@ export default function AssistantBuilderRightPanel({
                         />
                       </div>
                     </div>
+                    <ConversationSidePanelContent
+                      conversation={conversation}
+                      owner={owner}
+                      currentPanel={currentPanel}
+                    />
                   </GenerationContextProvider>
                 </ActionValidationProvider>
               </ConversationsNavigationProvider>

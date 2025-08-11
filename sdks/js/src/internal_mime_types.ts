@@ -55,23 +55,29 @@ function generateConnectorRelativeMimeTypes<
 // Mime type that represents a datasource.
 export const DATA_SOURCE_MIME_TYPE = "application/vnd.dust.datasource" as const;
 
+// Mime type that represents a data warehouse, like Snowflake or BigQuery.
+export const DATA_WAREHOUSE_MIME_TYPE =
+  "application/vnd.dust.data-warehouse" as const;
+
 export const DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE =
   "application/vnd.dust.folder.spreadsheet" as const;
 export type DataSourceFolderSpreadsheetMimeType =
   typeof DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE;
 
 type DataSourceMimeType = typeof DATA_SOURCE_MIME_TYPE;
+type DataWarehouseMimeType = typeof DATA_WAREHOUSE_MIME_TYPE;
 
 export const CONTENT_NODE_MIME_TYPES = {
   GENERIC: {
     DATA_SOURCE: DATA_SOURCE_MIME_TYPE,
+    DATA_WAREHOUSE: DATA_WAREHOUSE_MIME_TYPE,
   },
   FOLDER: {
     SPREADSHEET: DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE,
   },
   CONFLUENCE: generateConnectorRelativeMimeTypes({
     provider: "confluence",
-    resourceTypes: ["SPACE", "PAGE"],
+    resourceTypes: ["FOLDER", "PAGE", "SPACE"],
   }),
   GITHUB: generateConnectorRelativeMimeTypes({
     provider: "github",
@@ -219,6 +225,7 @@ const TOOL_MIME_TYPES = {
     category: "TOOL_INPUT",
     resourceTypes: [
       "DATA_SOURCE",
+      "DATA_WAREHOUSE",
       "TABLE",
       "AGENT",
       "STRING",
@@ -344,6 +351,7 @@ export type DustMimeType =
   | SalesforceMimeType
   | GongMimeType
   | DataSourceMimeType
+  | DataWarehouseMimeType
   | DataSourceFolderSpreadsheetMimeType;
 
 export function isDustMimeType(mimeType: string): mimeType is DustMimeType {

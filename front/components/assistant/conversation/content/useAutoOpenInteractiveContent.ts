@@ -1,6 +1,6 @@
 import React from "react";
 
-import { useInteractiveContentContext } from "@app/components/assistant/conversation/content/InteractiveContentContext";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { isInteractiveFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
 import type { LightAgentMessageType } from "@app/types";
@@ -25,7 +25,7 @@ export function useAutoOpenInteractiveContent({
   isLastMessage,
   messageStreamState,
 }: UseAutoOpenInteractiveContentProps) {
-  const { openContent } = useInteractiveContentContext();
+  const { openPanel } = useConversationSidePanelContext();
 
   // Track the last opened fileId to prevent double-opening glitch.
   //
@@ -75,7 +75,11 @@ export function useAutoOpenInteractiveContent({
       if (firstFile?.fileId) {
         lastOpenedFileIdRef.current = firstFile.fileId;
         // Always use updatedAt for real-time updates to trigger refresh.
-        openContent(firstFile.fileId, firstFile.updatedAt);
+        openPanel({
+          type: "content",
+          fileId: firstFile.fileId,
+          timestamp: firstFile.updatedAt,
+        });
       }
     }
     // Handle completed files - only open drawer on last message.
@@ -86,14 +90,17 @@ export function useAutoOpenInteractiveContent({
       if (firstFile?.fileId && isNotAlreadyOpenedOnFile) {
         lastOpenedFileIdRef.current = firstFile.fileId;
         // Skip updatedAt for completed files since they're final state.
-        openContent(firstFile.fileId);
+        openPanel({
+          type: "content",
+          fileId: firstFile.fileId,
+        });
       }
     }
   }, [
     interactiveFilesFromProgress,
     completedInteractiveFiles,
     isLastMessage,
-    openContent,
+    openPanel,
   ]);
 
   // Reset tracking when message changes.

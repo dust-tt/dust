@@ -1,10 +1,8 @@
 import { makeScript } from "scripts/helpers";
 
 import { makeSpaceInternalId } from "@connectors/connectors/confluence/lib/internal_ids";
-import {
-  fetchConfluenceConfigurationActivity,
-  getConfluenceClient,
-} from "@connectors/connectors/confluence/temporal/activities";
+import { getConfluenceClient } from "@connectors/connectors/confluence/lib/utils";
+import { fetchConfluenceConfigurationActivity } from "@connectors/connectors/confluence/temporal/activities";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ConfluenceSpace } from "@connectors/lib/models/confluence";

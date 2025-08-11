@@ -6,6 +6,10 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import {
+  WEBBROWSER_TOOL_NAME,
+  WEBSEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   BrowseResultResourceType,
   WebsearchResultResourceType,
@@ -36,17 +40,15 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "websearch",
-    "A tool that performs a Google web search based on a string query. " +
-      "The input string query does not support Unicode characters.",
+    WEBSEARCH_TOOL_NAME,
+    "A tool that performs a Google web search based on a string query.",
     {
       query: z
         .string()
         .describe(
           "The query used to perform the Google search. If requested by the " +
             "user, use the Google syntax `site:` to restrict the search " +
-            "to a particular website or domain. " +
-            "Unicode characters are not supported."
+            "to a particular website or domain."
         ),
       page: z
         .number()
@@ -119,7 +121,7 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
   );
 
   server.tool(
-    "webbrowser",
+    WEBBROWSER_TOOL_NAME,
     "A tool to browse websites, you can provide a list of urls to browse all at once.",
     {
       urls: z.string().array().describe("List of urls to browse"),

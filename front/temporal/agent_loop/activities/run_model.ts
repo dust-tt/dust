@@ -118,6 +118,7 @@ export async function runModelActivity({
 
   const isLegacyAgent = isLegacyAgentConfiguration(agentConfiguration);
   if (isLegacyAgent && step !== 0) {
+    localLogger.warn("Legacy agent only supports step 0.");
     // legacy agents stop after one step
     return null;
   }
@@ -161,21 +162,21 @@ export async function runModelActivity({
         messageId: agentMessage.sId,
         error,
       },
-      conversation,
       agentMessageRow,
-      step
+      {
+        conversationId: conversation.sId,
+        step,
+      }
     );
   }
 
   // Helper function to flush all pending tokens from the content parser
   async function flushParserTokens(): Promise<void> {
     for await (const tokenEvent of contentParser.flushTokens()) {
-      await updateResourceAndPublishEvent(
-        tokenEvent,
-        conversation,
-        agentMessageRow,
-        step
-      );
+      await updateResourceAndPublishEvent(tokenEvent, agentMessageRow, {
+        conversationId: conversation.sId,
+        step,
+      });
     }
   }
 
@@ -192,6 +193,7 @@ export async function runModelActivity({
 
   const attachments = listAttachments(conversation);
   const jitServers = await getJITServers(auth, {
+    agentConfiguration,
     conversation,
     attachments,
   });
@@ -266,22 +268,7 @@ export async function runModelActivity({
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
-    const specRes = await buildToolSpecification(auth, a);
-
-    if (specRes.isErr()) {
-      await publishAgentError({
-        code: "build_spec_error",
-        message: `Failed to build the specification for action ${a.sId},`,
-        metadata: null,
-      });
-
-      return null;
-    }
-
-    // Truncate the description to 1024 characters
-    specRes.value.description = specRes.value.description.slice(0, 1024);
-
-    specifications.push(specRes.value);
+    specifications.push(buildToolSpecification(a));
   }
 
   // Count the number of tokens used by the functions presented to the model.
@@ -363,7 +350,10 @@ export async function runModelActivity({
   const reasoningEffort =
     agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
 
-  if (reasoningEffort !== "none" && reasoningEffort !== "light") {
+  if (
+    reasoningEffort !== "none" &&
+    (reasoningEffort !== "light" || model.useNativeLightReasoning)
+  ) {
     runConfig.MODEL.reasoning_effort = reasoningEffort;
   }
 
@@ -526,10 +516,14 @@ export async function runModelActivity({
           configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
         },
-        conversation,
         agentMessageRow,
-        step
+        {
+          conversationId: conversation.sId,
+          step,
+        }
       );
+      localLogger.error("Agent generation cancelled");
+
       return null;
     }
 
@@ -537,12 +531,10 @@ export async function runModelActivity({
       for await (const tokenEvent of contentParser.emitTokens(
         event.content.tokens.text
       )) {
-        await updateResourceAndPublishEvent(
-          tokenEvent,
-          conversation,
-          agentMessageRow,
-          step
-        );
+        await updateResourceAndPublishEvent(tokenEvent, agentMessageRow, {
+          conversationId: conversation.sId,
+          step,
+        });
       }
     }
 
@@ -556,9 +548,11 @@ export async function runModelActivity({
           messageId: agentMessage.sId,
           text: event.content.tokens.text,
         },
-        conversation,
         agentMessageRow,
-        step
+        {
+          conversationId: conversation.sId,
+          step,
+        }
       );
       nativeChainOfThought += event.content.tokens.text;
     }
@@ -573,9 +567,11 @@ export async function runModelActivity({
           messageId: agentMessage.sId,
           text: "\n\n",
         },
-        conversation,
         agentMessageRow,
-        step
+        {
+          conversationId: conversation.sId,
+          step,
+        }
       );
       nativeChainOfThought += "\n\n";
     }
@@ -732,10 +728,13 @@ export async function runModelActivity({
         message: agentMessage,
         runIds: [...runIds, await dustRunId],
       },
-      conversation,
       agentMessageRow,
-      step
+      {
+        conversationId: conversation.sId,
+        step,
+      }
     );
+    localLogger.info("Agent message generation succeeded");
 
     return null;
   }

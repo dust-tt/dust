@@ -9,6 +9,7 @@ import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
@@ -26,70 +27,78 @@ import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conve
 import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { ConversationType } from "@app/types";
+import type { AgentConfigurationType, ConversationType } from "@app/types";
 import { assertNever, CoreAPI } from "@app/types";
 
 export async function getJITServers(
   auth: Authenticator,
   {
+    agentConfiguration,
     conversation,
     attachments,
   }: {
+    agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
     attachments: ConversationAttachmentType[];
   }
 ): Promise<MCPServerConfigurationType[]> {
   const jitServers: MCPServerConfigurationType[] = [];
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (featureFlags.includes("jit_tools")) {
-    // Get the conversation MCP server views (aka Tools)
-    const conversationMCPServerViews =
-      await ConversationResource.fetchMCPServerViews(auth, conversation, true);
+  // Get the list of tools from the agent configuration to avoid duplicates.
+  const agentMcpServerViewIds = agentConfiguration.actions
+    .map((action) =>
+      isServerSideMCPServerConfiguration(action) ? action.mcpServerViewId : null
+    )
+    .filter((mcpServerViewId) => mcpServerViewId !== null);
 
-    for (const conversationMCPServerView of conversationMCPServerViews) {
-      const mcpServerViewResource = await MCPServerViewResource.fetchByModelPk(
-        auth,
-        conversationMCPServerView.mcpServerViewId
-      );
+  // Get the conversation MCP server views (aka Tools)
+  const conversationMCPServerViews =
+    await ConversationResource.fetchMCPServerViews(auth, conversation, true);
 
-      if (!mcpServerViewResource) {
-        continue;
-      }
+  for (const conversationMCPServerView of conversationMCPServerViews) {
+    const mcpServerViewResource = await MCPServerViewResource.fetchByModelPk(
+      auth,
+      conversationMCPServerView.mcpServerViewId
+    );
 
-      const mcpServerView = mcpServerViewResource.toJSON();
-
-      const conversationFilesServer: ServerSideMCPServerConfigurationType = {
-        id: -1,
-        sId: generateRandomModelSId(),
-        type: "mcp_server_configuration",
-        name: mcpServerView.name ?? mcpServerView.server.name,
-        description:
-          mcpServerView.description ?? mcpServerView.server.description,
-        dataSources: null,
-        tables: null,
-        childAgentId: null,
-        reasoningModel: null,
-        timeFrame: null,
-        jsonSchema: null,
-        additionalConfiguration: {},
-        mcpServerViewId: mcpServerView.sId,
-        dustAppConfiguration: null,
-        internalMCPServerId:
-          mcpServerView.serverType === "internal"
-            ? mcpServerView.server.sId
-            : null,
-      };
-
-      jitServers.push(conversationFilesServer);
+    if (
+      !mcpServerViewResource ||
+      agentMcpServerViewIds.includes(mcpServerViewResource.sId)
+    ) {
+      continue;
     }
+
+    const mcpServerView = mcpServerViewResource.toJSON();
+
+    const conversationFilesServer: ServerSideMCPServerConfigurationType = {
+      id: -1,
+      sId: generateRandomModelSId(),
+      type: "mcp_server_configuration",
+      name: mcpServerView.name ?? mcpServerView.server.name,
+      description:
+        mcpServerView.description ?? mcpServerView.server.description,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
+      jsonSchema: null,
+      additionalConfiguration: {},
+      mcpServerViewId: mcpServerView.sId,
+      dustAppConfiguration: null,
+      internalMCPServerId:
+        mcpServerView.serverType === "internal"
+          ? mcpServerView.server.sId
+          : null,
+    };
+
+    jitServers.push(conversationFilesServer);
   }
 
   if (attachments.length === 0) {

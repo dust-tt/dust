@@ -29,21 +29,21 @@ type RetryOptions = {
   delayBetweenRetriesMs?: number;
 };
 
-export function withRetries<T, U>(
+export function withRetries<Args extends unknown[], Return>(
   logger: LoggerInterface,
-  fn: (arg: T) => Promise<U>,
+  fn: (...args: Args) => Promise<Return>,
   { retries = 10, delayBetweenRetriesMs = 1000 }: RetryOptions = {}
-): (arg: T & RetryOptions) => Promise<U> {
+): (...args: Args) => Promise<Return> {
   if (retries < 1) {
     throw new Error("retries must be >= 1");
   }
 
-  return async (arg) => {
+  return async (...args) => {
     const errors: Array<{ attempt: number; error: unknown }> = [];
 
     for (let i = 0; i < retries; i++) {
       try {
-        return await fn(arg);
+        return await fn(...args);
       } catch (e) {
         if (
           e instanceof AxiosError &&

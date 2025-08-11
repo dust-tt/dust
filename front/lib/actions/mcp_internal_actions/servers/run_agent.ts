@@ -12,12 +12,12 @@ import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
+  isLightServerSideMCPToolConfiguration,
   isMCPActionArray,
   isServerSideMCPServerConfiguration,
-  isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getCitationsFromActions } from "@app/lib/api/assistant/citations";
-import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agent_metadata";
+import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -124,12 +124,12 @@ export default async function createServer(
   if (
     agentLoopContext &&
     agentLoopContext.runContext &&
-    isServerSideMCPToolConfiguration(
-      agentLoopContext.runContext.actionConfiguration
+    isLightServerSideMCPToolConfiguration(
+      agentLoopContext.runContext.toolConfiguration
     ) &&
-    agentLoopContext.runContext.actionConfiguration.childAgentId
+    agentLoopContext.runContext.toolConfiguration.childAgentId
   ) {
-    childAgentId = agentLoopContext.runContext.actionConfiguration.childAgentId;
+    childAgentId = agentLoopContext.runContext.toolConfiguration.childAgentId;
   }
 
   let childAgentBlob: {

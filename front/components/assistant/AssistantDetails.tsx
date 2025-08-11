@@ -11,6 +11,7 @@ import {
   LockIcon,
   Page,
   PlusIcon,
+  ReadOnlyTextArea,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -32,7 +33,6 @@ import { AgentMemorySection } from "@app/components/assistant/details/AgentMemor
 import { AssistantEditedSection } from "@app/components/assistant/details/AssistantEditedSection";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/AssistantKnowledgeSection";
 import { AssistantToolsSection } from "@app/components/assistant/details/AssistantToolsSection";
-import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { RestoreAssistantDialog } from "@app/components/assistant/RestoreAssistantDialog";
 import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
 import { MembersList } from "@app/components/members/MembersList";
@@ -93,6 +93,9 @@ function AssistantDetailsInfo({
   agentConfiguration: AgentConfigurationType;
   owner: WorkspaceType;
 }) {
+  const isConfigurable =
+    agentConfiguration.sId === GLOBAL_AGENTS_SID.RESEARCH ||
+    agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
   return (
     <>
       {agentConfiguration.tags.length > 0 && (
@@ -109,18 +112,18 @@ function AssistantDetailsInfo({
       {agentConfiguration && (
         <AssistantEditedSection agentConfiguration={agentConfiguration} />
       )}
-      {agentConfiguration.sId === "dust" && (
+      {isConfigurable && (
         <div className="text-sm text-foreground dark:text-foreground-night">
           {isAdmin(owner) ? (
             <Button
-              label="Manage Dust Agent's Knowledge"
+              label={`Manage ${agentConfiguration.name} configuration`}
               icon={Cog6ToothIcon}
-              href={`/w/${owner.sId}/builder/assistants/dust`}
+              href={`/w/${owner.sId}/builder/assistants/${agentConfiguration.sId}`}
             />
           ) : (
             <Chip
               color="blue"
-              label="Your admin(s) can manage Dust Agent's Knowledge."
+              label={`Your admin(s) can manage ${agentConfiguration.name} configuration.`}
             />
           )}
         </div>
@@ -135,7 +138,7 @@ function AssistantDetailsInfo({
           />
 
           {agentConfiguration?.instructions ? (
-            <div className="flex flex-col gap-5">
+            <div className="dd-privacy-mask flex flex-col gap-5">
               <div className="heading-lg text-foreground dark:text-foreground-night">
                 Instructions
               </div>

@@ -19,7 +19,7 @@ import {
 import { getBotEnabled } from "@connectors/connectors/slack/bot";
 import {
   getChannels,
-  joinChannel,
+  joinChannelWithRetries,
 } from "@connectors/connectors/slack/lib/channels";
 import { slackConfig } from "@connectors/connectors/slack/lib/config";
 import { retrievePermissions } from "@connectors/connectors/slack/lib/retrieve_permissions";
@@ -29,10 +29,7 @@ import {
   reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { slackChannelIdFromInternalId } from "@connectors/connectors/slack/lib/utils";
-import {
-  launchSlackMigrateChannelsFromLegacyBotToNewBotWorkflow,
-  launchSlackSyncWorkflow,
-} from "@connectors/connectors/slack/temporal/client.js";
+import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
@@ -190,21 +187,6 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
             "CONNECTOR_OAUTH_TARGET_MISMATCH",
             "Cannot change the Slack Team of a Data Source"
           )
-        );
-      }
-
-      // TODO(slack 2025-07-31): If the connection was updated, meaning an admin added the missing
-      // scope (`channels:manage`) to the bot, we need to trigger the migration of channels from
-      // legacy bot to new bot.
-      const slackBotConnector =
-        await ConnectorResource.findByWorkspaceIdAndType(
-          c.workspaceId,
-          "slack_bot"
-        );
-      if (slackBotConnector) {
-        await launchSlackMigrateChannelsFromLegacyBotToNewBotWorkflow(
-          c.id,
-          slackBotConnector.id
         );
       }
 
@@ -388,7 +370,10 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         const slackChannelId = slackChannelIdFromInternalId(internalId);
         let channel = channels[slackChannelId];
         if (!channel) {
-          const joinRes = await joinChannel(this.connectorId, slackChannelId);
+          const joinRes = await joinChannelWithRetries(
+            this.connectorId,
+            slackChannelId
+          );
           if (joinRes.isErr()) {
             return new Err(joinRes.error);
           }
@@ -429,7 +414,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
             ) {
               // handle read permission enabled
               slackChannelsToSync.push(channel.slackChannelId);
-              const joinChannelRes = await joinChannel(
+              const joinChannelRes = await joinChannelWithRetries(
                 this.connectorId,
                 channel.slackChannelId
               );

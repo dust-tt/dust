@@ -2,8 +2,8 @@ import { ContentMessage, ExclamationCircleIcon } from "@dust-tt/sparkle";
 import React from "react";
 
 import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
-import { useInteractiveContentContext } from "@app/components/assistant/conversation/content/InteractiveContentContext";
 import { InteractiveContentHeader } from "@app/components/assistant/conversation/content/InteractiveContentHeader";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 
 interface UnsupportedContentRendererProps {
   contentType: string;
@@ -16,12 +16,12 @@ export function UnsupportedContentRenderer({
   fileId,
   fileName,
 }: UnsupportedContentRendererProps) {
-  const { closeContent } = useInteractiveContentContext();
+  const { closePanel } = useConversationSidePanelContext();
 
   return (
     <div className="flex h-full flex-col">
       <InteractiveContentHeader
-        onClose={closeContent}
+        onClose={closePanel}
         subtitle={fileId}
         title={fileName || "Unsupported Content"}
       />

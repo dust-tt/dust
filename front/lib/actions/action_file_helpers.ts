@@ -210,6 +210,7 @@ export async function uploadFileToConversationDataSource({
   if (jitDataSource.isErr()) {
     logger.error(
       {
+        workspaceId: auth.workspace()?.sId,
         code: jitDataSource.error.code,
         message: jitDataSource.error.message,
       },
@@ -222,6 +223,7 @@ export async function uploadFileToConversationDataSource({
     if (r.isErr()) {
       logger.error(
         {
+          workspaceId: auth.workspace()?.sId,
           code: r.error.code,
           message: r.error.message,
         },

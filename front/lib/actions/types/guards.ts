@@ -1,5 +1,7 @@
 import type {
   ClientSideMCPToolConfigurationType,
+  LightMCPToolConfigurationType,
+  LightServerSideMCPToolConfigurationType,
   MCPActionType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
@@ -105,6 +107,16 @@ export function isMCPConfigurationForAgentMemory(
     isInternalMCPServerOfName(arg.internalMCPServerId, "agent_memory")
   );
 }
+
+export function isMCPConfigurationForRunAgent(
+  arg: MCPServerConfigurationType
+): arg is ServerSideMCPServerConfigurationType {
+  return (
+    isServerSideMCPServerConfiguration(arg) &&
+    isInternalMCPServerOfName(arg.internalMCPServerId, "run_agent")
+  );
+}
+
 // MCP Tools
 
 export function isMCPToolConfiguration(
@@ -176,10 +188,10 @@ export function isMCPInternalNotion(
 }
 
 export function isMCPInternalDustAppRun(
-  arg: MCPToolConfigurationType
-): arg is ServerSideMCPToolConfigurationType {
+  arg: LightMCPToolConfigurationType
+): arg is LightServerSideMCPToolConfigurationType {
   return (
-    isServerSideMCPToolConfiguration(arg) &&
+    isLightServerSideMCPToolConfiguration(arg) &&
     isInternalMCPServerOfName(arg.internalMCPServerId, "run_dust_app")
   );
 }
@@ -188,6 +200,16 @@ export function isServerSideMCPToolConfiguration(
   arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return isMCPToolConfiguration(arg) && "mcpServerViewId" in arg;
+}
+
+export function isLightServerSideMCPToolConfiguration(
+  arg: unknown
+): arg is LightServerSideMCPToolConfigurationType {
+  return (
+    isMCPToolConfiguration(arg) &&
+    "mcpServerViewId" in arg &&
+    !("inputSchema" in arg)
+  );
 }
 
 export function isClientSideMCPToolConfiguration(

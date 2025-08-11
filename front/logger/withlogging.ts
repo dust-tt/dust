@@ -42,9 +42,28 @@ export function withLogging<T>(
     req: NextApiRequestWithContext,
     res: NextApiResponse<WithAPIErrorResponse<T>>
   ): Promise<void> => {
-    const ddtraceSpan = tracer.scope().active();
-    if (ddtraceSpan) {
-      ddtraceSpan.setTag("streaming", streaming);
+    const ddtraceNextRequestSpan = tracer.scope().active();
+    if (ddtraceNextRequestSpan) {
+      // Tag the current active span (usually `next.request`) with a "streaming" flag
+      // so we can filter these requests later in Datadog traces and analytics.
+      ddtraceNextRequestSpan.setTag("streaming", streaming);
+
+      if (streaming) {
+        // For streaming requests, change the operation name of the *current span*
+        // from `next.request` to `next.request.streaming` so that:
+        //   1. It appears as a separate operation in the Datadog APM "operation" dropdown,
+        //      making it easy to isolate streaming traffic from regular requests.
+        //   2. You can analyze streaming request performance and error rates independently,
+        //      without mixing them into standard request metrics.
+        //   3. Without this separation, the long-lived nature of streaming requests would
+        //      inflate and skew p95/p99 latency metrics, making them unrepresentative of
+        //      typical request performance.
+        //
+        // Note: This changes only the Next.js request span, not the root `web.request` span.
+        // That means streaming requests will still be counted in `web.request` service-level
+        // latency metrics unless you also update the root span.
+        ddtraceNextRequestSpan.setOperationName("next.request.streaming");
+      }
     }
     const now = new Date();
 
@@ -178,25 +197,30 @@ export function apiError<T>(
   error?: Error
 ): void {
   const callstack = new Error().stack;
+  const errorAttrs = {
+    message: (error && error.message) || apiError.api_error.message,
+    kind: apiError.api_error.type,
+    stack: (error && error.stack) || callstack,
+  };
   logger.error(
     {
       method: req.method,
       url: req.url,
       statusCode: apiError.status_code,
-      apiError: apiError,
-      error: error || {
-        message: apiError.api_error.message,
-        kind: apiError.api_error.type,
-        stack: callstack,
-      },
-      apiErrorHandlerCallStack: callstack,
+      apiError: { ...apiError, callstack },
+      error: errorAttrs,
     },
     "API Error"
   );
 
+  const span = tracer.scope().active();
+  if (span) {
+    span.setTag("error.message", errorAttrs.message);
+    span.setTag("error.stack", errorAttrs.stack);
+  }
+
   const tags = [
     `method:${req.method}`,
-    // `url:${req.url}`,
     `status_code:${apiError.status_code}`,
     `error_type:${apiError.api_error.type}`,
   ];

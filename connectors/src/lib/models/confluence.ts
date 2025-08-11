@@ -97,6 +97,7 @@ export class ConfluencePage extends ConnectorBaseModel<ConfluencePage> {
   declare externalUrl: string;
   declare pageId: string;
   declare parentId: string | null;
+  declare parentType: "page" | "folder" | null;
   declare skipReason: string | null;
   declare spaceId: string;
   declare title: string;
@@ -132,6 +133,11 @@ ConfluencePage.init(
       allowNull: true,
       defaultValue: null,
     },
+    parentType: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
     pageId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -157,5 +163,83 @@ ConfluencePage.init(
       { fields: ["connectorId", "lastVisitedAt"] },
     ],
     modelName: "confluence_pages",
+  }
+);
+
+export class ConfluenceFolder extends ConnectorBaseModel<ConfluenceFolder> {
+  declare createdAt: CreationOptional<Date>;
+  declare lastVisitedAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare externalUrl: string;
+  declare folderId: string;
+  declare parentId: string | null;
+  declare parentType: "page" | "folder" | null;
+  declare skipReason: string | null;
+  declare spaceId: string;
+  declare title: string;
+  declare version: number;
+}
+
+ConfluenceFolder.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    lastVisitedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    version: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    skipReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    parentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    parentType: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    folderId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    spaceId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    title: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    externalUrl: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelizeConnection,
+    indexes: [
+      { fields: ["connectorId", "folderId"], unique: true },
+      { fields: ["connectorId", "spaceId", "parentId"] },
+      { fields: ["connectorId", "lastVisitedAt"] },
+    ],
+    modelName: "confluence_folders",
   }
 );

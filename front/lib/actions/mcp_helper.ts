@@ -1,6 +1,9 @@
 import type { AgentBuilderAction } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import type {
+  AutoInternalMCPServerNameType,
+  InternalMCPServerNameType,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
@@ -11,7 +14,9 @@ import type {
   RemoteMCPServerType,
 } from "@app/lib/api/mcp";
 import {
+  dangerouslyMakeSIdWithCustomFirstPrefix,
   getResourceNameAndIdFromSId,
+  LEGACY_REGION_BIT,
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ModelId } from "@app/types";
@@ -45,13 +50,30 @@ export const getServerTypeAndIdFromSId = (
 export const internalMCPServerNameToSId = ({
   name,
   workspaceId,
+  prefix,
 }: {
   name: InternalMCPServerNameType;
   workspaceId: ModelId;
+  prefix: number;
 }): string => {
-  return makeSId("internal_mcp_server", {
+  return dangerouslyMakeSIdWithCustomFirstPrefix("internal_mcp_server", {
     id: INTERNAL_MCP_SERVERS[name].id,
     workspaceId,
+    firstPrefix: prefix,
+  });
+};
+
+export const autoInternalMCPServerNameToSId = ({
+  name,
+  workspaceId,
+}: {
+  name: AutoInternalMCPServerNameType;
+  workspaceId: ModelId;
+}): string => {
+  return dangerouslyMakeSIdWithCustomFirstPrefix("internal_mcp_server", {
+    id: INTERNAL_MCP_SERVERS[name].id,
+    workspaceId,
+    firstPrefix: LEGACY_REGION_BIT,
   });
 };
 

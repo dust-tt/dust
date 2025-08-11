@@ -1,17 +1,6 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type {
-  ExtractDataAgentBuilderAction,
-  IncludeDataAgentBuilderAction,
-  SearchAgentBuilderAction,
-} from "@app/components/agent_builder/types";
-import {
-  isExtractDataAction,
-  isIncludeDataAction,
-  isSearchAction,
-} from "@app/components/agent_builder/types";
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   AgentConfigurationType,
   DataSourceViewSelectionConfigurations,
@@ -74,132 +63,14 @@ function processTableSelection(
   return tables.length > 0 ? tables : null;
 }
 
-function convertSearchActionToMCPConfiguration(
-  searchAction: SearchAgentBuilderAction,
-  searchMCPServerView: MCPServerViewType,
-  owner: WorkspaceType
-): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
-  const dataSources = convertDataSourceConfigurations(
-    searchAction.configuration
-      .dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type,
-    owner
-  );
-
-  return {
-    type: "mcp_server_configuration",
-    mcpServerViewId: searchMCPServerView.sId,
-    name: searchAction.name,
-    description: searchAction.description || null,
-    dataSources,
-    tables: null,
-    childAgentId: null,
-    reasoningModel: null,
-    timeFrame: null,
-    jsonSchema: null,
-    additionalConfiguration: {},
-    dustAppConfiguration: null,
-  };
-}
-
-// Generic MCP server view finder
-function getMCPServerViewByName(
-  mcpServerViews: MCPServerViewType[],
-  serverName: string
-): MCPServerViewType {
-  const mcpServerView = mcpServerViews.find(
-    (view) =>
-      view.server.name === serverName && view.server.availability === "auto"
-  );
-
-  if (!mcpServerView) {
-    throw new Error(`${serverName} MCP server view not found`);
-  }
-
-  return mcpServerView;
-}
-
-function getSearchMCPServerView(
-  mcpServerViews: MCPServerViewType[]
-): MCPServerViewType {
-  return getMCPServerViewByName(mcpServerViews, "search");
-}
-
-function convertIncludeDataActionToMCPConfiguration(
-  includeDataAction: IncludeDataAgentBuilderAction,
-  includeDataMCPServerView: MCPServerViewType,
-  owner: WorkspaceType
-): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
-  const dataSources = convertDataSourceConfigurations(
-    includeDataAction.configuration
-      .dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type,
-    owner
-  );
-
-  return {
-    type: "mcp_server_configuration",
-    mcpServerViewId: includeDataMCPServerView.sId,
-    name: includeDataAction.name,
-    description: includeDataAction.description,
-    dataSources,
-    tables: null,
-    childAgentId: null,
-    reasoningModel: null,
-    timeFrame: includeDataAction.configuration.timeFrame,
-    jsonSchema: null,
-    additionalConfiguration: {},
-    dustAppConfiguration: null,
-  };
-}
-
-function getIncludeDataMCPServerView(
-  mcpServerViews: MCPServerViewType[]
-): MCPServerViewType {
-  return getMCPServerViewByName(mcpServerViews, "include_data");
-}
-
-function convertExtractDataActionToMCPConfiguration(
-  extractDataAction: ExtractDataAgentBuilderAction,
-  extractDataMCPServerView: MCPServerViewType,
-  owner: WorkspaceType
-): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
-  const dataSources = convertDataSourceConfigurations(
-    extractDataAction.configuration
-      .dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type,
-    owner
-  );
-
-  return {
-    type: "mcp_server_configuration",
-    mcpServerViewId: extractDataMCPServerView.sId,
-    name: extractDataAction.name,
-    description: extractDataAction.description,
-    dataSources,
-    tables: null,
-    childAgentId: null,
-    reasoningModel: null,
-    timeFrame: extractDataAction.configuration.timeFrame,
-    jsonSchema: extractDataAction.configuration.jsonSchema,
-    additionalConfiguration: {},
-    dustAppConfiguration: null,
-  };
-}
-
-function getExtractDataMCPServerView(
-  mcpServerViews: MCPServerViewType[]
-): MCPServerViewType {
-  return getMCPServerViewByName(mcpServerViews, "extract_data");
-}
-
 export async function submitAgentBuilderForm({
   formData,
   owner,
-  mcpServerViews,
   agentConfigurationId = null,
   isDraft = false,
 }: {
   formData: AgentBuilderFormData;
   owner: WorkspaceType;
-  mcpServerViews: MCPServerViewType[];
   agentConfigurationId?: string | null;
   isDraft?: boolean;
 }): Promise<
@@ -258,41 +129,6 @@ export async function submitAgentBuilderForm({
                 action.configuration.additionalConfiguration,
               dustAppConfiguration: action.configuration.dustAppConfiguration,
             },
-          ];
-        }
-
-        if (isSearchAction(action)) {
-          const searchMCPServerView = getSearchMCPServerView(mcpServerViews);
-          return [
-            convertSearchActionToMCPConfiguration(
-              action,
-              searchMCPServerView,
-              owner
-            ),
-          ];
-        }
-
-        if (isIncludeDataAction(action)) {
-          const includeDataMCPServerView =
-            getIncludeDataMCPServerView(mcpServerViews);
-          return [
-            convertIncludeDataActionToMCPConfiguration(
-              action,
-              includeDataMCPServerView,
-              owner
-            ),
-          ];
-        }
-
-        if (isExtractDataAction(action)) {
-          const extractDataMCPServerView =
-            getExtractDataMCPServerView(mcpServerViews);
-          return [
-            convertExtractDataActionToMCPConfiguration(
-              action,
-              extractDataMCPServerView,
-              owner
-            ),
           ];
         }
 

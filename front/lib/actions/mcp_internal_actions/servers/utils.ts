@@ -9,8 +9,8 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
+  isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
-  isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import type {
   DataSourceConfiguration,
@@ -523,11 +523,11 @@ export function shouldAutoGenerateTags(
       listToolsContext.agentActionConfiguration.dataSources
     );
   } else if (
-    !!runContext?.actionConfiguration &&
-    isServerSideMCPToolConfiguration(runContext.actionConfiguration) &&
-    !!runContext.actionConfiguration.dataSources
+    !!runContext?.toolConfiguration &&
+    isLightServerSideMCPToolConfiguration(runContext.toolConfiguration) &&
+    !!runContext.toolConfiguration.dataSources
   ) {
-    return hasTagAutoMode(runContext.actionConfiguration.dataSources);
+    return hasTagAutoMode(runContext.toolConfiguration.dataSources);
   }
 
   return false;

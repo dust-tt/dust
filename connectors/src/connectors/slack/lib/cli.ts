@@ -1,4 +1,7 @@
-import { autoReadChannel } from "@connectors/connectors/slack/auto_read_channel";
+import {
+  autoReadChannel,
+  findMatchingChannelPatterns,
+} from "@connectors/connectors/slack/auto_read_channel";
 import {
   getChannelById,
   getChannels,
@@ -319,7 +322,7 @@ export const slack = async ({
       // the configured autoReadChannelPatterns regex patterns, and processes
       // all matching channels using the autoReadChannel function (same logic
       // as when a new channel is created via webhook).
-      const { wId, providerType } = args;
+      const { wId, providerType, force } = args;
       if (!wId) {
         throw new Error("Missing --wId argument");
       }
@@ -375,9 +378,41 @@ export const slack = async ({
       let processedCount = 0;
       let errorCount = 0;
 
+      allChannels.sort((a, b) => {
+        if (a.name && b.name) {
+          return a.name.localeCompare(b.name);
+        }
+        return 0;
+      });
+
       for (const channel of allChannels) {
         if (!channel.id || !channel.name) {
           continue;
+        }
+
+        logger.info({ channelName: channel.name }, "Processing channel");
+
+        const matchingPatterns = findMatchingChannelPatterns(
+          channel.name,
+          autoReadChannelPatterns
+        );
+        if (matchingPatterns.length === 0) {
+          logger.info({ channelName: channel.name }, "No match, skipping");
+          continue;
+        }
+
+        if (!force) {
+          if (channel.is_member) {
+            logger.info(
+              {
+                connectorId: connector.id,
+                channelId: channel.id,
+                channelName: channel.name,
+              },
+              "Channel is already joined, skipping"
+            );
+            continue;
+          }
         }
 
         try {

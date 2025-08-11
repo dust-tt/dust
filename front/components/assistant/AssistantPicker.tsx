@@ -20,6 +20,7 @@ interface AssistantPickerProps {
   assistants: LightAgentConfigurationType[];
   onItemClick: (assistant: LightAgentConfigurationType) => void;
   pickerButton?: React.ReactNode;
+  showDropdownArrow?: boolean;
   showFooterButtons?: boolean;
   size?: "xs" | "sm" | "md";
   isLoading?: boolean;
@@ -31,6 +32,7 @@ export function AssistantPicker({
   assistants,
   onItemClick,
   pickerButton,
+  showDropdownArrow = true,
   showFooterButtons = true,
   size = "md",
   isLoading = false,
@@ -57,7 +59,7 @@ export function AssistantPicker({
           <Button
             icon={RobotIcon}
             variant="ghost-secondary"
-            isSelect
+            isSelect={showDropdownArrow}
             size={size}
             tooltip="Pick an agent"
             disabled={isLoading}

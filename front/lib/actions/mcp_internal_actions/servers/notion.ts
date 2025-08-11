@@ -16,6 +16,7 @@ import type {
   SearchQueryResourceType,
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/personal_authentication";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   makeMCPToolJSONSuccess,
@@ -29,17 +30,17 @@ import type { Authenticator } from "@app/lib/auth";
 import type { TimeFrame } from "@app/types";
 import { normalizeError, parseTimeFrame, timeFrameFromNow } from "@app/types";
 
-const serverInfo: InternalMCPServerDefinitionType = {
+const serverInfo = {
   name: "notion",
   version: "1.0.0",
   description: "Notion tools to manage pages and databases.",
   authorization: {
     provider: "notion" as const,
-    supported_use_cases: ["platform_actions"] as const,
+    supported_use_cases: ["platform_actions", "personal_actions"] as const,
   },
   icon: "NotionLogo",
   documentationUrl: null,
-};
+} satisfies InternalMCPServerDefinitionType;
 
 const uuidRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -267,33 +268,32 @@ function makeQueryResource(
   };
 }
 
+async function withNotionClient<T>(
+  fn: (notion: Client) => Promise<T>,
+  authInfo?: AuthInfo
+): Promise<CallToolResult> {
+  try {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return makePersonalAuthenticationError({ serverInfo });
+    }
+    const notion = new Client({ auth: accessToken });
+
+    const result = await fn(notion);
+    return makeMCPToolJSONSuccess({
+      message: "Success",
+      result: JSON.stringify(result),
+    });
+  } catch (e) {
+    return makeMCPToolTextError(normalizeError(e).message);
+  }
+}
+
 const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
   const server = new McpServer(serverInfo);
-
-  // Consolidated wrapper for Notion client creation and error handling
-  async function withNotionClient<T>(
-    fn: (notion: Client) => Promise<T>,
-    authInfo?: AuthInfo
-  ): Promise<CallToolResult> {
-    try {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        throw new Error("No access token found");
-      }
-      const notion = new Client({ auth: accessToken });
-
-      const result = await fn(notion);
-      return makeMCPToolJSONSuccess({
-        message: "Success",
-        result: JSON.stringify(result),
-      });
-    } catch (e) {
-      return makeMCPToolTextError(normalizeError(e).message);
-    }
-  }
 
   server.tool(
     "search",
@@ -320,7 +320,7 @@ const createServer = (
 
       const accessToken = authInfo?.token;
       if (!accessToken) {
-        throw new Error("No access token found");
+        return makePersonalAuthenticationError({ serverInfo });
       }
       const notion = new Client({ auth: accessToken });
 

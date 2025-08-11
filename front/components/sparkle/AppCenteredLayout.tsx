@@ -5,6 +5,7 @@ import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 
 type AppCenteredLayoutProps = AppContentLayoutProps & {
   title?: React.ReactNode;
+  className?: string;
 };
 
 /**
@@ -16,6 +17,7 @@ type AppCenteredLayoutProps = AppContentLayoutProps & {
 export function AppCenteredLayout({
   children,
   title,
+  className,
   ...props
 }: AppCenteredLayoutProps) {
   return (
@@ -24,7 +26,8 @@ export function AppCenteredLayout({
       <div
         className={cn(
           "flex w-full flex-col items-center overflow-y-auto pt-4",
-          title ? "h-[calc(100vh-3.5rem)]" : "h-full"
+          title ? "h-[calc(100vh-3.5rem)]" : "h-full",
+          className
         )}
       >
         <div className="flex w-full max-w-4xl grow flex-col px-4 sm:px-8">

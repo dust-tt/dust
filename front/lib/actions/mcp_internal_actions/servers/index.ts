@@ -7,6 +7,7 @@ import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_acti
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { default as conversationFilesServer } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
+import { default as dataWarehousesServer } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/server";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_actions/servers/freshservice/server";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
@@ -37,8 +38,8 @@ import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/se
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
+  isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
-  isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
@@ -50,10 +51,10 @@ import { assertNever } from "@app/types";
 function isAdvancedSearchMode(agentLoopContext?: AgentLoopContextType) {
   return (
     (agentLoopContext?.runContext &&
-      isServerSideMCPToolConfiguration(
-        agentLoopContext.runContext.actionConfiguration
+      isLightServerSideMCPToolConfiguration(
+        agentLoopContext.runContext.toolConfiguration
       ) &&
-      agentLoopContext.runContext.actionConfiguration.additionalConfiguration[
+      agentLoopContext.runContext.toolConfiguration.additionalConfiguration[
         ADVANCED_SEARCH_SWITCH
       ] === true) ||
     (agentLoopContext?.listToolsContext &&
@@ -145,6 +146,8 @@ export async function getInternalMCPServer(
       return agentManagementServer(auth, agentLoopContext);
     case "freshservice":
       return freshserviceServer();
+    case "data_warehouses":
+      return dataWarehousesServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }
