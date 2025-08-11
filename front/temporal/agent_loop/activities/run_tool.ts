@@ -2,7 +2,6 @@ import assert from "assert";
 
 import { MCPActionType } from "@app/lib/actions/mcp";
 import { runToolWithStreaming } from "@app/lib/actions/mcp";
-import type { StepContext } from "@app/lib/actions/types";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
@@ -20,12 +19,10 @@ export async function runToolActivity(
     actionId,
     runAgentArgs,
     step,
-    stepContext,
   }: {
     actionId: ModelId;
     runAgentArgs: RunAgentArgs;
     step: number;
-    stepContext: StepContext;
   }
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
@@ -82,7 +79,7 @@ export async function runToolActivity(
     agentMessage,
     conversation,
     mcpAction,
-    stepContext,
+    stepContext: action.stepContext,
   });
 
   for await (const event of eventStream) {

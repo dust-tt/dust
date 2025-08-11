@@ -635,12 +635,13 @@ export async function createMCPAction(
   const action = await AgentMCPAction.create({
     agentMessageId: actionBaseParams.agentMessageId,
     augmentedInputs,
-    toolConfiguration,
     citationsAllocated: stepContext.citationsCount,
     executionState: "pending",
     isError: false,
     mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
     stepContentId,
+    stepContext,
+    toolConfiguration,
     version: 0,
     workspaceId: auth.getNonNullableWorkspace().id,
   });
