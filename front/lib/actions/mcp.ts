@@ -642,6 +642,7 @@ export async function createMCPAction(
     mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
     stepContentId,
     version: 0,
+    stepContext,
     workspaceId: auth.getNonNullableWorkspace().id,
   });
 

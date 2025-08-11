@@ -70,7 +70,6 @@ export async function executeAgentLoop(
           actionId: action.id,
           runAgentArgs,
           step: i,
-          stepContext: stepContexts[index],
         })
       )
     );
