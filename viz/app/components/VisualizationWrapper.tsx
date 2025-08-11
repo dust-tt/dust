@@ -14,6 +14,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useResizeDetector } from "react-resize-detector";
 import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
+import * as utilsAll from "@viz/lib/utils";
+import * as shadcnAll from "@viz/components/ui";
 
 // Regular expression to capture the value inside a className attribute. This pattern assumes
 // double quotes for simplicity.
@@ -262,16 +264,20 @@ export function VisualizationWrapper({
             code: "() => {import Comp from '@dust/generated-code'; return (<Comp />);}",
             scope: {
               import: {
-                recharts: rechartsAll,
                 react: reactAll,
+                recharts: rechartsAll,
+                shadcn: shadcnAll,
+                utils: utilsAll,
                 "@dust/generated-code": importCode(fetchedCode, {
                   import: {
-                    recharts: rechartsAll,
-                    react: reactAll,
                     papaparse: papaparseAll,
+                    react: reactAll,
+                    recharts: rechartsAll,
+                    shadcn: shadcnAll,
+                    utils: utilsAll,
                     "@dust/react-hooks": {
-                      useFile: (fileId: string) => useFile(fileId, fetchFile),
                       triggerUserFileDownload: memoizedDownloadFile,
+                      useFile: (fileId: string) => useFile(fileId, fetchFile),
                     },
                   },
                 }),
