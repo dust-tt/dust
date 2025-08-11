@@ -16,7 +16,8 @@ import {
   SheetTrigger,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { isEqual, uniqBy } from "lodash";
+import isEqual from "lodash/isEqual";
+import uniqBy from "lodash/uniqBy";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {

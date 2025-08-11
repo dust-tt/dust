@@ -15,7 +15,7 @@ import {
   InformationCircleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { partition } from "lodash";
+import partition from "lodash/partition";
 import { useMemo } from "react";
 
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";

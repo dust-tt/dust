@@ -9,7 +9,7 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import assert from "assert";
-import { uniqueId } from "lodash";
+import uniqueId from "lodash/uniqueId";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useState } from "react";
 

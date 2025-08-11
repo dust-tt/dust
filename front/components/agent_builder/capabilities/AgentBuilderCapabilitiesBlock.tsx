@@ -12,7 +12,8 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { isEmpty } from "lodash";
+import { Spinner } from "@dust-tt/sparkle";
+import isEmpty from "lodash/isEmpty";
 import React, { useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
