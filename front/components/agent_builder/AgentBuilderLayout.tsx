@@ -82,6 +82,7 @@ export function AgentBuilderLayout({
                 </ResizablePanel>
 
                 <ResizableHandle
+                  withHandle
                   disabled={!isPreviewPanelOpen}
                   onDragging={(isDragging) => setIsResizing(isDragging)}
                 />

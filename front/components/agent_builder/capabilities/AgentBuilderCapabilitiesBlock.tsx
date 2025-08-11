@@ -297,6 +297,7 @@ export function AgentBuilderCapabilitiesBlock({
         onClose={handleCloseSheet}
         onSave={handleEditSave}
         action={knowledgeAction?.action ?? null}
+        actions={fields}
         isEditing={Boolean(knowledgeAction && knowledgeAction.index !== null)}
         mcpServerViews={mcpServerViewsWithKnowledge}
         getAgentInstructions={getAgentInstructions}
