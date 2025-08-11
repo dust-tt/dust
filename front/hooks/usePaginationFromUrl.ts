@@ -1,7 +1,8 @@
-import { PaginationState } from "@tanstack/react-table";
+import type { PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 
-import { HistoryOptions, useHashParam } from "@app/hooks/useHashParams";
+import type { HistoryOptions } from "@app/hooks/useHashParams";
+import { useHashParam } from "@app/hooks/useHashParams";
 
 const defaultPageSize = 25;
 
