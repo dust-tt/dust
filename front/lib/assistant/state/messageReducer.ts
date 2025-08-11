@@ -9,7 +9,11 @@ import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
 import type { LightAgentMessageType } from "@app/types/assistant/conversation";
 
-export type AgentStateClassification = "thinking" | "acting" | "done";
+export type AgentStateClassification =
+  | "thinking"
+  | "acting"
+  | "writing"
+  | "done";
 
 export type ActionProgressState = Map<
   ModelId,
@@ -142,7 +146,7 @@ export function messageReducer(
         case "tokens":
           newState.message.content =
             (newState.message.content || "") + event.text;
-
+          newState.agentState = "writing";
           break;
         case "chain_of_thought":
           if (event.text === "\n\n") {
@@ -151,11 +155,11 @@ export function messageReducer(
             newState.message.chainOfThought =
               (newState.message.chainOfThought || "") + event.text;
           }
+          newState.agentState = "thinking";
           break;
         default:
           assertNever(event);
       }
-      newState.agentState = "thinking";
       return newState;
     }
     case "tool_params":

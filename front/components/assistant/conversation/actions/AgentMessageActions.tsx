@@ -89,8 +89,10 @@ export function AgentMessageActions({
                 />
               )}
               <span className="flex-grow"></span>
-              <div className="pl-2self-start">
-                <Spinner size="xs" />
+              <div className="w-8 self-start pl-4">
+                {lastAgentStateClassification === "thinking" && (
+                  <Spinner size="xs" />
+                )}
               </div>
             </div>
           </ContentMessage>
