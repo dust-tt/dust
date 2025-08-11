@@ -1,16 +1,15 @@
-import { Button } from "@dust-tt/sparkle";
+import {
+  Button,
+  CheckCircleIcon,
+  Icon,
+  LockIcon,
+  PlanetIcon,
+} from "@dust-tt/sparkle";
 import Head from "next/head";
-import type { ReactElement, ReactNode } from "react";
+import type { ReactElement } from "react";
 
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
-import {
-  Grid,
-  H1,
-  H2,
-  H3,
-  H4,
-  P,
-} from "@app/components/home/ContentComponents";
+import { Grid, H1, H2, H3, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import TrustedBy from "@app/components/home/TrustedBy";
@@ -25,57 +24,6 @@ const GRID_SECTION_CLASSES = classNames(
   "xl:col-span-12 xl:col-start-1",
   "2xl:col-start-1"
 );
-
-interface GettingStartedStep {
-  number: string;
-  title: string;
-  description: string;
-  image: {
-    src: string;
-    alt: string;
-  };
-  cta?: {
-    label: string;
-    href: string;
-  };
-}
-
-const GETTING_STARTED_STEPS: GettingStartedStep[] = [
-  {
-    number: "1.",
-    title: "Choose template",
-    description:
-      "Select from our library of interactive templates or start from scratch with our drag-and-drop builder.",
-    image: {
-      src: "/static/landing/interactive_content/Step1.png",
-      alt: "Template gallery interface",
-    },
-    cta: {
-      label: "Browse Templates",
-      href: "/templates",
-    },
-  },
-  {
-    number: "2.",
-    title: "Customize & build",
-    description:
-      "Add your content, branding, and interactive elements. Preview changes in real-time as you build.",
-    image: {
-      src: "/static/landing/interactive_content/Step2.png",
-      alt: "Content editor interface with drag-and-drop elements",
-    },
-  },
-  {
-    number: "3.",
-    title: "Publish & share",
-    description:
-      "Deploy your interactive content with one click. Share via link, embed on websites, or integrate with your tools.",
-    image: {
-      src: "/static/landing/interactive_content/Step3.png",
-      alt: "Publishing interface with sharing options",
-    },
-  },
-];
 
 const DEMO_VIDEO = {
   sectionTitle: "Interactive content in motion",
@@ -100,14 +48,15 @@ function HeroSection() {
             mono
             className="mb-4 text-4xl font-medium leading-tight md:text-5xl lg:text-6xl xl:text-7xl"
           >
-            Create with Dust interactive content
+            Create interactive content with{" "}
+            <span className="text-blue-500">Dust Shareables</span>
           </H1>
           <P
             size="lg"
             className="pb-6 text-muted-foreground md:max-w-lg md:pb-8"
           >
-            Turn static content into dynamic experiences that adapt to your
-            audience - right where you work.
+            Turn static outputs from your Dust AI agents into collaborative,
+            editable visuals, tailored to whoever you're sharing them with.
           </P>
           <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
             <Button
@@ -120,7 +69,7 @@ function HeroSection() {
             <Button
               variant="outline"
               size="md"
-              label="Contact sales"
+              label="Get a demo"
               href="/home/contact"
               className="w-full sm:w-auto"
             />
@@ -151,6 +100,11 @@ function InteractiveContentInAction() {
       <div className={CONTAINER_CLASSES}>
         <div className="mb-12">
           <H2>Interactive content in action</H2>
+          <P size="lg" className="mt-4 text-muted-foreground">
+            AI agents shouldn't hand you static charts you paste into a slide
+            and forget about. They should hand you something you can poke, edit,
+            and tailor on the spot.
+          </P>
         </div>
 
         <div className="space-y-16">
@@ -167,13 +121,14 @@ function InteractiveContentInAction() {
               </div>
             </div>
             <div className="order-2 flex flex-col justify-center lg:order-2">
-              <H3 className="mb-6">Sales team</H3>
+              <H3 className="mb-6">Sales</H3>
               <div className="space-y-6">
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-tr-full bg-red-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Interactive data visualizations for client presentations
+                      Pull in a CSV and watch it turn into a chart your customer
+                      can click through during sales calls
                     </P>
                   </div>
                 </div>
@@ -188,19 +143,11 @@ function InteractiveContentInAction() {
                 </div>
                 <hr className="border-gray-200" />
                 <div className="flex items-center gap-3">
-                  <div className="h-6 w-6 flex-shrink-0 rounded-tl-full bg-blue-500"></div>
-                  <div>
-                    <P size="sm" className="font-medium">
-                      ROI calculators (simple math-based React components)
-                    </P>
-                  </div>
-                </div>
-                <hr className="border-gray-200" />
-                <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-green-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Charts for quarterly business reviews
+                      Make quarterly business reviews with charts that feel like
+                      a conversation
                     </P>
                   </div>
                 </div>
@@ -210,13 +157,14 @@ function InteractiveContentInAction() {
 
           <div className="grid gap-8 lg:grid-cols-2 lg:gap-16">
             <div className="order-2 flex flex-col justify-center lg:order-1">
-              <H3 className="mb-6">Marketing team</H3>
+              <H3 className="mb-6">Marketing</H3>
               <div className="space-y-6">
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 bg-pink-400"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Campaign performance charts from data files
+                      Drop in campaign exports and generate a dashboard you can
+                      slice by channel and cohort
                     </P>
                   </div>
                 </div>
@@ -225,7 +173,8 @@ function InteractiveContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-red-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      A/B testing results visualization
+                      Upload A/B results and get an interactive readout with
+                      lift and significance you can explore
                     </P>
                   </div>
                 </div>
@@ -234,7 +183,8 @@ function InteractiveContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-tl-full bg-blue-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Interactive infographics (static data only)
+                      Turn results into an editable infographic you can tailor
+                      for exec reviews and posts
                     </P>
                   </div>
                 </div>
@@ -266,13 +216,14 @@ function InteractiveContentInAction() {
               </div>
             </div>
             <div className="order-2 flex flex-col justify-center lg:order-2">
-              <H3 className="mb-6">Customer success team</H3>
+              <H3 className="mb-6">Customer Success</H3>
               <div className="space-y-6">
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-pink-400"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Usage analytics visualizations from exported data
+                      Import usage exports and get a health dashboard your
+                      customer can filter in QBRs
                     </P>
                   </div>
                 </div>
@@ -281,7 +232,8 @@ function InteractiveContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 bg-red-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Health score dashboards (file-based data)
+                      Spin up an onboarding tracker both teams update so dates
+                      and owners stay clear
                     </P>
                   </div>
                 </div>
@@ -290,7 +242,8 @@ function InteractiveContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-tr-full bg-yellow-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Interactive onboarding progress tracking
+                      Create a renewal summary that pulls wins and gaps into one
+                      live page
                     </P>
                   </div>
                 </div>
@@ -300,13 +253,13 @@ function InteractiveContentInAction() {
 
           <div className="grid gap-8 lg:grid-cols-2 lg:gap-16">
             <div className="order-2 flex flex-col justify-center lg:order-1">
-              <H3 className="mb-6">Product & data teams</H3>
+              <H3 className="mb-6">Product & Data</H3>
               <div className="space-y-6">
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-6 flex-shrink-0 bg-purple-400"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Feature adoption charts from analytics exports
+                      Upload analytics and explore feature adoption
                     </P>
                   </div>
                 </div>
@@ -315,7 +268,8 @@ function InteractiveContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-orange-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      User feedback sentiment analysis visualizations
+                      Combine NPS, tickets, and notes into a trends view with
+                      example quotes you can drill into
                     </P>
                   </div>
                 </div>
@@ -324,7 +278,8 @@ function InteractiveContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-tl-full bg-teal-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Interactive data exploration of uploaded datasets
+                      Build a retention dashboard with cohort curves you can
+                      compare side by side
                     </P>
                   </div>
                 </div>
@@ -355,6 +310,52 @@ function VideoSection() {
         <DemoVideoSection demoVideo={DEMO_VIDEO} />
       </div>
     </Grid>
+  );
+}
+
+function AllTheBellsAndWhistlesSection() {
+  return (
+    <div className={SECTION_CLASSES}>
+      <div className={CONTAINER_CLASSES}>
+        <div className="mb-12">
+          <H2>All the bells and whistles</H2>
+        </div>
+
+        <div className="flex w-full flex-col justify-between gap-6 md:flex-row">
+          <div className="flex flex-1 flex-col rounded-2xl bg-gray-50 p-6">
+            <Icon visual={LockIcon} className="mb-4 h-8 w-8 text-gray-600" />
+            <h4 className="text-lg font-semibold">
+              Secure and collaborative by default
+            </h4>
+            <P size="sm" className="mt-1 text-muted-foreground">
+              With share and control access, you can use Dust Shareables with
+              your team, customers, or your boss and still sleep at night
+              knowing you control who can touch what.
+            </P>
+          </div>
+          <div className="flex flex-1 flex-col rounded-2xl bg-gray-50 p-6">
+            <Icon visual={PlanetIcon} className="mb-4 h-8 w-8 text-gray-600" />
+            <h4 className="text-lg font-semibold">Works anywhere</h4>
+            <P size="sm" className="mt-1 text-muted-foreground">
+              Works with whatever your AI agents produce: CSVs, JSON, plain
+              text, or screenshots that need a glow-up.
+            </P>
+          </div>
+          <div className="flex flex-1 flex-col rounded-2xl bg-gray-50 p-6">
+            <Icon
+              visual={CheckCircleIcon}
+              className="mb-4 h-8 w-8 text-gray-600"
+            />
+            <h4 className="text-lg font-semibold">Wears your jersey</h4>
+            <P size="sm" className="mt-1 text-muted-foreground">
+              Your charts, dashboards, and pages don't look like they came from
+              "some tool." They wear your logo, colors, and style, so every
+              share feels like it's from you.
+            </P>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -429,15 +430,18 @@ export default function InteractiveContent() {
   return (
     <>
       <Head>
-        <title>Dust - Interactive Content</title>
+        <title>Dust - Interactive Content with Dust Shareables</title>
         <meta
           name="description"
-          content="Create interactive content that converts. Transform static presentations, demos, and documents into engaging interactive experiences."
+          content="Create interactive content with Dust Shareables. Turn static outputs from your Dust AI agents into collaborative, editable visuals, tailored to whoever you're sharing them with."
         />
-        <meta property="og:title" content="Dust - Interactive Content" />
+        <meta
+          property="og:title"
+          content="Dust - Interactive Content with Dust Shareables"
+        />
         <meta
           property="og:description"
-          content="Create interactive content that converts. Transform static presentations, demos, and documents into engaging interactive experiences."
+          content="Create interactive content with Dust Shareables. Turn static outputs from your Dust AI agents into collaborative, editable visuals, tailored to whoever you're sharing them with."
         />
         <meta property="og:type" content="website" />
         <meta
@@ -453,6 +457,7 @@ export default function InteractiveContent() {
       <div className="container flex w-full flex-col gap-16 px-2 py-2">
         <HeroSection />
         <InteractiveContentInAction />
+        <AllTheBellsAndWhistlesSection />
         <SharingAndAccessSection />
         <VideoSection />
         <TrustedBy logoSet="landing" />
