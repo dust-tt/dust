@@ -1,6 +1,5 @@
 import {
   Button,
-  Cog6ToothIcon,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -14,6 +13,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  UserGroupIcon,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 import { useController } from "react-hook-form";
@@ -35,11 +35,12 @@ export function AgentAccessPublicationDialog() {
         <Button
           variant="outline"
           size="sm"
-          icon={Cog6ToothIcon}
+          icon={UserGroupIcon}
+          label="Access"
           tooltip="Access & Publication Settings"
         />
       </DialogTrigger>
-      <DialogContent size="xl">
+      <DialogContent size="xl" height="lg">
         <DialogContainer>
           <DialogHeader>
             <DialogTitle>Access & Publication Settings</DialogTitle>
@@ -61,7 +62,7 @@ export function AgentAccessPublicationDialog() {
         </DialogContainer>
 
         <DialogFooter>
-          <div className="flex w-full flex-col gap-4">
+          <div className="flex w-full flex-col gap-2 p-2">
             <Separator />
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-col justify-start">
@@ -74,21 +75,13 @@ export function AgentAccessPublicationDialog() {
                 </span>
               </div>
               <SliderToggle
-                size="sm"
+                size="xs"
                 selected={field.value === "visible"}
                 onClick={() =>
                   field.onChange(
                     field.value === "visible" ? "hidden" : "visible"
                   )
                 }
-              />
-            </div>
-            <Separator />
-            <div className="flex justify-end">
-              <Button
-                variant="outline"
-                label="Close"
-                onClick={() => setIsOpen(false)}
               />
             </div>
           </div>
