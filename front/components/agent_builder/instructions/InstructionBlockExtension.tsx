@@ -20,7 +20,6 @@ import {
   parseInstructionBlockMatches,
   splitTextAroundBlocks,
 } from "@app/lib/client/agent_builder/instructionBlockUtils";
-import { Button, Icon, IconButton, XMarkIcon } from "@dust-tt/sparkle";
 
 export interface InstructionBlockAttributes {
   type: string;
@@ -219,8 +218,6 @@ export const InstructionBlockExtension =
           if (blockDepth === null) {
             return false;
           }
-
-          const blockNode = $from.node(blockDepth);
 
           // Only trigger when at the start of the first child of the block
           const isAtStartOfTextBlock =
