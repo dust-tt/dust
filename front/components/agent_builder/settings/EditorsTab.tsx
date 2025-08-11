@@ -1,7 +1,6 @@
 import {
   Avatar,
   Button,
-  Chip,
   DataTable,
   SearchInput,
   Spinner,
@@ -12,7 +11,7 @@ import type {
   ColumnDef,
   PaginationState,
 } from "@tanstack/react-table";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -39,7 +38,6 @@ export function EditorsTab() {
     pageSize: DEFAULT_PAGE_SIZE,
   });
   const [searchTerm, setSearchTerm] = useState("");
-  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const {
     field: { onChange },
@@ -56,7 +54,7 @@ export function EditorsTab() {
       workspaceId: owner.sId,
       searchTerm,
       pageIndex: 0,
-      pageSize: 25,
+      pageSize: 100,
     });
 
   const onRemoveEditor = useCallback(
@@ -73,48 +71,40 @@ export function EditorsTab() {
     [onChange, editors]
   );
 
-  const editorsTableData = useMemo(() => {
-    return (editors || []).map(
-      (editor): RowData => ({
+  const tableData = useMemo(() => {
+    const editorsSet = new Set((editors || []).map((e) => e.sId));
+    const allMembers = workspaceMembers || [];
+
+    const memberMap = new Map<string, RowData>();
+
+    (editors || []).forEach((editor) => {
+      memberMap.set(editor.sId, {
         sId: editor.sId,
         fullName: editor.fullName,
         email: editor.email,
         image: editor.image || "",
         isEditor: true,
         onToggleEditor: () => onRemoveEditor(editor),
-      })
-    );
-  }, [editors, onRemoveEditor]);
+      });
+    });
 
-  // Search results table data (only shown when searching)
-  const searchTableData = useMemo(() => {
-    if (searchTerm.length === 0) {
-      return [];
-    }
-    return workspaceMembers.map(
-      (member): RowData => ({
-        sId: member.sId,
-        fullName: member.fullName,
-        email: member.email,
-        image: member.image || "",
-        isEditor: (editors || []).some((e) => e.sId === member.sId),
-        onToggleEditor: () => onAddEditor(member),
-      })
-    );
-  }, [workspaceMembers, editors, searchTerm.length, onAddEditor]);
+    allMembers.forEach((member) => {
+      if (!memberMap.has(member.sId)) {
+        memberMap.set(member.sId, {
+          sId: member.sId,
+          fullName: member.fullName,
+          email: member.email,
+          image: member.image || "",
+          isEditor: editorsSet.has(member.sId),
+          onToggleEditor: editorsSet.has(member.sId)
+            ? () => onRemoveEditor(member)
+            : () => onAddEditor(member),
+        });
+      }
+    });
 
-  const showSearchResults = searchTerm.length > 0;
-
-  // Show spinner during transition between search and editors
-  useEffect(() => {
-    setIsTransitioning(true);
-    const timer = setTimeout(() => setIsTransitioning(false), 250);
-    return () => clearTimeout(timer);
-  }, [showSearchResults]);
-
-  // Show spinner if we're transitioning OR if search is loading (when searching)
-  const shouldShowSpinner =
-    isTransitioning || (showSearchResults && isWorkspaceMembersLoading);
+    return Array.from(memberMap.values());
+  }, [workspaceMembers, editors, onRemoveEditor, onAddEditor]);
 
   const columns: ColumnDef<RowData>[] = useMemo(
     () => [
@@ -131,6 +121,9 @@ export function EditorsTab() {
           </DataTable.CellContent>
         ),
         enableSorting: false,
+        meta: {
+          sizeRatio: 20,
+        },
       },
       {
         id: "email",
@@ -141,43 +134,39 @@ export function EditorsTab() {
             {info.row.original.email}
           </DataTable.CellContent>
         ),
+        meta: {
+          sizeRatio: 70,
+        },
       },
       {
         id: "action",
         header: "",
         cell: (info: CellContext<RowData, any>) => (
-          <DataTable.CellContent>
-            {showSearchResults ? (
-              // In search results: show "Added" chip or "Add" button
-              info.row.original.isEditor ? (
-                <Chip label="Added" color="green" />
-              ) : (
-                <Button
-                  size="xs"
-                  variant="outline"
-                  label="Add"
-                  onClick={info.row.original.onToggleEditor}
-                />
-              )
-            ) : (
+          <DataTable.CellContent className="flex justify-end pr-1">
+            {info.row.original.isEditor ? (
               <Button
                 size="xs"
                 variant="ghost"
                 icon={XMarkIcon}
                 onClick={info.row.original.onToggleEditor}
               />
+            ) : (
+              <Button
+                size="xs"
+                variant="outline"
+                label="Add"
+                onClick={info.row.original.onToggleEditor}
+              />
             )}
           </DataTable.CellContent>
         ),
         meta: {
-          className: "w-32",
+          sizeRatio: 10,
         },
       },
     ],
-    [showSearchResults]
+    []
   );
-
-  const currentData = showSearchResults ? searchTableData : editorsTableData;
 
   return (
     <div className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
@@ -189,25 +178,18 @@ export function EditorsTab() {
         isLoading={isWorkspaceMembersLoading}
       />
 
-      <div className="space-y-2">
-        <div className="text-sm font-medium">
-          {showSearchResults ? "Search Results" : "Current Editors"}
+      {isWorkspaceMembersLoading ? (
+        <div className="flex justify-center py-8">
+          <Spinner size="sm" />
         </div>
-
-        {shouldShowSpinner ? (
-          <div className="flex justify-center py-8">
-            <Spinner size="sm" />
-          </div>
-        ) : (
-          <DataTable
-            key={showSearchResults ? "search" : "editors"}
-            data={currentData}
-            columns={columns}
-            pagination={pagination}
-            setPagination={setPagination}
-          />
-        )}
-      </div>
+      ) : (
+        <DataTable
+          data={tableData}
+          columns={columns}
+          pagination={pagination}
+          setPagination={setPagination}
+        />
+      )}
     </div>
   );
 }
