@@ -245,80 +245,91 @@ export function withGetServerSidePropsLogging<
   >
 ): CustomGetServerSideProps<T, any, any, RequireUserPrivilege> {
   return async (context, auth, session) => {
-    const now = new Date();
+    return tracer.trace("getServerSideProps", async (span) => {
+      const now = new Date();
 
-    let route = context.resolvedUrl.split("?")[0];
-    for (const key in context.params) {
-      const value = context.params[key];
-      if (typeof value === "string" && value.length > 0) {
-        route = route.replaceAll(value, `[${key}]`);
+      let route = context.resolvedUrl.split("?")[0];
+      for (const key in context.params) {
+        const value = context.params[key];
+        if (typeof value === "string" && value.length > 0) {
+          route = route.replaceAll(value, `[${key}]`);
+        }
       }
-    }
+      span.setTag("route", route);
 
-    try {
-      const res = await getServerSideProps(context, auth, session);
+      try {
+        const res = await getServerSideProps(context, auth, session);
 
-      const elapsed = new Date().getTime() - now.getTime();
+        const elapsed = new Date().getTime() - now.getTime();
 
-      let returnType = "props";
-      if ("notFound" in res) {
-        returnType = "not_found";
-      }
-      if ("redirect" in res) {
-        returnType = "redirect";
-      }
+        let returnType = "props";
+        if ("notFound" in res) {
+          returnType = "not_found";
+        }
+        if ("redirect" in res) {
+          returnType = "redirect";
+        }
 
-      const tags = [`returnType:${returnType}`, `route:${route}`];
+        const tags = [`returnType:${returnType}`, `route:${route}`];
 
-      statsDClient.increment("get_server_side_props.count", 1, tags);
-      statsDClient.distribution(
-        "get_server_side_props.duration.distribution",
-        elapsed,
-        tags
-      );
-      statsDClient.distribution(
-        "get_server_side_props.response_size.distribution",
-        Buffer.byteLength(JSON.stringify(res)),
-        tags
-      );
+        // Tag the span with route and return type
+        span.setTag("returnType", returnType);
 
-      logger.info(
-        {
-          returnType,
-          url: context.resolvedUrl,
-          route,
-          durationMs: elapsed,
-        },
-        "Processed getServerSideProps"
-      );
+        statsDClient.increment("get_server_side_props.count", 1, tags);
+        statsDClient.distribution(
+          "get_server_side_props.duration.distribution",
+          elapsed,
+          tags
+        );
+        statsDClient.distribution(
+          "get_server_side_props.response_size.distribution",
+          Buffer.byteLength(JSON.stringify(res)),
+          tags
+        );
 
-      return res;
-    } catch (err) {
-      const elapsed = new Date().getTime() - now.getTime();
-      const error = normalizeError(err);
-
-      logger.error(
-        {
-          returnType: "error",
-          durationMs: elapsed,
-          url: context.resolvedUrl,
-          route,
-          error: {
-            message: error.message,
-            stack: error.stack,
+        logger.info(
+          {
+            returnType,
+            url: context.resolvedUrl,
+            route,
+            durationMs: elapsed,
           },
-          error_stack: error.stack,
-        },
-        "Unhandled getServerSideProps Error"
-      );
+          "Processed getServerSideProps"
+        );
 
-      statsDClient.increment(
-        "get_server_side_props_unhandled_errors.count",
-        1,
-        [`route:${route}`]
-      );
+        return res;
+      } catch (err) {
+        const elapsed = new Date().getTime() - now.getTime();
+        const error = normalizeError(err);
 
-      throw err;
-    }
+        // Tag the span with route and error information
+        span.setTag("returnType", "error");
+        span.setTag("error.message", error.message);
+        span.setTag("error.stack", error.stack);
+
+        logger.error(
+          {
+            returnType: "error",
+            durationMs: elapsed,
+            url: context.resolvedUrl,
+            route,
+            error: {
+              message: error.message,
+              stack: error.stack,
+            },
+            error_stack: error.stack,
+          },
+          "Unhandled getServerSideProps Error"
+        );
+
+        statsDClient.increment(
+          "get_server_side_props_unhandled_errors.count",
+          1,
+          [`route:${route}`]
+        );
+
+        throw err;
+      }
+    });
   };
 }
