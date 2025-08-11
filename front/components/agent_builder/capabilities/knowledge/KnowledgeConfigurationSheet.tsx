@@ -1,9 +1,11 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
+  ContextItem,
   MultiPageSheet,
   MultiPageSheetContent,
   MultiPageSheetTrigger,
   ScrollArea,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { BookOpenIcon } from "@dust-tt/sparkle";
@@ -25,7 +27,6 @@ import {
 import { CAPABILITY_CONFIGS } from "@app/components/agent_builder/capabilities/knowledge/utils";
 import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { isValidPage } from "@app/components/agent_builder/capabilities/mcp/utils/sheetUtils";
-import { MCPServerViewsKnowledgeDropdown } from "@app/components/agent_builder/capabilities/MCPServerViewsKnowledgeDropdown";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
@@ -42,6 +43,11 @@ import {
 } from "@app/components/agent_builder/types";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
+import {
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { DataSourceViewSelectionConfigurations } from "@app/types";
@@ -188,6 +194,7 @@ function KnowledgeConfigurationSheetContent({
   });
 
   const hasSourceSelection = sources.in.length > 0;
+  const hasMCPServerSelection = mcpServerView !== null;
 
   const config = useMemo(() => {
     if (mcpServerView !== null) {
@@ -208,14 +215,14 @@ function KnowledgeConfigurationSheetContent({
 
   const initialPageId = isEditing
     ? CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION
-    : CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
+    : CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION;
 
   const [currentPageId, setCurrentPageId] =
     useState<ConfigurationSheetPageId>(initialPageId);
 
   useEffect(() => {
     if (!open) {
-      setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
+      setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION);
 
       return;
     }
@@ -235,9 +242,46 @@ function KnowledgeConfigurationSheetContent({
     setValue("mcpServerView", mcpServerView);
     setValue("name", mcpServerView.name ?? mcpServerView.server.name ?? "");
     setValue("configuration.mcpServerViewId", mcpServerView.sId);
+    setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
   };
 
   const pages: MultiPageSheetPage[] = [
+    {
+      id: CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION,
+      title: "Choose your processing method",
+      description: "Select how you want to process and access your data",
+      icon: BookOpenIcon,
+      content: (
+        <div className="space-y-4">
+          {isMCPServerViewsLoading && (
+            <div className="flex h-40 w-full items-center justify-center">
+              <Spinner />
+            </div>
+          )}
+          {!isMCPServerViewsLoading && (
+            <>
+              <span className="text-sm font-semibold">
+                Available processing methods:
+              </span>
+              <ContextItem.List>
+                {mcpServerViewsWithKnowledge.map((view) => (
+                  <ContextItem
+                    key={view.id}
+                    title={getMcpServerViewDisplayName(view)}
+                    visual={getAvatar(view.server, "sm")}
+                    onClick={() => handleMCPServerSelection(view)}
+                  >
+                    <ContextItem.Description
+                      description={getMcpServerViewDescription(view)}
+                    />
+                  </ContextItem>
+                ))}
+              </ContextItem.List>
+            </>
+          )}
+        </div>
+      ),
+    },
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
       title: "Select Data Sources",
@@ -266,35 +310,15 @@ function KnowledgeConfigurationSheetContent({
       icon: config?.icon,
       content: (
         <div className="space-y-6">
-          {/* MCP Server View Selection Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">
-              Choose your processing method
-            </h3>
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Smart data access through search, extraction, and queries.
-            </span>
-            <div className="flex flex-col items-start">
-              <MCPServerViewsKnowledgeDropdown
-                mcpServerViewsWithKnowledge={mcpServerViewsWithKnowledge}
-                onItemClick={handleMCPServerSelection}
-                isMCPServerViewsLoading={isMCPServerViewsLoading}
-                selectedMcpServerView={mcpServerView}
-              />
-            </div>
-          </div>
-          <hr className="border-gray-200" />
-          <div className="space-y-6">
-            {requirements.mayRequireTimeFrameConfiguration && (
-              <TimeFrameSection actionType="extract" />
-            )}
+          {requirements.mayRequireTimeFrameConfiguration && (
+            <TimeFrameSection actionType="extract" />
+          )}
 
-            {requirements.mayRequireJsonSchemaConfiguration && (
-              <JsonSchemaSection getAgentInstructions={getAgentInstructions} />
-            )}
+          {requirements.mayRequireJsonSchemaConfiguration && (
+            <JsonSchemaSection getAgentInstructions={getAgentInstructions} />
+          )}
 
-            {config && <DescriptionSection {...config?.descriptionConfig} />}
-          </div>
+          {config && <DescriptionSection {...config?.descriptionConfig} />}
         </div>
       ),
     },
@@ -315,8 +339,14 @@ function KnowledgeConfigurationSheetContent({
         onSave(formData, dataSourceConfigurations);
       })}
       size="xl"
-      showNavigation
-      disableNext={!hasSourceSelection}
+      showHeaderNavigation={false}
+      disableNext={
+        currentPageId === CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION
+          ? !hasMCPServerSelection
+          : currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION
+            ? !hasSourceSelection
+            : false
+      }
     />
   );
 }
