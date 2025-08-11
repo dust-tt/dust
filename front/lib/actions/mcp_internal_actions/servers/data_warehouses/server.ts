@@ -2,11 +2,19 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import {
+  getAvailableWarehouses,
+  getWarehouseNodes,
+  makeBrowseResource,
+} from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/helpers";
+import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { Err, Ok } from "@app/types";
 
 const TABLES_FILESYSTEM_TOOL_NAME = "tables_filesystem_navigation";
 
@@ -67,9 +75,60 @@ const createServer = (
     withToolLogging(
       auth,
       { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
-      async (args) => {
-        void args;
-        throw new Error("Not implemented");
+      async ({ nodeId, limit, nextPageCursor, dataSources }) => {
+        const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
+
+        const dataSourceConfigurationsResult =
+          await getAgentDataSourceConfigurations(
+            auth,
+            dataSources.map((ds) => ({
+              ...ds,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+            }))
+          );
+
+        if (dataSourceConfigurationsResult.isErr()) {
+          return new Err(
+            new MCPError(dataSourceConfigurationsResult.error.message)
+          );
+        }
+
+        const agentDataSourceConfigurations =
+          dataSourceConfigurationsResult.value;
+
+        const result =
+          nodeId === null
+            ? await getAvailableWarehouses(
+                auth,
+                agentDataSourceConfigurations,
+                {
+                  limit: effectiveLimit,
+                  nextPageCursor,
+                }
+              )
+            : await getWarehouseNodes(auth, agentDataSourceConfigurations, {
+                nodeId,
+                limit: effectiveLimit,
+                nextPageCursor,
+              });
+
+        if (result.isErr()) {
+          return new Err(new MCPError(result.error.message));
+        }
+
+        const { nodes, nextPageCursor: newCursor } = result.value;
+
+        return new Ok([
+          {
+            type: "resource" as const,
+            resource: makeBrowseResource({
+              nodeId,
+              nodes,
+              nextPageCursor: newCursor,
+              resultCount: dataSources.length,
+            }),
+          },
+        ]);
       }
     )
   );

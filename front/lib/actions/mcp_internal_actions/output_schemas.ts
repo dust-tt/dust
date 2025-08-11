@@ -654,6 +654,21 @@ export const isDataSourceNodeListType = (
   );
 };
 
+const RenderedWarehouseNodeSchema = z.object({
+  nodeId: z.string(),
+  title: z.string(),
+  path: z.string(),
+  parentTitle: z.string().nullable(),
+  mimeType: z.string(),
+  hasChildren: z.boolean(),
+  connectorProvider: z.enum(CONNECTOR_PROVIDERS).nullable(),
+  sourceUrl: z.undefined(),
+  lastUpdatedAt: z.undefined(),
+});
+export type RenderedWarehouseNodeType = z.infer<
+  typeof RenderedWarehouseNodeSchema
+>;
+
 export const DataSourceNodeContentSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_CONTENT),
   uri: z.string(),

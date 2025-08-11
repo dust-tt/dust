@@ -60,7 +60,7 @@ export interface MCPActionDetailsProps {
   lastNotification: ProgressNotificationContentType | null;
   defaultOpen: boolean;
   messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
-  viewType?: "conversation" | "sidebar";
+  viewType: "conversation" | "sidebar";
 }
 
 export function MCPActionDetails(props: MCPActionDetailsProps) {
