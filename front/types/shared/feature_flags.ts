@@ -154,6 +154,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Activate @research agent.",
     stage: "dust_only",
   },
+  data_warehouses_tool: {
+    description:
+      "Data warehouses file system navigation with hierarchical warehouse structure",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
