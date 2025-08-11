@@ -19,7 +19,7 @@ import {
 import { getBotEnabled } from "@connectors/connectors/slack/bot";
 import {
   getChannels,
-  joinChannel,
+  joinChannelWithRetries,
 } from "@connectors/connectors/slack/lib/channels";
 import { slackConfig } from "@connectors/connectors/slack/lib/config";
 import { retrievePermissions } from "@connectors/connectors/slack/lib/retrieve_permissions";
@@ -370,7 +370,10 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         const slackChannelId = slackChannelIdFromInternalId(internalId);
         let channel = channels[slackChannelId];
         if (!channel) {
-          const joinRes = await joinChannel(this.connectorId, slackChannelId);
+          const joinRes = await joinChannelWithRetries(
+            this.connectorId,
+            slackChannelId
+          );
           if (joinRes.isErr()) {
             return new Err(joinRes.error);
           }
@@ -411,7 +414,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
             ) {
               // handle read permission enabled
               slackChannelsToSync.push(channel.slackChannelId);
-              const joinChannelRes = await joinChannel(
+              const joinChannelRes = await joinChannelWithRetries(
                 this.connectorId,
                 channel.slackChannelId
               );
