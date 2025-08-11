@@ -172,8 +172,9 @@ export function ToolsPicker({
               <DropdownMenuCheckboxItem
                 id="tools-picker-no-selected"
                 icon={() => <Icon visual={BoltIcon} size="xs" />}
+                className="italic"
                 label="No tools selected"
-                description="Enable tools to use in this conversation"
+                description="Select tools to use in this conversation"
                 disabled
               />
             )}

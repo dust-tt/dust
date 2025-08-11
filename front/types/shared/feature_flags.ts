@@ -146,10 +146,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",
   },
-  jit_tools: {
-    description: "Allow users to add tools to conversations",
-    stage: "dust_only",
-  },
+
   research_agent: {
     description: "Activate @research agent.",
     stage: "dust_only",
