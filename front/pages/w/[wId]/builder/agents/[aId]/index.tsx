@@ -19,59 +19,57 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   user: UserType;
 }>(async (context, auth) => {
-  return tracer.trace("getServerSideProps", async () => {
-    const owner = auth.workspace();
-    const plan = auth.plan();
-    const subscription = auth.subscription();
-    if (
-      !owner ||
-      !plan ||
-      !subscription ||
-      !auth.isUser() ||
-      !context.params?.aId
-    ) {
-      return {
-        notFound: true,
-      };
-    }
-
-    const featureFlags = await getFeatureFlags(owner);
-    if (!featureFlags.includes("agent_builder_v2") || !auth.isBuilder()) {
-      return {
-        notFound: true,
-      };
-    }
-
-    const [configuration] = await Promise.all([
-      getAgentConfiguration(auth, {
-        agentId: context.params?.aId as string,
-        variant: "light",
-      }),
-      MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
-    ]);
-
-    if (!configuration) {
-      return {
-        notFound: true,
-      };
-    }
-
-    if (!configuration.canEdit && !auth.isAdmin()) {
-      return {
-        notFound: true,
-      };
-    }
-
-    const user = auth.getNonNullableUser().toJSON();
-
+  const owner = auth.workspace();
+  const plan = auth.plan();
+  const subscription = auth.subscription();
+  if (
+    !owner ||
+    !plan ||
+    !subscription ||
+    !auth.isUser() ||
+    !context.params?.aId
+  ) {
     return {
-      props: {
-        agentConfiguration: configuration,
-        owner,
-        user,
-      },
+      notFound: true,
     };
-  });
+  }
+
+  const featureFlags = await getFeatureFlags(owner);
+  if (!featureFlags.includes("agent_builder_v2") || !auth.isBuilder()) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const [configuration] = await Promise.all([
+    getAgentConfiguration(auth, {
+      agentId: context.params?.aId as string,
+      variant: "light",
+    }),
+    MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
+  ]);
+
+  if (!configuration) {
+    return {
+      notFound: true,
+    };
+  }
+
+  if (!configuration.canEdit && !auth.isAdmin()) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const user = auth.getNonNullableUser().toJSON();
+
+  return {
+    props: {
+      agentConfiguration: configuration,
+      owner,
+      user,
+    },
+  };
 });
 
 export default function EditAgent({

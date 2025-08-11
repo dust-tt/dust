@@ -28,72 +28,70 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   plan: PlanType;
   subscription: SubscriptionType;
 }>(async (context, auth) => {
-  return tracer.trace("getServerSideProps", async () => {
-    const owner = auth.workspace();
-    const plan = auth.plan();
-    const subscription = auth.subscription();
-    if (
-      !owner ||
-      !plan ||
-      !subscription ||
-      !auth.isUser() ||
-      !context.params?.aId
-    ) {
-      return {
-        notFound: true,
-      };
-    }
-
-    const [configuration] = await Promise.all([
-      getAgentConfiguration(auth, {
-        agentId: context.params?.aId as string,
-        variant: "light",
-      }),
-      MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
-    ]);
-
-    if (!configuration) {
-      return {
-        notFound: true,
-      };
-    }
-
-    if (!configuration.canEdit && !auth.isAdmin()) {
-      return {
-        notFound: true,
-      };
-    }
-
-    const flow: BuilderFlow = BUILDER_FLOWS.includes(
-      context.query.flow as BuilderFlow
-    )
-      ? (context.query.flow as BuilderFlow)
-      : "personal_assistants";
-
-    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
-      auth,
-      configuration
-    );
-    if (editorGroupRes.isErr()) {
-      throw new Error("Failed to find editor group for agent");
-    }
-
-    const agentEditors = (
-      await editorGroupRes.value.getActiveMembers(auth)
-    ).map((m) => m.toJSON());
-
+  const owner = auth.workspace();
+  const plan = auth.plan();
+  const subscription = auth.subscription();
+  if (
+    !owner ||
+    !plan ||
+    !subscription ||
+    !auth.isUser() ||
+    !context.params?.aId
+  ) {
     return {
-      props: {
-        agentConfiguration: configuration,
-        agentEditors,
-        baseUrl: config.getClientFacingUrl(),
-        flow,
-        owner,
-        plan,
-        subscription,
-      },
+      notFound: true,
     };
-  });
+  }
+
+  const [configuration] = await Promise.all([
+    getAgentConfiguration(auth, {
+      agentId: context.params?.aId as string,
+      variant: "light",
+    }),
+    MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
+  ]);
+
+  if (!configuration) {
+    return {
+      notFound: true,
+    };
+  }
+
+  if (!configuration.canEdit && !auth.isAdmin()) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const flow: BuilderFlow = BUILDER_FLOWS.includes(
+    context.query.flow as BuilderFlow
+  )
+    ? (context.query.flow as BuilderFlow)
+    : "personal_assistants";
+
+  const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+    auth,
+    configuration
+  );
+  if (editorGroupRes.isErr()) {
+    throw new Error("Failed to find editor group for agent");
+  }
+
+  const agentEditors = (await editorGroupRes.value.getActiveMembers(auth)).map(
+    (m) => m.toJSON()
+  );
+
+  return {
+    props: {
+      agentConfiguration: configuration,
+      agentEditors,
+      baseUrl: config.getClientFacingUrl(),
+      flow,
+      owner,
+      plan,
+      subscription,
+    },
+  };
 });
 
 export default function EditAssistant({
