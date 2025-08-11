@@ -1,4 +1,4 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { ScrollArea, Spinner } from "@dust-tt/sparkle";
 import React from "react";
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
@@ -60,7 +60,7 @@ export function AgentActionsPanel({
         title="Breakdown of the tools used"
         onClose={closePanel}
       />
-      <div className="flex-1 overflow-y-auto p-4">
+      <ScrollArea className="flex-1 p-4">
         {isMessageLoading ? (
           <div className="flex justify-center">
             <Spinner variant="color" />
@@ -99,7 +99,7 @@ export function AgentActionsPanel({
             )}
           </div>
         )}
-      </div>
+      </ScrollArea>
     </div>
   );
 }

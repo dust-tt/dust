@@ -1,4 +1,9 @@
-import { cn, ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
+import {
+  cn,
+  ResizablePanel,
+  ResizablePanelGroup,
+  ScrollArea,
+} from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
@@ -215,16 +220,16 @@ function ConversationInnerLayout({
             ) : (
               <FileDropProvider>
                 <GenerationContextProvider>
-                  <div
+                  <ScrollArea
                     id={CONVERSATION_VIEW_SCROLL_LAYOUT}
                     className={cn(
-                      "h-full overflow-y-auto scroll-smooth px-4",
+                      "h-full px-4",
                       // Hide conversation on mobile when any panel is opened.
                       currentPanel && "hidden md:block"
                     )}
                   >
                     {children}
-                  </div>
+                  </ScrollArea>
                 </GenerationContextProvider>
               </FileDropProvider>
             )}
