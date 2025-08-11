@@ -6,6 +6,7 @@ const showReactScan =
 const CONTENT_SECURITY_POLICIES = [
   "default-src 'none';",
   `script-src 'self' 'unsafe-inline' 'unsafe-eval' dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.usercentrics.eu *.cr-relay.com *.licdn.com *.datadoghq-browser-agent.com *.doubleclick.net *.hsadspixel.net *.wistia.net ${showReactScan ? "unpkg.com" : ""};`,
+  `script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.usercentrics.eu *.cr-relay.com *.licdn.com *.datadoghq-browser-agent.com *.doubleclick.net *.hsadspixel.net *.wistia.net ${showReactScan ? "unpkg.com" : ""};`,
   `style-src 'self' 'unsafe-inline' *.fontawesome.com *.googleapis.com;`,
   `style-src-elem 'self' *.fontawesome.com *.googleapis.com *.gstatic.com;`,
   `img-src 'self' data: blob: webkit-fake-url: https:;`,
