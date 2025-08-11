@@ -4,6 +4,7 @@ const noRawSqlRule = require("./rules/no-raw-sql");
 const noUnverifiedWorkspaceBypass = require("./rules/no-unverified-workspace-bypass");
 const tooLongIndexName = require("./rules/too-long-index-name");
 const noDirectSparkleNotification = require("./rules/no-direct-sparkle-notification");
+const noBulkLodash = require("./rules/no-bulk-lodash.js");
 
 module.exports = {
   meta: {
@@ -15,5 +16,6 @@ module.exports = {
     "no-unverified-workspace-bypass": noUnverifiedWorkspaceBypass,
     "too-long-index-name": tooLongIndexName,
     "no-direct-sparkle-notification": noDirectSparkleNotification,
+    "no-bulk-lodash": noBulkLodash,
   },
 };
