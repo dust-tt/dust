@@ -82,9 +82,11 @@ export function KnowledgeConfigurationSheet({
     const { description, configuration, mcpServerView } = formData;
     const requirements = getMCPServerRequirements(mcpServerView);
 
-    const datasource = (requirements.requiresDataSourceConfiguration || requirements.requiresDataWarehouseConfiguration)
-      ? { dataSourceConfigurations: dataSourceConfigurations }
-      : { tablesConfigurations: dataSourceConfigurations };
+    const datasource =
+      requirements.requiresDataSourceConfiguration ||
+      requirements.requiresDataWarehouseConfiguration
+        ? { dataSourceConfigurations: dataSourceConfigurations }
+        : { tablesConfigurations: dataSourceConfigurations };
 
     const isNewActionOrNameChanged = isEditing
       ? defaultValues.name !== formData.name
@@ -245,7 +247,10 @@ function KnowledgeConfigurationSheetContent({
     if (requirements.requiresTableConfiguration) {
       return "table";
     }
-    if (requirements.requiresDataSourceConfiguration || requirements.requiresDataWarehouseConfiguration) {
+    if (requirements.requiresDataWarehouseConfiguration) {
+      return "data_warehouse";
+    }
+    if (requirements.requiresDataSourceConfiguration) {
       return "document";
     }
     return "all";

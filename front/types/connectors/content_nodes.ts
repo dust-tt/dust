@@ -25,12 +25,7 @@ export type ContentNodesViewType = t.TypeOf<typeof ContentNodesViewTypeCodec>;
 export function isValidContentNodesViewType(
   value: unknown
 ): value is ContentNodesViewType {
-  return (
-    value === "document" ||
-    value === "table" ||
-    value === "data_warehouse" ||
-    value === "all"
-  );
+  return ContentNodesViewTypeCodec.is(value);
 }
 
 // Check if a Content Node ID is a valid Content Node ID for a sheet within a

@@ -172,8 +172,7 @@ export function MCPAction({
     requirements.requiresDataWarehouseConfiguration ||
     requirements.requiresTableConfiguration;
 
-  const isDataWarehouseConfig =
-    !!requirements.requiresDataWarehouseConfiguration;
+  const isDataWarehouseConfig = requirements.requiresDataWarehouseConfiguration;
 
   // We don't show the "Available Tools" section if there is only one tool.
   // Because it's redundant with the tool description.
