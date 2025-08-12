@@ -16,7 +16,6 @@ import type {
   LightMCPToolConfigurationType,
   MCPActionType,
   MCPApproveExecutionEvent,
-  MCPExecutionState,
   MCPToolConfigurationType,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
@@ -31,7 +30,6 @@ import {
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
-import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type {
   ActionGeneratedFileType,
   AgentLoopRunContextType,
@@ -41,7 +39,6 @@ import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   AgentConfigurationType,
@@ -49,7 +46,6 @@ import type {
   ConversationType,
   FileUseCase,
   FileUseCaseMetadata,
-  LightWorkspaceType,
   Result,
   SupportedFileContentType,
 } from "@app/types";
@@ -60,77 +56,6 @@ import {
   removeNulls,
   stripNullBytes,
 } from "@app/types";
-
-/**
- * Handles tool approval process and returns the final execution status.
- * Yields approval events during the process.
- */
-export async function handleToolApproval(
-  auth: Authenticator,
-  {
-    executionState,
-    localLogger,
-    mcpAction,
-    owner,
-    toolConfiguration,
-  }: {
-    executionState: MCPExecutionState;
-    localLogger: Logger;
-    mcpAction: MCPActionType;
-    owner: LightWorkspaceType;
-    toolConfiguration: LightMCPToolConfigurationType;
-  }
-): Promise<MCPExecutionState> {
-  let newExecutionState: MCPExecutionState = executionState;
-
-  if (executionState === "pending") {
-    try {
-      const actionEventGenerator = getMCPEvents({
-        actionId: mcpAction.getSId(owner),
-      });
-
-      localLogger.info("Waiting for action validation");
-
-      // Start listening for action events
-      for await (const event of actionEventGenerator) {
-        const { data } = event;
-
-        // Check that the event is indeed for this action.
-        if (getResourceIdFromSId(data.actionId) !== mcpAction.id) {
-          newExecutionState = "denied";
-          break;
-        }
-
-        if (data.type === "always_approved") {
-          const user = auth.getNonNullableUser();
-          await user.appendToMetadata(
-            `toolsValidations:${toolConfiguration.toolServerId}`,
-            `${mcpAction.functionCallName}`
-          );
-        }
-
-        if (data.type === "approved" || data.type === "always_approved") {
-          newExecutionState = "allowed_explicitly";
-          break;
-        } else if (data.type === "rejected") {
-          newExecutionState = "denied";
-          break;
-        }
-      }
-    } catch (error) {
-      localLogger.error({ error }, "Error checking action validation status");
-      throw error; // Let the caller handle this error.
-    }
-  }
-
-  // The status was not updated by the event, or no event was received.
-  // In this case, we set the status to timeout.
-  if (newExecutionState === "pending") {
-    newExecutionState = "timeout";
-  }
-
-  return newExecutionState;
-}
 
 /**
  * Executes the MCP tool and handles progress notifications.
@@ -476,15 +401,16 @@ export async function processToolResults(
 /**
  * Helper function to augment inputs with configuration data.
  */
-export function getAugmentedInputs({
-  auth,
-  rawInputs,
-  actionConfiguration,
-}: {
-  auth: Authenticator;
-  rawInputs: Record<string, unknown>;
-  actionConfiguration: MCPToolConfigurationType;
-}): Record<string, unknown> {
+export function getAugmentedInputs(
+  auth: Authenticator,
+  {
+    actionConfiguration,
+    rawInputs,
+  }: {
+    actionConfiguration: MCPToolConfigurationType;
+    rawInputs: Record<string, unknown>;
+  }
+): Record<string, unknown> {
   return augmentInputsWithConfiguration({
     owner: auth.getNonNullableWorkspace(),
     rawInputs,

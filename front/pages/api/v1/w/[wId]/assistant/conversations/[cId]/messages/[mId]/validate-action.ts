@@ -8,7 +8,6 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -134,36 +133,23 @@ async function handler(
     });
   }
 
-  try {
-    const result = await validateAction({
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      conversationId: cId,
-      messageId: mId,
-      actionId: actionIdString,
-      approved,
-    });
+  const result = await validateAction(auth, conversationRes.value, {
+    actionId: actionIdString,
+    approvalState: approved,
+    messageId: mId,
+  });
 
-    res.status(200).json(result);
-  } catch (error) {
-    logger.error(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        conversationId: cId,
-        messageId: mId,
-        actionId,
-        error,
-      },
-      "Error publishing action validation event"
-    );
-
+  if (result.isErr()) {
     return apiError(req, res, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
-        message: "Failed to publish action validation event",
+        message: "Failed to validate action",
       },
     });
   }
+
+  res.status(200).json({ success: true });
 }
 
 export default withPublicAPIAuthentication(handler, {
