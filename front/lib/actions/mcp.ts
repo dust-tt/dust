@@ -1,3 +1,4 @@
+import type { ActionApprovalStateType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -10,7 +11,6 @@ import type {
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import {
   executeMCPTool,
-  handleToolApproval,
   processToolResults,
 } from "@app/lib/actions/mcp_execution";
 import type {
@@ -56,7 +56,7 @@ import type {
   ReasoningModelConfigurationType,
   TimeFrame,
 } from "@app/types";
-import { removeNulls } from "@app/types";
+import { assertNever, removeNulls } from "@app/types";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;
@@ -169,18 +169,28 @@ export type MCPApproveExecutionEvent = {
   metadata: MCPValidationMetadataType;
 };
 
-export type MCPExecutionState =
-  | "allowed_implicitly"
-  | "allowed_explicitly"
-  | "pending"
-  | "timeout"
-  | "denied";
+export function getMCPApprovalStateFromUserApprovalState(
+  userApprovalState: ActionApprovalStateType
+): MCPExecutionState {
+  switch (userApprovalState) {
+    case "always_approved":
+    case "approved":
+      return "allowed_explicitly";
 
-export function isMCPApproveExecutionEvent(
-  event: AgentActionRunningEvents
-): event is MCPApproveExecutionEvent {
-  return event.type === "tool_approve_execution";
+    case "rejected":
+      return "denied";
+
+    default:
+      assertNever(userApprovalState);
+  }
 }
+
+export type MCPExecutionState =
+  | "allowed_explicitly"
+  | "allowed_implicitly"
+  | "denied"
+  | "pending"
+  | "timeout";
 
 type MCPParamsEvent = {
   type: "tool_params";
@@ -448,34 +458,7 @@ export async function* runToolWithStreaming(
     `workspace_name:${owner.name}`,
   ];
 
-  const executionState = await handleToolApproval(auth, {
-    executionState: action.executionState,
-    localLogger,
-    mcpAction,
-    owner,
-    toolConfiguration,
-  });
-
-  await action.update({
-    executionState,
-  });
-
-  if (executionState === "timeout") {
-    statsDClient.increment("mcp_actions_timeout.count", 1, tags);
-    localLogger.info("Tool validation timed out");
-
-    yield await handleMCPActionError({
-      action,
-      agentConfiguration,
-      agentMessage,
-      actionBaseParams,
-      executionState: "denied",
-      errorMessage:
-        "The action validation timed out. Using this action is hence forbidden for this message.",
-      yieldAsError: false,
-    });
-    return;
-  }
+  const { executionState } = mcpAction;
 
   if (executionState === "denied") {
     statsDClient.increment("mcp_actions_denied.count", 1, tags);
@@ -486,7 +469,7 @@ export async function* runToolWithStreaming(
       agentConfiguration,
       agentMessage,
       actionBaseParams,
-      executionState: "denied",
+      executionState,
       errorMessage:
         "The user rejected this specific action execution. Using this action is hence forbidden for this message.",
       yieldAsError: false,
@@ -743,4 +726,25 @@ export async function handleMCPActionError(
       type: "tool_action",
     }),
   };
+}
+
+export async function updateMCPApprovalState({
+  actionId,
+  executionState,
+}: {
+  actionId: string;
+  executionState: MCPExecutionState;
+}) {
+  const action = await AgentMCPAction.findByPk(actionId);
+  if (!action) {
+    throw new Error(`Action not found: ${actionId}`);
+  }
+
+  if (action.executionState === executionState) {
+    return;
+  }
+
+  await action.update({
+    executionState,
+  });
 }

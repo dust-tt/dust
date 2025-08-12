@@ -63,6 +63,13 @@ export async function executeAgentLoop(
       }
     );
 
+    // If at least one action needs approval, we break out of the loop and will resume once all
+    // actions have been approved.
+    const needsApproval = actionBlobs.some((a) => a.needsApproval);
+    if (needsApproval) {
+      break;
+    }
+
     // Execute tools.
     await Promise.all(
       actionBlobs.map(({ action }, index) =>

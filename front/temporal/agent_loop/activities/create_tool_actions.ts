@@ -138,10 +138,9 @@ async function createActionForTool(
   }
 
   // Compute augmented inputs with preconfigured data sources, etc.
-  const augmentedInputs = getAugmentedInputs({
-    auth,
-    rawInputs: actionBaseParams.params,
+  const augmentedInputs = getAugmentedInputs(auth, {
     actionConfiguration,
+    rawInputs: actionBaseParams.params,
   });
 
   // Create the action object in the database and yield an event for the generation of the params.

@@ -1,7 +1,7 @@
 import assert from "assert";
 
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
-import type { AuthenticatorType } from "@app/lib/auth";
+import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { wakeLock } from "@app/lib/wake_lock";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/activities/create_tool_actions";
 import { runModelActivity } from "@app/temporal/agent_loop/activities/run_model";
@@ -57,13 +57,15 @@ async function runAgentSynchronousWithStreaming(
  * execution based on the RunAgentArgs type.
  */
 export async function runAgentLoop(
-  authType: AuthenticatorType,
+  auth: Authenticator,
   runAgentArgs: RunAgentArgs,
   {
     forceAsynchronousLoop = false,
     startStep,
   }: { forceAsynchronousLoop?: boolean; startStep: number }
 ): Promise<void> {
+  const authType = auth.toJSON();
+
   if (runAgentArgs.sync && !forceAsynchronousLoop) {
     await runAgentSynchronousWithStreaming(
       authType,
