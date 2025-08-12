@@ -718,6 +718,7 @@ export function MCPServerViewsDialog({
         }}
         leftButton={leftButton}
         rightButton={rightButton}
+        addFooterSeparator
         footerContent={
           <MCPServerViewsFooter
             selectedToolsInDialog={selectedToolsInDialog}
