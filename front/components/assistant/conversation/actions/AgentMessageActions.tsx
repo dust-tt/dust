@@ -100,7 +100,15 @@ export function AgentMessageActions({
           label="Tools inspection"
           icon={CommandLineIcon}
           variant="outline"
-          onClick={onClick}
+          onClick={() =>
+            openPanel({
+              type: "actions",
+              messageId: agentMessage.sId,
+              metadata: {
+                actionProgress,
+              },
+            })
+          }
         />
       )}
 

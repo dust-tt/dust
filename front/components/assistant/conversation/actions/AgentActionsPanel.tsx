@@ -1,9 +1,4 @@
-import {
-  ContentMessage,
-  Markdown,
-  Separator,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { ContentMessage, Markdown, Separator, Spinner } from "@dust-tt/sparkle";
 import React from "react";
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";

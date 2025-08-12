@@ -1,7 +1,7 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-import type { MCPActionType } from "@app/lib/actions/mcp";
+import { MCPActionType } from "@app/lib/actions/mcp";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import {
   AgentMessageContentParser,
@@ -47,6 +47,7 @@ import {
   isTextContent,
 } from "@app/types/assistant/agent_message_content";
 import type { ParsedContentItem } from "@app/types/assistant/conversation";
+import type { LightAgentConfigurationType } from "@app/types";
 
 export function getMaximalVersionAgentStepContent(
   agentStepContents: AgentStepContentModel[]
