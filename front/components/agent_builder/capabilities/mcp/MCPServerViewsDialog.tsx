@@ -53,6 +53,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { O4_MINI_MODEL_ID } from "@app/types";
+import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
 
 export type SelectedTool =
   | {
@@ -429,7 +430,6 @@ export function MCPServerViewsDialog({
           dataVisualization={dataVisualization}
           onDataVisualizationClick={onClickDataVisualization}
           selectedToolsInDialog={selectedToolsInDialog}
-          onRemoveSelectedTool={toggleToolSelection}
         />
       ),
     },
@@ -718,6 +718,13 @@ export function MCPServerViewsDialog({
         }}
         leftButton={leftButton}
         rightButton={rightButton}
+        footerContent={
+          <MCPServerViewsFooter
+            selectedToolsInDialog={selectedToolsInDialog}
+            dataVisualization={dataVisualization}
+            onRemoveSelectedTool={toggleToolSelection}
+          />
+        }
       />
     </MultiPageDialog>
   );

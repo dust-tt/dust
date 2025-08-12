@@ -107,7 +107,6 @@ interface MCPServerSelectionPageProps {
   dataVisualization?: ActionSpecification | null;
   onDataVisualizationClick?: () => void;
   selectedToolsInDialog?: SelectedTool[];
-  onRemoveSelectedTool?: (tool: SelectedTool) => void;
 }
 
 export function MCPServerSelectionPage({
@@ -116,7 +115,6 @@ export function MCPServerSelectionPage({
   dataVisualization,
   onDataVisualizationClick,
   selectedToolsInDialog = [],
-  onRemoveSelectedTool,
 }: MCPServerSelectionPageProps) {
   const [filteredServerViews, setFilteredServerViews] =
     React.useState<MCPServerViewTypeWithLabel[]>(mcpServerViews);
@@ -200,32 +198,6 @@ export function MCPServerSelectionPage({
               isSelected={selectedMCPIds.has(view.sId)}
             />
           ))}
-        </div>
-      )}
-
-      {selectedToolsInDialog.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Selected tools</h2>
-          <div className="flex flex-wrap gap-2">
-            {selectedToolsInDialog.map((tool, index) => (
-              <Chip
-                key={index}
-                label={
-                  tool.type === "DATA_VISUALIZATION"
-                    ? dataVisualization?.label || ""
-                    : tool.type === "MCP"
-                      ? tool.view.name || tool.view.server.name
-                      : ""
-                }
-                onRemove={
-                  onRemoveSelectedTool
-                    ? () => onRemoveSelectedTool(tool)
-                    : undefined
-                }
-                size="sm"
-              />
-            ))}
-          </div>
         </div>
       )}
     </div>
