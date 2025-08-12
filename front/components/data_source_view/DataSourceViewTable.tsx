@@ -146,9 +146,17 @@ export function DataSourceViewTable() {
         CATEGORY_DETAILS[dsv.category].icon
       : FolderIcon;
 
+    let title = dsv.dataSource.name;
+    if (
+      connectorProvider != null &&
+      connectorProvider.connectorProvider !== "webcrawler"
+    ) {
+      title = connectorProvider.name;
+    }
+
     return {
       id: dsv.sId,
-      title: connectorProvider?.name ?? dsv.dataSource.name,
+      title,
       onClick: () => setDataSourceViewEntry(dsv),
       dataSourceView: dsv,
       icon,
