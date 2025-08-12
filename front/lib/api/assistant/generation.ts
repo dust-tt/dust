@@ -95,6 +95,9 @@ export async function constructPromptMultiActions(
   let toolsSection = "# TOOLS\n";
 
   let toolUseDirectives = "\n## TOOL USE DIRECTIVES\n";
+  if (hasAvailableActions && model.toolUseMetaPrompt) {
+    toolUseDirectives += `${model.toolUseMetaPrompt}\\n`;
+  }
   if (
     hasAvailableActions &&
     agentConfiguration.model.reasoningEffort === "light" &&

@@ -11,7 +11,7 @@ interface ActionDetailsWrapperProps {
   actionName: string;
   children: React.ReactNode;
   defaultOpen: boolean;
-  viewType?: "conversation" | "sidebar";
+  viewType: "conversation" | "sidebar";
   visual: ComponentType<{ className?: string }>;
 }
 
@@ -19,7 +19,7 @@ export function ActionDetailsWrapper({
   actionName,
   children,
   defaultOpen,
-  viewType = "sidebar",
+  viewType,
   visual,
 }: ActionDetailsWrapperProps) {
   if (viewType === "conversation") {

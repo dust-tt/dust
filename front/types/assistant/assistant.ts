@@ -312,6 +312,9 @@ export type ModelConfigurationType = {
   // This meta-prompt is always injected into the agent's system instructions.
   formattingMetaPrompt?: string;
 
+  // This meta-prompt is injected if the agent has tools available.
+  toolUseMetaPrompt?: string;
+
   // Adjust the token count estimation by a ratio. Only needed for anthropic models, where the token count is higher than our estimate
   tokenCountAdjustment?: number;
 
@@ -487,6 +490,22 @@ NEVER:
 - Return a response that is just a list of bullet points.
 - Omit headings in multi-paragraph answers.`;
 
+const OPENAI_TOOL_USE_META_PROMPT =
+  `CRITICAL: When calling functions or tools, ` +
+  `you MUST be extremely careful with accented characters. ` +
+  `Always use the actual accented character in the JSON, ` +
+  `never use Unicode escape sequences like \\u00XX.
+CORRECT examples (what you SHOULD do):
+- Use: {"query": "Žižek philosophy"}
+- Use: {"query": "café français"}  
+- Use: {"query": "naïveté übermensch"}
+- Use: {"query": "Søren Kierkegaard"}
+INCORRECT examples (what you must NEVER do):
+- Never: {"query": "\\u017di\\u017eek philosophy"}
+- Never: {"query": "caf\\u00e9 fran\\u00e7ais"}
+- Never: {"query": "na\\u00efvet\\u00e9"}
+The tools expect properly formed JSON with actual UTF-8 characters, not escape sequences.`;
+
 export const GPT_5_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_5_MODEL_ID,
@@ -507,6 +526,7 @@ export const GPT_5_MODEL_CONFIG: ModelConfigurationType = {
   useNativeLightReasoning: true,
   supportsResponseFormat: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
 };
 export const O1_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -573,6 +593,7 @@ export const O3_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "medium",
   supportsResponseFormat: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
 };
 
 export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
@@ -594,6 +615,8 @@ export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
   supportsResponseFormat: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
 };
 
 export const O4_MINI_MODEL_CONFIG: ModelConfigurationType = {
@@ -614,6 +637,8 @@ export const O4_MINI_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
   supportsResponseFormat: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
 };
 
 export const DEFAULT_TOKEN_COUNT_ADJUSTMENT = 1.15;

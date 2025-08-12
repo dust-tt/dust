@@ -192,6 +192,20 @@ export async function syncTicket({
 }) {
   const connectorId = connector.id;
 
+  if (ticket.brand_id !== brandId) {
+    logger.info(
+      {
+        ...loggerArgs,
+        connectorId,
+        ticketId: ticket.id,
+        ticketBrandId: ticket.brand_id,
+        brandId,
+      },
+      "[Zendesk] Skipping sync. Ticket does not belong to the correct brand."
+    );
+    return;
+  }
+
   let ticketInDb = await ZendeskTicketResource.fetchByTicketId({
     connectorId,
     brandId,

@@ -3,11 +3,9 @@ import {
   ContextItem,
   MultiPageSheet,
   MultiPageSheetContent,
-  MultiPageSheetTrigger,
   ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
-import { Button } from "@dust-tt/sparkle";
 import { BookOpenIcon } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { uniqueId } from "lodash";
@@ -25,6 +23,7 @@ import {
   transformTreeToSelectionConfigurations,
 } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import { CAPABILITY_CONFIGS } from "@app/components/agent_builder/capabilities/knowledge/utils";
+import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { isValidPage } from "@app/components/agent_builder/capabilities/mcp/utils/sheetUtils";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/shared/DescriptionSection";
@@ -55,8 +54,8 @@ import type { DataSourceViewSelectionConfigurations } from "@app/types";
 interface KnowledgeConfigurationSheetProps {
   onSave: (action: AgentBuilderAction) => void;
   onClose: () => void;
-  onClickKnowledge: () => void;
   action: AgentBuilderAction | null;
+  actions: AgentBuilderAction[];
   isEditing: boolean;
   mcpServerViews: MCPServerViewType[];
   getAgentInstructions: () => string;
@@ -65,8 +64,8 @@ interface KnowledgeConfigurationSheetProps {
 export function KnowledgeConfigurationSheet({
   onSave,
   onClose,
-  onClickKnowledge,
   action,
+  actions,
   isEditing,
   mcpServerViews,
   getAgentInstructions,
@@ -77,20 +76,32 @@ export function KnowledgeConfigurationSheet({
     formData: CapabilityFormData,
     dataSourceConfigurations: DataSourceViewSelectionConfigurations
   ) => {
-    const { name, description, configuration, mcpServerView } = formData;
+    const { description, configuration, mcpServerView } = formData;
     const requirements = getMCPServerRequirements(mcpServerView);
 
     const datasource = requirements.requiresDataSourceConfiguration
       ? { dataSourceConfigurations: dataSourceConfigurations }
       : { tablesConfigurations: dataSourceConfigurations };
 
+    const isNewActionOrNameChanged = isEditing
+      ? defaultValues.name !== formData.name
+      : true;
+
+    const newName = isNewActionOrNameChanged
+      ? generateUniqueActionName({
+          baseName: formData.name,
+          existingActions: actions || [],
+        })
+      : formData.name;
+
     const newAction: AgentBuilderAction = {
       id: uniqueId(),
       type: "MCP",
-      name,
+      name: newName,
       description,
       configuration: {
         ...configuration,
+        mcpServerViewId: mcpServerView?.sId ?? configuration.mcpServerViewId,
         ...datasource,
       },
     };
@@ -147,14 +158,6 @@ export function KnowledgeConfigurationSheet({
 
   return (
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
-      <MultiPageSheetTrigger asChild>
-        <Button
-          variant="primary"
-          label="Add knowledge"
-          onClick={onClickKnowledge}
-          icon={BookOpenIcon}
-        />
-      </MultiPageSheetTrigger>
       <FormProvider {...formMethods}>
         <KnowledgeConfigurationSheetContent
           onSave={handleSave}

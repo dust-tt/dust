@@ -5,6 +5,8 @@ import { ChatBubbleBottomCenterTextIcon } from "@sparkle/icons/app";
 
 import {
   Bar,
+  BarFooter,
+  Button,
   Page,
   ResizableHandle,
   ResizablePanel,
@@ -86,8 +88,6 @@ export const BasicBarHeaderValidate = () => {
 };
 
 export const BasicBarFooterValidate = () => {
-  const [isSaving, setIsSaving] = React.useState(false);
-
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col">
       <div className="s-flex-1 s-overflow-y-auto s-p-4">
@@ -111,29 +111,24 @@ export const BasicBarFooterValidate = () => {
           />
         </div>
       </div>
-      <Bar
-        position="bottom"
+      <BarFooter
+        variant="default"
+        className="mx-4 s-justify-between"
+        leftActions={
+          <Button
+            variant="outline"
+            label="Close"
+            onClick={() => console.log("Exit")}
+          />
+        }
         rightActions={
-          <Bar.ButtonBar
+          <BarFooter.ButtonBar
             variant="validate"
-            cancelButtonProps={{
-              size: "sm",
-              label: "Cancel",
-              variant: "ghost",
-              onClick: () => alert("Cancelled!"),
-            }}
             saveButtonProps={{
               size: "sm",
-              label: isSaving ? "Saving..." : "Save",
+              label: "Save",
               variant: "primary",
-              onClick: () => {
-                setIsSaving(true);
-                setTimeout(() => {
-                  setIsSaving(false);
-                  alert("Saved!");
-                }, 2000);
-              },
-              disabled: isSaving,
+              disabled: false,
             }}
           />
         }

@@ -59,7 +59,7 @@ export function AgentBuilderLeftPanel({
       </ScrollArea>
       <BarFooter
         variant="default"
-        className="mx-4"
+        className="mx-4 justify-between"
         leftActions={
           <Button variant="outline" label="Close" onClick={handleCancel} />
         }
