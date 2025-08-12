@@ -1,8 +1,10 @@
 import {
+  ArrowPathIcon,
   BarChartIcon,
   Button,
   MagicIcon,
   Markdown,
+  Page,
   ScrollArea,
   SidebarRightCloseIcon,
   SidebarRightOpenIcon,
@@ -11,11 +13,14 @@ import {
   TabsTrigger,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
+import { useFormContext } from "react-hook-form";
 
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
+import { ConfirmContext } from "@app/components/Confirm";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 
 type AgentBuilderRightPanelTabType = "testing" | "performance" | "template";
@@ -140,11 +145,19 @@ function ExpandedContent({
       {selectedTab === "template" && assistantTemplate && (
         <div className="flex-1 overflow-y-auto p-4">
           <div className="flex flex-col gap-4">
-            <div className="flex items-end justify-end pt-2">
-              {/* TODO: Add template dropdown menu with close/reset options */}
-            </div>
+            <TemplateButtons
+              assistantTemplate={assistantTemplate}
+            />
             {assistantTemplate.helpInstructions && (
-              <Markdown content={assistantTemplate.helpInstructions} />
+              <>
+                <Markdown content={assistantTemplate.helpInstructions} />
+                {assistantTemplate.helpActions && (
+                  <div className="h-px bg-border" />
+                )}
+              </>
+            )}
+            {assistantTemplate.helpActions && (
+              <Markdown content={assistantTemplate.helpActions} />
             )}
           </div>
         </div>
@@ -165,6 +178,74 @@ function ExpandedContent({
   );
 }
 
+interface TemplateButtonsProps {
+  assistantTemplate: FetchAssistantTemplateResponse;
+}
+
+function TemplateButtons({
+  assistantTemplate,
+}: TemplateButtonsProps) {
+  const confirm = useContext(ConfirmContext);
+  const { setValue, watch } = useFormContext<AgentBuilderFormData>();
+  
+  // Watch current form values
+  const currentInstructions = watch("instructions");
+  const currentActions = watch("actions");
+  
+  const instructionsChanged = currentInstructions !== assistantTemplate.presetInstructions;
+  const hasActions = currentActions && currentActions.length > 0;
+  
+  const handleResetInstructions = async () => {
+    const confirmed = await confirm({
+      title: "Are you sure?",
+      message:
+        "You will lose the changes you have made to the agent's instructions and go back to the template's default settings.",
+      validateVariant: "warning",
+    });
+    
+    if (confirmed && assistantTemplate.presetInstructions) {
+      setValue("instructions", assistantTemplate.presetInstructions);
+    }
+  };
+  
+  const handleResetActions = async () => {
+    const confirmed = await confirm({
+      title: "Are you sure?",
+      message:
+        "You will lose the changes you have made to the agent's tools.",
+      validateVariant: "warning",
+    });
+    
+    if (confirmed) {
+      setValue("actions", []);
+    }
+  };
+  
+  return (
+    <div className="flex items-center justify-end gap-2">
+      {instructionsChanged && (
+        <Button
+          label="Reset instructions"
+          onClick={handleResetInstructions}
+          icon={ArrowPathIcon}
+          size="sm"
+          variant="outline"
+        />
+      )}
+      {hasActions && (
+        <Button
+          label="Reset tools"
+          onClick={handleResetActions}
+          icon={ArrowPathIcon}
+          size="sm"
+          variant="outline"
+        />
+      )}
+    </div>
+  );
+}
+
+
 interface AgentBuilderRightPanelProps {
   agentConfigurationSId?: string;
   assistantTemplate?: FetchAssistantTemplateResponse | null;
@@ -176,9 +257,12 @@ export function AgentBuilderRightPanel({
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
+  
+  const hasTemplate = !!assistantTemplate;
+  
   const [selectedTab, setSelectedTab] =
     useState<AgentBuilderRightPanelTabType>(
-      assistantTemplate ? "template" : "testing"
+      hasTemplate ? "template" : "testing"
     );
 
   const handleTogglePanel = () => {
@@ -193,8 +277,6 @@ export function AgentBuilderRightPanel({
     setSelectedTab(tab);
     setIsPreviewPanelOpen(true);
   };
-
-  const hasTemplate = !!assistantTemplate;
 
   return (
     <div className="mx-4 flex h-full flex-col">
