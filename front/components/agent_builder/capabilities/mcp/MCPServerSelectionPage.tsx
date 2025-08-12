@@ -1,4 +1,11 @@
-import { Avatar, BookOpenIcon, Card, Chip, Icon } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  BookOpenIcon,
+  Card,
+  CardGrid,
+  Chip,
+  Icon,
+} from "@dust-tt/sparkle";
 import { ActionIcons } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { PlusIcon } from "@dust-tt/sparkle";
@@ -182,7 +189,7 @@ export function MCPServerSelectionPage({
         (dataVisualization &&
           onDataVisualizationClick &&
           showDataVisualization)) && (
-        <div className="grid grid-cols-2 gap-4">
+        <CardGrid>
           {dataVisualization &&
             onDataVisualizationClick &&
             showDataVisualization && (
@@ -200,7 +207,7 @@ export function MCPServerSelectionPage({
               isSelected={selectedMCPIds.has(view.sId)}
             />
           ))}
-        </div>
+        </CardGrid>
       )}
 
       {selectedToolsInDialog.length > 0 && (
