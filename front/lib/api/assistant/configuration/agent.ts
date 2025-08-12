@@ -163,15 +163,27 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
   auth: Authenticator,
   {
     agentIds,
+    agentIdsWithVersions,
     variant,
-  }: {
-    agentIds: string[];
-    variant: V;
-  }
+  }:
+    | {
+        agentIds?: never;
+        agentIdsWithVersions: { sId: string; version: number }[];
+        variant: V;
+      }
+    | {
+        agentIds: string[];
+        agentIdsWithVersions?: never;
+        variant: V;
+      }
 ): Promise<
   V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
 > {
   return tracer.trace("getAgentConfigurations", async () => {
+    const agentIdsToFetch = agentIdsWithVersions
+      ? agentIdsWithVersions.map(({ sId }) => sId)
+      : agentIds;
+
     const owner = auth.workspace();
     if (!owner) {
       throw new Error("Unexpected `auth` without `workspace`.");
@@ -180,37 +192,38 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
       throw new Error("Unexpected `auth` without `user`.");
     }
 
-    const globalAgentIds = agentIds.filter(isGlobalAgentId);
+    const globalAgentIds = agentIdsToFetch.filter(isGlobalAgentId);
 
     let globalAgents: AgentConfigurationType[] = [];
     if (globalAgentIds.length > 0) {
       globalAgents = await getGlobalAgents(auth, globalAgentIds, variant);
     }
 
-    const workspaceAgentIds = agentIds.filter((id) => !isGlobalAgentId(id));
+    const workspaceAgentIds = agentIdsToFetch.filter(
+      (id) => !isGlobalAgentId(id)
+    );
 
     let workspaceAgents: AgentConfigurationType[] = [];
     if (workspaceAgentIds.length > 0) {
-      const latestVersions = (await AgentConfiguration.findAll({
-        attributes: [
-          "sId",
-          [Sequelize.fn("MAX", Sequelize.col("version")), "max_version"],
-        ],
-        where: {
-          workspaceId: owner.id,
-          sId: workspaceAgentIds,
-        },
-        group: ["sId"],
-        raw: true,
-      })) as unknown as { sId: string; max_version: number }[];
+      const agentIdsWithVersionsToFetch = agentIdsWithVersions
+        ? agentIdsWithVersions
+        : ((await AgentConfiguration.findAll({
+            attributes: [
+              "sId",
+              [Sequelize.fn("MAX", Sequelize.col("version")), "version"],
+            ],
+            where: {
+              workspaceId: owner.id,
+              sId: workspaceAgentIds,
+            },
+            group: ["sId"],
+            raw: true,
+          })) as unknown as { sId: string; version: number }[]);
 
       const workspaceAgentConfigurations = await AgentConfiguration.findAll({
         where: {
           workspaceId: owner.id,
-          [Op.or]: latestVersions.map((v) => ({
-            sId: v.sId,
-            version: v.max_version,
-          })),
+          [Op.or]: agentIdsWithVersionsToFetch,
         },
         order: [["version", "DESC"]],
       });

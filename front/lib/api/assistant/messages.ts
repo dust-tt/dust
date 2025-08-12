@@ -174,19 +174,28 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   const [{ agentConfigurations, lightAgentConfigurations }, agentMCPActions] =
     await Promise.all([
       (async () => {
-        const agentConfigurationIds: Set<string> = agentMessages.reduce(
-          (acc: Set<string>, m) => {
-            const agentId = m.agentMessage?.agentConfigurationId;
-            if (agentId) {
-              acc.add(agentId);
+        const agentConfigurationIds: Set<{
+          sId: string;
+          version: number;
+        }> = agentMessages.reduce(
+          (acc: Set<{ sId: string; version: number }>, m) => {
+            if (m.agentMessage) {
+              const sId = m.agentMessage.agentConfigurationId;
+              const version = m.agentMessage.agentConfigurationVersion;
+
+              acc.add({ sId, version });
             }
             return acc;
           },
-          new Set<string>()
+          new Set<{
+            sId: string;
+            version: number;
+          }>()
         );
         if (viewType === "full") {
           const agents = await getAgentConfigurations(auth, {
-            agentIds: [...agentConfigurationIds],
+            agentIdsWithVersions: [...agentConfigurationIds],
+            agentIds: undefined,
             variant: "full",
           });
           return {
@@ -195,7 +204,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           };
         } else {
           const agents = await getAgentConfigurations(auth, {
-            agentIds: [...agentConfigurationIds],
+            agentIdsWithVersions: [...agentConfigurationIds],
             variant: "extra_light",
           });
           return {
