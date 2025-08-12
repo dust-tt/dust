@@ -12,6 +12,7 @@ import { uniqueId } from "lodash";
 import { useEffect, useMemo, useState } from "react";
 import {
   FormProvider,
+  useFieldArray,
   useForm,
   useFormContext,
   useWatch,
@@ -114,6 +115,22 @@ export function KnowledgeConfigurationSheet({
     onClose();
   };
 
+  const { fields } = useFieldArray<AgentBuilderFormData, "actions">({
+    name: "actions",
+  });
+  const spacesUsedInActions: Set<string> = new Set();
+  for (const field of fields) {
+    if (field.configuration && field.configuration.dataSourceConfigurations) {
+      for (const dsConfig of Object.values(
+        field.configuration.dataSourceConfigurations
+      )) {
+        if (dsConfig) {
+          spacesUsedInActions.add(dsConfig.dataSourceView.spaceId);
+        }
+      }
+    }
+  }
+
   // Custom open hook to only have debounce when we close.
   // We use this value to unmount the Sheet Content, and we need
   // debounce when closing to avoid messing up the closing animation.
@@ -195,6 +212,7 @@ export function KnowledgeConfigurationSheet({
         {debouncedOpen && (
           <DataSourceBuilderProvider spaces={spaces}>
             <KnowledgeConfigurationSheetContent
+              spacesUsedInActions={spacesUsedInActions}
               onSave={handleSave}
               open={open}
               getAgentInstructions={getAgentInstructions}
@@ -208,6 +226,7 @@ export function KnowledgeConfigurationSheet({
 }
 
 interface KnowledgeConfigurationSheetContentProps {
+  spacesUsedInActions={spacesUsedInActions}
   onSave: (
     formData: CapabilityFormData,
     dataSourceConfigurations: DataSourceViewSelectionConfigurations
@@ -218,6 +237,8 @@ interface KnowledgeConfigurationSheetContentProps {
 }
 
 function KnowledgeConfigurationSheetContent({
+  spacesUsedInActions,
+
   onSave,
   open,
   getAgentInstructions,
@@ -350,6 +371,7 @@ function KnowledgeConfigurationSheetContent({
           <ScrollArea>
             <DataSourceBuilderSelector
               dataSourceViews={supportedDataSourceViews}
+              spacesUsedInActions={spacesUsedInActions}
               owner={owner}
               viewType={viewType}
             />

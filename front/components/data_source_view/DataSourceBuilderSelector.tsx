@@ -20,11 +20,13 @@ import type {
 type DataSourceBuilderSelectorProps = {
   owner: LightWorkspaceType;
   dataSourceViews: DataSourceViewType[];
+  spacesUsedInActions: Set<string>;
   viewType: ContentNodesViewType;
 };
 
 export const DataSourceBuilderSelector = ({
   dataSourceViews,
+  spacesUsedInActions,
   viewType,
 }: DataSourceBuilderSelectorProps) => {
   const { spaces } = useSpacesContext();
@@ -64,7 +66,7 @@ export const DataSourceBuilderSelector = ({
       {currentNavigationEntry.type === "root" ? (
         <DataSourceSpaceSelector
           spaces={filteredSpaces}
-          allowedSpaces={spaces}
+          allowedSpaceSIds={spacesUsedInActions}
         />
       ) : (
         <SearchInput

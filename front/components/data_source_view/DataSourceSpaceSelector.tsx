@@ -15,18 +15,19 @@ import type { SpaceType } from "@app/types";
 
 type SpaceRowData = SpaceType & {
   id: string;
+  disabled: boolean;
   icon: React.ComponentType;
   onClick: () => void;
 };
 
 export interface DataSourceSpaceSelectorProps {
   spaces: SpaceType[];
-  allowedSpaces?: SpaceType[];
+  allowedSpaceSIds?: Set<string>;
 }
 
 export function DataSourceSpaceSelector({
   spaces,
-  allowedSpaces = [],
+  allowedSpaceSIds,
 }: DataSourceSpaceSelectorProps) {
   const { removeNode, isRowSelected, setSpaceEntry } =
     useDataSourceBuilderContext();
@@ -39,7 +40,7 @@ export function DataSourceSpaceSelector({
     kind: space.kind,
     icon: getSpaceIcon(space),
     onClick: () => setSpaceEntry(space),
-    disabled: allowedSpaces.find((s) => s.sId === space.sId) == null,
+    disabled: !!allowedSpaceSIds && allowedSpaceSIds.has(space.sId),
   }));
 
   const columns: ColumnDef<SpaceRowData>[] = useMemo(
