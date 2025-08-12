@@ -47,7 +47,7 @@ const ResizableHandle = ({
     {withHandle && (
       <div
         className={cn(
-          "s-absolute s-flex s-h-6 s-w-2 s-items-center s-justify-center s-rounded-sm",
+          "s-absolute s-flex s-h-6 s-w-2 s-items-center s-justify-center s-rounded-2xl",
           "s-border-structure-200 s-border s-bg-white"
         )}
       >
