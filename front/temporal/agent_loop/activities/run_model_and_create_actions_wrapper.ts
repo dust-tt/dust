@@ -2,6 +2,7 @@ import assert from "assert";
 
 import type { AuthenticatorType } from "@app/lib/auth";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPAction as AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import logger from "@app/logger/logger";
@@ -17,7 +18,7 @@ import type {
 import { getRunAgentData } from "@app/types/assistant/agent_run";
 
 interface ActionBlob {
-  action: any; // AgentMCPAction
+  action: AgentMCPAction;
   needsApproval: boolean;
 }
 
@@ -27,10 +28,10 @@ export type RunModelAndCreateActionsResult = {
 };
 
 /**
- * Smart wrapper that:
+ * Wrapper around runModelActivity and createToolActionsActivity that:
  * 1. Checks if actions already exist for this step (resume case)
  * 2. If they exist, returns them without running expensive operations
- * 3. If they don't exist, runs both runModelActivity + createToolActionsActivity
+ * 3. If they don't exist, runs both runModelActivity and createToolActionsActivity
  */
 export async function runModelAndCreateActionsActivity({
   authType,
@@ -44,8 +45,7 @@ export async function runModelAndCreateActionsActivity({
   runIds: string[];
   step: number;
   autoRetryCount?: number;
-
-  // TODO: Add a flag to indicate that we can skip the action check.
+  // TODO(DURABLE_AGENTS 2025-08-12): Add a flag to indicate that we can skip the action check.
 }): Promise<RunModelAndCreateActionsResult | null> {
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
@@ -54,7 +54,7 @@ export async function runModelAndCreateActionsActivity({
 
   const { auth, ...runAgentData } = runAgentDataRes.value;
 
-  // FAST CHECK: Do actions already exist for this step?
+  // Check if actions already exist for this step. If so, we are resuming from tool validation.
   const existingData = await getExistingActionsAndBlobs(
     auth,
     runAgentData,
@@ -71,14 +71,14 @@ export async function runModelAndCreateActionsActivity({
     };
   }
 
-  // NORMAL PATH: Run both activities
+  // Otherwise, run both activities.
   const localLogger = logger.child({ step });
   localLogger.info("Running model and creating actions - normal path");
 
   // Track step content IDs by function call ID for later use in actions.
   const functionCallStepContentIds: Record<string, ModelId> = {};
 
-  // 1. Run model activity
+  // 1. Run model activity.
   const modelResult = await runModelActivity(auth, {
     runAgentData,
     runIds,
@@ -103,7 +103,7 @@ export async function runModelAndCreateActionsActivity({
   // against the model outputting something unreasonable.
   const actionsToRun = actions.slice(0, MAX_ACTIONS_PER_STEP);
 
-  // 2. Create tool actions
+  // 2. Create tool actions.
   const createResult = await createToolActionsActivity(auth, {
     runAgentData,
     actions: actionsToRun,
@@ -129,6 +129,7 @@ async function getExistingActionsAndBlobs(
 ): Promise<{
   actionBlobs: ActionBlob[];
 } | null> {
+  // TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent step content.
   const { agentMessage } = runAgentArgs;
 
   // Find function_call step contents for this step.
