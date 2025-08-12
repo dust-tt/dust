@@ -1,7 +1,7 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
   BookOpenIcon,
-  Button,
+  ContextItem,
   MultiPageSheet,
   MultiPageSheetContent,
   ScrollArea,
@@ -18,10 +18,7 @@ import {
 } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { KnowledgeFooter } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeFooter";
-import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
-import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/knowledge/shared/JsonSchemaSection";
 import {
   transformSelectionConfigurationsToTree,
   transformTreeToSelectionConfigurations,
@@ -75,31 +72,8 @@ export function KnowledgeConfigurationSheet({
   mcpServerViews,
   getAgentInstructions,
 }: KnowledgeConfigurationSheetProps) {
+  const open = action !== null;
   const { spaces, isSpacesLoading } = useSpacesContext();
-  const [config, setConfig] = useState<CapabilityConfig | null>(() => {
-    if (action && isSupportedAgentBuilderAction(action)) {
-      const serverName = ACTION_TYPE_TO_MCP_SERVER_MAP[action.type];
-      return serverName && isKnowledgeServerName(serverName)
-        ? CAPABILITY_CONFIGS[serverName]
-        : null;
-    }
-    return CAPABILITY_CONFIGS["search"];
-  });
-
-  // Custom open hook to only have debounce when we close.
-  // We use this value to unmount the Sheet Content, and we need
-  // debounce when closing to avoid messing up the closing animation.
-  // 300ms is vibe based.
-  const [debouncedOpen, setDebouncedOpen] = useState(() => open);
-  useEffect(() => {
-    if (open) {
-      setDebouncedOpen(true);
-    } else {
-      setTimeout(() => {
-        setDebouncedOpen(false);
-      }, 300);
-    }
-  }, [open]);
 
   const handleSave = (
     formData: CapabilityFormData,
@@ -139,6 +113,21 @@ export function KnowledgeConfigurationSheet({
     onClose();
   };
 
+  // Custom open hook to only have debounce when we close.
+  // We use this value to unmount the Sheet Content, and we need
+  // debounce when closing to avoid messing up the closing animation.
+  // 300ms is vibe based.
+  const [debouncedOpen, setDebouncedOpen] = useState(() => open);
+  useEffect(() => {
+    if (open) {
+      setDebouncedOpen(true);
+    } else {
+      setTimeout(() => {
+        setDebouncedOpen(false);
+      }, 300);
+    }
+  }, [open]);
+
   // Memoize default values based on action (React Hook Form best practice)
   const defaultValues = useMemo(() => {
     const dataSourceConfigurations =
@@ -174,10 +163,6 @@ export function KnowledgeConfigurationSheet({
     defaultValues,
   });
 
-  const handleClose = () => {
-    onClose();
-  };
-
   const { reset } = formMethods;
 
   // Reset form when action changes (recommended pattern for dynamic data)
@@ -205,11 +190,10 @@ export function KnowledgeConfigurationSheet({
         {debouncedOpen && (
           <DataSourceBuilderProvider spaces={spaces}>
             <KnowledgeConfigurationSheetContent
-              config={config}
-              setConfig={setConfig}
-              action={action}
               onSave={handleSave}
-              isOpen={open}
+              open={open}
+              getAgentInstructions={getAgentInstructions}
+              isEditing={isEditing}
             />
           </DataSourceBuilderProvider>
         )}
@@ -234,8 +218,7 @@ function KnowledgeConfigurationSheetContent({
   getAgentInstructions,
   isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
-  const { control, handleSubmit, setValue } =
-    useFormContext<CapabilityFormData>();
+  const { handleSubmit, setValue } = useFormContext<CapabilityFormData>();
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
@@ -401,7 +384,14 @@ function KnowledgeConfigurationSheetContent({
         onSave(formData, dataSourceConfigurations);
       })}
       size="xl"
-      showNavigation
+      showHeaderNavigation={false}
+      disableNext={
+        currentPageId === CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION
+          ? !hasMCPServerSelection
+          : currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION
+            ? !hasSourceSelection
+            : false
+      }
       footerContent={<KnowledgeFooter />}
     />
   );
