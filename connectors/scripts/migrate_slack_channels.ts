@@ -6,16 +6,15 @@
  *   AUTO-DISCOVER DRY:  NODE_ENV=development npx tsx scripts/migrate_slack_channels.ts
  *   LIVE MODE:          NODE_ENV=development npx tsx scripts/migrate_slack_channels.ts -w <workspaceId1> -w <workspaceId2> -e
  *   AUTO + LIVE:        NODE_ENV=development npx tsx scripts/migrate_slack_channels.ts -e
- *   AGENT-ONLY MODE:    NODE_ENV=development npx tsx scripts/migrate_slack_channels.ts -e -s
  *
  * Note: Use NODE_ENV=development for colorized, human-readable logs in the terminal.
  *       Without it, logs will be in JSON format which is harder to read.
  *
  * The script will:
  * 1. Find legacy "slack" connector and new "slack_bot" connector for each workspace
- * 2. Copy all channels from legacy connector to new connector
+ * 2. Copy channels from legacy connector to new connector, but only channels with agentConfigurationId
  * 3. Skip channels that already exist (collision detection by slackChannelId)
- * 4. Optionally skip channels with null agentConfigurationId (use -s flag)
+ * 4. Skip channels with null agentConfigurationId (channels without agent configurations)
  * 5. Preserve original attributes (timestamps, names, agent config, etc.) but set permission to "write"
  * 6. Provide verbose logging throughout the process
  * 7. Run in dry run mode by default (shows what would be migrated). Use -e flag to execute.
@@ -37,17 +36,10 @@ makeScript(
       describe:
         "The Workspace ID(s) - can provide multiple, or leave empty to auto-discover",
     },
-    skipNullAgentConfig: {
-      alias: "s",
-      type: "boolean",
-      default: true,
-      describe:
-        "Skip channels with null agentConfigurationId (only migrate channels with agent configs)",
-    },
   },
   async (argv, logger) => {
     let { workspaceIds } = argv;
-    const { execute, skipNullAgentConfig } = argv;
+    const { execute } = argv;
 
     if (!execute) {
       logger.info(`🔍 DRY RUN MODE - No actual migration will be performed`);
@@ -65,8 +57,8 @@ makeScript(
         attributes: ["workspaceId", "type"],
       });
 
-      const slackWorkspaces = new Set();
-      const slackBotWorkspaces = new Set();
+      const slackWorkspaces: Set<string> = new Set();
+      const slackBotWorkspaces: Set<string> = new Set();
 
       connectors.forEach((connector) => {
         if (connector.type === "slack") {
@@ -79,7 +71,7 @@ makeScript(
       // Find intersection - workspaces that have both
       workspaceIds = Array.from(slackWorkspaces).filter((workspaceId) =>
         slackBotWorkspaces.has(workspaceId)
-      ) as string[];
+      );
 
       logger.info(
         {
@@ -145,28 +137,12 @@ makeScript(
         existingChannels.map(({ slackChannelId }) => slackChannelId)
       );
 
-      // Filter out channels that would collide
-      let channelsToMigrate = legacyChannels.filter(
-        ({ slackChannelId }) => !existingChannelIds.has(slackChannelId)
+      // Filter out channels to migrate (either because they would collide or because they don't have an agent configuration)
+      const channelsToMigrate = legacyChannels.filter(
+        ({ slackChannelId, agentConfigurationId }) =>
+          !existingChannelIds.has(slackChannelId) &&
+          agentConfigurationId !== null
       );
-
-      // Optionally filter out channels with null agentConfigurationId
-      if (skipNullAgentConfig) {
-        const beforeAgentFilter = channelsToMigrate.length;
-        channelsToMigrate = channelsToMigrate.filter(
-          ({ agentConfigurationId }) => agentConfigurationId !== null
-        );
-        const afterAgentFilter = channelsToMigrate.length;
-
-        logger.info(
-          {
-            beforeAgentFilter,
-            afterAgentFilter,
-            skippedNullAgentChannels: beforeAgentFilter - afterAgentFilter,
-          },
-          `🔍 Agent configuration filter applied:`
-        );
-      }
 
       logger.info(
         {
@@ -215,12 +191,8 @@ makeScript(
         logger.info(`🚀 Migrating ${creationRecords.length} channels...`);
 
         try {
-          const createdChannels = await SlackChannel.bulkCreate(
-            creationRecords,
-            {
-              validate: true,
-            }
-          );
+          const createdChannels =
+            await SlackChannel.bulkCreate(creationRecords);
           logger.info(
             `✅ Successfully migrated ${createdChannels.length} channels for workspace ${workspaceId}`
           );
