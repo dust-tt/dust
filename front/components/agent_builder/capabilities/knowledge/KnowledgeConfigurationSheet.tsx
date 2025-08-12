@@ -82,7 +82,7 @@ export function KnowledgeConfigurationSheet({
     const { description, configuration, mcpServerView } = formData;
     const requirements = getMCPServerRequirements(mcpServerView);
 
-    const datasource = requirements.requiresDataSourceConfiguration
+    const datasource = (requirements.requiresDataSourceConfiguration || requirements.requiresDataWarehouseConfiguration)
       ? { dataSourceConfigurations: dataSourceConfigurations }
       : { tablesConfigurations: dataSourceConfigurations };
 
@@ -245,7 +245,7 @@ function KnowledgeConfigurationSheetContent({
     if (requirements.requiresTableConfiguration) {
       return "table";
     }
-    if (requirements.requiresDataSourceConfiguration) {
+    if (requirements.requiresDataSourceConfiguration || requirements.requiresDataWarehouseConfiguration) {
       return "document";
     }
     return "all";

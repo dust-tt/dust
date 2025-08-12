@@ -169,7 +169,11 @@ export function MCPAction({
   const requirements = getMCPServerRequirements(selectedMCPServerView);
   const withDataSource =
     requirements.requiresDataSourceConfiguration ||
+    requirements.requiresDataWarehouseConfiguration ||
     requirements.requiresTableConfiguration;
+
+  const isDataWarehouseConfig =
+    !!requirements.requiresDataWarehouseConfiguration;
 
   // We don't show the "Available Tools" section if there is only one tool.
   // Because it's redundant with the tool description.
@@ -186,7 +190,8 @@ export function MCPAction({
   return (
     <>
       {/* Additional modals for selecting data sources */}
-      {requirements.requiresDataSourceConfiguration && (
+      {(requirements.requiresDataSourceConfiguration ||
+        isDataWarehouseConfig) && (
         <AssistantBuilderDataSourceModal
           isOpen={showDataSourcesModal}
           setOpen={setShowDataSourcesModal}
@@ -198,7 +203,7 @@ export function MCPAction({
             actionConfiguration.dataSourceConfigurations ?? {}
           }
           allowedSpaces={allowedSpaces}
-          viewType="document"
+          viewType={isDataWarehouseConfig ? "data_warehouse" : "document"}
         />
       )}
       {requirements.requiresTableConfiguration && (
@@ -226,7 +231,8 @@ export function MCPAction({
       )}
 
       {/* Configurable blocks */}
-      {requirements.requiresDataSourceConfiguration && (
+      {(requirements.requiresDataSourceConfiguration ||
+        isDataWarehouseConfig) && (
         <DataSourceSelectionSection
           owner={owner}
           dataSourceConfigurations={
@@ -236,7 +242,7 @@ export function MCPAction({
           onSave={(dataSourceConfigurations) => {
             handleConfigUpdate((old) => ({ ...old, dataSourceConfigurations }));
           }}
-          viewType="document"
+          viewType={isDataWarehouseConfig ? "data_warehouse" : "document"}
         />
       )}
       {requirements.requiresTableConfiguration && (
