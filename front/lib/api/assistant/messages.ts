@@ -36,6 +36,7 @@ import type {
   Result,
   UserMessageType,
 } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types";
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
 import type {
   ReasoningContentType,
@@ -47,7 +48,6 @@ import {
   isTextContent,
 } from "@app/types/assistant/agent_message_content";
 import type { ParsedContentItem } from "@app/types/assistant/conversation";
-import type { LightAgentConfigurationType } from "@app/types";
 
 export function getMaximalVersionAgentStepContent(
   agentStepContents: AgentStepContentModel[]
