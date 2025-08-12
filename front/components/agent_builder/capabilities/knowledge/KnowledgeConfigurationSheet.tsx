@@ -1,12 +1,12 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
+  BookOpenIcon,
   ContextItem,
   MultiPageSheet,
   MultiPageSheetContent,
   ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
-import { BookOpenIcon } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { uniqueId } from "lodash";
 import { useEffect, useMemo, useState } from "react";
@@ -18,6 +18,7 @@ import {
 } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { KnowledgeFooter } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeFooter";
 import {
   transformSelectionConfigurationsToTree,
   transformTreeToSelectionConfigurations,
@@ -41,6 +42,7 @@ import {
   CONFIGURATION_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
+import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
 import {
   getMcpServerViewDescription,
@@ -71,6 +73,7 @@ export function KnowledgeConfigurationSheet({
   getAgentInstructions,
 }: KnowledgeConfigurationSheetProps) {
   const open = action !== null;
+  const { spaces, isSpacesLoading } = useSpacesContext();
 
   const handleSave = (
     formData: CapabilityFormData,
@@ -110,6 +113,21 @@ export function KnowledgeConfigurationSheet({
     onClose();
   };
 
+  // Custom open hook to only have debounce when we close.
+  // We use this value to unmount the Sheet Content, and we need
+  // debounce when closing to avoid messing up the closing animation.
+  // 300ms is vibe based.
+  const [debouncedOpen, setDebouncedOpen] = useState(() => open);
+  useEffect(() => {
+    if (open) {
+      setDebouncedOpen(true);
+    } else {
+      setTimeout(() => {
+        setDebouncedOpen(false);
+      }, 300);
+    }
+  }, [open]);
+
   // Memoize default values based on action (React Hook Form best practice)
   const defaultValues = useMemo(() => {
     const dataSourceConfigurations =
@@ -145,10 +163,12 @@ export function KnowledgeConfigurationSheet({
     defaultValues,
   });
 
+  const { reset } = formMethods;
+
   // Reset form when action changes (recommended pattern for dynamic data)
   useEffect(() => {
-    formMethods.reset(defaultValues);
-  }, [defaultValues, formMethods]);
+    reset(defaultValues);
+  }, [defaultValues, reset]);
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
@@ -156,15 +176,27 @@ export function KnowledgeConfigurationSheet({
     }
   };
 
+  if (isSpacesLoading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Spinner variant="dark" size="md" />
+      </div>
+    );
+  }
+
   return (
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
       <FormProvider {...formMethods}>
-        <KnowledgeConfigurationSheetContent
-          onSave={handleSave}
-          open={open}
-          getAgentInstructions={getAgentInstructions}
-          isEditing={isEditing}
-        />
+        {debouncedOpen && (
+          <DataSourceBuilderProvider spaces={spaces}>
+            <KnowledgeConfigurationSheetContent
+              onSave={handleSave}
+              open={open}
+              getAgentInstructions={getAgentInstructions}
+              isEditing={isEditing}
+            />
+          </DataSourceBuilderProvider>
+        )}
       </FormProvider>
     </MultiPageSheet>
   );
@@ -186,8 +218,7 @@ function KnowledgeConfigurationSheetContent({
   getAgentInstructions,
   isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
-  const { control, handleSubmit, setValue } =
-    useFormContext<CapabilityFormData>();
+  const { handleSubmit, setValue } = useFormContext<CapabilityFormData>();
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
@@ -222,7 +253,6 @@ function KnowledgeConfigurationSheetContent({
 
   const { owner } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
-  const { spaces } = useSpacesContext();
   const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
@@ -308,9 +338,7 @@ function KnowledgeConfigurationSheetContent({
         <div className="space-y-4">
           <ScrollArea>
             <DataSourceBuilderSelector
-              control={control}
               dataSourceViews={supportedDataSourceViews}
-              allowedSpaces={spaces}
               owner={owner}
               viewType={viewType}
             />
@@ -364,6 +392,7 @@ function KnowledgeConfigurationSheetContent({
             ? !hasSourceSelection
             : false
       }
+      footerContent={<KnowledgeFooter />}
     />
   );
 }

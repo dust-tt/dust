@@ -1,37 +1,44 @@
-import { Checkbox, DataTable, ScrollableDataTable } from "@dust-tt/sparkle";
+import {
+  Checkbox,
+  DataTable,
+  ScrollableDataTable,
+  Tooltip,
+} from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useContext, useMemo } from "react";
 
+import { ConfirmContext } from "@app/components/Confirm";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
+import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
 
-type SpaceRowData = {
+type SpaceRowData = SpaceType & {
   id: string;
   icon: React.ComponentType;
   onClick: () => void;
-} & Pick<SpaceType, "name" | "kind">;
+};
 
 export interface DataSourceSpaceSelectorProps {
   spaces: SpaceType[];
   allowedSpaces?: SpaceType[];
-  onSelectSpace: (space: SpaceType) => void;
 }
 
 export function DataSourceSpaceSelector({
   spaces,
   allowedSpaces = [],
-  onSelectSpace,
 }: DataSourceSpaceSelectorProps) {
-  const { selectNode, removeNode, isRowSelected, isRowSelectable } =
+  const { removeNode, isRowSelected, setSpaceEntry } =
     useDataSourceBuilderContext();
 
+  const confirm = useContext(ConfirmContext);
   const spaceRows: SpaceRowData[] = spaces.map((space) => ({
+    ...space,
     id: space.sId,
     name: space.name,
     kind: space.kind,
     icon: getSpaceIcon(space),
-    onClick: () => onSelectSpace(space),
+    onClick: () => setSpaceEntry(space),
     disabled: allowedSpaces.find((s) => s.sId === space.sId) == null,
   }));
 
@@ -41,31 +48,47 @@ export function DataSourceSpaceSelector({
         id: "select",
         enableSorting: false,
         enableHiding: false,
-        cell: ({ row }) => (
-          <div className="flex h-full items-center">
-            <Checkbox
-              size="xs"
-              checked={isRowSelected(row.original.id)}
-              disabled={
-                row.original.kind !== "global" &&
-                !isRowSelectable(row.original.id)
-              }
-              onClick={(event) => event.stopPropagation()}
-              onCheckedChange={(state) => {
-                if (state === "indeterminate") {
-                  removeNode(row.original.id);
-                  return;
-                }
+        cell: ({ row }) => {
+          const selectionState = isRowSelected(row.original.id);
 
-                if (state) {
-                  selectNode(row.original.id);
-                } else {
-                  removeNode(row.original.id);
+          return (
+            <div className="flex h-full items-center">
+              <Tooltip
+                trigger={
+                  <Checkbox
+                    size="xs"
+                    checked={selectionState}
+                    disabled={selectionState !== "partial"}
+                    onClick={(event) => event.stopPropagation()}
+                    onCheckedChange={async () => {
+                      const item: NavigationHistoryEntryType = {
+                        type: "space",
+                        space: row.original,
+                      };
+
+                      if (selectionState === "partial") {
+                        const confirmed = await confirm({
+                          title: "Are you sure?",
+                          message: `Do you want to unselect all of "${row.original.name}"?`,
+                          validateLabel: "Unselect all",
+                          validateVariant: "warning",
+                        });
+                        if (confirmed) {
+                          removeNode(item);
+                        }
+                      }
+                    }}
+                  />
                 }
-              }}
-            />
-          </div>
-        ),
+                label={
+                  selectionState === "partial"
+                    ? `Unselect all of "${row.original.name}"`
+                    : "You cannot select the whole space"
+                }
+              />
+            </div>
+          );
+        },
         meta: {
           sizeRatio: 5,
         },
@@ -87,7 +110,7 @@ export function DataSourceSpaceSelector({
         },
       },
     ],
-    [isRowSelectable, isRowSelected, removeNode, selectNode]
+    [confirm, isRowSelected, removeNode]
   );
 
   return (
