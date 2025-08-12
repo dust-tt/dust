@@ -26,7 +26,7 @@ const GRID_SECTION_CLASSES = classNames(
 );
 
 const DEMO_VIDEO = {
-  sectionTitle: "Interactive content in motion",
+  sectionTitle: "See how it works",
   videoUrl: "https://fast.wistia.net/embed/iframe/8q80neektv",
   showCaptions: true,
 };
@@ -48,8 +48,7 @@ function HeroSection() {
             mono
             className="mb-4 text-4xl font-medium leading-tight md:text-5xl lg:text-6xl xl:text-7xl"
           >
-            Create interactive content with{" "}
-            <span className="text-blue-500">Dust Shareables</span>
+            Create interactive content with <span>Dust Shareables</span>
           </H1>
           <P
             size="lg"
@@ -82,7 +81,7 @@ function HeroSection() {
               <div className="relative z-10 mx-auto flex w-full items-center justify-center">
                 <img
                   src="/static/landing/interactive-content/Ext_Hero.svg"
-                  alt="Interactive content builder interface showing drag-and-drop elements and real-time preview"
+                  alt="Content builder interface showing drag-and-drop elements and real-time preview"
                   className="h-auto w-full max-w-lg rounded-2xl object-contain lg:max-w-xl xl:max-w-2xl"
                 />
               </div>
@@ -94,12 +93,12 @@ function HeroSection() {
   );
 }
 
-function InteractiveContentInAction() {
+function ContentInAction() {
   return (
     <div className={SECTION_CLASSES}>
       <div className={CONTAINER_CLASSES}>
         <div className="mb-12">
-          <H2>Interactive content in action</H2>
+          <H2>Shareables in action</H2>
           <P size="lg" className="mt-4 text-muted-foreground">
             AI agents shouldn't hand you static charts you paste into a slide
             and forget about. They should hand you something you can poke, edit,
@@ -114,7 +113,7 @@ function InteractiveContentInAction() {
                 <div className="relative w-full overflow-hidden rounded-lg bg-blue-50">
                   <img
                     src="/static/landing/interactive-content/SalesROI.svg"
-                    alt="Interactive data visualizations for client presentations"
+                    alt="Data visualizations for client presentations"
                     className="h-auto w-full object-contain"
                   />
                 </div>
@@ -173,8 +172,8 @@ function InteractiveContentInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-red-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Upload A/B results and get an interactive readout with
-                      lift and significance you can explore
+                      Upload A/B results and get a readout with lift and
+                      significance you can explore
                     </P>
                   </div>
                 </div>
@@ -383,8 +382,8 @@ function SharingAndAccessSection() {
           <div className="order-2 flex flex-col justify-center lg:order-2">
             <H3 className="mb-6">Secure and collaborative</H3>
             <P size="lg" className="text-muted-foreground">
-              Share interactive content with conversation participants,
-              workspace members, or anyone via public links
+              Share content with conversation participants, workspace members,
+              or anyone via public links
             </P>
           </div>
         </div>
@@ -403,7 +402,7 @@ function JustUseDustSection() {
 
       <div className={CONTAINER_CLASSES}>
         <div className="relative flex flex-col items-center justify-center py-12 text-center md:py-16">
-          <H2 className="mb-8 text-blue-600">Just use dust</H2>
+          <H2 className="mb-8 text-blue-600">Just use Dust</H2>
           <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
             <Button
               variant="highlight"
@@ -426,37 +425,34 @@ function JustUseDustSection() {
   );
 }
 
-export default function InteractiveContent() {
+export default function Shareables() {
   return (
     <>
       <Head>
-        <title>Dust - Interactive Content with Dust Shareables</title>
+        <title>Dust - Shareables with Dust Shareables</title>
         <meta
           name="description"
-          content="Create interactive content with Dust Shareables. Turn static outputs from your Dust AI agents into collaborative, editable visuals, tailored to whoever you're sharing them with."
+          content="Create shareables with Dust Shareables. Turn static outputs from your Dust AI agents into collaborative, editable visuals, tailored to whoever you're sharing them with."
         />
         <meta
           property="og:title"
-          content="Dust - Interactive Content with Dust Shareables"
+          content="Dust - Shareables with Dust Shareables"
         />
         <meta
           property="og:description"
-          content="Create interactive content with Dust Shareables. Turn static outputs from your Dust AI agents into collaborative, editable visuals, tailored to whoever you're sharing them with."
+          content="Create shareables with Dust Shareables. Turn static outputs from your Dust AI agents into collaborative, editable visuals, tailored to whoever you're sharing them with."
         />
         <meta property="og:type" content="website" />
         <meta
           property="og:image"
           content="https://dust.tt/static/landing/hero_dust.png"
         />
-        <meta
-          property="og:url"
-          content="https://dust.tt/home/interactive-content"
-        />
+        <meta property="og:url" content="https://dust.tt/home/shareables" />
       </Head>
 
       <div className="container flex w-full flex-col gap-16 px-2 py-2">
         <HeroSection />
-        <InteractiveContentInAction />
+        <ContentInAction />
         <AllTheBellsAndWhistlesSection />
         <SharingAndAccessSection />
         <VideoSection />
@@ -467,9 +463,6 @@ export default function InteractiveContent() {
   );
 }
 
-InteractiveContent.getLayout = (
-  page: ReactElement,
-  pageProps: LandingLayoutProps
-) => {
+Shareables.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };

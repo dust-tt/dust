@@ -339,7 +339,7 @@ export const menuConfig: DocsConfig = {
         },
         {
           title: "Shareables",
-          href: "/home/dust-shareables",
+          href: "/home/shareables",
         },
       ],
     },
