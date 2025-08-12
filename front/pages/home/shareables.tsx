@@ -27,7 +27,8 @@ const GRID_SECTION_CLASSES = classNames(
 
 const DEMO_VIDEO = {
   sectionTitle: "See how it works",
-  videoUrl: "https://fast.wistia.net/embed/iframe/8q80neektv",
+  videoUrl:
+    "https://fast.wistia.net/embed/iframe/nkyuwyy93c?web_component=true&seo=true",
   showCaptions: true,
 };
 
