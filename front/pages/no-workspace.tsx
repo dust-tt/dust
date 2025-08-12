@@ -122,18 +122,16 @@ export default function NoWorkspace({
         title="Joining Dust"
         className="ml-10 lg:ml-0"
         rightActions={
-          <>
-            <div className="flex flex-row items-center">
-              {user?.organizations && user.organizations.length > 1 && (
-                <WorkspacePicker user={user} workspace={workspace} />
+          <div className="flex flex-row items-center">
+            {user?.organizations && user.organizations.length > 1 && (
+              <WorkspacePicker user={user} workspace={workspace} />
+            )}
+            <div>
+              {user && (
+                <UserMenu user={user} owner={workspace} subscription={null} />
               )}
-              <div>
-                {user && (
-                  <UserMenu user={user} owner={workspace} subscription={null} />
-                )}
-              </div>
             </div>
-          </>
+          </div>
         }
       />
       <div className="mx-auto mt-40 flex max-w-2xl flex-col gap-8">
