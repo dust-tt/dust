@@ -88,17 +88,10 @@ async function cleanupConnector(
     ticketIdsToSee.forEach((id) => ticketIdsSeen.add(id));
 
     const ticketsByTicketId = _.groupBy(tickets, (t) => t.ticketId);
-    const duplicateTickets = Object.values(ticketsByTicketId).filter(
-      (t) => t.length > 1
-    );
 
     await concurrentExecutor(
-      duplicateTickets,
+      Object.values(ticketsByTicketId),
       async (ticketBatch) => {
-        // Skip if there is only one ticket, we can safely assume it's the correct one.
-        if (ticketBatch.length === 1) {
-          return;
-        }
         // Fetch the first ticket from Zendesk to get the brand ID (they all have the same one).
         const brandIdFromZendesk = await getTicketBrandId(ticketBatch[0]!, {
           accessToken,
