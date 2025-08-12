@@ -174,7 +174,7 @@ const DialogFooter = ({
   <div className="s-flex s-flex-none s-flex-col s-gap-0">
     <div
       className={cn(
-        "s-flex s-flex-none s-flex-row s-justify-end s-gap-2 s-px-3 s-py-3",
+        "s-flex s-flex-none s-flex-row s-justify-end s-gap-2 s-px-3 s-pb-3",
         className
       )}
       {...props}
