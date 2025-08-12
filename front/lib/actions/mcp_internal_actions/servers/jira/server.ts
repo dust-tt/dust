@@ -14,8 +14,9 @@ import {
   getProject,
   getProjects,
   getTransitions,
+  listUsers,
   searchIssues,
-  searchUsers,
+  searchUsersByEmailExact,
   transitionIssue,
   updateIssue,
   withAuth,
@@ -60,6 +61,12 @@ const createServer = (): McpServer => {
       **Best Practices for Querying:**
       1.  **Discover Object Structure First:** Use \`get_issue_fields\` to understand an object's fields and relationships before writing complex queries. Alternatively, for a quick field list directly in a query, use \`get_issues\` .
       2.  **Verify Field and Relationship Names:** If you encounter JIRA 400 errors suggesting that the field or relationship does not exist, use \`get_issue_types\` for the relevant object(s) to confirm the exact names and their availability.
+
+      **User Lookup (get_users):**
+      - Provide emailAddress for exact match on email. Example: { "emailAddress": "jane.doe@acme.com" }
+      - Or provide name for case-insensitive contains on display name. Example: { "name": "Jane" }
+      - If neither emailAddress nor name is provided, the tool lists the first maxResults users.
+      - For pagination, pass startAt using the previous result's nextStartAt. Example: { "name": "Jane", "startAt": 100 }
     `,
   });
 
@@ -581,12 +588,19 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_users",
-    "Search for JIRA users by email address or display name. Useful for finding user account IDs for assignments, mentions, or other user-related operations.",
+    "Search for JIRA users. Provide emailAddress for exact email match, or name for display name contains. If neither is provided, returns the first maxResults users. Use startAt for pagination (pass the previous result's nextStartAt).",
     {
-      query: z
+      emailAddress: z
         .string()
+        .optional()
         .describe(
-          "Search query - can be email address or display name (e.g., 'john.doe@company.com' or 'John Doe')"
+          "Exact email address (e.g., 'john.doe@company.com'). If provided, only exact matches are returned."
+        ),
+      name: z
+        .string()
+        .optional()
+        .describe(
+          "Display name filter (e.g., 'John Doe'). Case-insensitive contains match."
         ),
       maxResults: z
         .number()
@@ -595,40 +609,73 @@ const createServer = (): McpServer => {
         .optional()
         .default(SEARCH_USERS_MAX_RESULTS)
         .describe(
-          `Maximum number of users to return (default: ${SEARCH_USERS_MAX_RESULTS}, max: ${SEARCH_USERS_MAX_RESULTS})`
+          `Maximum number of users to return when searching by name (default: ${SEARCH_USERS_MAX_RESULTS}, max: ${SEARCH_USERS_MAX_RESULTS})`
+        ),
+      startAt: z
+        .number()
+        .int()
+        .min(0)
+        .optional()
+        .describe(
+          "Pagination offset. Pass the previous response's nextStartAt to fetch the next page."
         ),
     },
-    async ({ query, maxResults = SEARCH_USERS_MAX_RESULTS }, { authInfo }) => {
+    async (
+      { emailAddress, name, maxResults = SEARCH_USERS_MAX_RESULTS, startAt },
+      { authInfo }
+    ) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await searchUsers(
-            baseUrl,
-            accessToken,
-            query,
-            maxResults
-          );
+          if (emailAddress) {
+            const result = await searchUsersByEmailExact(
+              baseUrl,
+              accessToken,
+              emailAddress,
+              { maxResults, startAt }
+            );
+            if (result.isErr()) {
+              return makeMCPToolTextError(
+                `Error searching users: ${result.error}`
+              );
+            }
+
+            const message =
+              result.value.users.length === 0
+                ? "No users found with the specified email address"
+                : `Found ${result.value.users.length} exact match(es) for the specified email address`;
+            return makeMCPToolJSONSuccess({
+              message,
+              result: {
+                users: result.value.users,
+                nextStartAt: result.value.nextStartAt,
+              },
+            });
+          }
+
+          const result = await listUsers(baseUrl, accessToken, {
+            name,
+            maxResults,
+            startAt,
+          });
           if (result.isErr()) {
             return makeMCPToolTextError(
               `Error searching users: ${result.error}`
             );
           }
 
-          // Construct the exact URL that was queried
-          const params = new URLSearchParams({
-            query,
-            maxResults: maxResults.toString(),
-          });
-          const queryUrl = `${baseUrl}/rest/api/3/users/search?${params.toString()}`;
-
           const message =
-            result.value.length === 0
-              ? "No users found matching the search query"
-              : `Found ${result.value.length} user(s) matching the search query`;
+            result.value.users.length === 0
+              ? name
+                ? "No users found matching the name"
+                : "No users found"
+              : name
+                ? `Found ${result.value.users.length} user(s) matching the name`
+                : `Listed ${result.value.users.length} user(s)`;
           return makeMCPToolJSONSuccess({
             message,
             result: {
-              users: result.value,
-              queryUrl,
+              users: result.value.users,
+              nextStartAt: result.value.nextStartAt,
             },
           });
         },
