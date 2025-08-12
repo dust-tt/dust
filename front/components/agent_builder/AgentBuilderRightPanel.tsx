@@ -117,7 +117,7 @@ function ExpandedContent({
           <AgentBuilderPreview />
         </div>
       )}
-      {selectedTab === "performance" && agentConfigurationSId && (
+      {selectedTab === "performance" && (
         <div className="flex-1 overflow-y-auto p-4">
           <AgentBuilderPerformance
             agentConfigurationSId={agentConfigurationSId}
