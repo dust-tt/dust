@@ -39,6 +39,7 @@ import type {
 import type { LightAgentConfigurationType } from "@app/types";
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
 import type {
+  AgentContentItemType,
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
@@ -65,29 +66,12 @@ export function getMaximalVersionAgentStepContent(
 }
 
 export async function generateParsedContents(
-  auth: Authenticator,
-  agentMessageId: ModelId,
   actions: MCPActionType[],
   agentConfiguration: LightAgentConfigurationType,
-  messageId: string
+  messageId: string,
+  contents: { step: number; content: AgentContentItemType }[]
 ): Promise<Record<number, Array<ParsedContentItem>>> {
   const parsedContents: Record<number, Array<ParsedContentItem>> = {};
-
-  const agentStepContents = await AgentStepContentResource.fetchByAgentMessages(
-    auth,
-    {
-      agentMessageIds: [agentMessageId],
-      includeMCPActions: false,
-      latestVersionsOnly: true,
-    }
-  );
-
-  const contents = agentStepContents
-    .sort((a, b) => a.step - b.step || a.index - b.index)
-    .map((sc) => ({
-      step: sc.step,
-      content: sc.value,
-    }));
 
   for (const c of contents) {
     const step = c.step + 1; // Convert to 1-indexed for display
@@ -104,7 +88,6 @@ export async function generateParsedContents(
     }
 
     if (isTextContent(c.content)) {
-      // Use the same parser approach as the existing code
       const contentParser = new AgentMessageContentParser(
         agentConfiguration,
         messageId,
@@ -239,8 +222,7 @@ function enhanceMCPActionWithServerId(
 async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   messages: Message[],
-  viewType: V,
-  { withContentParsing }: { withContentParsing?: boolean } = {}
+  viewType: V
 ): Promise<
   Result<
     V extends "full"
@@ -355,13 +337,30 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         };
       }
 
+      const stepContents = await AgentStepContentResource.fetchByAgentMessages(
+        auth,
+        {
+          agentMessageIds: [agentMessage.id],
+          includeMCPActions: false,
+          latestVersionsOnly: true,
+        }
+      );
+
       const agentStepContents =
-        agentMessage.agentStepContents
+        stepContents
           ?.sort((a, b) => a.step - b.step || a.index - b.index)
           .map((sc) => ({
             step: sc.step,
             content: sc.value,
           })) ?? [];
+
+      const parsedContents = await generateParsedContents(
+        actions,
+        agentConfiguration,
+        message.sId,
+        agentStepContents
+      );
+
       const textContents: Array<{ step: number; content: TextContentType }> =
         [];
       for (const content of agentStepContents) {
@@ -369,6 +368,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           textContents.push({ step: content.step, content: content.content });
         }
       }
+
       const reasoningContents: Array<{
         step: number;
         content: ReasoningContentType;
@@ -408,16 +408,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         }
       })();
 
-      const parsedContents = withContentParsing
-        ? await generateParsedContents(
-            auth,
-            agentMessage.id,
-            actions,
-            agentConfiguration,
-            message.sId
-          )
-        : {};
-
       const m = {
         id: message.id,
         agentMessageId: agentMessage.id,
@@ -454,6 +444,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
     })
   );
+
   return new Ok(
     renderedMessages as V extends "full"
       ? { m: AgentMessageType; rank: number; version: number }[]
@@ -610,8 +601,7 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   conversationId: string,
   messages: Message[],
-  viewType: V,
-  { withContentParsing }: { withContentParsing?: boolean } = {}
+  viewType: V
 ): Promise<
   Result<
     V extends "full" ? MessageWithRankType[] : LightMessageWithRankType[],
@@ -620,7 +610,7 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
 > {
   const [userMessages, agentMessagesRes, contentFragments] = await Promise.all([
     batchRenderUserMessages(auth, messages),
-    batchRenderAgentMessages(auth, messages, viewType, { withContentParsing }),
+    batchRenderAgentMessages(auth, messages, viewType),
     batchRenderContentFragment(auth, conversationId, messages),
   ]);
 
@@ -710,7 +700,7 @@ export async function fetchMessageInConversation(
   conversation: ConversationWithoutContentType,
   messageId: string
 ) {
-  const message = await Message.findOne({
+  return Message.findOne({
     where: {
       conversationId: conversation.id,
       sId: messageId,
@@ -729,6 +719,4 @@ export async function fetchMessageInConversation(
       },
     ],
   });
-
-  return message;
 }
