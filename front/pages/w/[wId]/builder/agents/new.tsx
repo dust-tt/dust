@@ -133,6 +133,7 @@ export default function CreateAgent({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({ templateId });
 
+
   if (agentConfiguration) {
     throwIfInvalidAgentConfiguration(agentConfiguration);
   }
@@ -143,7 +144,10 @@ export default function CreateAgent({
 
   return (
     <AgentBuilderProvider owner={owner} user={user}>
-      <AgentBuilder />
+      <AgentBuilder 
+        agentConfiguration={agentConfiguration} 
+        assistantTemplate={assistantTemplate}
+      />
     </AgentBuilderProvider>
   );
 }

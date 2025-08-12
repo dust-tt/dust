@@ -18,7 +18,7 @@ export async function generateMockAgentConfigurationFromTemplate(
 
   return new Ok({
     actions: [],
-    description: "",
+    description: template.description ?? "",
     instructions: template.presetInstructions ?? "",
     model: {
       providerId: template.presetProviderId,
