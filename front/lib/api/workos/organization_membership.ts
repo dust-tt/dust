@@ -23,7 +23,7 @@ export async function fetchWorkOSOrganizationMembershipsForUserIdAndOrgId(
   return response.data;
 }
 
-export async function findWorkOSOrganizationsForUserIdUncached(userId: string) {
+async function findWorkOSOrganizationsForUserIdUncached(userId: string) {
   const response = await getWorkOS().userManagement.listOrganizationMemberships(
     {
       userId,
