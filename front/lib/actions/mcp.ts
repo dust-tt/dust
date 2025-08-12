@@ -40,7 +40,7 @@ import {
   AgentMCPAction,
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
-import { makeSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type {
@@ -734,17 +734,26 @@ export async function updateMCPApprovalState({
 }: {
   actionId: string;
   executionState: MCPExecutionState;
-}) {
-  const action = await AgentMCPAction.findByPk(actionId);
+}): Promise<boolean> {
+  // TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent mcp action.
+
+  const id = getResourceIdFromSId(actionId);
+  if (!id) {
+    throw new Error(`Invalid action ID: ${actionId}`);
+  }
+
+  const action = await AgentMCPAction.findByPk(id);
   if (!action) {
     throw new Error(`Action not found: ${actionId}`);
   }
 
   if (action.executionState === executionState) {
-    return;
+    return false;
   }
 
   await action.update({
     executionState,
   });
+
+  return true;
 }

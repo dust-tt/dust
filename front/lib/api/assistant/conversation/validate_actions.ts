@@ -29,7 +29,7 @@ async function getUserMessageIdFromMessageId(
       workspaceId: auth.getNonNullableWorkspace().id,
       sId: messageId,
     },
-    attributes: ["parentId", "version"],
+    attributes: ["parentId", "version", "sId"],
   });
 
   assert(
@@ -93,10 +93,23 @@ export async function validateAction(
     messageId,
   });
 
-  await updateMCPApprovalState({
+  const actionUpdated = await updateMCPApprovalState({
     actionId,
     executionState: getMCPApprovalStateFromUserApprovalState(approvalState),
   });
+
+  if (!actionUpdated) {
+    logger.info(
+      {
+        actionId,
+        messageId,
+        approvalState,
+      },
+      "Action already approved or rejected"
+    );
+
+    return new Ok(undefined);
+  }
 
   const runAgentDataRes = await getRunAgentData(auth.toJSON(), {
     sync: false,
@@ -111,6 +124,12 @@ export async function validateAction(
   });
 
   if (runAgentDataRes.isErr()) {
+    logger.error(
+      {
+        error: runAgentDataRes.error,
+      },
+      "Error getting run agent data"
+    );
     return runAgentDataRes;
   }
 
@@ -120,6 +139,7 @@ export async function validateAction(
       sync: true,
       inMemoryData: runAgentDataRes.value,
     },
+    // TODO: Use action step for start step.
     { forceAsynchronousLoop: hasAsyncLoopFeature, startStep: 0 }
   );
 
