@@ -126,29 +126,6 @@ async function batchRenderUserMessages(
   });
 }
 
-async function enhanceMCPActionWithServerId(agentMCPActions: MCPActionType[]) {
-  const agentMCPActionsModels = await AgentMCPAction.findAll({
-    where: {
-      id: [...new Set(agentMCPActions.map((a) => a.id))],
-    },
-  });
-
-  // Resolve the MCP server id for the actions - only for full view
-  return agentMCPActions.map((agentMCPAction) => {
-    const toolConfiguration = agentMCPActionsModels.find(
-      (a) => a.id === agentMCPAction.id
-    )?.toolConfiguration;
-
-    if (toolConfiguration) {
-      return new MCPActionType({
-        ...agentMCPAction,
-        mcpServerId: toolConfiguration.toolServerId || null,
-      });
-    }
-    return agentMCPAction;
-  });
-}
-
 async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   messages: Message[],
@@ -191,11 +168,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     })(),
   ]);
 
-  const enhancedAgentMCPActions =
-    viewType === "full"
-      ? await enhanceMCPActionWithServerId(agentMCPActions)
-      : agentMCPActions;
-
   if (!agentConfigurations) {
     return new Err(
       new ConversationError("conversation_with_unavailable_agent")
@@ -213,7 +185,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       const agentMessage = message.agentMessage;
 
-      const actions = enhancedAgentMCPActions
+      const actions = agentMCPActions
         .filter((a) => a.agentMessageId === agentMessage.id)
         .sort((a, b) => a.step - b.step);
 
