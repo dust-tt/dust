@@ -728,25 +728,24 @@ export async function handleMCPActionError(
   };
 }
 
-export async function updateMCPApprovalState({
-  actionId,
-  executionState,
-}: {
-  actionId: string;
-  executionState: MCPExecutionState;
-}): Promise<boolean> {
-  // TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent mcp action.
-
+// TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent mcp action.
+export async function getMCPAction(
+  auth: Authenticator,
+  actionId: string
+): Promise<AgentMCPAction | null> {
   const id = getResourceIdFromSId(actionId);
   if (!id) {
     throw new Error(`Invalid action ID: ${actionId}`);
   }
 
-  const action = await AgentMCPAction.findByPk(id);
-  if (!action) {
-    throw new Error(`Action not found: ${actionId}`);
-  }
+  return AgentMCPAction.findByPk(id);
+}
 
+// TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent mcp action.
+export async function updateMCPApprovalState(
+  action: AgentMCPAction,
+  executionState: MCPExecutionState
+): Promise<boolean> {
   if (action.executionState === executionState) {
     return false;
   }

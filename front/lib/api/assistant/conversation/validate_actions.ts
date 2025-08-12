@@ -1,8 +1,9 @@
 import type { ActionApprovalStateType } from "@dust-tt/client";
-import { Ok } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import assert from "assert";
 
 import {
+  getMCPAction,
   getMCPApprovalStateFromUserApprovalState,
   updateMCPApprovalState,
 } from "@app/lib/actions/mcp";
@@ -10,6 +11,7 @@ import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { Message } from "@app/lib/models/assistant/conversation";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType, Result } from "@app/types";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
@@ -93,10 +95,24 @@ export async function validateAction(
     messageId,
   });
 
-  const actionUpdated = await updateMCPApprovalState({
-    actionId,
-    executionState: getMCPApprovalStateFromUserApprovalState(approvalState),
-  });
+  const action = await getMCPAction(auth, actionId);
+  if (!action) {
+    return new Err(new Error(`Action not found: ${actionId}`));
+  }
+
+  const agentStepContent = await AgentStepContentResource.fetchByModelId(
+    action.stepContentId
+  );
+  if (!agentStepContent) {
+    return new Err(
+      new Error(`Agent step content not found: ${action.stepContentId}`)
+    );
+  }
+
+  const actionUpdated = await updateMCPApprovalState(
+    action,
+    getMCPApprovalStateFromUserApprovalState(approvalState)
+  );
 
   if (!actionUpdated) {
     logger.info(
@@ -139,8 +155,11 @@ export async function validateAction(
       sync: true,
       inMemoryData: runAgentDataRes.value,
     },
-    // TODO: Use action step for start step.
-    { forceAsynchronousLoop: hasAsyncLoopFeature, startStep: 0 }
+    {
+      forceAsynchronousLoop: hasAsyncLoopFeature,
+      // Resume from the step where the action was created.
+      startStep: agentStepContent.step,
+    }
   );
 
   logger.info(
