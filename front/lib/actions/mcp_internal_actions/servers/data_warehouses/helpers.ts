@@ -1,7 +1,11 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import _ from "lodash";
 
-import type { RenderedWarehouseNodeType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type {
+  RenderedWarehouseNodeType,
+  WarehousesBrowseType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { WAREHOUSES_BROWSE_MIME_TYPE } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ResolvedDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeDataSourceViewFilter } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import config from "@app/lib/api/config";
@@ -160,9 +164,9 @@ export function makeBrowseResource({
   nodes: RenderedWarehouseNodeType[];
   nextPageCursor: string | null;
   resultCount: number;
-}) {
+}): WarehousesBrowseType {
   return {
-    mimeType: "application/vnd.dust.tool-output.tables-filesystem-browse",
+    mimeType: WAREHOUSES_BROWSE_MIME_TYPE,
     uri: "",
     text: `Showing ${nodes.length} results.${nextPageCursor ? " More results available." : " No more results available."}`,
     nodeId,
