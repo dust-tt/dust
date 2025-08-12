@@ -35,17 +35,18 @@ export type RunModelAndCreateActionsResult = {
  */
 export async function runModelAndCreateActionsActivity({
   authType,
+  autoRetryCount = 0,
+  checkForResume = true,
   runAgentArgs,
   runIds,
   step,
-  autoRetryCount = 0,
 }: {
   authType: AuthenticatorType;
+  autoRetryCount?: number;
+  checkForResume?: boolean;
   runAgentArgs: RunAgentArgs;
   runIds: string[];
   step: number;
-  autoRetryCount?: number;
-  // TODO(DURABLE_AGENTS 2025-08-12): Add a flag to indicate that we can skip the action check.
 }): Promise<RunModelAndCreateActionsResult | null> {
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
@@ -54,21 +55,20 @@ export async function runModelAndCreateActionsActivity({
 
   const { auth, ...runAgentData } = runAgentDataRes.value;
 
-  // Check if actions already exist for this step. If so, we are resuming from tool validation.
-  const existingData = await getExistingActionsAndBlobs(
-    auth,
-    runAgentData,
-    step
-  );
+  if (checkForResume) {
+    // Check if actions already exist for this step. If so, we are resuming from tool validation.
+    const existingData = await getExistingActionsAndBlobs(
+      auth,
+      runAgentData,
+      step
+    );
 
-  if (existingData) {
-    const localLogger = logger.child({ step });
-    localLogger.info("Resuming from tool validation - using existing actions");
-
-    return {
-      actionBlobs: existingData.actionBlobs,
-      runId: null,
-    };
+    if (existingData) {
+      return {
+        actionBlobs: existingData.actionBlobs,
+        runId: null,
+      };
+    }
   }
 
   // Otherwise, run both activities.

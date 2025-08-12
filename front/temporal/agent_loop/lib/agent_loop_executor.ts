@@ -21,10 +21,11 @@ export async function executeAgentLoop(
   for (let i = startStep; i < MAX_STEPS_USE_PER_RUN_LIMIT + 1; i++) {
     const result = await activities.runModelAndCreateActionsActivity({
       authType,
+      autoRetryCount: 0,
+      checkForResume: i === startStep, // Only run resume the first time.
       runAgentArgs,
       runIds,
       step: i,
-      autoRetryCount: 0,
     });
 
     if (!result) {
@@ -42,6 +43,7 @@ export async function executeAgentLoop(
     // If at least one action needs approval, we break out of the loop and will resume once all
     // actions have been approved.
     const needsApproval = actionBlobs.some((a) => a.needsApproval);
+
     if (needsApproval) {
       // Break the loop - workflow will be restarted externally once approved
       return;
