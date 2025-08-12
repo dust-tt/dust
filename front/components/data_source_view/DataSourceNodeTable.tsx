@@ -6,7 +6,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import React, { useCallback, useMemo } from "react";
+import React, { useMemo } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
@@ -35,10 +35,8 @@ interface NodeRowData {
   rawNodeData: DataSourceViewContentNode;
 }
 
-export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
-  const { owner } = useAgentBuilderContext();
+const useColumns = () => {
   const {
-    navigationHistory,
     selectNode,
     selectCurrentNavigationEntry,
     removeNode,
@@ -46,49 +44,7 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
     isRowSelected,
     isRowSelectable,
     isCurrentNavigationEntrySelected,
-    addNodeEntry,
   } = useDataSourceBuilderContext();
-
-  const traversedNode = getLatestNodeFromNavigationHistory(navigationHistory);
-  const dataSourceView =
-    findDataSourceViewFromNavigationHistory(navigationHistory);
-
-  const {
-    nodes: childNodes,
-    isNodesLoading,
-    hasNextPage,
-    loadMore,
-  } = useInfinitDataSourceViewContentNodes({
-    owner,
-    dataSourceView:
-      traversedNode?.dataSourceView ?? dataSourceView ?? undefined,
-    parentId:
-      traversedNode !== null && traversedNode.parentInternalIds !== null
-        ? traversedNode.internalId
-        : undefined,
-    viewType,
-    pagination: { limit: PAGE_SIZE, cursor: null },
-  });
-
-  const handleLoadMore = useCallback(async () => {
-    if (hasNextPage && !isNodesLoading) {
-      await loadMore();
-    }
-  }, [hasNextPage, isNodesLoading, loadMore]);
-
-  const nodeRows: NodeRowData[] = useMemo(
-    () =>
-      childNodes.map((node) => {
-        return {
-          id: node.internalId,
-          title: node.title,
-          icon: getVisualForDataSourceViewContentNode(node),
-          onClick: node.expandable ? () => addNodeEntry(node) : undefined,
-          rawNodeData: node,
-        };
-      }),
-    [childNodes, addNodeEntry]
-  );
 
   const columns: ColumnDef<NodeRowData>[] = useMemo(
     () => [
@@ -174,20 +130,71 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
     ]
   );
 
+  return columns;
+};
+
+export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
+  const { owner } = useAgentBuilderContext();
+  const { navigationHistory, addNodeEntry } = useDataSourceBuilderContext();
+
+  const traversedNode = getLatestNodeFromNavigationHistory(navigationHistory);
+  const dataSourceView =
+    findDataSourceViewFromNavigationHistory(navigationHistory);
+
+  const {
+    nodes: childNodes,
+    isNodesLoading,
+    hasNextPage,
+    loadMore,
+    isLoadingMore,
+  } = useInfinitDataSourceViewContentNodes({
+    owner,
+    dataSourceView:
+      traversedNode?.dataSourceView ?? dataSourceView ?? undefined,
+    parentId:
+      traversedNode !== null && traversedNode.parentInternalIds !== null
+        ? traversedNode.internalId
+        : undefined,
+    viewType,
+    pagination: { limit: PAGE_SIZE, cursor: null },
+  });
+
+  const handleLoadMore = async () => {
+    if (hasNextPage && !isLoadingMore) {
+      await loadMore();
+    }
+  };
+
+  const columns = useColumns();
+  const nodeRows: NodeRowData[] = useMemo(
+    () =>
+      childNodes.map((node) => {
+        return {
+          id: node.internalId,
+          title: node.title,
+          icon: getVisualForDataSourceViewContentNode(node),
+          onClick: node.expandable ? () => addNodeEntry(node) : undefined,
+          rawNodeData: node,
+        };
+      }),
+    [childNodes, addNodeEntry]
+  );
+
+  if (isNodesLoading) {
+    return (
+      <div className="flex justify-center p-4">
+        <Spinner size="md" />
+      </div>
+    );
+  }
+
   return (
-    <div>
-      {isNodesLoading ? (
-        <div className="flex justify-center p-4">
-          <Spinner size="md" />
-        </div>
-      ) : (
-        <ScrollableDataTable
-          data={nodeRows}
-          columns={columns}
-          getRowId={(row) => row.id}
-          onLoadMore={handleLoadMore}
-        />
-      )}
-    </div>
+    <ScrollableDataTable
+      data={nodeRows}
+      columns={columns}
+      getRowId={(row) => row.id}
+      onLoadMore={handleLoadMore}
+      isLoading={isLoadingMore}
+    />
   );
 }

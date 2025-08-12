@@ -309,13 +309,6 @@ export function useInfinitDataSourceViewContentNodes({
   sorting,
   swrOptions,
 }: FetchDataSourceViewContentNodesOptions) {
-  const body: GetContentNodesOrChildrenRequestBodyType = {
-    internalIds,
-    parentId,
-    viewType: viewType ?? "all",
-    sorting,
-  };
-
   const { data, error, isLoading, size, setSize, mutate, isValidating } =
     useSWRInfiniteWithDefaults<
       [string, GetContentNodesOrChildrenRequestBodyType] | null,
@@ -339,6 +332,13 @@ export function useInfinitDataSourceViewContentNodes({
           params.append("limit", pagination.limit.toString());
         }
 
+        const body: GetContentNodesOrChildrenRequestBodyType = {
+          internalIds,
+          parentId,
+          viewType: viewType ?? "all",
+          sorting,
+        };
+
         return [
           makeURLDataSourceViewContentNodes({ owner, dataSourceView }, params),
           body,
@@ -356,16 +356,18 @@ export function useInfinitDataSourceViewContentNodes({
     lastPage?.nextPageCursor !== null && lastPage?.nextPageCursor !== undefined;
 
   return {
-    isNodesLoading: isLoading,
+    isNodesLoading: isLoading && !data,
     isNodesValidating: isValidating,
     nodesError: error,
     nodes,
     nextPageCursor: lastPage?.nextPageCursor || null,
     hasNextPage,
-    loadMore: () => setSize(size + 1),
+    loadMore: () => setSize((s) => s + 1),
     mutate,
     totalNodesCount: lastPage?.total || 0,
     totalNodesCountIsAccurate: lastPage?.totalIsAccurate || true,
+    isLoadingMore:
+      isLoading || (size > 0 && data && typeof data[size - 1] === "undefined"),
   };
 }
 
