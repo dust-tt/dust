@@ -168,16 +168,10 @@ export function KnowledgeConfigurationSheet({
     defaultValues,
   });
 
-  const { reset } = formMethods;
-
-  // Reset form when action changes (recommended pattern for dynamic data)
-  useEffect(() => {
-    reset(defaultValues);
-  }, [defaultValues, reset]);
-
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       onClose();
+      formMethods.reset(defaultValues);
     }
   };
 
