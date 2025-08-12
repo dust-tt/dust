@@ -36,10 +36,13 @@ export function ClientExecutableRenderer({
   owner,
 }: ClientExecutableRendererProps) {
   const { closePanel } = useConversationSidePanelContext();
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
+
   const { fileContent, isFileContentLoading, error } = useFileContent({
     fileId,
     owner,
   });
+
   const isUsingConversationFiles = React.useMemo(
     () => (fileContent ? isFileUsingConversationFiles(fileContent) : false),
     [fileContent]
@@ -47,22 +50,16 @@ export function ClientExecutableRenderer({
 
   const [showCode, setShowCode] = React.useState(false);
 
-  const exportVisualization = React.useCallback(
-    (format: "png" | "svg") => {
-      const iframe = document.querySelector(
-        `iframe[src*="identifier=viz-${fileId}"]`
-      ) as HTMLIFrameElement;
-      if (iframe?.contentWindow) {
-        iframe.contentWindow.postMessage(
-          { type: `EXPORT_${format.toUpperCase()}` },
-          "*"
-        );
-      } else {
-        console.log("No iframe content window found");
-      }
-    },
-    [fileId]
-  );
+  const exportVisualization = React.useCallback((format: "png" | "svg") => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: `EXPORT_${format.toUpperCase()}` },
+        "*"
+      );
+    } else {
+      console.log("No iframe content window found");
+    }
+  }, []);
 
   if (isFileContentLoading) {
     return (
@@ -147,6 +144,7 @@ export function ClientExecutableRenderer({
               key={`viz-${fileId}`}
               conversationId={conversation.sId}
               isInDrawer={true}
+              ref={iframeRef}
             />
           </div>
         )}
