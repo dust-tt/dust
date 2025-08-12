@@ -48,20 +48,17 @@ const MultiPageDialogFooter = ({
 }: MultiPageDialogFooterProps) => {
   return (
     <div
-      className={cn(
-        "s-flex s-flex-none s-flex-row s-justify-between s-gap-3 s-px-5 s-py-4",
-        className
-      )}
+      className={cn("s-flex s-flex-none s-flex-col s-gap-3 s-p-4", className)}
       {...props}
     >
-      <div className="s-flex s-gap-2">
-        {leftButton && <Button {...leftButton} />}
-      </div>
-      <div className="s-flex s-gap-2">
-        {centerButton && <Button {...centerButton} />}
-        {rightButton && <Button {...rightButton} />}
-      </div>
       {children}
+      <div className="s-flex s-flex-row s-justify-between">
+        <div>{leftButton && <Button {...leftButton} />}</div>
+        <div className="s-flex s-gap-2">
+          {centerButton && <Button {...centerButton} />}
+          {rightButton && <Button {...rightButton} />}
+        </div>
+      </div>
     </div>
   );
 };
