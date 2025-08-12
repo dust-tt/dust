@@ -264,7 +264,7 @@ const InputBarContainer = ({
         }
       }}
     >
-      <div className="flex flex-grow flex-col">
+      <div className="flex w-0 flex-grow flex-col">
         <EditorContent
           editor={editor}
           className={classNames(
