@@ -153,7 +153,7 @@ export function useVisualizationAPI(
           return;
         }
 
-        // Validate message structure using io-ts
+        // Validate message structure using zod.
         const validatedMessage = validateMessage(event.data);
         if (!validatedMessage) {
           console.log("Invalid message format received:", event.data);
