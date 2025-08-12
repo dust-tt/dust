@@ -32,6 +32,8 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
             user_scopes: [
               "chat:write",
               "search:read",
+              "search:read.public",
+              "search:read.private",
               "users:read",
               "channels:read",
               "reactions:read",
