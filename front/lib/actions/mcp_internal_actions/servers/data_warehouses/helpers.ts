@@ -204,3 +204,88 @@ function renderNode(
     connectorProvider: connectorProvider ?? null,
   };
 }
+
+export async function validateTablesInView(
+  auth: Authenticator,
+  tableIds: string[],
+  dataSourceConfigurations: ResolvedDataSourceConfiguration[]
+): Promise<Result<CoreAPIContentNode[], Error | CoreAPIError>> {
+  if (tableIds.length === 0) {
+    return new Ok([]);
+  }
+
+  const parsedTables: { dataSourceSId: string; nodeId: string }[] = [];
+  const dataSourceSIds = new Set<string>();
+  
+  for (const tableId of tableIds) {
+    if (!tableId.startsWith("table-")) {
+      return new Err(
+        new Error(`Invalid table ID format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`)
+      );
+    }
+    
+    const parts = tableId.substring("table-".length).split("-");
+    if (parts.length < 2) {
+      return new Err(
+        new Error(`Invalid table ID format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`)
+      );
+    }
+    
+    const dataSourceSId = parts[0];
+    const nodeId = parts.slice(1).join("-");
+    
+    parsedTables.push({ dataSourceSId, nodeId });
+    dataSourceSIds.add(dataSourceSId);
+  }
+  
+  if (dataSourceSIds.size > 1) {
+    return new Err(
+      new Error(`All tables must be from the same warehouse. Found tables from warehouses: ${Array.from(dataSourceSIds).join(", ")}`)
+    );
+  }
+  
+  const dataSourceSId = Array.from(dataSourceSIds)[0];
+  const dataSource = await DataSourceResource.fetchById(auth, dataSourceSId);
+  if (!dataSource) {
+    return new Err(
+      new Error(`Data source not found for ID: ${dataSourceSId}`)
+    );
+  }
+  
+  const relevantConfig = dataSourceConfigurations.find(
+    (config) => config.dataSource.dustAPIDataSourceId === dataSource.dustAPIDataSourceId
+  );
+  
+  if (!relevantConfig) {
+    return new Err(
+      new Error(`Tables from warehouse ${dataSourceSId} are not accessible with the current view filter`)
+    );
+  }
+  
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const searchResult = await coreAPI.searchNodes({
+    filter: {
+      data_source_views: makeDataSourceViewFilter([relevantConfig]),
+      node_ids: parsedTables.map((t) => t.nodeId),
+    },
+  });
+  
+  if (searchResult.isErr()) {
+    return searchResult;
+  }
+  
+  const foundNodeIds = new Set(searchResult.value.nodes.map((n) => n.node_id));
+  const missingTables = parsedTables.filter((t) => !foundNodeIds.has(t.nodeId));
+  
+  if (missingTables.length > 0) {
+    return new Err(
+      new Error(
+        `The following tables are not accessible with the current view filter: ${missingTables
+          .map((t) => `table-${t.dataSourceSId}-${t.nodeId}`)
+          .join(", ")}`
+      )
+    );
+  }
+  
+  return new Ok(searchResult.value.nodes);
+}
