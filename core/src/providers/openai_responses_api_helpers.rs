@@ -396,8 +396,10 @@ pub async fn openai_responses_api_completion(
     transform_system_messages: TransformSystemMessages,
     provider_name: String,
 ) -> Result<LLMChatGeneration> {
-    let is_reasoning_model =
-        model_id.starts_with("o3") || model_id.starts_with("o1") || model_id.starts_with("o4");
+    let is_reasoning_model = model_id.starts_with("o3")
+        || model_id.starts_with("o1")
+        || model_id.starts_with("o4")
+        || model_id.starts_with("gpt-5");
 
     let (openai_org_id, instructions, reasoning_effort, store) = match &extras {
         None => (None, None, None, true),
