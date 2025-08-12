@@ -95,7 +95,7 @@ export async function validateAction(
     messageId,
   });
 
-  const action = await getMCPAction(auth, actionId);
+  const action = await getMCPAction(actionId);
   if (!action) {
     return new Err(new Error(`Action not found: ${actionId}`));
   }

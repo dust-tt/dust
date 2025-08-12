@@ -730,7 +730,6 @@ export async function handleMCPActionError(
 
 // TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent mcp action.
 export async function getMCPAction(
-  auth: Authenticator,
   actionId: string
 ): Promise<AgentMCPAction | null> {
   const id = getResourceIdFromSId(actionId);
