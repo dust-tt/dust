@@ -50,6 +50,10 @@ export function AgentMessageActions({
     });
   };
 
+  if (lastAgentStateClassification === "done" && !hasActions) {
+    return null;
+  }
+
   return lastAgentStateClassification !== "done" ? (
     <div
       onClick={lastAction ? onClick : undefined}
@@ -58,69 +62,52 @@ export function AgentMessageActions({
         lastAction ? "cursor-pointer" : ""
       )}
     >
-      {/* TODO: hide chain of thoughts while action is running */}
-      <ContentMessage variant="primary">
-        <div className="flex w-full flex-row">
-          {!chainOfThought ? (
-            <AnimatedText variant="primary">Thinking...</AnimatedText>
-          ) : (
-            <Markdown
-              content={chainOfThought}
-              isStreaming={false}
-              forcedTextSize="text-sm"
-              textColor="text-muted-foreground"
-              isLastMessage={false}
-            />
-          )}
-          <span className="flex-grow"></span>
-          <div className="w-8 self-start pl-4">
-            {lastAgentStateClassification === "thinking" && (
-              <Spinner size="xs" />
-            )}
-          </div>
-        </div>
-      </ContentMessage>
       {isMCPActionType(lastAction) &&
-        lastAgentStateClassification === "acting" && (
-          <Card variant="secondary" size="sm">
-            <MCPActionDetails
-              viewType="conversation"
-              action={lastAction}
-              owner={owner}
-              lastNotification={null}
-              defaultOpen={true}
-            />
-          </Card>
-        )}
-    </div>
-  ) : (
-    <div className="flex flex-col items-start gap-y-4">
-      {hasActions && (
-        <Button
-          size="sm"
-          label="Tools inspection"
-          icon={CommandLineIcon}
-          variant="outline"
-          onClick={onClick}
-        />
-      )}
-
-      {/* TODO: remove this once we have chain of thought in sidepanel */}
-      {chainOfThought && (
+      lastAgentStateClassification === "acting" ? (
+        <Card variant="secondary" size="sm">
+          <MCPActionDetails
+            viewType="conversation"
+            action={lastAction}
+            owner={owner}
+            lastNotification={null}
+            defaultOpen={true}
+          />
+        </Card>
+      ) : (
         <div>
           <ContentMessage variant="primary">
             <div className="flex w-full flex-row">
-              <Markdown
-                content={chainOfThought}
-                isStreaming={false}
-                forcedTextSize="text-sm"
-                textColor="text-muted-foreground"
-                isLastMessage={false}
-              />
+              {!chainOfThought ? (
+                <AnimatedText variant="primary">Thinking...</AnimatedText>
+              ) : (
+                <Markdown
+                  content={chainOfThought}
+                  isStreaming={false}
+                  forcedTextSize="text-sm"
+                  textColor="text-muted-foreground"
+                  isLastMessage={false}
+                />
+              )}
+              <span className="flex-grow"></span>
+              <div className="w-8 self-start pl-4">
+                {lastAgentStateClassification === "thinking" && (
+                  <Spinner size="xs" />
+                )}
+              </div>
             </div>
           </ContentMessage>
         </div>
       )}
+    </div>
+  ) : (
+    <div className="flex flex-col items-start gap-y-4">
+      <Button
+        size="sm"
+        label="Tools inspection"
+        icon={CommandLineIcon}
+        variant="outline"
+        onClick={onClick}
+      />
     </div>
   );
 }
