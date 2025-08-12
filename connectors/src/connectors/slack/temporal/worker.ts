@@ -26,7 +26,7 @@ export async function runSlackWorker() {
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return new ActivityInboundLogInterceptor(ctx, logger, "slack");
         },
         () => new SlackCastKnownErrorsInterceptor(),
       ],

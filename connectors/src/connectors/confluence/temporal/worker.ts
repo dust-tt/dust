@@ -27,7 +27,7 @@ export async function runConfluenceWorker() {
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return new ActivityInboundLogInterceptor(ctx, logger, "confluence");
         },
         () => new ConfluenceCastKnownErrorsInterceptor(),
       ],

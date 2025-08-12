@@ -26,7 +26,7 @@ export async function runWebCrawlerWorker() {
       interceptors: {
         activityInbound: [
           (ctx: Context) => {
-            return new ActivityInboundLogInterceptor(ctx, logger);
+            return new ActivityInboundLogInterceptor(ctx, logger, "webcrawler");
           },
         ],
       },
@@ -42,7 +42,8 @@ export async function runWebCrawlerWorker() {
       maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
       interceptors: {
         activityInbound: [
-          (ctx: Context) => new ActivityInboundLogInterceptor(ctx, logger),
+          (ctx: Context) =>
+            new ActivityInboundLogInterceptor(ctx, logger, "webcrawler"),
         ],
       },
     }),
@@ -57,7 +58,8 @@ export async function runWebCrawlerWorker() {
       maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
       interceptors: {
         activityInbound: [
-          (ctx: Context) => new ActivityInboundLogInterceptor(ctx, logger),
+          (ctx: Context) =>
+            new ActivityInboundLogInterceptor(ctx, logger, "webcrawler"),
         ],
       },
     }),

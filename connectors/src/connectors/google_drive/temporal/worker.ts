@@ -28,7 +28,7 @@ export async function runGoogleWorkers() {
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return new ActivityInboundLogInterceptor(ctx, logger, "google_drive");
         },
         () => new GoogleDriveCastKnownErrorsInterceptor(),
       ],
@@ -55,7 +55,7 @@ export async function runGoogleWorkers() {
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return new ActivityInboundLogInterceptor(ctx, logger, "google_drive");
         },
         () => new GoogleDriveCastKnownErrorsInterceptor(),
       ],

@@ -27,7 +27,7 @@ export async function runSalesforceWorker() {
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return new ActivityInboundLogInterceptor(ctx, logger, "salesforce");
         },
         () => new SalesforceCastKnownErrorsInterceptor(),
       ],
