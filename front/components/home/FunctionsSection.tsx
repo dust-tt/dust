@@ -142,9 +142,7 @@ function FunctionsSection() {
       <CardCarousel
         title={
           <div className="flex w-full items-center justify-between">
-            <H2 className="text-3xl font-medium md:text-4xl lg:text-5xl">
-              What agent will you use or create today?
-            </H2>
+            <H2>What agent will you use or create today?</H2>
           </div>
         }
       >
