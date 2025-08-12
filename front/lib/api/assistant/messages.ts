@@ -195,21 +195,25 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         if (viewType === "full") {
           const agents = await getAgentConfigurations(auth, {
             agentIdsWithVersions: [...agentConfigurationIds],
-            agentIds: undefined,
             variant: "full",
           });
+          const lightAgents = await getAgentConfigurations(auth, {
+            agentIds: [...agentConfigurationIds].map(({ sId }) => sId),
+            variant: "extra_light",
+          });
+
           return {
             agentConfigurations: agents,
-            lightAgentConfigurations: agents,
+            lightAgentConfigurations: lightAgents,
           };
         } else {
-          const agents = await getAgentConfigurations(auth, {
-            agentIdsWithVersions: [...agentConfigurationIds],
+          const lightAgents = await getAgentConfigurations(auth, {
+            agentIds: [...agentConfigurationIds].map(({ sId }) => sId),
             variant: "extra_light",
           });
           return {
             agentConfigurations: null,
-            lightAgentConfigurations: agents,
+            lightAgentConfigurations: lightAgents,
           };
         }
       })(),
