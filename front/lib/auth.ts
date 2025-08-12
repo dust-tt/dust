@@ -1116,7 +1116,7 @@ export async function prodAPICredentialsForOwner(
 }
 
 export const getFeatureFlags = memoizer.sync({
-  load: async (workspace: WorkspaceType): Promise<WhitelistableFeature[]> => {
+  load: async (workspace: { id: number }): Promise<WhitelistableFeature[]> => {
     if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
       return [...WHITELISTABLE_FEATURES];
     } else {
@@ -1127,7 +1127,7 @@ export const getFeatureFlags = memoizer.sync({
     }
   },
 
-  hash: function (workspace: WorkspaceType) {
+  hash: function (workspace: { id: number }) {
     return `feature_flags_${workspace.id}`;
   },
 

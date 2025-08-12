@@ -42,6 +42,7 @@ export type RunAgentSynchronousArgs = {
 export type RunAgentArgs =
   | {
       sync: true;
+      autoSwitchAsyncAfterMs?: number;
       inMemoryData: RunAgentSynchronousArgs;
     }
   | {

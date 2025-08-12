@@ -3,6 +3,8 @@ import assert from "assert";
 import type { AgentLoopMaybeContinueAsync } from "@app/lib/actions/types";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import type { AuthenticatorType } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { wakeLock } from "@app/lib/wake_lock";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/activities/create_tool_actions";
 import { runModelActivity } from "@app/temporal/agent_loop/activities/run_model";
@@ -14,6 +16,18 @@ import type {
   RunAgentArgs,
   RunAgentSynchronousArgs,
 } from "@app/types/assistant/agent_run";
+
+const TWO_MINUTES = 2 * 60 * 1000;
+
+async function isAsyncLoopEnabled(authType: AuthenticatorType) {
+  if (authType.workspaceId) {
+    const wId = getResourceIdFromSId(authType.workspaceId);
+    if (wId) {
+      return (await getFeatureFlags({ id: wId })).includes("async_loop");
+    }
+  }
+  return false;
+}
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
 // but it now handles updating it based on the execution results.
@@ -69,6 +83,9 @@ export async function runAgentLoop(
 ): Promise<void> {
   let maybeContinueAsync: AgentLoopMaybeContinueAsync = undefined;
   if (runAgentArgs.sync && !forceAsynchronousLoop) {
+    if (await isAsyncLoopEnabled(authType)) {
+      runAgentArgs.autoSwitchAsyncAfterMs = TWO_MINUTES;
+    }
     maybeContinueAsync = await runAgentSynchronousWithStreaming(
       authType,
       runAgentArgs.inMemoryData,

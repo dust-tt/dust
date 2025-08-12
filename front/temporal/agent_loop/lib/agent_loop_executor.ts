@@ -9,8 +9,6 @@ import type { RunAgentArgs } from "@app/types/assistant/agent_run";
 
 import type { AgentLoopActivities } from "./activity_interface";
 
-const TWO_MINUTES = 2 * 60 * 1000;
-
 /**
  * Core agent loop executor that works with both Temporal workflows and direct execution.
  *
@@ -31,7 +29,11 @@ export async function executeAgentLoop(
 
   for (let i = startStep; i < MAX_STEPS_USE_PER_RUN_LIMIT + 1; i++) {
     // Auto-switch from sync to async mode after 2 minutes.
-    if (runAgentArgs.sync && Date.now() - startTime > TWO_MINUTES) {
+    if (
+      runAgentArgs.sync &&
+      runAgentArgs.autoSwitchAsyncAfterMs &&
+      Date.now() - startTime > runAgentArgs.autoSwitchAsyncAfterMs
+    ) {
       return {
         resumeAsyncFromStep: i,
       };
