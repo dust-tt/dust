@@ -358,7 +358,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
               ),
               functionCallId: value.value.id,
               functionCallName: value.value.name,
-              mcpServerId: action.toolConfiguration?.toolServerId,
+              mcpServerId: action.toolConfiguration?.toolServerId || null,
               agentMessageId: action.agentMessageId,
               step: this.step,
               mcpServerConfigurationId: action.mcpServerConfigurationId,
