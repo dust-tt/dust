@@ -20,7 +20,6 @@ const CONTENT_SECURITY_POLICIES = [
   `frame-ancestors 'self';`,
   `manifest-src 'self';`,
   `worker-src 'self' blob:;`,
-  `prefetch-src 'self' dust.tt *.dust.tt https://dust.tt https://*.dust.tt;`,
   `upgrade-insecure-requests;`,
 ].join(" ");
 
