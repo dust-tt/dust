@@ -250,7 +250,7 @@ const InputBarContainer = ({
     "inline-block w-full",
     "border-0 px-2 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
     "whitespace-pre-wrap font-normal",
-    "pb-6 pt-4 sm:py-3.5" // Increased padding on mobile
+    "py-3.5"
   );
 
   return (
@@ -273,7 +273,7 @@ const InputBarContainer = ({
             "overflow-y-auto",
             isExpanded
               ? "h-[60vh] max-h-[60vh] lg:h-[80vh] lg:max-h-[80vh]"
-              : "max-h-64 min-h-10"
+              : "max-h-64 min-h-24 sm:min-h-14"
           )}
         />
         <div className="flex items-center pb-3 pt-0">

@@ -54,7 +54,12 @@ export const useHashParam = (
   const [innerValue, setInnerValue] = useState<{
     val: string | undefined;
     options: SetterOptions;
-  }>({ val: defaultValue, options: DEFAULT_OPTIONS });
+  }>({
+    val: window
+      ? getHashParam(getUrlFromLocation(window.location), key, defaultValue)
+      : defaultValue,
+    options: DEFAULT_OPTIONS,
+  });
 
   // Listen to hash change events and update the internal value if the hash is removed.
   useEffect(() => {
@@ -77,11 +82,10 @@ export const useHashParam = (
   // Listen to innerValue changes and update the hash in the router if there is a mismatch.
   useEffect(() => {
     if (typeof window !== "undefined" && router.isReady) {
-      // get current hash from window.location.
+      // get current hash from window.location, DO NOT DEFAULT TO DEFAULT VALUE.
       const currentHash = getHashParam(
         getUrlFromLocation(window.location),
-        key,
-        defaultValue
+        key
       );
       if (currentHash !== innerValue.val) {
         const { pathname, search } = window.location;
