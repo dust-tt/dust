@@ -46,7 +46,7 @@ export function CapabilitySection() {
           <div className="order-1 w-full lg:order-2 lg:w-1/2">
             <div className="flex flex-col gap-3 text-center lg:text-left">
               <H2 className="text-center text-2xl font-medium md:text-3xl lg:text-left lg:text-4xl">
-                Feed your company context
+                Connect your company's knowledge
               </H2>
               <P
                 size="md"

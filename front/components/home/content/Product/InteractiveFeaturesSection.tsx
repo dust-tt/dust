@@ -93,7 +93,7 @@ export function InteractiveFeaturesSection() {
                 <img
                   src="/static/landing/product/extensionCRM.svg"
                   alt="Browser Extension"
-                  className="absolute inset-0 h-full w-full object-contain"
+                  className="absolute bottom-0 right-0 h-auto max-h-full w-auto max-w-full object-contain"
                 />
               )}
               {activeFeature === "connections" && (
@@ -121,7 +121,7 @@ export function InteractiveFeaturesSection() {
                 <img
                   src="/static/landing/product/slack-ticket.svg"
                   alt="Tool Access"
-                  className="absolute inset-0 h-full w-full object-contain"
+                  className="absolute bottom-0 right-0 h-auto max-h-full w-auto max-w-full object-contain"
                 />
               )}
               {activeFeature === "workflows" && (
