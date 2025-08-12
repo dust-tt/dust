@@ -24,11 +24,13 @@ interface AgentMessageActionsProps {
   actionProgress: ActionProgressState;
   owner: LightWorkspaceType;
 }
+
 function isMCPActionType(
   action: { type: "tool_action"; id: number } | undefined
 ): action is MCPActionType {
   return action !== undefined && "functionCallName" in action;
 }
+
 export function AgentMessageActions({
   agentMessage,
   lastAgentStateClassification,
