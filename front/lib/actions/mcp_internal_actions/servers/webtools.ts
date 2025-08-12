@@ -49,7 +49,7 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         .describe(
           "The query used to perform the Google search. If requested by the " +
             "user, use the Google syntax `site:` to restrict the search " +
-            "to a particular website or domain. Should not contain unicode sequences."
+            "to a particular website or domain."
         ),
       page: z
         .number()

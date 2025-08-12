@@ -54,11 +54,16 @@ export const useHashParam = (
   const [innerValue, setInnerValue] = useState<{
     val: string | undefined;
     options: SetterOptions;
-  }>({ val: defaultValue, options: DEFAULT_OPTIONS });
+  }>({
+    val: window
+      ? getHashParam(getUrlFromLocation(window.location), key, defaultValue)
+      : defaultValue,
+    options: DEFAULT_OPTIONS,
+  });
 
   // Listen to hash change events and update the internal value if the hash is removed.
   useEffect(() => {
-    const handleHashComplete = (url: string) => {
+    const onEventComplete = (url: string) => {
       const hash = getHashFromUrl(url);
       // If there's no hash after route change, clear the content.
       if (!hash && innerValue) {
@@ -66,18 +71,21 @@ export const useHashParam = (
       }
     };
 
-    router.events.on("hashChangeComplete", handleHashComplete);
-    return () => router.events.off("hashChangeComplete", handleHashComplete);
+    router.events.on("hashChangeComplete", onEventComplete);
+    router.events.on("routeChangeComplete", onEventComplete);
+    return () => {
+      router.events.off("hashChangeComplete", onEventComplete);
+      router.events.off("routeChangeComplete", onEventComplete);
+    };
   }, [router.events, innerValue, setInnerValue]);
 
   // Listen to innerValue changes and update the hash in the router if there is a mismatch.
   useEffect(() => {
     if (typeof window !== "undefined" && router.isReady) {
-      // get current hash from window.location.
+      // get current hash from window.location, DO NOT DEFAULT TO DEFAULT VALUE.
       const currentHash = getHashParam(
         getUrlFromLocation(window.location),
-        key,
-        defaultValue
+        key
       );
       if (currentHash !== innerValue.val) {
         const { pathname, search } = window.location;

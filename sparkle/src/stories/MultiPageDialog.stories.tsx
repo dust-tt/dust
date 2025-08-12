@@ -664,6 +664,7 @@ export const WithConditionalNavigation: Story = {
           currentPageId={currentPageId}
           onPageChange={setCurrentPageId}
           size="lg"
+          height="md"
           leftButton={{
             label: "Cancel",
             variant: "outline",
@@ -684,8 +685,9 @@ export const WithConditionalNavigation: Story = {
             disabled: isFirstPage ? !canProceedFromFirst : !canSave,
             onClick: isLastPage ? handleSave : handleNext,
           }}
+          addFooterSeparator
           footerContent={
-            <div className="s-rounded s-bg-blue-50 s-px-3 s-py-2">
+            <div className="s-rounded s-bg-blue-50">
               <p className="s-text-xs s-text-blue-700">
                 {selectedItems.length > 0 && (
                   <>

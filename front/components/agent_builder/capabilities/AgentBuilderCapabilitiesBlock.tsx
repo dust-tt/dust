@@ -221,12 +221,14 @@ export function AgentBuilderCapabilitiesBlock({
   const headerActions = fields.length > 0 && (
     <div className="flex items-center gap-2">
       <Button
-        variant="primary"
-        label="Add knowledge"
+        type="button"
         onClick={onClickKnowledge}
+        label="Add knowledge"
         icon={BookOpenIcon}
+        variant="primary"
       />
       <Button
+        type="button"
         onClick={() => setDialogMode({ type: "add" })}
         label="Add tools"
         icon={ListAddIcon}
@@ -264,12 +266,14 @@ export function AgentBuilderCapabilitiesBlock({
             action={
               <div className="flex items-center gap-2">
                 <Button
-                  variant="primary"
-                  label="Add knowledge"
+                  type="button"
                   onClick={onClickKnowledge}
+                  label="Add knowledge"
                   icon={BookOpenIcon}
+                  variant="primary"
                 />
                 <Button
+                  type="button"
                   onClick={() => setDialogMode({ type: "add" })}
                   label="Add tools"
                   icon={ListAddIcon}

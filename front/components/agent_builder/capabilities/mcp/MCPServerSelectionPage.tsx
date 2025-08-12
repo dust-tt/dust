@@ -1,8 +1,16 @@
-import { Avatar, BookOpenIcon, Card, Chip, Icon } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  BookOpenIcon,
+  Card,
+  CardGrid,
+  Chip,
+  Icon,
+} from "@dust-tt/sparkle";
 import { ActionIcons } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { PlusIcon } from "@dust-tt/sparkle";
 import { SearchInput } from "@dust-tt/sparkle";
+import { cn } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
@@ -14,6 +22,8 @@ import { InternalActionIcons } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+
+const FADE_TRANSITION_CLASSES = "transition-opacity duration-300 ease-in-out";
 
 interface DataVisualizationCardProps {
   dataVisualization: ActionSpecification;
@@ -40,12 +50,24 @@ function DataVisualizationCard({
             size="sm"
           />
           <span className="text-sm font-medium">{dataVisualization.label}</span>
-          {isSelected && <Chip size="xs" color="green" label="ADDED" />}
+          <div
+            className={cn(
+              FADE_TRANSITION_CLASSES,
+              isSelected ? "opacity-100" : "opacity-0"
+            )}
+          >
+            {isSelected && <Chip size="xs" color="green" label="ADDED" />}
+          </div>
         </div>
         <div className="line-clamp-2 w-full text-xs text-gray-600">
           {dataVisualization.description}
         </div>
-        <div>
+        <div
+          className={cn(
+            FADE_TRANSITION_CLASSES,
+            !isSelected ? "opacity-100" : "opacity-0"
+          )}
+        >
           {!isSelected && (
             <Button size="xs" variant="outline" icon={PlusIcon} label="Add" />
           )}
@@ -85,13 +107,25 @@ function MCPServerCard({ view, onItemClick, isSelected }: MCPServerCardProps) {
               size="sm"
             />
             <span className="text-sm font-medium">{view.label}</span>
-            {isSelected && <Chip size="xs" color="green" label="ADDED" />}
+            <div
+              className={cn(
+                FADE_TRANSITION_CLASSES,
+                isSelected ? "opacity-100" : "opacity-0"
+              )}
+            >
+              {isSelected && <Chip size="xs" color="green" label="ADDED" />}
+            </div>
           </div>
           <div className="line-clamp-2 w-full text-xs text-gray-600">
             {getMcpServerViewDescription(view)}
           </div>
         </div>
-        <div>
+        <div
+          className={cn(
+            FADE_TRANSITION_CLASSES,
+            canAdd ? "opacity-100" : "opacity-0"
+          )}
+        >
           {canAdd && (
             <Button size="xs" variant="outline" icon={PlusIcon} label="Add" />
           )}
@@ -107,7 +141,6 @@ interface MCPServerSelectionPageProps {
   dataVisualization?: ActionSpecification | null;
   onDataVisualizationClick?: () => void;
   selectedToolsInDialog?: SelectedTool[];
-  onRemoveSelectedTool?: (tool: SelectedTool) => void;
 }
 
 export function MCPServerSelectionPage({
@@ -116,7 +149,6 @@ export function MCPServerSelectionPage({
   dataVisualization,
   onDataVisualizationClick,
   selectedToolsInDialog = [],
-  onRemoveSelectedTool,
 }: MCPServerSelectionPageProps) {
   const [filteredServerViews, setFilteredServerViews] =
     React.useState<MCPServerViewTypeWithLabel[]>(mcpServerViews);
@@ -182,7 +214,7 @@ export function MCPServerSelectionPage({
         (dataVisualization &&
           onDataVisualizationClick &&
           showDataVisualization)) && (
-        <div className="grid grid-cols-2 gap-4">
+        <CardGrid>
           {dataVisualization &&
             onDataVisualizationClick &&
             showDataVisualization && (
@@ -200,33 +232,7 @@ export function MCPServerSelectionPage({
               isSelected={selectedMCPIds.has(view.sId)}
             />
           ))}
-        </div>
-      )}
-
-      {selectedToolsInDialog.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Selected tools</h2>
-          <div className="flex flex-wrap gap-2">
-            {selectedToolsInDialog.map((tool, index) => (
-              <Chip
-                key={index}
-                label={
-                  tool.type === "DATA_VISUALIZATION"
-                    ? dataVisualization?.label || ""
-                    : tool.type === "MCP"
-                      ? tool.view.name || tool.view.server.name
-                      : ""
-                }
-                onRemove={
-                  onRemoveSelectedTool
-                    ? () => onRemoveSelectedTool(tool)
-                    : undefined
-                }
-                size="sm"
-              />
-            ))}
-          </div>
-        </div>
+        </CardGrid>
       )}
     </div>
   );

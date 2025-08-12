@@ -373,12 +373,6 @@ export function AssistantBrowser({
         </ScrollArea>
       </div>
 
-      {isLoading && (
-        <div className="flex justify-center py-8">
-          <Spinner size="lg" />
-        </div>
-      )}
-
       {viewTab === "all" ? (
         <>
           <div className="mb-2 flex flex-wrap gap-2">
@@ -447,6 +441,11 @@ export function AssistantBrowser({
             handleMoreClick={handleMoreClick}
           />
         )
+      )}
+      {isLoading && (
+        <div className="flex justify-center py-8">
+          <Spinner size="lg" />
+        </div>
       )}
     </>
   );

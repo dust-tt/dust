@@ -126,7 +126,7 @@ const DialogHeader = ({
 }: NewDialogHeaderProps) => (
   <div
     className={cn(
-      "s-z-50 s-flex s-flex-none s-flex-col s-gap-0 s-px-5 s-py-4 s-text-left",
+      "s-sticky s-top-0 s-z-50 s-flex s-flex-none s-flex-col s-gap-0 s-bg-background s-px-5 s-py-4 s-text-left dark:s-bg-background-night",
       className
     )}
     {...props}

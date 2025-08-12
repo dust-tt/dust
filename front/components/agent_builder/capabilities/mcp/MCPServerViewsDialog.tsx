@@ -19,6 +19,7 @@ import type {
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
+import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
 import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { createFormResetHandler } from "@app/components/agent_builder/capabilities/mcp/utils/formStateUtils";
@@ -429,7 +430,6 @@ export function MCPServerViewsDialog({
           dataVisualization={dataVisualization}
           onDataVisualizationClick={onClickDataVisualization}
           selectedToolsInDialog={selectedToolsInDialog}
-          onRemoveSelectedTool={toggleToolSelection}
         />
       ),
     },
@@ -718,6 +718,14 @@ export function MCPServerViewsDialog({
         }}
         leftButton={leftButton}
         rightButton={rightButton}
+        addFooterSeparator
+        footerContent={
+          <MCPServerViewsFooter
+            selectedToolsInDialog={selectedToolsInDialog}
+            dataVisualization={dataVisualization}
+            onRemoveSelectedTool={toggleToolSelection}
+          />
+        }
       />
     </MultiPageDialog>
   );

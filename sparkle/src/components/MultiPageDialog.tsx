@@ -3,6 +3,7 @@ import * as React from "react";
 import { useState } from "react";
 
 import { Button, Icon, ScrollArea } from "@sparkle/components";
+import { Separator } from "@sparkle/components";
 import {
   Dialog,
   DialogClose,
@@ -33,6 +34,7 @@ const MultiPageDialogClose = DialogClose;
 
 interface MultiPageDialogFooterProps
   extends React.HTMLAttributes<HTMLDivElement> {
+  addTopSeparator: boolean;
   leftButton?: React.ComponentProps<typeof Button>;
   centerButton?: React.ComponentProps<typeof Button>;
   rightButton?: React.ComponentProps<typeof Button>;
@@ -40,29 +42,36 @@ interface MultiPageDialogFooterProps
 
 const MultiPageDialogFooter = ({
   className,
+  addTopSeparator,
   children,
   leftButton,
   centerButton,
   rightButton,
   ...props
 }: MultiPageDialogFooterProps) => {
-  return (
+  const content = (
     <div
-      className={cn(
-        "s-flex s-flex-none s-flex-row s-justify-between s-gap-3 s-px-5 s-py-4",
-        className
-      )}
+      className={cn("s-flex s-flex-none s-flex-col s-gap-3 s-p-4", className)}
       {...props}
     >
-      <div className="s-flex s-gap-2">
-        {leftButton && <Button {...leftButton} />}
-      </div>
-      <div className="s-flex s-gap-2">
-        {centerButton && <Button {...centerButton} />}
-        {rightButton && <Button {...rightButton} />}
-      </div>
       {children}
+      <div className="s-flex s-flex-row s-justify-between">
+        <div>{leftButton && <Button {...leftButton} />}</div>
+        <div className="s-flex s-gap-2">
+          {centerButton && <Button {...centerButton} />}
+          {rightButton && <Button {...rightButton} />}
+        </div>
+      </div>
     </div>
+  );
+
+  return addTopSeparator ? (
+    <>
+      <Separator />
+      {content}
+    </>
+  ) : (
+    <>{content}</>
   );
 };
 
@@ -84,6 +93,7 @@ interface MultiPageDialogProps {
   centerButton?: React.ComponentProps<typeof Button>;
   rightButton?: React.ComponentProps<typeof Button>;
   footerContent?: React.ReactNode;
+  addFooterSeparator?: boolean;
 }
 
 interface MultiPageDialogContentProps extends MultiPageDialogProps {
@@ -107,6 +117,7 @@ const MultiPageDialogContent = React.forwardRef<
       showHeaderNavigation = true,
       className,
       disableNext = false,
+      addFooterSeparator = false,
       leftButton,
       centerButton,
       rightButton,
@@ -265,6 +276,7 @@ const MultiPageDialogContent = React.forwardRef<
             leftButton={leftButton}
             centerButton={centerButton}
             rightButton={rightButton}
+            addTopSeparator={addFooterSeparator}
           >
             {footerContent}
           </MultiPageDialogFooter>
