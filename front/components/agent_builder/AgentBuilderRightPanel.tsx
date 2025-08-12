@@ -186,14 +186,7 @@ function TemplateButtons({
   assistantTemplate,
 }: TemplateButtonsProps) {
   const confirm = useContext(ConfirmContext);
-  const { setValue, watch } = useFormContext<AgentBuilderFormData>();
-  
-  // Watch current form values
-  const currentInstructions = watch("instructions");
-  const currentActions = watch("actions");
-  
-  const instructionsChanged = currentInstructions !== assistantTemplate.presetInstructions;
-  const hasActions = currentActions && currentActions.length > 0;
+  const { setValue } = useFormContext<AgentBuilderFormData>();
   
   const handleResetInstructions = async () => {
     const confirmed = await confirm({
@@ -223,28 +216,23 @@ function TemplateButtons({
   
   return (
     <div className="flex items-center justify-end gap-2">
-      {instructionsChanged && (
-        <Button
-          label="Reset instructions"
-          onClick={handleResetInstructions}
-          icon={ArrowPathIcon}
-          size="sm"
-          variant="outline"
-        />
-      )}
-      {hasActions && (
-        <Button
-          label="Reset tools"
-          onClick={handleResetActions}
-          icon={ArrowPathIcon}
-          size="sm"
-          variant="outline"
-        />
-      )}
+      <Button
+        label="Reset instructions"
+        onClick={handleResetInstructions}
+        icon={ArrowPathIcon}
+        size="sm"
+        variant="outline"
+      />
+      <Button
+        label="Reset tools"
+        onClick={handleResetActions}
+        icon={ArrowPathIcon}
+        size="sm"
+        variant="outline"
+      />
     </div>
   );
 }
-
 
 interface AgentBuilderRightPanelProps {
   agentConfigurationSId?: string;
