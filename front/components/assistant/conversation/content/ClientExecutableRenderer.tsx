@@ -22,6 +22,48 @@ import { useConversationSidePanelContext } from "../ConversationSidePanelContext
 import { ShareInteractiveFilePopover } from "../ShareInteractiveFilePopover";
 import { InteractiveContentHeader } from "./InteractiveContentHeader";
 
+interface ExportContentDropdownProps {
+  iframeRef: React.RefObject<HTMLIFrameElement>;
+}
+
+function ExportContentDropdown({ iframeRef }: ExportContentDropdownProps) {
+  const exportVisualization = React.useCallback(
+    (format: "png" | "svg") => {
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          { type: `EXPORT_${format.toUpperCase()}` },
+          "*"
+        );
+      } else {
+        console.log("No iframe content window found");
+      }
+    },
+    [iframeRef]
+  );
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          icon={ArrowDownOnSquareIcon}
+          isSelect
+          size="xs"
+          tooltip="Export content"
+          variant="ghost"
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem onClick={() => exportVisualization("png")}>
+          Export as PNG
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => exportVisualization("svg")}>
+          Export as SVG
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 interface ClientExecutableRendererProps {
   conversation: ConversationType;
   fileId: string;
@@ -49,17 +91,6 @@ export function ClientExecutableRenderer({
   );
 
   const [showCode, setShowCode] = React.useState(false);
-
-  const exportVisualization = React.useCallback((format: "png" | "svg") => {
-    if (iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage(
-        { type: `EXPORT_${format.toUpperCase()}` },
-        "*"
-      );
-    } else {
-      console.log("No iframe content window found");
-    }
-  }, []);
 
   if (isFileContentLoading) {
     return (
@@ -92,25 +123,7 @@ export function ClientExecutableRenderer({
           tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
           variant="ghost"
         />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              icon={ArrowDownOnSquareIcon}
-              isSelect
-              size="xs"
-              tooltip="Export content"
-              variant="ghost"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => exportVisualization("png")}>
-              Export as PNG
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportVisualization("svg")}>
-              Export as SVG
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ExportContentDropdown iframeRef={iframeRef} />
         <ShareInteractiveFilePopover
           fileId={fileId}
           owner={owner}
