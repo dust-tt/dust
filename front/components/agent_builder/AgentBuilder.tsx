@@ -15,6 +15,7 @@ import {
   getDefaultAgentFormData,
   transformAgentConfigurationToFormData,
 } from "@app/components/agent_builder/transformAgentConfiguration";
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
@@ -61,21 +62,34 @@ export default function AgentBuilder({
       const defaultFormData = getDefaultAgentFormData(user);
       const templateFormData = {
         ...defaultFormData,
-        instructions: assistantTemplate.presetInstructions ?? defaultFormData.instructions,
+        instructions:
+          assistantTemplate.presetInstructions ?? defaultFormData.instructions,
         agentSettings: {
           ...defaultFormData.agentSettings,
           name: assistantTemplate.handle ?? defaultFormData.agentSettings.name,
-          description: assistantTemplate.description ?? defaultFormData.agentSettings.description,
-          pictureUrl: assistantTemplate.pictureUrl ?? defaultFormData.agentSettings.pictureUrl,
+          description:
+            assistantTemplate.description ??
+            defaultFormData.agentSettings.description,
+          pictureUrl:
+            assistantTemplate.pictureUrl ??
+            defaultFormData.agentSettings.pictureUrl,
         },
         generationSettings: {
           ...defaultFormData.generationSettings,
           modelSettings: {
             ...defaultFormData.generationSettings.modelSettings,
-            providerId: assistantTemplate.presetProviderId ?? defaultFormData.generationSettings.modelSettings.providerId,
-            modelId: assistantTemplate.presetModelId ?? defaultFormData.generationSettings.modelSettings.modelId,
+            providerId:
+              assistantTemplate.presetProviderId ??
+              defaultFormData.generationSettings.modelSettings.providerId,
+            modelId:
+              assistantTemplate.presetModelId ??
+              defaultFormData.generationSettings.modelSettings.modelId,
           },
-          temperature: assistantTemplate.presetTemperature ?? defaultFormData.generationSettings.temperature,
+          temperature: assistantTemplate.presetTemperature
+            ? AGENT_CREATIVITY_LEVEL_TEMPERATURES[
+                assistantTemplate.presetTemperature
+              ]
+            : defaultFormData.generationSettings.temperature,
         },
       };
       return templateFormData;
