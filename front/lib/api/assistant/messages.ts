@@ -2,7 +2,6 @@ import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
 import { MCPActionType } from "@app/lib/actions/mcp";
-import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -11,6 +10,7 @@ import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/cit
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import { Authenticator } from "@app/lib/auth";
+import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -24,7 +24,6 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
-  AgentConfigurationType,
   AgentMessageType,
   ContentFragmentType,
   ConversationWithoutContentType,
@@ -127,28 +126,23 @@ async function batchRenderUserMessages(
   });
 }
 
-function enhanceMCPActionWithServerId(
-  agentMCPActions: MCPActionType[],
-  agentMessages: Message[],
-  versionedAgentConfigurations: AgentConfigurationType[]
-) {
+async function enhanceMCPActionWithServerId(agentMCPActions: MCPActionType[]) {
+  const agentMCPActionsModels = await AgentMCPAction.findAll({
+    where: {
+      id: [...new Set(agentMCPActions.map((a) => a.id))],
+    },
+  });
+
   // Resolve the MCP server id for the actions - only for full view
   return agentMCPActions.map((agentMCPAction) => {
-    const agentConfigurationId = agentMessages.find(
-      (message) => message.agentMessageId === agentMCPAction.agentMessageId
-    )?.agentMessage?.agentConfigurationId;
-    const agentConfiguration = versionedAgentConfigurations.find(
-      (a) => a.sId === agentConfigurationId
-    );
-    const action = agentConfiguration?.actions?.find(
-      (ac) => `${ac.id}` === `${agentMCPAction.mcpServerConfigurationId}`
-    );
-    if (action) {
+    const toolConfiguration = agentMCPActionsModels.find(
+      (a) => a.id === agentMCPAction.id
+    )?.toolConfiguration;
+
+    if (toolConfiguration) {
       return new MCPActionType({
         ...agentMCPAction,
-        mcpServerId: isServerSideMCPServerConfiguration(action)
-          ? action.internalMCPServerId
-          : action.clientSideMcpServerId,
+        mcpServerId: toolConfiguration.toolServerId || null,
       });
     }
     return agentMCPAction;
@@ -171,50 +165,20 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   const agentMessageIds = removeNulls(
     agentMessages.map((m) => m.agentMessageId || null)
   );
-  const [
-    { versionedAgentConfigurations, lightAgentConfigurations },
-    agentMCPActions,
-  ] = await Promise.all([
+  const [agentConfigurations, agentMCPActions] = await Promise.all([
     (async () => {
       // Get all unique pairs id-version for the agent configurations
-      const agentConfigurationIdsWithVersions = agentMessages.reduce(
-        (acc, m) => {
-          if (m.agentMessage) {
-            const sId = m.agentMessage.agentConfigurationId;
-            const version = m.agentMessage.agentConfigurationVersion;
-            acc.add(`${sId}-${version}`);
-          }
-          return acc;
-        },
-        new Set<string>()
-      );
-      // Split back the ids into id and version
-      const splittedIds = [...agentConfigurationIdsWithVersions].map((id) =>
-        id.split("-")
-      );
-      // Get all unique ids
-      const agentConfigurationIds = new Set(splittedIds.map((id) => id[0]));
+      const agentConfigurationIds = agentMessages.reduce((acc, m) => {
+        if (m.agentMessage) {
+          acc.add(m.agentMessage.agentConfigurationId);
+        }
+        return acc;
+      }, new Set<string>());
 
-      const lightAgentConfigurations = await getAgentConfigurations(auth, {
+      return getAgentConfigurations(auth, {
         agentIds: [...agentConfigurationIds],
         variant: "extra_light",
       });
-
-      const versionedAgentConfigurations =
-        viewType === "full"
-          ? await getAgentConfigurations(auth, {
-              agentIdsWithVersions: splittedIds.map((id) => ({
-                sId: id[0],
-                version: parseInt(id[1]),
-              })),
-              variant: "full",
-            })
-          : null;
-
-      return {
-        versionedAgentConfigurations,
-        lightAgentConfigurations,
-      };
     })(),
     (async () => {
       const agentStepContents =
@@ -228,15 +192,11 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   ]);
 
   const enhancedAgentMCPActions =
-    viewType === "full" && versionedAgentConfigurations
-      ? enhanceMCPActionWithServerId(
-          agentMCPActions,
-          agentMessages,
-          versionedAgentConfigurations
-        )
+    viewType === "full"
+      ? await enhanceMCPActionWithServerId(agentMCPActions)
       : agentMCPActions;
 
-  if (!lightAgentConfigurations) {
+  if (!agentConfigurations) {
     return new Err(
       new ConversationError("conversation_with_unavailable_agent")
     );
@@ -257,7 +217,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         .filter((a) => a.agentMessageId === agentMessage.id)
         .sort((a, b) => a.step - b.step);
 
-      const agentConfiguration = lightAgentConfigurations.find(
+      const agentConfiguration = agentConfigurations.find(
         (a) => a.sId === agentMessage.agentConfigurationId
       );
       if (!agentConfiguration) {
