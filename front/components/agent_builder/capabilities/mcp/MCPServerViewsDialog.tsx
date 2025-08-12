@@ -19,6 +19,7 @@ import type {
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
+import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
 import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { createFormResetHandler } from "@app/components/agent_builder/capabilities/mcp/utils/formStateUtils";
@@ -53,7 +54,6 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { O4_MINI_MODEL_ID } from "@app/types";
-import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
 
 export type SelectedTool =
   | {
