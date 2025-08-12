@@ -1,11 +1,4 @@
-import {
-  Checkbox,
-  DataTable,
-  Hoverable,
-  ScrollableDataTable,
-  Spinner,
-} from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
+import { ScrollableDataTable, Spinner } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -14,124 +7,17 @@ import {
   findDataSourceViewFromNavigationHistory,
   getLatestNodeFromNavigationHistory,
 } from "@app/components/data_source_view/context/utils";
+import type { DataSourceRowData } from "@app/components/data_source_view/hooks/useDataSourceColumns";
+import { useDataSourceColumns } from "@app/components/data_source_view/hooks/useDataSourceColumns";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { useInfinitDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import type {
-  ContentNodesViewType,
-  DataSourceViewContentNode,
-} from "@app/types";
+import type { ContentNodesViewType } from "@app/types";
 
 const PAGE_SIZE = 25;
 
 interface DataSourceNodeTableProps {
   viewType: ContentNodesViewType;
 }
-
-interface NodeRowData {
-  id: string;
-  title: string;
-  onClick?: () => void;
-  icon?: React.ComponentType;
-  rawNodeData: DataSourceViewContentNode;
-}
-
-const useColumns = () => {
-  const {
-    selectNode,
-    selectCurrentNavigationEntry,
-    removeNode,
-    removeCurrentNavigationEntry,
-    isRowSelected,
-    isRowSelectable,
-    isCurrentNavigationEntrySelected,
-  } = useDataSourceBuilderContext();
-
-  const columns: ColumnDef<NodeRowData>[] = useMemo(
-    () => [
-      {
-        id: "select",
-        enableSorting: false,
-        enableHiding: false,
-        header: () => {
-          const selectionState = isCurrentNavigationEntrySelected();
-          return (
-            <Checkbox
-              key={`header-${selectionState}`}
-              size="xs"
-              checked={selectionState}
-              disabled={!isRowSelectable()}
-              onClick={(event) => event.stopPropagation()}
-              onCheckedChange={(state) => {
-                // When clicking a partial checkbox, select all
-                if (selectionState === "partial" || state) {
-                  selectCurrentNavigationEntry();
-                } else {
-                  removeCurrentNavigationEntry();
-                }
-              }}
-            />
-          );
-        },
-        cell: ({ row }) => {
-          const selectionState = isRowSelected(row.original.id);
-
-          return (
-            <div className="flex h-full w-full items-center">
-              <Checkbox
-                key={`${row.original.id}-${selectionState}`}
-                size="xs"
-                checked={selectionState}
-                disabled={!isRowSelectable(row.original.id)}
-                onClick={(event) => event.stopPropagation()}
-                onCheckedChange={(state) => {
-                  // When clicking a partial checkbox, select all
-                  if (selectionState === "partial" || state) {
-                    selectNode({
-                      type: "node",
-                      node: row.original.rawNodeData,
-                    });
-                  } else {
-                    removeNode({
-                      type: "node",
-                      node: row.original.rawNodeData,
-                    });
-                  }
-                }}
-              />
-            </div>
-          );
-        },
-        meta: {
-          sizeRatio: 5,
-        },
-      },
-      {
-        accessorKey: "title",
-        id: "name",
-        header: "Name",
-        cell: ({ row }) => (
-          <DataTable.CellContent icon={row.original.icon}>
-            <Hoverable>{row.original.title}</Hoverable>
-          </DataTable.CellContent>
-        ),
-        meta: {
-          sizeRatio: 70,
-        },
-      },
-    ],
-    [
-      isCurrentNavigationEntrySelected,
-      isRowSelectable,
-      isRowSelected,
-      removeCurrentNavigationEntry,
-      removeNode,
-      selectCurrentNavigationEntry,
-      selectNode,
-    ]
-  );
-
-  return columns;
-};
 
 export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
   const { owner } = useAgentBuilderContext();
@@ -165,8 +51,8 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
     }
   };
 
-  const columns = useColumns();
-  const nodeRows: NodeRowData[] = useMemo(
+  const columns = useDataSourceColumns();
+  const nodeRows: DataSourceRowData[] = useMemo(
     () =>
       childNodes.map((node) => {
         return {
@@ -174,7 +60,10 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
           title: node.title,
           icon: getVisualForDataSourceViewContentNode(node),
           onClick: node.expandable ? () => addNodeEntry(node) : undefined,
-          rawNodeData: node,
+          entry: {
+            type: "node",
+            node,
+          },
         };
       }),
     [childNodes, addNodeEntry]
