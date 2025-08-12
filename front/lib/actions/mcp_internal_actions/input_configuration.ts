@@ -71,6 +71,15 @@ function generateConfiguredInput({
       );
     }
 
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE: {
+      return (
+        actionConfiguration.dataSources?.map((config) => ({
+          uri: getDataSourceURI(config),
+          mimeType,
+        })) || []
+      );
+    }
+
     case INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE: {
       return (
         actionConfiguration.tables?.map((config) => ({

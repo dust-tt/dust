@@ -248,6 +248,7 @@ export class MCPActionType {
   readonly executionState: MCPExecutionState = "pending";
 
   readonly mcpServerConfigurationId: string;
+  readonly mcpServerId: string | null;
   readonly params: Record<string, unknown>; // Hold the inputs for the action.
   readonly output: CallToolResult["content"] | null;
   // TODO(durable-agents): drop this column.
@@ -266,6 +267,7 @@ export class MCPActionType {
 
     this.agentMessageId = blob.agentMessageId;
     this.mcpServerConfigurationId = blob.mcpServerConfigurationId;
+    this.mcpServerId = blob.mcpServerId;
     this.executionState = blob.executionState;
     this.isError = blob.isError;
     this.params = blob.params;
@@ -635,12 +637,13 @@ export async function createMCPAction(
   const action = await AgentMCPAction.create({
     agentMessageId: actionBaseParams.agentMessageId,
     augmentedInputs,
-    toolConfiguration,
     citationsAllocated: stepContext.citationsCount,
     executionState: "pending",
     isError: false,
     mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
     stepContentId,
+    stepContext,
+    toolConfiguration,
     version: 0,
     workspaceId: auth.getNonNullableWorkspace().id,
   });

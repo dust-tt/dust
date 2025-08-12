@@ -1,12 +1,12 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   FILESYSTEM_FIND_TOOL_NAME,
   FILESYSTEM_LIST_TOOL_NAME,
   FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
-  FILESYSTEM_SERVER_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
+  SEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
+import { FILESYSTEM_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
 import { _getDefaultWebActionsForGlobalAgent } from "@app/lib/api/assistant/global_agents/tools";

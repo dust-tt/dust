@@ -873,7 +873,7 @@ export function ConnectorPermissionsModal({
               </SheetHeader>
 
               <SheetContainer>
-                <div className="flex w-full flex-col gap-4">
+                <div className="dd-privacy-mask flex w-full flex-col gap-4">
                   {permissionsConfigurable.blocked && (
                     <ContentMessage
                       title="Editing permissions is temporarily disabled"

@@ -8,6 +8,10 @@ import {
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  EXECUTE_DATABASE_QUERY_TOOL_NAME,
+  GET_DATABASE_SCHEMA_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   SqlQueryOutputType,
@@ -65,7 +69,7 @@ function createServer(
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "get_database_schema",
+    GET_DATABASE_SCHEMA_TOOL_NAME,
     "Retrieves the database schema. You MUST call this tool at least once before attempting to query tables to understand their structure. This tool provides essential information about table columns, types, and relationships needed to write accurate SQL queries.",
     {
       tables:
@@ -148,7 +152,7 @@ function createServer(
   );
 
   server.tool(
-    "execute_database_query",
+    EXECUTE_DATABASE_QUERY_TOOL_NAME,
     "Executes a query on the database. You MUST call the get_database_schema tool for that database at least once before attempting to execute a query. The query must respect the guidelines and schema provided by the get_database_schema tool.",
     {
       tables:
@@ -164,7 +168,7 @@ function createServer(
     },
     withToolLogging(
       auth,
-      { toolName: "tables_query", agentLoopContext },
+      { toolName: EXECUTE_DATABASE_QUERY_TOOL_NAME, agentLoopContext },
       async ({ tables, query, fileName }) => {
         // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
         if (!agentLoopContext?.runContext) {

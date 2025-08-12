@@ -4,13 +4,11 @@ import {
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
-  ContentMessage,
   ConversationMessage,
   DocumentIcon,
   InteractiveImageGrid,
   Markdown,
   Separator,
-  Tooltip,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { marked } from "marked";
@@ -619,27 +617,8 @@ export function AgentMessage({
             agentMessage={agentMessage}
             lastAgentStateClassification={messageStreamState.agentState}
             actionProgress={messageStreamState.actionProgress}
+            owner={owner}
           />
-
-          {agentMessage.chainOfThought?.trim().length ? (
-            <Tooltip
-              label="Agent thoughts"
-              trigger={
-                <div>
-                  <ContentMessage variant="primary">
-                    <Markdown
-                      content={agentMessage.chainOfThought}
-                      isStreaming={false}
-                      forcedTextSize="text-sm"
-                      textColor="text-muted-foreground"
-                      isLastMessage={false}
-                    />
-                  </ContentMessage>
-                </div>
-              }
-              tooltipTriggerAsChild
-            />
-          ) : null}
         </div>
         <InteractiveAgentMessageGeneratedFiles files={interactiveFiles} />
         {(inProgressImages.length > 0 || completedImages.length > 0) && (

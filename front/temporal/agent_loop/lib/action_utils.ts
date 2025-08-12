@@ -14,12 +14,14 @@ export async function buildActionBaseParams({
   agentMessageId,
   citationsAllocated,
   mcpServerConfigurationId,
+  mcpServerId,
   step,
   stepContentId,
 }: {
   agentMessageId: number;
   citationsAllocated: number;
   mcpServerConfigurationId: string;
+  mcpServerId: string | null;
   step: number;
   stepContentId: ModelId;
 }): Promise<ActionBaseParams> {
@@ -46,6 +48,7 @@ export async function buildActionBaseParams({
     citationsAllocated,
     functionCallId,
     functionCallName,
+    mcpServerId,
     generatedFiles: [],
     mcpServerConfigurationId,
     params: rawInputs,

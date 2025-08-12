@@ -2,7 +2,10 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { Logger } from "pino";
 
-import { generatePlainTextFile } from "@app/lib/actions/action_file_helpers";
+import {
+  generatePlainTextFile,
+  uploadFileToConversationDataSource,
+} from "@app/lib/actions/action_file_helpers";
 import {
   computeTextByteSize,
   MAX_RESOURCE_CONTENT_SIZE,
@@ -33,7 +36,6 @@ import type {
   ActionGeneratedFileType,
   AgentLoopRunContextType,
 } from "@app/lib/actions/types";
-import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
@@ -328,7 +330,7 @@ export async function processToolResults(
             // We need to create the conversation data source in case the file comes from a subagent
             // who uploaded it to its own conversation but not the main agent's.
             if (file) {
-              await getOrCreateConversationDataSourceFromFile(auth, file);
+              await uploadFileToConversationDataSource({ auth, file });
             }
             return {
               content: {

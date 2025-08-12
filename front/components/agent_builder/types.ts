@@ -52,6 +52,7 @@ export const DESCRIPTION_MAX_LENGTH = 800;
 export type CapabilityFormData = z.infer<typeof capabilityFormSchema>;
 
 export const CONFIGURATION_SHEET_PAGE_IDS = {
+  MCP_SERVER_SELECTION: "mcp-server-selection",
   DATA_SOURCE_SELECTION: "data-source-selection",
   CONFIGURATION: "configuration",
 } as const;

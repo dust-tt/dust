@@ -7,7 +7,6 @@ import {
   CitationIndex,
   CitationTitle,
   ContentMessage,
-  DocumentIcon,
   Markdown,
   RobotIcon,
 } from "@dust-tt/sparkle";
@@ -18,7 +17,6 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
-import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import {
   CitationsContext,
   CiteBlock,
@@ -34,7 +32,6 @@ import {
   isRunAgentQueryProgressOutput,
   isRunAgentQueryResourceType,
   isRunAgentResultResourceType,
-  isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 
@@ -42,6 +39,7 @@ export function MCPRunAgentActionDetails({
   owner,
   action,
   lastNotification,
+  viewType,
   defaultOpen,
 }: MCPActionDetailsProps) {
   const { isDark } = useTheme();
@@ -51,9 +49,6 @@ export function MCPRunAgentActionDetails({
 
   const resultResource =
     action.output?.find(isRunAgentResultResourceType) || null;
-
-  const generatedFiles =
-    action.output?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
 
   const childAgentId = useMemo(() => {
     if (queryResource) {
@@ -174,6 +169,7 @@ export function MCPRunAgentActionDetails({
   );
   return (
     <ActionDetailsWrapper
+      viewType={viewType}
       actionName={childAgent?.name ? `Run @${childAgent.name}` : "Run Agent"}
       defaultOpen={defaultOpen}
       visual={
@@ -262,18 +258,6 @@ export function MCPRunAgentActionDetails({
                   </div>
                 )}
               </ContentMessage>
-            </div>
-          )}
-          {generatedFiles.length > 0 && (
-            <div className="flex flex-col gap-2">
-              {generatedFiles.map((file) => (
-                <ToolGeneratedFileDetails
-                  key={file.fileId}
-                  resource={file}
-                  icon={DocumentIcon}
-                  owner={owner}
-                />
-              ))}
             </div>
           )}
         </div>

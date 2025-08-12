@@ -1,15 +1,11 @@
 import {
   Avatar,
   Button,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
-  Page,
   PencilSquareIcon,
   SparklesIcon,
   Spinner,
@@ -19,9 +15,7 @@ import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AgentBuilderEditors } from "@app/components/agent_builder/settings/AgentBuilderEditors";
-import { AgentBuilderScopeSelector } from "@app/components/agent_builder/settings/AgentBuilderScopeSelector";
-import { AgentBuilderSlackSelector } from "@app/components/agent_builder/settings/AgentBuilderSlackSelector";
+import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { AvatarPicker } from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker";
 import {
   DROID_AVATAR_URLS,
@@ -33,6 +27,7 @@ import {
   getDescriptionSuggestion,
   getNameSuggestions,
 } from "@app/components/agent_builder/settings/utils";
+import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import {
   buildSelectedEmojiType,
   makeUrlForEmojiAndBackground,
@@ -137,12 +132,9 @@ function AgentNameInput() {
   };
 
   return (
-    <div className="space-y-1">
-      <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
-        Name
-      </label>
-      <div className="relative max-w-100">
-        <Input placeholder="Enter agent name" {...field} />
+    <SettingSectionContainer title="Name">
+      <div className="relative">
+        <Input placeholder="Enter agent name" {...field} className="pr-10" />
         <DropdownMenu
           onOpenChange={(open) => open && handleGenerateNameSuggestions()}
         >
@@ -188,7 +180,7 @@ function AgentNameInput() {
       {fieldState.error && (
         <p className="text-sm text-warning-500">{fieldState.error.message}</p>
       )}
-    </div>
+    </SettingSectionContainer>
   );
 }
 
@@ -256,10 +248,7 @@ function AgentDescriptionInput() {
   };
 
   return (
-    <div className="space-y-1">
-      <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
-        Description
-      </label>
+    <SettingSectionContainer title="Description">
       <div className="relative">
         <Input placeholder="Enter agent description" {...field} />
         <Button
@@ -286,7 +275,7 @@ function AgentDescriptionInput() {
       {fieldState.error && (
         <p className="text-sm text-warning-500">{fieldState.error.message}</p>
       )}
-    </div>
+    </SettingSectionContainer>
   );
 }
 
@@ -355,8 +344,8 @@ function AgentPictureInput() {
         spiritAvatarUrls={SPIRIT_AVATAR_URLS}
         avatarUrl={field.value || null}
       />
-      <div className="group relative py-2">
-        <Avatar size="xl" visual={field.value || null} />
+      <div className="group relative">
+        <Avatar size="lg" visual={field.value || null} />
         <Button
           variant="outline"
           size="sm"
@@ -370,21 +359,6 @@ function AgentPictureInput() {
   );
 }
 
-function AgentAccessAndPublication() {
-  return (
-    <div className="flex h-full flex-col space-y-2">
-      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
-        Access and Publication
-      </label>
-      <div className="flex flex-wrap items-center gap-2">
-        <AgentBuilderEditors />
-        <AgentBuilderScopeSelector />
-        <AgentBuilderSlackSelector />
-      </div>
-    </div>
-  );
-}
-
 interface AgentBuilderSettingsBlockProps {
   isSettingBlocksOpen: boolean;
 }
@@ -392,38 +366,22 @@ interface AgentBuilderSettingsBlockProps {
 export function AgentBuilderSettingsBlock({
   isSettingBlocksOpen,
 }: AgentBuilderSettingsBlockProps) {
-  const [isOpen, setIsOpen] = useState(isSettingBlocksOpen);
-
   return (
-    <div className="flex h-full flex-col gap-4">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger
-          isOpen={isOpen}
-          className="flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 hover:bg-transparent focus:outline-none"
-        >
-          <Page.H>Settings</Page.H>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="flex flex-col gap-4 px-1 pt-4">
-            <Page.P>
-              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Configure tags and access settings for your agent.
-              </span>
-            </Page.P>
-            <div className="space-y-4">
-              <div className="flex items-center gap-8">
-                <div className="flex w-full flex-col gap-2">
-                  <AgentNameInput />
-                  <AgentDescriptionInput />
-                </div>
-                <AgentPictureInput />
-              </div>
-              <TagsSection />
-              <AgentAccessAndPublication />
-            </div>
+    <AgentBuilderSectionContainer
+      title="Settings"
+      collapsible
+      defaultOpen={isSettingBlocksOpen}
+    >
+      <div className="space-y-5">
+        <div className="flex items-start gap-8">
+          <div className="flex-grow">
+            <AgentNameInput />
           </div>
-        </CollapsibleContent>
-      </Collapsible>
-    </div>
+          <AgentPictureInput />
+        </div>
+        <AgentDescriptionInput />
+        <TagsSection />
+      </div>
+    </AgentBuilderSectionContainer>
   );
 }

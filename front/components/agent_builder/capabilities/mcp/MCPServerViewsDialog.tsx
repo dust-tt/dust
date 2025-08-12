@@ -1,10 +1,7 @@
 import type { MultiPageDialogPage } from "@dust-tt/sparkle";
 import {
-  Button,
-  ListAddIcon,
   MultiPageDialog,
   MultiPageDialogContent,
-  MultiPageDialogTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,6 +19,7 @@ import type {
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
+import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
 import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { createFormResetHandler } from "@app/components/agent_builder/capabilities/mcp/utils/formStateUtils";
@@ -190,7 +188,6 @@ export function MCPServerViewsDialog({
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION);
       setConfigurationTool(mode.action);
       setSelectedToolsInDialog([]);
-      setIsOpen(true);
 
       const action = mode.action;
       if (
@@ -204,10 +201,9 @@ export function MCPServerViewsDialog({
           setConfigurationMCPServerView(mcpServerView);
         }
       }
-    } else if (mode && mode.type === "info") {
+    } else if (isInfoMode) {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.INFO);
       setSelectedToolsInDialog([]);
-      setIsOpen(true);
 
       const action = mode.action;
       if (
@@ -221,14 +217,14 @@ export function MCPServerViewsDialog({
           setInfoMCPServerView(mcpServerView);
         }
       }
-    } else if (mode?.type === "add" || !mode) {
+    } else if (mode?.type === "add") {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
       setConfigurationTool(null);
       setConfigurationMCPServerView(null);
       setInfoMCPServerView(null);
-      setIsOpen(Boolean(mode));
     }
-  }, [mode, allMcpServerViews, isEditMode]);
+    setIsOpen(!!mode);
+  }, [mode, allMcpServerViews, isEditMode, isInfoMode]);
 
   const toggleToolSelection = (tool: SelectedTool): void => {
     setSelectedToolsInDialog((prev) => {
@@ -417,7 +413,7 @@ export function MCPServerViewsDialog({
   const pages: MultiPageDialogPage[] = [
     {
       id: CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION,
-      title: "Add tools",
+      title: actions.length === 0 ? "Add tools" : "Add more",
       description: "",
       icon: undefined,
       content: isMCPServerViewsLoading ? (
@@ -434,7 +430,6 @@ export function MCPServerViewsDialog({
           dataVisualization={dataVisualization}
           onDataVisualizationClick={onClickDataVisualization}
           selectedToolsInDialog={selectedToolsInDialog}
-          onRemoveSelectedTool={toggleToolSelection}
         />
       ),
     },
@@ -634,9 +629,10 @@ export function MCPServerViewsDialog({
               : "Add tools",
           variant: "primary",
           disabled: selectedToolsInDialog.length === 0,
-          onClick: async () => {
-            await handleAddSelectedTools();
+          onClick: () => {
+            handleAddSelectedTools();
             setIsOpen(false);
+            onModeChange(null);
           },
         },
       };
@@ -693,21 +689,24 @@ export function MCPServerViewsDialog({
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
-        if (!open && !isEditMode && !isInfoMode) {
-          setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
+
+        if (!open && isAddMode) {
           setConfigurationTool(null);
           setConfigurationMCPServerView(null);
           setSelectedToolsInDialog([]);
+          setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
+        }
+
+        if (!open) {
+          onModeChange(null);
         }
       }}
     >
-      <MultiPageDialogTrigger asChild>
-        <Button label="Add tools" icon={ListAddIcon} />
-      </MultiPageDialogTrigger>
       <MultiPageDialogContent
         showNavigation={false}
         isAlertDialog
-        size="xl"
+        size="2xl"
+        height="xl"
         pages={pages}
         currentPageId={currentPageId}
         onPageChange={(pageId) => {
@@ -719,6 +718,14 @@ export function MCPServerViewsDialog({
         }}
         leftButton={leftButton}
         rightButton={rightButton}
+        addFooterSeparator
+        footerContent={
+          <MCPServerViewsFooter
+            selectedToolsInDialog={selectedToolsInDialog}
+            dataVisualization={dataVisualization}
+            onRemoveSelectedTool={toggleToolSelection}
+          />
+        }
       />
     </MultiPageDialog>
   );

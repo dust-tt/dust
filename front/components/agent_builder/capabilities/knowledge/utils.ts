@@ -26,10 +26,10 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
     configPageTitle: "Configure Search",
     configPageDescription: "Describe what you want to search for",
     descriptionConfig: {
-      title: "Search Description",
+      title: "What’s the data?",
       description:
-        "Describe what you want to search for in your selected data sources.",
-      placeholder: "Describe what you want to search for...",
+        "Provide a brief description of the data content and context to help the agent determine when to utilize it effectively.",
+      placeholder: "This data contains…",
       helpText:
         "This description helps the agent understand what to search for.",
     },
@@ -39,7 +39,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
     configPageTitle: "Configure Include Data",
     configPageDescription: "Set time range and describe what data to include",
     descriptionConfig: {
-      title: "Data Description",
+      title: "What’s the data?",
       description:
         "Describe what type of data you want to include from your selected data sources to provide context to the agent.",
       placeholder:

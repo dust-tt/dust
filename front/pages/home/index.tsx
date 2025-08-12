@@ -24,7 +24,7 @@ export async function getStaticProps() {
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Dust in motion",
   videoUrl:
-    "https://fast.wistia.net/embed/iframe/v90n8beuh9?seo=true&videoFoam=true",
+    "https://fast.wistia.net/embed/iframe/3eqngftomq?seo=true&videoFoam=true",
 };
 
 export function Landing() {

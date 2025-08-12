@@ -368,7 +368,7 @@ export function InstructionScreen({
       )}
 
       <div className="flex h-full flex-col gap-1">
-        <div className="relative h-full min-h-60 grow gap-1 p-px">
+        <div className="dd-privacy-mask relative h-full min-h-60 grow gap-1 p-px">
           <EditorContent
             editor={editor}
             className="absolute bottom-0 left-0 right-0 top-0"

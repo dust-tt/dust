@@ -56,7 +56,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.GPT5,
         name: "gpt5",
         description: GPT_5_MODEL_CONFIG.description,
-        pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
+        pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.O1:
       return {

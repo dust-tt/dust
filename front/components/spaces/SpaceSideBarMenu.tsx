@@ -504,6 +504,7 @@ const SpaceDataSourceViewItem = ({
   return (
     <Tree.Item
       isNavigatable
+      className="dd-privacy-mask"
       type={isEmpty ? "leaf" : "node"}
       isSelected={router.asPath === dataSourceViewPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}

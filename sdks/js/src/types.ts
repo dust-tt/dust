@@ -604,7 +604,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "index_private_slack_channel"
   | "interactive_content_server"
   | "jira_tool"
-  | "jit_tools"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"
@@ -622,6 +621,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "xai_feature"
   | "agent_management_tool"
+  | "data_warehouses_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

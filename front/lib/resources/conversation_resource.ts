@@ -5,7 +5,7 @@ import type {
 } from "sequelize";
 import { col, fn, literal, Op, Sequelize, where } from "sequelize";
 
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
 import {
   AgentMessage,
@@ -544,11 +544,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       enabled: boolean;
     }
   ): Promise<Result<undefined, Error>> {
-    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-    if (!featureFlags.includes("jit_tools")) {
-      return new Err(new Error("JIT Tools are not enabled for this workspace"));
-    }
-
     // For now we only allow MCP server views from the Company Space.
     // It's blocked in the UI but it's a last line of defense.
     // If we lift this limit, we should handle the requestedGroupIds on the conversation.

@@ -29,11 +29,45 @@ use super::{
 // OpenAI Responses API types
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum OpenAIResponsesInputContentType {
+    InputText,
+    InputImage,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIResponsesInputTextContent {
+    pub r#type: OpenAIResponsesInputContentType,
+    pub text: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIResponsesInputImageContent {
+    pub r#type: OpenAIResponsesInputContentType,
+    pub image_url: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[serde(untagged)]
+pub enum OpenAIResponsesInputContentBlock {
+    TextContent(OpenAIResponsesInputTextContent),
+    ImageContent(OpenAIResponsesInputImageContent),
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(untagged)]
+pub enum OpenAIResponsesMessageContent {
+    String(String),
+    Structured(Vec<OpenAIResponsesInputContentBlock>),
+}
+
+// Input items for the input array format
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum OpenAIResponseInputItem {
     Message {
         role: OpenAIChatMessageRole,
-        content: String,
+        content: OpenAIResponsesMessageContent,
     },
     Reasoning {
         id: String,
@@ -178,9 +212,9 @@ pub struct OpenAIResponsesResponse {
 
 // OpenAI Responses API conversion functions
 
-/// Strips Unicode null characters (\u0000) from a string
+/// Strips literal Unicode escape sequences like \u0000 and \u0004 from strings
 fn strip_null_chars(s: &str) -> String {
-    s.chars().filter(|&c| c != '\0').collect()
+    s.replace("\\u0000", "").replace("\\u0004", "")
 }
 
 fn responses_api_input_from_chat_messages(
@@ -193,15 +227,31 @@ fn responses_api_input_from_chat_messages(
         match message {
             ChatMessage::User(user_msg) => {
                 let content = match &user_msg.content {
-                    ContentBlock::Text(text) => text.clone(),
-                    ContentBlock::Mixed(mixed_contents) => mixed_contents
-                        .iter()
-                        .map(|c| match c {
-                            MixedContent::TextContent(tc) => tc.text.clone(),
-                            MixedContent::ImageContent(ic) => ic.image_url.url.clone(),
-                        })
-                        .collect::<Vec<String>>()
-                        .join("\n"),
+                    ContentBlock::Text(text) => OpenAIResponsesMessageContent::String(text.clone()),
+                    ContentBlock::Mixed(mixed_contents) => {
+                        let content_blocks: Vec<OpenAIResponsesInputContentBlock> = mixed_contents
+                            .iter()
+                            .map(|c| match c {
+                                MixedContent::TextContent(tc) => {
+                                    OpenAIResponsesInputContentBlock::TextContent(
+                                        OpenAIResponsesInputTextContent {
+                                            r#type: OpenAIResponsesInputContentType::InputText,
+                                            text: tc.text.clone(),
+                                        },
+                                    )
+                                }
+                                MixedContent::ImageContent(ic) => {
+                                    OpenAIResponsesInputContentBlock::ImageContent(
+                                        OpenAIResponsesInputImageContent {
+                                            r#type: OpenAIResponsesInputContentType::InputImage,
+                                            image_url: ic.image_url.url.clone(),
+                                        },
+                                    )
+                                }
+                            })
+                            .collect();
+                        OpenAIResponsesMessageContent::Structured(content_blocks)
+                    }
                 };
                 input_items.push(OpenAIResponseInputItem::Message {
                     role: OpenAIChatMessageRole::User,
@@ -217,7 +267,7 @@ fn responses_api_input_from_chat_messages(
                     };
                 input_items.push(OpenAIResponseInputItem::Message {
                     role,
-                    content: system_msg.content.clone(),
+                    content: OpenAIResponsesMessageContent::String(system_msg.content.clone()),
                 });
             }
             ChatMessage::Assistant(assistant_msg) => {
@@ -267,7 +317,7 @@ fn responses_api_input_from_chat_messages(
                         AssistantContentItem::TextContent { value } => {
                             input_items.push(OpenAIResponseInputItem::Message {
                                 role: OpenAIChatMessageRole::Assistant,
-                                content: value.clone(),
+                                content: OpenAIResponsesMessageContent::String(value.clone()),
                             });
                         }
                     }
@@ -396,8 +446,10 @@ pub async fn openai_responses_api_completion(
     transform_system_messages: TransformSystemMessages,
     provider_name: String,
 ) -> Result<LLMChatGeneration> {
-    let is_reasoning_model =
-        model_id.starts_with("o3") || model_id.starts_with("o1") || model_id.starts_with("o4");
+    let is_reasoning_model = model_id.starts_with("o3")
+        || model_id.starts_with("o1")
+        || model_id.starts_with("o4")
+        || model_id.starts_with("gpt-5");
 
     let (openai_org_id, instructions, reasoning_effort, store) = match &extras {
         None => (None, None, None, true),
@@ -1095,4 +1147,158 @@ fn handle_response_error(
         message: format!("{}: {}", provider_name, error_msg),
         retryable: None,
     })?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::providers::chat_messages::{
+        ImageContent, ImageContentType, ImageUrlContent, SystemChatMessage, TextContent,
+        TextContentType, UserChatMessage,
+    };
+    use crate::providers::llm::ChatMessageRole;
+
+    #[test]
+    fn test_simple_text_input() {
+        // Simple case: single user message with text should produce array with one message
+        let user_message = ChatMessage::User(UserChatMessage {
+            content: ContentBlock::Text("Tell me a bedtime story".to_string()),
+            name: None,
+            role: ChatMessageRole::User,
+        });
+
+        let messages = vec![user_message];
+        let result =
+            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep)
+                .unwrap();
+
+        assert_eq!(result.len(), 1);
+        if let OpenAIResponseInputItem::Message { role, content } = &result[0] {
+            assert_eq!(*role, OpenAIChatMessageRole::User);
+            if let OpenAIResponsesMessageContent::String(text) = content {
+                assert_eq!(text, "Tell me a bedtime story");
+            } else {
+                panic!("Expected string content");
+            }
+        } else {
+            panic!("Expected message input item");
+        }
+    }
+
+    #[test]
+    fn test_mixed_content_with_image() {
+        // Mixed content with image should produce message array format
+        let user_message = ChatMessage::User(UserChatMessage {
+            content: ContentBlock::Mixed(vec![
+                MixedContent::TextContent(TextContent {
+                    r#type: TextContentType::Text,
+                    text: "what is in this image?".to_string(),
+                }),
+                MixedContent::ImageContent(ImageContent {
+                    r#type: ImageContentType::ImageUrl,
+                    image_url: ImageUrlContent {
+                        url: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg".to_string(),
+                    },
+                }),
+            ]),
+            name: None,
+            role: ChatMessageRole::User,
+        });
+
+        let messages = vec![user_message];
+        let result =
+            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep)
+                .unwrap();
+
+        assert_eq!(result.len(), 1);
+
+        if let OpenAIResponseInputItem::Message { role, content } = &result[0] {
+            assert_eq!(*role, OpenAIChatMessageRole::User);
+
+            if let OpenAIResponsesMessageContent::Structured(blocks) = content {
+                assert_eq!(blocks.len(), 2);
+
+                // Check text content
+                if let OpenAIResponsesInputContentBlock::TextContent(text_block) = &blocks[0] {
+                    assert_eq!(text_block.text, "what is in this image?");
+                    assert_eq!(
+                        text_block.r#type,
+                        OpenAIResponsesInputContentType::InputText
+                    );
+                } else {
+                    panic!("Expected text content block");
+                }
+
+                // Check image content
+                if let OpenAIResponsesInputContentBlock::ImageContent(image_block) = &blocks[1] {
+                    assert_eq!(image_block.image_url, "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg");
+                    assert_eq!(
+                        image_block.r#type,
+                        OpenAIResponsesInputContentType::InputImage
+                    );
+                } else {
+                    panic!("Expected image content block");
+                }
+            } else {
+                panic!("Expected structured content");
+            }
+        } else {
+            panic!("Expected message input item");
+        }
+    }
+
+    #[test]
+    fn test_multiple_messages_produces_array() {
+        // Multiple messages should always produce array format, even if all text
+        let messages = vec![
+            ChatMessage::System(SystemChatMessage {
+                content: "You are a helpful assistant.".to_string(),
+                role: ChatMessageRole::System,
+            }),
+            ChatMessage::User(UserChatMessage {
+                content: ContentBlock::Text("Hello!".to_string()),
+                name: None,
+                role: ChatMessageRole::User,
+            }),
+        ];
+
+        let result =
+            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep)
+                .unwrap();
+
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn test_input_image_serialization() {
+        // Test that the serialization produces the expected JSON format for input_image
+        let image_content = OpenAIResponsesInputImageContent {
+            r#type: OpenAIResponsesInputContentType::InputImage,
+            image_url: "https://example.com/image.jpg".to_string(),
+        };
+
+        let json = serde_json::to_value(&image_content).unwrap();
+
+        // Verify the JSON structure matches Responses API format
+        assert_eq!(json["type"], "input_image");
+        assert_eq!(json["image_url"], "https://example.com/image.jpg");
+
+        // Verify it's different from Chat API format (which would have nested image_url object)
+        assert!(json["image_url"].is_string()); // Direct string, not object
+    }
+
+    #[test]
+    fn test_input_text_serialization() {
+        // Test that the serialization produces the expected JSON format for input_text
+        let text_content = OpenAIResponsesInputTextContent {
+            r#type: OpenAIResponsesInputContentType::InputText,
+            text: "Hello world".to_string(),
+        };
+
+        let json = serde_json::to_value(&text_content).unwrap();
+
+        // Verify the JSON structure matches Responses API format
+        assert_eq!(json["type"], "input_text");
+        assert_eq!(json["text"], "Hello world");
+    }
 }
