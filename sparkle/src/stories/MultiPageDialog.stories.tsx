@@ -277,6 +277,7 @@ export const SimpleToolDialog: Story = {
           currentPageId="tool-selection"
           onPageChange={() => {}}
           size="xl"
+          height="xl"
           leftButton={{
             label: "Cancel",
             variant: "outline",

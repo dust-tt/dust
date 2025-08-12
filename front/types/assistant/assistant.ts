@@ -309,6 +309,9 @@ export type ModelConfigurationType = {
   // This meta-prompt is injected into the agent's system instructions if the agent is in a native reasoning context (reasoning effort >= medium).
   nativeReasoningMetaPrompt?: string;
 
+  // This meta-prompt is always injected into the agent's system instructions.
+  formattingMetaPrompt?: string;
+
   // Adjust the token count estimation by a ratio. Only needed for anthropic models, where the token count is higher than our estimate
   tokenCountAdjustment?: number;
 
@@ -321,6 +324,10 @@ export type ModelConfigurationType = {
   minimumReasoningEffort: AgentReasoningEffort;
   maximumReasoningEffort: AgentReasoningEffort;
   defaultReasoningEffort: AgentReasoningEffort;
+
+  // If set to true, we'll pass the "light" reasoning effort to `core`. Otherwise, we'll
+  // use chain of thought prompting.
+  useNativeLightReasoning?: boolean;
 
   // Denotes model is able to take a response format request parameter
   supportsResponseFormat?: boolean;
@@ -466,6 +473,20 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
 };
+
+const OPENAI_FORMATTING_META_PROMPT = `# Response Formats
+SYSTEM STYLE: Rich Markdown by default
+- Always respond using rich Markdown unless the user explicitly requests another format.
+- You can use H1 titles (# Title) when appropriate.
+- Organize content into sections with H2/H3 headings (##, ###). Favor paragraphs and subsections.
+- Use bullet/numbered lists sparingly and never as the sole structure of the response.
+- Include tables when they materially aid clarity; use code blocks for code, configs, or commands.
+- If the user specifies a different format, follow the user’s instructions.
+- When style directives conflict, prefer this Markdown style guide.
+NEVER:
+- Return a response that is just a list of bullet points.
+- Omit headings in multi-paragraph answers.`;
+
 export const GPT_5_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_5_MODEL_ID,
@@ -483,7 +504,9 @@ export const GPT_5_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
   supportsResponseFormat: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
 };
 export const O1_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -549,6 +572,7 @@ export const O3_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
   supportsResponseFormat: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
 };
 
 export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {

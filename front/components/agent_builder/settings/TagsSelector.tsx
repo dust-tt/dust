@@ -9,6 +9,8 @@ import {
   DropdownMenuTagList,
   DropdownMenuTrigger,
   PlusIcon,
+  SparklesIcon,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -23,15 +25,23 @@ import { TagCreationDialog } from "./TagCreationDialog";
 interface TagsSelectorProps {
   owner: WorkspaceType;
   tags: TagType[];
-  onTagsChange: (tags: TagType[]) => void;
-  suggestionButton?: JSX.Element;
+  onAddTag: (tag: TagType) => void;
+  onRemoveTag: (tagId: string) => void;
+  onSuggestTags?: () => Promise<void>;
+  isSuggestLoading?: boolean;
+  isSuggestDisabled?: boolean;
+  suggestTooltip?: string;
 }
 
 export const TagsSelector = ({
   owner,
   tags,
-  onTagsChange,
-  suggestionButton,
+  onAddTag,
+  onRemoveTag,
+  onSuggestTags,
+  isSuggestLoading,
+  isSuggestDisabled,
+  suggestTooltip,
 }: TagsSelectorProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -62,21 +72,13 @@ export const TagsSelector = ({
 
   const sortedTags = tags.toSorted(tagsSorter);
 
-  const addTag = (tag: TagType) => {
-    onTagsChange([...tags, tag]);
-  };
-
-  const removeTag = (tagId: string) => {
-    onTagsChange(tags.filter((t) => t.sId !== tagId));
-  };
-
   return (
     <>
       <TagCreationDialog
         owner={owner}
         isOpen={isDialogOpen}
         setIsOpen={setIsDialogOpen}
-        addTag={addTag}
+        addTag={onAddTag}
       />
       <div className="space-y-2">
         <div className="flex gap-2">
@@ -94,12 +96,9 @@ export const TagsSelector = ({
                 tooltip="Select a tag"
               />
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="h-96 w-96"
-              side="top"
-              align="start"
-              dropdownHeaders={
-                <>
+            <DropdownMenuContent className="h-96 w-96" side="top" align="start">
+              <div className="flex h-full flex-col">
+                <div className="flex-shrink-0">
                   <DropdownMenuSearchbar
                     autoFocus
                     placeholder="Search"
@@ -108,7 +107,7 @@ export const TagsSelector = ({
                     onChange={setSearchText}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && filteredTags.length > 0) {
-                        addTag(filteredTags[0]);
+                        onAddTag(filteredTags[0]);
                         onMenuOpenChange(false);
                       }
                     }}
@@ -127,24 +126,44 @@ export const TagsSelector = ({
                     }
                   />
                   <DropdownMenuSeparator />
-                </>
-              }
-            >
-              <DropdownMenuTagList>
-                {filteredTags.map((tag) => (
-                  <DropdownMenuTagItem
-                    color="golden"
-                    key={tag.sId}
-                    label={tag.name}
-                    onClick={() => {
-                      addTag(tag);
-                    }}
-                  />
-                ))}
-              </DropdownMenuTagList>
+                </div>
+                <div className="flex-1 overflow-auto">
+                  <DropdownMenuTagList>
+                    {filteredTags.map((tag) => (
+                      <DropdownMenuTagItem
+                        color="golden"
+                        key={tag.sId}
+                        label={tag.name}
+                        onClick={() => {
+                          onAddTag(tag);
+                        }}
+                      />
+                    ))}
+                  </DropdownMenuTagList>
+                </div>
+                {onSuggestTags && (
+                  <div className="flex w-full flex-shrink-0 flex-row items-end justify-end">
+                    <div className="px-2 py-2">
+                      <Button
+                        icon={
+                          isSuggestLoading
+                            ? () => <Spinner size="xs" />
+                            : SparklesIcon
+                        }
+                        variant="outline"
+                        size="xs"
+                        disabled={isSuggestDisabled}
+                        tooltip={suggestTooltip}
+                        onClick={async () => {
+                          await onSuggestTags();
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
-          {suggestionButton}
         </div>
         {sortedTags.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -154,7 +173,7 @@ export const TagsSelector = ({
                 onRemove={
                   tag.kind === "protected" && !isBuilder(owner)
                     ? undefined
-                    : () => removeTag(tag.sId)
+                    : () => onRemoveTag(tag.sId)
                 }
                 size="xs"
                 color="golden"

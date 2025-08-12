@@ -200,7 +200,9 @@ export async function* tryCallMCPTool(
     progressToken: ModelId;
   }
 ): AsyncGenerator<MCPCallToolEvent, void> {
-  if (!isMCPToolConfiguration(agentLoopRunContext.actionConfiguration)) {
+  const { toolConfiguration } = agentLoopRunContext;
+
+  if (!isMCPToolConfiguration(toolConfiguration)) {
     yield {
       type: "result",
       result: new Err(
@@ -218,7 +220,7 @@ export async function* tryCallMCPTool(
 
   const connectionParamsRes = await getMCPClientConnectionParams(
     auth,
-    agentLoopRunContext.actionConfiguration,
+    toolConfiguration,
     {
       conversationId,
       messageId,
@@ -273,7 +275,7 @@ export async function* tryCallMCPTool(
     // Start the tool call in parallel.
     const toolPromise = mcpClient.callTool(
       {
-        name: agentLoopRunContext.actionConfiguration.originalName,
+        name: toolConfiguration.originalName,
         arguments: inputs,
         _meta: {
           progressToken,
@@ -281,9 +283,7 @@ export async function* tryCallMCPTool(
       },
       CallToolResultSchema,
       {
-        timeout:
-          agentLoopRunContext.actionConfiguration.timeoutMs ??
-          DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+        timeout: toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
       }
     );
 
@@ -359,7 +359,7 @@ export async function* tryCallMCPTool(
           conversationId,
           error: toolCallResult.content,
           messageId,
-          toolName: agentLoopRunContext.actionConfiguration.originalName,
+          toolName: toolConfiguration.originalName,
           workspaceId: auth.getNonNullableWorkspace().sId,
         },
         `Error calling MCP tool in tryCallMCPTool().`
@@ -399,21 +399,14 @@ export async function* tryCallMCPTool(
     };
 
     const serverType = (() => {
-      if (
-        isClientSideMCPToolConfiguration(
-          agentLoopRunContext.actionConfiguration
-        )
-      ) {
+      if (isClientSideMCPToolConfiguration(toolConfiguration)) {
         return "client";
       }
-      if (
-        isServerSideMCPToolConfiguration(
-          agentLoopRunContext.actionConfiguration
-        ) &&
-        agentLoopRunContext.actionConfiguration.internalMCPServerId
-      ) {
+
+      if (isServerSideMCPToolConfiguration(toolConfiguration)) {
         return "internal";
       }
+
       return "remote";
     })();
 
@@ -444,7 +437,7 @@ export async function* tryCallMCPTool(
         conversationId,
         error,
         messageId,
-        toolName: agentLoopRunContext.actionConfiguration.originalName,
+        toolName: toolConfiguration.originalName,
         workspaceId: auth.getNonNullableWorkspace().sId,
       },
       "Exception calling MCP tool in tryCallMCPTool()."

@@ -604,7 +604,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "index_private_slack_channel"
   | "interactive_content_server"
   | "jira_tool"
-  | "jit_tools"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"
@@ -622,6 +621,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "xai_feature"
   | "agent_management_tool"
+  | "data_warehouses_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1087,6 +1087,29 @@ const MCPApproveExecutionEventSchema = z.object({
   stake: MCPStakeLevelSchema,
   metadata: MCPValidationMetadataSchema,
 });
+
+const ToolErrorEventSchema = z.object({
+  type: z.literal("tool_error"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+    metadata: z.record(z.any()).nullable(),
+  }),
+});
+export type ToolErrorEvent = z.infer<typeof ToolErrorEventSchema>;
+
+export function isMCPServerPersonalAuthRequiredError(
+  error: ToolErrorEvent["error"]
+) {
+  return (
+    error.code === "mcp_server_personal_authentication_required" &&
+    error.metadata &&
+    "mcpServerId" in error.metadata
+  );
+}
 
 const AgentErrorEventSchema = z.object({
   type: z.literal("agent_error"),

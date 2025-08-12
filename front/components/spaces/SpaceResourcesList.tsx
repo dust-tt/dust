@@ -534,6 +534,7 @@ export const SpaceResourcesList = ({
 
       {rows.length > 0 && (
         <DataTable<RowData>
+          className="dd-privacy-mask"
           data={rows}
           columns={getTableColumns(
             setAssistantSId,

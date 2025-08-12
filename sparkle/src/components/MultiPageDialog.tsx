@@ -15,24 +15,6 @@ import {
 import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
-const MULTI_PAGE_DIALOG_SIZES = ["md", "lg", "xl"] as const;
-type MultiPageDialogSizeType = (typeof MULTI_PAGE_DIALOG_SIZES)[number];
-
-const multiPageDialogSizeClasses: Record<MultiPageDialogSizeType, string> = {
-  md: "s-h-100 s-max-h-screen",
-  lg: "s-h-125 s-max-h-screen",
-  xl: "s-h-150 s-max-h-screen",
-};
-
-const multiPageDialogHeightVariants = cva("", {
-  variants: {
-    size: multiPageDialogSizeClasses,
-  },
-  defaultVariants: {
-    size: "md",
-  },
-});
-
 const multiPageDialogLayoutVariants = cva(
   cn("s-flex s-flex-col s-h-full s-overflow-hidden")
 );
@@ -90,7 +72,8 @@ interface MultiPageDialogProps {
   pages: MultiPageDialogPage[];
   currentPageId: string;
   onPageChange: (pageId: string) => void;
-  size?: MultiPageDialogSizeType;
+  size?: React.ComponentProps<typeof DialogContent>["size"];
+  height?: React.ComponentProps<typeof DialogContent>["height"];
   trapFocusScope?: boolean;
   isAlertDialog?: boolean;
   showNavigation?: boolean;
@@ -117,6 +100,7 @@ const MultiPageDialogContent = React.forwardRef<
       currentPageId,
       onPageChange,
       size = "md",
+      height,
       trapFocusScope,
       isAlertDialog,
       showNavigation = true,
@@ -181,9 +165,10 @@ const MultiPageDialogContent = React.forwardRef<
       <DialogContent
         ref={ref}
         size={size}
+        height={height}
         trapFocusScope={trapFocusScope}
         isAlertDialog={isAlertDialog}
-        className={cn(multiPageDialogHeightVariants({ size }), className)}
+        className={className}
         {...props}
       >
         <div className={cn(multiPageDialogLayoutVariants())}>

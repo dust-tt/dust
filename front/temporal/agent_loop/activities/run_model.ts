@@ -118,6 +118,7 @@ export async function runModelActivity({
 
   const isLegacyAgent = isLegacyAgentConfiguration(agentConfiguration);
   if (isLegacyAgent && step !== 0) {
+    localLogger.warn("Legacy agent only supports step 0.");
     // legacy agents stop after one step
     return null;
   }
@@ -349,7 +350,10 @@ export async function runModelActivity({
   const reasoningEffort =
     agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
 
-  if (reasoningEffort !== "none" && reasoningEffort !== "light") {
+  if (
+    reasoningEffort !== "none" &&
+    (reasoningEffort !== "light" || model.useNativeLightReasoning)
+  ) {
     runConfig.MODEL.reasoning_effort = reasoningEffort;
   }
 
@@ -518,6 +522,8 @@ export async function runModelActivity({
           step,
         }
       );
+      localLogger.error("Agent generation cancelled");
+
       return null;
     }
 
@@ -728,6 +734,7 @@ export async function runModelActivity({
         step,
       }
     );
+    localLogger.info("Agent message generation succeeded");
 
     return null;
   }

@@ -55,7 +55,7 @@ export function getDefaultConfiguration(
  * @param mcpServerView - The MCP server view
  * @returns Default form data object
  */
-export function getDefaultFormValues(mcpServerView?: MCPServerViewType | null) {
+export function getDefaultFormValues(mcpServerView: MCPServerViewType | null) {
   return {
     name: "",
     description: "",

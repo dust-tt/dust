@@ -172,10 +172,7 @@ async function handler(
 
       if (message) {
         // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
-        if (
-          message.context.selectedMCPServerViewIds &&
-          featureFlags.includes("jit_tools")
-        ) {
+        if (message.context.selectedMCPServerViewIds) {
           const mcpServerViews = await MCPServerViewResource.fetchByIds(
             auth,
             message.context.selectedMCPServerViewIds

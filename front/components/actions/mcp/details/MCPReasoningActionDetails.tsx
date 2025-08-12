@@ -11,7 +11,10 @@ import {
   isThinkingOutput,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
-export function MCPReasoningActionDetails({ action }: MCPActionDetailsProps) {
+export function MCPReasoningActionDetails({
+  action,
+  viewType,
+}: MCPActionDetailsProps) {
   const { output } = action;
 
   const thinkingBlocks =
@@ -21,7 +24,11 @@ export function MCPReasoningActionDetails({ action }: MCPActionDetailsProps) {
     output?.filter(isReasoningSuccessOutput).map((o) => o.resource) ?? [];
 
   return (
-    <ActionDetailsWrapper actionName="Reasoning" visual={ChatBubbleThoughtIcon}>
+    <ActionDetailsWrapper
+      viewType={viewType}
+      actionName="Reasoning"
+      visual={ChatBubbleThoughtIcon}
+    >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         {thinkingBlocks.map((block) => (
           <ThinkingBlock key={block.text} resource={block} />

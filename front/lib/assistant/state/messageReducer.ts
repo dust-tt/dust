@@ -9,7 +9,11 @@ import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
 import type { LightAgentMessageType } from "@app/types/assistant/conversation";
 
-export type AgentStateClassification = "thinking" | "acting" | "done";
+export type AgentStateClassification =
+  | "thinking"
+  | "acting"
+  | "writing"
+  | "done";
 
 export type ActionProgressState = Map<
   ModelId,
@@ -40,13 +44,9 @@ function updateMessageWithAction(
 ): LightAgentMessageType {
   return {
     ...m,
-    actions: [
-      ...m.actions.filter((a) => a.id !== action.id),
-      {
-        type: action.type,
-        id: action.id,
-      },
-    ],
+    // TODO: uncomment this once we have a way to display chain of thought
+    // chainOfThought: "",
+    actions: [...m.actions.filter((a) => a.id !== action.id), action],
   };
 }
 
@@ -97,7 +97,6 @@ export function messageReducer(
       return {
         ...state,
         message: updateMessageWithAction(state.message, event.action),
-        agentState: "thinking",
         // Clean up progress for this specific action.
         actionProgress: new Map(
           Array.from(state.actionProgress.entries()).filter(
@@ -148,15 +147,25 @@ export function messageReducer(
         case "tokens":
           newState.message.content =
             (newState.message.content || "") + event.text;
+          newState.agentState = "writing";
           break;
         case "chain_of_thought":
+          // TODO: uncomment this once we have a way to display chain of thought
+          // if (event.text === "\n\n") {
+          //   newState.message.chainOfThought = "";
+          // } else {
+          // newState.message.chainOfThought =
+          //   (newState.message.chainOfThought || "") + event.text;
+          // // }
+
           newState.message.chainOfThought =
             (newState.message.chainOfThought || "") + event.text;
+
+          newState.agentState = "thinking";
           break;
         default:
           assertNever(event);
       }
-      newState.agentState = "thinking";
       return newState;
     }
     case "tool_params":

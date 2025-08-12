@@ -33,7 +33,6 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -90,7 +89,6 @@ const InputBarContainer = ({
   onMCPServerViewDeselect,
   selectedMCPServerViewIds,
 }: InputBarContainerProps) => {
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const [isExpanded, setIsExpanded] = useState(false);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
@@ -258,23 +256,28 @@ const InputBarContainer = ({
   return (
     <div
       id="InputBarContainer"
-      className="relative flex flex-1 cursor-text flex-col sm:flex-row sm:pt-0"
+      className="relative flex flex-1 cursor-text flex-row sm:pt-0"
+      onClick={(e) => {
+        // If e.target is not a child of a div with class "tiptap", then focus on the editor
+        if (!(e.target instanceof HTMLElement && e.target.closest(".tiptap"))) {
+          editorService.focusEnd();
+        }
+      }}
     >
-      <EditorContent
-        editor={editor}
-        className={classNames(
-          contentEditableClasses,
-          "scrollbar-hide",
-          "overflow-y-auto",
-          isExpanded
-            ? "h-[60vh] max-h-[60vh] lg:h-[80vh] lg:max-h-[80vh]"
-            : "max-h-64"
-        )}
-      />
-
-      <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-3 pr-3 sm:flex-col sm:border-0">
-        <div className="flex items-center py-0 sm:py-3.5">
-          {actions.includes("tools") && featureFlags.includes("jit_tools") && (
+      <div className="flex flex-grow flex-col">
+        <EditorContent
+          editor={editor}
+          className={classNames(
+            contentEditableClasses,
+            "scrollbar-hide",
+            "overflow-y-auto",
+            isExpanded
+              ? "h-[60vh] max-h-[60vh] lg:h-[80vh] lg:max-h-[80vh]"
+              : "max-h-64 min-h-10"
+          )}
+        />
+        <div className="flex items-center pb-3 pt-0">
+          {actions.includes("tools") && (
             <ToolsPicker
               owner={owner}
               selectedMCPServerViewIds={selectedMCPServerViewIds}
@@ -317,11 +320,17 @@ const InputBarContainer = ({
                 editorService.insertMention({ id: c.sId, label: c.name });
               }}
               assistants={allAssistants}
+              showDropdownArrow={false}
               showFooterButtons={actions.includes(
                 "assistants-list-with-actions"
               )}
             />
           )}
+        </div>
+      </div>
+
+      <div className="flex flex-col items-end justify-between gap-2 self-stretch pb-3 pr-3 pt-3 sm:border-0">
+        <div className="flex items-center">
           {actions.includes("fullscreen") && (
             <div className="hidden sm:flex">
               <Button
@@ -334,7 +343,7 @@ const InputBarContainer = ({
           )}
         </div>
         <Button
-          size="sm"
+          size="xs"
           isLoading={disableSendButton}
           icon={ArrowUpIcon}
           variant="highlight"

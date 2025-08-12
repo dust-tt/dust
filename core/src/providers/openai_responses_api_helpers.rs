@@ -77,6 +77,8 @@ pub struct OpenAIResponseAPITool {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parameters: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strict: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -102,6 +104,8 @@ pub struct OpenAIResponsesRequest {
     pub include: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub previous_response_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_tier: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -173,6 +177,11 @@ pub struct OpenAIResponsesResponse {
 }
 
 // OpenAI Responses API conversion functions
+
+/// Strips literal Unicode escape sequences like \u0000 and \u0004 from strings
+fn strip_null_chars(s: &str) -> String {
+    s.replace("\\u0000", "").replace("\\u0004", "")
+}
 
 fn responses_api_input_from_chat_messages(
     messages: &Vec<ChatMessage>,
@@ -348,7 +357,7 @@ fn assistant_chat_message_from_responses_api_output(
                 let fc = ChatFunctionCall {
                     id: call_id,
                     name,
-                    arguments,
+                    arguments: strip_null_chars(&arguments),
                 };
                 function_calls.push(fc.clone());
                 contents.push(AssistantContentItem::FunctionCall { value: fc });
@@ -402,7 +411,13 @@ pub async fn openai_responses_api_completion(
                 _ => None,
             },
             match v.get("reasoning_effort") {
-                Some(Value::String(r)) => Some(r.to_string()),
+                Some(Value::String(r)) => {
+                    if r == "light" {
+                        Some("low".to_string())
+                    } else {
+                        Some(r.to_string())
+                    }
+                }
                 _ => {
                     if model_id.starts_with("gpt-5") {
                         Some("minimal".to_string())
@@ -429,6 +444,7 @@ pub async fn openai_responses_api_completion(
             name: f.name.clone(),
             description: f.description.clone(),
             parameters: f.parameters.clone(),
+            strict: Some(false),
         })
         .collect();
 
@@ -444,6 +460,13 @@ pub async fn openai_responses_api_completion(
         (None, None)
     };
 
+    // TODO(gpt-5): remove this once we have a proper service tier system
+    let service_tier = if model_id.starts_with("gpt-5") {
+        Some("priority".to_string())
+    } else {
+        None
+    };
+
     let request = OpenAIResponsesRequest {
         model: model_id.clone(),
         input: Some(input),
@@ -456,6 +479,7 @@ pub async fn openai_responses_api_completion(
         store: Some(store),
         include,
         previous_response_id: None,
+        service_tier,
     };
 
     let (response, request_id) = if event_sender.is_some() {
@@ -974,16 +998,16 @@ fn handle_output_item_done(
                     }
                     "function_call" => {
                         // Parse as function call item.
-                        if let Ok(fc_item) =
+                        if let Ok(mut fc_item) =
                             serde_json::from_value::<OpenAIResponseOutputItem>(item)
                         {
                             if let OpenAIResponseOutputItem::FunctionCall {
-                                id: _,
-                                name: _,
-                                arguments: _,
-                                call_id: _,
-                            } = &fc_item
+                                ref mut arguments,
+                                ..
+                            } = &mut fc_item
                             {
+                                // Strip null characters from arguments
+                                *arguments = strip_null_chars(arguments);
                                 // Add to state.
                                 state.output_items.push(fc_item);
                             }

@@ -19,13 +19,13 @@ import { partition } from "lodash";
 import { useMemo } from "react";
 import { useController } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useModels } from "@app/lib/swr/models";
 import type {
-  LightWorkspaceType,
   ModelConfigurationType,
   ModelProviderIdType,
   ReasoningModelConfigurationType,
@@ -36,10 +36,6 @@ import {
   O3_MODEL_ID,
   O4_MINI_MODEL_ID,
 } from "@app/types";
-
-interface ReasoningModelSectionProps {
-  owner: LightWorkspaceType;
-}
 
 const BEST_PERFORMING_REASONING_MODELS_ID = [
   O4_MINI_MODEL_ID,
@@ -71,7 +67,8 @@ function groupModelsByProvider(reasoningModels: ModelConfigurationType[]) {
   return map;
 }
 
-export function ReasoningModelSection({ owner }: ReasoningModelSectionProps) {
+export function ReasoningModelSection() {
+  const { owner } = useAgentBuilderContext();
   const { field, fieldState } = useController<
     MCPFormData,
     "configuration.reasoningModel"

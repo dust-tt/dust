@@ -1,13 +1,17 @@
 import {
   Avatar,
+  BookOpenIcon,
+  Button,
   Card,
   CardActionButton,
   CardGrid,
   EmptyCTA,
-  Page,
+  Hoverable,
+  ListAddIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { Spinner } from "@dust-tt/sparkle";
+import { isEmpty } from "lodash";
 import React, { useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -15,6 +19,7 @@ import type {
   AgentBuilderDataVizAction,
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import type { DialogMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
 import { MCPServerViewsDialog } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
@@ -42,9 +47,9 @@ const BACKGROUND_IMAGE_PATH = "/static/IconBar.svg";
 const BACKGROUND_IMAGE_STYLE_PROPS = {
   backgroundImage: `url("${BACKGROUND_IMAGE_PATH}")`,
   backgroundRepeat: "no-repeat",
-  backgroundPosition: "center 20px",
+  backgroundPosition: "center 14px",
   backgroundSize: "auto 60px",
-  paddingTop: "100px",
+  paddingTop: "90px",
 };
 
 function actionIcon(
@@ -85,7 +90,6 @@ interface ActionCardProps {
   onEdit?: () => void;
 }
 
-// TODO: Merge this with ActionCard.
 function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
@@ -101,7 +105,7 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   return (
     <Card
       variant="primary"
-      className="max-h-40"
+      className="h-28"
       onClick={onEdit}
       action={
         <CardActionButton
@@ -129,7 +133,13 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
   );
 }
 
-export function AgentBuilderCapabilitiesBlock() {
+interface AgentBuilderCapabilitiesBlockProps {
+  isActionsLoading: boolean;
+}
+
+export function AgentBuilderCapabilitiesBlock({
+  isActionsLoading,
+}: AgentBuilderCapabilitiesBlockProps) {
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { fields, remove, append, update } = useFieldArray<
     AgentBuilderFormData,
@@ -169,8 +179,8 @@ export function AgentBuilderCapabilitiesBlock() {
     const isDataSourceSelectionRequired =
       action.type === "MCP" &&
       Boolean(
-        action.configuration.dataSourceConfigurations ||
-          action.configuration.tablesConfigurations
+        !isEmpty(action.configuration.dataSourceConfigurations) ||
+          !isEmpty(action.configuration.tablesConfigurations)
       );
 
     if (isDataSourceSelectionRequired) {
@@ -208,53 +218,66 @@ export function AgentBuilderCapabilitiesBlock() {
 
   const getAgentInstructions = () => getValues("instructions");
 
-  const dropdownButtons = (
-    <>
-      <KnowledgeConfigurationSheet
-        onClose={handleCloseSheet}
-        onClickKnowledge={onClickKnowledge}
-        onSave={handleEditSave}
-        action={knowledgeAction?.action ?? null}
-        isEditing={Boolean(knowledgeAction && knowledgeAction.index !== null)}
-        mcpServerViews={mcpServerViewsWithKnowledge}
-        getAgentInstructions={getAgentInstructions}
+  const headerActions = fields.length > 0 && (
+    <div className="flex items-center gap-2">
+      <Button
+        variant="primary"
+        label="Add knowledge"
+        onClick={onClickKnowledge}
+        icon={BookOpenIcon}
       />
-      <MCPServerViewsDialog
-        addTools={append}
-        dataVisualization={dataVisualization}
-        mode={dialogMode}
-        onModeChange={setDialogMode}
-        onActionUpdate={handleMcpActionUpdate}
-        getAgentInstructions={getAgentInstructions}
+      <Button
+        onClick={() => setDialogMode({ type: "add" })}
+        label="Add tools"
+        icon={ListAddIcon}
+        variant="outline"
       />
-    </>
+    </div>
   );
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <Page.H>Tools & Capabilities</Page.H>
-      <div className="flex flex-col items-center justify-between sm:flex-row">
-        <Page.P>
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Add tools and capabilities to enhance your agent's abilities.
-          </span>
-        </Page.P>
-        <div className="flex w-full flex-col gap-2 sm:w-auto">
-          <div className="flex items-center gap-2">
-            {fields.length > 0 && dropdownButtons}
-          </div>
-        </div>
-      </div>
+    <AgentBuilderSectionContainer
+      title="Knowledge & Tools"
+      description={
+        <>
+          Add knowledge and tools to enhance your agent’s abilities. Need help?
+          Check our{" "}
+          <Hoverable
+            variant="primary"
+            href="https://docs.dust.tt/docs/tools"
+            target="_blank"
+          >
+            guide
+          </Hoverable>
+          .
+        </>
+      }
+      headerActions={headerActions}
+    >
       <div className="flex-1">
-        {isMCPServerViewsLoading ? (
+        {isMCPServerViewsLoading || isActionsLoading ? (
           <div className="flex h-40 w-full items-center justify-center">
             <Spinner />
           </div>
         ) : fields.length === 0 ? (
           <EmptyCTA
             action={
-              <div className="flex items-center gap-2">{dropdownButtons}</div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="primary"
+                  label="Add knowledge"
+                  onClick={onClickKnowledge}
+                  icon={BookOpenIcon}
+                />
+                <Button
+                  onClick={() => setDialogMode({ type: "add" })}
+                  label="Add tools"
+                  icon={ListAddIcon}
+                  variant="outline"
+                />
+              </div>
             }
+            className="pb-5"
             style={BACKGROUND_IMAGE_STYLE_PROPS}
           />
         ) : (
@@ -270,6 +293,24 @@ export function AgentBuilderCapabilitiesBlock() {
           </CardGrid>
         )}
       </div>
-    </div>
+      <KnowledgeConfigurationSheet
+        onClose={handleCloseSheet}
+        onSave={handleEditSave}
+        action={knowledgeAction?.action ?? null}
+        actions={fields}
+        isEditing={Boolean(knowledgeAction && knowledgeAction.index !== null)}
+        mcpServerViews={mcpServerViewsWithKnowledge}
+        getAgentInstructions={getAgentInstructions}
+      />
+      <MCPServerViewsDialog
+        addTools={append}
+        dataVisualization={dataVisualization}
+        mode={dialogMode}
+        onModeChange={setDialogMode}
+        onActionUpdate={handleMcpActionUpdate}
+        actions={fields}
+        getAgentInstructions={getAgentInstructions}
+      />
+    </AgentBuilderSectionContainer>
   );
 }

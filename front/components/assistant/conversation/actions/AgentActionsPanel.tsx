@@ -98,6 +98,7 @@ export function AgentActionsPanel({
                         return (
                           <div key={`action-${entry.action.id}`}>
                             <MCPActionDetails
+                              viewType="sidebar"
                               action={entry.action}
                               lastNotification={lastNotification}
                               defaultOpen={true}

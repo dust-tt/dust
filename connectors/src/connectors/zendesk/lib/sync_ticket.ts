@@ -192,6 +192,20 @@ export async function syncTicket({
 }) {
   const connectorId = connector.id;
 
+  if (ticket.brand_id !== brandId) {
+    logger.info(
+      {
+        ...loggerArgs,
+        connectorId,
+        ticketId: ticket.id,
+        ticketBrandId: ticket.brand_id,
+        brandId,
+      },
+      "[Zendesk] Skipping sync. Ticket does not belong to the correct brand."
+    );
+    return;
+  }
+
   let ticketInDb = await ZendeskTicketResource.fetchByTicketId({
     connectorId,
     brandId,
@@ -302,6 +316,23 @@ export async function syncTicket({
       `hasIncidents:${ticket.has_incidents ? "Yes" : "No"}`,
     ];
 
+    // Process custom field tags.
+    const customFieldTags: string[] = [];
+    if (configuration.customFieldsConfig && ticket.custom_fields) {
+      for (const customField of ticket.custom_fields) {
+        // The ticket contains the ID of the custom field and a value for it.
+        // e.g. `{ "id": 1, "value": "yes"}`, we stored the id and the title
+        // of the custom field.
+        const configuredField = configuration.customFieldsConfig.find(
+          (field) => field.id === customField.id
+        );
+        // Case where we did choose to sync this custom field.
+        if (configuredField && customField.value) {
+          customFieldTags.push(`${configuredField.name}:${customField.value}`);
+        }
+      }
+    }
+
     const documentContent = await renderDocumentTitleAndContent({
       dataSourceConfig,
       title: ticketSubject,
@@ -338,6 +369,7 @@ export async function syncTicket({
         `createdAt:${createdAtDate.getTime()}`,
         ...metadata,
         ...filterCustomTags(ticket.tags, logger),
+        ...customFieldTags,
       ],
       parents,
       parentId: parents[1],

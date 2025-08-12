@@ -1,6 +1,7 @@
 import { InputRule, mergeAttributes, Node } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { Slice } from "@tiptap/pm/model";
+import { Fragment } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { TextSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
@@ -140,6 +141,32 @@ export const InstructionBlockExtension =
         new Plugin({
           key: new PluginKey("instructionBlockAutoConvert"),
           props: {
+            clipboardTextSerializer: (slice: Slice) => {
+              /**
+               * Serializes the content of the text slice into a string format.
+               * This is needed to handle copying the raw content of the XML
+               * instruction blocks and paragraphs correctly.
+               */
+              const parts: string[] = [];
+              for (let i = 0; i < slice.content.childCount; i++) {
+                const child = slice.content.child(i);
+                if (child.type.name === this.name) {
+                  const type = (child.attrs as InstructionBlockAttributes).type;
+                  const inner = child.textBetween(0, child.content.size, "\n");
+                  parts.push(`<${type}>\n${inner}\n</${type}>`);
+                } else if (child.type.name === "paragraph") {
+                  parts.push(child.textContent);
+                } else if (child.isText) {
+                  parts.push(child.text || "");
+                } else {
+                  parts.push(child.textBetween(0, child.content.size, "\n"));
+                }
+                if (i < slice.content.childCount - 1) {
+                  parts.push("\n");
+                }
+              }
+              return parts.join("");
+            },
             handlePaste: (
               view: EditorView,
               event: ClipboardEvent,
@@ -188,12 +215,10 @@ export const InstructionBlockExtension =
                 }
               });
 
-              // Insert the nodes
+              // Insert all nodes at once to preserve order
               const { from } = state.selection;
-              nodes.forEach((node) => {
-                const pos = tr.mapping.map(from);
-                tr.insert(pos, node);
-              });
+              const fragment = Fragment.fromArray(nodes);
+              tr.insert(from, fragment);
 
               view.dispatch(tr);
               return true; // We handled the paste

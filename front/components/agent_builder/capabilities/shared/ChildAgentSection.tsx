@@ -10,13 +10,11 @@ import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import React, { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types";
 
 interface AgentTableData extends LightAgentConfigurationType {
   onClick?: () => void;
@@ -80,11 +78,8 @@ function AgentMessage({ title, children }: AgentMessageProps) {
   );
 }
 
-interface ChildAgentSectionProps {
-  owner: LightWorkspaceType;
-}
-
-export function ChildAgentSection({ owner }: ChildAgentSectionProps) {
+export function ChildAgentSection() {
+  const { owner } = useAgentBuilderContext();
   const { field, fieldState } = useController<
     MCPFormData,
     "configuration.childAgentId"
@@ -108,7 +103,9 @@ export function ChildAgentSection({ owner }: ChildAgentSectionProps) {
     : null;
 
   const rowSelection =
-    selectedIndex && selectedIndex >= 0 ? { [selectedIndex]: true } : {};
+    selectedIndex !== null && selectedIndex >= 0
+      ? { [selectedIndex]: true }
+      : {};
 
   const handleRowSelectionChange = (newSelection: RowSelectionState) => {
     const selectedIndex = Object.keys(newSelection)[0];

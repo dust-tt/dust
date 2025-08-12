@@ -1,10 +1,7 @@
 import type { MultiPageDialogPage } from "@dust-tt/sparkle";
 import {
-  Button,
-  LightbulbIcon,
   MultiPageDialog,
   MultiPageDialogContent,
-  MultiPageDialogTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,6 +19,7 @@ import type {
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
+import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { createFormResetHandler } from "@app/components/agent_builder/capabilities/mcp/utils/formStateUtils";
 import {
@@ -29,6 +27,7 @@ import {
   validateMCPActionConfiguration,
 } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
+import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
@@ -52,6 +51,7 @@ import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
+import { useSpaces } from "@app/lib/swr/spaces";
 import { O4_MINI_MODEL_ID } from "@app/types";
 
 export type SelectedTool =
@@ -92,6 +92,7 @@ interface MCPServerViewsDialogProps {
   mode: DialogMode | null;
   onModeChange: (mode: DialogMode | null) => void;
   onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
+  actions: AgentBuilderAction[];
   getAgentInstructions: () => string;
 }
 
@@ -101,9 +102,11 @@ export function MCPServerViewsDialog({
   mode,
   onModeChange,
   onActionUpdate,
+  actions,
   getAgentInstructions,
 }: MCPServerViewsDialogProps) {
   const { owner } = useAgentBuilderContext();
+  const { spaces } = useSpaces({ workspaceId: owner.sId });
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
   const {
@@ -137,12 +140,53 @@ export function MCPServerViewsDialog({
   const [infoMCPServerView, setInfoMCPServerView] =
     useState<MCPServerViewType | null>(null);
 
+  const hasReasoningModel = reasoningModels.length > 0;
+
+  // You cannot select the same tool twice unless it's configurable.
+  const selectableDefaultMCPServerViews = useMemo(() => {
+    const filteredList = defaultMCPServerViews.filter((view) => {
+      const selectedAction = actions.find(
+        (action) => action.name === view.server.name
+      );
+
+      if (selectedAction) {
+        return !selectedAction.noConfigurationRequired;
+      }
+
+      return true;
+    });
+
+    if (hasReasoningModel) {
+      return filteredList;
+    }
+
+    // You should not be able to select Reasoning if there is no reasoning model available.
+    return filteredList.filter(
+      (view) => !getMCPServerRequirements(view).requiresReasoningConfiguration
+    );
+  }, [defaultMCPServerViews, actions, hasReasoningModel]);
+
+  const selectableNonDefaultMCPServerViews = useMemo(
+    () =>
+      nonDefaultMCPServerViews.filter((view) => {
+        const selectedAction = actions.find(
+          (action) => action.name === view.server.name
+        );
+
+        if (selectedAction) {
+          return !selectedAction.noConfigurationRequired;
+        }
+
+        return true;
+      }),
+    [nonDefaultMCPServerViews, actions]
+  );
+
   useEffect(() => {
     if (isEditMode) {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION);
       setConfigurationTool(mode.action);
       setSelectedToolsInDialog([]);
-      setIsOpen(true);
 
       const action = mode.action;
       if (
@@ -156,10 +200,9 @@ export function MCPServerViewsDialog({
           setConfigurationMCPServerView(mcpServerView);
         }
       }
-    } else if (mode && mode.type === "info") {
+    } else if (isInfoMode) {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.INFO);
       setSelectedToolsInDialog([]);
-      setIsOpen(true);
 
       const action = mode.action;
       if (
@@ -173,18 +216,14 @@ export function MCPServerViewsDialog({
           setInfoMCPServerView(mcpServerView);
         }
       }
-    } else if (mode?.type === "add" || !mode) {
+    } else if (mode?.type === "add") {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
       setConfigurationTool(null);
       setConfigurationMCPServerView(null);
       setInfoMCPServerView(null);
-      setIsOpen(Boolean(mode));
     }
-  }, [mode, allMcpServerViews, isEditMode]);
-
-  const selectableMcpServerViews = useMemo(() => {
-    return [...defaultMCPServerViews, ...nonDefaultMCPServerViews];
-  }, [defaultMCPServerViews, nonDefaultMCPServerViews]);
+    setIsOpen(!!mode);
+  }, [mode, allMcpServerViews, isEditMode, isInfoMode]);
 
   const toggleToolSelection = (tool: SelectedTool): void => {
     setSelectedToolsInDialog((prev) => {
@@ -373,7 +412,7 @@ export function MCPServerViewsDialog({
   const pages: MultiPageDialogPage[] = [
     {
       id: CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION,
-      title: "Add tools",
+      title: actions.length === 0 ? "Add tools" : "Add more",
       description: "",
       icon: undefined,
       content: isMCPServerViewsLoading ? (
@@ -382,7 +421,10 @@ export function MCPServerViewsDialog({
         </div>
       ) : (
         <MCPServerSelectionPage
-          mcpServerViews={selectableMcpServerViews}
+          mcpServerViews={[
+            ...selectableDefaultMCPServerViews,
+            ...selectableNonDefaultMCPServerViews,
+          ]}
           onItemClick={onClickMCPServer}
           dataVisualization={dataVisualization}
           onDataVisualizationClick={onClickDataVisualization}
@@ -408,20 +450,23 @@ export function MCPServerViewsDialog({
                 />
 
                 {requirements.requiresReasoningConfiguration && (
-                  <ReasoningModelSection owner={owner} />
+                  <ReasoningModelSection />
                 )}
 
                 {requirements.requiresChildAgentConfiguration && (
-                  <ChildAgentSection owner={owner} />
+                  <ChildAgentSection />
                 )}
 
                 {requirements.mayRequireTimeFrameConfiguration && (
                   <TimeFrameSection actionType="search" />
                 )}
 
+                {requirements.requiresDustAppConfiguration && (
+                  <DustAppSection allowedSpaces={spaces} />
+                )}
+
                 {requirements.mayRequireJsonSchemaConfiguration && (
                   <JsonSchemaSection
-                    owner={owner}
                     getAgentInstructions={getAgentInstructions}
                   />
                 )}
@@ -473,90 +518,95 @@ export function MCPServerViewsDialog({
     }
   };
 
-  const handleConfigurationSave = useCallback(
-    async (formData: MCPFormData) => {
-      if (!configurationTool || !form || !mcpServerView) {
-        return;
+  const handleConfigurationSave = async (formData: MCPFormData) => {
+    if (!configurationTool || !form || !mcpServerView) {
+      return;
+    }
+
+    try {
+      // Ensure we're working with an MCP action
+      if (configurationTool.type !== "MCP") {
+        throw new Error("Expected MCP action for configuration save");
       }
 
-      try {
-        // Ensure we're working with an MCP action
-        if (configurationTool.type !== "MCP") {
-          throw new Error("Expected MCP action for configuration save");
-        }
+      // TODO: it should not be null but sometimes mode is not set properly when you add a new action.
+      const isNewActionOrNameChanged =
+        mode === null ||
+        mode?.type === "add" ||
+        (mode?.type === "edit" && defaultFormValues.name !== formData.name);
 
-        const configuredAction: AgentBuilderAction = {
-          ...configurationTool,
-          name: formData.name,
-          description: formData.description,
-          configuration: formData.configuration,
-        };
+      const newActionName = isNewActionOrNameChanged
+        ? generateUniqueActionName({
+            baseName: formData.name,
+            existingActions: actions,
+            selectedToolsInDialog,
+          })
+        : formData.name;
 
-        if (mode?.type === "edit" && onActionUpdate) {
-          // Edit mode: save the updated action and close dialog
-          onActionUpdate(configuredAction, mode.index);
-          setIsOpen(false);
-          onModeChange(null);
+      const configuredAction: AgentBuilderAction = {
+        ...configurationTool,
+        name: newActionName,
+        description: formData.description,
+        configuration: formData.configuration,
+      };
 
-          sendNotification({
-            title: "Tool updated successfully",
-            description: `${mcpServerView.server.name} configuration has been updated.`,
-            type: "success",
-          });
-        } else {
-          // Add mode: update the selected tool with the configured action
-          setSelectedToolsInDialog((prev) => {
-            const existingToolIndex = prev.findIndex(
-              (tool) =>
-                tool.type === "MCP" && tool.view.sId === mcpServerView.sId
-            );
+      if (mode?.type === "edit" && onActionUpdate) {
+        // Edit mode: save the updated action and close dialog
+        onActionUpdate(configuredAction, mode.index);
+        setIsOpen(false);
+        onModeChange(null);
 
-            if (existingToolIndex >= 0) {
-              // Update existing tool with configuration
-              const updated = [...prev];
-              updated[existingToolIndex] = {
+        sendNotification({
+          title: "Tool updated successfully",
+          description: `${mcpServerView.server.name} configuration has been updated.`,
+          type: "success",
+        });
+      } else {
+        // You can add one tool multiple times if it's configurable, but you cannot have the same name,
+        // so we should check its name and not its id
+        setSelectedToolsInDialog((prev) => {
+          const existingToolIndex = prev.findIndex(
+            (tool) =>
+              tool.type === "MCP" &&
+              tool.configuredAction?.name === newActionName
+          );
+
+          if (existingToolIndex >= 0) {
+            // Update existing tool with configuration
+            const updated = [...prev];
+            updated[existingToolIndex] = {
+              type: "MCP",
+              view: mcpServerView,
+              configuredAction,
+            };
+            return updated;
+          } else {
+            // Add new configured tool
+            return [
+              ...prev,
+              {
                 type: "MCP",
                 view: mcpServerView,
                 configuredAction,
-              };
-              return updated;
-            } else {
-              // Add new configured tool
-              return [
-                ...prev,
-                {
-                  type: "MCP",
-                  view: mcpServerView,
-                  configuredAction,
-                },
-              ];
-            }
-          });
-
-          // Navigate back to tool selection page
-          setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
-          setConfigurationTool(null);
-          setConfigurationMCPServerView(null);
-        }
-      } catch (error) {
-        sendNotification({
-          title: "Configuration failed",
-          description:
-            "There was an error configuring the tool. Please try again.",
-          type: "error",
+              },
+            ];
+          }
         });
+
+        // Navigate back to tool selection page
+        setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
+        setConfigurationTool(null);
+        setConfigurationMCPServerView(null);
       }
-    },
-    [
-      configurationTool,
-      form,
-      mcpServerView,
-      mode,
-      onActionUpdate,
-      sendNotification,
-      onModeChange,
-    ]
-  );
+    } catch (error) {
+      sendNotification({
+        title: "Configuration failed",
+        description:
+          "There was an error configuring the tool. Please try again.",
+        type: "error",
+      });
+    }
+  };
 
   const getFooterButtons = () => {
     const isToolSelectionPage =
@@ -579,9 +629,10 @@ export function MCPServerViewsDialog({
               : "Add tools",
           variant: "primary",
           disabled: selectedToolsInDialog.length === 0,
-          onClick: async () => {
-            await handleAddSelectedTools();
+          onClick: () => {
+            handleAddSelectedTools();
             setIsOpen(false);
+            onModeChange(null);
           },
         },
       };
@@ -638,21 +689,24 @@ export function MCPServerViewsDialog({
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
-        if (!open && !isEditMode && !isInfoMode) {
-          setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
+
+        if (!open && isAddMode) {
           setConfigurationTool(null);
           setConfigurationMCPServerView(null);
           setSelectedToolsInDialog([]);
+          setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
+        }
+
+        if (!open) {
+          onModeChange(null);
         }
       }}
     >
-      <MultiPageDialogTrigger asChild>
-        <Button label="Add tools" icon={LightbulbIcon} />
-      </MultiPageDialogTrigger>
       <MultiPageDialogContent
         showNavigation={false}
         isAlertDialog
-        size="xl"
+        size="2xl"
+        height="xl"
         pages={pages}
         currentPageId={currentPageId}
         onPageChange={(pageId) => {

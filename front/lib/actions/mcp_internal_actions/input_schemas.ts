@@ -102,6 +102,12 @@ export const ConfigurableToolInputSchemas = {
       mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE),
     })
   ),
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE]: z.array(
+    z.object({
+      uri: z.string().regex(DATA_SOURCE_CONFIGURATION_URI_PATTERN),
+      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE),
+    })
+  ),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE]: z.array(
     z.object({
       uri: z.string().regex(TABLE_CONFIGURATION_URI_PATTERN),

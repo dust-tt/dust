@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import {
   createJQLFromSearchFilters,
+  processFieldsForJira,
   textToADF,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
 import type {
@@ -26,6 +27,7 @@ import {
   ADFDocumentSchema,
   JiraCommentSchema,
   JiraCreateMetaSchema,
+  JiraFieldsSchema,
   JiraIssueLinkTypeSchema,
   JiraIssueSchema,
   JiraIssueTypeSchema,
@@ -113,6 +115,95 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
     logger.error(`[JIRA MCP Server] JIRA API call failed for ${endpoint}:`);
     return new Err(normalizeError(error).message);
   }
+}
+
+async function listUsersPage(
+  baseUrl: string,
+  accessToken: string,
+  startAt: number,
+  perPage: number
+): Promise<
+  Result<z.infer<typeof JiraUsersSearchResultSchema>, JiraErrorResult>
+> {
+  const params = new URLSearchParams({
+    startAt: String(startAt),
+    maxResults: String(perPage),
+  });
+
+  return jiraApiCall(
+    {
+      endpoint: `/rest/api/3/users/search?${params.toString()}`,
+      accessToken,
+    },
+    JiraUsersSearchResultSchema,
+    { baseUrl }
+  );
+}
+
+export async function listUsers(
+  baseUrl: string,
+  accessToken: string,
+  {
+    name,
+    maxResults,
+    startAt = 0,
+  }: {
+    name?: string;
+    maxResults: number;
+    startAt?: number;
+  }
+): Promise<
+  Result<
+    {
+      users: z.infer<typeof JiraUsersSearchResultSchema>;
+      nextStartAt: number | null;
+    },
+    JiraErrorResult
+  >
+> {
+  const perPage = 100;
+  let cursor = startAt;
+  const results: z.infer<typeof JiraUsersSearchResultSchema> = [];
+  const hasName = !!name && name.trim().length > 0;
+  const normalizedName = (name || "").trim().toLowerCase();
+
+  while (results.length < maxResults) {
+    const pageResult = await listUsersPage(
+      baseUrl,
+      accessToken,
+      cursor,
+      perPage
+    );
+    if (pageResult.isErr()) {
+      return pageResult;
+    }
+    const page = pageResult.value || [];
+    if (page.length === 0) {
+      return new Ok({ users: results, nextStartAt: null });
+    }
+
+    for (const u of page) {
+      if (u.accountType !== "atlassian") {
+        continue;
+      }
+      if (
+        !hasName ||
+        (u.displayName || "").toLowerCase().includes(normalizedName)
+      ) {
+        results.push(u);
+        if (results.length >= maxResults) {
+          break;
+        }
+      }
+    }
+
+    cursor += page.length;
+    if (page.length < perPage) {
+      return new Ok({ users: results, nextStartAt: null });
+    }
+  }
+
+  return new Ok({ users: results, nextStartAt: cursor });
 }
 
 export async function getIssue({
@@ -509,30 +600,85 @@ export async function transitionIssue(
   return handleResults(result, null);
 }
 
+export async function getAllFields(
+  baseUrl: string,
+  accessToken: string
+): Promise<
+  Result<
+    Record<string, { schema?: { type?: string; custom?: string } }>,
+    JiraErrorResult
+  >
+> {
+  const result = await jiraApiCall(
+    {
+      endpoint: "/rest/api/3/field",
+      accessToken,
+    },
+    JiraFieldsSchema,
+    { baseUrl }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const fieldsMetadata: Record<
+    string,
+    { schema?: { type?: string; custom?: string } }
+  > = {};
+
+  for (const field of result.value) {
+    const fieldKey = field.key || field.id;
+    fieldsMetadata[fieldKey] = {
+      schema: field.schema
+        ? {
+            type: field.schema.type,
+            custom: field.schema.custom,
+          }
+        : undefined,
+    };
+  }
+
+  return new Ok(fieldsMetadata);
+}
+
+async function processFieldsWithMetadata(
+  baseUrl: string,
+  accessToken: string,
+  fields: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  let fieldsMetadata: Record<
+    string,
+    {
+      schema?: { type?: string; custom?: string };
+    }
+  > = {};
+
+  // Check if we have custom fields that might need metadata for accurate processing
+  const hasCustomFields = Object.keys(fields).some((key) =>
+    key.startsWith("customfield_")
+  );
+
+  if (hasCustomFields) {
+    const metadataResult = await getAllFields(baseUrl, accessToken);
+    if (metadataResult.isOk()) {
+      fieldsMetadata = metadataResult.value;
+    }
+  }
+
+  return processFieldsForJira(fields, fieldsMetadata);
+}
+
 export async function createIssue(
   baseUrl: string,
   accessToken: string,
   issueData: z.infer<typeof JiraCreateIssueRequestSchema>
 ): Promise<Result<z.infer<typeof JiraIssueSchema>, JiraErrorResult>> {
-  // Process fields to convert strings to ADF for textarea fields only
-  const processedFields: typeof issueData & Record<string, unknown> = {
-    ...issueData,
-  };
-
-  // Convert description from string to ADF if it's a string
-  if (
-    processedFields.description &&
-    typeof processedFields.description === "string"
-  ) {
-    processedFields.description = textToADF(processedFields.description);
-  }
-
-  // Convert custom fields from string to ADF if they're strings
-  for (const [fieldKey, fieldValue] of Object.entries(processedFields)) {
-    if (fieldKey.startsWith("customfield_") && typeof fieldValue === "string") {
-      processedFields[fieldKey] = textToADF(fieldValue);
-    }
-  }
+  const processedFields = await processFieldsWithMetadata(
+    baseUrl,
+    accessToken,
+    issueData
+  );
 
   const result = await jiraApiCall(
     {
@@ -567,25 +713,11 @@ export async function updateIssue(
 ): Promise<
   Result<{ issueKey: string; browseUrl?: string } | null, JiraErrorResult>
 > {
-  // Process fields to convert strings to ADF for textarea fields only
-  const processedFields: typeof updateData & Record<string, unknown> = {
-    ...updateData,
-  };
-
-  // Convert description from string to ADF if it's a string
-  if (
-    processedFields.description &&
-    typeof processedFields.description === "string"
-  ) {
-    processedFields.description = textToADF(processedFields.description);
-  }
-
-  // Convert custom fields from string to ADF if they're strings
-  for (const [fieldKey, fieldValue] of Object.entries(processedFields)) {
-    if (fieldKey.startsWith("customfield_") && typeof fieldValue === "string") {
-      processedFields[fieldKey] = textToADF(fieldValue);
-    }
-  }
+  const processedFields = await processFieldsWithMetadata(
+    baseUrl,
+    accessToken,
+    updateData
+  );
 
   const result = await jiraApiCall(
     {
@@ -700,38 +832,62 @@ export async function getIssueLinkTypes(
   return new Ok(result.value.issueLinkTypes);
 }
 
-export async function searchUsers(
+export async function searchUsersByEmailExact(
   baseUrl: string,
   accessToken: string,
-  query: string,
-  maxResults: number = SEARCH_USERS_MAX_RESULTS
+  emailAddress: string,
+  {
+    maxResults = SEARCH_USERS_MAX_RESULTS,
+    startAt = 0,
+  }: { maxResults?: number; startAt?: number } = {}
 ): Promise<
-  Result<z.infer<typeof JiraUsersSearchResultSchema>, JiraErrorResult>
-> {
-  const params = new URLSearchParams({
-    query,
-    maxResults: maxResults.toString(),
-  });
-
-  const result = await jiraApiCall(
+  Result<
     {
-      endpoint: `/rest/api/3/users/search?${params.toString()}`,
-      accessToken,
+      users: z.infer<typeof JiraUsersSearchResultSchema>;
+      nextStartAt: number | null;
     },
-    JiraUsersSearchResultSchema,
-    { baseUrl }
-  );
+    JiraErrorResult
+  >
+> {
+  const perPage = 100;
+  let cursor = startAt;
+  const matches: z.infer<typeof JiraUsersSearchResultSchema> = [];
+  const normalized = emailAddress.trim().toLowerCase();
 
-  if (result.isErr()) {
-    return result;
+  while (matches.length < maxResults) {
+    const pageResult = await listUsersPage(
+      baseUrl,
+      accessToken,
+      cursor,
+      perPage
+    );
+    if (pageResult.isErr()) {
+      return pageResult;
+    }
+    const page = pageResult.value || [];
+    if (page.length === 0) {
+      return new Ok({ users: matches, nextStartAt: null });
+    }
+
+    for (const u of page) {
+      if (
+        u.accountType === "atlassian" &&
+        (u.emailAddress || "").toLowerCase() === normalized
+      ) {
+        matches.push(u);
+        if (matches.length >= maxResults) {
+          return new Ok({ users: matches, nextStartAt: cursor + page.length });
+        }
+      }
+    }
+
+    cursor += page.length;
+    if (page.length < perPage) {
+      return new Ok({ users: matches, nextStartAt: null });
+    }
   }
 
-  // Filter to only include Atlassian users as per documentation https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-user-search/#api-rest-api-3-user-search-get
-  const filteredUsers = result.value.filter(
-    (user) => user.accountType === "atlassian"
-  );
-
-  return new Ok(filteredUsers);
+  return new Ok({ users: matches, nextStartAt: cursor });
 }
 
 export const withAuth = async ({
