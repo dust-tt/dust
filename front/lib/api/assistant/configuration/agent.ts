@@ -228,8 +228,6 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
         order: [["version", "DESC"]],
       });
 
-      console.log("workspaceAgentConfigurations", workspaceAgentConfigurations);
-
       workspaceAgents = await enrichAgentConfigurations(
         auth,
         workspaceAgentConfigurations,

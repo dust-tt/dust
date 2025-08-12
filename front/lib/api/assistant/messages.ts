@@ -132,6 +132,19 @@ function enhanceMCPActionWithServerId(
   agentMessages: Message[],
   agentConfigurations: AgentConfigurationType[]
 ) {
+  console.log(
+    "agentConfigurations",
+    agentConfigurations.map((a) => a.id)
+  );
+  console.log(
+    "action ids",
+    agentConfigurations.map((a) => a.actions.map((ac) => ac.id))
+  );
+  console.log(
+    "agentMCPActions> mcpServerConfigurationId",
+    agentMCPActions.map((ac) => ac.mcpServerConfigurationId)
+  );
+
   // Resolve the MCP server id for the actions - only for full view
   return agentMCPActions.map((agentMCPAction) => {
     const agentConfigurationId = agentMessages.find(
@@ -171,71 +184,68 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   const agentMessageIds = removeNulls(
     agentMessages.map((m) => m.agentMessageId || null)
   );
-  const [{ agentConfigurations, lightAgentConfigurations }, agentMCPActions] =
-    await Promise.all([
-      (async () => {
-        const agentConfigurationIds: Set<{
+  const [
+    { versionedAgentConfigurations, lightAgentConfigurations },
+    agentMCPActions,
+  ] = await Promise.all([
+    (async () => {
+      const agentConfigurationIds = agentMessages.reduce(
+        (acc, m) => {
+          if (m.agentMessage) {
+            const sId = m.agentMessage.agentConfigurationId;
+            const version = m.agentMessage.agentConfigurationVersion;
+
+            acc.add({ sId, version });
+          }
+          return acc;
+        },
+        new Set<{
           sId: string;
           version: number;
-        }> = agentMessages.reduce(
-          (acc: Set<{ sId: string; version: number }>, m) => {
-            if (m.agentMessage) {
-              const sId = m.agentMessage.agentConfigurationId;
-              const version = m.agentMessage.agentConfigurationVersion;
+        }>()
+      );
+      if (viewType === "full") {
+        const agents = await getAgentConfigurations(auth, {
+          agentIdsWithVersions: [...agentConfigurationIds],
+          variant: "full",
+        });
+        const lightAgents = await getAgentConfigurations(auth, {
+          agentIds: [...agentConfigurationIds].map(({ sId }) => sId),
+          variant: "extra_light",
+        });
 
-              acc.add({ sId, version });
-            }
-            return acc;
-          },
-          new Set<{
-            sId: string;
-            version: number;
-          }>()
-        );
-        if (viewType === "full") {
-          const agents = await getAgentConfigurations(auth, {
-            agentIdsWithVersions: [...agentConfigurationIds],
-            variant: "full",
-          });
-          const lightAgents = await getAgentConfigurations(auth, {
-            agentIds: [...agentConfigurationIds].map(({ sId }) => sId),
-            variant: "extra_light",
-          });
-
-          return {
-            agentConfigurations: agents,
-            lightAgentConfigurations: lightAgents,
-          };
-        } else {
-          const lightAgents = await getAgentConfigurations(auth, {
-            agentIds: [...agentConfigurationIds].map(({ sId }) => sId),
-            variant: "extra_light",
-          });
-          return {
-            agentConfigurations: null,
-            lightAgentConfigurations: lightAgents,
-          };
-        }
-      })(),
-      (async () => {
-        const agentStepContents =
-          await AgentStepContentResource.fetchByAgentMessages(auth, {
-            agentMessageIds,
-            includeMCPActions: true,
-            latestVersionsOnly: true,
-          });
-        return agentStepContents
-          .map((sc) => sc.toJSON().mcpActions ?? [])
-          .flat();
-      })(),
-    ]);
+        return {
+          versionedAgentConfigurations: agents,
+          lightAgentConfigurations: lightAgents,
+        };
+      } else {
+        const lightAgents = await getAgentConfigurations(auth, {
+          agentIds: [...agentConfigurationIds].map(({ sId }) => sId),
+          variant: "extra_light",
+        });
+        return {
+          versionedAgentConfigurations: null,
+          lightAgentConfigurations: lightAgents,
+        };
+      }
+    })(),
+    (async () => {
+      const agentStepContents =
+        await AgentStepContentResource.fetchByAgentMessages(auth, {
+          agentMessageIds,
+          includeMCPActions: true,
+          latestVersionsOnly: true,
+        });
+      return agentStepContents.map((sc) => sc.toJSON().mcpActions ?? []).flat();
+    })(),
+  ]);
 
   const enhancedAgentMCPActions =
-    viewType === "full" && agentConfigurations
+    viewType === "full" && versionedAgentConfigurations
       ? enhanceMCPActionWithServerId(
           agentMCPActions,
           agentMessages,
-          agentConfigurations
+          versionedAgentConfigurations
         )
       : agentMCPActions;
 
