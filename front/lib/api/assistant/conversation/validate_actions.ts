@@ -5,9 +5,12 @@ import assert from "assert";
 import {
   getMCPAction,
   getMCPApprovalStateFromUserApprovalState,
+  isMCPApproveExecutionEvent,
   updateMCPApprovalState,
 } from "@app/lib/actions/mcp";
 import { runAgentLoop } from "@app/lib/api/assistant/agent";
+import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
+import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { Message } from "@app/lib/models/assistant/conversation";
@@ -126,6 +129,14 @@ export async function validateAction(
 
     return new Ok(undefined);
   }
+
+  // Remove the tool approval request event from the message channel.
+  await getRedisHybridManager().removeEvent((event) => {
+    const payload = JSON.parse(event.message["payload"]);
+    return isMCPApproveExecutionEvent(payload)
+      ? payload.actionId === actionId
+      : false;
+  }, getMessageChannelId(messageId));
 
   const runAgentDataRes = await getRunAgentData(auth.toJSON(), {
     sync: false,

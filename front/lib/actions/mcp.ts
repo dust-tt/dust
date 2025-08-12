@@ -728,6 +728,12 @@ export async function handleMCPActionError(
   };
 }
 
+export function isMCPApproveExecutionEvent(
+  event: AgentActionRunningEvents
+): event is MCPApproveExecutionEvent {
+  return event.type === "tool_approve_execution";
+}
+
 // TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent mcp action.
 export async function getMCPAction(
   actionId: string
