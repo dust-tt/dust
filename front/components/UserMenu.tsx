@@ -8,8 +8,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -25,6 +23,7 @@ import {
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 
+import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { forceUserRole, showDebugTools } from "@app/lib/development";
@@ -121,27 +120,7 @@ export function UserMenu({
         {hasMultipleWorkspaces && (
           <>
             <DropdownMenuLabel label="Workspace" />
-            <DropdownMenuRadioGroup value={owner.sId}>
-              {user.organizations &&
-                user.organizations.map((org) => (
-                  <DropdownMenuRadioItem
-                    key={org.id}
-                    value={org.externalId || ""}
-                    onClick={async () => {
-                      if (org.externalId && org.externalId !== owner.sId) {
-                        await setNavigationSelection({
-                          lastWorkspaceId: org.externalId,
-                        });
-                        await router.push(
-                          `/api/workos/login?organizationId=${org.id}`
-                        );
-                      }
-                    }}
-                  >
-                    {org.name}
-                  </DropdownMenuRadioItem>
-                ))}
-            </DropdownMenuRadioGroup>
+            <WorkspacePickerRadioGroup user={user} workspace={owner} />
           </>
         )}
 
