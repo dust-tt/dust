@@ -3,6 +3,7 @@ import { CharacterCount } from "@tiptap/extension-character-count";
 import Document from "@tiptap/extension-document";
 import { History } from "@tiptap/extension-history";
 import { ListItem } from "@tiptap/extension-list-item";
+import Placeholder from "@tiptap/extension-placeholder";
 import Text from "@tiptap/extension-text";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { cva } from "class-variance-authority";
@@ -75,6 +76,12 @@ export function AgentBuilderInstructionsEditor({
       History,
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
+      Placeholder.configure({
+        placeholder:
+          "What does this agent do? How should it behave? What should it avoid doing?",
+        emptyNodeClass:
+          "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
+      }),
       CharacterCount.configure({
         limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
       }),
