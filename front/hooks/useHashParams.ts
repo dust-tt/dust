@@ -59,7 +59,6 @@ export const useHashParam = (
   // Listen to hash change events and update the internal value if the hash is removed.
   useEffect(() => {
     const onEventComplete = (url: string) => {
-      console.log(url);
       const hash = getHashFromUrl(url);
       // If there's no hash after route change, clear the content.
       if (!hash && innerValue) {
