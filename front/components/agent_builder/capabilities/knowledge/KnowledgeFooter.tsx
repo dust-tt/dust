@@ -4,6 +4,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
   ContextItem,
+  LoadingBlock,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -22,25 +23,25 @@ function KnowledgeFooterItemReadablePath({
   node: DataSourceViewContentNode;
 }) {
   const { owner } = useAgentBuilderContext();
-  const disabled = !node.parentInternalIds?.length;
   const { fullPath, isLoading } = useNodePath({
     node,
     owner,
-    disabled,
   });
 
-  if (disabled) {
-    return <></>;
-  }
-
   return (
-    <span className="text-xs">
-      {isLoading
-        ? "loading..."
-        : [node.parentInternalId, ...fullPath.map((node) => node.title)].join(
-            "/"
-          )}
-    </span>
+    <div>
+      {isLoading ? (
+        <LoadingBlock className="h-4 w-[250px]" />
+      ) : (
+        <span className="text-xs">
+          {fullPath
+            .map((node, index) =>
+              index === 0 ? node.dataSourceView.dataSource.name : node.title
+            )
+            .join("/")}
+        </span>
+      )}
+    </div>
   );
 }
 
