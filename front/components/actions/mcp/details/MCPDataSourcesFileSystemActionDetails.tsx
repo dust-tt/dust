@@ -66,7 +66,7 @@ export function DataSourceNodeContentDetails({
 
 export function FilesystemPathDetails({
   action,
-  defaultOpen,
+  viewType,
 }: MCPActionDetailsProps) {
   const filesystemPath = action.output
     ?.filter(isFilesystemPathType)

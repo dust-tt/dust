@@ -60,52 +60,50 @@ export function AgentActionsPanel({
                 return null;
               }
               return (
-                <>
+                <div
+                  className="flex flex-col gap-4 duration-1000 animate-in fade-in"
+                  key={step}
+                >
                   {step !== "1" && <Separator className="my-4" />}
-                  <div
-                    className="flex flex-col gap-4 duration-1000 animate-in fade-in"
-                    key={step}
-                  >
-                    <span className="text-size w-fit self-start text-lg font-semibold">
-                      Step {step}
-                    </span>
+                  <span className="text-size w-fit self-start text-lg font-semibold">
+                    Step {step}
+                  </span>
 
-                    {entries.map((entry, idx) => {
-                      if (entry.kind === "reasoning") {
-                        return (
-                          <ContentMessage
-                            key={`reasoning-${step}-${idx}`}
-                            variant="primary"
-                            size="lg"
-                          >
-                            <Markdown
-                              content={entry.content}
-                              isStreaming={false}
-                              forcedTextSize="text-sm"
-                              textColor="text-muted-foreground"
-                              isLastMessage={false}
-                            />{" "}
-                          </ContentMessage>
-                        );
-                      } else {
-                        const lastNotification =
-                          actionProgress.get(entry.action.id)?.progress ?? null;
-                        return (
-                          <div key={`action-${entry.action.id}`}>
-                            <MCPActionDetails
-                              viewType="sidebar"
-                              action={entry.action}
-                              lastNotification={lastNotification}
-                              defaultOpen={true}
-                              owner={owner}
-                              messageStatus={fullAgentMessage.status}
-                            />
-                          </div>
-                        );
-                      }
-                    })}
-                  </div>
-                </>
+                  {entries.map((entry, idx) => {
+                    if (entry.kind === "reasoning") {
+                      return (
+                        <ContentMessage
+                          key={`reasoning-${step}-${idx}`}
+                          variant="primary"
+                          size="lg"
+                        >
+                          <Markdown
+                            content={entry.content}
+                            isStreaming={false}
+                            forcedTextSize="text-sm"
+                            textColor="text-muted-foreground"
+                            isLastMessage={false}
+                          />{" "}
+                        </ContentMessage>
+                      );
+                    } else {
+                      const lastNotification =
+                        actionProgress.get(entry.action.id)?.progress ?? null;
+                      return (
+                        <div key={`action-${entry.action.id}`}>
+                          <MCPActionDetails
+                            viewType="sidebar"
+                            action={entry.action}
+                            lastNotification={lastNotification}
+                            defaultOpen={true}
+                            owner={owner}
+                            messageStatus={fullAgentMessage.status}
+                          />
+                        </div>
+                      );
+                    }
+                  })}
+                </div>
               );
             })}
             {isActing && (
