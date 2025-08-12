@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
 
-import { Separator } from "@sparkle/components";
 import { Button } from "@sparkle/components/Button";
 import {
   MultiPageDialog,
@@ -665,6 +664,7 @@ export const WithConditionalNavigation: Story = {
           currentPageId={currentPageId}
           onPageChange={setCurrentPageId}
           size="lg"
+          height="md"
           leftButton={{
             label: "Cancel",
             variant: "outline",
@@ -685,21 +685,19 @@ export const WithConditionalNavigation: Story = {
             disabled: isFirstPage ? !canProceedFromFirst : !canSave,
             onClick: isLastPage ? handleSave : handleNext,
           }}
+          addFooterSeparator
           footerContent={
-            <>
-              <Separator />
-              <div className="s-rounded s-bg-blue-50">
-                <p className="s-text-xs s-text-blue-700">
-                  {selectedItems.length > 0 && (
-                    <>
-                      {selectedItems.length} data source
-                      {selectedItems.length !== 1 ? "s" : ""} selected •{" "}
-                    </>
-                  )}
-                  Step {isFirstPage ? "1" : "2"} of 2
-                </p>
-              </div>
-            </>
+            <div className="s-rounded s-bg-blue-50">
+              <p className="s-text-xs s-text-blue-700">
+                {selectedItems.length > 0 && (
+                  <>
+                    {selectedItems.length} data source
+                    {selectedItems.length !== 1 ? "s" : ""} selected •{" "}
+                  </>
+                )}
+                Step {isFirstPage ? "1" : "2"} of 2
+              </p>
+            </div>
           }
         />
       </MultiPageDialog>
