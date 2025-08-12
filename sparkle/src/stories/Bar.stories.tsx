@@ -88,8 +88,6 @@ export const BasicBarHeaderValidate = () => {
 };
 
 export const BasicBarFooterValidate = () => {
-  const [isSaving, setIsSaving] = React.useState(false);
-
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col">
       <div className="s-flex-1 s-overflow-y-auto s-p-4">
