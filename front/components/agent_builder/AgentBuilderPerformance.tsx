@@ -48,7 +48,7 @@ function NoAgentState() {
 }
 
 interface AgentBuilderPerformanceProps {
-  agentConfigurationSId: string;
+  agentConfigurationSId?: string;
 }
 
 export function AgentBuilderPerformance({
