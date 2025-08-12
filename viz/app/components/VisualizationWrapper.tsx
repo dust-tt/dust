@@ -5,6 +5,12 @@ import type {
   VisualizationRPCCommand,
   VisualizationRPCRequestMap,
 } from "@viz/app/types";
+import type {
+  SupportedMessage,
+  SupportedEventType,
+} from "@viz/app/types/messages";
+
+import { validateMessage } from "@viz/app/types/messages";
 import { Spinner } from "@viz/app/components/Components";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { toBlob, toSvg } from "html-to-image";
@@ -61,7 +67,8 @@ function validateTailwindCode(code: string): void {
 }
 
 export function useVisualizationAPI(
-  sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>
+  sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>,
+  { allowedVisualizationOrigin }: { allowedVisualizationOrigin?: string }
 ) {
   const [error, setError] = useState<Error | null>(null);
 
@@ -130,13 +137,51 @@ export function useVisualizationAPI(
     await sendCrossDocumentMessage("displayCode", null);
   }, [sendCrossDocumentMessage]);
 
+  const addEventListener = useCallback(
+    (
+      eventType: SupportedEventType,
+      handler: (data: SupportedMessage) => void
+    ): (() => void) => {
+      const messageHandler = (event: MessageEvent) => {
+        if (
+          allowedVisualizationOrigin &&
+          event.origin !== allowedVisualizationOrigin
+        ) {
+          console.log(
+            `Ignored message from unauthorized origin: ${event.origin}, expected: ${allowedVisualizationOrigin}`
+          );
+          return;
+        }
+
+        // Validate message structure using io-ts
+        const validatedMessage = validateMessage(event.data);
+        if (!validatedMessage) {
+          console.log("Invalid message format received:", event.data);
+          return;
+        }
+
+        // Check if this is the event type we're listening for
+        if (validatedMessage.type === eventType) {
+          handler(validatedMessage);
+        }
+      };
+
+      window.addEventListener("message", messageHandler);
+
+      // Return cleanup function
+      return () => window.removeEventListener("message", messageHandler);
+    },
+    [allowedVisualizationOrigin]
+  );
+
   return {
+    addEventListener,
+    displayCode,
+    downloadFile,
     error,
     fetchCode,
     fetchFile,
     sendHeightToParent,
-    downloadFile,
-    displayCode,
   };
 }
 
@@ -204,7 +249,9 @@ export function VisualizationWrapperWithErrorBoundary({
       }),
     [identifier, allowedVisualizationOrigin]
   );
-  const api = useVisualizationAPI(sendCrossDocumentMessage);
+  const api = useVisualizationAPI(sendCrossDocumentMessage, {
+    allowedVisualizationOrigin,
+  });
 
   return (
     <ErrorBoundary
@@ -245,6 +292,7 @@ export function VisualizationWrapper({
     sendHeightToParent,
     downloadFile,
     displayCode,
+    addEventListener,
   } = api;
 
   const memoizedDownloadFile = useDownloadFileCallback(downloadFile);
@@ -346,6 +394,25 @@ export function VisualizationWrapper({
     }
   }, [error]);
 
+  // Add message listeners for export requests.
+  useEffect(() => {
+    const cleanups: (() => void)[] = [];
+
+    cleanups.push(
+      addEventListener("EXPORT_PNG", async () => {
+        await handleScreenshotDownload();
+      })
+    );
+
+    cleanups.push(
+      addEventListener("EXPORT_SVG", async () => {
+        await handleSVGDownload();
+      })
+    );
+
+    return () => cleanups.forEach((cleanup) => cleanup());
+  }, [addEventListener, handleScreenshotDownload, handleSVGDownload]);
+
   if (errored) {
     // Throw the error to the ErrorBoundary.
     throw errored;
@@ -361,22 +428,22 @@ export function VisualizationWrapper({
         isFullHeight ? "h-screen" : ""
       }`}
     >
-      <div className="flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
-        <button
-          onClick={handleScreenshotDownload}
-          title="Download screenshot"
-          className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
-        >
-          Png
-        </button>
-        <button
-          onClick={handleSVGDownload}
-          title="Download SVG"
-          className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
-        >
-          Svg
-        </button>
-        {!isFullHeight && (
+      {!isFullHeight && (
+        <div className="flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
+          <button
+            onClick={handleScreenshotDownload}
+            title="Download screenshot"
+            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
+          >
+            Png
+          </button>
+          <button
+            onClick={handleSVGDownload}
+            title="Download SVG"
+            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
+          >
+            Svg
+          </button>
           <button
             title="Show code"
             onClick={handleDisplayCode}
@@ -384,8 +451,8 @@ export function VisualizationWrapper({
           >
             Code
           </button>
-        )}
-      </div>
+        </div>
+      )}
       <div ref={ref}>
         <Runner
           code={runnerParams.code}

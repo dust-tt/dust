@@ -1,7 +1,12 @@
 import {
+  ArrowDownOnSquareIcon,
   Button,
   CodeBlock,
   CommandLineIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   SparklesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -42,6 +47,23 @@ export function ClientExecutableRenderer({
 
   const [showCode, setShowCode] = React.useState(false);
 
+  const exportVisualization = React.useCallback(
+    (format: "png" | "svg") => {
+      const iframe = document.querySelector(
+        `iframe[src*="identifier=viz-${fileId}"]`
+      ) as HTMLIFrameElement;
+      if (iframe?.contentWindow) {
+        iframe.contentWindow.postMessage(
+          { type: `EXPORT_${format.toUpperCase()}` },
+          "*"
+        );
+      } else {
+        console.log("No iframe content window found");
+      }
+    },
+    [fileId]
+  );
+
   if (isFileContentLoading) {
     return (
       <CenteredState>
@@ -73,6 +95,25 @@ export function ClientExecutableRenderer({
           tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
           variant="ghost"
         />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={ArrowDownOnSquareIcon}
+              isSelect
+              size="xs"
+              tooltip="Export content"
+              variant="ghost"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => exportVisualization("png")}>
+              Export as PNG
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportVisualization("svg")}>
+              Export as SVG
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <ShareInteractiveFilePopover
           fileId={fileId}
           owner={owner}
