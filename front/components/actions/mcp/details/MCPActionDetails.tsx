@@ -208,22 +208,8 @@ export function GenericActionDetails({
     >
       {viewType !== "conversation" && (
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
-          <CollapsibleComponent
-            rootProps={{ defaultOpen: !action.generatedFiles.length }}
-            triggerChildren={
-              <div
-                className={cn(
-                  "text-foreground dark:text-foreground-night",
-                  "flex flex-row items-center gap-x-2"
-                )}
-              >
-                <span className="heading-base">Inputs</span>
-              </div>
-            }
-            contentChildren={
-              <RenderToolItemMarkdown text={inputs} type="input" />
-            }
-          />
+          <span className="heading-base">Inputs</span>
+          <RenderToolItemMarkdown text={inputs} type="input" />
 
           {action.output && (
             <CollapsibleComponent
