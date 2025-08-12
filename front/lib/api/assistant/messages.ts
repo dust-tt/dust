@@ -176,6 +176,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     agentMCPActions,
   ] = await Promise.all([
     (async () => {
+      // Get all unique pairs id-version for the agent configurations
       const agentConfigurationIdsWithVersions = agentMessages.reduce(
         (acc, m) => {
           if (m.agentMessage) {
@@ -187,9 +188,13 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         },
         new Set<string>()
       );
-      const agentConfigurationIds = new Set(
-        [...agentConfigurationIdsWithVersions].map((id) => id.split("-")[0])
+      // Split back the ids into id and version
+      const splittedIds = [...agentConfigurationIdsWithVersions].map((id) =>
+        id.split("-")
       );
+      // Get all unique ids
+      const agentConfigurationIds = new Set(splittedIds.map((id) => id[0]));
+
       const lightAgentConfigurations = await getAgentConfigurations(auth, {
         agentIds: [...agentConfigurationIds],
         variant: "extra_light",
@@ -198,12 +203,10 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       const versionedAgentConfigurations =
         viewType === "full"
           ? await getAgentConfigurations(auth, {
-              agentIdsWithVersions: [...agentConfigurationIdsWithVersions].map(
-                (id) => ({
-                  sId: id.split("-")[0],
-                  version: parseInt(id.split("-")[1]),
-                })
-              ),
+              agentIdsWithVersions: splittedIds.map((id) => ({
+                sId: id[0],
+                version: parseInt(id[1]),
+              })),
               variant: "full",
             })
           : null;
