@@ -1,4 +1,4 @@
-import { uniqueId } from "lodash";
+import uniqueId from "lodash/uniqueId";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 

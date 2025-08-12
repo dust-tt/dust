@@ -15,8 +15,15 @@ module.exports = {
   create(context) {
     return {
       ImportDeclaration(node) {
-        // Only check files in front/components
-        if (!context.getFilename().includes("front/components/")) {
+        // Only check files in specified paths
+        const pathsToCheck = [
+          "front/components/",
+          "front/lib/client/",
+          "front/lib/swr/",
+        ];
+
+        const filename = context.getFilename();
+        if (!pathsToCheck.some((path) => filename.includes(path))) {
           return;
         }
 
@@ -30,7 +37,7 @@ module.exports = {
           context.report({
             node,
             message:
-              "Bulk lodash imports are not allowed in front/components. Use individual imports instead.",
+              "Bulk lodash imports are not allowed in this file. Use individual imports instead.",
             fix(fixer) {
               const newImports = imports
                 .map((name) => `import ${name} from 'lodash/${name}';`)
