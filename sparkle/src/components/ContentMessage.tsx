@@ -169,11 +169,11 @@ function ContentMessageAction(props: ButtonProps) {
 }
 
 export interface ContentMessageInlineProps {
-  children?: React.ReactNode;
+  title?: string;
   className?: string;
+  children?: React.ReactNode;
   variant?: ContentMessageVariantType;
   icon?: ComponentType;
-  title?: string;
 }
 
 function ContentMessageInline({
