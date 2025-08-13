@@ -86,6 +86,7 @@ async function runAgentSynchronousWithStreaming(
       logger.info(
         {
           agentMessageId: runAgentExecutionData.agentMessage.sId,
+          conversationId: runAgentExecutionData.conversation.sId,
           currentStep: error.currentStep,
           elapsedMs: error.elapsedMs,
           workspaceId: authType.workspaceId,
