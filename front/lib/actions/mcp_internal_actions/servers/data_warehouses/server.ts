@@ -2,37 +2,24 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import {
-  generateCSVFileAndSnippet,
-  generateSectionFile,
-  uploadFileToConversationDataSource,
-} from "@app/lib/actions/action_file_helpers";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type {
-  ToolGeneratedFileType,
-  ToolMarkerResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getAvailableWarehouses,
   getWarehouseNodes,
   makeBrowseResource,
-  validateTablesInView,
+  validateTables,
 } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/helpers";
 import {
   getDatabaseExampleRowsContent,
   getQueryWritingInstructionsContent,
   getSchemaContent,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
-import {
-  getSectionColumnsPrefix,
-  TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH,
-} from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
+import { executeQuery } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
 import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
-import type { CSVRecord } from "@app/lib/api/csv";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -294,7 +281,7 @@ const createServer = (
         const agentDataSourceConfigurations =
           dataSourceConfigurationsResult.value;
 
-        const validationResult = await validateTablesInView(
+        const validationResult = await validateTables(
           auth,
           tableIds,
           agentDataSourceConfigurations
@@ -304,13 +291,8 @@ const createServer = (
           return new Err(new MCPError(validationResult.error.message));
         }
 
-        const validatedNodes = validationResult.value;
+        const { validatedNodes, dataSourceId } = validationResult.value;
 
-        if (validatedNodes.length === 0) {
-          return new Err(new MCPError("No valid tables found"));
-        }
-
-        const dataSourceId = validatedNodes[0].data_source_id;
         const dataSource = await DataSourceResource.fetchByDustAPIDataSourceId(
           auth,
           dataSourceId
@@ -402,7 +384,7 @@ const createServer = (
         const agentDataSourceConfigurations =
           dataSourceConfigurationsResult.value;
 
-        const validationResult = await validateTablesInView(
+        const validationResult = await validateTables(
           auth,
           tableIds,
           agentDataSourceConfigurations
@@ -412,13 +394,8 @@ const createServer = (
           return new Err(new MCPError(validationResult.error.message));
         }
 
-        const validatedNodes = validationResult.value;
+        const { validatedNodes, dataSourceId } = validationResult.value;
 
-        if (validatedNodes.length === 0) {
-          return new Err(new MCPError("No valid tables found"));
-        }
-
-        const dataSourceId = validatedNodes[0].data_source_id;
         const dataSource = await DataSourceResource.fetchByDustAPIDataSourceId(
           auth,
           dataSourceId
@@ -428,111 +405,19 @@ const createServer = (
           return new Err(new MCPError("Data source not found"));
         }
 
-        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-        const queryResult = await coreAPI.queryDatabase({
+        const connectorProvider = dataSource.connectorProvider;
+
+        return executeQuery(auth, {
           tables: validatedNodes.map((node) => ({
             project_id: parseInt(dataSource.dustAPIProjectId),
             data_source_id: dataSource.dustAPIDataSourceId,
             table_id: node.node_id,
           })),
           query,
+          conversationId: agentLoopRunContext.conversation.sId,
+          fileName,
+          connectorProvider,
         });
-
-        if (queryResult.isErr()) {
-          return new Err(
-            new MCPError(
-              "Error executing database query: " + queryResult.error.message,
-              { tracked: false }
-            )
-          );
-        }
-
-        const content: {
-          type: "resource";
-          resource: ToolGeneratedFileType | ToolMarkerResourceType;
-        }[] = [];
-
-        const results: CSVRecord[] = queryResult.value.results
-          .map((r) => r.value)
-          .filter(
-            (record) =>
-              record !== undefined &&
-              record !== null &&
-              typeof record === "object"
-          );
-
-        if (results.length > 0) {
-          const humanReadableDate = new Date().toISOString().split("T")[0];
-          const queryTitle = `${fileName} (${humanReadableDate})`;
-
-          const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(
-            auth,
-            {
-              title: queryTitle,
-              conversationId: agentLoopRunContext.conversation.sId,
-              results,
-            }
-          );
-
-          await uploadFileToConversationDataSource({
-            auth,
-            file: csvFile,
-          });
-
-          content.push({
-            type: "resource",
-            resource: {
-              text: "Your query results were generated successfully. They are available as a structured CSV file.",
-              uri: csvFile.getPublicUrl(auth),
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-              fileId: csvFile.sId,
-              title: queryTitle,
-              contentType: csvFile.contentType,
-              snippet: csvSnippet,
-            },
-          });
-
-          const shouldGenerateSectionFile = results.some((result) =>
-            Object.values(result).some(
-              (value) =>
-                typeof value === "string" &&
-                value.length > TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH
-            )
-          );
-
-          if (shouldGenerateSectionFile) {
-            const sectionColumnsPrefix = getSectionColumnsPrefix(
-              dataSource.connectorProvider
-            );
-
-            const sectionFile = await generateSectionFile(auth, {
-              title: queryTitle,
-              conversationId: agentLoopRunContext.conversation.sId,
-              results,
-              sectionColumnsPrefix,
-            });
-
-            await uploadFileToConversationDataSource({
-              auth,
-              file: sectionFile,
-            });
-
-            content.push({
-              type: "resource",
-              resource: {
-                text: "Results are also available as a rich text file that can be searched.",
-                uri: sectionFile.getPublicUrl(auth),
-                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-                fileId: sectionFile.sId,
-                title: `${queryTitle} (Rich Text)`,
-                contentType: sectionFile.contentType,
-                snippet: null,
-              },
-            });
-          }
-        }
-
-        return new Ok(content);
       }
     )
   );

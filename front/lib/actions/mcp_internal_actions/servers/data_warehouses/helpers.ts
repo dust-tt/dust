@@ -180,13 +180,13 @@ function renderNode(
   node: CoreAPIContentNode,
   dataSourceById: Record<string, DataSourceResource | null>
 ): RenderedWarehouseNodeType {
-  const dataSourceSId = dataSourceById[node.data_source_id]?.sId;
+  const dataSourceId = dataSourceById[node.data_source_id]?.sId;
   const connectorProvider =
     dataSourceById[node.data_source_id]?.connectorProvider;
 
   const nodeId =
     node.node_id === DATA_SOURCE_NODE_ID
-      ? `warehouse-${dataSourceSId}`
+      ? `warehouse-${dataSourceId}`
       : node.node_id;
 
   const mimeType =
@@ -205,63 +205,75 @@ function renderNode(
   };
 }
 
-export async function validateTablesInView(
+export async function validateTables(
   auth: Authenticator,
   tableIds: string[],
   dataSourceConfigurations: ResolvedDataSourceConfiguration[]
-): Promise<Result<CoreAPIContentNode[], Error | CoreAPIError>> {
+): Promise<
+  Result<
+    { validatedNodes: CoreAPIContentNode[]; dataSourceId: string },
+    Error | CoreAPIError
+  >
+> {
   if (tableIds.length === 0) {
-    return new Ok([]);
+    return new Ok({ validatedNodes: [], dataSourceId: "" });
   }
 
-  const parsedTables: { dataSourceSId: string; nodeId: string }[] = [];
-  const dataSourceSIds = new Set<string>();
-  
+  const parsedTables: { dataSourceId: string; nodeId: string }[] = [];
+  const dataSourceIds = new Set<string>();
+
   for (const tableId of tableIds) {
     if (!tableId.startsWith("table-")) {
       return new Err(
-        new Error(`Invalid table ID format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`)
+        new Error(
+          `Invalid table ID format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`
+        )
       );
     }
-    
+
     const parts = tableId.substring("table-".length).split("-");
     if (parts.length < 2) {
       return new Err(
-        new Error(`Invalid table ID format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`)
+        new Error(
+          `Invalid table ID format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`
+        )
       );
     }
-    
-    const dataSourceSId = parts[0];
+
+    const dataSourceId = parts[0];
     const nodeId = parts.slice(1).join("-");
-    
-    parsedTables.push({ dataSourceSId, nodeId });
-    dataSourceSIds.add(dataSourceSId);
+
+    parsedTables.push({ dataSourceId, nodeId });
+    dataSourceIds.add(dataSourceId);
   }
-  
-  if (dataSourceSIds.size > 1) {
+
+  if (dataSourceIds.size > 1) {
     return new Err(
-      new Error(`All tables must be from the same warehouse. Found tables from warehouses: ${Array.from(dataSourceSIds).join(", ")}`)
+      new Error(
+        `All tables must be from the same warehouse. Found tables from warehouses: ${Array.from(dataSourceIds).join(", ")}`
+      )
     );
   }
-  
-  const dataSourceSId = Array.from(dataSourceSIds)[0];
-  const dataSource = await DataSourceResource.fetchById(auth, dataSourceSId);
+
+  const dataSourceId = Array.from(dataSourceIds)[0];
+  const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
   if (!dataSource) {
-    return new Err(
-      new Error(`Data source not found for ID: ${dataSourceSId}`)
-    );
+    return new Err(new Error(`Data source not found for ID: ${dataSourceId}`));
   }
-  
+
   const relevantConfig = dataSourceConfigurations.find(
-    (config) => config.dataSource.dustAPIDataSourceId === dataSource.dustAPIDataSourceId
+    (config) =>
+      config.dataSource.dustAPIDataSourceId === dataSource.dustAPIDataSourceId
   );
-  
+
   if (!relevantConfig) {
     return new Err(
-      new Error(`Tables from warehouse ${dataSourceSId} are not accessible with the current view filter`)
+      new Error(
+        `Tables from warehouse ${dataSourceId} are not accessible with the current view filter`
+      )
     );
   }
-  
+
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const searchResult = await coreAPI.searchNodes({
     filter: {
@@ -269,23 +281,26 @@ export async function validateTablesInView(
       node_ids: parsedTables.map((t) => t.nodeId),
     },
   });
-  
+
   if (searchResult.isErr()) {
     return searchResult;
   }
-  
+
   const foundNodeIds = new Set(searchResult.value.nodes.map((n) => n.node_id));
   const missingTables = parsedTables.filter((t) => !foundNodeIds.has(t.nodeId));
-  
+
   if (missingTables.length > 0) {
     return new Err(
       new Error(
         `The following tables are not accessible with the current view filter: ${missingTables
-          .map((t) => `table-${t.dataSourceSId}-${t.nodeId}`)
+          .map((t) => `table-${t.dataSourceId}-${t.nodeId}`)
           .join(", ")}`
       )
     );
   }
-  
-  return new Ok(searchResult.value.nodes);
+
+  return new Ok({
+    validatedNodes: searchResult.value.nodes,
+    dataSourceId,
+  });
 }
