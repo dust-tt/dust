@@ -38,28 +38,23 @@ declare module "@tiptap/core" {
 }
 
 interface InstructionBlockTypeInputProps {
-  type: string;
+  currentType: string;
   onChange: (value: string) => void;
   onBlur: () => void;
 }
 
 const InstructionBlockTypeInput: React.FC<InstructionBlockTypeInputProps> = ({
-  type,
+  currentType,
   onChange,
   onBlur,
 }) => {
-  const [localType, setLocalType] = useState<string>(type);
+  const [localType, setLocalType] = useState<string>(currentType);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const skipCommitRef = useRef<boolean>(false);
 
   useEffect(() => {
-    setLocalType(type);
-  }, [type]);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
-  }, []);
+    setLocalType(currentType);
+  }, [currentType]);
 
   return (
     <input
@@ -97,7 +92,6 @@ const InstructionBlockTypeInput: React.FC<InstructionBlockTypeInputProps> = ({
         "focus-visible:s-ring-highlight/20 dark:focus-visible:s-ring-highlight/50"
       )}
       placeholder={localType}
-      aria-label="Edit instruction type"
     />
   );
 };
@@ -137,7 +131,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
         <div className="flex items-center justify-between">
           {isEditingType ? (
             <InstructionBlockTypeInput
-              type={type}
+              currentType={type}
               onBlur={() => setIsEditingType(false)}
               onChange={(newType) => {
                 if (newType) {
