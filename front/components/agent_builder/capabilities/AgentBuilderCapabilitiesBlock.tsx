@@ -13,7 +13,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { isEmpty } from "lodash";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 import type {
@@ -30,6 +30,7 @@ import {
   getDefaultMCPAction,
   isDefaultActionName,
 } from "@app/components/agent_builder/types";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
@@ -38,6 +39,7 @@ import {
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { asDisplayName } from "@app/types";
+import type { TemplateActionPreset } from "@app/types";
 
 const dataVisualizationAction = {
   type: "DATA_VISUALIZATION",
@@ -137,10 +139,14 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
 }
 interface AgentBuilderCapabilitiesBlockProps {
   isActionsLoading: boolean;
+  presetActionToAdd?: TemplateActionPreset | null;
+  onPresetActionHandled?: () => void;
 }
 
 export function AgentBuilderCapabilitiesBlock({
   isActionsLoading,
+  presetActionToAdd,
+  onPresetActionHandled,
 }: AgentBuilderCapabilitiesBlockProps) {
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { fields, remove, append, update } = useFieldArray<
@@ -150,20 +156,84 @@ export function AgentBuilderCapabilitiesBlock({
     name: "actions",
   });
 
-  const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
+  const { mcpServerViewsWithKnowledge, mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
+  const sendNotification = useSendNotification();
 
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
-
   const [knowledgeAction, setKnowledgeAction] = useState<{
     action: AgentBuilderAction;
     index: number | null;
   } | null>(null);
+  
+  // Use a ref to track if we're processing to prevent multiple executions
+  const processingRef = useRef(false);
+  
   const dataVisualization = fields.some(
     (field) => field.type === "DATA_VISUALIZATION"
   )
     ? null
     : dataVisualizationAction;
+
+  // Handle preset actions from templates
+  // useEffect is appropriate here for cross-panel communication:
+  // 1. Template panel (right) triggers action addition
+  // 2. Capabilities block (left) responds by opening dialogs or adding tools
+  // 3. Parent component coordinates via props and callbacks
+  useEffect(() => {
+    if (!presetActionToAdd || isMCPServerViewsLoading) return;
+    
+    // Prevent multiple executions for the same preset action
+    if (processingRef.current) {
+      return;
+    }
+    
+    processingRef.current = true;
+
+    const isKnowledgeAction = 
+      presetActionToAdd.type === "RETRIEVAL_SEARCH" || 
+      presetActionToAdd.type === "TABLES_QUERY" || 
+      presetActionToAdd.type === "PROCESS";
+
+    if (isKnowledgeAction) {
+      // Open knowledge configuration dialog with preset data
+      const action = getDefaultMCPAction();
+      action.name = presetActionToAdd.name;
+      action.description = presetActionToAdd.description;
+      
+      setKnowledgeAction({
+        action: { ...action, noConfigurationRequired: false },
+        index: null,
+      });
+    } else if (presetActionToAdd.type === "WEB_NAVIGATION") {
+      // Add web search tool directly without opening dialog
+      const webSearchView = mcpServerViews.find(
+        (view) => view.server.name === "web_search_&_browse"
+      );
+      
+      if (webSearchView) {
+        const action = getDefaultMCPAction(webSearchView);
+        action.name = presetActionToAdd.name;
+        action.description = presetActionToAdd.description;
+        
+        append(action);
+        
+        sendNotification({
+          title: "Web Search added",
+          description: "Web Search tool has been added to your agent",
+          type: "success",
+        });
+      }
+    }
+
+    // Clear the preset action after handling
+    onPresetActionHandled?.();
+    
+    // Reset the processing flag after a short delay to allow for state updates
+    setTimeout(() => {
+      processingRef.current = false;
+    }, 100);
+  }, [presetActionToAdd, onPresetActionHandled, mcpServerViews, isMCPServerViewsLoading, append, sendNotification]);
 
   const handleEditSave = (updatedAction: AgentBuilderAction) => {
     if (dialogMode?.type === "edit") {
@@ -307,6 +377,7 @@ export function AgentBuilderCapabilitiesBlock({
         isEditing={Boolean(knowledgeAction && knowledgeAction.index !== null)}
         mcpServerViews={mcpServerViewsWithKnowledge}
         getAgentInstructions={getAgentInstructions}
+        presetActionData={presetActionToAdd}
       />
       <MCPServerViewsDialog
         addTools={append}
@@ -316,6 +387,7 @@ export function AgentBuilderCapabilitiesBlock({
         onActionUpdate={handleMcpActionUpdate}
         actions={fields}
         getAgentInstructions={getAgentInstructions}
+        presetActionData={presetActionToAdd}
       />
     </AgentBuilderSectionContainer>
   );

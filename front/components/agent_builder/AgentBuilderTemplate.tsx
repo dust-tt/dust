@@ -1,4 +1,5 @@
 import {
+  BookOpenIcon,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -6,6 +7,7 @@ import {
   DropdownMenuTrigger,
   ListAddIcon,
   Markdown,
+  Page,
   PencilSquareIcon,
 } from "@dust-tt/sparkle";
 import React, { useContext } from "react";
@@ -14,13 +16,16 @@ import { useFormContext } from "react-hook-form";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfirmContext } from "@app/components/Confirm";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type { TemplateActionPreset } from "@app/types";
 
 interface AgentBuilderTemplateProps {
   assistantTemplate: FetchAssistantTemplateResponse;
+  onAddPresetAction?: (presetAction: TemplateActionPreset) => void;
 }
 
 export function AgentBuilderTemplate({
   assistantTemplate,
+  onAddPresetAction,
 }: AgentBuilderTemplateProps) {
   return (
     <div className="flex-1 overflow-y-auto p-4">
@@ -37,6 +42,16 @@ export function AgentBuilderTemplate({
         {assistantTemplate.helpActions && (
           <Markdown content={assistantTemplate.helpActions} />
         )}
+        {assistantTemplate.presetActions &&
+          assistantTemplate.presetActions.length > 0 && (
+            <>
+              <div className="h-px bg-border" />
+              <TemplatePresetActions
+                presetActions={assistantTemplate.presetActions}
+                onAddAction={onAddPresetAction}
+              />
+            </>
+          )}
       </div>
     </div>
   );
@@ -102,6 +117,60 @@ function TemplateButtons({ assistantTemplate }: TemplateButtonsProps) {
           />
         </DropdownMenuContent>
       </DropdownMenu>
+    </div>
+  );
+}
+
+interface TemplatePresetActionsProps {
+  presetActions: TemplateActionPreset[];
+  onAddAction?: (presetAction: TemplateActionPreset) => void;
+}
+
+function TemplatePresetActions({
+  presetActions,
+  onAddAction,
+}: TemplatePresetActionsProps) {
+  const getActionIcon = (type: string) => {
+    // RETRIEVAL_SEARCH, TABLES_QUERY, and PROCESS are all knowledge sources
+    if (type === "RETRIEVAL_SEARCH" || type === "TABLES_QUERY" || type === "PROCESS") {
+      return BookOpenIcon; // Knowledge icon
+    }
+    // Only WEB_NAVIGATION is a tool
+    return ListAddIcon; // Tool icon
+  };
+
+  const getActionLabel = (type: string) => {
+    switch (type) {
+      case "RETRIEVAL_SEARCH":
+        return "Search Data";
+      case "TABLES_QUERY":
+        return "Query Tables";
+      case "PROCESS":
+        return "Extract Data";
+      case "WEB_NAVIGATION":
+        return "Add Web Search";
+      default:
+        return "Add tool";
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Page.SectionHeader title="Suggested tools" />
+      {presetActions.map((presetAction, index) => (
+        <div className="flex flex-col gap-2" key={index}>
+          <div className="text-sm text-foreground">{presetAction.help}</div>
+          <div>
+            <Button
+              label={getActionLabel(presetAction.type)}
+              icon={getActionIcon(presetAction.type)}
+              size="sm"
+              variant="outline"
+              onClick={() => onAddAction?.(presetAction)}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

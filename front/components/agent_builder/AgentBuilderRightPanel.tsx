@@ -128,17 +128,22 @@ interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
   agentConfigurationSId?: string;
   assistantTemplate: FetchAssistantTemplateResponse | null;
+  onAddPresetAction?: (presetAction: any) => void;
 }
 
 function ExpandedContent({
   selectedTab,
   agentConfigurationSId,
   assistantTemplate,
+  onAddPresetAction,
 }: ExpandedContentProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {selectedTab === "template" && assistantTemplate && (
-        <AgentBuilderTemplate assistantTemplate={assistantTemplate} />
+        <AgentBuilderTemplate
+          assistantTemplate={assistantTemplate}
+          onAddPresetAction={onAddPresetAction}
+        />
       )}
       {selectedTab === "testing" && (
         <div className="min-h-0 flex-1">
@@ -159,11 +164,13 @@ function ExpandedContent({
 interface AgentBuilderRightPanelProps {
   agentConfigurationSId?: string;
   assistantTemplate: FetchAssistantTemplateResponse | null;
+  onAddPresetAction?: (presetAction: any) => void;
 }
 
 export function AgentBuilderRightPanel({
   agentConfigurationSId,
   assistantTemplate,
+  onAddPresetAction,
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
@@ -201,6 +208,7 @@ export function AgentBuilderRightPanel({
           selectedTab={selectedTab}
           agentConfigurationSId={agentConfigurationSId}
           assistantTemplate={assistantTemplate}
+          onAddPresetAction={onAddPresetAction}
         />
       ) : (
         <CollapsedTabs
