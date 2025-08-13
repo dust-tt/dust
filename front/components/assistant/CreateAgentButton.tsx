@@ -37,7 +37,7 @@ export const CreateAgentButton = ({
           size="sm"
           isSelect
           isLoading={isLoading}
-          isDisabled={isLoading}
+          disabled={isLoading}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
