@@ -38,6 +38,7 @@ import {
   isKnowledgeTemplateAction,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
+import { allowsMultipleInstancesOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   DATA_VISUALIZATION_SPECIFICATION,
   MCP_SPECIFICATION,
@@ -196,45 +197,67 @@ export function AgentBuilderCapabilitiesBlock({
     
     processingRef.current = true;
 
+    // Get the MCP server name for this template action
+    const targetServerName = getMCPServerNameForTemplateAction(presetActionToAdd);
+    const mcpServerViewSource = isKnowledgeTemplateAction(presetActionToAdd) 
+      ? mcpServerViewsWithKnowledge 
+      : mcpServerViews;
+    
+    const mcpServerView = mcpServerViewSource.find(
+      (view) => view.server.name === targetServerName
+    );
+    
+    if (!mcpServerView) {
+      processingRef.current = false;
+      onPresetActionHandled?.();
+      return;
+    }
+
+    // Check for duplicates only for tools that don't allow multiple instances
+    // Note: All knowledge actions (search, query_tables, extract_data) allow multiple instances
+    if (isDirectAddTemplateAction(presetActionToAdd)) {
+      const allowsMultiple = allowsMultipleInstancesOfInternalMCPServerById(mcpServerView.server.sId);
+      
+      if (!allowsMultiple) {
+        const toolAlreadyAdded = fields.some(
+          field => field.type === "MCP" && 
+          field.configuration?.mcpServerViewId === mcpServerView.sId
+        );
+        
+        if (toolAlreadyAdded) {
+          sendNotification({
+            title: "Tool already added",
+            description: `${getMcpServerViewDisplayName(mcpServerView)} is already in your agent`,
+            type: "info",
+          });
+          processingRef.current = false;
+          onPresetActionHandled?.();
+          return;
+        }
+      }
+    }
+
+    // Create action with preset data
+    const action = getDefaultMCPAction(mcpServerView);
+    action.name = presetActionToAdd.name;
+    action.description = presetActionToAdd.description;
+    
     if (isKnowledgeTemplateAction(presetActionToAdd)) {
-      // Get the MCP server name for this template action
-      const targetServerName = getMCPServerNameForTemplateAction(presetActionToAdd);
-      const mcpServerView = mcpServerViewsWithKnowledge.find(
-        (view) => view.server.name === targetServerName
-      );
+      // Open knowledge configuration dialog
+      setKnowledgeAction({
+        action: { ...action, noConfigurationRequired: false },
+        index: null,
+        presetData: presetActionToAdd,
+      });
+    } else {
+      // Add tool directly
+      append(action);
       
-      if (mcpServerView) {
-        // Open knowledge configuration dialog with preset data and correct MCP server
-        const action = getDefaultMCPAction(mcpServerView);
-        action.name = presetActionToAdd.name;
-        action.description = presetActionToAdd.description;
-        
-        setKnowledgeAction({
-          action: { ...action, noConfigurationRequired: false },
-          index: null,
-          presetData: presetActionToAdd,
-        });
-      }
-    } else if (isDirectAddTemplateAction(presetActionToAdd)) {
-      // Get the MCP server name for this template action
-      const targetServerName = getMCPServerNameForTemplateAction(presetActionToAdd);
-      const mcpServerView = mcpServerViews.find(
-        (view) => view.server.name === targetServerName
-      );
-      
-      if (mcpServerView) {
-        const action = getDefaultMCPAction(mcpServerView);
-        action.name = presetActionToAdd.name;
-        action.description = presetActionToAdd.description;
-        
-        append(action);
-        
-        sendNotification({
-          title: "Tool added",
-          description: `${action.name} has been added to your agent`,
-          type: "success",
-        });
-      }
+      sendNotification({
+        title: "Tool added",
+        description: `${action.name} has been added to your agent`,
+        type: "success",
+      });
     }
 
     // Clear the preset action after handling
@@ -244,7 +267,7 @@ export function AgentBuilderCapabilitiesBlock({
     setTimeout(() => {
       processingRef.current = false;
     }, 100);
-  }, [presetActionToAdd, onPresetActionHandled, mcpServerViews, isMCPServerViewsLoading, append, sendNotification]);
+  }, [presetActionToAdd, onPresetActionHandled, mcpServerViews, mcpServerViewsWithKnowledge, isMCPServerViewsLoading, append, sendNotification, fields]);
 
   const handleEditSave = (updatedAction: AgentBuilderAction) => {
     if (dialogMode?.type === "edit") {
