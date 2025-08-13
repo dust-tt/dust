@@ -42,18 +42,19 @@ export function AgentMessageActions({
   const lastAction = agentMessage.actions[agentMessage.actions.length - 1];
   const hasActions = agentMessage.actions.length > 0;
   const chainOfThought = agentMessage.chainOfThought || "";
+  const onClick = () => {
+    openPanel({
+      type: "actions",
+      messageId: agentMessage.sId,
+      metadata: {
+        actionProgress,
+      },
+    });
+  };
 
   return lastAgentStateClassification !== "done" ? (
     <div
-      onClick={() => {
-        openPanel({
-          type: "actions",
-          messageId: agentMessage.sId,
-          metadata: {
-            actionProgress,
-          },
-        });
-      }}
+      onClick={onClick}
       className={cn(
         "flex max-w-[500px] flex-col gap-y-4",
         lastAction ? "cursor-pointer" : ""
@@ -101,15 +102,7 @@ export function AgentMessageActions({
           label="Tools inspection"
           icon={CommandLineIcon}
           variant="outline"
-          onClick={() =>
-            openPanel({
-              type: "actions",
-              messageId: agentMessage.sId,
-              metadata: {
-                actionProgress,
-              },
-            })
-          }
+          onClick={onClick}
         />
       )}
 

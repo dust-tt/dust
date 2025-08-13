@@ -1,6 +1,7 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
+import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -46,7 +47,6 @@ import {
   isTextContent,
 } from "@app/types/assistant/agent_message_content";
 import type { ParsedContentItem } from "@app/types/assistant/conversation";
-import { MCPActionType } from "@app/lib/actions/mcp";
 
 export function getMaximalVersionAgentStepContent(
   agentStepContents: AgentStepContentModel[]
