@@ -1,3 +1,4 @@
+import { Chip, cn, IconButton, XMarkIcon } from "@dust-tt/sparkle";
 import { InputRule, mergeAttributes, Node } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { Slice } from "@tiptap/pm/model";
@@ -11,7 +12,7 @@ import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import {
   createProseMirrorInstructionBlock,
@@ -36,21 +37,123 @@ declare module "@tiptap/core" {
   }
 }
 
-const InstructionBlockComponent: React.FC<NodeViewProps> = ({ node }) => {
-  const { type } = node.attrs as InstructionBlockAttributes;
+interface InstructionBlockTypeInputProps {
+  currentType: string;
+  onChange: (value: string) => void;
+  onBlur: () => void;
+}
+
+const InstructionBlockTypeInput: React.FC<InstructionBlockTypeInputProps> = ({
+  currentType,
+  onChange,
+  onBlur,
+}) => {
+  const [localType, setLocalType] = useState<string>(currentType);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const skipCommitRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    setLocalType(currentType);
+  }, [currentType]);
 
   return (
-    <NodeViewWrapper className="my-4">
-      <div className="rounded-lg border border-border bg-gray-100 p-4">
-        <span
-          className="text-sm font-semibold text-muted-foreground"
-          contentEditable={false}
-        >
-          {type.toUpperCase()}
-        </span>
-        <div className="min-h-12 rounded border border-border/50 bg-background p-3">
-          <NodeViewContent className="prose prose-sm" />
+    <input
+      ref={inputRef}
+      name="instruction-type"
+      type="text"
+      autoFocus
+      value={localType}
+      onChange={(e) => setLocalType(e.target.value)}
+      onBlur={() => {
+        onBlur();
+        if (!skipCommitRef.current) {
+          onChange(localType.trim());
+        }
+        skipCommitRef.current = false;
+      }}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === "Enter") {
+          e.preventDefault();
+          inputRef.current?.blur();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          skipCommitRef.current = true;
+          inputRef.current?.blur();
+        }
+      }}
+      className={cn(
+        "w-fit rounded-lg border-none",
+        "mt-0.5 min-h-5 gap-0.5 rounded-md px-1.5 py-1 text-xs font-medium",
+        "dark:bg-background-night dark:text-foreground-night",
+        "uppercase",
+        "focus-visible:s-border-border-focus dark:focus-visible:s-border-border-focus-night",
+        "focus-visible:s-outline-none focus-visible:s-ring-2",
+        "focus-visible:s-ring-highlight/20 dark:focus-visible:s-ring-highlight/50"
+      )}
+      placeholder={localType}
+    />
+  );
+};
+
+interface InstructionBlockTypeButtonProps {
+  type: string;
+  onClick: () => void;
+}
+
+const InstructionBlockTypeButton: React.FC<InstructionBlockTypeButtonProps> = ({
+  type,
+  onClick,
+}) => {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="cursor-text"
+      aria-label="Edit instruction type"
+    >
+      <Chip size="mini">{type.toUpperCase()}</Chip>
+    </button>
+  );
+};
+
+const InstructionBlockComponent: React.FC<NodeViewProps> = ({
+  node,
+  updateAttributes,
+  deleteNode,
+}) => {
+  const { type } = node.attrs as InstructionBlockAttributes;
+  const [isEditingType, setIsEditingType] = useState(false);
+
+  return (
+    <NodeViewWrapper className="my-2">
+      <div className="rounded-lg border border-border bg-gray-100 p-2 dark:bg-gray-800">
+        <div className="flex items-center justify-between">
+          {isEditingType ? (
+            <InstructionBlockTypeInput
+              currentType={type}
+              onBlur={() => setIsEditingType(false)}
+              onChange={(newType) => {
+                if (newType) {
+                  updateAttributes({ type: newType });
+                }
+              }}
+            />
+          ) : (
+            <InstructionBlockTypeButton
+              type={type}
+              onClick={() => setIsEditingType(true)}
+            />
+          )}
+          <IconButton
+            icon={XMarkIcon}
+            variant="plain"
+            size="mini"
+            onClick={() => deleteNode?.()}
+            aria-label="Remove instruction block"
+          />
         </div>
+        <NodeViewContent className="prose prose-sm pt-2" />
       </div>
     </NodeViewWrapper>
   );
