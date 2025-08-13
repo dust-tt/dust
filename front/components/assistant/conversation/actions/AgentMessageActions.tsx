@@ -57,6 +57,8 @@ export function AgentMessageActions({
     return null;
   }
 
+  const lastNotification = actionProgress.get(lastAction?.id)?.progress ?? null;
+
   return lastAgentStateClassification !== "done" ? (
     <div
       onClick={onClick}
@@ -72,7 +74,7 @@ export function AgentMessageActions({
             viewType="conversation"
             action={lastAction}
             owner={owner}
-            lastNotification={null}
+            lastNotification={lastNotification}
           />
         </Card>
       ) : (
