@@ -341,6 +341,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: {
       search_messages: "never_ask",
+      semantic_search_messages: "never_ask",
       list_users: "never_ask",
       list_public_channels: "never_ask",
       list_threads: "never_ask",
