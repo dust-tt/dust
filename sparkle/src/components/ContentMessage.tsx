@@ -1,6 +1,7 @@
 import { cva } from "class-variance-authority";
 import React, { ComponentType } from "react";
 
+import { Button, ButtonProps } from "@sparkle/components/Button";
 import { Icon } from "@sparkle/components/Icon";
 import { cn } from "@sparkle/lib/utils";
 
@@ -109,6 +110,16 @@ const textVariants = cva("s-text-sm", {
   },
 });
 
+function ContentMessageAction(props: ButtonProps) {
+  return (
+    <Button
+      size="xs"
+      className={cn("s-shrink-0", props.className)}
+      {...props}
+    />
+  );
+}
+
 export interface ContentMessageProps {
   title?: string;
   children?: React.ReactNode;
@@ -117,10 +128,9 @@ export interface ContentMessageProps {
   variant?: ContentMessageVariantType;
   icon?: ComponentType;
   inline?: boolean;
-  action?: React.ReactNode;
 }
 
-export function ContentMessage({
+function ContentMessage({
   title,
   variant = "info",
   children,
@@ -128,8 +138,19 @@ export function ContentMessage({
   className = "",
   icon,
   inline = false,
-  action,
 }: ContentMessageProps) {
+  const childrenArray = React.Children.toArray(children);
+
+  const actionChild = childrenArray.find(
+    (child) =>
+      React.isValidElement(child) && child.type === ContentMessageAction
+  );
+
+  const contentChildren = childrenArray.filter(
+    (child) =>
+      !React.isValidElement(child) || child.type !== ContentMessageAction
+  );
+
   return (
     <div
       className={cn(
@@ -150,12 +171,12 @@ export function ContentMessage({
             {title && (
               <>
                 <span className={titleVariants({ variant })}>{title}</span>
-                {children && ": "}
+                {contentChildren.length > 0 && ": "}
               </>
             )}
-            {children}
+            {contentChildren}
           </div>
-          {action && <div className="s-shrink-0">{action}</div>}
+          {actionChild}
         </>
       ) : (
         <>
@@ -173,11 +194,13 @@ export function ContentMessage({
               )}
             </div>
           )}
-          {children && (
-            <div className={textVariants({ variant })}>{children}</div>
+          {contentChildren.length > 0 && (
+            <div className={textVariants({ variant })}>{contentChildren}</div>
           )}
         </>
       )}
     </div>
   );
 }
+
+export { ContentMessage, ContentMessageAction };

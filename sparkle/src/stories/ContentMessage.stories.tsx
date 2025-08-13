@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
+import { ContentMessageAction } from "@sparkle/components/ContentMessage";
+
 import {
-  Button,
   ChatBubbleBottomCenterTextIcon,
   ContentMessage,
   HeartIcon,
@@ -158,13 +159,9 @@ export const InlineBasic: Story = {
 
 export const InlineWithAction: Story = {
   render: () => (
-    <ContentMessage
-      icon={InformationCircleIcon}
-      variant="info"
-      inline
-      action={<Button size="xs" variant="primary" label="Button" />}
-    >
+    <ContentMessage icon={InformationCircleIcon} variant="info" inline>
       This is an inline message. It can be used to display a short message.
+      <ContentMessageAction variant="primary" label="Button" />
     </ContentMessage>
   ),
 };
@@ -177,9 +174,9 @@ export const InlineWithTitle: Story = {
         icon={InformationCircleIcon}
         variant="info"
         inline
-        action={<Button size="xs" variant="primary" label="Button" />}
       >
         This is an inline message.
+        <ContentMessageAction variant="primary" label="Button" />
       </ContentMessage>
       <ContentMessage
         title="Alert"
@@ -211,9 +208,9 @@ export const InlineVariants: Story = {
               | "golden"
           }
           inline
-          action={<Button size="xs" variant="primary" label="Action" />}
         >
           {variant.charAt(0).toUpperCase() + variant.slice(1)} inline message
+          <ContentMessageAction variant="primary" label="Action" />
         </ContentMessage>
       ))}
     </div>
