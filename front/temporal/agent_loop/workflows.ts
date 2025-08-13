@@ -26,6 +26,10 @@ const activities: AgentLoopActivities = {
   }).runModelAndCreateActionsActivity,
   runToolActivity: proxyActivities<typeof runToolActivities>({
     startToCloseTimeout: "10 minutes",
+    retry: {
+      // Do not retry tool activities. Those are not idempotent.
+      maximumAttempts: 1,
+    },
   }).runToolActivity,
 };
 
