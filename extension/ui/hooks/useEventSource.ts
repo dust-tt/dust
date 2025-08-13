@@ -141,21 +141,22 @@ export function useEventSource(
       };
 
       source.onerror = (event: Event) => {
-        console.error("EventSource error", event);
         source.close();
 
         reconnectAttempts.current++;
 
         if (reconnectAttempts.current >= 10) {
-          console.log(
-            "Too many errors, not reconnecting. Please refresh the page."
+          console.error("Too many errors, closing connection.", event);
+          setIsError(
+            new Error(
+              "Too many errors, not reconnecting. Please refresh the page."
+            )
           );
-          setIsError(new Error("Too many errors, closing connection."));
 
           return;
         }
 
-        console.error(
+        console.info(
           `Connection error. Attempting to reconnect in ${RECONNECT_DELAY}ms`
         );
 

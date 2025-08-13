@@ -14,6 +14,9 @@ export function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
       return ["folder", "document"];
     case "table":
       return ["table"];
+    case "data_warehouse":
+      // For data warehouses, show folders (databases/schemas) and tables.
+      return ["folder", "table"];
     case "all":
       return ["folder", "table", "document"];
     default:

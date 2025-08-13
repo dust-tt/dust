@@ -8,13 +8,23 @@ import {
   getAvailableWarehouses,
   getWarehouseNodes,
   makeBrowseResource,
+  validateTables,
 } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/helpers";
+import {
+  getDatabaseExampleRowsContent,
+  getQueryWritingInstructionsContent,
+  getSchemaContent,
+} from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
+import { executeQuery } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
 import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, Ok } from "@app/types";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import logger from "@app/logger/logger";
+import { CoreAPI, Err, Ok } from "@app/types";
 
 const TABLES_FILESYSTEM_TOOL_NAME = "tables_filesystem_navigation";
 
@@ -177,9 +187,55 @@ const createServer = (
     withToolLogging(
       auth,
       { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
-      async (args) => {
-        void args;
-        throw new Error("Not implemented");
+      async ({ query, rootNodeId, limit, nextPageCursor, dataSources }) => {
+        const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
+
+        const dataSourceConfigurationsResult =
+          await getAgentDataSourceConfigurations(
+            auth,
+            dataSources.map((ds) => ({
+              ...ds,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+            }))
+          );
+
+        if (dataSourceConfigurationsResult.isErr()) {
+          return new Err(
+            new MCPError(dataSourceConfigurationsResult.error.message)
+          );
+        }
+
+        const agentDataSourceConfigurations =
+          dataSourceConfigurationsResult.value;
+
+        const result = await getWarehouseNodes(
+          auth,
+          agentDataSourceConfigurations,
+          {
+            nodeId: rootNodeId ?? null,
+            query,
+            limit: effectiveLimit,
+            nextPageCursor,
+          }
+        );
+
+        if (result.isErr()) {
+          return new Err(new MCPError(result.error.message));
+        }
+
+        const { nodes, nextPageCursor: newCursor } = result.value;
+
+        return new Ok([
+          {
+            type: "resource" as const,
+            resource: makeBrowseResource({
+              nodeId: rootNodeId ?? null,
+              nodes,
+              nextPageCursor: newCursor,
+              resultCount: dataSources.length,
+            }),
+          },
+        ]);
       }
     )
   );
@@ -206,9 +262,68 @@ const createServer = (
     withToolLogging(
       auth,
       { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
-      async (args) => {
-        void args;
-        throw new Error("Not implemented");
+      async ({ dataSources, tableIds }) => {
+        const dataSourceConfigurationsResult =
+          await getAgentDataSourceConfigurations(
+            auth,
+            dataSources.map((ds) => ({
+              ...ds,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+            }))
+          );
+
+        if (dataSourceConfigurationsResult.isErr()) {
+          return new Err(
+            new MCPError(dataSourceConfigurationsResult.error.message)
+          );
+        }
+
+        const agentDataSourceConfigurations =
+          dataSourceConfigurationsResult.value;
+
+        const validationResult = await validateTables(
+          auth,
+          tableIds,
+          agentDataSourceConfigurations
+        );
+
+        if (validationResult.isErr()) {
+          return new Err(new MCPError(validationResult.error.message));
+        }
+
+        const { validatedNodes, dataSourceId } = validationResult.value;
+
+        const dataSource = await DataSourceResource.fetchByDustAPIDataSourceId(
+          auth,
+          dataSourceId
+        );
+
+        if (!dataSource) {
+          return new Err(new MCPError("Data source not found"));
+        }
+
+        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+        const schemaResult = await coreAPI.getDatabaseSchema({
+          tables: validatedNodes.map((node) => ({
+            project_id: parseInt(dataSource.dustAPIProjectId),
+            data_source_id: dataSource.dustAPIDataSourceId,
+            table_id: node.node_id,
+          })),
+        });
+
+        if (schemaResult.isErr()) {
+          return new Err(
+            new MCPError(
+              `Error retrieving database schema: ${schemaResult.error.message}`
+            )
+          );
+        }
+
+        return new Ok([
+          ...getSchemaContent(schemaResult.value.schemas),
+          ...getQueryWritingInstructionsContent(schemaResult.value.dialect),
+          ...getDatabaseExampleRowsContent(schemaResult.value.schemas),
+        ]);
       }
     )
   );
@@ -219,13 +334,10 @@ const createServer = (
       "before attempting to query tables to understand their structure. The query must respect the SQL dialect " +
       "and guidelines provided by describe_tables. All tables in a single query must be from the same warehouse.",
     {
-      dataSources: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE
-      ]
-        .optional()
-        .describe(
-          "The data sources configured for this tool. This determines which warehouses and content nodes the tool can access."
-        ),
+      dataSources:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE
+        ],
       tableIds: z
         .array(z.string())
         .min(1)
@@ -245,9 +357,67 @@ const createServer = (
     withToolLogging(
       auth,
       { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
-      async (args) => {
-        void args;
-        throw new Error("Not implemented");
+      async ({ dataSources, tableIds, query, fileName }) => {
+        if (!agentLoopContext?.runContext) {
+          return new Err(
+            new MCPError("Missing agentLoopContext for file generation")
+          );
+        }
+
+        const agentLoopRunContext = agentLoopContext.runContext;
+
+        const dataSourceConfigurationsResult =
+          await getAgentDataSourceConfigurations(
+            auth,
+            dataSources.map((ds) => ({
+              ...ds,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+            }))
+          );
+
+        if (dataSourceConfigurationsResult.isErr()) {
+          return new Err(
+            new MCPError(dataSourceConfigurationsResult.error.message)
+          );
+        }
+
+        const agentDataSourceConfigurations =
+          dataSourceConfigurationsResult.value;
+
+        const validationResult = await validateTables(
+          auth,
+          tableIds,
+          agentDataSourceConfigurations
+        );
+
+        if (validationResult.isErr()) {
+          return new Err(new MCPError(validationResult.error.message));
+        }
+
+        const { validatedNodes, dataSourceId } = validationResult.value;
+
+        const dataSource = await DataSourceResource.fetchByDustAPIDataSourceId(
+          auth,
+          dataSourceId
+        );
+
+        if (!dataSource) {
+          return new Err(new MCPError("Data source not found"));
+        }
+
+        const connectorProvider = dataSource.connectorProvider;
+
+        return executeQuery(auth, {
+          tables: validatedNodes.map((node) => ({
+            project_id: parseInt(dataSource.dustAPIProjectId),
+            data_source_id: dataSource.dustAPIDataSourceId,
+            table_id: node.node_id,
+          })),
+          query,
+          conversationId: agentLoopRunContext.conversation.sId,
+          fileName,
+          connectorProvider,
+        });
       }
     )
   );

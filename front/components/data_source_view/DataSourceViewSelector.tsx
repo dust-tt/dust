@@ -290,6 +290,9 @@ export function DataSourceViewsSelector({
     const includesConnectorIDs: string[] = [];
     const excludesConnectorIDs: string[] = [];
 
+    // When selecting tables, for tables query all tables from a single warehouse
+    // (either the same remoteDb or all from Dust SQLite).
+    // The data_warehouse view type (for the warehouses tool server) allows multiple warehouses.
     if (viewType === "table" && useCase === "assistantBuilder") {
       const selection = Object.values(selectionConfigurations);
       const firstDs =
@@ -796,7 +799,7 @@ export function DataSourceViewSelector({
 
   const isTableView = viewType === "table";
 
-  // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
+  // Show the checkbox by default. Hide it only for tables view where no child items are partially checked.
   const hideCheckbox = readonly || (isTableView && isChecked !== "partial");
 
   const selectedNodes = useMemo(
@@ -944,7 +947,7 @@ export function DataSourceViewSelector({
             parentIsSelected={selectionConfiguration.isSelectAll}
             useResourcesHook={useResourcesHook}
             emptyComponent={
-              viewType === "table" ? (
+              viewType === "table" || viewType === "data_warehouse" ? (
                 <Tree.Empty label="No tables" />
               ) : (
                 <Tree.Empty label="No documents" />

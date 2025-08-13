@@ -257,6 +257,7 @@ export function getDefaultMCPServerActionConfiguration(
     name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
     description:
       requirements.requiresDataSourceConfiguration ||
+      requirements.requiresDataWarehouseConfiguration ||
       requirements.requiresTableConfiguration
         ? ""
         : mcpServerView

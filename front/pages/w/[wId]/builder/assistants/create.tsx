@@ -1,15 +1,6 @@
-import {
-  Button,
-  DocumentIcon,
-  Icon,
-  MagicIcon,
-  Page,
-  PencilSquareIcon,
-  SearchInput,
-} from "@dust-tt/sparkle";
+import { Button, Icon, MagicIcon, Page, SearchInput } from "@dust-tt/sparkle";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 
@@ -187,82 +178,51 @@ export default function CreateAssistant({
     >
       <div id="pageContent">
         <Page variant="modal">
-          <div className="flex flex-col gap-6 pt-9">
-            <div className="flex min-h-[20vh] flex-col justify-end gap-6">
-              <div className="flex flex-row items-center gap-2">
-                <Icon
-                  visual={PencilSquareIcon}
-                  size="lg"
-                  className="text-primary-400 dark:text-primary-500"
-                />
+          <div className="flex flex-row items-center gap-2">
+            <Icon
+              visual={MagicIcon}
+              size="lg"
+              className="text-primary-400 dark:text-primary-500"
+            />
 
-                <h2 className="heading-2xl font-semibold">Start new</h2>
-              </div>
-              <Link
-                href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}`}
-              >
-                <Button
-                  icon={DocumentIcon}
-                  label="New Agent"
-                  data-gtm-label="assistantCreationButton"
-                  data-gtm-location="assistantCreationPage"
-                  size="md"
-                  variant="highlight"
-                />
-              </Link>
-            </div>
-            <Page.Separator />
-
-            <div className="flex flex-row items-center gap-2">
-              <Icon
-                visual={MagicIcon}
-                size="lg"
-                className="text-primary-400 dark:text-primary-500"
-              />
-
-              <h2 className="heading-2xl font-semibold">
-                Start from a template
-              </h2>
-            </div>
-            <div className="flex flex-col gap-6">
-              <SearchInput
-                placeholder="Search templates"
-                name="input"
-                value={templateSearchTerm}
-                onChange={handleSearch}
-              />
-              <div className="flex flex-row flex-wrap gap-2">
-                {filteredTemplates.tags
-                  .sort((a, b) =>
-                    a.toLowerCase().localeCompare(b.toLowerCase())
-                  )
-                  .map((tagName) => (
-                    <Button
-                      label={templateTagsMapping[tagName].label}
-                      variant={
-                        selectedTags.includes(tagName) ? "primary" : "outline"
-                      }
-                      key={tagName}
-                      size="xs"
-                      onClick={() => handleTagClick(tagName)}
-                    />
-                  ))}
-              </div>
-            </div>
-            {filteredTemplates.templates.length > 0 && (
-              <>
-                <Page.Separator />
-                <div className="flex flex-col pb-56">
-                  <TemplateGrid
-                    templates={filteredTemplates.templates}
-                    openTemplateModal={openTemplateModal}
-                    templateTagsMapping={templateTagsMapping}
-                    selectedTags={selectedTags}
-                  />
-                </div>
-              </>
-            )}
+            <h2 className="heading-2xl font-semibold">Start from a template</h2>
           </div>
+          <div className="flex flex-col gap-6">
+            <SearchInput
+              placeholder="Search templates"
+              name="input"
+              value={templateSearchTerm}
+              onChange={handleSearch}
+            />
+            <div className="flex flex-row flex-wrap gap-2">
+              {filteredTemplates.tags
+                .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+                .map((tagName) => (
+                  <Button
+                    label={templateTagsMapping[tagName].label}
+                    variant={
+                      selectedTags.includes(tagName) ? "primary" : "outline"
+                    }
+                    key={tagName}
+                    size="xs"
+                    onClick={() => handleTagClick(tagName)}
+                  />
+                ))}
+            </div>
+          </div>
+          {filteredTemplates.templates.length > 0 && (
+            <>
+              <Page.Separator />
+              <div className="flex flex-col pb-56">
+                <TemplateGrid
+                  templates={filteredTemplates.templates}
+                  openTemplateModal={openTemplateModal}
+                  templateTagsMapping={templateTagsMapping}
+                  selectedTags={selectedTags}
+                />
+              </div>
+            </>
+          )}
         </Page>
         <AssistantTemplateModal
           flow={flow}

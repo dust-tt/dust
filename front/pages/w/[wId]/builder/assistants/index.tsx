@@ -22,6 +22,7 @@ import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -339,13 +340,9 @@ export default function WorkspaceAssistants({
                     owner={owner}
                   />
                   {!isRestrictedFromAgentCreation && (
-                    <Button
-                      variant="primary"
-                      icon={PlusIcon}
-                      href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
-                      label="Create an agent"
-                      data-gtm-label="assistantCreationButton"
-                      data-gtm-location="assistantsWorkspace"
+                    <CreateAgentButton
+                      owner={owner}
+                      dataGtmLocation="assistantsWorkspace"
                     />
                   )}
                 </div>

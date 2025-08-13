@@ -31,8 +31,7 @@ import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
 import { getSupportedModelConfig } from "@app/lib/assistant";
-import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -47,8 +46,7 @@ import type {
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
-import type { RunAgentArgs } from "@app/types/assistant/agent_run";
-import { getRunAgentData } from "@app/types/assistant/agent_run";
+import type { RunAgentSynchronousArgs } from "@app/types/assistant/agent_run";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_AUTO_RETRY = 3;
@@ -59,39 +57,34 @@ const MAX_AUTO_RETRY = 3;
 // TODO(DURABLE-AGENTS 2025-07-20): The method mutates agentMessage, this must
 
 // be refactored in a follow up PR.
-export async function runModelActivity({
-  authType,
-  runAgentArgs,
-  runIds,
-  step,
-  functionCallStepContentIds,
-  autoRetryCount = 0,
-}: {
-  authType: AuthenticatorType;
-  runAgentArgs: RunAgentArgs;
-  runIds: string[];
-  step: number;
-  functionCallStepContentIds: Record<string, ModelId>;
-  autoRetryCount?: number;
-}): Promise<{
+export async function runModelActivity(
+  auth: Authenticator,
+  {
+    runAgentData,
+    runIds,
+    step,
+    functionCallStepContentIds,
+    autoRetryCount = 0,
+  }: {
+    runAgentData: RunAgentSynchronousArgs;
+    runIds: string[];
+    step: number;
+    functionCallStepContentIds: Record<string, ModelId>;
+    autoRetryCount?: number;
+  }
+): Promise<{
   actions: AgentActionsEvent["actions"];
   runId: string;
   functionCallStepContentIds: Record<string, ModelId>;
   stepContexts: StepContext[];
 } | null> {
-  const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
-
-  if (runAgentDataRes.isErr()) {
-    throw runAgentDataRes.error;
-  }
-
   const {
     agentConfiguration,
     conversation: originalConversation,
     userMessage,
     agentMessage: originalAgentMessage,
     agentMessageRow,
-  } = runAgentDataRes.value;
+  } = runAgentData;
 
   const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
     sliceConversationForAgentMessage(originalConversation, {
@@ -122,8 +115,6 @@ export async function runModelActivity({
     // legacy agents stop after one step
     return null;
   }
-
-  const auth = await Authenticator.fromJSON(authType);
 
   const model = getSupportedModelConfig(agentConfiguration.model);
 
@@ -411,9 +402,8 @@ export async function runModelActivity({
       );
 
       // Recursively retry with incremented count
-      return runModelActivity({
-        authType,
-        runAgentArgs,
+      return runModelActivity(auth, {
+        runAgentData,
         runIds,
         step,
         functionCallStepContentIds,

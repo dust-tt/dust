@@ -113,6 +113,20 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
           transaction
         );
 
+        // Track migration results for recap log
+        let channelsMigrated = 0;
+        let channelsMigrationStatus = "not_attempted";
+        let channelsMigrationSkipReason = null;
+
+        logger.info(
+          {
+            connectorId: connector.id,
+            workspaceId: dataSourceConfig.workspaceId,
+            slackTeamId,
+          },
+          "Starting auto-migration from legacy Slack connector"
+        );
+
         if (legacyConnector) {
           const slackBotChannelsCount = await SlackChannel.count({
             where: {
@@ -131,22 +145,38 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
                 agentConfigurationId: { [Op.ne]: null },
               },
             });
-            const creationRecords = slackChannels.map(
-              (channel): CreationAttributes<SlackChannel> => ({
-                connectorId: connector.id, // Update to slack_bot connector ID
-                createdAt: channel.createdAt, // Keep the original createdAt field
-                updatedAt: channel.updatedAt, // Keep the original updatedAt field
-                slackChannelId: channel.slackChannelId,
-                slackChannelName: channel.slackChannelName,
-                skipReason: channel.skipReason,
-                private: channel.private,
-                permission: "write", // Set permission to write
-                agentConfigurationId: channel.agentConfigurationId,
-              })
-            );
-            await SlackChannel.bulkCreate(creationRecords, { transaction });
+
+            if (slackChannels.length > 0) {
+              const creationRecords = slackChannels.map(
+                (channel): CreationAttributes<SlackChannel> => ({
+                  connectorId: connector.id, // Update to slack_bot connector ID
+                  createdAt: channel.createdAt, // Keep the original createdAt field
+                  updatedAt: channel.updatedAt, // Keep the original updatedAt field
+                  slackChannelId: channel.slackChannelId,
+                  slackChannelName: channel.slackChannelName,
+                  skipReason: channel.skipReason,
+                  private: channel.private,
+                  permission: "write", // Set permission to write
+                  agentConfigurationId: channel.agentConfigurationId,
+                })
+              );
+              await SlackChannel.bulkCreate(creationRecords, { transaction });
+
+              channelsMigrated = slackChannels.length;
+              channelsMigrationStatus = "success";
+            } else {
+              channelsMigrationStatus = "skipped";
+              channelsMigrationSkipReason = "no_channels_with_agent_config";
+            }
+          } else {
+            channelsMigrationStatus = "skipped";
+            channelsMigrationSkipReason = "connector_already_has_channels";
           }
         }
+        // Track whitelist model migration results for recap log
+        let whitelistModelsMigrated = 0;
+        let whitelistMigrationStatus = "not_attempted";
+
         if (legacyConfiguration && connector.configuration) {
           const slackBotWhitelistModelCount =
             await SlackBotWhitelistModel.count({
@@ -179,8 +209,32 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
             await SlackBotWhitelistModel.bulkCreate(whitelistRecords, {
               transaction,
             });
+
+            whitelistModelsMigrated = slackBotWhitelistModelCount;
+            whitelistMigrationStatus = "success";
+          } else {
+            whitelistMigrationStatus = "skipped";
           }
         }
+
+        // Single recap log for Datadog monitoring
+        logger.info(
+          {
+            connectorId: connector.id,
+            workspaceId: dataSourceConfig.workspaceId,
+            slackTeamId,
+            botEnabled: configuration.botEnabled,
+            hasLegacyConnector: !!legacyConnector,
+            legacyConnectorId: legacyConnector?.id || null,
+            configurationSource: legacyConfiguration ? "legacy" : "new",
+            channelsMigrationStatus,
+            channelsMigrationSkipReason,
+            channelsMigrated,
+            whitelistMigrationStatus,
+            whitelistModelsMigrated,
+          },
+          "Auto-migration recap after Slack bot connector creation"
+        );
 
         return connector;
       }
