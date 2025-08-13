@@ -47,7 +47,7 @@ const contentMessageVariants = cva("s-border", {
       sm: "s-max-w-[380px]",
     },
     inline: {
-      true: "s-flex s-items-center s-gap-3 s-rounded-lg s-py-3 s-px-4",
+      true: "s-flex s-items-center s-gap-3 s-rounded-xl s-py-3 s-px-4",
       false: "s-flex s-flex-col s-gap-1 s-rounded-xl s-py-4 s-px-5",
     },
   },
