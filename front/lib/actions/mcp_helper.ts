@@ -164,15 +164,12 @@ export function getMcpServerDisplayName(
 }
 
 // Template action to MCP server mapping
-// This mapping is based on the original assistant builder implementation
+// Only includes action types that are actually used in templates
 const TEMPLATE_ACTION_TO_MCP_SERVER: Record<string, InternalMCPServerNameType> = {
   RETRIEVAL_SEARCH: "search",
-  RETRIEVAL_EXHAUSTIVE: "include_data",
   TABLES_QUERY: "query_tables", 
   PROCESS: "extract_data",
-  DUST_APP_RUN: "run_dust_app",
   WEB_NAVIGATION: "web_search_&_browse",
-  REASONING: "reasoning",
 };
 
 /**
@@ -192,7 +189,6 @@ export function isKnowledgeTemplateAction(
 ): boolean {
   return (
     presetAction.type === "RETRIEVAL_SEARCH" ||
-    presetAction.type === "RETRIEVAL_EXHAUSTIVE" ||
     presetAction.type === "TABLES_QUERY" ||
     presetAction.type === "PROCESS"
   );
@@ -207,14 +203,3 @@ export function isDirectAddTemplateAction(
   return presetAction.type === "WEB_NAVIGATION";
 }
 
-/**
- * Check if a template action requires special configuration (like app selection or reasoning model)
- */
-export function isConfigurableTemplateAction(
-  presetAction: TemplateActionPreset
-): boolean {
-  return (
-    presetAction.type === "DUST_APP_RUN" ||
-    presetAction.type === "REASONING"
-  );
-}
