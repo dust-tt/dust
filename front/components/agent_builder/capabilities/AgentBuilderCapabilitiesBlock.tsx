@@ -34,7 +34,6 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getMcpServerViewDisplayName,
   getMCPServerNameForTemplateAction,
-  isConfigurableTemplateAction,
   isDirectAddTemplateAction,
   isKnowledgeTemplateAction,
 } from "@app/lib/actions/mcp_helper";
@@ -235,18 +234,6 @@ export function AgentBuilderCapabilitiesBlock({
           description: `${action.name} has been added to your agent`,
           type: "success",
         });
-      }
-    } else if (isConfigurableTemplateAction(presetActionToAdd)) {
-      // For DUST_APP_RUN and REASONING, open the tools dialog for configuration
-      const targetServerName = getMCPServerNameForTemplateAction(presetActionToAdd);
-      const mcpServerView = mcpServerViews.find(
-        (view) => view.server.name === targetServerName
-      );
-      
-      if (mcpServerView) {
-        // Open tools dialog for configuration
-        setDialogMode({ type: 'add' });
-        // TODO: We should pre-select the specific MCP server in the dialog
       }
     }
 
