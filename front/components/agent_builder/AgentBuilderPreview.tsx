@@ -162,7 +162,7 @@ export function AgentBuilderPreview() {
 
   return (
     <div className="flex h-full w-full flex-col" aria-label="Agent preview">
-      <ActionValidationProvider owner={owner}>
+      <ActionValidationProvider owner={owner} conversation={conversation}>
         <GenerationContextProvider>{renderContent()}</GenerationContextProvider>
       </ActionValidationProvider>
     </div>

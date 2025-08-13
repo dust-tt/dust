@@ -56,17 +56,15 @@ export default function ConversationLayout({
     <ConversationsNavigationProvider
       initialConversationId={pageProps.conversationId}
     >
-      <ActionValidationProvider owner={owner}>
-        <ConversationLayoutContent
-          baseUrl={baseUrl}
-          owner={owner}
-          subscription={subscription}
-          user={user}
-          isAdmin={isAdmin}
-        >
-          {children}
-        </ConversationLayoutContent>
-      </ActionValidationProvider>
+      <ConversationLayoutContent
+        baseUrl={baseUrl}
+        owner={owner}
+        subscription={subscription}
+        user={user}
+        isAdmin={isAdmin}
+      >
+        {children}
+      </ConversationLayoutContent>
     </ConversationsNavigationProvider>
   );
 }
@@ -130,53 +128,55 @@ const ConversationLayoutContent = ({
   };
 
   return (
-    <InputBarProvider>
-      <AppContentLayout
-        hasTitle={!!activeConversationId}
-        subscription={subscription}
-        owner={owner}
-        pageTitle={
-          conversation?.title
-            ? `Dust - ${conversation?.title}`
-            : `Dust - New Conversation`
-        }
-        navChildren={<AssistantSidebarMenu owner={owner} />}
-      >
-        <AssistantDetails
+    <ActionValidationProvider owner={owner} conversation={conversation}>
+      <InputBarProvider>
+        <AppContentLayout
+          hasTitle={!!activeConversationId}
+          subscription={subscription}
           owner={owner}
-          user={user}
-          assistantId={assistantSId}
-          onClose={() => onOpenChangeAssistantModal(false)}
-        />
-        <CoEditionProvider
-          owner={owner}
-          hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
+          pageTitle={
+            conversation?.title
+              ? `Dust - ${conversation?.title}`
+              : `Dust - New Conversation`
+          }
+          navChildren={<AssistantSidebarMenu owner={owner} />}
         >
-          <ConversationSidePanelProvider>
-            <ConversationInnerLayout
-              activeConversationId={activeConversationId}
-              baseUrl={baseUrl}
-              conversation={conversation}
-              conversationError={conversationError}
-              owner={owner}
-            >
-              {children}
-            </ConversationInnerLayout>
-          </ConversationSidePanelProvider>
-        </CoEditionProvider>
-        {shouldDisplayWelcomeTourGuide && (
-          <WelcomeTourGuide
+          <AssistantDetails
             owner={owner}
             user={user}
-            isAdmin={isAdmin}
-            startConversationRef={startConversationRef}
-            spaceMenuButtonRef={spaceMenuButtonRef}
-            createAgentButtonRef={createAgentButtonRef}
-            onTourGuideEnd={onTourGuideEnd}
+            assistantId={assistantSId}
+            onClose={() => onOpenChangeAssistantModal(false)}
           />
-        )}
-      </AppContentLayout>
-    </InputBarProvider>
+          <CoEditionProvider
+            owner={owner}
+            hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
+          >
+            <ConversationSidePanelProvider>
+              <ConversationInnerLayout
+                activeConversationId={activeConversationId}
+                baseUrl={baseUrl}
+                conversation={conversation}
+                conversationError={conversationError}
+                owner={owner}
+              >
+                {children}
+              </ConversationInnerLayout>
+            </ConversationSidePanelProvider>
+          </CoEditionProvider>
+          {shouldDisplayWelcomeTourGuide && (
+            <WelcomeTourGuide
+              owner={owner}
+              user={user}
+              isAdmin={isAdmin}
+              startConversationRef={startConversationRef}
+              spaceMenuButtonRef={spaceMenuButtonRef}
+              createAgentButtonRef={createAgentButtonRef}
+              onTourGuideEnd={onTourGuideEnd}
+            />
+          )}
+        </AppContentLayout>
+      </InputBarProvider>
+    </ActionValidationProvider>
   );
 };
 

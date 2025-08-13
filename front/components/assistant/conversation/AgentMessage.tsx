@@ -17,7 +17,7 @@ import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
-import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { useActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
 import {
   DefaultAgentMessageGeneratedFiles,
   InteractiveAgentMessageGeneratedFiles,
@@ -173,7 +173,7 @@ export function AgentMessage({
     [conversationId, message.sId, owner.sId]
   );
 
-  const { showValidationDialog } = React.useContext(ActionValidationContext);
+  const { showValidationDialog } = useActionValidationContext();
 
   const { mutateMessage } = useConversationMessage({
     conversationId,

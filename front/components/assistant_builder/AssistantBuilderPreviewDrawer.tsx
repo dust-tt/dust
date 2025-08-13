@@ -213,7 +213,10 @@ export default function AssistantBuilderRightPanel({
               </div>
             ) : (
               <ConversationsNavigationProvider>
-                <ActionValidationProvider owner={owner}>
+                <ActionValidationProvider
+                  owner={owner}
+                  conversation={conversation}
+                >
                   <GenerationContextProvider>
                     <div
                       className={

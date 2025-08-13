@@ -440,6 +440,7 @@ export function FixedAssistantInputBar({
   additionalAgentConfiguration,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
+  disableButton = false,
 }: {
   owner: WorkspaceType;
   onSubmit: (
@@ -453,6 +454,7 @@ export function FixedAssistantInputBar({
   additionalAgentConfiguration?: LightAgentConfigurationType;
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus?: boolean;
+  disableButton?: boolean;
 }) {
   return (
     <div
@@ -470,6 +472,7 @@ export function FixedAssistantInputBar({
         additionalAgentConfiguration={additionalAgentConfiguration}
         actions={actions}
         disableAutoFocus={disableAutoFocus}
+        disableButton={disableButton}
       />
     </div>
   );
