@@ -4,10 +4,13 @@ import type { ImperativePanelHandle } from "react-resizable-panels";
 
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import type { ConversationType, LightWorkspaceType } from "@app/types";
+import type {
+  ConversationWithoutContentType,
+  LightWorkspaceType,
+} from "@app/types";
 
 interface ConversationSidePanelContainerProps {
-  conversation: ConversationType | null;
+  conversation: ConversationWithoutContentType | null;
   owner: LightWorkspaceType;
 }
 

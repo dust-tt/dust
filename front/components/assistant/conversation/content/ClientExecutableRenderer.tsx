@@ -16,7 +16,10 @@ import { VisualizationActionIframe } from "@app/components/assistant/conversatio
 import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
 import { isFileUsingConversationFiles } from "@app/lib/files";
 import { useFileContent } from "@app/lib/swr/files";
-import type { ConversationType, LightWorkspaceType } from "@app/types";
+import type {
+  ConversationWithoutContentType,
+  LightWorkspaceType,
+} from "@app/types";
 
 import { useConversationSidePanelContext } from "../ConversationSidePanelContext";
 import { ShareInteractiveFilePopover } from "../ShareInteractiveFilePopover";
@@ -65,7 +68,7 @@ function ExportContentDropdown({ iframeRef }: ExportContentDropdownProps) {
 }
 
 interface ClientExecutableRendererProps {
-  conversation: ConversationType;
+  conversation: ConversationWithoutContentType;
   fileId: string;
   fileName?: string;
   owner: LightWorkspaceType;

@@ -5,10 +5,13 @@ import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionD
 import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useConversationMessage } from "@app/lib/swr/conversations";
-import type { ConversationType, LightWorkspaceType } from "@app/types";
+import type {
+  ConversationWithoutContentType,
+  LightWorkspaceType,
+} from "@app/types";
 
 interface AgentActionsPanelProps {
-  conversation: ConversationType | null;
+  conversation: ConversationWithoutContentType | null;
   owner: LightWorkspaceType;
 }
 

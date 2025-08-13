@@ -27,7 +27,7 @@ import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ConversationError,
-  ConversationType,
+  ConversationWithoutContentType,
   LightWorkspaceType,
   SubscriptionType,
   UserType,
@@ -182,7 +182,7 @@ const ConversationLayoutContent = ({
 
 interface ConversationInnerLayoutProps {
   children: React.ReactNode;
-  conversation: ConversationType | null;
+  conversation: ConversationWithoutContentType | null;
   owner: LightWorkspaceType;
   baseUrl: string;
   conversationError: ConversationError | null;

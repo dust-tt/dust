@@ -15,6 +15,7 @@ import type {
   AgentMention,
   ContentFragmentsType,
   ConversationType,
+  ConversationWithoutContentType,
   LightAgentConfigurationType,
   MentionType,
   Result,
@@ -163,7 +164,7 @@ export function useTryAssistantCore({
 }: {
   owner: WorkspaceType;
   user: UserType | null;
-  openWithConversation?: ConversationType;
+  openWithConversation?: ConversationWithoutContentType;
   assistant: LightAgentConfigurationType | null;
   createDraftAgent?: () => Promise<LightAgentConfigurationType | null>;
 }) {
@@ -175,15 +176,13 @@ export function useTryAssistantCore({
   );
   const sendNotification = useSendNotification();
 
-  const { conversation: swrConversation } = useConversation({
+  const { conversation } = useConversation({
     conversationId: conversationId || "",
     workspaceId: owner.sId,
     options: {
       disabled: !conversationId,
     },
   });
-
-  const conversation = swrConversation || null;
 
   const handleSubmit = async (
     input: string,
