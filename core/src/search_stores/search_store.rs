@@ -189,6 +189,13 @@ pub struct ElasticsearchSearchStore {
     pub client: Elasticsearch,
 }
 
+fn map_sort_field(field: &str) -> &str {
+    match field {
+        "title" => "title.keyword",
+        other => other,
+    }
+}
+
 impl ElasticsearchSearchStore {
     pub async fn new(es_uri: &str, username: &str, password: &str) -> Result<Self> {
         let credentials = Credentials::Basic(username.to_string(), password.to_string());
@@ -1136,7 +1143,7 @@ impl ElasticsearchSearchStore {
                 sort.into_iter()
                     .map(|s| {
                         Sort::FieldSort(
-                            FieldSort::new(s.field)
+                            FieldSort::new(map_sort_field(&s.field))
                                 .order(match s.direction {
                                     SortDirection::Asc => SortOrder::Asc,
                                     SortDirection::Desc => SortOrder::Desc,
