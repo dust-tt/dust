@@ -24,40 +24,51 @@ const CONTENT_MESSAGE_SIZES = ["sm", "md", "lg"] as const;
 
 type ContentMessageSizeType = (typeof CONTENT_MESSAGE_SIZES)[number];
 
-const contentMessageVariants = cva("s-border s-rounded-xl s-flex ", {
-  variants: {
-    variant: {
-      primary:
-        "s-bg-muted-background dark:s-bg-muted-background-night s-border-border dark:s-border-border-night",
-      success:
-        "s-bg-success-100 dark:s-bg-success-100-night s-border-transparent",
-      warning:
-        "s-bg-warning-100 dark:s-bg-warning-100-night s-border-transparent",
-      highlight:
-        "s-bg-highlight-100 dark:s-bg-highlight-100-night s-border-transparent",
-      info: "s-bg-info-100 dark:s-bg-info-100-night s-border-transparent",
-      green: "s-bg-green-100 dark:s-bg-green-100-night s-border-transparent",
-      blue: "s-bg-blue-100 dark:s-bg-blue-100-night s-border-transparent",
-      rose: "s-bg-rose-100 dark:s-bg-rose-100-night s-border-transparent",
-      golden: "s-bg-golden-100 dark:s-bg-golden-100-night s-border-transparent",
-      outline: "s-bg-transparent s-border-border dark:s-border-border-night",
+// Shared variant styles
+const sharedVariantStyles = {
+  primary:
+    "s-bg-muted-background dark:s-bg-muted-background-night s-border-border dark:s-border-border-night",
+  success: "s-bg-success-100 dark:s-bg-success-100-night s-border-transparent",
+  warning: "s-bg-warning-100 dark:s-bg-warning-100-night s-border-transparent",
+  highlight:
+    "s-bg-highlight-100 dark:s-bg-highlight-100-night s-border-transparent",
+  info: "s-bg-info-100 dark:s-bg-info-100-night s-border-transparent",
+  green: "s-bg-green-100 dark:s-bg-green-100-night s-border-transparent",
+  blue: "s-bg-blue-100 dark:s-bg-blue-100-night s-border-transparent",
+  rose: "s-bg-rose-100 dark:s-bg-rose-100-night s-border-transparent",
+  golden: "s-bg-golden-100 dark:s-bg-golden-100-night s-border-transparent",
+  outline: "s-bg-transparent s-border-border dark:s-border-border-night",
+};
+
+const contentMessageVariants = cva(
+  "s-flex s-flex-col s-gap-1 s-rounded-xl s-py-4 s-px-5 s-border",
+  {
+    variants: {
+      variant: sharedVariantStyles,
+      size: {
+        lg: "",
+        md: "s-max-w-[500px]",
+        sm: "s-max-w-[380px]",
+      },
     },
-    size: {
-      lg: "",
-      md: "s-max-w-[500px]",
-      sm: "s-max-w-[380px]",
+    defaultVariants: {
+      variant: "info",
+      size: "md",
     },
-    inline: {
-      true: "s-items-center s-gap-3 s-py-3 s-px-4",
-      false: "s-flex-col s-gap-1  s-py-4 s-px-5",
+  }
+);
+
+const contentMessageInlineVariants = cva(
+  "s-flex s-items-center s-gap-3 s-rounded-lg s-py-3 s-px-4 s-border",
+  {
+    variants: {
+      variant: sharedVariantStyles,
     },
-  },
-  defaultVariants: {
-    variant: "info",
-    size: "md",
-    inline: false,
-  },
-});
+    defaultVariants: {
+      variant: "info",
+    },
+  }
+);
 
 const iconVariants = cva("s-shrink-0", {
   variants: {
@@ -110,6 +121,43 @@ const textVariants = cva("s-text-sm", {
   },
 });
 
+export interface ContentMessageProps {
+  title?: string;
+  children?: React.ReactNode;
+  className?: string;
+  size?: ContentMessageSizeType;
+  variant?: ContentMessageVariantType;
+  icon?: ComponentType;
+}
+
+function ContentMessage({
+  title,
+  variant = "info",
+  children,
+  size = "md",
+  className = "",
+  icon,
+}: ContentMessageProps) {
+  return (
+    <div className={cn(contentMessageVariants({ variant, size }), className)}>
+      {(icon || title) && (
+        <div className="s-flex s-items-center s-gap-1.5">
+          {icon && (
+            <Icon
+              size="xs"
+              visual={icon}
+              className={iconVariants({ variant })}
+            />
+          )}
+          {title && <div className={titleVariants({ variant })}>{title}</div>}
+        </div>
+      )}
+      {children && <div className={textVariants({ variant })}>{children}</div>}
+      // TODO(2025-08-13 aubin): Allow passing a ContentMessageAction here.
+    </div>
+  );
+}
+
 function ContentMessageAction(props: ButtonProps) {
   return (
     <Button
@@ -120,87 +168,45 @@ function ContentMessageAction(props: ButtonProps) {
   );
 }
 
-export interface ContentMessageProps {
-  title?: string;
+export interface ContentMessageInlineProps {
   children?: React.ReactNode;
   className?: string;
-  size?: ContentMessageSizeType;
   variant?: ContentMessageVariantType;
   icon?: ComponentType;
-  inline?: boolean;
+  title?: string;
 }
 
-function ContentMessage({
+function ContentMessageInline({
   title,
   variant = "info",
   children,
-  size = "md",
   className = "",
   icon,
-  inline = false,
-}: ContentMessageProps) {
+}: ContentMessageInlineProps) {
   const childrenArray = React.Children.toArray(children);
 
   const actionChild = childrenArray.find(
     (child) =>
       React.isValidElement(child) && child.type === ContentMessageAction
   );
-
   const contentChildren = childrenArray.filter(
     (child) =>
       !React.isValidElement(child) || child.type !== ContentMessageAction
   );
 
   return (
-    <div
-      className={cn(
-        contentMessageVariants({ variant, size, inline }),
-        className
+    <div className={cn(contentMessageInlineVariants({ variant }), className)}>
+      {icon && (
+        <Icon size="xs" visual={icon} className={iconVariants({ variant })} />
       )}
-    >
-      {inline ? (
-        <>
-          {icon && (
-            <Icon
-              size="xs"
-              visual={icon}
-              className={iconVariants({ variant })}
-            />
-          )}
-          <div className={cn("s-flex-1", textVariants({ variant }))}>
-            {title && (
-              <>
-                <span className={titleVariants({ variant })}>{title}</span>
-                {contentChildren.length > 0 && ": "}
-              </>
-            )}
-            {contentChildren}
-          </div>
-          {actionChild}
-        </>
-      ) : (
-        <>
-          {(icon || title) && (
-            <div className="s-flex s-items-center s-gap-1.5">
-              {icon && (
-                <Icon
-                  size="xs"
-                  visual={icon}
-                  className={iconVariants({ variant })}
-                />
-              )}
-              {title && (
-                <div className={titleVariants({ variant })}>{title}</div>
-              )}
-            </div>
-          )}
-          {contentChildren.length > 0 && (
-            <div className={textVariants({ variant })}>{contentChildren}</div>
-          )}
-        </>
-      )}
+      <div className={cn("s-flex-1", textVariants({ variant }))}>
+        {title && <span className={titleVariants({ variant })}>{title}</span>}
+        {title && contentChildren.length > 0 && ": "}
+        {contentChildren.length > 0 && <span>{contentChildren}</span>}
+      </div>
+      {actionChild}
     </div>
   );
 }
 
-export { ContentMessage, ContentMessageAction };
+export { ContentMessage, ContentMessageAction, ContentMessageInline };

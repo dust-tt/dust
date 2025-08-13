@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { ContentMessageAction } from "@sparkle/components/ContentMessage";
-
 import {
   ChatBubbleBottomCenterTextIcon,
   ContentMessage,
+  ContentMessageAction,
+  ContentMessageInline,
   HeartIcon,
   InformationCircleIcon,
 } from "../index_with_tw_base";
@@ -65,6 +65,15 @@ type Story = StoryObj<typeof meta>;
 export const Basic: Story = {
   args: {
     title: "This is a title",
+    children: "This is a message. It can be multiple lines long.",
+    size: "md",
+  },
+};
+
+export const WithIcon: Story = {
+  args: {
+    title: "This is a title",
+    icon: InformationCircleIcon,
     children: "This is a message. It can be multiple lines long.",
     size: "md",
   },
@@ -151,38 +160,36 @@ export const ColorVariants: Story = {
 
 export const InlineBasic: Story = {
   render: () => (
-    <ContentMessage icon={InformationCircleIcon} variant="info" inline>
+    <ContentMessageInline icon={InformationCircleIcon} variant="info">
       This is an inline message. It can be used to display a short message.
-    </ContentMessage>
+    </ContentMessageInline>
   ),
 };
 
 export const InlineWithAction: Story = {
   render: () => (
-    <ContentMessage icon={InformationCircleIcon} variant="info" inline>
+    <ContentMessageInline icon={InformationCircleIcon} variant="info">
       This is an inline message. It can be used to display a short message.
       <ContentMessageAction variant="primary" label="Button" />
-    </ContentMessage>
+    </ContentMessageInline>
   ),
 };
 
 export const InlineWithTitle: Story = {
   render: () => (
     <div className="s-flex s-flex-col s-gap-4">
-      <ContentMessage
+      <ContentMessageInline
         title="Status"
         icon={InformationCircleIcon}
         variant="info"
-        inline
       >
         This is an inline message.
         <ContentMessageAction variant="primary" label="Button" />
-      </ContentMessage>
-      <ContentMessage
+      </ContentMessageInline>
+      <ContentMessageInline
         title="Alert"
         icon={InformationCircleIcon}
         variant="warning"
-        inline
       />
     </div>
   ),
@@ -192,7 +199,7 @@ export const InlineVariants: Story = {
   render: () => (
     <div className="s-flex s-flex-col s-gap-4">
       {["primary", "warning", "success", "highlight", "info"].map((variant) => (
-        <ContentMessage
+        <ContentMessageInline
           key={variant}
           icon={InformationCircleIcon}
           variant={
@@ -207,11 +214,10 @@ export const InlineVariants: Story = {
               | "rose"
               | "golden"
           }
-          inline
         >
           {variant.charAt(0).toUpperCase() + variant.slice(1)} inline message
           <ContentMessageAction variant="primary" label="Action" />
-        </ContentMessage>
+        </ContentMessageInline>
       ))}
     </div>
   ),

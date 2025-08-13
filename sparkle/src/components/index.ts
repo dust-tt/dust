@@ -35,7 +35,11 @@ export {
 } from "./Collapsible";
 export { default as ConfettiBackground } from "./ConfettiBackground";
 export { Container } from "./Container";
-export { ContentMessage } from "./ContentMessage";
+export {
+  ContentMessage,
+  ContentMessageAction,
+  ContentMessageInline,
+} from "./ContentMessage";
 export { ContextItem } from "./ContextItem";
 export {
   ConversationContainer,
