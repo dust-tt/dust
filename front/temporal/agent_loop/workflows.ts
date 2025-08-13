@@ -99,7 +99,10 @@ export async function agentLoopWorkflow({
     }
   }
 
-  await executeAgentLoop(authType, runAgentArgs, activities, startStep);
+  // In Temporal workflows, we don't pass syncStartTime since async execution doesn't need timeout.
+  await executeAgentLoop(authType, runAgentArgs, activities, {
+    startStep,
+  });
 
   if (childWorkflowHandle) {
     await childWorkflowHandle.result();

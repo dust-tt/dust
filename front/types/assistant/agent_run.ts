@@ -31,7 +31,7 @@ export type RunAgentAsynchronousArgs = {
   userMessageVersion: number;
 };
 
-export type RunAgentSynchronousArgs = {
+export type RunAgentExecutionData = {
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
   agentMessageRow: AgentMessage;
@@ -42,7 +42,8 @@ export type RunAgentSynchronousArgs = {
 export type RunAgentArgs =
   | {
       sync: true;
-      inMemoryData: RunAgentSynchronousArgs;
+      inMemoryData: RunAgentExecutionData;
+      syncToAsyncTimeoutMs?: number;
     }
   | {
       sync: false;
@@ -52,7 +53,7 @@ export type RunAgentArgs =
 export async function getRunAgentData(
   authType: AuthenticatorType,
   runAgentArgs: RunAgentArgs
-): Promise<Result<RunAgentSynchronousArgs & { auth: Authenticator }, Error>> {
+): Promise<Result<RunAgentExecutionData & { auth: Authenticator }, Error>> {
   const auth = await Authenticator.fromJSON(authType);
 
   if (runAgentArgs.sync) {
@@ -149,11 +150,11 @@ export async function getRunAgentData(
   }
 
   return new Ok({
-    auth,
+    agentConfiguration,
     agentMessage,
     agentMessageRow: agentMessageRow.agentMessage,
+    auth,
     conversation,
     userMessage,
-    agentConfiguration,
   });
 }
