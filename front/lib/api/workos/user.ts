@@ -18,7 +18,7 @@ import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
-import { invalidateWorkOSOrganizationsCache } from "@app/lib/api/workos/organization_membership";
+import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
@@ -280,7 +280,7 @@ export async function addUserToWorkOSOrganization(
       roleSlug: "user",
     });
 
-    await invalidateWorkOSOrganizationsCache(workOSUser.id);
+    await invalidateWorkOSOrganizationsCacheForUserId(workOSUser.id);
 
     return new Ok(undefined);
   }

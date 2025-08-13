@@ -9,7 +9,7 @@ import type {
 import { Op } from "sequelize";
 
 import { getWorkOS } from "@app/lib/api/workos/client";
-import { invalidateWorkOSOrganizationsCache } from "@app/lib/api/workos/organization_membership";
+import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
@@ -779,7 +779,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           });
         }
 
-        await invalidateWorkOSOrganizationsCache(user.workOSUserId);
+        await invalidateWorkOSOrganizationsCacheForUserId(user.workOSUserId);
       } catch (error) {
         logger.error(
           {
@@ -850,7 +850,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
             );
           }
 
-          await invalidateWorkOSOrganizationsCache(u.workOSUserId);
+          await invalidateWorkOSOrganizationsCacheForUserId(u.workOSUserId);
         } catch (error) {
           logger.error(
             {

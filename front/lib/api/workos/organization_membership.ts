@@ -1,13 +1,11 @@
-import { getRedisClient } from "@app/lib/api/redis";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { cacheWithRedis } from "@app/lib/utils/cache";
-import logger from "@app/logger/logger";
+import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 
 const MAX_CONCURRENT_WORKOS_FETCH = 10;
 
-// Cache TTL for WorkOS organization memnbership data (5 minutes)
-const WORKOS_ORG_CACHE_TTL_MS = 5 * 60 * 1000;
+// Cache TTL for WorkOS organization memnbership data (1 hour)
+const WORKOS_ORG_CACHE_TTL_MS = 60 * 60 * 1000;
 
 export async function fetchWorkOSOrganizationMembershipsForUserIdAndOrgId(
   userId: string,
@@ -54,14 +52,10 @@ export const findWorkOSOrganizationsForUserId = cacheWithRedis(
   }
 );
 
-export async function invalidateWorkOSOrganizationsCache(
-  userId: string
-): Promise<void> {
-  try {
-    const redis = await getRedisClient({ origin: "workos_orgs_cache" });
-    const cacheKey = `cacheWithRedis-findWorkOSOrganizationsForUserIdUncached-workos-orgs-${userId}`;
-    await redis.del(cacheKey);
-  } catch (error) {
-    logger.error({ userId }, "Failed to invalidate workos membership cache");
-  }
-}
+export const invalidateWorkOSOrganizationsCacheForUserId =
+  invalidateCacheWithRedis(
+    findWorkOSOrganizationsForUserIdUncached,
+    (userId: string) => {
+      return `workos-orgs-${userId}`;
+    }
+  );

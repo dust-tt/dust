@@ -28,6 +28,14 @@ type CacheableFunction<T, Args extends unknown[]> = (
 
 type KeyResolver<Args extends unknown[]> = (...args: Args) => string;
 
+function getCacheKey<T, Args extends unknown[]>(
+  fn: CacheableFunction<JsonSerializable<T>, Args>,
+  resolver: KeyResolver<Args>,
+  args: Args
+) {
+  return `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+}
+
 // Wrapper function to cache the result of a function with Redis.
 // Usage:
 // const cachedFn = cacheWithRedis(fn, (fnArg1, fnArg2, ...) => `${fnArg1}-${fnArg2}`, 60 * 10 * 1000);
@@ -63,7 +71,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     let redisCli: Awaited<ReturnType<typeof redisClient>> | undefined =
       undefined;
 
-    const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+    const key = getCacheKey(fn, resolver, args);
 
     try {
       redisCli = await redisClient({
@@ -124,6 +132,36 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     }
   };
 }
+
+export function invalidateCacheWithRedis<T, Args extends unknown[]>(
+  fn: CacheableFunction<JsonSerializable<T>, Args>,
+  resolver: KeyResolver<Args>,
+  options?: {
+    redisUri?: string;
+  }
+): (...args: Args) => Promise<void> {
+  return async function (...args: Args): Promise<void> {
+    let redisUri: string | undefined = options?.redisUri;
+    if (!redisUri) {
+      const REDIS_CACHE_URI = process.env.REDIS_CACHE_URI;
+      if (!REDIS_CACHE_URI) {
+        throw new Error("REDIS_CACHE_URI is not set");
+      }
+      redisUri = REDIS_CACHE_URI;
+    }
+    let redisCli: Awaited<ReturnType<typeof redisClient>> | undefined =
+      undefined;
+
+    const key = getCacheKey(fn, resolver, args);
+    redisCli = await redisClient({
+      origin: "cache_with_redis",
+      redisUri,
+    });
+
+    await redisCli.del(key);
+  };
+}
+
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 const locks: Record<string, (() => void)[]> = {};
