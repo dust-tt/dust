@@ -158,11 +158,7 @@ export function UserMenu({
             window.DD_RUM.onReady(() => {
               window.DD_RUM.clearUser();
             });
-            if (document.cookie.includes("sessionType=workos")) {
-              window.location.href = "/api/workos/logout";
-            } else {
-              window.location.href = "/api/auth/logout";
-            }
+            window.location.href = "/api/workos/logout";
           }}
         />
 
