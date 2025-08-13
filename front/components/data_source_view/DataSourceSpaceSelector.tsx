@@ -12,6 +12,7 @@ import { useDataSourceBuilderContext } from "@app/components/data_source_view/co
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
+import { SPACE_KINDS } from "@app/types";
 
 type SpaceRowData = SpaceType & {
   id: string;
@@ -32,15 +33,30 @@ export function DataSourceSpaceSelector({
     useDataSourceBuilderContext();
 
   const confirm = useContext(ConfirmContext);
-  const spaceRows: SpaceRowData[] = spaces.map((space) => ({
-    ...space,
-    id: space.sId,
-    name: space.name,
-    kind: space.kind,
-    icon: getSpaceIcon(space),
-    onClick: () => setSpaceEntry(space),
-    disabled: allowedSpaces.find((s) => s.sId === space.sId) == null,
-  }));
+
+  const spaceRows: SpaceRowData[] = spaces
+    .map((space) => ({
+      ...space,
+      id: space.sId,
+      name: space.name,
+      kind: space.kind,
+      icon: getSpaceIcon(space),
+      onClick: () => setSpaceEntry(space),
+      disabled: allowedSpaces.find((s) => s.sId === space.sId) == null,
+    }))
+    .toSorted((a, b) => {
+      // First, sort by kind according to the specified order
+      const aKindIndex = SPACE_KINDS.indexOf(a.kind);
+      const bKindIndex = SPACE_KINDS.indexOf(b.kind);
+
+      // If kinds are different, sort by kind order
+      if (aKindIndex !== bKindIndex) {
+        return aKindIndex - bKindIndex;
+      }
+
+      // If kinds are the same, sort by name alphabetically
+      return a.name.localeCompare(b.name);
+    });
 
   const columns: ColumnDef<SpaceRowData>[] = useMemo(
     () => [
