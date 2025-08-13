@@ -1,13 +1,17 @@
 import {
   Avatar,
+  BoltIcon,
+  BookOpenIcon,
+  Button,
   Card,
   CardActionButton,
   CardGrid,
   EmptyCTA,
   Hoverable,
+  ListAddIcon,
+  Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { Spinner } from "@dust-tt/sparkle";
 import { isEmpty } from "lodash";
 import React, { useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
@@ -215,30 +219,24 @@ export function AgentBuilderCapabilitiesBlock({
 
   const getAgentInstructions = () => getValues("instructions");
 
-  const dropdownButtons = (
-    <>
-      <KnowledgeConfigurationSheet
-        onClose={handleCloseSheet}
-        onClickKnowledge={onClickKnowledge}
-        onSave={handleEditSave}
-        action={knowledgeAction?.action ?? null}
-        isEditing={Boolean(knowledgeAction && knowledgeAction.index !== null)}
-        mcpServerViews={mcpServerViewsWithKnowledge}
-        getAgentInstructions={getAgentInstructions}
+  const headerActions = fields.length > 0 && (
+    <div className="flex items-center gap-2">
+      <Button
+        type="button"
+        onClick={onClickKnowledge}
+        label="Add knowledge"
+        icon={BookOpenIcon}
+        variant="primary"
       />
-      <MCPServerViewsDialog
-        addTools={append}
-        dataVisualization={dataVisualization}
-        mode={dialogMode}
-        onModeChange={setDialogMode}
-        onActionUpdate={handleMcpActionUpdate}
-        actions={fields}
-        getAgentInstructions={getAgentInstructions}
+      <Button
+        type="button"
+        onClick={() => setDialogMode({ type: "add" })}
+        label="Add tools"
+        icon={ListAddIcon}
+        variant="outline"
       />
-    </>
+    </div>
   );
-
-  const headerActions = fields.length > 0 && dropdownButtons;
 
   return (
     <AgentBuilderSectionContainer
@@ -267,7 +265,22 @@ export function AgentBuilderCapabilitiesBlock({
         ) : fields.length === 0 ? (
           <EmptyCTA
             action={
-              <div className="flex items-center gap-2">{dropdownButtons}</div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  onClick={onClickKnowledge}
+                  label="Add knowledge"
+                  icon={BoltIcon}
+                  variant="primary"
+                />
+                <Button
+                  type="button"
+                  onClick={() => setDialogMode({ type: "add" })}
+                  label="Add tools"
+                  icon={ListAddIcon}
+                  variant="outline"
+                />
+              </div>
             }
             className="pb-5"
             style={BACKGROUND_IMAGE_STYLE_PROPS}
@@ -285,6 +298,24 @@ export function AgentBuilderCapabilitiesBlock({
           </CardGrid>
         )}
       </div>
+      <KnowledgeConfigurationSheet
+        onClose={handleCloseSheet}
+        onSave={handleEditSave}
+        action={knowledgeAction?.action ?? null}
+        actions={fields}
+        isEditing={Boolean(knowledgeAction && knowledgeAction.index !== null)}
+        mcpServerViews={mcpServerViewsWithKnowledge}
+        getAgentInstructions={getAgentInstructions}
+      />
+      <MCPServerViewsDialog
+        addTools={append}
+        dataVisualization={dataVisualization}
+        mode={dialogMode}
+        onModeChange={setDialogMode}
+        onActionUpdate={handleMcpActionUpdate}
+        actions={fields}
+        getAgentInstructions={getAgentInstructions}
+      />
     </AgentBuilderSectionContainer>
   );
 }

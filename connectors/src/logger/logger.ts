@@ -63,6 +63,8 @@ const devOptions = {
         "stack",
         "apiErrorHandlerCallStack",
       ],
+      singleLine: true,
+      colorize: true,
     },
   },
 };

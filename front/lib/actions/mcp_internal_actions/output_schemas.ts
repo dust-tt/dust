@@ -452,6 +452,7 @@ export const BrowseResultResourceSchema = z.object({
   requestedUrl: z.string(),
   uri: z.string(), // Browsed url, might differ from the requested url
   text: z.string(),
+  html: z.string().optional(),
   title: z.string().optional(),
   description: z.string().optional(),
   responseCode: z.string(),
@@ -651,6 +652,45 @@ export const isDataSourceNodeListType = (
   return (
     outputBlock.type === "resource" &&
     DataSourceNodeListSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+const RenderedWarehouseNodeSchema = z.object({
+  nodeId: z.string(),
+  title: z.string(),
+  path: z.string(),
+  parentTitle: z.string().nullable(),
+  mimeType: z.string(),
+  hasChildren: z.boolean(),
+  connectorProvider: z.enum(CONNECTOR_PROVIDERS).nullable(),
+  sourceUrl: z.undefined(),
+  lastUpdatedAt: z.undefined(),
+});
+export type RenderedWarehouseNodeType = z.infer<
+  typeof RenderedWarehouseNodeSchema
+>;
+
+export const WAREHOUSES_BROWSE_MIME_TYPE =
+  "application/vnd.dust.tool-output.data-warehouses-browse";
+
+const WarehousesBrowseSchema = z.object({
+  mimeType: z.literal(WAREHOUSES_BROWSE_MIME_TYPE),
+  uri: z.literal(""),
+  text: z.string(),
+  nodeId: z.string().nullable(),
+  data: z.array(RenderedWarehouseNodeSchema),
+  nextPageCursor: z.string().nullable(),
+  resultCount: z.number(),
+});
+
+export type WarehousesBrowseType = z.infer<typeof WarehousesBrowseSchema>;
+
+export const isWarehousesBrowseType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is { type: "resource"; resource: WarehousesBrowseType } => {
+  return (
+    outputBlock.type === "resource" &&
+    WarehousesBrowseSchema.safeParse(outputBlock.resource).success
   );
 };
 

@@ -12,7 +12,8 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { SetStateAction } from "react";
-import {
+import React, {
+  forwardRef,
   useCallback,
   useContext,
   useEffect,
@@ -247,18 +248,37 @@ type VisualizationActionIframeProps =
   | LegacyVisualizationActionIframeProps
   | PublicVisualizationActionIframeProps;
 
-export function VisualizationActionIframe({
-  agentConfigurationId,
-  conversationId,
-  isInDrawer = false,
-  visualization,
-  workspace,
-}: VisualizationActionIframeProps) {
+export const VisualizationActionIframe = forwardRef<
+  HTMLIFrameElement,
+  VisualizationActionIframeProps
+>(function VisualizationActionIframe(
+  {
+    agentConfigurationId,
+    conversationId,
+    isInDrawer = false,
+    visualization,
+    workspace,
+  }: VisualizationActionIframeProps,
+  ref
+) {
   const [contentHeight, setContentHeight] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retryClicked, setRetryClicked] = useState(false);
   const [isCodeDrawerOpen, setCodeDrawerOpened] = useState(false);
   const vizIframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  // Combine internal ref with forwarded ref.
+  const combinedRef = useCallback(
+    (node: HTMLIFrameElement | null) => {
+      vizIframeRef.current = node;
+      if (typeof ref === "function") {
+        ref(node);
+      } else if (ref) {
+        ref.current = node;
+      }
+    },
+    [ref]
+  );
 
   const isErrored = !!errorMessage || retryClicked;
 
@@ -347,7 +367,7 @@ export function VisualizationActionIframe({
                   )}
                 >
                   <iframe
-                    ref={vizIframeRef}
+                    ref={combinedRef}
                     className={cn("h-full w-full", !errorMessage && "min-h-96")}
                     src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?identifier=${visualization.identifier}${isInDrawer ? "&fullHeight=true" : ""}`}
                     sandbox="allow-scripts"
@@ -379,4 +399,4 @@ export function VisualizationActionIframe({
       </div>
     </div>
   );
-}
+});

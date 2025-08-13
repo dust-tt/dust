@@ -39,6 +39,8 @@ function viewTypeToLabel(viewType: ContentNodesViewType) {
       return "Data Sources";
     case "table":
       return "Tables";
+    case "data_warehouse":
+      return "Warehouses";
     case "document":
       return "Data Sources";
   }

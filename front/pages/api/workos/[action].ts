@@ -258,6 +258,9 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       }
 
       params.set("returnTo", returnTo);
+      if (organizationId) {
+        params.set("organizationId", organizationId);
+      }
       res.redirect(
         `${targetRegionInfo.url}/api/workos/login?${params.toString()}`
       );

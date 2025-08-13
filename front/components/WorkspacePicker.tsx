@@ -7,23 +7,58 @@ import {
   DropdownMenuTrigger,
   Label,
 } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
 
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import type { LightWorkspaceType, UserTypeWithWorkspaces } from "@app/types";
 
+interface WorkspacePickerRadioGroupProps {
+  user: UserTypeWithWorkspaces;
+  workspace: LightWorkspaceType;
+}
+
+export const WorkspacePickerRadioGroup = ({
+  user,
+  workspace,
+}: WorkspacePickerRadioGroupProps) => {
+  const { setNavigationSelection } = usePersistedNavigationSelection();
+  const router = useRouter();
+
+  return (
+    <DropdownMenuRadioGroup value={workspace.sId}>
+      {user.organizations &&
+        user.organizations.map((org) => {
+          return (
+            <DropdownMenuRadioItem
+              key={org.id}
+              value={org.externalId || ""}
+              onClick={async () => {
+                if (org.externalId && org.externalId !== workspace.sId) {
+                  await setNavigationSelection({
+                    lastWorkspaceId: org.externalId,
+                  });
+                  await router.push(
+                    `/api/workos/login?organizationId=${org.id}`
+                  );
+                }
+              }}
+            >
+              {org.name}
+            </DropdownMenuRadioItem>
+          );
+        })}
+    </DropdownMenuRadioGroup>
+  );
+};
 interface WorkspacePickerProps {
-  onWorkspaceUpdate: (w: LightWorkspaceType) => void;
   user: UserTypeWithWorkspaces;
   workspace: LightWorkspaceType;
 }
 
 export default function WorkspacePicker({
-  onWorkspaceUpdate,
   user,
   workspace,
 }: WorkspacePickerProps) {
-  const { setNavigationSelection } = usePersistedNavigationSelection();
-
   return (
     <div className="flex flex-row items-center gap-1 px-3 py-2">
       <Label className="text-xs text-muted-foreground">Workspace:</Label>
@@ -37,22 +72,7 @@ export default function WorkspacePicker({
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuRadioGroup value={workspace.sId}>
-            {user.workspaces.map((w) => {
-              return (
-                <DropdownMenuRadioItem
-                  key={w.sId}
-                  onClick={async () => {
-                    await setNavigationSelection({ lastWorkspaceId: w.sId });
-                    void onWorkspaceUpdate(w);
-                  }}
-                  value={w.sId}
-                >
-                  {w.name}
-                </DropdownMenuRadioItem>
-              );
-            })}
-          </DropdownMenuRadioGroup>
+          <WorkspacePickerRadioGroup user={user} workspace={workspace} />
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

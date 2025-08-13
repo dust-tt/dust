@@ -2634,9 +2634,16 @@ export type ValidateActionResponseType = z.infer<
   typeof ValidateActionResponseSchema
 >;
 
+export const ActionApprovalStateSchema = z.enum([
+  "approved",
+  "rejected",
+  "always_approved",
+]);
+export type ActionApprovalStateType = z.infer<typeof ActionApprovalStateSchema>;
+
 export const ValidateActionRequestBodySchema = z.object({
   actionId: z.union([z.string(), z.number()]),
-  approved: z.enum(["approved", "rejected", "always_approved"]),
+  approved: ActionApprovalStateSchema,
 });
 
 export type ValidateActionRequestBodyType = z.infer<
