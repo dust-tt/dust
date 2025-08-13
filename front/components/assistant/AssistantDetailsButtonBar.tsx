@@ -3,6 +3,7 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   ClipboardIcon,
+  DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -17,6 +18,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
@@ -39,8 +41,10 @@ export function AssistantDetailsButtonBar({
   owner,
 }: AssistantDetailsButtonBarProps) {
   const { user } = useUser();
+  const sendNotification = useSendNotification();
 
   const [showDeletionModal, setShowDeletionModal] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const { onOpenChange: onOpenChangeAssistantModal } =
     useURLSheet("assistantDetails");
 
@@ -69,6 +73,50 @@ export function AssistantDetailsButtonBar({
 
   const allowDeletion = agentConfiguration.canEdit || isAdmin(owner);
 
+  const handleExportToYAML = async () => {
+    setIsExporting(true);
+    try {
+      const response = await fetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/export/yaml`
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error?.message || "Failed to export agent to YAML"
+        );
+      }
+
+      const { yamlContent, filename } = await response.json();
+
+      // Create and download the file
+      const blob = new Blob([yamlContent], { type: "application/x-yaml" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      sendNotification({
+        title: "Export successful",
+        description: `Agent "${agentConfiguration.name}" exported to YAML`,
+        type: "success",
+      });
+    } catch (error) {
+      sendNotification({
+        title: "Export failed",
+        description:
+          error instanceof Error ? error.message : "Unknown error occurred",
+        type: "error",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   function AssistantDetailsDropdownMenu() {
     return (
       <>
@@ -93,6 +141,15 @@ export function AssistantDetailsButtonBar({
                 await navigator.clipboard.writeText(agentConfiguration.sId);
               }}
               icon={BracesIcon}
+            />
+            <DropdownMenuItem
+              label={isExporting ? "Exporting..." : "Export to YAML"}
+              onClick={(e) => {
+                e.stopPropagation();
+                void handleExportToYAML();
+              }}
+              icon={DocumentIcon}
+              disabled={isExporting}
             />
             {agentConfiguration.scope !== "global" && (
               <>

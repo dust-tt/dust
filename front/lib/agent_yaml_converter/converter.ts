@@ -395,13 +395,17 @@ export class AgentYAMLConverter {
    * Converts an array of YAML actions to MCP server configurations.
    * Filters out DATA_VISUALIZATION actions which are handled differently.
    * Uses concurrent execution for better performance with bounds checking.
+   * Returns both successful configurations and skipped actions with reasons.
    */
   static async convertYAMLActionsToMCPConfigurations(
     auth: Authenticator,
     yamlActions: AgentYAMLAction[]
   ): Promise<
     Result<
-      PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][],
+      {
+        configurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][];
+        skipped: { action: AgentYAMLAction; reason: string }[];
+      },
       Error
     >
   > {
@@ -414,18 +418,27 @@ export class AgentYAMLConverter {
 
       const mcpConfigurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][] =
         [];
+      const skippedActions: { action: AgentYAMLAction; reason: string }[] = [];
 
-      for (const result of results) {
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        const originalAction = yamlActions[i];
+
         if (result.isErr()) {
-          return result;
-        }
-
-        if (result.value) {
+          // Instead of failing, skip this action and continue
+          skippedActions.push({
+            action: originalAction,
+            reason: result.error.message,
+          });
+        } else if (result.value) {
           mcpConfigurations.push(result.value);
         }
       }
 
-      return new Ok(mcpConfigurations);
+      return new Ok({
+        configurations: mcpConfigurations,
+        skipped: skippedActions,
+      });
     } catch (error) {
       return new Err(normalizeError(error));
     }
