@@ -1,4 +1,5 @@
 import { removeNulls } from "@dust-tt/client";
+import assert from "assert";
 
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import {
@@ -800,6 +801,11 @@ export async function runModelActivity(
         "Model attempted to run an action that is not part of the agent configuration but we'll try to catch it."
       );
 
+      assert(
+        mcpServerView.internalMCPServerId,
+        "Internal MCP server ID is null"
+      );
+
       // Catch-all action.
       action = {
         id: -1,
@@ -821,7 +827,7 @@ export async function runModelActivity(
         inputSchema: {},
         availability: "auto_hidden_builder",
         permission: "never_ask",
-        toolServerId: mcpServerView.sId,
+        toolServerId: mcpServerView.internalMCPServerId,
         mcpServerName: "missing_action_catcher" as InternalMCPServerNameType,
       };
     }
