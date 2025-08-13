@@ -388,29 +388,13 @@ function KnowledgeConfigurationSheetContent({
         : "Choose the data sources to include in your knowledge base",
       icon: undefined,
       content: (
-        <div className="space-y-4">
-          {/* Show the selected processing method when coming from a preset */}
-          {presetActionData && mcpServerView && (
-            <div className="flex items-center gap-2 rounded-lg border border-structure-200 bg-structure-50 p-3">
-              {getAvatar(mcpServerView.server, "sm")}
-              <div className="flex-1">
-                <div className="text-sm font-medium">
-                  {getMcpServerViewDisplayName(mcpServerView)}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {getMcpServerViewDescription(mcpServerView)}
-                </div>
-              </div>
-            </div>
-          )}
-          <ScrollArea>
-            <DataSourceBuilderSelector
-              dataSourceViews={supportedDataSourceViews}
-              owner={owner}
-              viewType={viewType}
-            />
-          </ScrollArea>
-        </div>
+        <ScrollArea>
+          <DataSourceBuilderSelector
+            dataSourceViews={supportedDataSourceViews}
+            owner={owner}
+            viewType={viewType}
+          />
+        </ScrollArea>
       ),
     },
     {
