@@ -11,11 +11,7 @@ import { DataSourceSpaceSelector } from "@app/components/data_source_view/DataSo
 import { useDebounce } from "@app/hooks/useDebounce";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpacesSearch } from "@app/lib/swr/spaces";
-import type {
-  ContentNodesViewType,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { ContentNodesViewType, DataSourceViewType, LightWorkspaceType } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 type DataSourceBuilderSelectorProps = {
@@ -34,7 +30,6 @@ export const DataSourceBuilderSelector = ({
   const currentNavigationEntry =
     navigationHistory[navigationHistory.length - 1];
 
-  // Search state with debouncing
   const {
     inputValue: searchTerm,
     debouncedValue: debouncedSearch,
@@ -67,8 +62,7 @@ export const DataSourceBuilderSelector = ({
       ? currentNavigationEntry.space
       : null;
 
-  // Search API integration - only search when we have a space context
-  const { searchResultNodes, isSearchLoading, isSearchValidating } =
+  const { searchResultNodes, isSearchLoading, isSearchValidating, isSearchError } =
     useSpacesSearch(
       currentSpace && debouncedSearch
         ? {
@@ -96,25 +90,24 @@ export const DataSourceBuilderSelector = ({
 
   const isSearching = debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE;
   const isLoading = isDebouncing || isSearchLoading || isSearchValidating;
+  const hasError = isSearchError;
 
-  // Search mode toggle with transitions
-  const shouldShowSearchResults = isSearching && currentSpace;
+  const shouldShowSearch = isSearching && currentSpace;
   const [isChanging, setIsChanging] = useState(false);
-  const [showSearch, setShowSearch] = useState(shouldShowSearchResults);
-
+  const [showSearch, setShowSearch] = useState(shouldShowSearch);
+  
   // Handle transition when search state changes
   useEffect(() => {
-    if (shouldShowSearchResults !== showSearch) {
+    if (shouldShowSearch !== showSearch) {
       setIsChanging(true);
       const timer = setTimeout(() => {
-        setShowSearch(shouldShowSearchResults);
-        // Small delay to start fade-in after content change
+        setShowSearch(shouldShowSearch);
         setTimeout(() => setIsChanging(false), 50);
       }, 150);
 
       return () => clearTimeout(timer);
     }
-  }, [shouldShowSearchResults, showSearch]);
+  }, [shouldShowSearch, showSearch]);
 
   if (filteredSpaces.length === 0) {
     return <div>No spaces with data sources available.</div>;
@@ -140,8 +133,8 @@ export const DataSourceBuilderSelector = ({
 
       <div
         className={cn(
-          "transform transition-all duration-150",
-          isChanging && "translate-y-1 opacity-0"
+          "transition-opacity duration-150",
+          isChanging && "opacity-0"
         )}
       >
         {showSearch ? (
@@ -149,6 +142,7 @@ export const DataSourceBuilderSelector = ({
             searchResultNodes={searchResultNodes}
             isLoading={isLoading}
             onClearSearch={() => setSearchTerm("")}
+            error={hasError ? new Error("Search failed") : null}
           />
         ) : (
           <DataSourceNavigationView viewType={viewType} />
