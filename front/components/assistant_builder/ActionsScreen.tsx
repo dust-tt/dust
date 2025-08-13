@@ -29,7 +29,7 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import assert from "assert";
 import type { ReactNode } from "react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
 import { DataVisualization } from "@app/components/assistant_builder/actions/DataVisualization";
@@ -38,23 +38,20 @@ import {
   MCPAction,
 } from "@app/components/assistant_builder/actions/MCPAction";
 import { AddToolsDropdown } from "@app/components/assistant_builder/AddToolsDropdown";
+import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
-import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import type {
   AssistantBuilderActionAndDataVisualizationConfiguration,
   AssistantBuilderMCPConfiguration,
   AssistantBuilderMCPConfigurationWithId,
   AssistantBuilderMCPOrVizState,
-  AssistantBuilderPendingAction,
-  AssistantBuilderSetActionType,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import {
   getDefaultMCPServerConfigurationWithId,
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
-import { useBuilderActionInfo } from "@app/components/assistant_builder/useBuilderActionInfo";
 import { useTools } from "@app/components/assistant_builder/useTools";
 import {
   getMcpServerViewDescription,
@@ -69,7 +66,6 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ModelConfigurationType,
-  SpaceType,
   WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
@@ -135,27 +131,25 @@ export type SpaceIdToActions = Record<string, AssistantBuilderMCPOrVizState[]>;
 
 interface ActionScreenProps {
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
   reasoningModels: ModelConfigurationType[];
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
-  setAction: (action: AssistantBuilderSetActionType) => void;
-  pendingAction: AssistantBuilderPendingAction;
+
   isFetchingActions: boolean;
 }
 
 export default function ActionsScreen({
   owner,
-  builderState,
   reasoningModels,
-  setBuilderState,
-  setEdited,
-  setAction,
-  pendingAction,
   isFetchingActions = false,
 }: ActionScreenProps) {
+  const {
+    builderState,
+    setBuilderState,
+    setEdited,
+    setAction,
+    pendingAction,
+    nonGlobalSpacesUsedInActions,
+  } = useAssistantBuilderContext();
+
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
 
   const { hasFeature } = useFeatureFlags({
@@ -163,9 +157,6 @@ export default function ActionsScreen({
   });
 
   const isLegacyConfig = isLegacyAssistantBuilderConfiguration(builderState);
-
-  const { nonGlobalSpacesUsedInActions, spaceIdToActions } =
-    useBuilderActionInfo(builderState);
 
   const {
     mcpServerViewsWithKnowledge,
@@ -192,9 +183,9 @@ export default function ActionsScreen({
       ) => AssistantBuilderMCPOrVizState["configuration"];
     }) {
       setEdited(true);
-      setBuilderState((state) => ({
+      setBuilderState((state: AssistantBuilderState) => ({
         ...state,
-        actions: state.actions.map((action) => {
+        actions: state.actions.map((action: AssistantBuilderMCPOrVizState) => {
           if (action.name === actionName) {
             return {
               ...action,
@@ -241,10 +232,8 @@ export default function ActionsScreen({
     <>
       <NewActionModal
         isOpen={pendingAction.action !== null}
-        builderState={builderState}
         initialAction={pendingAction.action}
         isEditing={!!pendingAction.previousActionName}
-        spacesUsedInActions={spaceIdToActions}
         onSave={(newAction) => {
           setEdited(true);
           if (!pendingAction.action) {
@@ -295,7 +284,6 @@ export default function ActionsScreen({
         }}
         updateAction={updateAction}
         owner={owner}
-        setEdited={setEdited}
         hasFeature={hasFeature}
       />
 
@@ -344,16 +332,11 @@ export default function ActionsScreen({
           {!isLegacyConfig && (
             <div className="flex flex-row gap-2">
               <AddKnowledgeDropdown
-                setAction={setAction}
                 mcpServerViewsWithKnowledge={mcpServerViewsWithKnowledge}
                 isLoading={isMCPServerViewsLoading}
               />
 
               <AddToolsDropdown
-                spacesUsedInActions={spaceIdToActions}
-                setBuilderState={setBuilderState}
-                setEdited={setEdited}
-                setAction={setAction}
                 nonDefaultMCPActions={selectableNonMCPActions}
                 defaultMCPServerViews={selectableDefaultMCPServerViews}
                 nonDefaultMCPServerViews={selectableNonDefaultMCPServerViews}
@@ -415,10 +398,8 @@ export default function ActionsScreen({
 
 type NewActionModalProps = {
   isOpen: boolean;
-  builderState: AssistantBuilderState;
   initialAction: AssistantBuilderMCPOrVizState | null;
   isEditing: boolean;
-  spacesUsedInActions: SpaceIdToActions;
   onSave: (newAction: AssistantBuilderMCPOrVizState) => void;
   onClose: () => void;
   updateAction: (args: {
@@ -428,7 +409,6 @@ type NewActionModalProps = {
     ) => AssistantBuilderMCPOrVizState["configuration"];
   }) => void;
   owner: WorkspaceType;
-  setEdited: (edited: boolean) => void;
   hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
 };
 
@@ -436,14 +416,13 @@ function NewActionModal({
   isOpen,
   initialAction,
   isEditing,
-  spacesUsedInActions,
   onSave,
   onClose,
   owner,
-  setEdited,
-  builderState,
   hasFeature,
 }: NewActionModalProps) {
+  const { builderState } = useAssistantBuilderContext();
+
   const [newActionConfig, setNewActionConfig] =
     useState<AssistantBuilderMCPOrVizState | null>(null);
 
@@ -591,11 +570,8 @@ function NewActionModal({
               <ActionEditor
                 action={newActionConfig}
                 isEditing={isEditing}
-                spacesUsedInActions={spacesUsedInActions}
                 updateAction={updateAction}
                 owner={owner}
-                setEdited={setEdited}
-                builderState={builderState}
                 showInvalidActionNameError={showInvalidActionNameError}
                 showInvalidActionDescError={showInvalidActionDescError}
                 showInvalidActionError={showInvalidActionError}
@@ -708,7 +684,6 @@ interface ActionConfigEditorProps {
   owner: WorkspaceType;
   action: AssistantBuilderMCPOrVizState;
   isEditing: boolean;
-  spacesUsedInActions: SpaceIdToActions;
   updateAction: (args: {
     actionName: string;
     actionDescription: string;
@@ -716,7 +691,6 @@ interface ActionConfigEditorProps {
       old: AssistantBuilderMCPConfigurationWithId["configuration"]
     ) => AssistantBuilderMCPConfigurationWithId["configuration"];
   }) => void;
-  setEdited: (edited: boolean) => void;
   setShowInvalidActionDescError: (
     showInvalidActionDescError: string | null
   ) => void;
@@ -728,36 +702,11 @@ function ActionConfigEditor({
   owner,
   action,
   isEditing,
-  spacesUsedInActions,
   updateAction,
-  setEdited,
   setShowInvalidActionDescError,
   showInvalidActionDescError,
   hasFeature,
 }: ActionConfigEditorProps) {
-  const { spaces } = useSpacesContext();
-
-  // Only allow one space across all actions.
-  const allowedSpaces = useMemo(() => {
-    const isSpaceUsedInOtherActions = (space: SpaceType) => {
-      const actionsUsingSpace = spacesUsedInActions[space.sId] ?? [];
-
-      return actionsUsingSpace.some((a) => {
-        // We use the id to compare actions, as the configuration can change.
-        return a.id !== action.id;
-      });
-    };
-
-    const usedSpacesInOtherActions = spaces.filter(isSpaceUsedInOtherActions);
-    if (usedSpacesInOtherActions.length === 0) {
-      return spaces;
-    }
-
-    return spaces.filter((space) =>
-      usedSpacesInOtherActions.some((s) => s.sId === space.sId)
-    );
-  }, [action, spaces, spacesUsedInActions]);
-
   switch (action.type) {
     case "MCP":
       return (
@@ -765,9 +714,7 @@ function ActionConfigEditor({
           owner={owner}
           action={action}
           isEditing={isEditing}
-          allowedSpaces={allowedSpaces}
           updateAction={updateAction}
-          setEdited={setEdited}
           setShowInvalidActionDescError={setShowInvalidActionDescError}
           showInvalidActionDescError={showInvalidActionDescError}
           hasFeature={hasFeature}
@@ -785,7 +732,6 @@ function ActionConfigEditor({
 interface ActionEditorProps {
   action: AssistantBuilderMCPOrVizState;
   isEditing: boolean;
-  spacesUsedInActions: SpaceIdToActions;
   showInvalidActionNameError: string | null;
   showInvalidActionDescError: string | null;
   showInvalidActionError: string | null;
@@ -799,15 +745,12 @@ interface ActionEditorProps {
     ) => AssistantBuilderMCPConfiguration["configuration"];
   }) => void;
   owner: WorkspaceType;
-  setEdited: (edited: boolean) => void;
-  builderState: AssistantBuilderState;
   hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
 }
 
 function ActionEditor({
   action,
   isEditing,
-  spacesUsedInActions,
   showInvalidActionNameError,
   showInvalidActionDescError,
   showInvalidActionError,
@@ -815,7 +758,6 @@ function ActionEditor({
   setShowInvalidActionDescError,
   updateAction,
   owner,
-  setEdited,
   hasFeature,
 }: ActionEditorProps) {
   const { mcpServerViews } = useMCPServerViewsContext();
@@ -896,9 +838,7 @@ function ActionEditor({
           owner={owner}
           action={action}
           isEditing={isEditing}
-          spacesUsedInActions={spacesUsedInActions}
           updateAction={updateAction}
-          setEdited={setEdited}
           setShowInvalidActionDescError={setShowInvalidActionDescError}
           showInvalidActionDescError={showInvalidActionDescError}
           hasFeature={hasFeature}
@@ -915,15 +855,15 @@ function ActionEditor({
 
 interface AddKnowledgeDropdownProps {
   mcpServerViewsWithKnowledge: (MCPServerViewType & { label: string })[];
-  setAction: (action: AssistantBuilderSetActionType) => void;
+
   isLoading: boolean;
 }
 
 function AddKnowledgeDropdown({
-  setAction,
   mcpServerViewsWithKnowledge,
   isLoading,
 }: AddKnowledgeDropdownProps) {
+  const { setAction } = useAssistantBuilderContext();
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>

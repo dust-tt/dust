@@ -28,6 +28,7 @@ import {
   buildSelectedEmojiType,
   makeUrlForEmojiAndBackground,
 } from "@app/components/assistant_builder/avatar_picker/utils";
+import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
@@ -35,8 +36,6 @@ import {
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
 import { TagsSelector } from "@app/components/assistant_builder/TagsSelector";
-import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
-import { useBuilderActionInfo } from "@app/components/assistant_builder/useBuilderActionInfo";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MembersList } from "@app/components/members/MembersList";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -150,12 +149,7 @@ type SettingsScreenProps = {
   owner: WorkspaceType;
   agentConfigurationId: string | null;
   baseUrl: string;
-  builderState: AssistantBuilderState;
   initialHandle: string | undefined;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
   assistantHandleError: string | null;
   descriptionError: string | null;
   slackChannelSelected: SlackChannel[];
@@ -166,10 +160,7 @@ type SettingsScreenProps = {
 
 export default function SettingsScreen({
   owner,
-  builderState,
   initialHandle,
-  setBuilderState,
-  setEdited,
   assistantHandleError,
   descriptionError,
   slackChannelSelected,
@@ -177,6 +168,13 @@ export default function SettingsScreen({
   setSelectedSlackChannels,
   currentUser,
 }: SettingsScreenProps) {
+  const {
+    nonGlobalSpacesUsedInActions,
+    builderState,
+    setBuilderState,
+    setEdited,
+  } = useAssistantBuilderContext();
+
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
@@ -201,8 +199,6 @@ export default function SettingsScreen({
       setNameSuggestions(nameSuggestions.value);
     }
   }, [owner, builderState.instructions, builderState.description]);
-
-  const { nonGlobalSpacesUsedInActions } = useBuilderActionInfo(builderState);
 
   const updateEmojiFromSuggestions = useCallback(async () => {
     let avatarUrl: string | null = null;
@@ -521,12 +517,7 @@ export default function SettingsScreen({
             </div>
           </div>
         </div>
-        <TagsSection
-          owner={owner}
-          builderState={builderState}
-          setBuilderState={setBuilderState}
-          setEdited={setEdited}
-        />
+        <TagsSection owner={owner} />
 
         <div className="flex flex-row gap-4">
           <div className="flex flex-[1_0_0] flex-col gap-2">
@@ -624,9 +615,6 @@ export default function SettingsScreen({
           currentUser={currentUser}
           isVisible={isVisible}
           owner={owner}
-          builderState={builderState}
-          setBuilderState={setBuilderState}
-          setEdited={setEdited}
         />
       </div>
     </>
@@ -753,20 +741,16 @@ const onRowClick = () => {};
 function EditorsMembersList({
   currentUser,
   owner,
-  builderState,
-  setBuilderState,
-  setEdited,
   isVisible,
 }: {
   currentUser: UserType | null;
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
+
   isVisible: boolean;
 }) {
+  const { builderState, setBuilderState, setEdited } =
+    useAssistantBuilderContext();
+
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -847,19 +831,9 @@ function EditorsMembersList({
   );
 }
 
-function TagsSection({
-  owner,
-  builderState,
-  setBuilderState,
-  setEdited,
-}: {
-  owner: WorkspaceType;
-  builderState: AssistantBuilderState;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
-}) {
+function TagsSection({ owner }: { owner: WorkspaceType }) {
+  const { builderState } = useAssistantBuilderContext();
+
   const { tags } = useTags({ owner });
   const [isTagsSuggestionLoading, setTagsSuggestionsLoading] = useState(false);
 
@@ -912,19 +886,11 @@ function TagsSection({
       <Page.SectionHeader title="Tags" />
       {tagsSuggestions.status === "ok" &&
         filteredTagsSuggestions.length > 0 && (
-          <TagsSuggestions
-            builderState={builderState}
-            setBuilderState={setBuilderState}
-            setEdited={setEdited}
-            tagsSuggestions={filteredTagsSuggestions}
-          />
+          <TagsSuggestions tagsSuggestions={filteredTagsSuggestions} />
         )}
       <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
         <TagsSelector
           owner={owner}
-          builderState={builderState}
-          setBuilderState={setBuilderState}
-          setEdited={setEdited}
           suggestionButton={
             <Button
               label="Suggest"
@@ -941,19 +907,10 @@ function TagsSection({
   );
 }
 
-function TagsSuggestions({
-  builderState,
-  setBuilderState,
-  setEdited,
-  tagsSuggestions,
-}: {
-  builderState: AssistantBuilderState;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
-  tagsSuggestions: TagType[];
-}) {
+function TagsSuggestions({ tagsSuggestions }: { tagsSuggestions: TagType[] }) {
+  const { builderState, setBuilderState, setEdited } =
+    useAssistantBuilderContext();
+
   const addTag = async (tag: TagType) => {
     const isTagInAssistant =
       builderState.tags.findIndex((t) => t.sId === tag.sId) !== -1;

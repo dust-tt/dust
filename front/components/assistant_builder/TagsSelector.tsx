@@ -13,7 +13,7 @@ import {
 import { useCallback, useMemo, useState } from "react";
 
 import { TagCreationDialog } from "@app/components/agent_builder/settings/TagCreationDialog";
-import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import { useTags } from "@app/lib/swr/tags";
 import { tagsSorter } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
@@ -22,19 +22,14 @@ import type { TagType } from "@app/types/tag";
 
 export const TagsSelector = ({
   owner,
-  builderState,
-  setBuilderState,
-  setEdited,
   suggestionButton,
 }: {
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
   suggestionButton: JSX.Element;
 }) => {
+  const { builderState, setBuilderState, setEdited } =
+    useAssistantBuilderContext();
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchText, setSearchText] = useState("");

@@ -24,10 +24,10 @@ import {
 } from "@app/components/assistant/conversation/input_bar/editor/extensions/AgentBuilderInstructionsAutoCompleteExtension";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
+import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import { InstructionDiffExtension } from "@app/components/assistant_builder/instructions/InstructionDiffExtension";
 import { InstructionHistory } from "@app/components/assistant_builder/instructions/InstructionsHistory";
 import { InstructionSuggestions } from "@app/components/assistant_builder/instructions/InstructionSuggestions";
-import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
@@ -73,9 +73,7 @@ const BASE_EXTENSIONS: Extensions = [
 
 export function InstructionScreen({
   owner,
-  builderState,
-  setBuilderState,
-  setEdited,
+
   resetAt,
   isUsingTemplate,
   instructionsError,
@@ -87,11 +85,6 @@ export function InstructionScreen({
   setIsInstructionDiffMode,
 }: {
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
-  setBuilderState: (
-    statefn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
   resetAt: number | null;
   isUsingTemplate: boolean;
   instructionsError: string | null;
@@ -102,6 +95,9 @@ export function InstructionScreen({
   isInstructionDiffMode: boolean;
   setIsInstructionDiffMode: (isDiffMode: boolean) => void;
 }) {
+  const { builderState, setBuilderState, setEdited } =
+    useAssistantBuilderContext();
+
   const { metadata, isMetadataLoading } = useUserMetadata(
     TEMPLATE_CALLOUT_METADATA_KEY
   );
