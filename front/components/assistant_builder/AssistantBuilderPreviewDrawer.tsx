@@ -29,15 +29,12 @@ import { ConversationsNavigationProvider } from "@app/components/assistant/conve
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import {
   usePreviewAssistant,
   useTryAssistantCore,
 } from "@app/components/assistant_builder/TryAssistant";
-import type {
-  AssistantBuilderSetActionType,
-  AssistantBuilderState,
-  BuilderScreen,
-} from "@app/components/assistant_builder/types";
+import type { BuilderScreen } from "@app/components/assistant_builder/types";
 import { getDefaultMCPServerConfigurationWithId } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
@@ -61,9 +58,7 @@ interface AssistantBuilderRightPanelProps {
   resetToTemplateInstructions: () => Promise<void>;
   resetToTemplateActions: () => Promise<void>;
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
   agentConfiguration: LightAgentConfigurationType | null;
-  setAction: (action: AssistantBuilderSetActionType) => void;
   mcpServerViews: MCPServerViewType[];
 }
 
@@ -74,11 +69,10 @@ export default function AssistantBuilderRightPanel({
   resetToTemplateInstructions,
   resetToTemplateActions,
   owner,
-  builderState,
   agentConfiguration,
-  setAction,
   mcpServerViews,
 }: AssistantBuilderRightPanelProps) {
+  const { builderState, setAction } = useAssistantBuilderContext();
   const [rightPanelTab, setRightPanelTab] =
     useState<AssistantBuilderRightPanelTabType>(
       template ? "Template" : "Preview"

@@ -13,6 +13,7 @@ import { JsonSchemaConfigurationSection } from "@app/components/assistant_builde
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
 import { DataDescription } from "@app/components/assistant_builder/actions/DataDescription";
+import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import type {
   AssistantBuilderMCPConfiguration,
@@ -28,7 +29,6 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   LightWorkspaceType,
   Result,
-  SpaceType,
   TimeFrame,
   WhitelistableFeature,
   WorkspaceType,
@@ -78,7 +78,6 @@ function NoActionAvailable({ owner }: NoActionAvailableProps) {
 
 interface MCPActionProps {
   owner: LightWorkspaceType;
-  allowedSpaces: SpaceType[];
   hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
   action: AssistantBuilderMCPOrVizState;
   isEditing: boolean;
@@ -89,7 +88,7 @@ interface MCPActionProps {
       old: AssistantBuilderMCPConfiguration["configuration"]
     ) => AssistantBuilderMCPConfiguration["configuration"];
   }) => void;
-  setEdited: (edited: boolean) => void;
+
   setShowInvalidActionDescError: (
     showInvalidActionDescError: string | null
   ) => void;
@@ -100,14 +99,15 @@ interface MCPActionProps {
 // please use the `ConfigurationSectionContainer` component and wrap the section in it.
 export function MCPAction({
   owner,
-  allowedSpaces,
   hasFeature,
   action,
   updateAction,
-  setEdited,
   setShowInvalidActionDescError,
   showInvalidActionDescError,
 }: MCPActionProps) {
+  const { setEdited, getAllowedSpaces } = useAssistantBuilderContext();
+  const allowedSpaces = getAllowedSpaces(action);
+
   const actionConfiguration =
     action.configuration as AssistantBuilderMCPServerConfiguration;
 
@@ -301,7 +301,6 @@ export function MCPAction({
           instructions={action.description}
           description={action.description}
           sectionConfigurationDescription="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
-          setEdited={setEdited}
           onConfigUpdate={({ jsonSchema, _jsonSchemaString }) => {
             handleConfigUpdate((old) => ({
               ...old,

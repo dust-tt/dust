@@ -21,7 +21,6 @@ import type {
   DataSourceViewSelectionConfigurations,
   DustAppRunConfigurationType,
   LightAgentConfigurationType,
-  PlanType,
   ReasoningModelConfigurationType,
   SubscriptionType,
   SupportedModel,
@@ -294,12 +293,10 @@ export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 type AssistantBuilderPropsBase<T> = {
   agentConfiguration: T | null;
   baseUrl: string;
-  defaultIsEdited?: boolean;
   defaultTemplate: FetchAssistantTemplateResponse | null;
   flow: BuilderFlow;
   initialBuilderState: AssistantBuilderInitialState | null;
   owner: WorkspaceType;
-  plan: PlanType;
   subscription: SubscriptionType;
   duplicateAgentId?: string | null;
 };
