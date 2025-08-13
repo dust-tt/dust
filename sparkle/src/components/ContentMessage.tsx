@@ -153,7 +153,7 @@ function ContentMessage({
         </div>
       )}
       {children && <div className={textVariants({ variant })}>{children}</div>}
-      // TODO(2025-08-13 aubin): Allow passing a ContentMessageAction here.
+      {/* TODO(2025-08-13 aubin): Allow passing a ContentMessageAction here. */}
     </div>
   );
 }
@@ -202,7 +202,7 @@ function ContentMessageInline({
       <div className={cn("s-flex-1", textVariants({ variant }))}>
         {title && <span className={titleVariants({ variant })}>{title}</span>}
         {title && contentChildren.length > 0 && ": "}
-        {contentChildren.length > 0 && <span>{contentChildren}</span>}
+        {contentChildren}
       </div>
       {actionChild}
     </div>
