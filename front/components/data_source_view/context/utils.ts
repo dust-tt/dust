@@ -8,6 +8,7 @@ import type {
 } from "@app/components/data_source_view/context/types";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { CATEGORY_DETAILS, getSpaceIcon } from "@app/lib/spaces";
 import type {
   DataSourceViewCategoryWithoutApps,
@@ -238,7 +239,7 @@ export function navigationHistoryEntryTitle(
     case "category":
       return CATEGORY_DETAILS[entry.category].label;
     case "data_source":
-      return entry.dataSourceView.dataSource.name;
+      return getDataSourceNameFromView(entry.dataSourceView);
     case "node":
       return entry.node.title;
     default:
