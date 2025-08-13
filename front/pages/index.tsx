@@ -101,7 +101,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       const targetRegionInfo = multiRegionsConfig.getOtherRegionInfo();
       return {
         redirect: {
-          destination: `${targetRegionInfo.url}/w/${session.organizationId}`,
+          destination: targetRegionInfo.url,
           permanent: false,
         },
       };
