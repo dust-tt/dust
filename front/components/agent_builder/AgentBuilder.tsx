@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -25,7 +25,10 @@ import { useEditors } from "@app/lib/swr/editors";
 import { emptyArray } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type { LightAgentConfigurationType } from "@app/types";
+import type {
+  LightAgentConfigurationType,
+  TemplateActionPreset,
+} from "@app/types";
 
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
@@ -149,6 +152,9 @@ export default function AgentBuilder({
     ? `Edit agent @${agentConfiguration.name}`
     : "Create new agent";
 
+  // State to pass preset action to capabilities block
+  const [presetActionToAdd, setPresetActionToAdd] = useState<TemplateActionPreset | null>(null);
+
   return (
     <FormProvider form={form}>
       <AgentBuilderLayout
@@ -165,6 +171,8 @@ export default function AgentBuilder({
             }}
             agentConfigurationId={agentConfiguration?.sId || null}
             isActionsLoading={isActionsLoading}
+            presetActionToAdd={presetActionToAdd}
+            onPresetActionHandled={() => setPresetActionToAdd(null)}
           />
         }
         rightPanel={
@@ -172,6 +180,7 @@ export default function AgentBuilder({
             <AgentBuilderRightPanel
               agentConfigurationSId={agentConfiguration?.sId}
               assistantTemplate={assistantTemplate}
+              onAddPresetAction={setPresetActionToAdd}
             />
           </ConversationSidePanelProvider>
         }

@@ -95,6 +95,7 @@ interface MCPServerViewsDialogProps {
   onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
   actions: AgentBuilderAction[];
   getAgentInstructions: () => string;
+  presetActionData?: any | null;
 }
 
 export function MCPServerViewsDialog({
@@ -105,6 +106,7 @@ export function MCPServerViewsDialog({
   onActionUpdate,
   actions,
   getAgentInstructions,
+  presetActionData,
 }: MCPServerViewsDialogProps) {
   const { owner } = useAgentBuilderContext();
   const { spaces } = useSpaces({ workspaceId: owner.sId });
@@ -225,6 +227,7 @@ export function MCPServerViewsDialog({
     }
     setIsOpen(!!mode);
   }, [mode, allMcpServerViews, isEditMode, isInfoMode]);
+
 
   const toggleToolSelection = (tool: SelectedTool): void => {
     setSelectedToolsInDialog((prev) => {

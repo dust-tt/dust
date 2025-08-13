@@ -8,12 +8,16 @@ import { AgentAccessPublicationDialog } from "@app/components/agent_builder/sett
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
 import { ConfirmContext } from "@app/components/Confirm";
 
+import type { TemplateActionPreset } from "@app/types";
+
 interface AgentBuilderLeftPanelProps {
   title: string;
   onCancel: () => void;
   agentConfigurationId: string | null;
   saveButtonProps?: ButtonProps;
   isActionsLoading: boolean;
+  presetActionToAdd?: TemplateActionPreset | null;
+  onPresetActionHandled?: () => void;
 }
 
 export function AgentBuilderLeftPanel({
@@ -22,6 +26,8 @@ export function AgentBuilderLeftPanel({
   agentConfigurationId,
   saveButtonProps,
   isActionsLoading,
+  presetActionToAdd,
+  onPresetActionHandled,
 }: AgentBuilderLeftPanelProps) {
   const confirm = React.useContext(ConfirmContext);
 
@@ -51,7 +57,11 @@ export function AgentBuilderLeftPanel({
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
-          <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
+          <AgentBuilderCapabilitiesBlock 
+            isActionsLoading={isActionsLoading}
+            presetActionToAdd={presetActionToAdd}
+            onPresetActionHandled={onPresetActionHandled}
+          />
           <AgentBuilderSettingsBlock
             isSettingBlocksOpen={!agentConfigurationId}
           />
