@@ -30,14 +30,15 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
         case "platform_actions":
           return {
             user_scopes: [
-              "chat:write",
-              "search:read",
-              "search:read.public",
-              "search:read.private",
-              "users:read",
               "channels:read",
+              "chat:write",
+              "groups:read",
               "reactions:read",
               "reactions:write",
+              "search:read.private",
+              "search:read.public",
+              "search:read",
+              "users:read",
             ],
             bot_scopes: [],
           };
