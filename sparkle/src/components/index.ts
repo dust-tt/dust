@@ -1,4 +1,5 @@
 export { AnimatedText } from "./AnimatedText";
+export { AnnouncementCard } from "./AnnouncementCard";
 export { AspectRatio } from "./AspectRatio";
 export {
   AssistantCard,

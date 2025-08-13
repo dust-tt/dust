@@ -1,0 +1,124 @@
+import type { Meta, StoryObj } from "@storybook/react";
+import React, { useState } from "react";
+
+import { AnnouncementCard } from "../components/AnnouncementCard";
+
+const meta: Meta<typeof AnnouncementCard> = {
+  title: "Components/AnnouncementCard",
+  component: AnnouncementCard,
+  parameters: {
+    layout: "centered",
+    docs: {
+      description: {
+        component:
+          "A dismissible announcement card component designed for sidebar usage, featuring an optional image section and a new feature announcement section.",
+      },
+    },
+  },
+  argTypes: {
+    variant: {
+      control: { type: "select" },
+      options: ["default", "compact"],
+      description: "The visual variant of the card",
+    },
+    haveImage: {
+      control: { type: "boolean" },
+      description: "Whether to show an image in the top section",
+    },
+    imageSrc: {
+      control: { type: "text" },
+      description: "URL of the image to display in the top section",
+      if: { arg: "haveImage", truthy: true },
+    },
+    announcementTitle: {
+      control: { type: "text" },
+      description: "Title for the announcement section",
+    },
+    announcementMessage: {
+      control: { type: "text" },
+      description: "The main announcement message",
+    },
+    dismissible: {
+      control: { type: "boolean" },
+      description: "Whether the card can be dismissed",
+    },
+    onDismiss: {
+      description: "Callback when dismiss button is clicked",
+    },
+  },
+  args: {
+    variant: "default",
+    haveImage: true,
+    imageSrc:
+      "https://blog.dust.tt/content/images/size/w2000/2025/05/cover.jpg",
+    announcementTitle: "New on Dust",
+    announcementMessage: "Create interactive content with Dust Shareables",
+    dismissible: true,
+    onDismiss: () => {
+      alert("Dismiss clicked!");
+    },
+  },
+};
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+  args: {},
+};
+
+export const WithoutImage: Story = {
+  args: {
+    haveImage: false,
+    imageSrc: undefined,
+  },
+};
+
+export const Compact: Story = {
+  args: {
+    variant: "compact",
+  },
+};
+
+export const NonDismissible: Story = {
+  args: {
+    dismissible: false,
+  },
+};
+
+export const InSidebar: Story = {
+  render: (args) => {
+    const [isVisible, setIsVisible] = useState(true);
+
+    if (!isVisible) {
+      return (
+        <div className="s-flex s-h-64 s-w-80 s-flex-col s-items-center s-justify-center s-rounded-lg s-border s-border-dashed s-border-border s-bg-muted-background dark:s-border-border-night dark:s-bg-muted-background-night">
+          <p className="s-text-muted-foreground dark:s-text-muted-foreground-night">
+            Announcement dismissed
+          </p>
+          <button
+            onClick={() => setIsVisible(true)}
+            className="s-mt-2 s-text-primary hover:s-underline dark:s-text-primary-night"
+          >
+            Show again
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="s-w-80">
+        <AnnouncementCard
+          {...args}
+          onDismiss={() => setIsVisible(false)}
+          announcementTitle={args.announcementTitle || "New on Dust"}
+          announcementMessage={
+            args.announcementMessage ||
+            "Create interactive content with Dust Shareables"
+          }
+        />
+      </div>
+    );
+  },
+  args: {},
+};
