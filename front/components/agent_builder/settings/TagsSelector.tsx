@@ -124,6 +124,9 @@ export const TagsSelector = ({
                         onRemoveTag(tag.sId);
                       }
                     }}
+                    onSelect={(event) => {
+                      event.preventDefault();
+                    }}
                   />
                 ))}
               </div>
