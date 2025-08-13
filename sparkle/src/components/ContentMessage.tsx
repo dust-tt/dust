@@ -23,7 +23,7 @@ const CONTENT_MESSAGE_SIZES = ["sm", "md", "lg"] as const;
 
 type ContentMessageSizeType = (typeof CONTENT_MESSAGE_SIZES)[number];
 
-const contentMessageVariants = cva("s-border", {
+const contentMessageVariants = cva("s-border s-rounded-xl s-flex ", {
   variants: {
     variant: {
       primary:
@@ -47,8 +47,8 @@ const contentMessageVariants = cva("s-border", {
       sm: "s-max-w-[380px]",
     },
     inline: {
-      true: "s-flex s-items-center s-gap-3 s-rounded-xl s-py-3 s-px-4",
-      false: "s-flex s-flex-col s-gap-1 s-rounded-xl s-py-4 s-px-5",
+      true: "s-items-center s-gap-3 s-py-3 s-px-4",
+      false: "s-flex-col s-gap-1  s-py-4 s-px-5",
     },
   },
   defaultVariants: {
