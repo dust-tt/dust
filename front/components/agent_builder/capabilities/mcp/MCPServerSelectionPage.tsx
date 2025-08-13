@@ -1,11 +1,4 @@
-import {
-  Avatar,
-  BookOpenIcon,
-  Card,
-  CardGrid,
-  Chip,
-  Icon,
-} from "@dust-tt/sparkle";
+import { BookOpenIcon, Card, CardGrid, Chip, Icon } from "@dust-tt/sparkle";
 import { ActionIcons } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { PlusIcon } from "@dust-tt/sparkle";
@@ -44,23 +37,27 @@ function DataVisualizationCard({
       className="h-32"
     >
       <div className="flex w-full flex-col justify-between gap-2 text-sm">
-        <div className="mb-2 flex h-7 items-center gap-2">
-          <Avatar
-            icon={DATA_VISUALIZATION_SPECIFICATION.dropDownIcon}
-            size="sm"
-          />
-          <span className="text-sm font-medium">{dataVisualization.label}</span>
-          <div
-            className={cn(
-              FADE_TRANSITION_CLASSES,
-              isSelected ? "opacity-100" : "opacity-0"
-            )}
-          >
-            {isSelected && <Chip size="xs" color="green" label="ADDED" />}
+        <div>
+          <div className="mb-2 flex h-7 items-center gap-2">
+            <Icon
+              visual={DATA_VISUALIZATION_SPECIFICATION.dropDownIcon}
+              size="sm"
+            />
+            <span className="text-sm font-medium">
+              {dataVisualization.label}
+            </span>
+            <div
+              className={cn(
+                FADE_TRANSITION_CLASSES,
+                isSelected ? "opacity-100" : "opacity-0"
+              )}
+            >
+              {isSelected && <Chip size="xs" color="green" label="ADDED" />}
+            </div>
           </div>
-        </div>
-        <div className="line-clamp-2 w-full text-xs text-gray-600">
-          {dataVisualization.description}
+          <div className="line-clamp-2 w-full text-xs text-gray-600">
+            {dataVisualization.description}
+          </div>
         </div>
         <div
           className={cn(
