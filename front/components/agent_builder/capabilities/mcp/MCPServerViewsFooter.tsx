@@ -2,6 +2,10 @@ import { Chip } from "@dust-tt/sparkle";
 import React from "react";
 
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
+import {
+  getSelectedToolIcon,
+  getSelectedToolLabel,
+} from "@app/components/agent_builder/capabilities/mcp/utils/toolDisplayUtils";
 import type { ActionSpecification } from "@app/components/agent_builder/types";
 
 interface MCPServerViewsFooterProps {
@@ -24,13 +28,8 @@ export function MCPServerViewsFooter({
             {selectedToolsInDialog.map((tool, index) => (
               <Chip
                 key={index}
-                label={
-                  tool.type === "DATA_VISUALIZATION"
-                    ? dataVisualization?.label || ""
-                    : tool.type === "MCP"
-                      ? tool.view.name || tool.view.server.name
-                      : ""
-                }
+                icon={getSelectedToolIcon(tool)}
+                label={getSelectedToolLabel(tool, dataVisualization)}
                 onRemove={
                   onRemoveSelectedTool
                     ? () => onRemoveSelectedTool(tool)
