@@ -184,13 +184,19 @@ function ContentMessageInline({
 }: ContentMessageInlineProps) {
   const childrenArray = React.Children.toArray(children);
 
-  const actionChild = childrenArray.find(
-    (child) =>
-      React.isValidElement(child) && child.type === ContentMessageAction
-  );
-  const contentChildren = childrenArray.filter(
-    (child) =>
-      !React.isValidElement(child) || child.type !== ContentMessageAction
+  const { actionChilds, contentChildren } = childrenArray.reduce(
+    ({ actionChilds, contentChildren }, child) => {
+      if (React.isValidElement(child) && child.type === ContentMessageAction) {
+        actionChilds.push(child);
+      } else {
+        contentChildren.push(child);
+      }
+      return { actionChilds, contentChildren };
+    },
+    {
+      actionChilds: [] as React.ReactNode[],
+      contentChildren: [] as React.ReactNode[],
+    }
   );
 
   return (
@@ -203,7 +209,7 @@ function ContentMessageInline({
         {title && contentChildren.length > 0 && ": "}
         {contentChildren}
       </div>
-      {actionChild}
+      {actionChilds}
     </div>
   );
 }
