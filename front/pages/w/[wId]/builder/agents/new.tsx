@@ -130,7 +130,11 @@ export default function CreateAgent({
   return (
     <AgentBuilderProvider owner={owner} user={user}>
       <AgentBuilder
-        agentConfiguration={agentConfiguration}
+        agentConfiguration={
+          agentConfiguration && "sId" in agentConfiguration
+            ? agentConfiguration
+            : undefined
+        }
         assistantTemplate={assistantTemplate}
       />
     </AgentBuilderProvider>
