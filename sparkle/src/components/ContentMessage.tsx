@@ -24,7 +24,6 @@ const CONTENT_MESSAGE_SIZES = ["sm", "md", "lg"] as const;
 
 type ContentMessageSizeType = (typeof CONTENT_MESSAGE_SIZES)[number];
 
-// Shared variant styles
 const sharedVariantStyles = {
   primary:
     "s-bg-muted-background dark:s-bg-muted-background-night s-border-border dark:s-border-border-night",
