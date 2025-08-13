@@ -6,7 +6,6 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -27,8 +26,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<ValidateActionResponse>>,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
   const { cId, mId } = req.query;
   if (typeof cId !== "string" || typeof mId !== "string") {
     return apiError(req, res, {
@@ -69,36 +66,23 @@ async function handler(
 
   const { actionId, approved } = parseResult.data;
 
-  try {
-    const result = await validateAction({
-      workspaceId: owner.sId,
-      conversationId: cId,
-      messageId: mId,
-      actionId,
-      approved,
-    });
+  const result = await validateAction(auth, conversationRes.value, {
+    actionId,
+    approvalState: approved,
+    messageId: mId,
+  });
 
-    res.status(200).json(result);
-  } catch (error) {
-    logger.error(
-      {
-        workspaceId: owner.sId,
-        conversationId: cId,
-        messageId: mId,
-        actionId,
-        error,
-      },
-      "Error publishing action validation event"
-    );
-
+  if (result.isErr()) {
     return apiError(req, res, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
-        message: "Failed to publish action validation event",
+        message: "Failed to validate action",
       },
     });
   }
+
+  res.status(200).json({ success: true });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

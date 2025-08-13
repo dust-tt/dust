@@ -1,19 +1,20 @@
 import {
   Checkbox,
   DataTable,
-  Icon,
   ScrollableDataTable,
   Spinner,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import React, { useMemo } from "react";
+import React, { useContext, useMemo } from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { ConfirmContext } from "@app/components/Confirm";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { WorkspaceType } from "@app/types";
 import type {
   DataSourceViewCategory,
   DataSourceViewCategoryWithoutApps,
@@ -28,37 +29,28 @@ import {
 } from "@app/types";
 
 interface CategoryRowData {
-  id: string;
+  id: DataSourceViewCategoryWithoutApps;
   title: string;
   onClick: () => void;
-  icon: React.JSX.Element;
+  icon: React.ComponentType;
 }
 
 interface DataSourceCategoryBrowserProps {
-  owner: WorkspaceType;
   space: SpaceType;
-  onSelectCategory: (category: DataSourceViewCategoryWithoutApps) => void;
 }
 
 export function DataSourceCategoryBrowser({
-  owner,
   space,
-  onSelectCategory,
 }: DataSourceCategoryBrowserProps) {
+  const { owner } = useAgentBuilderContext();
   const { spaceInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
-  const {
-    selectNode,
-    selectCurrentNavigationEntry,
-    removeNode,
-    removeCurrentNavigationEntry,
-    isRowSelected,
-    isRowSelectable,
-    isCurrentNavigationEntrySelected,
-  } = useDataSourceBuilderContext();
+  const { setCategoryEntry, removeNode, isRowSelected } =
+    useDataSourceBuilderContext();
 
+  const confirm = useContext(ConfirmContext);
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -67,12 +59,12 @@ export function DataSourceCategoryBrowser({
     if (!isSpaceInfoLoading && spaceInfo) {
       return getCategoryRows(spaceInfo.categories, hasFeature, (category) => {
         if (isDataSourceViewCategoryWithoutApps(category)) {
-          onSelectCategory(category);
+          setCategoryEntry(category);
         }
       });
     }
     return emptyArray<CategoryRowData>();
-  }, [hasFeature, isSpaceInfoLoading, onSelectCategory, spaceInfo]);
+  }, [hasFeature, isSpaceInfoLoading, setCategoryEntry, spaceInfo]);
 
   const columns: ColumnDef<CategoryRowData>[] = useMemo(
     () => [
@@ -80,48 +72,45 @@ export function DataSourceCategoryBrowser({
         id: "select",
         enableSorting: false,
         enableHiding: false,
-        header: () => (
-          <Checkbox
-            size="xs"
-            checked={isCurrentNavigationEntrySelected()}
-            disabled={!isRowSelectable()}
-            onClick={(event) => event.stopPropagation()}
-            onCheckedChange={(state) => {
-              if (state === "indeterminate") {
-                removeCurrentNavigationEntry();
-                return;
-              }
+        cell: ({ row }) => {
+          const selectionState = isRowSelected(row.original.id);
 
-              if (state) {
-                selectCurrentNavigationEntry();
-              } else {
-                removeCurrentNavigationEntry();
-              }
-            }}
-          />
-        ),
-        cell: ({ row }) => (
-          <div className="flex h-full items-center">
-            <Checkbox
-              size="xs"
-              checked={isRowSelected(row.original.id)}
-              disabled={!isRowSelectable(row.original.id)}
-              onClick={(event) => event.stopPropagation()}
-              onCheckedChange={(state) => {
-                if (state === "indeterminate") {
-                  removeNode(row.original.id);
-                  return;
+          return (
+            <div className="flex h-full items-center">
+              <Tooltip
+                trigger={
+                  <Checkbox
+                    size="xs"
+                    checked={selectionState}
+                    disabled={selectionState !== "partial"}
+                    onClick={(event) => event.stopPropagation()}
+                    onCheckedChange={async () => {
+                      if (selectionState === "partial") {
+                        const confirmed = await confirm({
+                          title: "Are you sure?",
+                          message: `Do you want to unselect all of "${row.original.title}"`,
+                          validateLabel: "Unselect all",
+                          validateVariant: "warning",
+                        });
+                        if (confirmed) {
+                          removeNode({
+                            type: "category",
+                            category: row.original.id,
+                          });
+                        }
+                      }
+                    }}
+                  />
                 }
-
-                if (state) {
-                  selectNode(row.original.id);
-                } else {
-                  removeNode(row.original.id);
+                label={
+                  selectionState === "partial"
+                    ? `Unselect all of "${row.original.title}"`
+                    : "You cannot select a whole category"
                 }
-              }}
-            />
-          </div>
-        ),
+              />
+            </div>
+          );
+        },
         meta: {
           sizeRatio: 5,
         },
@@ -131,11 +120,8 @@ export function DataSourceCategoryBrowser({
         id: "name",
         header: "Name",
         cell: ({ row }) => (
-          <DataTable.CellContent>
-            <span className="flex items-center gap-2 truncate text-ellipsis font-semibold">
-              {row.original.icon}
-              {row.original.title}
-            </span>
+          <DataTable.CellContent icon={row.original.icon}>
+            {row.original.title}
           </DataTable.CellContent>
         ),
         meta: {
@@ -143,15 +129,7 @@ export function DataSourceCategoryBrowser({
         },
       },
     ],
-    [
-      isCurrentNavigationEntrySelected,
-      isRowSelectable,
-      isRowSelected,
-      removeCurrentNavigationEntry,
-      removeNode,
-      selectCurrentNavigationEntry,
-      selectNode,
-    ]
+    [confirm, isRowSelected, removeNode]
   );
 
   if (isSpaceInfoLoading) {
@@ -192,7 +170,7 @@ function getCategoryRows(
             ? {
                 id: category,
                 title: CATEGORY_DETAILS[category].label,
-                icon: <Icon visual={CATEGORY_DETAILS[category].icon} />,
+                icon: CATEGORY_DETAILS[category].icon,
                 onClick: () => onSelect(category),
               }
             : null

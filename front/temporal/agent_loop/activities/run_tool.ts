@@ -1,7 +1,6 @@
 import assert from "assert";
 
 import { MCPActionType, runToolWithStreaming } from "@app/lib/actions/mcp";
-import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
@@ -55,14 +54,7 @@ export async function runToolActivity(
   const action = await AgentMCPAction.findByPk(actionId);
   assert(action, "Action not found");
 
-  const mcpServerConfiguration = agentConfiguration.actions.find(
-    (ac) => `${ac.id}` === `${action.mcpServerConfigurationId}`
-  );
-  const mcpServerId = mcpServerConfiguration
-    ? isServerSideMCPServerConfiguration(mcpServerConfiguration)
-      ? mcpServerConfiguration.internalMCPServerId
-      : mcpServerConfiguration.clientSideMcpServerId
-    : null;
+  const mcpServerId = action.toolConfiguration.toolServerId;
 
   const actionBaseParams = await buildActionBaseParams({
     agentMessageId: action.agentMessageId,
@@ -133,7 +125,21 @@ export async function runToolActivity(
 
         // We stitch the action into the agent message. The conversation is expected to include
         // the agentMessage object, updating this object will update the conversation as well.
-        agentMessage.actions.push(event.action);
+        // Action might have already added earlier, so we to replace it.
+        // TODO(DURABLE-AGENTS 2025-08-12): This is a hack to avoid duplicates. Consider fetching
+        // at least on every step.
+        const existingActionIndex = agentMessage.actions.findIndex(
+          (existingAction) => existingAction.id === event.action.id
+        );
+
+        if (existingActionIndex >= 0) {
+          // Replace existing action with updated one.
+          agentMessage.actions[existingActionIndex] = event.action;
+        } else {
+          // Add new action if it doesn't exist.
+          agentMessage.actions.push(event.action);
+        }
+
         break;
 
       case "tool_params":

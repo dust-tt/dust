@@ -40,15 +40,15 @@ export function AgentAccessPublicationDialog() {
           tooltip="Access & Publication Settings"
         />
       </DialogTrigger>
-      <DialogContent size="xl" height="lg">
+      <DialogContent size="xl" height="md">
+        <DialogHeader className="border-b border-border">
+          <DialogTitle>Access & Publication Settings</DialogTitle>
+        </DialogHeader>
         <DialogContainer>
-          <DialogHeader>
-            <DialogTitle>Access & Publication Settings</DialogTitle>
-          </DialogHeader>
           <Tabs defaultValue="editors" className="w-full">
             <TabsList className="mb-4 inline-flex w-auto">
               <TabsTrigger value="editors" label="Editors" />
-              <TabsTrigger value="slack" label="Slack Settings" />
+              <TabsTrigger value="slack" label="Slack Access" />
             </TabsList>
 
             <TabsContent value="editors">
@@ -62,9 +62,9 @@ export function AgentAccessPublicationDialog() {
         </DialogContainer>
 
         <DialogFooter>
-          <div className="flex w-full flex-col gap-2 p-2">
+          <div className="flex w-full flex-col gap-2 px-2 pb-2">
             <Separator />
-            <div className="flex items-center justify-between gap-2">
+            <div className="mt-2 flex items-center justify-between gap-2">
               <div className="flex flex-col justify-start">
                 <span className="text-sm font-medium text-foreground dark:text-foreground-night">
                   Publish your agent

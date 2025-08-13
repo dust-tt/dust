@@ -1,7 +1,10 @@
 import {
   ArrowPathIcon,
   Button,
+  ContentMessage,
+  Hoverable,
   Label,
+  MagicIcon,
   Page,
   Separator,
   XMarkIcon,
@@ -12,6 +15,7 @@ import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
 import type { Editor, Extensions, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { useRouter } from "next/router";
 import React, { useEffect, useMemo, useState } from "react";
 
 import {
@@ -29,7 +33,9 @@ import {
   tipTapContentFromPlainText,
 } from "@app/lib/client/assistant_builder/instructions";
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
+import { useUserMetadata } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { setUserMetadataFromClient } from "@app/lib/user";
 import { classNames } from "@app/lib/utils";
 import type {
   LightAgentConfigurationType,
@@ -39,6 +45,7 @@ import type {
 } from "@app/types";
 import { isSupportingResponseFormat } from "@app/types";
 
+const TEMPLATE_CALLOUT_METADATA_KEY = "template_callout_dismissed";
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 const useInstructionEditorService = (editor: Editor | null) => {
@@ -95,6 +102,11 @@ export function InstructionScreen({
   isInstructionDiffMode: boolean;
   setIsInstructionDiffMode: (isDiffMode: boolean) => void;
 }) {
+  const { metadata, isMetadataLoading } = useUserMetadata(
+    TEMPLATE_CALLOUT_METADATA_KEY
+  );
+
+  const router = useRouter();
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -264,6 +276,25 @@ export function InstructionScreen({
     hour12: true,
   });
 
+  const [isTemplateCalloutDismissed, setIsTemplateCalloutDismissed] =
+    useState(false);
+
+  const mustShowTemplateCallout = useMemo(() => {
+    if (isUsingTemplate || agentConfigurationHistory || isMetadataLoading) {
+      return false;
+    }
+
+    return metadata?.value !== "true";
+  }, [metadata, isMetadataLoading, isUsingTemplate, agentConfigurationHistory]);
+
+  const dismissTemplateCallout = () => {
+    setIsTemplateCalloutDismissed(true);
+    void setUserMetadataFromClient({
+      key: TEMPLATE_CALLOUT_METADATA_KEY,
+      value: "true",
+    });
+  };
+
   const restoreVersion = () => {
     const text = compareVersion?.instructions;
     if (!editor || !text) {
@@ -288,11 +319,63 @@ export function InstructionScreen({
 
   return (
     <div className="flex h-full flex-col gap-4">
+      {mustShowTemplateCallout && (
+        <div
+          className={classNames(
+            "",
+            isTemplateCalloutDismissed && "animate-fade-collapse"
+          )}
+        >
+          <ContentMessage
+            title="Don't know how get started?"
+            variant="highlight"
+            size="sm"
+            icon={MagicIcon}
+          >
+            We've carefully crafted some templates for you!
+            <div className="mt-2">
+              <Button
+                variant="highlight"
+                size="xs"
+                onClick={() => {
+                  void router.push(
+                    `/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`
+                  );
+                }}
+                label="Browse templates"
+              />
+              <Button
+                variant="secondary"
+                size="xs"
+                onClick={dismissTemplateCallout}
+                label="Dismiss"
+              />
+            </div>
+          </ContentMessage>
+        </div>
+      )}
       <div className="flex flex-col items-center justify-between sm:flex-row">
         <Page.P>
           <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Command or guideline you provide to your agent to direct its
             responses.
+            {!mustShowTemplateCallout &&
+              !isUsingTemplate &&
+              !agentConfigurationHistory &&
+              !isMetadataLoading && (
+                <>
+                  {" "}
+                  You can also use one of our{" "}
+                  <Hoverable
+                    variant="highlight"
+                    href={`/w/${owner.sId}/builder/assistants/create`}
+                    target="_blank"
+                  >
+                    templates
+                  </Hoverable>
+                  .
+                </>
+              )}
           </span>
         </Page.P>
         <div className="flex w-full flex-col gap-2 sm:w-auto">

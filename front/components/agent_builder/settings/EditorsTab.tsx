@@ -148,6 +148,7 @@ export function EditorsTab() {
                 size="xs"
                 variant="ghost"
                 icon={XMarkIcon}
+                tooltip="Remove from editors list"
                 onClick={info.row.original.onToggleEditor}
               />
             ) : (
@@ -155,6 +156,7 @@ export function EditorsTab() {
                 size="xs"
                 variant="outline"
                 label="Add"
+                tooltip="Add to editors list"
                 onClick={info.row.original.onToggleEditor}
               />
             )}

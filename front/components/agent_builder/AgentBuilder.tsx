@@ -150,7 +150,7 @@ export default function AgentBuilder({
             saveButtonProps={{
               size: "sm",
               label: saveLabel,
-              variant: "primary",
+              variant: "highlight",
               onClick: handleSave,
               disabled: isSaveDisabled,
             }}

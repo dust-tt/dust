@@ -57,6 +57,13 @@ function filterNodesByViewType(
           node.children_count > 0 ||
           ["folder", "table"].includes(node.node_type)
       );
+    case "data_warehouse":
+      // For data_warehouse view, show both folders (databases/schemas) and tables
+      return nodes.filter(
+        (node) =>
+          node.children_count > 0 ||
+          ["folder", "table"].includes(node.node_type)
+      );
     case "all":
       return nodes;
     default:

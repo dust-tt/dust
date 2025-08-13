@@ -1,5 +1,6 @@
 import {
   Avatar,
+  BoltIcon,
   BookOpenIcon,
   Button,
   Card,
@@ -8,9 +9,9 @@ import {
   EmptyCTA,
   Hoverable,
   ListAddIcon,
+  Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { Spinner } from "@dust-tt/sparkle";
 import { isEmpty } from "lodash";
 import React, { useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
@@ -269,7 +270,7 @@ export function AgentBuilderCapabilitiesBlock({
                   type="button"
                   onClick={onClickKnowledge}
                   label="Add knowledge"
-                  icon={BookOpenIcon}
+                  icon={BoltIcon}
                   variant="primary"
                 />
                 <Button

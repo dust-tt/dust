@@ -670,6 +670,30 @@ export type RenderedWarehouseNodeType = z.infer<
   typeof RenderedWarehouseNodeSchema
 >;
 
+export const WAREHOUSES_BROWSE_MIME_TYPE =
+  "application/vnd.dust.tool-output.data-warehouses-browse";
+
+const WarehousesBrowseSchema = z.object({
+  mimeType: z.literal(WAREHOUSES_BROWSE_MIME_TYPE),
+  uri: z.literal(""),
+  text: z.string(),
+  nodeId: z.string().nullable(),
+  data: z.array(RenderedWarehouseNodeSchema),
+  nextPageCursor: z.string().nullable(),
+  resultCount: z.number(),
+});
+
+export type WarehousesBrowseType = z.infer<typeof WarehousesBrowseSchema>;
+
+export const isWarehousesBrowseType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is { type: "resource"; resource: WarehousesBrowseType } => {
+  return (
+    outputBlock.type === "resource" &&
+    WarehousesBrowseSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 export const DataSourceNodeContentSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_CONTENT),
   uri: z.string(),

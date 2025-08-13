@@ -110,6 +110,7 @@ function getGroupedMCPServerViews({
 
       const isWithKnowledge =
         requirements.requiresDataSourceConfiguration ||
+        requirements.requiresDataWarehouseConfiguration ||
         requirements.requiresTableConfiguration;
 
       return isWithKnowledge

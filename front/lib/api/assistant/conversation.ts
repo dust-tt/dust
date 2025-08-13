@@ -696,7 +696,7 @@ export async function postUserMessage(
       };
 
       void runAgentLoop(
-        auth.toJSON(),
+        auth,
         { sync: true, inMemoryData },
         { forceAsynchronousLoop, startStep: 0 }
       );
@@ -1147,7 +1147,7 @@ export async function editUserMessage(
       };
 
       void runAgentLoop(
-        auth.toJSON(),
+        auth,
         { sync: true, inMemoryData },
         { forceAsynchronousLoop: false, startStep: 0 }
       );
@@ -1376,7 +1376,7 @@ export async function retryAgentMessage(
   };
 
   void runAgentLoop(
-    auth.toJSON(),
+    auth,
     { sync: true, inMemoryData },
     { forceAsynchronousLoop: false, startStep: 0 }
   );

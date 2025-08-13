@@ -55,9 +55,10 @@ export const useHashParam = (
     val: string | undefined;
     options: SetterOptions;
   }>({
-    val: window
-      ? getHashParam(getUrlFromLocation(window.location), key, defaultValue)
-      : defaultValue,
+    val:
+      typeof window !== "undefined"
+        ? getHashParam(getUrlFromLocation(window.location), key, defaultValue)
+        : defaultValue,
     options: DEFAULT_OPTIONS,
   });
 

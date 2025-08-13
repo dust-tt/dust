@@ -177,9 +177,55 @@ const createServer = (
     withToolLogging(
       auth,
       { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
-      async (args) => {
-        void args;
-        throw new Error("Not implemented");
+      async ({ query, rootNodeId, limit, nextPageCursor, dataSources }) => {
+        const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
+
+        const dataSourceConfigurationsResult =
+          await getAgentDataSourceConfigurations(
+            auth,
+            dataSources.map((ds) => ({
+              ...ds,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+            }))
+          );
+
+        if (dataSourceConfigurationsResult.isErr()) {
+          return new Err(
+            new MCPError(dataSourceConfigurationsResult.error.message)
+          );
+        }
+
+        const agentDataSourceConfigurations =
+          dataSourceConfigurationsResult.value;
+
+        const result = await getWarehouseNodes(
+          auth,
+          agentDataSourceConfigurations,
+          {
+            nodeId: rootNodeId ?? null,
+            query,
+            limit: effectiveLimit,
+            nextPageCursor,
+          }
+        );
+
+        if (result.isErr()) {
+          return new Err(new MCPError(result.error.message));
+        }
+
+        const { nodes, nextPageCursor: newCursor } = result.value;
+
+        return new Ok([
+          {
+            type: "resource" as const,
+            resource: makeBrowseResource({
+              nodeId: rootNodeId ?? null,
+              nodes,
+              nextPageCursor: newCursor,
+              resultCount: dataSources.length,
+            }),
+          },
+        ]);
       }
     )
   );
