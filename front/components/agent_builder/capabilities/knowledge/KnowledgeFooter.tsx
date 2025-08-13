@@ -14,6 +14,7 @@ import { useDataSourceBuilderContext } from "@app/components/data_source_view/co
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import { getVisualForTreeItem } from "@app/components/data_source_view/context/utils";
 import { useNodePath } from "@app/hooks/useNodePath";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import type { DataSourceViewContentNode } from "@app/types";
 import { pluralize } from "@app/types";
 
@@ -36,7 +37,9 @@ function KnowledgeFooterItemReadablePath({
         <span className="text-xs">
           {fullPath
             .map((node, index) =>
-              index === 0 ? node.dataSourceView.dataSource.name : node.title
+              index === 0
+                ? getDataSourceNameFromView(node.dataSourceView)
+                : node.title
             )
             .join("/")}
         </span>
