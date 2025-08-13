@@ -3,6 +3,7 @@ import assert from "assert";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { wakeLock } from "@app/lib/wake_lock";
+import logger from "@app/logger/logger";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
@@ -13,18 +14,21 @@ import {
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
   RunAgentArgs,
-  RunAgentSynchronousArgs,
+  RunAgentExecutionData,
 } from "@app/types/assistant/agent_run";
+
+// 2 minutes timeout before switching from sync to async execution.
+const SYNC_TO_ASYNC_TIMEOUT_MS = 2 * 15 * 1000;
 
 /**
  * Helper to launch async workflow from sync data.
  */
 async function launchAsyncWorkflowFromSyncData(
   authType: AuthenticatorType,
-  runAgentSynchronousArgs: RunAgentSynchronousArgs,
+  runAgentExecutionData: RunAgentExecutionData,
   { startStep }: { startStep: number }
 ): Promise<void> {
-  const { agentMessage, conversation, userMessage } = runAgentSynchronousArgs;
+  const { agentMessage, conversation, userMessage } = runAgentExecutionData;
 
   await launchAgentLoopWorkflow({
     authType,
@@ -44,17 +48,16 @@ async function launchAsyncWorkflowFromSyncData(
 // but it now handles updating it based on the execution results.
 async function runAgentSynchronousWithStreaming(
   authType: AuthenticatorType,
-  runAgentSynchronousArgs: RunAgentSynchronousArgs,
+  runAgentExecutionData: RunAgentExecutionData,
   { startStep }: { startStep: number }
 ): Promise<void> {
   const runAgentArgs: RunAgentArgs = {
     sync: true,
-    inMemoryData: runAgentSynchronousArgs,
+    inMemoryData: runAgentExecutionData,
+    syncToAsyncTimeoutMs: SYNC_TO_ASYNC_TIMEOUT_MS,
   };
 
   const titlePromise = ensureConversationTitle(authType, runAgentArgs);
-
-  const syncStartTime = Date.now();
 
   // NOTE: This is an exception to our usual Result<> pattern. Since executeAgentLoop is shared
   // between Temporal workflows (which have serialization constraints) and direct execution,
@@ -71,15 +74,24 @@ async function runAgentSynchronousWithStreaming(
         },
         {
           startStep,
-          syncStartTime,
         }
       );
     });
   } catch (error) {
     if (error instanceof SyncTimeoutError) {
-      await launchAsyncWorkflowFromSyncData(authType, runAgentSynchronousArgs, {
+      await launchAsyncWorkflowFromSyncData(authType, runAgentExecutionData, {
         startStep: error.currentStep,
       });
+
+      logger.info(
+        {
+          agentMessageId: runAgentExecutionData.agentMessage.sId,
+          currentStep: error.currentStep,
+          elapsedMs: error.elapsedMs,
+          workspaceId: authType.workspaceId,
+        },
+        "Sync execution timeout reached - switching to async"
+      );
 
       // Don't continue with sync execution after switching to async.
       return;

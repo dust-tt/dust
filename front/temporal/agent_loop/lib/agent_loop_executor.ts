@@ -4,13 +4,24 @@ import type { RunAgentArgs } from "@app/types/assistant/agent_run";
 
 import type { AgentLoopActivities } from "./activity_interface";
 
-// 2 minutes timeout before switching from sync to async execution.
-const SYNC_TO_ASYNC_TIMEOUT_MS = 2 * 60 * 1000;
-
 export class SyncTimeoutError extends Error {
-  constructor(public readonly currentStep: number) {
-    super(`Sync execution timeout reached at step ${currentStep}`);
+  public readonly currentStep: number;
+  public readonly elapsedMs: number;
+
+  constructor({
+    currentStep,
+    elapsedMs,
+  }: {
+    currentStep: number;
+    elapsedMs: number;
+  }) {
+    super(
+      `Sync execution timeout reached at step ${currentStep} after ${elapsedMs}ms`
+    );
+
     this.name = "SyncTimeoutError";
+    this.currentStep = currentStep;
+    this.elapsedMs = elapsedMs;
   }
 }
 
@@ -26,20 +37,19 @@ export async function executeAgentLoop(
   activities: AgentLoopActivities,
   {
     startStep,
-    syncStartTime,
   }: {
     startStep: number;
-    syncStartTime?: number;
   }
 ): Promise<void> {
   const runIds: string[] = [];
+  const syncStartTime = Date.now();
 
   for (let i = startStep; i < MAX_STEPS_USE_PER_RUN_LIMIT + 1; i++) {
     // Check if we should switch to async mode due to timeout (only in sync mode).
-    if (syncStartTime && runAgentArgs.sync) {
+    if (runAgentArgs.sync && runAgentArgs.syncToAsyncTimeoutMs) {
       const elapsedMs = Date.now() - syncStartTime;
-      if (elapsedMs > SYNC_TO_ASYNC_TIMEOUT_MS) {
-        throw new SyncTimeoutError(i);
+      if (elapsedMs > runAgentArgs.syncToAsyncTimeoutMs) {
+        throw new SyncTimeoutError({ currentStep: i, elapsedMs });
       }
     }
 

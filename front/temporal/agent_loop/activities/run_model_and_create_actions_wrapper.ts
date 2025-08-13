@@ -13,7 +13,7 @@ import { MAX_ACTIONS_PER_STEP } from "@app/types/assistant/agent";
 import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type {
   RunAgentArgs,
-  RunAgentSynchronousArgs,
+  RunAgentExecutionData,
 } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
 
@@ -124,7 +124,7 @@ export async function runModelAndCreateActionsActivity({
  */
 async function getExistingActionsAndBlobs(
   auth: Authenticator,
-  runAgentArgs: RunAgentSynchronousArgs,
+  runAgentArgs: RunAgentExecutionData,
   step: number
 ): Promise<{
   actionBlobs: ActionBlob[];
