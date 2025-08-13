@@ -44,27 +44,30 @@ export const DataSourceBuilderSelector = ({
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
 
-  const breadcrumbItems: BreadcrumbItem[] = useMemo(
-    () =>
-      navigationHistory.map((entry, index) => ({
-        ...getBreadcrumbConfig(entry),
-        href: undefined,
-        onClick: () => navigateTo(index),
-      })),
-    [navigationHistory, navigateTo]
-  );
-
   // Filter spaces to only those with data source views
   const filteredSpaces = useMemo(() => {
     const spaceIds = new Set(dataSourceViews.map((dsv) => dsv.spaceId));
     return spaces.filter((s) => spaceIds.has(s.sId));
   }, [spaces, dataSourceViews]);
 
-  // Get current space for search
-  const currentSpace =
-    currentNavigationEntry.type === "space"
-      ? currentNavigationEntry.space
-      : null;
+  // Get current space for search - extract from any navigation level
+  const currentSpace = useMemo(() => {
+    switch (currentNavigationEntry.type) {
+      case "space":
+        return currentNavigationEntry.space;
+      case "category":
+      case "data_source":
+      case "node":
+        // Find space from breadcrumb history
+        const spaceEntry = navigationHistory
+          .slice()
+          .reverse()
+          .find((entry) => entry.type === "space");
+        return spaceEntry?.type === "space" ? spaceEntry.space : null;
+      default:
+        return null;
+    }
+  }, [currentNavigationEntry, navigationHistory]);
 
   const {
     searchResultNodes,
@@ -117,6 +120,31 @@ export const DataSourceBuilderSelector = ({
     }
   }, [shouldShowSearch, showSearch]);
 
+  // Breadcrumbs with search context - defined after showSearch state
+  const breadcrumbItems: BreadcrumbItem[] = useMemo(() => {
+    if (showSearch && currentSpace) {
+      // When searching, only show path up to space level
+      const spaceIndex = navigationHistory.findIndex(
+        (entry) => entry.type === "space"
+      );
+      const spaceNavigation =
+        spaceIndex >= 0 ? navigationHistory.slice(0, spaceIndex + 1) : [];
+
+      return spaceNavigation.map((entry, index) => ({
+        ...getBreadcrumbConfig(entry),
+        href: undefined,
+        onClick: () => navigateTo(index),
+      }));
+    }
+
+    // Normal navigation breadcrumbs
+    return navigationHistory.map((entry, index) => ({
+      ...getBreadcrumbConfig(entry),
+      href: undefined,
+      onClick: () => navigateTo(index),
+    }));
+  }, [navigationHistory, navigateTo, showSearch, currentSpace]);
+
   if (filteredSpaces.length === 0) {
     return <div>No spaces with data sources available.</div>;
   }
@@ -131,12 +159,20 @@ export const DataSourceBuilderSelector = ({
           allowedSpaces={spaces}
         />
       ) : (
-        <SearchInput
-          name="search"
-          placeholder={`Search in ${currentSpace?.name || "space"}`}
-          value={searchTerm}
-          onChange={setSearchTerm}
-        />
+        <div className="flex flex-col gap-2">
+          <SearchInput
+            name="search"
+            placeholder={`Search in ${currentSpace?.name || "space"}`}
+            value={searchTerm}
+            onChange={setSearchTerm}
+          />
+          {isSearching && currentSpace && (
+            <div className="text-sm text-muted-foreground">
+              Searching in{" "}
+              <span className="font-medium">{currentSpace.name}</span>
+            </div>
+          )}
+        </div>
       )}
 
       <div
