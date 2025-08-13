@@ -12,7 +12,6 @@ import {
   DropdownMenuTrigger,
   MoreIcon,
   PencilSquareIcon,
-  PlusIcon,
   RobotIcon,
   ScrollArea,
   ScrollBar,
@@ -26,6 +25,7 @@ import {
 import { useRouter } from "next/router";
 import React, { useCallback, useMemo, useState } from "react";
 
+import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useHashParam } from "@app/hooks/useHashParams";
@@ -296,16 +296,7 @@ export function AssistantBrowser({
           <div className="flex gap-2">
             {!isRestrictedFromAgentCreation && (
               <div ref={createAgentButtonRef}>
-                <Button
-                  tooltip="Create your own agent"
-                  href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-                  variant="primary"
-                  icon={PlusIcon}
-                  label="Create"
-                  data-gtm-label="assistantCreationButton"
-                  data-gtm-location="homepage"
-                  size="sm"
-                />
+                <CreateAgentButton owner={owner} dataGtmLocation="homepage" />
               </div>
             )}
 
