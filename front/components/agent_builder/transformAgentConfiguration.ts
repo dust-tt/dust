@@ -97,7 +97,6 @@ export function transformTemplateToFormData(
         ? AGENT_CREATIVITY_LEVEL_TEMPERATURES[template.presetTemperature]
         : defaultFormData.generationSettings.temperature,
     },
-    // TODO: Transform presetActions when template action support is implemented
     actions: [],
   };
 }
