@@ -75,6 +75,7 @@ export function AgentMessageActions({
             action={lastAction}
             owner={owner}
             lastNotification={lastNotification}
+            messageStatus={agentMessage.status}
           />
         </Card>
       ) : (
