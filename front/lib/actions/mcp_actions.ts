@@ -841,7 +841,7 @@ async function listToolsForServerSideMCPServer(
   );
 
   const toolsWithStakesAndTimeout = allToolsRaw
-    .filter(({ name }) => toolsEnabled[name])
+    .filter(({ name }) => !(toolsEnabled[name] === false)) // Include tools that are enabled (true) or not explicitly disabled (undefined).
     .map((tool) => ({
       ...tool,
       stakeLevel:
