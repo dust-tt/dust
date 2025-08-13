@@ -2,12 +2,12 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { markdownToAdf } from "marklassian";
 import { z } from "zod";
 
 import {
   createJQLFromSearchFilters,
   processFieldsForJira,
-  textToADF,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
 import type {
   ADFDocument,
@@ -354,7 +354,7 @@ export async function createComment(
   let adfBody: ADFDocument;
 
   if (typeof commentBody === "string") {
-    adfBody = textToADF(commentBody);
+    adfBody = markdownToAdf(commentBody);
   } else if (isADFDocument(commentBody)) {
     adfBody = commentBody;
   } else {
@@ -770,7 +770,7 @@ export async function createIssueLink(
     const commentText = requestBody.comment.body;
     requestBody.comment = {
       ...requestBody.comment,
-      body: textToADF(commentText),
+      body: markdownToAdf(commentText),
     };
   }
 
