@@ -1,21 +1,22 @@
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
-import { Breadcrumbs, SearchInput } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { Breadcrumbs, cn, SearchInput } from "@dust-tt/sparkle";
+import { useEffect, useMemo, useState } from "react";
 
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
-import { findDataSourceViewFromNavigationHistory } from "@app/components/data_source_view/context/utils";
-import { DataSourceCategoryBrowser } from "@app/components/data_source_view/DataSourceCategoryBrowser";
-import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
+import { DataSourceNavigationView } from "@app/components/data_source_view/DataSourceNavigationView";
+import { DataSourceSearchResults } from "@app/components/data_source_view/DataSourceSearchResults";
 import { DataSourceSpaceSelector } from "@app/components/data_source_view/DataSourceSpaceSelector";
-import { DataSourceViewTable } from "@app/components/data_source_view/DataSourceViewTable";
+import { useDebounce } from "@app/hooks/useDebounce";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
+import { useSpacesSearch } from "@app/lib/swr/spaces";
 import type {
   ContentNodesViewType,
   DataSourceViewType,
   LightWorkspaceType,
 } from "@app/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 type DataSourceBuilderSelectorProps = {
   owner: LightWorkspaceType;
@@ -24,6 +25,7 @@ type DataSourceBuilderSelectorProps = {
 };
 
 export const DataSourceBuilderSelector = ({
+  owner,
   dataSourceViews,
   viewType,
 }: DataSourceBuilderSelectorProps) => {
@@ -32,10 +34,16 @@ export const DataSourceBuilderSelector = ({
   const currentNavigationEntry =
     navigationHistory[navigationHistory.length - 1];
 
-  const selectedDataSourceView =
-    findDataSourceViewFromNavigationHistory(navigationHistory);
-
-  const [searchQuery, setSearchQuery] = useState("");
+  // Search state with debouncing
+  const {
+    inputValue: searchTerm,
+    debouncedValue: debouncedSearch,
+    isDebouncing,
+    setValue: setSearchTerm,
+  } = useDebounce("", {
+    delay: 300,
+    minLength: MIN_SEARCH_QUERY_SIZE,
+  });
 
   const breadcrumbItems: BreadcrumbItem[] = useMemo(
     () =>
@@ -53,6 +61,61 @@ export const DataSourceBuilderSelector = ({
     return spaces.filter((s) => spaceIds.has(s.sId));
   }, [spaces, dataSourceViews]);
 
+  // Get current space for search
+  const currentSpace =
+    currentNavigationEntry.type === "space"
+      ? currentNavigationEntry.space
+      : null;
+
+  // Search API integration - only search when we have a space context
+  const { searchResultNodes, isSearchLoading, isSearchValidating } =
+    useSpacesSearch(
+      currentSpace && debouncedSearch
+        ? {
+            owner,
+            spaceIds: [currentSpace.sId],
+            search: debouncedSearch,
+            disabled: !debouncedSearch,
+            includeDataSources: true,
+            viewType,
+            dataSourceViewIdsBySpaceId: {
+              [currentSpace.sId]: dataSourceViews
+                .filter((dsv) => dsv.spaceId === currentSpace.sId)
+                .map((dsv) => dsv.sId),
+            },
+          }
+        : {
+            owner,
+            spaceIds: [],
+            search: "",
+            disabled: true,
+            includeDataSources: false,
+            viewType,
+          }
+    );
+
+  const isSearching = debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE;
+  const isLoading = isDebouncing || isSearchLoading || isSearchValidating;
+
+  // Search mode toggle with transitions
+  const shouldShowSearchResults = isSearching && currentSpace;
+  const [isChanging, setIsChanging] = useState(false);
+  const [showSearch, setShowSearch] = useState(shouldShowSearchResults);
+
+  // Handle transition when search state changes
+  useEffect(() => {
+    if (shouldShowSearchResults !== showSearch) {
+      setIsChanging(true);
+      const timer = setTimeout(() => {
+        setShowSearch(shouldShowSearchResults);
+        // Small delay to start fade-in after content change
+        setTimeout(() => setIsChanging(false), 50);
+      }, 150);
+
+      return () => clearTimeout(timer);
+    }
+  }, [shouldShowSearchResults, showSearch]);
+
   if (filteredSpaces.length === 0) {
     return <div>No spaces with data sources available.</div>;
   }
@@ -69,23 +132,28 @@ export const DataSourceBuilderSelector = ({
       ) : (
         <SearchInput
           name="search"
-          placeholder="Search (Name)"
-          value={searchQuery}
-          onChange={setSearchQuery}
+          placeholder={`Search in ${currentSpace?.name || "space"}`}
+          value={searchTerm}
+          onChange={setSearchTerm}
         />
       )}
 
-      {currentNavigationEntry.type === "space" && (
-        <DataSourceCategoryBrowser space={currentNavigationEntry.space} />
-      )}
-
-      {currentNavigationEntry.type === "category" && <DataSourceViewTable />}
-
-      {(currentNavigationEntry.type === "node" ||
-        currentNavigationEntry.type === "data_source") &&
-        selectedDataSourceView !== null && (
-          <DataSourceNodeTable viewType={viewType} />
+      <div
+        className={cn(
+          "transform transition-all duration-150",
+          isChanging && "translate-y-1 opacity-0"
         )}
+      >
+        {showSearch ? (
+          <DataSourceSearchResults
+            searchResultNodes={searchResultNodes}
+            isLoading={isLoading}
+            onClearSearch={() => setSearchTerm("")}
+          />
+        ) : (
+          <DataSourceNavigationView viewType={viewType} />
+        )}
+      </div>
     </div>
   );
 };
