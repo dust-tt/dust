@@ -519,26 +519,25 @@ export function AgentMessage({
     content: string;
     isStreaming: boolean;
   }) => {
-    const lines = content.split('\n').filter(line => line.trim());
-    const preview = lines[0]?.substring(0, 100) + (lines[0]?.length > 100 || lines.length > 1 ? '...' : '');
-    
     return (
-      <div className="rounded-lg border border-structure-100 bg-structure-50/50 p-3">
+      <div className="rounded-lg border border-structure-100 bg-structure-50/30 p-3">
         <CollapsibleComponent
           rootProps={{ defaultOpen: isStreaming }}
           triggerChildren={
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2">
               {isStreaming && <Spinner size="xs" />}
-              <span className="font-medium text-element-700">
-                {isStreaming ? "Thinking" : "Reasoning"}
-              </span>
-              {!isStreaming && preview && (
-                <span className="text-element-600 truncate flex-1">{preview}</span>
-              )}
+              <div className="text-sm text-element-600 line-clamp-2 flex-1">
+                <Markdown
+                  content={content.split('\n')[0] || "..."}
+                  isStreaming={false}
+                  forcedTextSize="text-sm"
+                  isLastMessage={false}
+                />
+              </div>
             </div>
           }
           contentChildren={
-            <div className="mt-3 pl-6 text-sm text-element-600">
+            <div className="mt-3 text-sm text-element-600">
               <Markdown
                 content={content}
                 isStreaming={isStreaming}
@@ -574,7 +573,7 @@ export function AgentMessage({
     const actionName = toolName ? toolName.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()) : "Action";
     
     return (
-      <div className="rounded-lg border border-structure-100 bg-structure-50/50 p-3">
+      <div className="rounded-lg border border-structure-100 bg-structure-50/30 p-3">
         <CollapsibleComponent
           rootProps={{ defaultOpen: isRunning }}
           triggerChildren={
@@ -586,14 +585,9 @@ export function AgentMessage({
               {hasFailed && (
                 <div className="text-warning-500">✗</div>
               )}
-              <span className="font-medium text-element-700">
+              <span className="text-element-700">
                 {actionName}
               </span>
-              {!isRunning && (
-                <span className="text-element-500 text-xs">
-                  {hasCompleted ? "Completed" : hasFailed ? "Failed" : ""}
-                </span>
-              )}
             </div>
           }
           contentChildren={
