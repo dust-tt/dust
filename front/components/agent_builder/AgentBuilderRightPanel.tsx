@@ -127,7 +127,7 @@ function CollapsedTabs({ onTabSelect, hasTemplate }: CollapsedTabsProps) {
 interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
   agentConfigurationSId?: string;
-  assistantTemplate?: FetchAssistantTemplateResponse | null;
+  assistantTemplate: FetchAssistantTemplateResponse | null;
 }
 
 function ExpandedContent({
@@ -158,7 +158,7 @@ function ExpandedContent({
 
 interface AgentBuilderRightPanelProps {
   agentConfigurationSId?: string;
-  assistantTemplate?: FetchAssistantTemplateResponse | null;
+  assistantTemplate: FetchAssistantTemplateResponse | null;
 }
 
 export function AgentBuilderRightPanel({

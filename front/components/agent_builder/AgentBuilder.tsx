@@ -29,7 +29,7 @@ import type { LightAgentConfigurationType } from "@app/types";
 
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
-  assistantTemplate?: FetchAssistantTemplateResponse | null;
+  assistantTemplate: FetchAssistantTemplateResponse | null;
 }
 
 export default function AgentBuilder({
