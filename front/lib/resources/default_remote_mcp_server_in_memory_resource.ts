@@ -60,7 +60,7 @@ export class DefaultRemoteMCPServerInMemoryResource {
       description: this.config.description,
       icon: this.config.icon,
       authorization:
-        this.config.authMethod === "oauth"
+        this.config.authMethod === "oauth-dynamic"
           ? {
               provider: "mcp",
               supported_use_cases: this.config.supportedOAuthUseCases || [],

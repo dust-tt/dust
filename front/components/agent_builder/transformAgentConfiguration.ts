@@ -1,4 +1,6 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
+import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { UserType } from "@app/types";
 import type { LightAgentConfigurationType } from "@app/types";
 import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types";
@@ -63,5 +65,44 @@ export function getDefaultAgentFormData(user: UserType): AgentBuilderFormData {
     },
     actions: [],
     maxStepsPerRun: 8,
+  };
+}
+
+/**
+ * Transforms an assistant template into agent builder form data with defaults.
+ * Merges template presets with default form data to create a complete configuration.
+ */
+export function transformTemplateToFormData(
+  template: FetchAssistantTemplateResponse,
+  user: UserType
+): AgentBuilderFormData {
+  const defaultFormData = getDefaultAgentFormData(user);
+
+  return {
+    ...defaultFormData,
+    instructions: template.presetInstructions ?? defaultFormData.instructions,
+    agentSettings: {
+      ...defaultFormData.agentSettings,
+      name: template.handle ?? defaultFormData.agentSettings.name,
+      description:
+        template.description ?? defaultFormData.agentSettings.description,
+      pictureUrl:
+        template.pictureUrl ?? defaultFormData.agentSettings.pictureUrl,
+    },
+    generationSettings: {
+      ...defaultFormData.generationSettings,
+      modelSettings: {
+        providerId:
+          template.presetProviderId ??
+          defaultFormData.generationSettings.modelSettings.providerId,
+        modelId:
+          template.presetModelId ??
+          defaultFormData.generationSettings.modelSettings.modelId,
+      },
+      temperature: template.presetTemperature
+        ? AGENT_CREATIVITY_LEVEL_TEMPERATURES[template.presetTemperature]
+        : defaultFormData.generationSettings.temperature,
+    },
+    actions: [],
   };
 }

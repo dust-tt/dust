@@ -25,7 +25,7 @@ export async function runZendeskWorkers() {
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return new ActivityInboundLogInterceptor(ctx, logger, "zendesk");
         },
         () => new ZendeskCastKnownErrorsInterceptor(),
       ],

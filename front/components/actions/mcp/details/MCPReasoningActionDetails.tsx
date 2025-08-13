@@ -14,7 +14,6 @@ import {
 export function MCPReasoningActionDetails({
   action,
   viewType,
-  defaultOpen,
 }: MCPActionDetailsProps) {
   const { output } = action;
 
@@ -28,7 +27,6 @@ export function MCPReasoningActionDetails({
     <ActionDetailsWrapper
       viewType={viewType}
       actionName="Reasoning"
-      defaultOpen={defaultOpen}
       visual={ChatBubbleThoughtIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">

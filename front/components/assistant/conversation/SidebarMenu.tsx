@@ -3,6 +3,7 @@ import {
   ChatBubbleBottomCenterTextIcon,
   Checkbox,
   ClockIcon,
+  DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -12,11 +13,11 @@ import {
   InformationCircleIcon,
   Label,
   ListCheckIcon,
+  MagicIcon,
   MoreIcon,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
-  PlusIcon,
   RobotIcon,
   SearchInput,
   TrashIcon,
@@ -257,9 +258,16 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                       <>
                         <DropdownMenuLabel>Agent</DropdownMenuLabel>
                         <DropdownMenuItem
-                          href={`/w/${owner.sId}/builder/assistants/create`}
-                          icon={PlusIcon}
-                          label="Create new agent"
+                          href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
+                          icon={DocumentIcon}
+                          label="New agent from scratch"
+                          data-gtm-label="assistantCreationButton"
+                          data-gtm-location="sidebarMenu"
+                        />
+                        <DropdownMenuItem
+                          href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
+                          icon={MagicIcon}
+                          label="New agent from template"
                           data-gtm-label="assistantCreationButton"
                           data-gtm-location="sidebarMenu"
                         />

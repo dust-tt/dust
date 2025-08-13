@@ -1,12 +1,29 @@
 import type { AuthenticatorType } from "@app/lib/auth";
-import type { ModelId } from "@app/types";
-import {
-  MAX_ACTIONS_PER_STEP,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-} from "@app/types/assistant/agent";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import type { RunAgentArgs } from "@app/types/assistant/agent_run";
 
 import type { AgentLoopActivities } from "./activity_interface";
+
+export class SyncTimeoutError extends Error {
+  public readonly currentStep: number;
+  public readonly elapsedMs: number;
+
+  constructor({
+    currentStep,
+    elapsedMs,
+  }: {
+    currentStep: number;
+    elapsedMs: number;
+  }) {
+    super(
+      `Sync execution timeout reached at step ${currentStep} after ${elapsedMs}ms`
+    );
+
+    this.name = "SyncTimeoutError";
+    this.currentStep = currentStep;
+    this.elapsedMs = elapsedMs;
+  }
+}
 
 /**
  * Core agent loop executor that works with both Temporal workflows and direct execution.
@@ -18,21 +35,31 @@ export async function executeAgentLoop(
   authType: AuthenticatorType,
   runAgentArgs: RunAgentArgs,
   activities: AgentLoopActivities,
-  startStep: number
+  {
+    startStep,
+  }: {
+    startStep: number;
+  }
 ): Promise<void> {
   const runIds: string[] = [];
-
-  // Track step content IDs by function call ID for later use in actions.
-  let functionCallStepContentIds: Record<string, ModelId> = {};
+  const syncStartTime = Date.now();
 
   for (let i = startStep; i < MAX_STEPS_USE_PER_RUN_LIMIT + 1; i++) {
-    const result = await activities.runModelActivity({
+    // Check if we should switch to async mode due to timeout (only in sync mode).
+    if (runAgentArgs.sync && runAgentArgs.syncToAsyncTimeoutMs) {
+      const elapsedMs = Date.now() - syncStartTime;
+      if (elapsedMs > runAgentArgs.syncToAsyncTimeoutMs) {
+        throw new SyncTimeoutError({ currentStep: i, elapsedMs });
+      }
+    }
+
+    const result = await activities.runModelAndCreateActionsActivity({
       authType,
+      autoRetryCount: 0,
+      checkForResume: i === startStep, // Only run resume the first time.
       runAgentArgs,
       runIds,
       step: i,
-      functionCallStepContentIds,
-      autoRetryCount: 0,
     });
 
     if (!result) {
@@ -40,32 +67,25 @@ export async function executeAgentLoop(
       return;
     }
 
-    const { actions, runId, stepContexts } = result;
-
-    // We received the actions to run, but will enforce a limit on the number of actions
-    // which is very high. Over that the latency will just be too high. This is a guardrail
-    // against the model outputting something unreasonable.
-    const actionsToRun = actions.slice(0, MAX_ACTIONS_PER_STEP);
+    const { runId, actionBlobs } = result;
 
     // Update state with results.
-    runIds.push(runId);
-    functionCallStepContentIds = result.functionCallStepContentIds;
+    if (runId) {
+      runIds.push(runId);
+    }
 
-    // Create tool actions and check if any of them need approval.
-    const { actionBlobs } = await activities.createToolActionsActivity(
-      authType,
-      {
-        runAgentArgs,
-        actions: actionsToRun,
-        stepContexts,
-        functionCallStepContentIds,
-        step: i,
-      }
-    );
+    // If at least one action needs approval, we break out of the loop and will resume once all
+    // actions have been approved.
+    const needsApproval = actionBlobs.some((a) => a.needsApproval);
+
+    if (needsApproval) {
+      // Break the loop - workflow will be restarted externally once approved.
+      return;
+    }
 
     // Execute tools.
     await Promise.all(
-      actionBlobs.map(({ action }, index) =>
+      actionBlobs.map(({ action }) =>
         activities.runToolActivity(authType, {
           actionId: action.id,
           runAgentArgs,

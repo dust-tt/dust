@@ -31,7 +31,7 @@ export type RunAgentAsynchronousArgs = {
   userMessageVersion: number;
 };
 
-export type RunAgentSynchronousArgs = {
+export type RunAgentExecutionData = {
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
   agentMessageRow: AgentMessage;
@@ -42,7 +42,8 @@ export type RunAgentSynchronousArgs = {
 export type RunAgentArgs =
   | {
       sync: true;
-      inMemoryData: RunAgentSynchronousArgs;
+      inMemoryData: RunAgentExecutionData;
+      syncToAsyncTimeoutMs?: number;
     }
   | {
       sync: false;
@@ -52,12 +53,15 @@ export type RunAgentArgs =
 export async function getRunAgentData(
   authType: AuthenticatorType,
   runAgentArgs: RunAgentArgs
-): Promise<Result<RunAgentSynchronousArgs, Error>> {
-  if (runAgentArgs.sync) {
-    return new Ok(runAgentArgs.inMemoryData);
-  }
-
+): Promise<Result<RunAgentExecutionData & { auth: Authenticator }, Error>> {
   const auth = await Authenticator.fromJSON(authType);
+
+  if (runAgentArgs.sync) {
+    return new Ok({
+      ...runAgentArgs.inMemoryData,
+      auth,
+    });
+  }
 
   const {
     agentMessageId,
@@ -75,21 +79,20 @@ export async function getRunAgentData(
 
   const conversation = conversationRes.value;
 
-  // Find the agent message group by searching in reverse order.
-  // All messages of the same group should be of the same type and of same sId.
-  // For safety, this is asserted below.
-  const agentMessageGroup = conversation.content.findLast(
-    (messageGroup) => messageGroup[0]?.sId === agentMessageId
-  );
+  // Find the agent message by searching all groups in reverse order. Retried messages do not have
+  // the same sId as the original message, so we need to search all groups.
+  let agentMessage: AgentMessageType | undefined;
+  for (let i = conversation.content.length - 1; i >= 0 && !agentMessage; i--) {
+    const messageGroup = conversation.content[i];
+    for (const msg of messageGroup) {
+      if (isAgentMessageType(msg)) {
+        agentMessage = msg;
+        break;
+      }
+    }
+  }
 
-  const agentMessage = agentMessageGroup?.[agentMessageVersion];
-
-  if (
-    !agentMessage ||
-    !isAgentMessageType(agentMessage) ||
-    agentMessage.sId !== agentMessageId ||
-    agentMessage.version !== agentMessageVersion
-  ) {
+  if (!agentMessage) {
     return new Err(new Error("Agent message not found"));
   }
 
@@ -147,10 +150,11 @@ export async function getRunAgentData(
   }
 
   return new Ok({
+    agentConfiguration,
     agentMessage,
     agentMessageRow: agentMessageRow.agentMessage,
+    auth,
     conversation,
     userMessage,
-    agentConfiguration,
   });
 }

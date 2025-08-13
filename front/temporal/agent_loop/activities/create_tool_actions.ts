@@ -4,8 +4,7 @@ import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { StepContext } from "@app/lib/actions/types";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
-import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
@@ -16,8 +15,7 @@ import type {
   AgentMessageType,
   ModelId,
 } from "@app/types";
-import type { RunAgentArgs } from "@app/types/assistant/agent_run";
-import { getRunAgentData } from "@app/types/assistant/agent_run";
+import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
 
 interface ActionBlob {
   action: AgentMCPAction;
@@ -29,29 +27,24 @@ export type CreateToolActionsResult = {
 };
 
 export async function createToolActionsActivity(
-  authType: AuthenticatorType,
+  auth: Authenticator,
   {
-    runAgentArgs,
+    runAgentData,
     actions,
     stepContexts,
     functionCallStepContentIds,
     step,
   }: {
-    runAgentArgs: RunAgentArgs;
+    runAgentData: RunAgentExecutionData;
     actions: AgentActionsEvent["actions"];
     stepContexts: StepContext[];
     functionCallStepContentIds: Record<string, ModelId>;
     step: number;
   }
 ): Promise<CreateToolActionsResult> {
-  const auth = await Authenticator.fromJSON(authType);
-
-  const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
-  if (runAgentDataRes.isErr()) {
-    throw runAgentDataRes.error;
-  }
-
-  const conversationId = runAgentDataRes.value.conversation.sId;
+  const { agentConfiguration, agentMessage, agentMessageRow, conversation } =
+    runAgentData;
+  const conversationId = conversation.sId;
 
   const actionBlobs: ActionBlob[] = [];
 
@@ -59,8 +52,6 @@ export async function createToolActionsActivity(
     index,
     { action: actionConfiguration, functionCallId },
   ] of actions.entries()) {
-    const { agentConfiguration, agentMessage, agentMessageRow } =
-      runAgentDataRes.value;
     const stepContentId = functionCallStepContentIds[functionCallId];
 
     const result = await createActionForTool(auth, {
@@ -138,10 +129,9 @@ async function createActionForTool(
   }
 
   // Compute augmented inputs with preconfigured data sources, etc.
-  const augmentedInputs = getAugmentedInputs({
-    auth,
-    rawInputs: actionBaseParams.params,
+  const augmentedInputs = getAugmentedInputs(auth, {
     actionConfiguration,
+    rawInputs: actionBaseParams.params,
   });
 
   // Create the action object in the database and yield an event for the generation of the params.

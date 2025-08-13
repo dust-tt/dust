@@ -210,14 +210,36 @@ export async function getIssue({
   baseUrl,
   accessToken,
   issueKey,
+  fields,
 }: {
   baseUrl: string;
   accessToken: string;
   issueKey: string;
+  fields?: string[];
 }): Promise<Result<z.infer<typeof JiraIssueSchema> | null, JiraErrorResult>> {
+  // Use a minimal default field set to reduce payload size while keeping key metadata
+  const defaultFields = [
+    "summary",
+    "issuetype",
+    "priority",
+    "assignee",
+    "reporter",
+    "labels",
+    "duedate",
+    "parent",
+    "project",
+    "status",
+  ];
+
+  const params = new URLSearchParams();
+  const fieldList = (fields && fields.length > 0 ? fields : defaultFields).join(
+    ","
+  );
+  params.set("fields", fieldList);
+
   const result = await jiraApiCall(
     {
-      endpoint: `/rest/api/3/issue/${issueKey}`,
+      endpoint: `/rest/api/3/issue/${issueKey}?${params.toString()}`,
       accessToken,
     },
     JiraIssueSchema,
@@ -640,6 +662,38 @@ export async function getAllFields(
   }
 
   return new Ok(fieldsMetadata);
+}
+
+// Returns a compact list of fields with their identifiers and names for discovery
+export async function listFieldSummaries(
+  baseUrl: string,
+  accessToken: string
+): Promise<
+  Result<
+    Array<{ id: string; key?: string; name: string; custom: boolean }>,
+    JiraErrorResult
+  >
+> {
+  const result = await jiraApiCall(
+    {
+      endpoint: "/rest/api/3/field",
+      accessToken,
+    },
+    JiraFieldsSchema,
+    { baseUrl }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const summaries = (result.value || []).map((f) => ({
+    id: f.id,
+    key: f.key,
+    name: f.name,
+    custom: f.custom,
+  }));
+  return new Ok(summaries);
 }
 
 async function processFieldsWithMetadata(

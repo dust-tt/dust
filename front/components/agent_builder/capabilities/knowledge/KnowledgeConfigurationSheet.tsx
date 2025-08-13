@@ -29,6 +29,7 @@ import { getDefaultConfiguration } from "@app/components/agent_builder/capabilit
 import { isValidPage } from "@app/components/agent_builder/capabilities/mcp/utils/sheetUtils";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
+import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -82,9 +83,11 @@ export function KnowledgeConfigurationSheet({
     const { description, configuration, mcpServerView } = formData;
     const requirements = getMCPServerRequirements(mcpServerView);
 
-    const datasource = requirements.requiresDataSourceConfiguration
-      ? { dataSourceConfigurations: dataSourceConfigurations }
-      : { tablesConfigurations: dataSourceConfigurations };
+    const datasource =
+      requirements.requiresDataSourceConfiguration ||
+      requirements.requiresDataWarehouseConfiguration
+        ? { dataSourceConfigurations: dataSourceConfigurations }
+        : { tablesConfigurations: dataSourceConfigurations };
 
     const isNewActionOrNameChanged = isEditing
       ? defaultValues.name !== formData.name
@@ -154,7 +157,11 @@ export function KnowledgeConfigurationSheet({
       configuration:
         action?.configuration ?? getDefaultConfiguration(selectedMCPServerView),
       mcpServerView: selectedMCPServerView ?? null,
-      name: selectedMCPServerView?.server.name,
+      name:
+        action?.name ??
+        selectedMCPServerView?.name ??
+        selectedMCPServerView?.server.name ??
+        "",
     };
   }, [action, mcpServerViews, isEditing]);
 
@@ -163,16 +170,10 @@ export function KnowledgeConfigurationSheet({
     defaultValues,
   });
 
-  const { reset } = formMethods;
-
-  // Reset form when action changes (recommended pattern for dynamic data)
-  useEffect(() => {
-    reset(defaultValues);
-  }, [defaultValues, reset]);
-
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       onClose();
+      formMethods.reset(defaultValues);
     }
   };
 
@@ -218,7 +219,8 @@ function KnowledgeConfigurationSheetContent({
   getAgentInstructions,
   isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
-  const { handleSubmit, setValue } = useFormContext<CapabilityFormData>();
+  const { handleSubmit, setValue, getValues } =
+    useFormContext<CapabilityFormData>();
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
@@ -244,6 +246,9 @@ function KnowledgeConfigurationSheetContent({
   const viewType = useMemo(() => {
     if (requirements.requiresTableConfiguration) {
       return "table";
+    }
+    if (requirements.requiresDataWarehouseConfiguration) {
+      return "data_warehouse";
     }
     if (requirements.requiresDataSourceConfiguration) {
       return "document";
@@ -283,7 +288,12 @@ function KnowledgeConfigurationSheetContent({
 
   const handleMCPServerSelection = (mcpServerView: MCPServerViewType) => {
     setValue("mcpServerView", mcpServerView);
-    setValue("name", mcpServerView.name ?? mcpServerView.server.name ?? "");
+
+    const currentName = getValues("name");
+    if (!currentName || !isEditing) {
+      setValue("name", mcpServerView.name ?? mcpServerView.server.name ?? "");
+    }
+
     setValue("configuration.mcpServerViewId", mcpServerView.sId);
     setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
   };
@@ -355,6 +365,14 @@ function KnowledgeConfigurationSheetContent({
       icon: config?.icon,
       content: (
         <div className="space-y-6">
+          <NameSection
+            title="Tool Name"
+            description="Customize the name of this knowledge tool to reference it in your instructions."
+            label="Name"
+            placeholder="search_gdrive"
+            helpText="Use lowercase letters, numbers, and underscores only. No spaces allowed."
+          />
+
           {requirements.mayRequireTimeFrameConfiguration && (
             <TimeFrameSection actionType="extract" />
           )}

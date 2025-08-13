@@ -26,7 +26,7 @@ export async function runNotionWorker() {
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return new ActivityInboundLogInterceptor(ctx, logger, "notion");
         },
         () => new NotionCastKnownErrorsInterceptor(),
       ],
@@ -59,7 +59,7 @@ export async function runNotionGarbageCollectWorker() {
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return new ActivityInboundLogInterceptor(ctx, logger, "notion");
         },
         () => new NotionCastKnownErrorsInterceptor(),
       ],

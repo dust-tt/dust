@@ -10,6 +10,7 @@ import { DataSourceCategoryBrowser } from "@app/components/data_source_view/Data
 import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
 import { DataSourceSpaceSelector } from "@app/components/data_source_view/DataSourceSpaceSelector";
 import { DataSourceViewTable } from "@app/components/data_source_view/DataSourceViewTable";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import type {
   ContentNodesViewType,
@@ -108,7 +109,7 @@ function getBreadcrumbConfig(
       };
     case "data_source":
       return {
-        label: entry.dataSourceView.dataSource.name,
+        label: getDataSourceNameFromView(entry.dataSourceView),
       };
     case "node":
       return {

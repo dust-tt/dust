@@ -4,6 +4,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
   ContextItem,
+  LoadingBlock,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -12,9 +13,11 @@ import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import { getVisualForTreeItem } from "@app/components/data_source_view/context/utils";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useNodePath } from "@app/hooks/useNodePath";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import type { DataSourceViewContentNode } from "@app/types";
-import { pluralize } from "@app/types";
+import { pluralize, removeNulls } from "@app/types";
 
 function KnowledgeFooterItemReadablePath({
   node,
@@ -22,25 +25,27 @@ function KnowledgeFooterItemReadablePath({
   node: DataSourceViewContentNode;
 }) {
   const { owner } = useAgentBuilderContext();
-  const disabled = !node.parentInternalIds?.length;
   const { fullPath, isLoading } = useNodePath({
     node,
     owner,
-    disabled,
   });
 
-  if (disabled) {
-    return <></>;
-  }
-
   return (
-    <span className="text-xs">
-      {isLoading
-        ? "loading..."
-        : [node.parentInternalId, ...fullPath.map((node) => node.title)].join(
-            "/"
-          )}
-    </span>
+    <div>
+      {isLoading ? (
+        <LoadingBlock className="h-4 w-[250px]" />
+      ) : (
+        <span className="text-xs">
+          {removeNulls(
+            fullPath.map((node, index) =>
+              index === 0
+                ? getDataSourceNameFromView(node.dataSourceView)
+                : node.parentTitle
+            )
+          ).join("/")}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -49,8 +54,9 @@ function KnowledgeFooterItem({
 }: {
   item: DataSourceBuilderTreeItemType;
 }) {
+  const { isDark } = useTheme();
   const { removeNodeWithPath } = useDataSourceBuilderContext();
-  const VisualComponent = getVisualForTreeItem(item);
+  const VisualComponent = getVisualForTreeItem(item, isDark);
 
   return (
     <ContextItem

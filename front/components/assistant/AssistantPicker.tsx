@@ -7,11 +7,11 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  PlusIcon,
   RobotIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
 import { filterAndSortAgents } from "@app/lib/utils";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 
@@ -86,11 +86,7 @@ export function AssistantPicker({
               }}
               button={
                 showFooterButtons && (
-                  <Button
-                    label="Create"
-                    icon={PlusIcon}
-                    href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-                  />
+                  <CreateAgentButton owner={owner} dataGtmLocation="homepage" />
                 )
               }
             />

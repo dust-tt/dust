@@ -10,6 +10,7 @@ import type { DataSourceRowData } from "@app/components/data_source_view/hooks/u
 import { useDataSourceColumns } from "@app/components/data_source_view/hooks/useDataSourceColumns";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 
@@ -29,35 +30,32 @@ export function DataSourceViewTable() {
     });
 
   const columns = useDataSourceColumns();
-  const rows: DataSourceRowData[] = spaceDataSourceViews.map((dsv) => {
-    const connectorProvider = dsv.dataSource.connectorProvider
-      ? CONNECTOR_CONFIGURATIONS[dsv.dataSource.connectorProvider]
-      : null;
+  const rows: DataSourceRowData[] = spaceDataSourceViews
+    .filter((dsv) => dsv.dataSource.connectorProvider !== "slack_bot")
+    .map((dsv) => {
+      const provider = dsv.dataSource.connectorProvider;
 
-    const icon = dsv.dataSource.connectorProvider
-      ? connectorProvider?.getLogoComponent(isDark) ??
-        CATEGORY_DETAILS[dsv.category].icon
-      : FolderIcon;
+      const connectorProvider = provider
+        ? CONNECTOR_CONFIGURATIONS[provider]
+        : null;
 
-    let title = dsv.dataSource.name;
-    if (
-      connectorProvider != null &&
-      connectorProvider.connectorProvider !== "webcrawler"
-    ) {
-      title = connectorProvider.name;
-    }
+      const icon = provider
+        ? connectorProvider?.getLogoComponent(isDark) ??
+          CATEGORY_DETAILS[dsv.category].icon
+        : FolderIcon;
 
-    return {
-      id: dsv.sId,
-      title,
-      onClick: () => setDataSourceViewEntry(dsv),
-      icon,
-      entry: {
-        type: "data_source",
-        dataSourceView: dsv,
-      },
-    };
-  });
+      return {
+        id: dsv.sId,
+        title: getDataSourceNameFromView(dsv),
+        onClick: () => setDataSourceViewEntry(dsv),
+        icon,
+        entry: {
+          type: "data_source",
+          dataSourceView: dsv,
+        },
+      } satisfies DataSourceRowData;
+    })
+    .toSorted((a, b) => a.title.localeCompare(b.title));
 
   if (isSpaceDataSourceViewsLoading) {
     return (

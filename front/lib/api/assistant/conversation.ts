@@ -599,6 +599,7 @@ export async function postUserMessage(
                   rank: messageRow.rank,
                   skipToolsValidation: agentMessageRow.skipToolsValidation,
                   contents: [],
+                  parsedContents: {},
                 } satisfies AgentMessageWithRankType,
               };
             })();
@@ -696,7 +697,7 @@ export async function postUserMessage(
       };
 
       void runAgentLoop(
-        auth.toJSON(),
+        auth,
         { sync: true, inMemoryData },
         { forceAsynchronousLoop, startStep: 0 }
       );
@@ -1047,6 +1048,7 @@ export async function editUserMessage(
                 rank: messageRow.rank,
                 skipToolsValidation: agentMessageRow.skipToolsValidation,
                 contents: [],
+                parsedContents: {},
               } satisfies AgentMessageWithRankType,
             };
           })();
@@ -1147,7 +1149,7 @@ export async function editUserMessage(
       };
 
       void runAgentLoop(
-        auth.toJSON(),
+        auth,
         { sync: true, inMemoryData },
         { forceAsynchronousLoop: false, startStep: 0 }
       );
@@ -1286,6 +1288,7 @@ export async function retryAgentMessage(
         rank: m.rank,
         skipToolsValidation: agentMessageRow.skipToolsValidation,
         contents: [],
+        parsedContents: {},
       };
 
       return {
@@ -1376,7 +1379,7 @@ export async function retryAgentMessage(
   };
 
   void runAgentLoop(
-    auth.toJSON(),
+    auth,
     { sync: true, inMemoryData },
     { forceAsynchronousLoop: false, startStep: 0 }
   );

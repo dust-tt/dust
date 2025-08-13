@@ -27,7 +27,7 @@ export async function runSnowflakeWorker() {
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return new ActivityInboundLogInterceptor(ctx, logger, "snowflake");
         },
         () => new SnowflakeCastKnownErrorsInterceptor(),
       ],

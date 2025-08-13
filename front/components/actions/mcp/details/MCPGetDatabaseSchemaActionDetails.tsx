@@ -14,7 +14,6 @@ import {
 export function MCPGetDatabaseSchemaActionDetails({
   action,
   viewType,
-  defaultOpen,
 }: MCPActionDetailsProps) {
   const { output } = action;
 
@@ -28,7 +27,6 @@ export function MCPGetDatabaseSchemaActionDetails({
     <ActionDetailsWrapper
       viewType={viewType}
       actionName="Get database schema"
-      defaultOpen={defaultOpen}
       visual={TableIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">

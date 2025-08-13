@@ -1,5 +1,6 @@
 import {
   Avatar,
+  BoltIcon,
   BookOpenIcon,
   Button,
   Card,
@@ -8,9 +9,9 @@ import {
   EmptyCTA,
   Hoverable,
   ListAddIcon,
+  Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { Spinner } from "@dust-tt/sparkle";
 import { isEmpty } from "lodash";
 import React, { useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
@@ -102,6 +103,9 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
         ) ?? null
       : null;
 
+  const displayName = actionDisplayName(action, mcpServerView);
+  const description = action.description ?? "";
+
   return (
     <Card
       variant="primary"
@@ -121,18 +125,16 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
           {actionIcon(action, mcpServerView)}
-          <div className="w-full truncate">
-            {actionDisplayName(action, mcpServerView)}
-          </div>
+          <span className="truncate">{displayName}</span>
         </div>
-        <div className="line-clamp-4 text-muted-foreground dark:text-muted-foreground-night">
-          <p>{action.description}</p>
+
+        <div className="text-muted-foreground dark:text-muted-foreground-night">
+          <span className="line-clamp-2 break-words">{description}</span>
         </div>
       </div>
     </Card>
   );
 }
-
 interface AgentBuilderCapabilitiesBlockProps {
   isActionsLoading: boolean;
 }
@@ -269,7 +271,7 @@ export function AgentBuilderCapabilitiesBlock({
                   type="button"
                   onClick={onClickKnowledge}
                   label="Add knowledge"
-                  icon={BookOpenIcon}
+                  icon={BoltIcon}
                   variant="primary"
                 />
                 <Button

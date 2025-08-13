@@ -9,6 +9,7 @@ import { uniqueId } from "lodash";
 
 import { config } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
+import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
@@ -93,6 +94,8 @@ export async function getOrCreateWorkOSOrganization(
             organizationId: organization.id,
             roleSlug: membership.role,
           });
+
+          await invalidateWorkOSOrganizationsCacheForUserId(user.workOSUserId);
         },
         { concurrency: 10 }
       );

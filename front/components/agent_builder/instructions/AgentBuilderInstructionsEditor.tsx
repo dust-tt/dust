@@ -3,6 +3,7 @@ import { CharacterCount } from "@tiptap/extension-character-count";
 import Document from "@tiptap/extension-document";
 import { History } from "@tiptap/extension-history";
 import { ListItem } from "@tiptap/extension-list-item";
+import Placeholder from "@tiptap/extension-placeholder";
 import Text from "@tiptap/extension-text";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { cva } from "class-variance-authority";
@@ -11,8 +12,8 @@ import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AgentInstructionDiffExtension } from "@app/components/agent_builder/instructions/AgentInstructionDiffExtension";
-import { InstructionBlockExtension } from "@app/components/agent_builder/instructions/InstructionBlockExtension";
+import { AgentInstructionDiffExtension } from "@app/components/agent_builder/instructions/extensions/AgentInstructionDiffExtension";
+import { InstructionBlockExtension } from "@app/components/agent_builder/instructions/extensions/InstructionBlockExtension";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import {
@@ -25,7 +26,7 @@ export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 const editorVariants = cva(
   [
-    "overflow-auto border rounded-xl p-2 resize-y min-h-60 h-125",
+    "overflow-auto border rounded-xl p-2 resize-y min-h-60 h-100",
     "transition-all duration-200",
     "bg-muted-background dark:bg-muted-background-night",
   ],
@@ -75,6 +76,12 @@ export function AgentBuilderInstructionsEditor({
       History,
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
+      Placeholder.configure({
+        placeholder:
+          "What does this agent do? How should it behave? What should it avoid doing?",
+        emptyNodeClass:
+          "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
+      }),
       CharacterCount.configure({
         limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
       }),

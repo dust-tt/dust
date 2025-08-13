@@ -1,7 +1,11 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import _ from "lodash";
 
-import type { RenderedWarehouseNodeType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type {
+  RenderedWarehouseNodeType,
+  WarehousesBrowseType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { WAREHOUSES_BROWSE_MIME_TYPE } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ResolvedDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeDataSourceViewFilter } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import config from "@app/lib/api/config";
@@ -160,9 +164,9 @@ export function makeBrowseResource({
   nodes: RenderedWarehouseNodeType[];
   nextPageCursor: string | null;
   resultCount: number;
-}) {
+}): WarehousesBrowseType {
   return {
-    mimeType: "application/vnd.dust.tool-output.tables-filesystem-browse",
+    mimeType: WAREHOUSES_BROWSE_MIME_TYPE,
     uri: "",
     text: `Showing ${nodes.length} results.${nextPageCursor ? " More results available." : " No more results available."}`,
     nodeId,
@@ -176,13 +180,13 @@ function renderNode(
   node: CoreAPIContentNode,
   dataSourceById: Record<string, DataSourceResource | null>
 ): RenderedWarehouseNodeType {
-  const dataSourceSId = dataSourceById[node.data_source_id]?.sId;
+  const dataSourceId = dataSourceById[node.data_source_id]?.sId;
   const connectorProvider =
     dataSourceById[node.data_source_id]?.connectorProvider;
 
   const nodeId =
     node.node_id === DATA_SOURCE_NODE_ID
-      ? `warehouse-${dataSourceSId}`
+      ? `warehouse-${dataSourceId}`
       : node.node_id;
 
   const mimeType =
@@ -199,4 +203,104 @@ function renderNode(
     hasChildren: node.children_count > 0,
     connectorProvider: connectorProvider ?? null,
   };
+}
+
+export async function validateTables(
+  auth: Authenticator,
+  tableIds: string[],
+  dataSourceConfigurations: ResolvedDataSourceConfiguration[]
+): Promise<
+  Result<
+    { validatedNodes: CoreAPIContentNode[]; dataSourceId: string },
+    Error | CoreAPIError
+  >
+> {
+  if (tableIds.length === 0) {
+    return new Ok({ validatedNodes: [], dataSourceId: "" });
+  }
+
+  const parsedTables: { dataSourceId: string; nodeId: string }[] = [];
+  const dataSourceIds = new Set<string>();
+
+  for (const tableId of tableIds) {
+    if (!tableId.startsWith("table-")) {
+      return new Err(
+        new Error(
+          `Invalid table ID format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`
+        )
+      );
+    }
+
+    const parts = tableId.substring("table-".length).split("-");
+    if (parts.length < 2) {
+      return new Err(
+        new Error(
+          `Invalid table ID format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`
+        )
+      );
+    }
+
+    const dataSourceId = parts[0];
+    const nodeId = parts.slice(1).join("-");
+
+    parsedTables.push({ dataSourceId, nodeId });
+    dataSourceIds.add(dataSourceId);
+  }
+
+  if (dataSourceIds.size > 1) {
+    return new Err(
+      new Error(
+        `All tables must be from the same warehouse. Found tables from warehouses: ${Array.from(dataSourceIds).join(", ")}`
+      )
+    );
+  }
+
+  const dataSourceId = Array.from(dataSourceIds)[0];
+  const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+  if (!dataSource) {
+    return new Err(new Error(`Data source not found for ID: ${dataSourceId}`));
+  }
+
+  const relevantConfig = dataSourceConfigurations.find(
+    (config) =>
+      config.dataSource.dustAPIDataSourceId === dataSource.dustAPIDataSourceId
+  );
+
+  if (!relevantConfig) {
+    return new Err(
+      new Error(
+        `Tables from warehouse ${dataSourceId} are not accessible with the current view filter`
+      )
+    );
+  }
+
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const searchResult = await coreAPI.searchNodes({
+    filter: {
+      data_source_views: makeDataSourceViewFilter([relevantConfig]),
+      node_ids: parsedTables.map((t) => t.nodeId),
+    },
+  });
+
+  if (searchResult.isErr()) {
+    return searchResult;
+  }
+
+  const foundNodeIds = new Set(searchResult.value.nodes.map((n) => n.node_id));
+  const missingTables = parsedTables.filter((t) => !foundNodeIds.has(t.nodeId));
+
+  if (missingTables.length > 0) {
+    return new Err(
+      new Error(
+        `The following tables are not accessible with the current view filter: ${missingTables
+          .map((t) => `table-${t.dataSourceId}-${t.nodeId}`)
+          .join(", ")}`
+      )
+    );
+  }
+
+  return new Ok({
+    validatedNodes: searchResult.value.nodes,
+    dataSourceId,
+  });
 }

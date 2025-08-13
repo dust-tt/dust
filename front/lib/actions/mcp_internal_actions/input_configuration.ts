@@ -370,6 +370,7 @@ export function augmentInputsWithConfiguration({
 
 export interface MCPServerRequirements {
   requiresDataSourceConfiguration: boolean;
+  requiresDataWarehouseConfiguration: boolean;
   requiresTableConfiguration: boolean;
   requiresChildAgentConfiguration: boolean;
   requiresReasoningConfiguration: boolean;
@@ -389,6 +390,7 @@ export function getMCPServerRequirements(
   if (!mcpServerView) {
     return {
       requiresDataSourceConfiguration: false,
+      requiresDataWarehouseConfiguration: false,
       requiresTableConfiguration: false,
       requiresChildAgentConfiguration: false,
       requiresReasoningConfiguration: false,
@@ -409,6 +411,14 @@ export function getMCPServerRequirements(
       findPathsToConfiguration({
         mcpServer: server,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      })
+    ).length > 0;
+
+  const requiresDataWarehouseConfiguration =
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServer: server,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE,
       })
     ).length > 0;
 
@@ -494,6 +504,7 @@ export function getMCPServerRequirements(
 
   return {
     requiresDataSourceConfiguration,
+    requiresDataWarehouseConfiguration,
     requiresTableConfiguration,
     requiresChildAgentConfiguration,
     requiresReasoningConfiguration,
@@ -506,6 +517,7 @@ export function getMCPServerRequirements(
     requiresDustAppConfiguration: requiredDustAppConfiguration,
     noRequirement:
       !requiresDataSourceConfiguration &&
+      !requiresDataWarehouseConfiguration &&
       !requiresTableConfiguration &&
       !requiresChildAgentConfiguration &&
       !requiresReasoningConfiguration &&

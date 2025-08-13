@@ -176,7 +176,6 @@ export function ToolGeneratedFileDetails({
 interface SearchResultProps {
   actionName: string;
   defaultQuery?: string;
-  defaultOpen: boolean;
   visual: React.ComponentType<{ className?: string }>;
   actionOutput: CallToolResult["content"] | null;
   viewType: "conversation" | "sidebar";
@@ -185,7 +184,6 @@ interface SearchResultProps {
 export function SearchResultDetails({
   actionName,
   defaultQuery,
-  defaultOpen,
   visual,
   viewType,
   actionOutput,
@@ -280,7 +278,6 @@ export function SearchResultDetails({
     <ActionDetailsWrapper
       viewType={viewType}
       actionName={actionName}
-      defaultOpen={defaultOpen}
       visual={visual}
     >
       {viewType === "conversation" ? (
@@ -306,7 +303,7 @@ export function SearchResultDetails({
           {actionOutput && viewType === "sidebar" && (
             <div>
               <CollapsibleComponent
-                rootProps={{ defaultOpen }}
+                rootProps={{ defaultOpen: true }}
                 triggerChildren={
                   <span className="text-sm font-bold text-foreground dark:text-foreground-night">
                     Results

@@ -12,6 +12,7 @@ import type {
 import { Err, Ok } from "@app/types";
 
 import { MembershipResource } from "../resources/membership_resource";
+import { findWorkOSOrganizationsForUserId } from "./workos/organization_membership";
 
 /**
  * This function checks that the user had at least one membership in the past for this workspace
@@ -98,8 +99,13 @@ export async function getUserWithWorkspaces<T extends boolean>(
       )
     : [];
 
+  const organizations = user.workOSUserId
+    ? await findWorkOSOrganizationsForUserId(user.workOSUserId)
+    : [];
+
   return {
     ...user.toJSON(),
+    organizations,
     workspaces: workspaces.map((w) => {
       return {
         ...renderLightWorkspaceType({
