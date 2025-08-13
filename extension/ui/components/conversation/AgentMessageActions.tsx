@@ -4,7 +4,7 @@ import type {
   LightWorkspaceType,
 } from "@dust-tt/client";
 import { assertNever, TOOL_RUNNING_LABEL } from "@dust-tt/client";
-import { Chip, cn, ContentMessage } from "@dust-tt/sparkle";
+import { Chip } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 interface AgentMessageActionsProps {
   agentMessage: AgentMessagePublicType;
@@ -12,91 +12,73 @@ interface AgentMessageActionsProps {
   owner: LightWorkspaceType;
 }
 
-// function isMCPActionType(
-//   action: { type: "tool_action"; id: number } | undefined
-// ): action is MCPActionType {
-//   return action !== undefined && "functionCallName" in action;
-// }
-
 export function AgentMessageActions({
   agentMessage,
   lastAgentStateClassification,
-  owner,
 }: AgentMessageActionsProps) {
-  const lastAction = agentMessage.actions[agentMessage.actions.length - 1];
-  const hasActions = agentMessage.actions.length > 0;
-  const chainOfThought = agentMessage.chainOfThought || "";
+  const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
 
-  return lastAgentStateClassification !== "done" ? (
-    <div
-      className={cn(
-        "flex max-w-[500px] flex-col gap-y-4",
-        lastAction ? "cursor-pointer" : ""
-      )}
-    >
-      {/* TODO: hide chain of thoughts while action is running */}
-      <ContentMessage variant="primary">
-        <div className="flex w-full flex-row">
-          {!chainOfThought ? (
-            <AnimatedText variant="primary">Thinking...</AnimatedText>
-          ) : (
-            <Markdown
-              content={chainOfThought}
-              isStreaming={false}
-              forcedTextSize="text-sm"
-              textColor="text-muted-foreground"
-              isLastMessage={false}
-            />
-          )}
-          <span className="flex-grow"></span>
-          <div className="w-8 self-start pl-4">
-            {lastAgentStateClassification === "thinking" && (
-              <Spinner size="xs" />
-            )}
-          </div>
-        </div>
-      </ContentMessage>
-      {isMCPActionType(lastAction) &&
-        lastAgentStateClassification === "acting" && (
-          <Card variant="secondary" size="sm">
-            <MCPActionDetails
-              viewType="conversation"
-              action={lastAction}
-              owner={owner}
-              lastNotification={null}
-              defaultOpen={true}
-            />
-          </Card>
-        )}
-    </div>
-  ) : (
+  useEffect(() => {
+    switch (lastAgentStateClassification) {
+      case "thinking":
+        setChipLabel("Thinking");
+        break;
+      case "acting":
+        if (agentMessage.actions.length > 0) {
+          setChipLabel(TOOL_RUNNING_LABEL);
+        }
+        break;
+      case "done":
+        setChipLabel(undefined);
+        break;
+      default:
+        assertNever(lastAgentStateClassification);
+    }
+  }, [lastAgentStateClassification, agentMessage.actions]);
+
+  // We're thinking or acting if the message status is still "created" and we don't have content
+  // yet. Despite our work on chain of thoughts events, it's still possible for content to be
+  // emitted before actions in which case we will think we're not thinking or acting until an action
+  // gets emitted in which case the content will get requalified as chain of thoughts and this will
+  // switch back to true.
+  const isThinkingOrActing = useMemo(
+    () => agentMessage.status === "created",
+    [agentMessage.status]
+  );
+
+  return (
     <div className="flex flex-col items-start gap-y-4">
-      {hasActions && (
-        <Button
-          size="sm"
-          label="Tools inspection"
-          icon={CommandLineIcon}
-          variant="outline"
-          onClick={onClick}
-        />
-      )}
-
-      {/* TODO: remove this once we have chain of thought in sidepanel */}
-      {chainOfThought && (
-        <div>
-          <ContentMessage variant="primary">
-            <div className="flex w-full flex-row">
-              <Markdown
-                content={chainOfThought}
-                isStreaming={false}
-                forcedTextSize="text-sm"
-                textColor="text-muted-foreground"
-                isLastMessage={false}
-              />
-            </div>
-          </ContentMessage>
-        </div>
-      )}
+      <ActionDetails
+        hasActions={agentMessage.actions.length !== 0}
+        isActionStepDone={!isThinkingOrActing}
+        label={chipLabel}
+      />
     </div>
+  );
+}
+
+function ActionDetails({
+  hasActions,
+  label,
+  isActionStepDone,
+}: {
+  hasActions: boolean;
+  label?: string;
+  isActionStepDone: boolean;
+}) {
+  if (!label && (!isActionStepDone || !hasActions)) {
+    return null;
+  }
+
+  return (
+    label && (
+      <div key={label}>
+        <Chip
+          size="sm"
+          isBusy
+          label={label === "Thinking" ? label : `Thinking, ${label}`}
+        />
+      </div>
+    )
   );
 }
