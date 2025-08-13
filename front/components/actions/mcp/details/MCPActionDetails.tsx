@@ -71,7 +71,10 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   const parts = functionCallName ? functionCallName.split("__") : [];
   const toolName = parts[parts.length - 1];
 
-  if (isInternalMCPServerOfName(mcpServerId, "search")) {
+  if (
+    isInternalMCPServerOfName(mcpServerId, "search") ||
+    isInternalMCPServerOfName(mcpServerId, "data_sources_file_system")
+  ) {
     if (toolName === SEARCH_TOOL_NAME) {
       const timeFrame = parseTimeFrame(params.relativeTimeFrame as string);
       const queryResource = makeQueryResource({
