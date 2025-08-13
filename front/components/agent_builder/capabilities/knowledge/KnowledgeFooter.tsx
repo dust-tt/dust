@@ -13,9 +13,11 @@ import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import { getVisualForTreeItem } from "@app/components/data_source_view/context/utils";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useNodePath } from "@app/hooks/useNodePath";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import type { DataSourceViewContentNode } from "@app/types";
-import { pluralize } from "@app/types";
+import { pluralize, removeNulls } from "@app/types";
 
 function KnowledgeFooterItemReadablePath({
   node,
@@ -34,11 +36,13 @@ function KnowledgeFooterItemReadablePath({
         <LoadingBlock className="h-4 w-[250px]" />
       ) : (
         <span className="text-xs">
-          {fullPath
-            .map((node, index) =>
-              index === 0 ? node.dataSourceView.dataSource.name : node.title
+          {removeNulls(
+            fullPath.map((node, index) =>
+              index === 0
+                ? getDataSourceNameFromView(node.dataSourceView)
+                : node.parentTitle
             )
-            .join("/")}
+          ).join("/")}
         </span>
       )}
     </div>
@@ -50,8 +54,9 @@ function KnowledgeFooterItem({
 }: {
   item: DataSourceBuilderTreeItemType;
 }) {
+  const { isDark } = useTheme();
   const { removeNodeWithPath } = useDataSourceBuilderContext();
-  const VisualComponent = getVisualForTreeItem(item);
+  const VisualComponent = getVisualForTreeItem(item, isDark);
 
   return (
     <ContextItem
