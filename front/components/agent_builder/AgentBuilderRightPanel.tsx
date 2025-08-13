@@ -50,14 +50,6 @@ function PanelHeader({
                   onClick={onTogglePanel}
                   className="ml-4"
                 />
-                {hasTemplate && (
-                  <TabsTrigger
-                    value="template"
-                    label="Template"
-                    icon={MagicIcon}
-                    onClick={() => onTabChange("template")}
-                  />
-                )}
                 <TabsTrigger
                   value="testing"
                   label="Testing"
@@ -70,6 +62,14 @@ function PanelHeader({
                   icon={BarChartIcon}
                   onClick={() => onTabChange("performance")}
                 />
+                {hasTemplate && (
+                  <TabsTrigger
+                    value="template"
+                    label="Template"
+                    icon={MagicIcon}
+                    onClick={() => onTabChange("template")}
+                  />
+                )}
               </TabsList>
             </Tabs>
           </ScrollArea>
@@ -97,15 +97,6 @@ interface CollapsedTabsProps {
 function CollapsedTabs({ onTabSelect, hasTemplate }: CollapsedTabsProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
-      {hasTemplate && (
-        <Button
-          icon={MagicIcon}
-          variant="ghost"
-          size="sm"
-          tooltip="Template"
-          onClick={() => onTabSelect("template")}
-        />
-      )}
       <Button
         icon={TestTubeIcon}
         variant="ghost"
@@ -120,6 +111,15 @@ function CollapsedTabs({ onTabSelect, hasTemplate }: CollapsedTabsProps) {
         tooltip="Performance"
         onClick={() => onTabSelect("performance")}
       />
+      {hasTemplate && (
+        <Button
+          icon={MagicIcon}
+          variant="ghost"
+          size="sm"
+          tooltip="Template"
+          onClick={() => onTabSelect("template")}
+        />
+      )}
     </div>
   );
 }
