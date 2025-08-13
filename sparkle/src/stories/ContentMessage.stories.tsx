@@ -169,6 +169,28 @@ export const InlineWithAction: Story = {
   ),
 };
 
+export const InlineWithTitle: Story = {
+  render: () => (
+    <div className="s-flex s-flex-col s-gap-4">
+      <ContentMessage 
+        title="Status"
+        icon={InformationCircleIcon} 
+        variant="info"
+        inline
+        action={<Button size="xs" variant="primary" label="Review actions" />}
+      >
+        3 actions require manual approval
+      </ContentMessage>
+      <ContentMessage 
+        title="Alert"
+        icon={InformationCircleIcon} 
+        variant="warning"
+        inline
+      />
+    </div>
+  ),
+};
+
 export const InlineVariants: Story = {
   render: () => (
     <div className="s-flex s-flex-col s-gap-4">

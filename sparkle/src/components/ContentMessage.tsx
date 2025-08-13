@@ -147,6 +147,12 @@ export function ContentMessage({
             />
           )}
           <div className={cn("s-flex-1", textVariants({ variant }))}>
+            {title && (
+              <>
+                <span className={titleVariants({ variant })}>{title}</span>
+                {children && ": "}
+              </>
+            )}
             {children}
           </div>
           {action && <div className="s-shrink-0">{action}</div>}
