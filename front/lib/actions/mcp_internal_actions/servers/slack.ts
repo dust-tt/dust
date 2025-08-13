@@ -439,7 +439,6 @@ const createServer = async (
             searchQuery = `${searchQuery} ${usersMentioned.map((user) => `${user}`).join(" ")}`;
           }
 
-          console.log(`Searching Slack with query: ${searchQuery}`);
           const messages = await slackClient.search.messages({
             query: searchQuery,
             sort: "score",
