@@ -383,13 +383,15 @@ function KnowledgeConfigurationSheetContent({
         : "Choose the data sources to include in your knowledge base",
       icon: undefined,
       content: (
-        <ScrollArea>
-          <DataSourceBuilderSelector
-            dataSourceViews={supportedDataSourceViews}
-            owner={owner}
-            viewType={viewType}
-          />
-        </ScrollArea>
+        <div className="space-y-4">
+          <ScrollArea>
+            <DataSourceBuilderSelector
+              dataSourceViews={supportedDataSourceViews}
+              owner={owner}
+              viewType={viewType}
+            />
+          </ScrollArea>
+        </div>
       ),
     },
     {
