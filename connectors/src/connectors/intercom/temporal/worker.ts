@@ -24,7 +24,7 @@ export async function runIntercomWorker() {
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return new ActivityInboundLogInterceptor(ctx, logger, "intercom");
         },
       ],
     },

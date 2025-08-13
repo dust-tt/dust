@@ -1,10 +1,9 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { ContentMessage, Markdown, Separator, Spinner } from "@dust-tt/sparkle";
 import React from "react";
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import type { MCPActionType } from "@app/lib/actions/mcp";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type { ConversationType, LightWorkspaceType } from "@app/types";
 
@@ -41,18 +40,7 @@ export function AgentActionsPanel({
 
   const { actionProgress } = messageMetadata;
   const isActing = fullAgentMessage.status === "created";
-
-  const actions = fullAgentMessage.actions;
-
-  const groupedActionsByStep = actions
-    ? actions.reduce<Record<number, MCPActionType[]>>((acc, current) => {
-        const currentStep = current.step + 1;
-        return {
-          ...acc,
-          [currentStep]: [...(acc[currentStep] || []), current],
-        };
-      }, {})
-    : {};
+  const steps = fullAgentMessage.parsedContents;
 
   return (
     <div className="flex h-full flex-col">
@@ -67,32 +55,56 @@ export function AgentActionsPanel({
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {Object.entries(groupedActionsByStep).map(([step, actions]) => (
-              <div
-                className="flex flex-col gap-4 pb-4 duration-1000 animate-in fade-in"
-                key={step}
-              >
-                <p className="heading-xl text-foreground dark:text-foreground-night">
-                  Step {step}
-                </p>
-                {actions.map((action, idx) => {
-                  const lastNotification =
-                    actionProgress.get(action.id)?.progress ?? null;
-                  return (
-                    <div key={`action-${action.id}`}>
-                      <MCPActionDetails
-                        viewType="sidebar"
-                        action={action}
-                        lastNotification={lastNotification}
-                        defaultOpen={idx === 0 && step === "1"}
-                        owner={owner}
-                        messageStatus={fullAgentMessage.status}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+            {Object.entries(steps).map(([step, entries]) => {
+              if (!entries || entries.length === 0) {
+                return null;
+              }
+              return (
+                <div
+                  className="flex flex-col gap-4 duration-1000 animate-in fade-in"
+                  key={step}
+                >
+                  {step !== "1" && <Separator className="my-4" />}
+                  <span className="text-size w-fit self-start text-lg font-semibold">
+                    Step {step}
+                  </span>
+
+                  {entries.map((entry, idx) => {
+                    if (entry.kind === "reasoning") {
+                      return (
+                        <ContentMessage
+                          key={`reasoning-${step}-${idx}`}
+                          variant="primary"
+                          size="lg"
+                        >
+                          <Markdown
+                            content={entry.content}
+                            isStreaming={false}
+                            forcedTextSize="text-sm"
+                            textColor="text-muted-foreground"
+                            isLastMessage={false}
+                          />{" "}
+                        </ContentMessage>
+                      );
+                    } else {
+                      const lastNotification =
+                        actionProgress.get(entry.action.id)?.progress ?? null;
+                      return (
+                        <div key={`action-${entry.action.id}`}>
+                          <MCPActionDetails
+                            viewType="sidebar"
+                            action={entry.action}
+                            lastNotification={lastNotification}
+                            owner={owner}
+                            messageStatus={fullAgentMessage.status}
+                          />
+                        </div>
+                      );
+                    }
+                  })}
+                </div>
+              );
+            })}
             {isActing && (
               <div className="flex justify-center">
                 <Spinner variant="color" />

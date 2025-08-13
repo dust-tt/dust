@@ -40,7 +40,6 @@ export function MCPRunAgentActionDetails({
   action,
   lastNotification,
   viewType,
-  defaultOpen,
 }: MCPActionDetailsProps) {
   const { isDark } = useTheme();
 
@@ -171,7 +170,6 @@ export function MCPRunAgentActionDetails({
     <ActionDetailsWrapper
       viewType={viewType}
       actionName={childAgent?.name ? `Run @${childAgent.name}` : "Run Agent"}
-      defaultOpen={defaultOpen}
       visual={
         childAgent?.pictureUrl
           ? () => (

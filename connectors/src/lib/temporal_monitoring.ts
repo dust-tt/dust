@@ -1,3 +1,4 @@
+import type { ConnectorProvider } from "@dust-tt/client";
 import { assertNever } from "@dust-tt/client";
 import type { Context } from "@temporalio/activity";
 import { ApplicationFailure } from "@temporalio/activity";
@@ -34,9 +35,11 @@ export class ActivityInboundLogInterceptor
 {
   public readonly logger: Logger;
   private readonly context: Context;
+  private readonly provider: ConnectorProvider;
 
-  constructor(ctx: Context, logger: Logger) {
+  constructor(ctx: Context, logger: Logger, provider: ConnectorProvider) {
     this.context = ctx;
+    this.provider = provider;
     this.logger = logger.child({
       activityName: ctx.info.activityType,
       workflowName: ctx.info.workflowType,
@@ -64,7 +67,10 @@ export class ActivityInboundLogInterceptor
       // `workflow_id:${this.context.info.workflowExecution.workflowId}`,
       // `workflow_run_id:${this.context.info.workflowExecution.runId}`,
       `attempt:${this.context.info.attempt}`,
+      `provider:${this.provider}`,
     ];
+
+    this.context.metricMeter.withTags({ provider: this.provider });
 
     // startToClose timeouts do not log an error by default; this code
     // ensures that the error is logged and the activity is marked as

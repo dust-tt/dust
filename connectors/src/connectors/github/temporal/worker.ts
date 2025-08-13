@@ -29,7 +29,7 @@ export async function runGithubWorker() {
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return new ActivityInboundLogInterceptor(ctx, logger, "github");
         },
         () => new GithubCastKnownErrorsInterceptor(),
       ],

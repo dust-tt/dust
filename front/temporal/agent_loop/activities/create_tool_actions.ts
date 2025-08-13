@@ -15,7 +15,7 @@ import type {
   AgentMessageType,
   ModelId,
 } from "@app/types";
-import type { RunAgentSynchronousArgs } from "@app/types/assistant/agent_run";
+import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
 
 interface ActionBlob {
   action: AgentMCPAction;
@@ -35,7 +35,7 @@ export async function createToolActionsActivity(
     functionCallStepContentIds,
     step,
   }: {
-    runAgentData: RunAgentSynchronousArgs;
+    runAgentData: RunAgentExecutionData;
     actions: AgentActionsEvent["actions"];
     stepContexts: StepContext[];
     functionCallStepContentIds: Record<string, ModelId>;

@@ -1,8 +1,8 @@
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 import type { ChildWorkflowHandle } from "@temporalio/workflow";
 import {
   proxyActivities,
   startChild,
-  WorkflowExecutionAlreadyStartedError,
   workflowInfo,
 } from "@temporalio/workflow";
 
@@ -26,6 +26,10 @@ const activities: AgentLoopActivities = {
   }).runModelAndCreateActionsActivity,
   runToolActivity: proxyActivities<typeof runToolActivities>({
     startToCloseTimeout: "10 minutes",
+    retry: {
+      // Do not retry tool activities. Those are not idempotent.
+      maximumAttempts: 1,
+    },
   }).runToolActivity,
 };
 
@@ -95,7 +99,10 @@ export async function agentLoopWorkflow({
     }
   }
 
-  await executeAgentLoop(authType, runAgentArgs, activities, startStep);
+  // In Temporal workflows, we don't pass syncStartTime since async execution doesn't need timeout.
+  await executeAgentLoop(authType, runAgentArgs, activities, {
+    startStep,
+  });
 
   if (childWorkflowHandle) {
     await childWorkflowHandle.result();

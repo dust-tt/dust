@@ -28,7 +28,7 @@ export async function runMicrosoftWorker() {
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return new ActivityInboundLogInterceptor(ctx, logger, "microsoft");
         },
         () => new MicrosoftCastKnownErrorsInterceptor(),
       ],

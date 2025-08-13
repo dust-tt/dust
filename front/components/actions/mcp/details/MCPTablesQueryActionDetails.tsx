@@ -18,7 +18,6 @@ import {
 export function MCPTablesQueryActionDetails({
   action,
   viewType,
-  defaultOpen,
   owner,
 }: MCPActionDetailsProps) {
   const thinkingBlocks =
@@ -40,7 +39,6 @@ export function MCPTablesQueryActionDetails({
     <ActionDetailsWrapper
       viewType={viewType}
       actionName="Query tables"
-      defaultOpen={defaultOpen}
       visual={TableIcon}
     >
       {viewType === "conversation" ? (

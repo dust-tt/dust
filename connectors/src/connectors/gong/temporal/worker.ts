@@ -26,7 +26,7 @@ export async function runGongWorker() {
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return new ActivityInboundLogInterceptor(ctx, logger, "gong");
         },
         () => new GongCastKnownErrorsInterceptor(),
       ],

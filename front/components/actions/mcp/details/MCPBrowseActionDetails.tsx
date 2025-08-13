@@ -6,7 +6,6 @@ import { isBrowseResultResourceType } from "@app/lib/actions/mcp_internal_action
 
 export function MCPBrowseActionDetails({
   action,
-  defaultOpen,
   viewType,
 }: MCPActionDetailsProps) {
   const urls = action.params.urls as string[];
@@ -18,7 +17,6 @@ export function MCPBrowseActionDetails({
     <ActionDetailsWrapper
       viewType={viewType}
       actionName="Web navigation"
-      defaultOpen={defaultOpen}
       visual={GlobeAltIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">

@@ -9,6 +9,7 @@ import { DataSourceNavigationView } from "@app/components/data_source_view/DataS
 import { DataSourceSearchResults } from "@app/components/data_source_view/DataSourceSearchResults";
 import { DataSourceSpaceSelector } from "@app/components/data_source_view/DataSourceSpaceSelector";
 import { useDebounce } from "@app/hooks/useDebounce";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpacesSearch } from "@app/lib/swr/spaces";
 import type {
@@ -214,7 +215,7 @@ function getBreadcrumbConfig(
       };
     case "data_source":
       return {
-        label: entry.dataSourceView.dataSource.name,
+        label: getDataSourceNameFromView(entry.dataSourceView),
       };
     case "node":
       return {

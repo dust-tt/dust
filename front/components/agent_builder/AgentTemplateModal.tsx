@@ -60,7 +60,7 @@ export function AgentTemplateModal({
                     @{assistantTemplate.handle}
                   </span>
                   <Link
-                    href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}&templateId=${assistantTemplate.sId}`}
+                    href={`/w/${owner.sId}/builder/agents/new?flow=${flow}&templateId=${assistantTemplate.sId}`}
                   >
                     <Button
                       label="Use this template"
