@@ -43,7 +43,6 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
         : undefined,
     viewType,
     pagination: { limit: PAGE_SIZE, cursor: null },
-    sorting: [{ field: "title", direction: "asc" }],
   });
 
   const handleLoadMore = async () => {
