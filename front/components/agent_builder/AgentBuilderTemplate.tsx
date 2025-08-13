@@ -50,29 +50,34 @@ function TemplateButtons({ assistantTemplate }: TemplateButtonsProps) {
   const confirm = useContext(ConfirmContext);
   const { setValue } = useFormContext<AgentBuilderFormData>();
 
-  const handleResetInstructions = async () => {
-    const confirmed = await confirm({
-      title: "Are you sure?",
-      message:
-        "You will lose the changes you have made to the agent's instructions and go back to the template's default settings.",
-      validateVariant: "warning",
-    });
+  const handleResetInstructions = () => {
+    setTimeout(async () => {
+      const confirmed = await confirm({
+        title: "Are you sure?",
+        message:
+          "You will lose the changes you have made to the agent's instructions and go back to the template's default settings.",
+        validateVariant: "warning",
+      });
 
-    if (confirmed && assistantTemplate.presetInstructions) {
-      setValue("instructions", assistantTemplate.presetInstructions);
-    }
+      if (confirmed && assistantTemplate.presetInstructions) {
+        setValue("instructions", assistantTemplate.presetInstructions);
+      }
+    }, 0);
   };
 
-  const handleResetActions = async () => {
-    const confirmed = await confirm({
-      title: "Are you sure?",
-      message: "You will lose the changes you have made to the agent's tools.",
-      validateVariant: "warning",
-    });
+  const handleResetActions = () => {
+    setTimeout(async () => {
+      const confirmed = await confirm({
+        title: "Are you sure?",
+        message:
+          "You will lose the changes you have made to the agent's tools.",
+        validateVariant: "warning",
+      });
 
-    if (confirmed) {
-      setValue("actions", []);
-    }
+      if (confirmed) {
+        setValue("actions", []);
+      }
+    }, 0);
   };
 
   return (
