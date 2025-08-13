@@ -351,15 +351,3 @@ export async function fetchOrCreateWorkOSUserWithEmail({
 
   return new Ok(existingUser);
 }
-
-export async function deleteUserFromWorkOS(
-  userId: string
-): Promise<Result<undefined, Error>> {
-  try {
-    await getWorkOS().userManagement.deleteUser(userId);
-    return new Ok(undefined);
-  } catch (error) {
-    logger.error({ error }, "Failed to delete user from WorkOS");
-    return new Err(normalizeError(error));
-  }
-}

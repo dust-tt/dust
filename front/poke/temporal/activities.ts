@@ -469,14 +469,10 @@ export async function deleteMembersActivity({
         await membership.delete(auth, {});
 
         // Delete the user from WorkOS.
-        if (deleteFromAuth0 && user.workOSUserId) {
-          assert(
-            !workspaceRelocated,
-            "Trying to delete a WorkOS user for a workspace that was relocated/is being relocated."
+        if (deleteFromAuth0) {
+          logger.error(
+            "Trying to delete a WorkOS user - this should never happen."
           );
-
-          // Ignore errors, as the user might not exist in WorkOS.
-          await deleteUserFromWorkOS(user.workOSUserId);
         }
 
         await user.delete(auth, {});
