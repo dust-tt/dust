@@ -2,7 +2,7 @@ import { Button, Logo } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { PokeRegion } from "@app/components/poke/PokeRegion";
+import { PokeRegionDropdown } from "@app/components/poke/PokeRegionDropdown";
 import {
   PokeCommandDialog,
   PokeCommandInput,
@@ -38,7 +38,7 @@ function PokeNavbar({ currentRegion }: PokeNavbarProps) {
         </div>
       </div>
       <div className="items-right flex gap-6">
-        {currentRegion && <PokeRegion currentRegion={currentRegion} />}
+        {currentRegion && <PokeRegionDropdown currentRegion={currentRegion} />}
         <PokeSearchCommand />
       </div>
     </nav>
