@@ -40,7 +40,8 @@ export function AgentMessageActions({
   const { openPanel } = useConversationSidePanelContext();
 
   const lastAction = agentMessage.actions[agentMessage.actions.length - 1];
-  const hasActions = agentMessage.actions.length > 0;
+  const hasSidePanelContent =
+    agentMessage.actions.length > 0 || agentMessage.chainOfThought;
   const chainOfThought = agentMessage.chainOfThought || "";
   const onClick = () => {
     openPanel({
@@ -52,7 +53,7 @@ export function AgentMessageActions({
     });
   };
 
-  if (lastAgentStateClassification === "done" && !hasActions) {
+  if (lastAgentStateClassification === "done" && !hasSidePanelContent) {
     return null;
   }
 
@@ -104,7 +105,7 @@ export function AgentMessageActions({
     <div className="flex flex-col items-start gap-y-4">
       <Button
         size="sm"
-        label="Tools inspection"
+        label="Message Breakdown"
         icon={CommandLineIcon}
         variant="outline"
         onClick={onClick}
