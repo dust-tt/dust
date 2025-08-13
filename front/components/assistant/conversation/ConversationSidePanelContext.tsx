@@ -84,7 +84,6 @@ export function ConversationSidePanelProvider({
           closePanel();
           return;
         }
-        // TODO
         setData(params.messageId);
         setMetadata(params.metadata);
         break;
