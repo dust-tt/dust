@@ -165,18 +165,21 @@ export function KnowledgeConfigurationSheet({
       selectedMCPServerView = mcpServerViews.find((view) => view.server.name === "search");
     }
 
+    const defaultName = action?.name ??
+      presetActionData?.name ??
+      selectedMCPServerView?.name ??
+      selectedMCPServerView?.server.name ??
+      "";
+    
+    const defaultDescription = action?.description ?? presetActionData?.description ?? "";
+
     return {
       sources: dataSourceTree,
-      description: action?.description ?? presetActionData?.description ?? "",
+      description: defaultDescription,
       configuration:
         action?.configuration ?? getDefaultConfiguration(selectedMCPServerView),
       mcpServerView: selectedMCPServerView ?? null,
-      name:
-        action?.name ??
-        presetActionData?.name ??
-        selectedMCPServerView?.name ??
-        selectedMCPServerView?.server.name ??
-        "",
+      name: defaultName,
     };
   }, [action, mcpServerViews, isEditing, presetActionData]);
 
@@ -184,6 +187,13 @@ export function KnowledgeConfigurationSheet({
     resolver: zodResolver(capabilityFormSchema),
     defaultValues,
   });
+  
+  // Update form values when action or presetActionData changes
+  useEffect(() => {
+    if (action || presetActionData) {
+      formMethods.reset(defaultValues);
+    }
+  }, [action, presetActionData, defaultValues, formMethods]);
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
@@ -317,7 +327,8 @@ function KnowledgeConfigurationSheetContent({
     setValue("mcpServerView", mcpServerView);
 
     const currentName = getValues("name");
-    if (!currentName || !isEditing) {
+    // Only set the name if we don't have one and we're not using a preset
+    if (!currentName && !isEditing && !presetActionData) {
       setValue("name", mcpServerView.name ?? mcpServerView.server.name ?? "");
     }
 
