@@ -6,12 +6,7 @@ import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
-import { deleteUserFromWorkOS } from "@app/lib/api/workos/user";
-import {
-  areAllSubscriptionsCanceled,
-  isWorkspaceRelocationDone,
-  isWorkspaceRelocationOngoing,
-} from "@app/lib/api/workspace";
+import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
@@ -418,10 +413,8 @@ export const deleteTrackersActivity = async ({
 
 export async function deleteMembersActivity({
   workspaceId,
-  deleteFromAuth0 = false,
 }: {
   workspaceId: string;
-  deleteFromAuth0?: boolean;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.getNonNullableWorkspace();
@@ -429,12 +422,6 @@ export async function deleteMembersActivity({
   const childLogger = hardDeleteLogger.child({
     workspaceId: workspace.id,
   });
-
-  // Critical: we should never delete an Auth0 sub for a workspace that was relocated/is being relocated.
-  // The Auth0 sub is kept during the relocation, deleting it would affect the relocated users.
-  const workspaceRelocated =
-    isWorkspaceRelocationDone(workspace) ||
-    isWorkspaceRelocationOngoing(workspace);
 
   await MembershipInvitationModel.destroy({
     where: {
@@ -467,17 +454,6 @@ export async function deleteMembersActivity({
         // Delete the user's files.
         await FileResource.deleteAllForUser(auth, user.toJSON());
         await membership.delete(auth, {});
-
-        // Delete the user from WorkOS.
-        if (deleteFromAuth0 && user.workOSUserId) {
-          assert(
-            !workspaceRelocated,
-            "Trying to delete a WorkOS user for a workspace that was relocated/is being relocated."
-          );
-
-          // Ignore errors, as the user might not exist in WorkOS.
-          await deleteUserFromWorkOS(user.workOSUserId);
-        }
 
         await user.delete(auth, {});
       }
