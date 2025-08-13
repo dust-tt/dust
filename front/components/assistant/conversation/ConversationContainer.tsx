@@ -329,7 +329,7 @@ export function ConversationContainer({
       ) : (
         <div
           id="assistant-input-header"
-          className="flex h-fit min-h-[20vh] w-full max-w-3xl flex-col justify-end gap-8 py-2"
+          className="flex h-fit min-h-[20vh] w-full max-w-5xl flex-col justify-end gap-8 py-2"
           ref={startConversationRef}
         >
           <Page.Header title={greeting} />

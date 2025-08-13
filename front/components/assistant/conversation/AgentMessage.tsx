@@ -1,14 +1,18 @@
 import {
+  AnimatedText,
   ArrowPathIcon,
   Button,
+  Card,
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
+  CollapsibleComponent,
   ConversationMessage,
   DocumentIcon,
   InteractiveImageGrid,
   Markdown,
   Separator,
+  Spinner,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { marked } from "marked";
@@ -16,7 +20,7 @@ import React from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
-import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
+import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
 import {
   DefaultAgentMessageGeneratedFiles,
@@ -541,6 +545,107 @@ export function AgentMessage({
     </ConversationMessage>
   );
 
+  // Collapsible component for chain of thought
+  const CollapsibleInlineThought = ({
+    content,
+    isStreaming,
+  }: {
+    content: string;
+    isStreaming: boolean;
+  }) => {
+    const lines = content.split('\n').filter(line => line.trim());
+    const preview = lines[0]?.substring(0, 100) + (lines[0]?.length > 100 || lines.length > 1 ? '...' : '');
+    
+    return (
+      <div className="rounded-lg border border-structure-100 bg-structure-50/50 p-3">
+        <CollapsibleComponent
+          rootProps={{ defaultOpen: isStreaming }}
+          triggerChildren={
+            <div className="flex items-center gap-2 text-sm">
+              {isStreaming && <Spinner size="xs" />}
+              <span className="font-medium text-element-700">
+                {isStreaming ? "Thinking" : "Reasoning"}
+              </span>
+              {!isStreaming && preview && (
+                <span className="text-element-600 truncate flex-1">{preview}</span>
+              )}
+            </div>
+          }
+          contentChildren={
+            <div className="mt-3 pl-6 text-sm text-element-600">
+              <Markdown
+                content={content}
+                isStreaming={isStreaming}
+                forcedTextSize="text-sm"
+                isLastMessage={false}
+              />
+            </div>
+          }
+        />
+      </div>
+    );
+  };
+
+  // Collapsible component for actions
+  const CollapsibleActionDetails = ({
+    action,
+    owner,
+    lastNotification,
+    messageStatus,
+  }: {
+    action: import("@app/lib/actions/mcp").MCPActionType;
+    owner: WorkspaceType;
+    lastNotification: import("@app/lib/actions/mcp_internal_actions/output_schemas").ProgressNotificationContentType | null;
+    messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
+  }) => {
+    const parts = action.functionCallName ? action.functionCallName.split("__") : [];
+    const toolName = parts[parts.length - 1];
+    const isRunning = messageStatus === "created";
+    const hasCompleted = messageStatus === "succeeded";
+    const hasFailed = messageStatus === "failed";
+    
+    // Create a readable action name
+    const actionName = toolName ? toolName.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()) : "Action";
+    
+    return (
+      <div className="rounded-lg border border-structure-100 bg-structure-50/50 p-3">
+        <CollapsibleComponent
+          rootProps={{ defaultOpen: isRunning }}
+          triggerChildren={
+            <div className="flex items-center gap-2 text-sm">
+              {isRunning && <Spinner size="xs" />}
+              {hasCompleted && (
+                <div className="text-success-500">✓</div>
+              )}
+              {hasFailed && (
+                <div className="text-warning-500">✗</div>
+              )}
+              <span className="font-medium text-element-700">
+                {actionName}
+              </span>
+              {!isRunning && (
+                <span className="text-element-500 text-xs">
+                  {hasCompleted ? "Completed" : hasFailed ? "Failed" : ""}
+                </span>
+              )}
+            </div>
+          }
+          contentChildren={
+            <div className="mt-3">
+              <MCPActionDetails
+                viewType="conversation"
+                action={action}
+                owner={owner}
+                lastNotification={lastNotification}
+                messageStatus={messageStatus}
+              />
+            </div>
+          }
+        />
+      </div>
+    );
+  };
+
   function renderAgentMessage({
     agentMessage,
     references,
@@ -552,6 +657,11 @@ export function AgentMessage({
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
+    const isMCPActionType = (
+      action: { type: "tool_action"; id: number } | undefined
+    ): action is import("@app/lib/actions/mcp").MCPActionType => {
+      return action !== undefined && "functionCallName" in action;
+    };
     if (agentMessage.status === "failed") {
       if (
         agentMessage.error &&
@@ -612,14 +722,32 @@ export function AgentMessage({
 
     return (
       <div className="flex flex-col gap-y-4">
-        <div className="flex flex-col gap-2">
-          <AgentMessageActions
-            agentMessage={agentMessage}
-            lastAgentStateClassification={messageStreamState.agentState}
-            actionProgress={messageStreamState.actionProgress}
-            owner={owner}
+        {/* Chain of thought - inline display */}
+        {agentMessage.chainOfThought && (
+          <CollapsibleInlineThought
+            content={agentMessage.chainOfThought}
+            isStreaming={messageStreamState.agentState === "thinking"}
           />
-        </div>
+        )}
+
+        {/* Actions - inline display */}
+        {agentMessage.actions.map((action) => {
+          const lastNotification =
+            messageStreamState.actionProgress.get(action.id)?.progress ?? null;
+          if (isMCPActionType(action)) {
+            return (
+              <CollapsibleActionDetails
+                key={action.id}
+                action={action}
+                owner={owner}
+                lastNotification={lastNotification}
+                messageStatus={agentMessage.status}
+              />
+            );
+          }
+          return null;
+        })}
+
         <InteractiveAgentMessageGeneratedFiles files={interactiveFiles} />
         {(inProgressImages.length > 0 || completedImages.length > 0) && (
           <InteractiveImageGrid
