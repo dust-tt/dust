@@ -54,7 +54,12 @@ export function DataSourceSpaceSelector({
         return aKindIndex - bKindIndex;
       }
 
-      // If kinds are the same, sort by name alphabetically
+      // If kinds are the same, sort by isRestricted (non-restricted first)
+      if (a.isRestricted !== b.isRestricted) {
+        return a.isRestricted ? 1 : -1;
+      }
+
+      // If kinds and isRestricted are the same, sort by name alphabetically
       return a.name.localeCompare(b.name);
     });
 
