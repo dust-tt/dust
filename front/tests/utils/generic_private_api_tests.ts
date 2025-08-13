@@ -80,6 +80,7 @@ export const createPrivateApiMockRequest = async ({
       isSSO: false,
       workspaceId: workspace.sId,
       organizationId: workspace.workOSOrganizationId || undefined,
+      region: "us-central1",
     })
   );
 

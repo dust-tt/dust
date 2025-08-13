@@ -174,6 +174,7 @@ export async function getWorkOSSessionFromCookie(
       session: {
         type: "workos" as const,
         sessionId: r.sessionId,
+        region,
         user: {
           email: r.user.email,
           email_verified: r.user.emailVerified,

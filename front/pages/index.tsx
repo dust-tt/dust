@@ -86,29 +86,25 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
         permanent: false,
       },
     };
-  } else if (user) {
-    const organization = user.organizations?.find(
-      (org) => org.id === session?.organizationId
-    );
-    if (organization) {
-      const targetRegion = organization.metadata.region;
+  } else if (session?.region) {
+    // User does not exist in this region but they have a cookie - checking if we need to redirect
+    const targetRegion = session.region;
 
-      if (targetRegion && targetRegion !== currentRegion) {
-        logger.info(
-          {
-            targetRegion,
-            currentRegion,
-          },
-          "Redirecting to correct region"
-        );
-        const targetRegionInfo = multiRegionsConfig.getOtherRegionInfo();
-        return {
-          redirect: {
-            destination: `${targetRegionInfo.url}/w/${organization.externalId}`,
-            permanent: false,
-          },
-        };
-      }
+    if (targetRegion && targetRegion !== currentRegion) {
+      logger.info(
+        {
+          targetRegion,
+          currentRegion,
+        },
+        "Redirecting to correct region"
+      );
+      const targetRegionInfo = multiRegionsConfig.getOtherRegionInfo();
+      return {
+        redirect: {
+          destination: `${targetRegionInfo.url}/w/${session.organizationId}`,
+          permanent: false,
+        },
+      };
     }
   }
 
