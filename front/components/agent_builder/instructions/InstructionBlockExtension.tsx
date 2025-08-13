@@ -37,11 +37,17 @@ declare module "@tiptap/core" {
   }
 }
 
-const InstructionBlockTypeInput: React.FC<{
+interface InstructionBlockTypeInputProps {
   type: string;
   onChange: (value: string) => void;
   onBlur: () => void;
-}> = ({ type, onChange, onBlur }) => {
+}
+
+const InstructionBlockTypeInput: React.FC<InstructionBlockTypeInputProps> = ({
+  type,
+  onChange,
+  onBlur,
+}) => {
   const [localType, setLocalType] = useState<string>(type);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const skipCommitRef = useRef<boolean>(false);
@@ -96,10 +102,15 @@ const InstructionBlockTypeInput: React.FC<{
   );
 };
 
-const InstructionBlockTypeButton: React.FC<{
+interface InstructionBlockTypeButtonProps {
   type: string;
   onClick: () => void;
-}> = ({ type, onClick }) => {
+}
+
+const InstructionBlockTypeButton: React.FC<InstructionBlockTypeButtonProps> = ({
+  type,
+  onClick,
+}) => {
   return (
     <button
       type="button"
