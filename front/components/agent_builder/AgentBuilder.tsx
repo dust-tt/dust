@@ -56,11 +56,11 @@ export default function AgentBuilder({
     if (agentConfiguration) {
       return transformAgentConfigurationToFormData(agentConfiguration);
     }
-    
+
     if (assistantTemplate) {
       return transformTemplateToFormData(assistantTemplate, user);
     }
-    
+
     return getDefaultAgentFormData(user);
   }, [agentConfiguration, assistantTemplate, user]);
 

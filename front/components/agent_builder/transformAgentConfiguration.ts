@@ -77,21 +77,27 @@ export function transformTemplateToFormData(
   user: UserType
 ): AgentBuilderFormData {
   const defaultFormData = getDefaultAgentFormData(user);
-  
+
   return {
     ...defaultFormData,
     instructions: template.presetInstructions ?? defaultFormData.instructions,
     agentSettings: {
       ...defaultFormData.agentSettings,
       name: template.handle ?? defaultFormData.agentSettings.name,
-      description: template.description ?? defaultFormData.agentSettings.description,
-      pictureUrl: template.pictureUrl ?? defaultFormData.agentSettings.pictureUrl,
+      description:
+        template.description ?? defaultFormData.agentSettings.description,
+      pictureUrl:
+        template.pictureUrl ?? defaultFormData.agentSettings.pictureUrl,
     },
     generationSettings: {
       ...defaultFormData.generationSettings,
       modelSettings: {
-        providerId: template.presetProviderId ?? defaultFormData.generationSettings.modelSettings.providerId,
-        modelId: template.presetModelId ?? defaultFormData.generationSettings.modelSettings.modelId,
+        providerId:
+          template.presetProviderId ??
+          defaultFormData.generationSettings.modelSettings.providerId,
+        modelId:
+          template.presetModelId ??
+          defaultFormData.generationSettings.modelSettings.modelId,
       },
       temperature: template.presetTemperature
         ? AGENT_CREATIVITY_LEVEL_TEMPERATURES[template.presetTemperature]

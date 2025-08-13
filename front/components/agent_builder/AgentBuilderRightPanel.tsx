@@ -167,13 +167,12 @@ export function AgentBuilderRightPanel({
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
-  
+
   const hasTemplate = !!assistantTemplate;
-  
-  const [selectedTab, setSelectedTab] =
-    useState<AgentBuilderRightPanelTabType>(
-      hasTemplate ? "template" : "testing"
-    );
+
+  const [selectedTab, setSelectedTab] = useState<AgentBuilderRightPanelTabType>(
+    hasTemplate ? "template" : "testing"
+  );
 
   const handleTogglePanel = () => {
     setIsPreviewPanelOpen(!isPreviewPanelOpen);
@@ -204,8 +203,8 @@ export function AgentBuilderRightPanel({
           assistantTemplate={assistantTemplate}
         />
       ) : (
-        <CollapsedTabs 
-          onTabSelect={handleTabSelect} 
+        <CollapsedTabs
+          onTabSelect={handleTabSelect}
           hasTemplate={hasTemplate}
         />
       )}
