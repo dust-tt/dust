@@ -95,7 +95,6 @@ export function AgentActionsPanel({
                             viewType="sidebar"
                             action={entry.action}
                             lastNotification={lastNotification}
-                            defaultOpen={true}
                             owner={owner}
                             messageStatus={fullAgentMessage.status}
                           />

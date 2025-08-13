@@ -58,7 +58,6 @@ export interface MCPActionDetailsProps {
   action: MCPActionType;
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
-  defaultOpen: boolean;
   messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
   viewType: "conversation" | "sidebar";
 }
@@ -66,7 +65,6 @@ export interface MCPActionDetailsProps {
 export function MCPActionDetails(props: MCPActionDetailsProps) {
   const {
     action: { output, functionCallName, mcpServerId, params },
-    defaultOpen,
     viewType,
   } = props;
 
@@ -90,7 +88,6 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
           defaultQuery={queryResource.text}
           actionName="Search data"
           actionOutput={output}
-          defaultOpen={defaultOpen}
           visual={MagnifyingGlassIcon}
         />
       );
@@ -105,7 +102,6 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
           viewType={viewType}
           actionName="Browse data sources"
           actionOutput={output}
-          defaultOpen={defaultOpen}
           visual={ActionDocumentTextIcon}
         />
       );
@@ -127,7 +123,6 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
           viewType={viewType}
           actionName="Include data"
           actionOutput={output}
-          defaultOpen={defaultOpen}
           visual={ClockIcon}
         />
       );
@@ -142,7 +137,6 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
           defaultQuery={params.query as string}
           actionName="Web search"
           actionOutput={output}
-          defaultOpen={defaultOpen}
           visual={GlobeAltIcon}
         />
       );

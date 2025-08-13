@@ -89,7 +89,6 @@ export function AgentMessageActions({
               action={lastAction}
               owner={owner}
               lastNotification={null}
-              defaultOpen={true}
             />
           </Card>
         )}
