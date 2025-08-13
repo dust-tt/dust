@@ -14,7 +14,7 @@ const INDENT_CLASSES =
 // Performance limits to prevent browser crashes.
 // These limits are meant to be very conservative.
 const MAX_OBJECT_DEPTH = 8;
-const MAX_ARRAY_ITEMS = 100;
+const MAX_ARRAY_ITEMS = 128;
 const MAX_OBJECT_KEYS = 64;
 const MAX_STRING_LENGTH = 1024;
 
