@@ -175,6 +175,16 @@ export const InlineWithAction: Story = {
   ),
 };
 
+export const InlineWitTwohAction: Story = {
+  render: () => (
+    <ContentMessageInline icon={InformationCircleIcon} variant="info">
+      This is an inline message. It can be used to display a short message.
+      <ContentMessageAction variant="primary" label="Button" />
+      <ContentMessageAction variant="highlight" label="Button" />
+    </ContentMessageInline>
+  ),
+};
+
 export const InlineWithTitle: Story = {
   render: () => (
     <div className="s-flex s-flex-col s-gap-4">
