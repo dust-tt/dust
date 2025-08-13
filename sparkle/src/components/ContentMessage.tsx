@@ -23,39 +23,40 @@ const CONTENT_MESSAGE_SIZES = ["sm", "md", "lg"] as const;
 
 type ContentMessageSizeType = (typeof CONTENT_MESSAGE_SIZES)[number];
 
-const contentMessageVariants = cva(
-  "s-flex s-flex-col s-gap-1 s-rounded-xl s-py-4 s-px-5 s-border",
-  {
-    variants: {
-      variant: {
-        primary:
-          "s-bg-muted-background dark:s-bg-muted-background-night s-border-border dark:s-border-border-night",
-        success:
-          "s-bg-success-100 dark:s-bg-success-100-night s-border-transparent",
-        warning:
-          "s-bg-warning-100 dark:s-bg-warning-100-night s-border-transparent",
-        highlight:
-          "s-bg-highlight-100 dark:s-bg-highlight-100-night s-border-transparent",
-        info: "s-bg-info-100 dark:s-bg-info-100-night s-border-transparent",
-        green: "s-bg-green-100 dark:s-bg-green-100-night s-border-transparent",
-        blue: "s-bg-blue-100 dark:s-bg-blue-100-night s-border-transparent",
-        rose: "s-bg-rose-100 dark:s-bg-rose-100-night s-border-transparent",
-        golden:
-          "s-bg-golden-100 dark:s-bg-golden-100-night s-border-transparent",
-        outline: "s-bg-transparent s-border-border dark:s-border-border-night",
-      },
-      size: {
-        lg: "",
-        md: "s-max-w-[500px]",
-        sm: "s-max-w-[380px]",
-      },
+const contentMessageVariants = cva("s-border", {
+  variants: {
+    variant: {
+      primary:
+        "s-bg-muted-background dark:s-bg-muted-background-night s-border-border dark:s-border-border-night",
+      success:
+        "s-bg-success-100 dark:s-bg-success-100-night s-border-transparent",
+      warning:
+        "s-bg-warning-100 dark:s-bg-warning-100-night s-border-transparent",
+      highlight:
+        "s-bg-highlight-100 dark:s-bg-highlight-100-night s-border-transparent",
+      info: "s-bg-info-100 dark:s-bg-info-100-night s-border-transparent",
+      green: "s-bg-green-100 dark:s-bg-green-100-night s-border-transparent",
+      blue: "s-bg-blue-100 dark:s-bg-blue-100-night s-border-transparent",
+      rose: "s-bg-rose-100 dark:s-bg-rose-100-night s-border-transparent",
+      golden: "s-bg-golden-100 dark:s-bg-golden-100-night s-border-transparent",
+      outline: "s-bg-transparent s-border-border dark:s-border-border-night",
     },
-    defaultVariants: {
-      variant: "info",
-      size: "md",
+    size: {
+      lg: "",
+      md: "s-max-w-[500px]",
+      sm: "s-max-w-[380px]",
     },
-  }
-);
+    inline: {
+      true: "s-flex s-items-center s-gap-3 s-rounded-lg s-py-3 s-px-4",
+      false: "s-flex s-flex-col s-gap-1 s-rounded-xl s-py-4 s-px-5",
+    },
+  },
+  defaultVariants: {
+    variant: "info",
+    size: "md",
+    inline: false,
+  },
+});
 
 const iconVariants = cva("s-shrink-0", {
   variants: {
@@ -115,6 +116,8 @@ export interface ContentMessageProps {
   size?: ContentMessageSizeType;
   variant?: ContentMessageVariantType;
   icon?: ComponentType;
+  inline?: boolean;
+  action?: React.ReactNode;
 }
 
 export function ContentMessage({
@@ -124,11 +127,18 @@ export function ContentMessage({
   size = "md",
   className = "",
   icon,
+  inline = false,
+  action,
 }: ContentMessageProps) {
   return (
-    <div className={cn(contentMessageVariants({ variant, size }), className)}>
-      {(icon || title) && (
-        <div className="s-flex s-items-center s-gap-1.5">
+    <div
+      className={cn(
+        contentMessageVariants({ variant, size, inline }),
+        className
+      )}
+    >
+      {inline ? (
+        <>
           {icon && (
             <Icon
               size="xs"
@@ -136,10 +146,32 @@ export function ContentMessage({
               className={iconVariants({ variant })}
             />
           )}
-          {title && <div className={titleVariants({ variant })}>{title}</div>}
-        </div>
+          <div className={cn("s-flex-1", textVariants({ variant }))}>
+            {children}
+          </div>
+          {action && <div className="s-shrink-0">{action}</div>}
+        </>
+      ) : (
+        <>
+          {(icon || title) && (
+            <div className="s-flex s-items-center s-gap-1.5">
+              {icon && (
+                <Icon
+                  size="xs"
+                  visual={icon}
+                  className={iconVariants({ variant })}
+                />
+              )}
+              {title && (
+                <div className={titleVariants({ variant })}>{title}</div>
+              )}
+            </div>
+          )}
+          {children && (
+            <div className={textVariants({ variant })}>{children}</div>
+          )}
+        </>
       )}
-      {children && <div className={textVariants({ variant })}>{children}</div>}
     </div>
   );
 }

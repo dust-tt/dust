@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
+  Button,
   ChatBubbleBottomCenterTextIcon,
   ContentMessage,
   HeartIcon,
@@ -141,6 +142,62 @@ export const ColorVariants: Story = {
         >
           This is a {variant} variant message. It shows how the component looks
           with this color scheme.
+        </ContentMessage>
+      ))}
+    </div>
+  ),
+};
+
+export const InlineBasic: Story = {
+  render: () => (
+    <ContentMessage icon={InformationCircleIcon} variant="info" inline>
+      3 actions require manual approval
+    </ContentMessage>
+  ),
+};
+
+export const InlineWithAction: Story = {
+  render: () => (
+    <ContentMessage 
+      icon={InformationCircleIcon} 
+      variant="info"
+      inline
+      action={<Button size="xs" variant="primary" label="Review actions" />}
+    >
+      3 actions require manual approval
+    </ContentMessage>
+  ),
+};
+
+export const InlineVariants: Story = {
+  render: () => (
+    <div className="s-flex s-flex-col s-gap-4">
+      {[
+        "primary",
+        "warning",
+        "success",
+        "highlight",
+        "info",
+      ].map((variant) => (
+        <ContentMessage
+          key={variant}
+          icon={InformationCircleIcon}
+          variant={
+            variant as
+              | "primary"
+              | "warning"
+              | "success"
+              | "highlight"
+              | "info"
+              | "green"
+              | "blue"
+              | "rose"
+              | "golden"
+          }
+          inline
+          action={<Button size="xs" variant="primary" label="Action" />}
+        >
+          {variant.charAt(0).toUpperCase() + variant.slice(1)} inline message
         </ContentMessage>
       ))}
     </div>
