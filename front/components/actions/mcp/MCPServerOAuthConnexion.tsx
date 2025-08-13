@@ -91,14 +91,18 @@ export function MCPServerOAuthConnexion({
           // Can't happen but to make typescript happy.
           continue;
         }
-        if (!value) {
-          isFormValid = false;
-          break;
-        }
+
         const input = inputs[key];
-        if (input && input.validator && !input.validator(value)) {
-          isFormValid = false;
-          break;
+        if (input && input.validator) {
+          if (!input.validator(value)) {
+            isFormValid = false;
+            break;
+          }
+        } else {
+          if (!value) {
+            isFormValid = false;
+            break;
+          }
         }
       }
 
