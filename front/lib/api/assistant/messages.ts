@@ -1,6 +1,7 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
+import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -33,11 +34,19 @@ import type {
   Result,
   UserMessageType,
 } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types";
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
 import type {
+  AgentContentItemType,
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
+import {
+  isFunctionCallContent,
+  isReasoningContent,
+  isTextContent,
+} from "@app/types/assistant/agent_message_content";
+import type { ParsedContentItem } from "@app/types/assistant/conversation";
 
 export function getMaximalVersionAgentStepContent(
   agentStepContents: AgentStepContentModel[]
@@ -52,6 +61,62 @@ export function getMaximalVersionAgentStepContent(
   }, new Map<string, AgentStepContentModel>());
 
   return Array.from(maxVersionStepContents.values());
+}
+
+export async function generateParsedContents(
+  actions: MCPActionType[],
+  agentConfiguration: LightAgentConfigurationType,
+  messageId: string,
+  contents: { step: number; content: AgentContentItemType }[]
+): Promise<Record<number, Array<ParsedContentItem>>> {
+  const parsedContents: Record<number, Array<ParsedContentItem>> = {};
+  const actionsByCallId = new Map(actions.map((a) => [a.functionCallId, a]));
+
+  for (const c of contents) {
+    const step = c.step + 1; // Convert to 1-indexed for display
+    if (!parsedContents[step]) {
+      parsedContents[step] = [];
+    }
+
+    if (isReasoningContent(c.content)) {
+      const reasoning = c.content.value.reasoning;
+      if (reasoning && reasoning.trim()) {
+        parsedContents[step].push({ kind: "reasoning", content: reasoning });
+      }
+      continue;
+    }
+
+    if (isTextContent(c.content)) {
+      const contentParser = new AgentMessageContentParser(
+        agentConfiguration,
+        messageId,
+        getDelimitersConfiguration({ agentConfiguration })
+      );
+      const parsedContent = await contentParser.parseContents([
+        c.content.value,
+      ]);
+
+      if (parsedContent.chainOfThought && parsedContent.chainOfThought.trim()) {
+        parsedContents[step].push({
+          kind: "reasoning",
+          content: parsedContent.chainOfThought,
+        });
+      }
+      continue;
+    }
+
+    if (isFunctionCallContent(c.content)) {
+      const functionCallId = c.content.value.id;
+      const matchingAction = actionsByCallId.get(functionCallId);
+
+      if (matchingAction) {
+        parsedContents[step].push({ kind: "action", action: matchingAction });
+      }
+      continue;
+    }
+  }
+
+  return parsedContents;
 }
 
 async function batchRenderUserMessages(
@@ -172,6 +237,27 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     );
   }
 
+  const stepContents = await AgentStepContentResource.fetchByAgentMessages(
+    auth,
+    {
+      agentMessageIds: agentMessageIds,
+      includeMCPActions: false,
+      latestVersionsOnly: true,
+    }
+  );
+
+  const stepContentsByMessageId: Record<string, AgentStepContentResource[]> =
+    stepContents.reduce(
+      (acc, sc) => {
+        if (!acc[sc.agentMessageId]) {
+          acc[sc.agentMessageId] = [];
+        }
+        acc[sc.agentMessageId].push(sc);
+        return acc;
+      },
+      {} as Record<string, AgentStepContentResource[]>
+    );
+
   // The only async part here is the content parsing, but it's "fake async" as the content parsing is not doing
   // any IO or network. We need it to be async as we want to re-use the async generators for the content parsing.
   const renderedMessages = await Promise.all(
@@ -214,12 +300,20 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
 
       const agentStepContents =
-        agentMessage.agentStepContents
+        stepContentsByMessageId[agentMessage.id]
           ?.sort((a, b) => a.step - b.step || a.index - b.index)
           .map((sc) => ({
             step: sc.step,
             content: sc.value,
           })) ?? [];
+
+      const parsedContents = await generateParsedContents(
+        actions,
+        agentConfiguration,
+        message.sId,
+        agentStepContents
+      );
+
       const textContents: Array<{ step: number; content: TextContentType }> =
         [];
       for (const content of agentStepContents) {
@@ -227,6 +321,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           textContents.push({ step: content.step, content: content.content });
         }
       }
+
       const reasoningContents: Array<{
         step: number;
         content: ReasoningContentType;
@@ -285,6 +380,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           content: c.content.value,
         })),
         contents: agentStepContents,
+        parsedContents,
         error,
         configuration: agentConfiguration,
         skipToolsValidation: agentMessage.skipToolsValidation,
@@ -301,6 +397,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
     })
   );
+
   return new Ok(
     renderedMessages as V extends "full"
       ? { m: AgentMessageType; rank: number; version: number }[]

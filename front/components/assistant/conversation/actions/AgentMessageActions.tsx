@@ -24,11 +24,13 @@ interface AgentMessageActionsProps {
   actionProgress: ActionProgressState;
   owner: LightWorkspaceType;
 }
+
 function isMCPActionType(
   action: { type: "tool_action"; id: number } | undefined
 ): action is MCPActionType {
   return action !== undefined && "functionCallName" in action;
 }
+
 export function AgentMessageActions({
   agentMessage,
   lastAgentStateClassification,
@@ -52,7 +54,7 @@ export function AgentMessageActions({
 
   return lastAgentStateClassification !== "done" ? (
     <div
-      onClick={lastAction ? onClick : undefined}
+      onClick={onClick}
       className={cn(
         "flex max-w-[500px] flex-col gap-y-4",
         lastAction ? "cursor-pointer" : ""
@@ -88,7 +90,6 @@ export function AgentMessageActions({
               action={lastAction}
               owner={owner}
               lastNotification={null}
-              defaultOpen={true}
             />
           </Card>
         )}

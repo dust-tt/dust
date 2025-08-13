@@ -1,16 +1,9 @@
-import {
-  Avatar,
-  cn,
-  CollapsibleComponent,
-  Icon,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Avatar, cn, Icon, Spinner } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
 interface ActionDetailsWrapperProps {
   actionName: string;
   children: React.ReactNode;
-  defaultOpen: boolean;
   viewType: "conversation" | "sidebar";
   visual: ComponentType<{ className?: string }>;
 }
@@ -18,7 +11,6 @@ interface ActionDetailsWrapperProps {
 export function ActionDetailsWrapper({
   actionName,
   children,
-  defaultOpen,
   viewType,
   visual,
 }: ActionDetailsWrapperProps) {
@@ -49,25 +41,21 @@ export function ActionDetailsWrapper({
   }
 
   return (
-    <CollapsibleComponent
-      rootProps={{ defaultOpen }}
-      triggerProps={{}}
-      triggerChildren={
-        <div
-          className={cn(
-            "text-foreground dark:text-foreground-night",
-            "flex flex-row items-center gap-x-2"
-          )}
-        >
-          <Avatar
-            size="sm"
-            visual={<Icon visual={visual} />}
-            backgroundColor="bg-muted-background dark:bg-muted-background-night"
-          />
-          <span className="heading-base">{actionName}</span>
-        </div>
-      }
-      contentChildren={children}
-    />
+    <div>
+      <div
+        className={cn(
+          "text-foreground dark:text-foreground-night",
+          "flex flex-row items-center gap-x-2"
+        )}
+      >
+        <Avatar
+          size="sm"
+          visual={<Icon visual={visual} />}
+          backgroundColor="bg-muted-background dark:bg-muted-background-night"
+        />
+        <span className="heading-base">{actionName}</span>
+      </div>
+      {children}
+    </div>
   );
 }

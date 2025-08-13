@@ -16,7 +16,6 @@ import { isAgentCreationResultResourceType } from "@app/lib/actions/mcp_internal
 
 export function MCPAgentManagementActionDetails({
   action,
-  defaultOpen,
   viewType,
   owner,
   messageStatus,
@@ -55,7 +54,6 @@ export function MCPAgentManagementActionDetails({
       <ActionDetailsWrapper
         viewType={viewType}
         actionName="Create Agent"
-        defaultOpen={defaultOpen}
         visual={ActionRobotIcon}
       >
         <div className="flex flex-col gap-4 pl-6 pt-4">
@@ -79,7 +77,6 @@ export function MCPAgentManagementActionDetails({
     <ActionDetailsWrapper
       viewType={viewType}
       actionName="Create Agent"
-      defaultOpen={defaultOpen}
       visual={ActionRobotIcon}
     >
       <div className="flex flex-col gap-6 pl-6 pt-4">

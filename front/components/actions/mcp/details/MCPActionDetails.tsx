@@ -58,7 +58,6 @@ export interface MCPActionDetailsProps {
   action: MCPActionType;
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
-  defaultOpen: boolean;
   messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
   viewType: "conversation" | "sidebar";
 }
@@ -66,7 +65,6 @@ export interface MCPActionDetailsProps {
 export function MCPActionDetails(props: MCPActionDetailsProps) {
   const {
     action: { output, functionCallName, mcpServerId, params },
-    defaultOpen,
     viewType,
   } = props;
 
@@ -90,7 +88,6 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
           defaultQuery={queryResource.text}
           actionName="Search data"
           actionOutput={output}
-          defaultOpen={defaultOpen}
           visual={MagnifyingGlassIcon}
         />
       );
@@ -105,7 +102,6 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
           viewType={viewType}
           actionName="Browse data sources"
           actionOutput={output}
-          defaultOpen={defaultOpen}
           visual={ActionDocumentTextIcon}
         />
       );
@@ -127,7 +123,6 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
           viewType={viewType}
           actionName="Include data"
           actionOutput={output}
-          defaultOpen={defaultOpen}
           visual={ClockIcon}
         />
       );
@@ -142,7 +137,6 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
           defaultQuery={params.query as string}
           actionName="Web search"
           actionOutput={output}
-          defaultOpen={defaultOpen}
           visual={GlobeAltIcon}
         />
       );
@@ -191,7 +185,6 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
 export function GenericActionDetails({
   owner,
   action,
-  defaultOpen,
   viewType,
 }: MCPActionDetailsProps) {
   const inputs =
@@ -205,27 +198,12 @@ export function GenericActionDetails({
       actionName={
         asDisplayName(action.functionCallName) ?? "Calling MCP Server"
       }
-      defaultOpen={defaultOpen}
       visual={MCP_SPECIFICATION.cardIcon}
     >
       {viewType !== "conversation" && (
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
-          <CollapsibleComponent
-            rootProps={{ defaultOpen: !action.generatedFiles.length }}
-            triggerChildren={
-              <div
-                className={cn(
-                  "text-foreground dark:text-foreground-night",
-                  "flex flex-row items-center gap-x-2"
-                )}
-              >
-                <span className="heading-base">Inputs</span>
-              </div>
-            }
-            contentChildren={
-              <RenderToolItemMarkdown text={inputs} type="input" />
-            }
-          />
+          <span className="heading-base">Inputs</span>
+          <RenderToolItemMarkdown text={inputs} type="input" />
 
           {action.output && (
             <CollapsibleComponent

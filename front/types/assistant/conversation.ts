@@ -147,6 +147,10 @@ export type BaseAgentMessageType = {
   error: ErrorContent | null;
 };
 
+export type ParsedContentItem =
+  | { kind: "reasoning"; content: string }
+  | { kind: "action"; action: MCPActionType };
+
 export type AgentMessageType = BaseAgentMessageType & {
   id: ModelId;
   agentMessageId: ModelId;
@@ -160,6 +164,7 @@ export type AgentMessageType = BaseAgentMessageType & {
     content: string;
   }>;
   contents: Array<{ step: number; content: AgentContentItemType }>;
+  parsedContents: Record<number, Array<ParsedContentItem>>;
 };
 
 export type LightAgentMessageType = BaseAgentMessageType & {
