@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
+import { findSpaceFromNavigationHistory } from "@app/components/data_source_view/context/utils";
 import { DataSourceNavigationView } from "@app/components/data_source_view/DataSourceNavigationView";
 import { DataSourceSearchResults } from "@app/components/data_source_view/DataSourceSearchResults";
 import { DataSourceSpaceSelector } from "@app/components/data_source_view/DataSourceSpaceSelector";
@@ -52,23 +53,7 @@ export const DataSourceBuilderSelector = ({
   }, [spaces, dataSourceViews]);
 
   // Get current space for search - extract from any navigation level
-  const currentSpace = useMemo(() => {
-    switch (currentNavigationEntry.type) {
-      case "space":
-        return currentNavigationEntry.space;
-      case "category":
-      case "data_source":
-      case "node":
-        // Find space from breadcrumb history
-        const spaceEntry = navigationHistory
-          .slice()
-          .reverse()
-          .find((entry) => entry.type === "space");
-        return spaceEntry?.type === "space" ? spaceEntry.space : null;
-      default:
-        return null;
-    }
-  }, [currentNavigationEntry, navigationHistory]);
+  const currentSpace = findSpaceFromNavigationHistory(navigationHistory);
 
   const {
     searchResultNodes,
