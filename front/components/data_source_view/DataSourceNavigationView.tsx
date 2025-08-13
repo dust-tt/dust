@@ -25,7 +25,9 @@ export function DataSourceNavigationView({
         <DataSourceCategoryBrowser space={currentNavigationEntry.space} />
       )}
 
-      {currentNavigationEntry.type === "category" && <DataSourceViewTable />}
+      {currentNavigationEntry.type === "category" && (
+        <DataSourceViewTable viewType={viewType} />
+      )}
 
       {(currentNavigationEntry.type === "node" ||
         currentNavigationEntry.type === "data_source") &&
