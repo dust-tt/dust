@@ -6,6 +6,7 @@ import type {
   NavigationHistoryEntryType,
   NodeSelectionState,
 } from "@app/components/data_source_view/context/types";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { CATEGORY_DETAILS, getSpaceIcon } from "@app/lib/spaces";
 import type {
@@ -290,7 +291,10 @@ export function getLatestNodeFromNavigationHistory(
   return null;
 }
 
-export function getVisualForTreeItem(item: DataSourceBuilderTreeItemType) {
+export function getVisualForTreeItem(
+  item: DataSourceBuilderTreeItemType,
+  isDark = false
+) {
   switch (item.type) {
     case "root":
       // Root doesn't have a specific visual, use a default folder icon
@@ -305,10 +309,12 @@ export function getVisualForTreeItem(item: DataSourceBuilderTreeItemType) {
     case "data_source":
       // For data sources, we can use the connector provider logo or fall back to a generic icon
       if (item.dataSourceView.dataSource.connectorProvider) {
-        // We could import getConnectorProviderLogoWithFallback but for simplicity,
-        // let's use category-based icons as fallback
-        const category = item.dataSourceView.category;
-        return CATEGORY_DETAILS[category].icon;
+        const connectorProvider =
+          CONNECTOR_CONFIGURATIONS[
+            item.dataSourceView.dataSource.connectorProvider
+          ];
+
+        return connectorProvider.getLogoComponent(isDark);
       }
       return FolderIcon;
 

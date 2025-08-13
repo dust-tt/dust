@@ -13,6 +13,7 @@ import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import { getVisualForTreeItem } from "@app/components/data_source_view/context/utils";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useNodePath } from "@app/hooks/useNodePath";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import type { DataSourceViewContentNode } from "@app/types";
@@ -53,8 +54,9 @@ function KnowledgeFooterItem({
 }: {
   item: DataSourceBuilderTreeItemType;
 }) {
+  const { isDark } = useTheme();
   const { removeNodeWithPath } = useDataSourceBuilderContext();
-  const VisualComponent = getVisualForTreeItem(item);
+  const VisualComponent = getVisualForTreeItem(item, isDark);
 
   return (
     <ContextItem
