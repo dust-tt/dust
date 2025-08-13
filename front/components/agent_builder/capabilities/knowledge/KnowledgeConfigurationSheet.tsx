@@ -48,6 +48,7 @@ import { DataSourceBuilderSelector } from "@app/components/data_source_view/Data
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
+  getMCPServerNameForTemplateAction,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -154,13 +155,8 @@ export function KnowledgeConfigurationSheet({
           mcpServerView.sId === action.configuration.mcpServerViewId
       );
     } else if (presetActionData) {
-      // New action from preset - map preset type to server name
-      const serverNameMap: Record<string, string> = {
-        "RETRIEVAL_SEARCH": "search",
-        "TABLES_QUERY": "query_tables",
-        "PROCESS": "extract_data",
-      };
-      const targetServerName = serverNameMap[presetActionData.type];
+      // New action from preset - use centralized mapping
+      const targetServerName = getMCPServerNameForTemplateAction(presetActionData);
       selectedMCPServerView = mcpServerViews.find(
         (view) => view.server.name === targetServerName
       );
@@ -382,6 +378,20 @@ function KnowledgeConfigurationSheetContent({
       icon: undefined,
       content: (
         <div className="space-y-4">
+          {/* Show the selected processing method when coming from a preset */}
+          {presetActionData && mcpServerView && (
+            <div className="flex items-center gap-2 rounded-lg border border-structure-200 bg-structure-50 p-3">
+              {getAvatar(mcpServerView.server, "sm")}
+              <div className="flex-1">
+                <div className="text-sm font-medium">
+                  {getMcpServerViewDisplayName(mcpServerView)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {getMcpServerViewDescription(mcpServerView)}
+                </div>
+              </div>
+            </div>
+          )}
           <ScrollArea>
             <DataSourceBuilderSelector
               dataSourceViews={supportedDataSourceViews}
