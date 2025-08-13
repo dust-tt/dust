@@ -511,40 +511,6 @@ export function AgentMessage({
   const canMention = agentConfiguration.canRead;
   const isArchived = agentConfiguration.status === "archived";
 
-  return (
-    <ConversationMessage
-      pictureUrl={agentConfiguration.pictureUrl}
-      name={agentConfiguration.name}
-      buttons={buttons}
-      avatarBusy={agentMessageToRender.status === "created"}
-      isDisabled={isArchived}
-      renderName={() => (
-        <AssistantHandle
-          assistant={{
-            sId: agentConfiguration.sId,
-            name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
-          }}
-          canMention={canMention}
-          isDisabled={isArchived}
-        />
-      )}
-      type="agent"
-      citations={citations}
-    >
-      <div>
-        {renderAgentMessage({
-          agentMessage: agentMessageToRender,
-          references: references,
-          streaming: shouldStream,
-          lastTokenClassification:
-            messageStreamState.agentState === "thinking" ? "tokens" : null,
-        })}
-      </div>
-      {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
-      <div ref={bottomRef} className="h-1.5" />
-    </ConversationMessage>
-  );
-
   // Collapsible component for chain of thought
   const CollapsibleInlineThought = ({
     content,
@@ -645,6 +611,40 @@ export function AgentMessage({
       </div>
     );
   };
+
+  return (
+    <ConversationMessage
+      pictureUrl={agentConfiguration.pictureUrl}
+      name={agentConfiguration.name}
+      buttons={buttons}
+      avatarBusy={agentMessageToRender.status === "created"}
+      isDisabled={isArchived}
+      renderName={() => (
+        <AssistantHandle
+          assistant={{
+            sId: agentConfiguration.sId,
+            name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
+          }}
+          canMention={canMention}
+          isDisabled={isArchived}
+        />
+      )}
+      type="agent"
+      citations={citations}
+    >
+      <div>
+        {renderAgentMessage({
+          agentMessage: agentMessageToRender,
+          references: references,
+          streaming: shouldStream,
+          lastTokenClassification:
+            messageStreamState.agentState === "thinking" ? "tokens" : null,
+        })}
+      </div>
+      {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
+      <div ref={bottomRef} className="h-1.5" />
+    </ConversationMessage>
+  );
 
   function renderAgentMessage({
     agentMessage,
