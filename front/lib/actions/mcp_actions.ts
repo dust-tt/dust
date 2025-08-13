@@ -834,23 +834,25 @@ async function listToolsForServerSideMCPServer(
   if (r.isErr()) {
     return r;
   }
-  const { toolsStakes, serverTimeoutMs } = r.value;
+  const { toolsEnabled, toolsStakes, serverTimeoutMs } = r.value;
 
   const availability = getAvailabilityOfInternalMCPServerById(
     connectionParams.mcpServerId
   );
 
-  const toolsWithStakesAndTimeout = allToolsRaw.map((tool) => ({
-    ...tool,
-    stakeLevel:
-      toolsStakes[tool.name] ||
-      (availability === "manual"
-        ? FALLBACK_MCP_TOOL_STAKE_LEVEL
-        : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL),
-    availability,
-    toolServerId: connectionParams.mcpServerId,
-    ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
-  }));
+  const toolsWithStakesAndTimeout = allToolsRaw
+    .filter(({ name }) => toolsEnabled[name])
+    .map((tool) => ({
+      ...tool,
+      stakeLevel:
+        toolsStakes[tool.name] ||
+        (availability === "manual"
+          ? FALLBACK_MCP_TOOL_STAKE_LEVEL
+          : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL),
+      availability,
+      toolServerId: connectionParams.mcpServerId,
+      ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
+    }));
 
   const serverSideToolConfigs = makeServerSideMCPToolConfigurations(
     config,
