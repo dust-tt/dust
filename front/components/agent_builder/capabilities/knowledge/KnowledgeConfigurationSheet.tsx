@@ -62,6 +62,7 @@ interface KnowledgeConfigurationSheetProps {
   isEditing: boolean;
   mcpServerViews: MCPServerViewType[];
   getAgentInstructions: () => string;
+  presetActionData?: any | null;
 }
 
 export function KnowledgeConfigurationSheet({
@@ -72,6 +73,7 @@ export function KnowledgeConfigurationSheet({
   isEditing,
   mcpServerViews,
   getAgentInstructions,
+  presetActionData,
 }: KnowledgeConfigurationSheetProps) {
   const open = action !== null;
   const { spaces, isSpacesLoading } = useSpacesContext();
@@ -143,27 +145,44 @@ export function KnowledgeConfigurationSheet({
           ) // TODO: fix type
         : { in: [], notIn: [] };
 
-    const selectedMCPServerView =
-      isEditing && action && action.type === "MCP"
-        ? mcpServerViews.find(
-            (mcpServerView) =>
-              mcpServerView.sId === action.configuration.mcpServerViewId
-          )
-        : mcpServerViews.find((view) => view.server.name === "search"); // select search as default
+    let selectedMCPServerView;
+    
+    if (isEditing && action && action.type === "MCP") {
+      // Editing existing action - find by ID
+      selectedMCPServerView = mcpServerViews.find(
+        (mcpServerView) =>
+          mcpServerView.sId === action.configuration.mcpServerViewId
+      );
+    } else if (presetActionData) {
+      // New action from preset - map preset type to server name
+      const serverNameMap: Record<string, string> = {
+        "RETRIEVAL_SEARCH": "search",
+        "TABLES_QUERY": "query_tables",
+        "PROCESS": "extract_data",
+      };
+      const targetServerName = serverNameMap[presetActionData.type];
+      selectedMCPServerView = mcpServerViews.find(
+        (view) => view.server.name === targetServerName
+      );
+    } else {
+      // Default to search
+      selectedMCPServerView = mcpServerViews.find((view) => view.server.name === "search");
+    }
 
     return {
       sources: dataSourceTree,
-      description: action?.description ?? "",
+      description: action?.description ?? presetActionData?.description ?? "",
       configuration:
         action?.configuration ?? getDefaultConfiguration(selectedMCPServerView),
       mcpServerView: selectedMCPServerView ?? null,
       name:
         action?.name ??
+        presetActionData?.name ??
         selectedMCPServerView?.name ??
         selectedMCPServerView?.server.name ??
         "",
     };
-  }, [action, mcpServerViews, isEditing]);
+  }, [action, mcpServerViews, isEditing, presetActionData]);
 
   const formMethods = useForm<CapabilityFormData>({
     resolver: zodResolver(capabilityFormSchema),
@@ -195,6 +214,7 @@ export function KnowledgeConfigurationSheet({
               open={open}
               getAgentInstructions={getAgentInstructions}
               isEditing={isEditing}
+              presetActionData={presetActionData}
             />
           </DataSourceBuilderProvider>
         )}
@@ -211,6 +231,7 @@ interface KnowledgeConfigurationSheetContentProps {
   open: boolean;
   getAgentInstructions: () => string;
   isEditing: boolean;
+  presetActionData?: any | null;
 }
 
 function KnowledgeConfigurationSheetContent({
@@ -218,6 +239,7 @@ function KnowledgeConfigurationSheetContent({
   open,
   getAgentInstructions,
   isEditing,
+  presetActionData,
 }: KnowledgeConfigurationSheetContentProps) {
   const { handleSubmit, setValue, getValues } =
     useFormContext<CapabilityFormData>();
@@ -261,8 +283,11 @@ function KnowledgeConfigurationSheetContent({
   const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
+  // When we have a preset action, skip to data source selection since we already know the MCP server
   const initialPageId = isEditing
     ? CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION
+    : presetActionData
+    ? CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION
     : CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION;
 
   const [currentPageId, setCurrentPageId] =
@@ -270,15 +295,21 @@ function KnowledgeConfigurationSheetContent({
 
   useEffect(() => {
     if (!open) {
-      setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION);
-
+      // Reset to initial state when closing
+      setCurrentPageId(
+        presetActionData 
+          ? CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION 
+          : CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION
+      );
       return;
     }
 
     if (isEditing) {
       setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION);
+    } else if (presetActionData) {
+      setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
     }
-  }, [isEditing, open]);
+  }, [isEditing, open, presetActionData]);
 
   const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
