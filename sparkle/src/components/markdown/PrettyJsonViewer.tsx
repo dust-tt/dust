@@ -129,7 +129,9 @@ function JsonValue({
   currentPath?: string;
 }) {
   const handleToggleExpanded = (path: string) => {
-    if (!setExpandedPaths) return;
+    if (!setExpandedPaths) {
+      return;
+    }
 
     setExpandedPaths((prev) => {
       const newSet = new Set(prev);
