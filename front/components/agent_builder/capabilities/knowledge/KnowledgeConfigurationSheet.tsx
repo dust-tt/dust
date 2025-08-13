@@ -170,6 +170,11 @@ export function KnowledgeConfigurationSheet({
     defaultValues,
   });
 
+  // Reset form when defaultValues change (e.g., when editing different actions)
+  useEffect(() => {
+    formMethods.reset(defaultValues);
+  }, [defaultValues, formMethods]);
+
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       onClose();
