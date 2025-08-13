@@ -204,7 +204,7 @@ export function MCPRunAgentActionDetails({
               }
               contentChildren={
                 <div className="flex flex-col gap-4">
-                  {chainOfThought && childAgent && (
+                  {chainOfThought && (
                     <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                       <ContentMessage
                         title="Agent thoughts"
@@ -221,7 +221,7 @@ export function MCPRunAgentActionDetails({
                       </ContentMessage>
                     </div>
                   )}
-                  {response && childAgent && (
+                  {response && (
                     <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                       <ContentMessage
                         title="Response"
