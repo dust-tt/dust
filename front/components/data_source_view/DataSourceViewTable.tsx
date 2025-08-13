@@ -53,8 +53,9 @@ export function DataSourceViewTable() {
           type: "data_source",
           dataSourceView: dsv,
         },
-      };
-    });
+      } satisfies DataSourceRowData;
+    })
+    .toSorted((a, b) => a.title.localeCompare(b.title));
 
   if (isSpaceDataSourceViewsLoading) {
     return (
