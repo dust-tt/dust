@@ -16,7 +16,7 @@ import { getVisualForTreeItem } from "@app/components/data_source_view/context/u
 import { useNodePath } from "@app/hooks/useNodePath";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import type { DataSourceViewContentNode } from "@app/types";
-import { pluralize } from "@app/types";
+import { pluralize, removeNulls } from "@app/types";
 
 function KnowledgeFooterItemReadablePath({
   node,
@@ -35,13 +35,13 @@ function KnowledgeFooterItemReadablePath({
         <LoadingBlock className="h-4 w-[250px]" />
       ) : (
         <span className="text-xs">
-          {fullPath
-            .map((node, index) =>
+          {removeNulls(
+            fullPath.map((node, index) =>
               index === 0
                 ? getDataSourceNameFromView(node.dataSourceView)
-                : node.title
+                : node.parentTitle
             )
-            .join("/")}
+          ).join("/")}
         </span>
       )}
     </div>
