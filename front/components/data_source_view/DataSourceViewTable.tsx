@@ -10,11 +10,19 @@ import type { DataSourceRowData } from "@app/components/data_source_view/hooks/u
 import { useDataSourceColumns } from "@app/components/data_source_view/hooks/useDataSourceColumns";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import {
+  getDataSourceNameFromView,
+  isRemoteDatabase,
+} from "@app/lib/data_sources";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
+import type { ContentNodesViewType } from "@app/types";
 
-export function DataSourceViewTable() {
+export function DataSourceViewTable({
+  viewType,
+}: {
+  viewType: ContentNodesViewType;
+}) {
   const { owner } = useAgentBuilderContext();
   const { navigationHistory, setDataSourceViewEntry } =
     useDataSourceBuilderContext();
@@ -31,7 +39,15 @@ export function DataSourceViewTable() {
 
   const columns = useDataSourceColumns();
   const rows: DataSourceRowData[] = spaceDataSourceViews
-    .filter((dsv) => dsv.dataSource.connectorProvider !== "slack_bot")
+    .filter((dsv) => {
+      if (viewType === "data_warehouse") {
+        return isRemoteDatabase(dsv.dataSource);
+      } else if (viewType === "table") {
+        return !isRemoteDatabase(dsv.dataSource);
+      }
+
+      return dsv.dataSource.connectorProvider !== "slack_bot";
+    })
     .map((dsv) => {
       const provider = dsv.dataSource.connectorProvider;
 
