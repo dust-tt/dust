@@ -18,7 +18,7 @@ import type {
 } from "@app/types/assistant/agent_run";
 
 // 2 minutes timeout before switching from sync to async execution.
-const SYNC_TO_ASYNC_TIMEOUT_MS = 2 * 15 * 1000;
+const SYNC_TO_ASYNC_TIMEOUT_MS = 2 * 60 * 1000;
 
 /**
  * Helper to launch async workflow from sync data.
