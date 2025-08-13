@@ -133,12 +133,8 @@ export function makeToolsWithStakesAndTimeout(
     toolsStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes || {};
     serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
   } else {
-    toolsStakes = metadata.reduce<Record<string, MCPToolStakeLevelType>>(
-      (acc, metadata) => {
-        acc[metadata.toolName] = metadata.permission;
-        return acc;
-      },
-      {}
+    metadata.forEach(
+      ({ toolName, permission }) => (toolsStakes[toolName] = permission)
     );
   }
 
@@ -838,11 +834,7 @@ async function listToolsForServerSideMCPServer(
   if (r.isErr()) {
     return r;
   }
-  const { toolsEnabled, toolsStakes, serverTimeoutMs } = r.value;
-
-  allToolsRaw = allToolsRaw.filter((tool) => {
-    return !toolsEnabled[tool.name] || toolsEnabled[tool.name];
-  });
+  const { toolsStakes, serverTimeoutMs } = r.value;
 
   const availability = getAvailabilityOfInternalMCPServerById(
     connectionParams.mcpServerId

@@ -6,6 +6,7 @@ import {
   makeToolsWithStakesAndTimeout,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/mcp_actions";
+import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 
 describe("getPrefixedToolName", () => {
@@ -102,7 +103,12 @@ describe("makeToolsWithStakesAndTimeout", () => {
       },
     ];
 
-    const result = makeToolsWithStakesAndTimeout("ims_XME0qbHbOz7", metadata);
+    const sid = internalMCPServerNameToSId({
+      name: "google_calendar",
+      workspaceId: 1,
+      prefix: 0,
+    });
+    const result = makeToolsWithStakesAndTimeout(sid, metadata);
     assert(result.isOk());
     expect(result.value).toEqual({
       toolsEnabled: {
