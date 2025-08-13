@@ -88,47 +88,47 @@ export function InteractiveFeaturesSection() {
                           : "bg-gray-50"
             }`}
           >
-            <div className="relative h-full min-h-[200px] w-full lg:min-h-0">
+            <div className="flex h-full w-full items-center justify-center">
               {activeFeature === "browser" && (
                 <img
                   src="/static/landing/product/extensionCRM.svg"
                   alt="Browser Extension"
-                  className="absolute bottom-0 right-0 h-auto max-h-full w-auto max-w-full object-contain"
+                  className="h-auto max-h-full w-auto max-w-full object-contain"
                 />
               )}
               {activeFeature === "connections" && (
                 <img
                   src="/static/landing/product/connectors.svg"
                   alt="Custom Connections"
-                  className="absolute inset-0 h-full w-full object-contain"
+                  className="h-auto max-h-full w-auto max-w-full object-contain"
                 />
               )}
               {activeFeature === "integrations" && (
                 <img
                   src="/static/landing/product/slack-incident.svg"
                   alt="Custom Integrations"
-                  className="absolute inset-0 h-full w-full object-contain"
+                  className="h-auto max-h-full w-auto max-w-full object-contain"
                 />
               )}
               {activeFeature === "tools" && (
                 <img
                   src="/static/landing/product/support.svg"
                   alt="Custom Tools"
-                  className="absolute inset-0 h-full w-full object-contain"
+                  className="h-auto max-h-full w-auto max-w-full object-contain"
                 />
               )}
               {activeFeature === "access" && (
                 <img
                   src="/static/landing/product/slack-ticket.svg"
                   alt="Tool Access"
-                  className="absolute bottom-0 right-0 h-auto max-h-full w-auto max-w-full object-contain"
+                  className="h-auto max-h-full w-auto max-w-full object-contain"
                 />
               )}
               {activeFeature === "workflows" && (
                 <img
                   src="/static/landing/product/zendesk-dust.svg"
                   alt="Workflow Integration"
-                  className="absolute inset-0 h-full w-full object-contain"
+                  className="h-auto max-h-full w-auto max-w-full object-contain"
                 />
               )}
             </div>

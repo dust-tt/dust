@@ -45,12 +45,13 @@ export function ExtensibilitySection({ page = "default" }) {
           <Hover3D
             depth={-20}
             perspective={1000}
-            className={classNames("relative")}
+            className={classNames("relative flex items-center justify-center")}
           >
             <Div3D depth={-40}>
               <img
                 src="/static/landing/apps/ticketgeneration.png"
                 alt="Custom agentic tools"
+                className="h-auto max-h-full w-auto max-w-full object-contain"
               />
             </Div3D>
           </Hover3D>
@@ -68,12 +69,13 @@ export function ExtensibilitySection({ page = "default" }) {
           <Hover3D
             depth={-20}
             perspective={1000}
-            className={classNames("relative")}
+            className={classNames("relative flex items-center justify-center")}
           >
             <Div3D depth={-40}>
               <img
                 src="/static/landing/api/connections.png"
                 alt="Custom connections"
+                className="h-auto max-h-full w-auto max-w-full object-contain"
               />
             </Div3D>
           </Hover3D>
@@ -90,12 +92,13 @@ export function ExtensibilitySection({ page = "default" }) {
           <Hover3D
             depth={-20}
             perspective={1000}
-            className={classNames("relative")}
+            className={classNames("relative flex items-center justify-center")}
           >
             <Div3D depth={-40}>
               <img
                 src="/static/landing/api/integration.png"
                 alt="Custom integrations"
+                className="h-auto max-h-full w-auto max-w-full object-contain"
               />
             </Div3D>
           </Hover3D>

@@ -30,9 +30,10 @@ export function ProductIntroSection() {
             Build your team of&nbsp;AI&nbsp;agents
           </H1>
           <P size="lg" className="text-base text-muted-foreground sm:text-lg">
-            Dust empowers all teams with agents with company context you can
-            fully customize to match your unique requirements. Deploy seamlessly
-            from simple workflows to complex enterprise integrations.
+            Dust empowers teams to create agents that actually understand your
+            company context,&nbsp; fully customized to match how you actually
+            work. Deploy everything from simple workflows to complex enterprise
+            integrations.
           </P>
           <div className="mt-4 flex flex-row justify-center gap-4">
             <Link href="/home/pricing" shallow={true}>

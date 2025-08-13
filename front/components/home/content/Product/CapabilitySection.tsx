@@ -46,14 +46,15 @@ export function CapabilitySection() {
           <div className="order-1 w-full lg:order-2 lg:w-1/2">
             <div className="flex flex-col gap-3 text-center lg:text-left">
               <H2 className="text-center text-2xl font-medium md:text-3xl lg:text-left lg:text-4xl">
-                Connect your company's knowledge
+                Speaks your team's language
               </H2>
               <P
                 size="md"
                 className="text-center text-muted-foreground lg:text-left"
               >
-                Notion, Slack, GitHub, external websites (...) natively in
-                minutes. Integrate anything via API.
+                Connect Notion, Slack, GitHub, external websites in minutes.
+                Your agents know what your team knows, accessing everything via
+                APIs.
               </P>
             </div>
           </div>
@@ -83,7 +84,8 @@ export function CapabilitySection() {
                 className="text-center text-muted-foreground lg:text-left"
               >
                 Choose OpenAI, Anthropic, Gemini, Mistral, or any cutting-edge
-                model to ensure your agents stay smartest.
+                model to ensure your agents stay smartest. We believe in
+                options.
               </P>
             </div>
           </div>
