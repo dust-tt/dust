@@ -237,6 +237,27 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     );
   }
 
+  const stepContents = await AgentStepContentResource.fetchByAgentMessages(
+    auth,
+    {
+      agentMessageIds: agentMessageIds,
+      includeMCPActions: false,
+      latestVersionsOnly: true,
+    }
+  );
+
+  const stepContentsByMessageId: Record<string, AgentStepContentResource[]> =
+    stepContents.reduce(
+      (acc, sc) => {
+        if (!acc[sc.agentMessageId]) {
+          acc[sc.agentMessageId] = [];
+        }
+        acc[sc.agentMessageId].push(sc);
+        return acc;
+      },
+      {} as Record<string, AgentStepContentResource[]>
+    );
+
   // The only async part here is the content parsing, but it's "fake async" as the content parsing is not doing
   // any IO or network. We need it to be async as we want to re-use the async generators for the content parsing.
   const renderedMessages = await Promise.all(
@@ -278,17 +299,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         };
       }
 
-      const stepContents = await AgentStepContentResource.fetchByAgentMessages(
-        auth,
-        {
-          agentMessageIds: [agentMessage.id],
-          includeMCPActions: false,
-          latestVersionsOnly: true,
-        }
-      );
-
       const agentStepContents =
-        stepContents
+        stepContentsByMessageId[agentMessage.id]
           ?.sort((a, b) => a.step - b.step || a.index - b.index)
           .map((sc) => ({
             step: sc.step,
