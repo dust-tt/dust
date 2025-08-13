@@ -510,6 +510,7 @@ export const INTERNAL_MCP_SERVERS = {
       // Read operations - never ask
       list_tickets: "never_ask",
       get_ticket: "never_ask",
+      get_ticket_read_fields: "never_ask",
       list_departments: "never_ask",
       list_products: "never_ask",
       list_oncall_schedules: "never_ask",
