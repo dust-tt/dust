@@ -8,8 +8,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -25,8 +23,8 @@ import {
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 
+import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { forceUserRole, showDebugTools } from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
@@ -51,7 +49,6 @@ export function UserMenu({
   });
 
   const sendNotification = useSendNotification();
-  const { setNavigationSelection } = usePersistedNavigationSelection();
 
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "builder" | "admin") => {
@@ -78,9 +75,7 @@ export function UserMenu({
 
   // Check if user has multiple workspaces
   const hasMultipleWorkspaces = useMemo(() => {
-    return (
-      "workspaces" in user && user.workspaces && user.workspaces.length > 1
-    );
+    return user.organizations && user.organizations.length > 1;
   }, [user]);
 
   return (
@@ -123,27 +118,7 @@ export function UserMenu({
         {hasMultipleWorkspaces && (
           <>
             <DropdownMenuLabel label="Workspace" />
-            <DropdownMenuRadioGroup value={owner.sId}>
-              {"workspaces" in user &&
-                user.workspaces.map((w) => (
-                  <DropdownMenuRadioItem
-                    key={w.sId}
-                    value={w.sId}
-                    onClick={async () => {
-                      await setNavigationSelection({
-                        lastWorkspaceId: w.sId,
-                      });
-                      if (w.id !== owner.id) {
-                        await router
-                          .push(`/w/${w.sId}/assistant/new`)
-                          .then(() => router.reload());
-                      }
-                    }}
-                  >
-                    {w.name}
-                  </DropdownMenuRadioItem>
-                ))}
-            </DropdownMenuRadioGroup>
+            <WorkspacePickerRadioGroup user={user} workspace={owner} />
           </>
         )}
 
