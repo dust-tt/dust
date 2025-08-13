@@ -9,8 +9,17 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
+import {
+  addNodeToTree,
+  isNodeSelected,
+  navigationHistoryEntryTitle,
+  pathToString,
+  removeNodeFromTree,
+} from "@app/components/data_source_view/context/utils";
 import type { DataSourceContentNode } from "@app/lib/api/search";
 import {
   getLocationForDataSourceViewContentNode,
@@ -36,10 +45,19 @@ interface SearchResultRowData extends DataSourceViewContentNode {
 }
 
 function makeSearchResultColumnsWithSelection(
-  isRowSelected: (rowId: string) => boolean | "partial",
-  selectNode: (entry: NavigationHistoryEntryType) => void,
-  removeNode: (entry: NavigationHistoryEntryType) => void
-): ColumnDef<SearchResultRowData, any>[] {
+  isRowSelected: (
+    rowId: string,
+    node: DataSourceViewContentNode
+  ) => boolean | "partial",
+  selectNode: (
+    entry: NavigationHistoryEntryType,
+    node: DataSourceViewContentNode
+  ) => void,
+  removeNode: (
+    entry: NavigationHistoryEntryType,
+    node: DataSourceViewContentNode
+  ) => void
+): ColumnDef<SearchResultRowData>[] {
   return [
     {
       id: "selection",
@@ -47,7 +65,7 @@ function makeSearchResultColumnsWithSelection(
       enableSorting: false,
       enableHiding: false,
       cell: ({ row }) => {
-        const selectionState = isRowSelected(row.original.id);
+        const selectionState = isRowSelected(row.original.id, row.original);
 
         return (
           <div className="flex h-full items-center">
@@ -55,9 +73,9 @@ function makeSearchResultColumnsWithSelection(
               checked={selectionState}
               onCheckedChange={(state) => {
                 if (selectionState === "partial" || state) {
-                  selectNode(row.original.entry);
+                  selectNode(row.original.entry, row.original);
                 } else {
-                  removeNode(row.original.entry);
+                  removeNode(row.original.entry, row.original);
                 }
               }}
             />
@@ -132,28 +150,125 @@ export function DataSourceSearchResults({
   onClearSearch,
   error,
 }: DataSourceSearchResultsProps) {
+  const { spaces } = useSpacesContext();
   const {
+    setSpaceEntry,
     setCategoryEntry,
     setDataSourceViewEntry,
     addNodeEntry,
-    selectNode,
-    removeNode,
-    isRowSelected,
   } = useDataSourceBuilderContext();
+
+  const { field } = useSourcesFormController();
+
+  // Build proper ID-based path for search results (matching navigation system)
+  const buildNodePath = useCallback(
+    (node: DataSourceViewContentNode): string[] => {
+      const { dataSourceView } = node;
+      const space = spaces.find((s) => s.sId === dataSourceView.spaceId);
+
+      if (!space) {
+        return [];
+      }
+
+      // Build path using IDs: ["root", spaceId, category, dataSourceViewId, nodeId]
+      return [
+        "root",
+        space.sId, // Use space ID, not name
+        dataSourceView.category,
+        dataSourceView.sId, // Use dataSourceView ID
+        node.internalId,
+      ];
+    },
+    [spaces]
+  );
+
+  // Custom isRowSelected for search results that uses the actual node path
+  const isSearchRowSelected = useCallback(
+    (rowId: string, node: DataSourceViewContentNode) => {
+      // Return false if field is not available (not in form context)
+      if (!field?.value) {
+        return false;
+      }
+
+      const nodePath = buildNodePath(node);
+      if (nodePath.length === 0) {
+        return false;
+      }
+
+      return isNodeSelected(field.value, nodePath);
+    },
+    [field, buildNodePath]
+  );
+
+  // Custom selectNode for search results that uses the correct path
+  const selectSearchNode = useCallback(
+    (entry: NavigationHistoryEntryType, node: DataSourceViewContentNode) => {
+      if (!field?.value || !field?.onChange) {
+        return;
+      }
+
+      const nodePath = buildNodePath(node);
+      if (nodePath.length === 0) {
+        return;
+      }
+
+      field.onChange(
+        addNodeToTree(field.value, {
+          path: pathToString(nodePath),
+          name: navigationHistoryEntryTitle(entry),
+          ...entry,
+        })
+      );
+    },
+    [field, buildNodePath]
+  );
+
+  // Custom removeNode for search results that uses the correct path
+  const removeSearchNode = useCallback(
+    (entry: NavigationHistoryEntryType, node: DataSourceViewContentNode) => {
+      if (!field?.value || !field?.onChange) {
+        return;
+      }
+
+      const nodePath = buildNodePath(node);
+      if (nodePath.length === 0) {
+        return;
+      }
+
+      field.onChange(
+        removeNodeFromTree(field.value, {
+          path: pathToString(nodePath),
+          name: navigationHistoryEntryTitle(entry),
+          ...entry,
+        })
+      );
+    },
+    [field, buildNodePath]
+  );
 
   // Process search results for the table
   // Convert DataSourceContentNode[] to DataSourceViewContentNode[]
   const searchResults: DataSourceViewContentNode[] = useMemo(() => {
-    return searchResultNodes.flatMap((node) => {
+    const results: DataSourceViewContentNode[] = [];
+
+    for (const node of searchResultNodes) {
       const { dataSourceViews, ...contentNodeData } = node;
 
-      // Create a DataSourceViewContentNode for each dataSourceView
-      return dataSourceViews.map((view) => ({
-        ...contentNodeData,
-        dataSourceView: view,
-      }));
-    });
+      for (const view of dataSourceViews) {
+        results.push({
+          ...contentNodeData,
+          dataSourceView: view,
+        });
+      }
+    }
+
+    return results;
   }, [searchResultNodes]);
+
+  const spaceMap = useMemo(
+    () => new Map(spaces.map((space) => [space.sId, space])),
+    [spaces]
+  );
 
   const handleSearchResultClick = useCallback(
     (node: DataSourceViewContentNode) => {
@@ -164,13 +279,22 @@ export function DataSourceSearchResults({
         const { dataSourceView } = node;
 
         if (isDataSourceViewCategoryWithoutApps(dataSourceView.category)) {
-          // Navigate through the hierarchy to reach this node
+          // Find space using optimized lookup
+          const space = spaceMap.get(dataSourceView.spaceId);
+          if (!space) {
+            return;
+          }
+
+          // Reset navigation to space level first
+          setSpaceEntry(space);
+
+          // Then navigate through the hierarchy to reach this node
           if (node.mimeType === DATA_SOURCE_MIME_TYPE) {
-            // Navigate to data source level
+            // Navigate to data source level: Space > Category > DataSource
             setCategoryEntry(dataSourceView.category);
             setDataSourceViewEntry(dataSourceView);
           } else {
-            // Navigate to the node level
+            // Navigate to the node level: Space > Category > DataSource > Node
             setCategoryEntry(dataSourceView.category);
             setDataSourceViewEntry(dataSourceView);
             addNodeEntry(node);
@@ -178,7 +302,14 @@ export function DataSourceSearchResults({
         }
       }
     },
-    [onClearSearch, setCategoryEntry, setDataSourceViewEntry, addNodeEntry]
+    [
+      onClearSearch,
+      spaceMap,
+      setSpaceEntry,
+      setCategoryEntry,
+      setDataSourceViewEntry,
+      addNodeEntry,
+    ]
   );
 
   const createNavigationEntry = (
@@ -213,11 +344,11 @@ export function DataSourceSearchResults({
   const columns = useMemo(
     () =>
       makeSearchResultColumnsWithSelection(
-        isRowSelected,
-        selectNode,
-        removeNode
+        isSearchRowSelected,
+        selectSearchNode,
+        removeSearchNode
       ),
-    [isRowSelected, selectNode, removeNode]
+    [isSearchRowSelected, selectSearchNode, removeSearchNode]
   );
 
   if (!error && !isLoading && searchResults.length === 0) {
