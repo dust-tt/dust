@@ -11,6 +11,13 @@ const EMPTY_CLASSES =
 const INDENT_CLASSES =
   "s-border-structure-200 dark:s-border-structure-200-night s-max-w-full s-border-l s-pl-4 s-ml-4";
 
+// Performance limits to prevent browser crashes.
+// These limits are meant to be very conservative.
+const MAX_OBJECT_DEPTH = 8;
+const MAX_ARRAY_ITEMS = 100;
+const MAX_OBJECT_KEYS = 64;
+const MAX_STRING_LENGTH = 1024;
+
 export type JsonValueType =
   | string
   | number
@@ -72,6 +79,18 @@ function JsonValue({
   value: JsonValueType;
   depth?: number;
 }) {
+  if (
+    depth >= MAX_OBJECT_DEPTH &&
+    typeof value === "object" &&
+    value !== null
+  ) {
+    return (
+      <span className={EMPTY_CLASSES}>
+        [Object too deeply nested - {depth} levels deep]
+      </span>
+    );
+  }
+
   if (value === null || value === undefined) {
     return <span className={EMPTY_CLASSES}>empty</span>;
   }
@@ -85,9 +104,15 @@ function JsonValue({
   }
 
   if (typeof value === "string") {
+    // Truncate overly long strings.
+    const displayValue =
+      value.length > MAX_STRING_LENGTH
+        ? `${value.substring(0, MAX_STRING_LENGTH)}... (${value.length.toLocaleString()} characters total)`
+        : value;
+
     return (
       <span className={`${VALUE_CLASSES} s-whitespace-pre-wrap s-break-normal`}>
-        {value}
+        {displayValue}
       </span>
     );
   }
@@ -115,9 +140,13 @@ function JsonValue({
       );
     }
 
+    // Truncate arrays that have too many items.
+    const itemsToShow = Math.min(value.length, MAX_ARRAY_ITEMS);
+    const hasMore = value.length > MAX_ARRAY_ITEMS;
+
     return (
       <div className="s-mt-2">
-        {value.map((item, index) => (
+        {value.slice(0, itemsToShow).map((item, index) => (
           <div key={index} className={cn(INDENT_CLASSES)}>
             <div className="s-flex s-flex-col s-gap-2">
               <Chip size="xs" color="primary" label={`Item ${index + 1}`} />
@@ -127,6 +156,14 @@ function JsonValue({
             </div>
           </div>
         ))}
+        {hasMore && (
+          <div className={cn(INDENT_CLASSES)}>
+            <span className={EMPTY_CLASSES}>
+              ... and {value.length - itemsToShow} more items (
+              {value.length.toLocaleString()} total)
+            </span>
+          </div>
+        )}
       </div>
     );
   }
@@ -137,11 +174,16 @@ function JsonValue({
       return <span className={EMPTY_CLASSES}>empty</span>;
     }
 
+    // Truncate objects with too many properties.
+    const keysToShow = Math.min(entries.length, MAX_OBJECT_KEYS);
+    const hasMore = entries.length > MAX_OBJECT_KEYS;
+    const visibleEntries = entries.slice(0, keysToShow);
+
     // For nested objects, use a card-like layout with vertical bars.
     if (depth > 0) {
       return (
         <div className="s-space-y-2">
-          {entries.map(([key, val]) => (
+          {visibleEntries.map(([key, val]) => (
             <div key={key} className={cn(INDENT_CLASSES)}>
               <KeyValuePair
                 keyName={key}
@@ -151,6 +193,14 @@ function JsonValue({
               />
             </div>
           ))}
+          {hasMore && (
+            <div className={cn(INDENT_CLASSES)}>
+              <span className={EMPTY_CLASSES}>
+                ... and {entries.length - keysToShow} more properties (
+                {entries.length.toLocaleString()} total)
+              </span>
+            </div>
+          )}
         </div>
       );
     }
@@ -158,7 +208,7 @@ function JsonValue({
     // Root level objects use a table-like layout.
     return (
       <div className="s-max-w-full s-space-y-3">
-        {entries.map(([key, val]) => (
+        {visibleEntries.map(([key, val]) => (
           <div
             key={key}
             className={cn(
@@ -175,6 +225,14 @@ function JsonValue({
             />
           </div>
         ))}
+        {hasMore && (
+          <div className="s-border-structure-200 dark:s-border-structure-200-night s-border-t s-pt-3">
+            <span className={EMPTY_CLASSES}>
+              ... and {entries.length - keysToShow} more properties (
+              {entries.length.toLocaleString()} total)
+            </span>
+          </div>
+        )}
       </div>
     );
   }
