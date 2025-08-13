@@ -151,20 +151,20 @@ export const ColorVariants: Story = {
 export const InlineBasic: Story = {
   render: () => (
     <ContentMessage icon={InformationCircleIcon} variant="info" inline>
-      3 actions require manual approval
+      This is an inline message. It can be used to display a short message.
     </ContentMessage>
   ),
 };
 
 export const InlineWithAction: Story = {
   render: () => (
-    <ContentMessage 
-      icon={InformationCircleIcon} 
+    <ContentMessage
+      icon={InformationCircleIcon}
       variant="info"
       inline
-      action={<Button size="xs" variant="primary" label="Review actions" />}
+      action={<Button size="xs" variant="primary" label="Button" />}
     >
-      3 actions require manual approval
+      This is an inline message. It can be used to display a short message.
     </ContentMessage>
   ),
 };
@@ -172,18 +172,18 @@ export const InlineWithAction: Story = {
 export const InlineWithTitle: Story = {
   render: () => (
     <div className="s-flex s-flex-col s-gap-4">
-      <ContentMessage 
+      <ContentMessage
         title="Status"
-        icon={InformationCircleIcon} 
+        icon={InformationCircleIcon}
         variant="info"
         inline
-        action={<Button size="xs" variant="primary" label="Review actions" />}
+        action={<Button size="xs" variant="primary" label="Button" />}
       >
-        3 actions require manual approval
+        This is an inline message.
       </ContentMessage>
-      <ContentMessage 
+      <ContentMessage
         title="Alert"
-        icon={InformationCircleIcon} 
+        icon={InformationCircleIcon}
         variant="warning"
         inline
       />
@@ -194,13 +194,7 @@ export const InlineWithTitle: Story = {
 export const InlineVariants: Story = {
   render: () => (
     <div className="s-flex s-flex-col s-gap-4">
-      {[
-        "primary",
-        "warning",
-        "success",
-        "highlight",
-        "info",
-      ].map((variant) => (
+      {["primary", "warning", "success", "highlight", "info"].map((variant) => (
         <ContentMessage
           key={variant}
           icon={InformationCircleIcon}
