@@ -1,7 +1,12 @@
 import {
-  ArrowPathIcon,
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  ListAddIcon,
   Markdown,
+  PencilSquareIcon,
 } from "@dust-tt/sparkle";
 import React, { useContext } from "react";
 import { useFormContext } from "react-hook-form";
@@ -41,12 +46,10 @@ interface TemplateButtonsProps {
   assistantTemplate: FetchAssistantTemplateResponse;
 }
 
-function TemplateButtons({
-  assistantTemplate,
-}: TemplateButtonsProps) {
+function TemplateButtons({ assistantTemplate }: TemplateButtonsProps) {
   const confirm = useContext(ConfirmContext);
   const { setValue } = useFormContext<AgentBuilderFormData>();
-  
+
   const handleResetInstructions = async () => {
     const confirmed = await confirm({
       title: "Are you sure?",
@@ -54,41 +57,46 @@ function TemplateButtons({
         "You will lose the changes you have made to the agent's instructions and go back to the template's default settings.",
       validateVariant: "warning",
     });
-    
+
     if (confirmed && assistantTemplate.presetInstructions) {
       setValue("instructions", assistantTemplate.presetInstructions);
     }
   };
-  
+
   const handleResetActions = async () => {
     const confirmed = await confirm({
       title: "Are you sure?",
-      message:
-        "You will lose the changes you have made to the agent's tools.",
+      message: "You will lose the changes you have made to the agent's tools.",
       validateVariant: "warning",
     });
-    
+
     if (confirmed) {
       setValue("actions", []);
     }
   };
-  
+
   return (
-    <div className="flex items-center justify-end gap-2">
-      <Button
-        label="Reset instructions"
-        onClick={handleResetInstructions}
-        icon={ArrowPathIcon}
-        size="sm"
-        variant="outline"
-      />
-      <Button
-        label="Reset tools"
-        onClick={handleResetActions}
-        icon={ArrowPathIcon}
-        size="sm"
-        variant="outline"
-      />
+    <div className="flex items-center justify-end">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button label="Reset" size="sm" variant="outline" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            label="Reset instructions"
+            description="Set instructions back to template's default"
+            icon={PencilSquareIcon}
+            onClick={handleResetInstructions}
+            disabled={!assistantTemplate.presetInstructions}
+          />
+          <DropdownMenuItem
+            label="Reset tools"
+            description="Remove all tools"
+            icon={ListAddIcon}
+            onClick={handleResetActions}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
