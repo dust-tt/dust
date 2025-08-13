@@ -1,5 +1,11 @@
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
-import { Checkbox, cn, DataTable, ScrollableDataTable, Tooltip } from "@dust-tt/sparkle";
+import {
+  Checkbox,
+  cn,
+  DataTable,
+  ScrollableDataTable,
+  Tooltip,
+} from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 
@@ -137,10 +143,10 @@ export function DataSourceSearchResults({
 
   // Process search results for the table
   // Convert DataSourceContentNode[] to DataSourceViewContentNode[]
-  const searchResults = useMemo((): DataSourceViewContentNode[] => {
+  const searchResults: DataSourceViewContentNode[] = useMemo(() => {
     return searchResultNodes.flatMap((node) => {
-      const { dataSource, dataSourceViews, ...contentNodeData } = node;
-      
+      const { dataSourceViews, ...contentNodeData } = node;
+
       // Create a DataSourceViewContentNode for each dataSourceView
       return dataSourceViews.map((view) => ({
         ...contentNodeData,
@@ -149,17 +155,14 @@ export function DataSourceSearchResults({
     });
   }, [searchResultNodes]);
 
-  // Handle search result navigation
   const handleSearchResultClick = useCallback(
     (node: DataSourceViewContentNode) => {
-      // Clear search first
       onClearSearch();
 
       // Navigate to the search result based on its type and location
       if (node.expandable) {
         const { dataSourceView } = node;
 
-        // Only navigate to categories that are allowed in the builder context
         if (isDataSourceViewCategoryWithoutApps(dataSourceView.category)) {
           // Navigate through the hierarchy to reach this node
           if (node.mimeType === DATA_SOURCE_MIME_TYPE) {
@@ -178,7 +181,6 @@ export function DataSourceSearchResults({
     [onClearSearch, setCategoryEntry, setDataSourceViewEntry, addNodeEntry]
   );
 
-  // Create navigation entry for each search result
   const createNavigationEntry = (
     node: DataSourceViewContentNode
   ): NavigationHistoryEntryType => {
@@ -195,7 +197,6 @@ export function DataSourceSearchResults({
     }
   };
 
-  // Table data for search results with navigation entries
   const searchTableRows = useMemo((): SearchResultRowData[] => {
     return searchResults.map((node) => ({
       ...node,
@@ -209,7 +210,6 @@ export function DataSourceSearchResults({
     }));
   }, [searchResults, handleSearchResultClick]);
 
-  // Create columns with selection functionality - memoized
   const columns = useMemo(
     () =>
       makeSearchResultColumnsWithSelection(
@@ -220,32 +220,7 @@ export function DataSourceSearchResults({
     [isRowSelected, selectNode, removeNode]
   );
 
-  // Handle error state
-  if (error) {
-    return (
-      <div className="flex w-full flex-col gap-2">
-        <div className="text-end text-sm text-muted-foreground">
-          Search failed
-        </div>
-        <div className="flex items-center justify-center p-8 text-center">
-          <div className="flex flex-col gap-2">
-            <p className="text-sm text-muted-foreground">
-              Unable to search at this time. Please try again.
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="text-sm text-primary hover:underline"
-            >
-              Refresh page
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Handle empty results
-  if (!isLoading && searchResults.length === 0) {
+  if (!error && !isLoading && searchResults.length === 0) {
     return (
       <div className="flex w-full flex-col gap-2">
         <div className="text-end text-sm text-muted-foreground">
@@ -262,16 +237,29 @@ export function DataSourceSearchResults({
 
   return (
     <div className="flex w-full flex-col gap-2">
-      <div className="text-end text-sm text-muted-foreground">
-        {isLoading ? "Searching..." : `${searchResults.length} results found`}
-      </div>
-      <ScrollableDataTable
-        data={searchTableRows}
-        columns={columns}
-        className={cn("pb-4", isLoading && "pointer-events-none opacity-50")}
-        totalRowCount={searchResults.length}
-        maxHeight="h-[600px]"
-      />
+      {error ? (
+        <div className="text-end text-sm text-muted-foreground">
+          Error searching results.
+        </div>
+      ) : (
+        <>
+          <div className="text-end text-sm text-muted-foreground">
+            {isLoading
+              ? "Searching..."
+              : `${searchResults.length} results found`}
+          </div>
+          <ScrollableDataTable
+            data={searchTableRows}
+            columns={columns}
+            className={cn(
+              "pb-4",
+              isLoading && "pointer-events-none opacity-50"
+            )}
+            totalRowCount={searchResults.length}
+            maxHeight="h-[600px]"
+          />
+        </>
+      )}
     </div>
   );
 }

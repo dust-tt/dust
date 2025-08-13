@@ -11,7 +11,11 @@ import { DataSourceSpaceSelector } from "@app/components/data_source_view/DataSo
 import { useDebounce } from "@app/hooks/useDebounce";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpacesSearch } from "@app/lib/swr/spaces";
-import type { ContentNodesViewType, DataSourceViewType, LightWorkspaceType } from "@app/types";
+import type {
+  ContentNodesViewType,
+  DataSourceViewType,
+  LightWorkspaceType,
+} from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 type DataSourceBuilderSelectorProps = {
@@ -62,31 +66,35 @@ export const DataSourceBuilderSelector = ({
       ? currentNavigationEntry.space
       : null;
 
-  const { searchResultNodes, isSearchLoading, isSearchValidating, isSearchError } =
-    useSpacesSearch(
-      currentSpace && debouncedSearch
-        ? {
-            owner,
-            spaceIds: [currentSpace.sId],
-            search: debouncedSearch,
-            disabled: !debouncedSearch,
-            includeDataSources: true,
-            viewType,
-            dataSourceViewIdsBySpaceId: {
-              [currentSpace.sId]: dataSourceViews
-                .filter((dsv) => dsv.spaceId === currentSpace.sId)
-                .map((dsv) => dsv.sId),
-            },
-          }
-        : {
-            owner,
-            spaceIds: [],
-            search: "",
-            disabled: true,
-            includeDataSources: false,
-            viewType,
-          }
-    );
+  const {
+    searchResultNodes,
+    isSearchLoading,
+    isSearchValidating,
+    isSearchError,
+  } = useSpacesSearch(
+    currentSpace && debouncedSearch
+      ? {
+          owner,
+          spaceIds: [currentSpace.sId],
+          search: debouncedSearch,
+          disabled: !debouncedSearch,
+          includeDataSources: true,
+          viewType,
+          dataSourceViewIdsBySpaceId: {
+            [currentSpace.sId]: dataSourceViews
+              .filter((dsv) => dsv.spaceId === currentSpace.sId)
+              .map((dsv) => dsv.sId),
+          },
+        }
+      : {
+          owner,
+          spaceIds: [],
+          search: "",
+          disabled: true,
+          includeDataSources: false,
+          viewType,
+        }
+  );
 
   const isSearching = debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE;
   const isLoading = isDebouncing || isSearchLoading || isSearchValidating;
@@ -95,7 +103,7 @@ export const DataSourceBuilderSelector = ({
   const shouldShowSearch = isSearching && currentSpace;
   const [isChanging, setIsChanging] = useState(false);
   const [showSearch, setShowSearch] = useState(shouldShowSearch);
-  
+
   // Handle transition when search state changes
   useEffect(() => {
     if (shouldShowSearch !== showSearch) {
