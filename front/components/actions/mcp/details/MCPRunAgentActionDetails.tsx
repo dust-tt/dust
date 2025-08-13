@@ -6,6 +6,7 @@ import {
   CitationIcons,
   CitationIndex,
   CitationTitle,
+  CollapsibleComponent,
   ContentMessage,
   Markdown,
   RobotIcon,
@@ -193,70 +194,97 @@ export function MCPRunAgentActionDetails({
               </ContentMessage>
             </div>
           )}
-          {chainOfThought && childAgent && (
-            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-              <ContentMessage
-                title="Agent thoughts"
-                variant="primary"
-                size="lg"
-              >
-                <Markdown
-                  content={chainOfThought}
-                  isStreaming={isStreamingChainOfThought}
-                  forcedTextSize="text-sm"
-                  textColor="text-muted-foreground"
-                  isLastMessage={false}
-                />
-              </ContentMessage>
-            </div>
-          )}
-          {response && childAgent && (
-            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-              <ContentMessage title="Response" variant="primary" size="lg">
-                <CitationsContext.Provider
-                  value={{
-                    references,
-                    updateActiveReferences,
-                  }}
-                >
-                  <Markdown
-                    content={response}
-                    isStreaming={isStreamingResponse}
-                    forcedTextSize="text-sm"
-                    textColor="text-muted-foreground"
-                    isLastMessage={false}
-                    additionalMarkdownPlugins={additionalMarkdownPlugins}
-                    additionalMarkdownComponents={additionalMarkdownComponents}
-                  />
-                </CitationsContext.Provider>
-
-                {activeReferences.length > 0 && (
-                  <div className="mt-4">
-                    <CitationGrid variant="grid">
-                      {activeReferences
-                        .sort((a, b) => a.index - b.index)
-                        .map(({ document, index }) => (
-                          <Citation
-                            key={index}
-                            onClick={
-                              document.href
-                                ? () => window.open(document.href, "_blank")
-                                : undefined
+          {childAgent && (
+            <CollapsibleComponent
+              rootProps={{ defaultOpen: true }}
+              triggerChildren={
+                <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                  @{childAgent.name}'s Answer
+                </span>
+              }
+              contentChildren={
+                <div className="flex flex-col gap-4">
+                  {chainOfThought && childAgent && (
+                    <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                      <ContentMessage
+                        title="Agent thoughts"
+                        variant="primary"
+                        size="lg"
+                      >
+                        <Markdown
+                          content={chainOfThought}
+                          isStreaming={isStreamingChainOfThought}
+                          forcedTextSize="text-sm"
+                          textColor="text-muted-foreground"
+                          isLastMessage={false}
+                        />
+                      </ContentMessage>
+                    </div>
+                  )}
+                  {response && childAgent && (
+                    <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                      <ContentMessage
+                        title="Response"
+                        variant="primary"
+                        size="lg"
+                      >
+                        <CitationsContext.Provider
+                          value={{
+                            references,
+                            updateActiveReferences,
+                          }}
+                        >
+                          <Markdown
+                            content={response}
+                            isStreaming={isStreamingResponse}
+                            forcedTextSize="text-sm"
+                            textColor="text-muted-foreground"
+                            isLastMessage={false}
+                            additionalMarkdownPlugins={
+                              additionalMarkdownPlugins
                             }
-                            tooltip={document.description || document.title}
-                          >
-                            <CitationIcons>
-                              <CitationIndex>{index}</CitationIndex>
-                              {document.icon}
-                            </CitationIcons>
-                            <CitationTitle>{document.title}</CitationTitle>
-                          </Citation>
-                        ))}
-                    </CitationGrid>
-                  </div>
-                )}
-              </ContentMessage>
-            </div>
+                            additionalMarkdownComponents={
+                              additionalMarkdownComponents
+                            }
+                          />
+                        </CitationsContext.Provider>
+
+                        {activeReferences.length > 0 && (
+                          <div className="mt-4">
+                            <CitationGrid variant="grid">
+                              {activeReferences
+                                .sort((a, b) => a.index - b.index)
+                                .map(({ document, index }) => (
+                                  <Citation
+                                    key={index}
+                                    onClick={
+                                      document.href
+                                        ? () =>
+                                            window.open(document.href, "_blank")
+                                        : undefined
+                                    }
+                                    tooltip={
+                                      document.description || document.title
+                                    }
+                                  >
+                                    <CitationIcons>
+                                      <CitationIndex>{index}</CitationIndex>
+                                      {document.icon}
+                                    </CitationIcons>
+                                    <CitationTitle>
+                                      {document.title}
+                                    </CitationTitle>
+                                  </Citation>
+                                ))}
+                            </CitationGrid>
+                          </div>
+                        )}
+                      </ContentMessage>
+                    </div>
+                  )}
+                </div>
+              }
+            />
           )}
         </div>
         <div>
