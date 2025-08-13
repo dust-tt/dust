@@ -40,13 +40,18 @@ export function DataSourceViewTable({
   const columns = useDataSourceColumns();
   const rows: DataSourceRowData[] = spaceDataSourceViews
     .filter((dsv) => {
-      if (viewType === "data_warehouse") {
-        return isRemoteDatabase(dsv.dataSource);
-      } else if (viewType === "table") {
-        return !isRemoteDatabase(dsv.dataSource);
+      if (dsv.dataSource.connectorProvider === "slack_bot") {
+        return false;
       }
 
-      return dsv.dataSource.connectorProvider !== "slack_bot";
+      switch (viewType) {
+        case "data_warehouse":
+          return isRemoteDatabase(dsv.dataSource);
+        case "table":
+          return !isRemoteDatabase(dsv.dataSource);
+        default:
+          return true;
+      }
     })
     .map((dsv) => {
       const provider = dsv.dataSource.connectorProvider;
