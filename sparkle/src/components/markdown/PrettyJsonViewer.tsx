@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 import { Chip } from "@sparkle/components/Chip";
 import { cn } from "@sparkle/lib/utils";
@@ -27,6 +27,31 @@ export type JsonValueType =
   | JsonValueType[]
   | { [key: string]: JsonValueType };
 
+// Helper component for inline expand/collapse buttons with consistent styling.
+function InlineExpandButton({
+  label,
+  buttonText,
+  onClick,
+  className,
+}: {
+  label: string;
+  buttonText: string;
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <span className={cn(EMPTY_CLASSES, className)}>
+      {label}{" "}
+      <button
+        onClick={onClick}
+        className="s-cursor-pointer s-font-medium s-text-highlight hover:s-underline dark:s-text-highlight-night"
+      >
+        {buttonText}
+      </button>
+    </span>
+  );
+}
+
 // Helper component for rendering key-value pairs with consistent styling.
 function KeyValuePair({
   keyName,
@@ -34,12 +59,18 @@ function KeyValuePair({
   depth,
   chipColor,
   isRootLevel = false,
+  expandedPaths,
+  setExpandedPaths,
+  currentPath,
 }: {
   keyName: string;
   value: JsonValueType;
   depth: number;
   chipColor: "info" | "highlight";
   isRootLevel?: boolean;
+  expandedPaths?: Set<string>;
+  setExpandedPaths?: React.Dispatch<React.SetStateAction<Set<string>>>;
+  currentPath?: string;
 }) {
   const isComplexValue = typeof value === "object" && value !== null;
 
@@ -53,7 +84,13 @@ function KeyValuePair({
           className="s-mb-2"
         />
         <div className={cn("s-max-w-full", isRootLevel && "s-ml-4")}>
-          <JsonValue value={value} depth={depth + 1} />
+          <JsonValue
+            value={value}
+            depth={depth + 1}
+            expandedPaths={expandedPaths}
+            setExpandedPaths={setExpandedPaths}
+            currentPath={`${currentPath}.${keyName}`}
+          />
         </div>
       </>
     );
@@ -67,7 +104,13 @@ function KeyValuePair({
       )}
     >
       <Chip size="xs" color={chipColor} label={formatKey(keyName)} />
-      <JsonValue value={value} depth={depth + 1} />
+      <JsonValue
+        value={value}
+        depth={depth + 1}
+        expandedPaths={expandedPaths}
+        setExpandedPaths={setExpandedPaths}
+        currentPath={`${currentPath}.${keyName}`}
+      />
     </div>
   );
 }
@@ -75,19 +118,58 @@ function KeyValuePair({
 function JsonValue({
   value,
   depth = 0,
+  expandedPaths = new Set(),
+  setExpandedPaths,
+  currentPath = "",
 }: {
   value: JsonValueType;
   depth?: number;
+  expandedPaths?: Set<string>;
+  setExpandedPaths?: React.Dispatch<React.SetStateAction<Set<string>>>;
+  currentPath?: string;
 }) {
+  const handleToggleExpanded = (path: string) => {
+    if (!setExpandedPaths) return;
+
+    setExpandedPaths((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(path)) {
+        newSet.delete(path);
+      } else {
+        newSet.add(path);
+      }
+      return newSet;
+    });
+  };
   if (
     depth >= MAX_OBJECT_DEPTH &&
     typeof value === "object" &&
     value !== null
   ) {
+    const deepObjectPath = `${currentPath}:deep`;
+    const isExpanded = expandedPaths?.has(deepObjectPath) ?? false;
+
+    if (isExpanded) {
+      // Render the full object/array when expanded, ignoring depth limit.
+      return (
+        <JsonValue
+          value={value}
+          depth={0} // Reset depth to allow full rendering.
+          expandedPaths={expandedPaths}
+          setExpandedPaths={setExpandedPaths}
+          currentPath={`${currentPath}:expanded`}
+        />
+      );
+    }
+
     return (
-      <span className={EMPTY_CLASSES}>
-        [Object too deeply nested - {depth} levels deep]
-      </span>
+      <div className="s-flex s-items-center s-gap-1">
+        <InlineExpandButton
+          label="Maximum depth reached"
+          buttonText="expand"
+          onClick={() => handleToggleExpanded(deepObjectPath)}
+        />
+      </div>
     );
   }
 
@@ -104,15 +186,31 @@ function JsonValue({
   }
 
   if (typeof value === "string") {
-    // Truncate overly long strings.
-    const displayValue =
-      value.length > MAX_STRING_LENGTH
-        ? `${value.substring(0, MAX_STRING_LENGTH)}... (${value.length.toLocaleString()} characters total)`
-        : value;
+    if (value.length > MAX_STRING_LENGTH) {
+      const longStringPath = `${currentPath}:longstring`;
+      const isExpanded = expandedPaths?.has(longStringPath) ?? false;
+
+      return (
+        <span
+          className={`${VALUE_CLASSES} s-whitespace-pre-wrap s-break-normal`}
+        >
+          {isExpanded ? value : value.substring(0, MAX_STRING_LENGTH)}
+          {!isExpanded && "…"}{" "}
+          <button
+            onClick={() => handleToggleExpanded(longStringPath)}
+            className="s-cursor-pointer s-font-medium s-text-highlight hover:s-underline dark:s-text-highlight-night"
+          >
+            {isExpanded
+              ? "collapse"
+              : `expand (${(value.length - MAX_STRING_LENGTH).toLocaleString()} more characters)`}
+          </button>
+        </span>
+      );
+    }
 
     return (
       <span className={`${VALUE_CLASSES} s-whitespace-pre-wrap s-break-normal`}>
-        {displayValue}
+        {value}
       </span>
     );
   }
@@ -132,7 +230,13 @@ function JsonValue({
         <span className={VALUE_CLASSES}>
           {value.map((item, index) => (
             <span key={index}>
-              <JsonValue value={item} depth={depth + 1} />
+              <JsonValue
+                value={item}
+                depth={depth + 1}
+                expandedPaths={expandedPaths}
+                setExpandedPaths={setExpandedPaths}
+                currentPath={`${currentPath}[${index}]`}
+              />
               {index < value.length - 1 && ", "}
             </span>
           ))}
@@ -141,8 +245,12 @@ function JsonValue({
     }
 
     // Truncate arrays that have too many items.
-    const itemsToShow = Math.min(value.length, MAX_ARRAY_ITEMS);
-    const hasMore = value.length > MAX_ARRAY_ITEMS;
+    const arrayPath = `${currentPath}[]`;
+    const isExpanded = expandedPaths?.has(arrayPath) ?? false;
+    const itemsToShow = isExpanded
+      ? value.length
+      : Math.min(value.length, MAX_ARRAY_ITEMS);
+    const hasMore = value.length > MAX_ARRAY_ITEMS && !isExpanded;
 
     return (
       <div className="s-mt-2">
@@ -151,17 +259,24 @@ function JsonValue({
             <div className="s-flex s-flex-col s-gap-2">
               <Chip size="xs" color="primary" label={`Item ${index + 1}`} />
               <div className="s-max-w-full">
-                <JsonValue value={item} depth={depth + 1} />
+                <JsonValue
+                  value={item}
+                  depth={depth + 1}
+                  expandedPaths={expandedPaths}
+                  setExpandedPaths={setExpandedPaths}
+                  currentPath={`${currentPath}[${index}]`}
+                />
               </div>
             </div>
           </div>
         ))}
         {hasMore && (
           <div className={cn(INDENT_CLASSES)}>
-            <span className={EMPTY_CLASSES}>
-              ... and {value.length - itemsToShow} more items (
-              {value.length.toLocaleString()} total)
-            </span>
+            <InlineExpandButton
+              label={`${value.length - itemsToShow} more items`}
+              buttonText="expand"
+              onClick={() => handleToggleExpanded(arrayPath)}
+            />
           </div>
         )}
       </div>
@@ -175,8 +290,12 @@ function JsonValue({
     }
 
     // Truncate objects with too many properties.
-    const keysToShow = Math.min(entries.length, MAX_OBJECT_KEYS);
-    const hasMore = entries.length > MAX_OBJECT_KEYS;
+    const objectPath = `${currentPath}{}`;
+    const isExpanded = expandedPaths?.has(objectPath) ?? false;
+    const keysToShow = isExpanded
+      ? entries.length
+      : Math.min(entries.length, MAX_OBJECT_KEYS);
+    const hasMore = entries.length > MAX_OBJECT_KEYS && !isExpanded;
     const visibleEntries = entries.slice(0, keysToShow);
 
     // For nested objects, use a card-like layout with vertical bars.
@@ -190,15 +309,19 @@ function JsonValue({
                 value={val}
                 depth={depth}
                 chipColor="info"
+                expandedPaths={expandedPaths}
+                setExpandedPaths={setExpandedPaths}
+                currentPath={currentPath}
               />
             </div>
           ))}
           {hasMore && (
             <div className={cn(INDENT_CLASSES)}>
-              <span className={EMPTY_CLASSES}>
-                ... and {entries.length - keysToShow} more properties (
-                {entries.length.toLocaleString()} total)
-              </span>
+              <InlineExpandButton
+                label={`${entries.length - keysToShow} more properties`}
+                buttonText="expand"
+                onClick={() => handleToggleExpanded(objectPath)}
+              />
             </div>
           )}
         </div>
@@ -222,15 +345,19 @@ function JsonValue({
               depth={depth}
               chipColor="highlight"
               isRootLevel
+              expandedPaths={expandedPaths}
+              setExpandedPaths={setExpandedPaths}
+              currentPath={currentPath}
             />
           </div>
         ))}
         {hasMore && (
           <div className="s-border-structure-200 dark:s-border-structure-200-night s-border-t s-pt-3">
-            <span className={EMPTY_CLASSES}>
-              ... and {entries.length - keysToShow} more properties (
-              {entries.length.toLocaleString()} total)
-            </span>
+            <InlineExpandButton
+              label={`${entries.length - keysToShow} more properties`}
+              buttonText="expand"
+              onClick={() => handleToggleExpanded(objectPath)}
+            />
           </div>
         )}
       </div>
@@ -265,6 +392,8 @@ interface JsonViewerProps {
   className?: string;
 }
 export function PrettyJsonViewer({ data, className }: JsonViewerProps) {
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
+
   return (
     <div
       className={cn(
@@ -274,7 +403,12 @@ export function PrettyJsonViewer({ data, className }: JsonViewerProps) {
       )}
     >
       <div className="s-max-w-full s-overflow-x-auto">
-        <JsonValue value={data} />
+        <JsonValue
+          value={data}
+          expandedPaths={expandedPaths}
+          setExpandedPaths={setExpandedPaths}
+          currentPath="root"
+        />
       </div>
     </div>
   );
