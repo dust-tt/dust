@@ -31,7 +31,13 @@ import {
   isDefaultActionName,
 } from "@app/components/agent_builder/types";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerViewDisplayName,
+  getMCPServerNameForTemplateAction,
+  isConfigurableTemplateAction,
+  isDirectAddTemplateAction,
+  isKnowledgeTemplateAction,
+} from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
   DATA_VISUALIZATION_SPECIFICATION,
@@ -164,6 +170,7 @@ export function AgentBuilderCapabilitiesBlock({
   const [knowledgeAction, setKnowledgeAction] = useState<{
     action: AgentBuilderAction;
     index: number | null;
+    presetData?: TemplateActionPreset | null;
   } | null>(null);
   
   // Use a ref to track if we're processing to prevent multiple executions
@@ -190,39 +197,56 @@ export function AgentBuilderCapabilitiesBlock({
     
     processingRef.current = true;
 
-    const isKnowledgeAction = 
-      presetActionToAdd.type === "RETRIEVAL_SEARCH" || 
-      presetActionToAdd.type === "TABLES_QUERY" || 
-      presetActionToAdd.type === "PROCESS";
-
-    if (isKnowledgeAction) {
-      // Open knowledge configuration dialog with preset data
-      const action = getDefaultMCPAction();
-      action.name = presetActionToAdd.name;
-      action.description = presetActionToAdd.description;
-      
-      setKnowledgeAction({
-        action: { ...action, noConfigurationRequired: false },
-        index: null,
-      });
-    } else if (presetActionToAdd.type === "WEB_NAVIGATION") {
-      // Add web search tool directly without opening dialog
-      const webSearchView = mcpServerViews.find(
-        (view) => view.server.name === "web_search_&_browse"
+    if (isKnowledgeTemplateAction(presetActionToAdd)) {
+      // Get the MCP server name for this template action
+      const targetServerName = getMCPServerNameForTemplateAction(presetActionToAdd);
+      const mcpServerView = mcpServerViewsWithKnowledge.find(
+        (view) => view.server.name === targetServerName
       );
       
-      if (webSearchView) {
-        const action = getDefaultMCPAction(webSearchView);
+      if (mcpServerView) {
+        // Open knowledge configuration dialog with preset data and correct MCP server
+        const action = getDefaultMCPAction(mcpServerView);
+        action.name = presetActionToAdd.name;
+        action.description = presetActionToAdd.description;
+        
+        setKnowledgeAction({
+          action: { ...action, noConfigurationRequired: false },
+          index: null,
+          presetData: presetActionToAdd,
+        });
+      }
+    } else if (isDirectAddTemplateAction(presetActionToAdd)) {
+      // Get the MCP server name for this template action
+      const targetServerName = getMCPServerNameForTemplateAction(presetActionToAdd);
+      const mcpServerView = mcpServerViews.find(
+        (view) => view.server.name === targetServerName
+      );
+      
+      if (mcpServerView) {
+        const action = getDefaultMCPAction(mcpServerView);
         action.name = presetActionToAdd.name;
         action.description = presetActionToAdd.description;
         
         append(action);
         
         sendNotification({
-          title: "Web Search added",
-          description: "Web Search tool has been added to your agent",
+          title: "Tool added",
+          description: `${action.name} has been added to your agent`,
           type: "success",
         });
+      }
+    } else if (isConfigurableTemplateAction(presetActionToAdd)) {
+      // For DUST_APP_RUN and REASONING, open the tools dialog for configuration
+      const targetServerName = getMCPServerNameForTemplateAction(presetActionToAdd);
+      const mcpServerView = mcpServerViews.find(
+        (view) => view.server.name === targetServerName
+      );
+      
+      if (mcpServerView) {
+        // Open tools dialog for configuration
+        setDialogMode({ type: 'add' });
+        // TODO: We should pre-select the specific MCP server in the dialog
       }
     }
 
@@ -377,7 +401,7 @@ export function AgentBuilderCapabilitiesBlock({
         isEditing={Boolean(knowledgeAction && knowledgeAction.index !== null)}
         mcpServerViews={mcpServerViewsWithKnowledge}
         getAgentInstructions={getAgentInstructions}
-        presetActionData={presetActionToAdd}
+        presetActionData={knowledgeAction?.presetData}
       />
       <MCPServerViewsDialog
         addTools={append}
