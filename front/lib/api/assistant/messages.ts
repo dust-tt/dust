@@ -70,6 +70,7 @@ export async function generateParsedContents(
   contents: { step: number; content: AgentContentItemType }[]
 ): Promise<Record<number, Array<ParsedContentItem>>> {
   const parsedContents: Record<number, Array<ParsedContentItem>> = {};
+  const actionsByCallId = new Map(actions.map((a) => [a.functionCallId, a]));
 
   for (const c of contents) {
     const step = c.step + 1; // Convert to 1-indexed for display
@@ -106,9 +107,8 @@ export async function generateParsedContents(
 
     if (isFunctionCallContent(c.content)) {
       const functionCallId = c.content.value.id;
-      const matchingAction = actions.find(
-        (a) => a.functionCallId === functionCallId
-      );
+      const matchingAction = actionsByCallId.get(functionCallId);
+
       if (matchingAction) {
         parsedContents[step].push({ kind: "action", action: matchingAction });
       }
