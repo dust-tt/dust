@@ -27,7 +27,7 @@ export async function runBigQueryWorker() {
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return new ActivityInboundLogInterceptor(ctx, logger, "bigquery");
         },
         () => new BigQueryCastKnownErrorsInterceptor(),
       ],

@@ -1,8 +1,8 @@
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 import type { ChildWorkflowHandle } from "@temporalio/workflow";
 import {
   proxyActivities,
   startChild,
-  WorkflowExecutionAlreadyStartedError,
   workflowInfo,
 } from "@temporalio/workflow";
 
