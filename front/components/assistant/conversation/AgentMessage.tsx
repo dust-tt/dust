@@ -1,14 +1,19 @@
 import {
   ArrowPathIcon,
+  Avatar,
   Button,
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
+  CollapsibleComponent,
   ConversationMessage,
   DocumentIcon,
+  GlobeAltIcon,
+  Icon,
   InteractiveImageGrid,
   Markdown,
   Separator,
+  Spinner,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { marked } from "marked";
@@ -16,7 +21,7 @@ import React from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
-import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
+import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
 import {
   DefaultAgentMessageGeneratedFiles,
@@ -49,10 +54,14 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useEventSource } from "@app/hooks/useEventSource";
+import type { MCPActionType } from "@app/lib/actions/mcp";
+import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import type {
   AgentMessageStateEvent,
   MessageTemporaryState,
+  StreamingBlock,
 } from "@app/lib/assistant/state/messageReducer";
 import {
   CLEAR_CONTENT_EVENT,
@@ -89,12 +98,36 @@ type AgentMessageStateWithControlEvent =
 function makeInitialMessageStreamState(
   message: LightAgentMessageType
 ): MessageTemporaryState {
+  // Initialize streaming blocks from existing message data
+  const blocks: StreamingBlock[] = [];
+
+  // Add existing chain of thought as a completed thinking block
+  if (message.chainOfThought) {
+    blocks.push({
+      type: "thinking",
+      content: message.chainOfThought,
+      isStreaming: false,
+    });
+  }
+
+  // Add existing actions as completed action blocks
+  message.actions.forEach((action) => {
+    blocks.push({
+      type: "action",
+      action: action as MCPActionType,
+      status: message.status === "failed" ? "failed" : "succeeded",
+    });
+  });
+
   return {
     actionProgress: new Map(),
     agentState: message.status === "created" ? "thinking" : "done",
     isRetrying: false,
     lastUpdated: new Date(),
     message,
+    streamingBlocks: blocks,
+    currentStreamingContent: null,
+    currentStreamingType: null,
   };
 }
 
@@ -507,6 +540,140 @@ export function AgentMessage({
   const canMention = agentConfiguration.canRead;
   const isArchived = agentConfiguration.status === "archived";
 
+  // Inline thinking component - always visible with subtle background
+  const InlineThought = ({
+    content,
+    isStreaming,
+  }: {
+    content: string;
+    isStreaming: boolean;
+  }) => {
+    return (
+      <div className="bg-structure-50/50 rounded-lg p-2">
+        <div className="flex items-start">
+          {isStreaming && (
+            <div className="mt-1">
+              <Spinner size="xs" />
+            </div>
+          )}
+          <div className="text-element-600 flex-1 text-sm">
+            <Markdown
+              content={content}
+              isStreaming={isStreaming}
+              forcedTextSize="text-sm"
+              isLastMessage={false}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Collapsible component for actions
+  const CollapsibleActionDetails = ({
+    action,
+    owner,
+    lastNotification,
+    messageStatus,
+  }: {
+    action: MCPActionType;
+    owner: WorkspaceType;
+    lastNotification: ProgressNotificationContentType | null;
+    messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
+  }) => {
+    const isRunning = messageStatus === "created";
+    const [faviconError, setFaviconError] = React.useState(false);
+    
+    // Extract domain from URL in action params or outputs
+    const extractDomain = () => {
+      // Check if action has a URL in params
+      if (action.params?.url && typeof action.params.url === 'string') {
+        try {
+          const url = new URL(action.params.url);
+          return url.hostname;
+        } catch {
+          // Invalid URL
+        }
+      }
+      
+      // For web search, we might have domains in the results
+      // But since we don't have the results in the action params, we can't extract them
+      // We could potentially use a default search engine favicon
+      if (action.functionCallName?.includes('websearch')) {
+        return 'www.google.com'; // Default to Google for web searches
+      }
+      
+      return null;
+    };
+    
+    const domain = extractDomain();
+    const faviconUrl = domain && !faviconError 
+      ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64`
+      : null;
+
+    // Get tool display name
+    const getToolDisplayName = () => {
+      if (!action.functionCallName) return "Tool";
+      const parts = action.functionCallName.split("__");
+      const toolName = parts[parts.length - 1];
+      
+      const toolDisplayNames: Record<string, string> = {
+        search: "Search",
+        websearch: "Web Search",
+        webbrowser: "Browse Web",
+      };
+      
+      return toolDisplayNames[toolName] || "Searching";
+    };
+
+    return (
+      <div className="border-structure-100 bg-structure-50/30 overflow-hidden rounded-lg border px-2">
+        <CollapsibleComponent
+          rootProps={{ defaultOpen: isRunning }}
+          triggerChildren={
+            <div className="hover:bg-structure-50/50 flex items-center gap-2 p-3 transition-colors">
+              {isRunning && <Spinner size="xs" />}
+              <Avatar
+                size="sm"
+                visual={
+                  faviconUrl ? (
+                    <img 
+                      src={faviconUrl} 
+                      alt=""
+                      className="h-full w-full rounded-full object-contain"
+                      onError={() => setFaviconError(true)}
+                    />
+                  ) : (
+                    <Icon visual={GlobeAltIcon} />
+                  )
+                }
+                backgroundColor="bg-muted-background dark:bg-muted-background-night"
+              />
+              <span className="heading-base">{getToolDisplayName()}</span>
+              {action.params?.query && (
+                <span className="text-element-500 flex-1 truncate text-sm">
+                  "{String(action.params.query).substring(0, 50)}
+                  {String(action.params.query).length > 50 ? "..." : ""}"
+                </span>
+              )}
+            </div>
+          }
+          contentChildren={
+            <div className="border-structure-100 border-t p-3">
+              <MCPActionDetails
+                viewType="sidebar"
+                action={action}
+                owner={owner}
+                lastNotification={lastNotification}
+                messageStatus={messageStatus}
+              />
+            </div>
+          }
+        />
+      </div>
+    );
+  };
+
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
@@ -611,15 +778,34 @@ export function AgentMessage({
     );
 
     return (
-      <div className="flex flex-col gap-y-4">
-        <div className="flex flex-col gap-2">
-          <AgentMessageActions
-            agentMessage={agentMessage}
-            lastAgentStateClassification={messageStreamState.agentState}
-            actionProgress={messageStreamState.actionProgress}
-            owner={owner}
-          />
-        </div>
+      <div className="flex flex-col gap-y-2">
+        {/* Render all streaming blocks in order */}
+        {messageStreamState.streamingBlocks.map((block, index) => {
+          if (block.type === "thinking") {
+            return (
+              <InlineThought
+                key={`thinking-${index}`}
+                content={block.content}
+                isStreaming={block.isStreaming}
+              />
+            );
+          } else if (block.type === "action") {
+            const lastNotification =
+              messageStreamState.actionProgress.get(block.action.id)
+                ?.progress ?? null;
+            return (
+              <CollapsibleActionDetails
+                key={`action-${block.action.id}`}
+                action={block.action}
+                owner={owner}
+                lastNotification={lastNotification}
+                messageStatus={block.status}
+              />
+            );
+          }
+          return null;
+        })}
+
         <InteractiveAgentMessageGeneratedFiles files={interactiveFiles} />
         {(inProgressImages.length > 0 || completedImages.length > 0) && (
           <InteractiveImageGrid
