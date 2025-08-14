@@ -223,6 +223,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     }
   }
 
+  //TODO: to implement
   //   if (isInternalMCPServerOfName(mcpServerId, "run_agent")) {
   //     return <MCPRunAgentActionDetails {...props} />;
   //   }
