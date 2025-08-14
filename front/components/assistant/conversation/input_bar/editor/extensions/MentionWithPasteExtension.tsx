@@ -1,7 +1,7 @@
 import Mention from "@tiptap/extension-mention";
 import type { PasteRuleMatch } from "@tiptap/react";
 import { nodePasteRule } from "@tiptap/react";
-import { escapeRegExp } from "lodash";
+import escapeRegExp from "lodash/escapeRegExp";
 
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 

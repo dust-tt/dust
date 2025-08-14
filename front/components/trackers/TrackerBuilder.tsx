@@ -12,7 +12,7 @@ import {
   TextArea,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { capitalize } from "lodash";
+import capitalize from "lodash/capitalize";
 import { LockIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { useContext, useMemo, useState } from "react";

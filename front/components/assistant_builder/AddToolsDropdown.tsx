@@ -11,7 +11,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import assert from "assert";
-import { uniqueId } from "lodash";
+import uniqueId from "lodash/uniqueId";
 import { useState } from "react";
 
 import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";

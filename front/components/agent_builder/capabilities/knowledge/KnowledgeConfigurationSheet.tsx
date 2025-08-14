@@ -8,7 +8,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { uniqueId } from "lodash";
+import uniqueId from "lodash/uniqueId";
 import { useEffect, useMemo, useState } from "react";
 import {
   FormProvider,

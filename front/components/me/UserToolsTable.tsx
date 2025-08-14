@@ -1,6 +1,6 @@
 import { Chip, DataTable, Label, SearchInput, Spinner } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { keyBy } from "lodash";
+import keyBy from "lodash/keyBy";
 import { useCallback, useMemo, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";

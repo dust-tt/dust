@@ -6,7 +6,7 @@ import {
   PencilSquareIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { capitalize } from "lodash";
+import capitalize from "lodash/capitalize";
 import type { NextRouter } from "next/router";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
 import React, { useCallback, useImperativeHandle, useState } from "react";

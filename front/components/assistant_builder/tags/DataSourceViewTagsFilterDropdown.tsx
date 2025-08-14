@@ -7,7 +7,7 @@ import {
   PopoverTrigger,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { cloneDeep } from "lodash";
+import cloneDeep from "lodash/cloneDeep";
 
 import { getActionTags } from "@app/components/assistant_builder/tags/helpers";
 import { TagSearchSection } from "@app/components/assistant_builder/tags/TagSearchSection";
