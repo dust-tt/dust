@@ -1,14 +1,12 @@
 import {
-  AnimatedText,
-  ArrowPathIcon,
+  ArrowPathIcon, Avatar,
   Button,
-  Card,
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
   CollapsibleComponent,
   ConversationMessage,
-  DocumentIcon,
+  DocumentIcon, Icon,
   InteractiveImageGrid,
   Markdown,
   Separator,
@@ -22,10 +20,6 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
-import type { MCPActionType } from "@app/lib/actions/mcp";
-import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { StreamingBlock, MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
-import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import {
   DefaultAgentMessageGeneratedFiles,
   InteractiveAgentMessageGeneratedFiles,
@@ -57,10 +51,14 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useEventSource } from "@app/hooks/useEventSource";
+import type { MCPActionType } from "@app/lib/actions/mcp";
+import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import type {
   AgentMessageStateEvent,
   MessageTemporaryState,
+  StreamingBlock,
 } from "@app/lib/assistant/state/messageReducer";
 import {
   CLEAR_CONTENT_EVENT,
@@ -99,25 +97,25 @@ function makeInitialMessageStreamState(
 ): MessageTemporaryState {
   // Initialize streaming blocks from existing message data
   const blocks: StreamingBlock[] = [];
-  
+
   // Add existing chain of thought as a completed thinking block
   if (message.chainOfThought) {
     blocks.push({
       type: "thinking",
       content: message.chainOfThought,
-      isStreaming: false
+      isStreaming: false,
     });
   }
-  
+
   // Add existing actions as completed action blocks
-  message.actions.forEach(action => {
+  message.actions.forEach((action) => {
     blocks.push({
       type: "action",
       action: action as MCPActionType,
-      status: message.status === "failed" ? "failed" : "succeeded"
+      status: message.status === "failed" ? "failed" : "succeeded",
     });
   });
-  
+
   return {
     actionProgress: new Map(),
     agentState: message.status === "created" ? "thinking" : "done",
@@ -548,14 +546,14 @@ export function AgentMessage({
     isStreaming: boolean;
   }) => {
     return (
-      <div className="rounded-lg bg-structure-50/50 p-4">
+      <div className="bg-structure-50/50 rounded-lg p-4">
         <div className="flex items-start gap-2">
           {isStreaming && (
             <div className="mt-1">
               <Spinner size="xs" />
             </div>
           )}
-          <div className="text-sm text-element-600 flex-1">
+          <div className="text-element-600 flex-1 text-sm">
             <Markdown
               content={content}
               isStreaming={isStreaming}
@@ -583,15 +581,17 @@ export function AgentMessage({
     const isRunning = messageStatus === "created";
     const hasCompleted = messageStatus === "succeeded";
     const hasFailed = messageStatus === "failed";
-    
+
     // Get a readable tool name from the function call name
     const getToolDisplayName = () => {
-      if (!action.functionCallName) return "Tool";
-      
+      if (!action.functionCallName) {
+        return "Tool";
+      }
+
       // Remove namespace prefix if present (e.g., "dust_search__search" -> "search")
       const parts = action.functionCallName.split("__");
       const toolName = parts[parts.length - 1];
-      
+
       // Common tool name mappings
       const toolDisplayNames: Record<string, string> = {
         search: "Search",
@@ -608,42 +608,48 @@ export function AgentMessage({
         filesystem_cat: "Read File",
         filesystem_locate_in_tree: "Locate in Tree",
       };
-      
-      return toolDisplayNames[toolName] || 
-        toolName.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+
+      return (
+        toolDisplayNames[toolName] ||
+        toolName.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+      );
     };
-    
+
     const toolDisplayName = getToolDisplayName();
     const IconComponent = MCP_SPECIFICATION.cardIcon;
-    
+
     return (
-      <div className="rounded-lg border border-structure-100 bg-structure-50/30 overflow-hidden">
+      <div className="border-structure-100 bg-structure-50/30 overflow-hidden rounded-lg border">
         <CollapsibleComponent
           rootProps={{ defaultOpen: isRunning }}
           triggerChildren={
-            <div className="flex items-center gap-2 p-3 hover:bg-structure-50/50 transition-colors">
+            <div className="hover:bg-structure-50/50 flex items-center gap-2 p-3 transition-colors">
               <div className="flex-shrink-0">
-                <IconComponent className="w-4 h-4 text-element-600" />
+                <IconComponent className="text-element-600 h-4 w-4" />
               </div>
               {isRunning && <Spinner size="xs" />}
               {hasCompleted && (
-                <div className="text-success-500 text-sm font-medium">✓</div>
+                <div className="text-sm font-medium text-success-500">✓</div>
               )}
               {hasFailed && (
-                <div className="text-warning-500 text-sm font-medium">✗</div>
+                <div className="text-sm font-medium text-warning-500">✗</div>
               )}
-              <span className="text-sm font-medium text-element-700">
-                {toolDisplayName}
-              </span>
+              <Avatar
+                size="sm"
+                visual={<Icon visual={visual} />}
+                backgroundColor="bg-muted-background dark:bg-muted-background-night"
+              />
+              <span className="heading-base">{actionName}</span>
               {action.params?.query && (
-                <span className="text-sm text-element-500 truncate flex-1">
-                  "{String(action.params.query).substring(0, 50)}{String(action.params.query).length > 50 ? '...' : ''}"
+                <span className="text-element-500 flex-1 truncate text-sm">
+                  "{String(action.params.query).substring(0, 50)}
+                  {String(action.params.query).length > 50 ? "..." : ""}"
                 </span>
               )}
             </div>
           }
           contentChildren={
-            <div className="border-t border-structure-100 p-3">
+            <div className="border-structure-100 border-t p-3">
               <MCPActionDetails
                 viewType="conversation"
                 action={action}
@@ -703,11 +709,6 @@ export function AgentMessage({
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
-    const isMCPActionType = (
-      action: { type: "tool_action"; id: number } | undefined
-    ): action is MCPActionType => {
-      return action !== undefined && "functionCallName" in action;
-    };
     if (agentMessage.status === "failed") {
       if (
         agentMessage.error &&
@@ -780,7 +781,8 @@ export function AgentMessage({
             );
           } else if (block.type === "action") {
             const lastNotification =
-              messageStreamState.actionProgress.get(block.action.id)?.progress ?? null;
+              messageStreamState.actionProgress.get(block.action.id)
+                ?.progress ?? null;
             return (
               <CollapsibleActionDetails
                 key={`action-${block.action.id}`}
