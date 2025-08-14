@@ -56,7 +56,7 @@ export function AgentBuilderLeftPanel({
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
-          <AgentBuilderCapabilitiesBlock 
+          <AgentBuilderCapabilitiesBlock
             isActionsLoading={isActionsLoading}
             presetActionToAdd={presetActionToAdd}
             onPresetActionHandled={onPresetActionHandled}
