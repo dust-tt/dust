@@ -112,9 +112,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
         inputs: action.augmentedInputs || {},
         stake: action.toolConfiguration?.permission,
         metadata: {
-          toolName:
-            action.toolConfiguration?.originalName ||
-            action.toolConfiguration?.name,
+          toolName: action.toolConfiguration?.originalName,
           mcpServerName: action.toolConfiguration?.mcpServerName,
           agentName: agentMessage.agentConfigurationId,
           icon: action.toolConfiguration?.icon,
