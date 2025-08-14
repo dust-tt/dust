@@ -317,7 +317,7 @@ export const InstructionBlockExtension =
           return true;
         },
         /**
-         * Handles Enter to leave the block when the current paragraph is empty.
+         * Handles Enter to leave the block when hitting enter at the last line of the block.
          */
         Enter: () => {
           if (!this.editor.isActive(this.name)) {
@@ -349,6 +349,15 @@ export const InstructionBlockExtension =
           const blockNode = $from.node(blockDepth);
           const posBeforeBlock = $from.before(blockDepth);
           const posAfterBlock = posBeforeBlock + blockNode.nodeSize;
+
+          // Check if we're at the last line of the block
+          const isInLastChildOfBlock =
+            $from.index(blockDepth) === blockNode.childCount - 1;
+
+          if (!isInLastChildOfBlock) {
+            // Let default behavior handle non-last lines
+            return false;
+          }
 
           // Current paragraph inside the block
           const paragraphNode = $from.node(blockDepth + 1);
