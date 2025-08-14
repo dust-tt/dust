@@ -13,7 +13,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { isEmpty } from "lodash";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 import type {
@@ -24,6 +24,7 @@ import { AgentBuilderSectionContainer } from "@app/components/agent_builder/Agen
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import type { DialogMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
 import { MCPServerViewsDialog } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
+import { usePresetActionHandler } from "@app/components/agent_builder/capabilities/usePresetActionHandler";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
@@ -31,21 +32,15 @@ import {
   isDefaultActionName,
 } from "@app/components/agent_builder/types";
 import { useSendNotification } from "@app/hooks/useNotification";
-import {
-  getMcpServerViewDisplayName,
-  getMCPServerNameForTemplateAction,
-  isDirectAddTemplateAction,
-  isKnowledgeTemplateAction,
-} from "@app/lib/actions/mcp_helper";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import { allowsMultipleInstancesOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   DATA_VISUALIZATION_SPECIFICATION,
   MCP_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { asDisplayName } from "@app/types";
 import type { TemplateActionPreset } from "@app/types";
+import { asDisplayName } from "@app/types";
 
 const dataVisualizationAction = {
   type: "DATA_VISUALIZATION",
@@ -162,8 +157,11 @@ export function AgentBuilderCapabilitiesBlock({
     name: "actions",
   });
 
-  const { mcpServerViewsWithKnowledge, mcpServerViews, isMCPServerViewsLoading } =
-    useMCPServerViewsContext();
+  const {
+    mcpServerViewsWithKnowledge,
+    mcpServerViews,
+    isMCPServerViewsLoading,
+  } = useMCPServerViewsContext();
   const sendNotification = useSendNotification();
 
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
@@ -172,102 +170,24 @@ export function AgentBuilderCapabilitiesBlock({
     index: number | null;
     presetData?: TemplateActionPreset;
   } | null>(null);
-  
-  // Use a ref to track if we're processing to prevent multiple executions
-  const processingRef = useRef(false);
-  
+
   const dataVisualization = fields.some(
     (field) => field.type === "DATA_VISUALIZATION"
   )
     ? null
     : dataVisualizationAction;
 
-  // Handle preset actions from templates
-  // useEffect is appropriate here for cross-panel communication:
-  // 1. Template panel (right) triggers action addition
-  // 2. Capabilities block (left) responds by opening dialogs or adding tools
-  // 3. Parent component coordinates via props and callbacks
-  useEffect(() => {
-    if (!presetActionToAdd || isMCPServerViewsLoading) return;
-    
-    // Prevent multiple executions for the same preset action
-    if (processingRef.current) {
-      return;
-    }
-    
-    processingRef.current = true;
-
-    // Get the MCP server name for this template action
-    const targetServerName = getMCPServerNameForTemplateAction(presetActionToAdd);
-    const mcpServerViewSource = isKnowledgeTemplateAction(presetActionToAdd) 
-      ? mcpServerViewsWithKnowledge 
-      : mcpServerViews;
-    
-    const mcpServerView = mcpServerViewSource.find(
-      (view) => view.server.name === targetServerName
-    );
-    
-    if (!mcpServerView) {
-      processingRef.current = false;
-      onPresetActionHandled?.();
-      return;
-    }
-
-    // Check for duplicates only for tools that don't allow multiple instances
-    // Note: All knowledge actions (search, query_tables, extract_data) allow multiple instances
-    if (isDirectAddTemplateAction(presetActionToAdd)) {
-      const allowsMultiple = allowsMultipleInstancesOfInternalMCPServerById(mcpServerView.server.sId);
-      
-      if (!allowsMultiple) {
-        const toolAlreadyAdded = fields.some(
-          field => field.type === "MCP" && 
-          field.configuration?.mcpServerViewId === mcpServerView.sId
-        );
-        
-        if (toolAlreadyAdded) {
-          sendNotification({
-            title: "Tool already added",
-            description: `${getMcpServerViewDisplayName(mcpServerView)} is already in your agent`,
-            type: "info",
-          });
-          processingRef.current = false;
-          onPresetActionHandled?.();
-          return;
-        }
-      }
-    }
-
-    // Create action with preset data
-    const action = getDefaultMCPAction(mcpServerView);
-    action.name = presetActionToAdd.name;
-    action.description = presetActionToAdd.description;
-    
-    if (isKnowledgeTemplateAction(presetActionToAdd)) {
-      // Open knowledge configuration dialog
-      setKnowledgeAction({
-        action: { ...action, noConfigurationRequired: false },
-        index: null,
-        presetData: presetActionToAdd,
-      });
-    } else {
-      // Add tool directly
-      append(action);
-      
-      sendNotification({
-        title: "Tool added",
-        description: `${action.name} has been added to your agent`,
-        type: "success",
-      });
-    }
-
-    // Clear the preset action after handling
-    onPresetActionHandled?.();
-    
-    // Reset the processing flag after a short delay to allow for state updates
-    setTimeout(() => {
-      processingRef.current = false;
-    }, 100);
-  }, [presetActionToAdd, onPresetActionHandled, mcpServerViews, mcpServerViewsWithKnowledge, isMCPServerViewsLoading, append, sendNotification, fields]);
+  usePresetActionHandler({
+    presetActionToAdd,
+    onPresetActionHandled,
+    mcpServerViews,
+    mcpServerViewsWithKnowledge,
+    isMCPServerViewsLoading,
+    append,
+    sendNotification,
+    fields,
+    setKnowledgeAction,
+  });
 
   const handleEditSave = (updatedAction: AgentBuilderAction) => {
     if (dialogMode?.type === "edit") {
