@@ -89,7 +89,9 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
         <SearchResultDetails
           viewType={viewType}
           defaultQuery={queryResource.text}
-          actionName="Search data"
+          actionName={
+            viewType === "conversation" ? "Searching data" : "Search data"
+          }
           actionOutput={output}
           visual={MagnifyingGlassIcon}
         />
@@ -103,7 +105,11 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
       return (
         <SearchResultDetails
           viewType={viewType}
-          actionName="Browse data sources"
+          actionName={
+            viewType === "conversation"
+              ? "Browsing data sources"
+              : "Browse data sources"
+          }
           actionOutput={output}
           visual={ActionDocumentTextIcon}
         />
@@ -124,7 +130,9 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
       return (
         <SearchResultDetails
           viewType={viewType}
-          actionName="Include data"
+          actionName={
+            viewType === "conversation" ? "Including data" : "Include data"
+          }
           actionOutput={output}
           visual={ClockIcon}
         />
@@ -138,7 +146,9 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
         <SearchResultDetails
           viewType={viewType}
           defaultQuery={params.query as string}
-          actionName="Web search"
+          actionName={
+            viewType === "conversation" ? "Searching the web" : "Web search"
+          }
           actionOutput={output}
           visual={GlobeAltIcon}
         />
@@ -199,7 +209,8 @@ export function GenericActionDetails({
     <ActionDetailsWrapper
       viewType={viewType}
       actionName={
-        asDisplayName(action.functionCallName) ?? "Calling MCP Server"
+        asDisplayName(action.functionCallName) ??
+        (viewType === "conversation" ? "Calling MCP Server" : "MCP Server call")
       }
       visual={MCP_SPECIFICATION.cardIcon}
     >

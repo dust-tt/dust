@@ -53,7 +53,9 @@ export function MCPAgentManagementActionDetails({
     return (
       <ActionDetailsWrapper
         viewType={viewType}
-        actionName="Create Agent"
+        actionName={
+          viewType === "conversation" ? "Creating agent" : "Create Agent"
+        }
         visual={ActionRobotIcon}
       >
         <div className="flex flex-col gap-4 pl-6 pt-4">

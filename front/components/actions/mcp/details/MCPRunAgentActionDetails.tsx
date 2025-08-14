@@ -167,10 +167,16 @@ export function MCPRunAgentActionDetails({
     }),
     []
   );
+  const agentName = childAgent?.name ? childAgent.name : "Agent";
+
   return (
     <ActionDetailsWrapper
       viewType={viewType}
-      actionName={childAgent?.name ? `Run @${childAgent.name}` : "Run Agent"}
+      actionName={
+        viewType === "conversation"
+          ? `Running @${agentName}`
+          : `Run @${agentName}`
+      }
       visual={
         childAgent?.pictureUrl
           ? () => (
