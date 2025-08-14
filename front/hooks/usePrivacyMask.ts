@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-const PRIVACY_MASK_COOKIE = "privacy-mask";
+const PRIVACY_MASK_STORAGE_KEY = "privacy-mask";
 const PRIVACY_MASK_CLASS = "privacy-mask-enabled";
 
 /**
@@ -11,15 +11,12 @@ export function usePrivacyMask() {
 
   // Helper functions for privacy mask management.
   const getPrivacyMaskState = useCallback((): boolean => {
-    const cookies = document.cookie.split(";");
-    const privacyCookie = cookies.find((c) =>
-      c.trim().startsWith(`${PRIVACY_MASK_COOKIE}=`)
-    );
-    return privacyCookie ? privacyCookie.split("=")[1] === "true" : false;
+    const stored = localStorage.getItem(PRIVACY_MASK_STORAGE_KEY);
+    return stored === "true";
   }, []);
 
-  const setPrivacyMaskCookie = useCallback((enabled: boolean): void => {
-    document.cookie = `${PRIVACY_MASK_COOKIE}=${enabled}; path=/; max-age=31536000`; // 1 year
+  const setPrivacyMaskStorage = useCallback((enabled: boolean): void => {
+    localStorage.setItem(PRIVACY_MASK_STORAGE_KEY, enabled.toString());
   }, []);
 
   const applyPrivacyMaskToBody = useCallback((enabled: boolean): void => {
@@ -30,7 +27,7 @@ export function usePrivacyMask() {
     }
   }, []);
 
-  // Initialize state from cookie on mount.
+  // Initialize state from localStorage on mount.
   useEffect(() => {
     setIsEnabled(getPrivacyMaskState());
   }, [getPrivacyMaskState]);
@@ -39,10 +36,10 @@ export function usePrivacyMask() {
   const toggle = useCallback(() => {
     const newState = !isEnabled;
     setIsEnabled(newState);
-    setPrivacyMaskCookie(newState);
+    setPrivacyMaskStorage(newState);
     applyPrivacyMaskToBody(newState);
     return newState;
-  }, [isEnabled, setPrivacyMaskCookie, applyPrivacyMaskToBody]);
+  }, [isEnabled, setPrivacyMaskStorage, applyPrivacyMaskToBody]);
 
   return {
     isEnabled,
