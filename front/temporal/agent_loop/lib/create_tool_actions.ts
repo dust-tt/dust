@@ -103,7 +103,6 @@ async function createActionForTool(
     mcpServerConfigurationId: actionConfiguration.id.toString(),
     step,
     stepContentId,
-    toolConfiguration: actionConfiguration,
   });
 
   const validateToolInputsResult = validateToolInputs(actionBaseParams.params);
