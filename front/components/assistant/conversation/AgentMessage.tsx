@@ -582,8 +582,6 @@ export function AgentMessage({
     messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
   }) => {
     const isRunning = messageStatus === "created";
-    const hasCompleted = messageStatus === "succeeded";
-    const hasFailed = messageStatus === "failed";
 
     return (
       <div className="border-structure-100 bg-structure-50/30 overflow-hidden rounded-lg border">
@@ -592,18 +590,12 @@ export function AgentMessage({
           triggerChildren={
             <div className="hover:bg-structure-50/50 flex items-center gap-2 p-3 transition-colors">
               {isRunning && <Spinner size="xs" />}
-              {hasCompleted && (
-                <div className="text-sm font-medium text-success-500">✓</div>
-              )}
-              {hasFailed && (
-                <div className="text-sm font-medium text-warning-500">✗</div>
-              )}
               <Avatar
                 size="sm"
                 visual={<Icon visual={GlobeAltIcon} />}
                 backgroundColor="bg-muted-background dark:bg-muted-background-night"
               />
-              <span className="heading-base">Web search</span>
+              <span className="heading-base">Searching</span>
               {action.params?.query && (
                 <span className="text-element-500 flex-1 truncate text-sm">
                   "{String(action.params.query).substring(0, 50)}
@@ -732,7 +724,7 @@ export function AgentMessage({
     );
 
     return (
-      <div className="flex flex-col gap-y-4">
+      <div className="flex flex-col gap-y-3">
         {/* Render all streaming blocks in order */}
         {messageStreamState.streamingBlocks.map((block, index) => {
           if (block.type === "thinking") {

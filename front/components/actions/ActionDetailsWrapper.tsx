@@ -23,12 +23,6 @@ export function ActionDetailsWrapper({
             "flex flex-grow flex-row items-center gap-x-2"
           )}
         >
-          <Avatar
-            size="sm"
-            visual={<Icon visual={visual} />}
-            backgroundColor="bg-muted-background dark:bg-muted-background-night"
-          />
-          <span className="heading-base">{actionName}</span>
           <span className="flex-grow"></span>
           {/* TODO: Align spinner with CoT spinner: <div className="self-start"> */}
           <div>
