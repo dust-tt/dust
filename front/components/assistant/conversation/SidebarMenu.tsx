@@ -71,7 +71,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   >([]);
   const doDelete = useDeleteConversation(owner);
 
-  const { featureFlags } = useFeatureFlags({
+  const { featureFlags, hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
@@ -276,18 +276,20 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                           data-gtm-label="assistantCreationButton"
                           data-gtm-location="sidebarMenu"
                         />
-                        <DropdownMenuItem
-                          icon={FolderOpenIcon}
-                          label={
-                            isUploadingYAML
-                              ? "Uploading..."
-                              : "New agent from YAML"
-                          }
-                          disabled={isUploadingYAML}
-                          onClick={triggerYAMLUpload}
-                          data-gtm-label="yamlUploadButton"
-                          data-gtm-location="sidebarMenu"
-                        />
+                        {hasFeature("agent_builder_v2") && (
+                          <DropdownMenuItem
+                            icon={FolderOpenIcon}
+                            label={
+                              isUploadingYAML
+                                ? "Uploading..."
+                                : "New agent from YAML"
+                            }
+                            disabled={isUploadingYAML}
+                            onClick={triggerYAMLUpload}
+                            data-gtm-label="yamlUploadButton"
+                            data-gtm-location="sidebarMenu"
+                          />
+                        )}
                       </>
                     )}
                     {isBuilder(owner) && (

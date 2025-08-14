@@ -6,10 +6,9 @@ import type { LightWorkspaceType } from "@app/types";
 
 interface UseYAMLUploadOptions {
   owner: LightWorkspaceType;
-  onSuccess?: (agentConfigurationId: string) => void;
 }
 
-export function useYAMLUpload({ owner, onSuccess }: UseYAMLUploadOptions) {
+export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
   const router = useRouter();
   const sendNotification = useSendNotification();
   const [isUploading, setIsUploading] = useState(false);
@@ -54,21 +53,20 @@ export function useYAMLUpload({ owner, onSuccess }: UseYAMLUploadOptions) {
         }
 
         const result = await response.json();
-
-        // Handle skipped actions
         if (result.skippedActions && result.skippedActions.length > 0) {
-          const skippedList = result.skippedActions
-            .map(
-              (skipped: { name: string; reason: string }) =>
-                `• ${skipped.name}: ${skipped.reason}`
-            )
-            .join("\n");
-
           sendNotification({
             title: "Agent created with warnings",
-            description: `Agent "${result.agentConfiguration.name}" was created, but some actions were skipped:\n${skippedList}`,
+            description: `Agent "${result.agentConfiguration.name}" was created, but some actions were skipped.`,
             type: "info",
           });
+
+          for (const skipped of result.skippedActions) {
+            sendNotification({
+              title: `Action skipped: ${skipped.name}`,
+              description: skipped.reason,
+              type: "info",
+            });
+          }
         } else {
           sendNotification({
             title: "Agent created successfully",
@@ -77,16 +75,10 @@ export function useYAMLUpload({ owner, onSuccess }: UseYAMLUploadOptions) {
           });
         }
 
-        if (onSuccess) {
-          onSuccess(result.agentConfiguration.sId);
-        } else {
-          // Default behavior: redirect to the newly created agent
-          await router.push(
-            `/w/${owner.sId}/builder/agents/${result.agentConfiguration.sId}`
-          );
-        }
+        await router.push(
+          `/w/${owner.sId}/builder/agents/${result.agentConfiguration.sId}`
+        );
 
-        // Clear the file input
         target.value = "";
       } catch (error) {
         sendNotification({
@@ -99,7 +91,7 @@ export function useYAMLUpload({ owner, onSuccess }: UseYAMLUploadOptions) {
         setIsUploading(false);
       }
     },
-    [owner.sId, router, sendNotification, onSuccess]
+    [owner.sId, router, sendNotification]
   );
 
   const triggerYAMLUpload = useCallback(() => {
