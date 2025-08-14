@@ -1,5 +1,4 @@
 export { AnimatedText } from "./AnimatedText";
-export { AnnouncementCard } from "./AnnouncementCard";
 export { AspectRatio } from "./AspectRatio";
 export {
   AssistantCard,
@@ -103,6 +102,7 @@ export { LinkWrapper } from "./LinkWrapper";
 export { LoadingBlock } from "./LoadingBlock";
 export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";
+export { MessageCard } from "./MessageCard";
 export type {
   MultiPageDialogFooterProps,
   MultiPageDialogPage,

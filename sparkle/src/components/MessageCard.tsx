@@ -15,7 +15,10 @@ export interface MessageCardProps {
   dismissible?: boolean;
 }
 
-export const MessageCard = React.forwardRef<HTMLDivElement, MessageCardProps>(
+export const MessageCard = React.forwardRef<
+  HTMLDivElement,
+  MessageCardProps
+>(
   (
     {
       className,
