@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import { config } from "@app/lib/api/regions/config";
+import { config, SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
@@ -9,6 +9,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetRegionResponseType = {
   region: string;
+  regionUrls: Record<string, string>;
 };
 
 async function handler(
@@ -31,9 +32,15 @@ async function handler(
   switch (req.method) {
     case "GET":
       const currentRegion = config.getCurrentRegion();
-
       return res.status(200).json({
         region: currentRegion,
+        regionUrls: SUPPORTED_REGIONS.reduce(
+          (acc, region) => {
+            acc[region] = config.getRegionUrl(region);
+            return acc;
+          },
+          {} as Record<string, string>
+        ),
       });
 
     default:

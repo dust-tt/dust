@@ -7,23 +7,24 @@ import {
 } from "@dust-tt/sparkle";
 
 import type { RegionType } from "@app/lib/api/regions/config";
-import {
-  config as multiRegionsConfig,
-  SUPPORTED_REGIONS,
-} from "@app/lib/api/regions/config";
+import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { getRegionDisplay } from "@app/lib/poke/regions";
 import { isDevelopment } from "@app/types";
 
 interface PokeRegionDropdownProps {
   currentRegion: RegionType;
+  regionUrls: Record<string, string>;
 }
 
-export function PokeRegionDropdown({ currentRegion }: PokeRegionDropdownProps) {
+export function PokeRegionDropdown({
+  currentRegion,
+  regionUrls,
+}: PokeRegionDropdownProps) {
   const handleRegionChange = (region: RegionType) => {
     if (region === currentRegion) {
       return;
     }
-    const regionUrl = multiRegionsConfig.getRegionUrl(region);
+    const regionUrl = regionUrls[region];
     window.location.href = regionUrl + "/poke";
   };
 
