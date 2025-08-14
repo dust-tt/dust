@@ -1,9 +1,9 @@
 /**
  * Run agent arguments
  */
-
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import { z } from "zod";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -21,6 +21,9 @@ import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
+
+export const ExecutionModeSchema = z.enum(["sync", "async", "auto"]);
+export type ExecutionMode = z.infer<typeof ExecutionModeSchema>;
 
 export type RunAgentAsynchronousArgs = {
   agentMessageId: string;

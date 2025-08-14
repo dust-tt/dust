@@ -13,6 +13,7 @@ import {
 } from "@app/temporal/agent_loop/lib/agent_loop_executor";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
+  ExecutionMode,
   RunAgentArgs,
   RunAgentExecutionData,
 } from "@app/types/assistant/agent_run";
@@ -49,12 +50,15 @@ async function launchAsyncWorkflowFromSyncData(
 async function runAgentSynchronousWithStreaming(
   authType: AuthenticatorType,
   runAgentExecutionData: RunAgentExecutionData,
-  { startStep }: { startStep: number }
+  {
+    startStep,
+    withTimeout = true,
+  }: { startStep: number; withTimeout?: boolean }
 ): Promise<void> {
   const runAgentArgs: RunAgentArgs = {
     sync: true,
     inMemoryData: runAgentExecutionData,
-    syncToAsyncTimeoutMs: SYNC_TO_ASYNC_TIMEOUT_MS,
+    ...(withTimeout && { syncToAsyncTimeoutMs: SYNC_TO_ASYNC_TIMEOUT_MS }),
   };
 
   const titlePromise = ensureConversationTitle(authType, runAgentArgs);
@@ -121,17 +125,17 @@ export async function runAgentLoop(
   auth: Authenticator,
   runAgentArgs: RunAgentArgs,
   {
-    forceAsynchronousLoop = false,
+    executionMode = "auto",
     startStep,
-  }: { forceAsynchronousLoop?: boolean; startStep: number }
+  }: { executionMode?: ExecutionMode; startStep: number }
 ): Promise<void> {
   const authType = auth.toJSON();
 
-  if (runAgentArgs.sync && !forceAsynchronousLoop) {
+  if (runAgentArgs.sync && executionMode !== "async") {
     await runAgentSynchronousWithStreaming(
       authType,
       runAgentArgs.inMemoryData,
-      { startStep }
+      { startStep, withTimeout: executionMode !== "sync" }
     );
   } else if (runAgentArgs.sync) {
     await launchAsyncWorkflowFromSyncData(authType, runAgentArgs.inMemoryData, {

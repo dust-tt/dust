@@ -172,7 +172,7 @@ impl AnthropicBackend for VertexAnthropicBackend {
                 .await?
             {
                 Ok(location) => location,
-                Err(_) => "us-east5".to_string(), // Default fallback region.
+                Err(_) => "global".to_string(), // Default fallback region.
             },
         };
 
@@ -203,9 +203,14 @@ impl AnthropicBackend for VertexAnthropicBackend {
             "Fallback to Vertex Anthropic"
         );
 
+        let base_url = match location.as_str() {
+            "global" => "https://aiplatform.googleapis.com".to_string(),
+            _ => format!("https://{}-aiplatform.googleapis.com", location),
+        };
+
         let uri = format!(
-            "https://{}-aiplatform.googleapis.com/v1/projects/{}/locations/{}/publishers/anthropic/models/{}:streamRawPredict",
-            location, project_id, location, vertex_model_id
+            "{}/v1/projects/{}/locations/{}/publishers/anthropic/models/{}:streamRawPredict",
+            base_url, project_id, location, vertex_model_id
         );
         Ok(uri.parse()?)
     }
