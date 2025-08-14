@@ -34,7 +34,7 @@ export function Landing() {
       </div>
       <div className="mt-16 w-full">
         <div className="mb-8 flex max-w-4xl flex-col gap-6 text-left sm:gap-2">
-          <H2 className="text-center text-3xl font-medium md:text-4xl xl:text-5xl">
+          <H2 className="text-left text-3xl font-medium md:text-4xl xl:text-5xl">
             Driving AI ROI Together
           </H2>
         </div>
