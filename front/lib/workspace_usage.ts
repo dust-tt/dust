@@ -342,7 +342,13 @@ export async function getUserUsageData(
         attributes: [
           "userMessage.userId",
           "userMessage.userContextFullName",
-          "LOWER(userMessage.userContextEmail)",
+          [
+            Sequelize.fn(
+              "LOWER",
+              Sequelize.col("userMessage.userContextEmail")
+            ),
+            "userContextEmail",
+          ],
           "userMessage.userContextOrigin",
           [Sequelize.fn("COUNT", Sequelize.col("userMessage.id")), "count"],
           [
@@ -395,7 +401,7 @@ export async function getUserUsageData(
         group: [
           "userMessage.userId",
           "userMessage.userContextFullName",
-          "LOWER(userMessage.userContextEmail)",
+          Sequelize.fn("LOWER", Sequelize.col("userMessage.userContextEmail")),
           "userMessage.userContextOrigin",
         ],
         order: [["count", "DESC"]],
