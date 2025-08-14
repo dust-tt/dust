@@ -6,11 +6,14 @@ import { ClientExecutableRenderer } from "@app/components/assistant/conversation
 import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/content/UnsupportedContentRenderer";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useFileMetadata } from "@app/lib/swr/files";
-import type { ConversationType, LightWorkspaceType } from "@app/types";
+import type {
+  ConversationWithoutContentType,
+  LightWorkspaceType,
+} from "@app/types";
 import { clientExecutableContentType } from "@app/types";
 
 interface InteractiveContentContainerProps {
-  conversation: ConversationType | null;
+  conversation: ConversationWithoutContentType | null;
   owner: LightWorkspaceType;
 }
 
