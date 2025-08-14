@@ -18,37 +18,45 @@ export default function ConversationSidePanelContainer({
   conversation,
   owner,
 }: ConversationSidePanelContainerProps) {
-  const { currentPanel } = useConversationSidePanelContext();
+  const { currentPanel, setPanelRef, onPanelClosed } =
+    useConversationSidePanelContext();
   const panelRef = useRef<ImperativePanelHandle | null>(null);
 
   useEffect(() => {
-    if (!panelRef.current) {
+    setPanelRef(panelRef.current);
+  }, [setPanelRef]);
+
+  useEffect(() => {
+    if (!currentPanel || !panelRef.current) {
       return;
     }
-    if (currentPanel) {
-      panelRef.current.expand(20);
-    } else {
-      panelRef.current.collapse();
-    }
+
+    panelRef.current?.expand(40);
   }, [currentPanel]);
 
   return (
     <>
       {/* Resizable Handle for Panels */}
-      <ResizableHandle
-        className={cn(
-          "hidden transition-all duration-300 ease-out md:block",
-          !currentPanel && "translate-x-full opacity-0"
-        )}
-      />
-
+      {currentPanel && (
+        <ResizableHandle
+          className={cn(
+            "hidden transition-all duration-300 ease-out md:block",
+            !currentPanel && "translate-x-full opacity-0"
+          )}
+        />
+      )}
       {/* Panel Container - either Interactive Content or Actions */}
       <ResizablePanel
         ref={panelRef}
+        minSize={20}
+        defaultSize={0}
+        onTransitionEnd={() => {
+          if (panelRef.current?.isCollapsed()) {
+            onPanelClosed();
+          }
+        }}
         collapsible
         collapsedSize={0}
-        minSize={currentPanel ? 20 : 0}
-        defaultSize={70}
         className={cn(
           // Smooth transition animation similar to sidebar
           "flex-0 overflow-hidden transition-all duration-300 ease-out",
