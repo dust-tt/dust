@@ -101,7 +101,7 @@ class MyDocument extends Document {
           <Script id="privacy-mask-init" strategy="beforeInteractive">
             {`
               (function() {
-                // Initialize privacy mask state from cookie on page load
+                // Initialize privacy mask state from cookie on page load.
                 function initPrivacyMask() {
                   const cookies = document.cookie.split(';');
                   const privacyCookie = cookies.find(c => c.trim().startsWith('privacy-mask='));
