@@ -131,12 +131,10 @@ function TemplatePresetActions({
   onAddAction,
 }: TemplatePresetActionsProps) {
   const getActionIcon = (type: string) => {
-    // RETRIEVAL_SEARCH, TABLES_QUERY, and PROCESS are all knowledge sources
     if (type === "RETRIEVAL_SEARCH" || type === "TABLES_QUERY" || type === "PROCESS") {
-      return BookOpenIcon; // Knowledge icon
+      return BookOpenIcon;
     }
-    // Only WEB_NAVIGATION is a tool
-    return ListAddIcon; // Tool icon
+    return ListAddIcon;
   };
 
   const getActionLabel = (type: string) => {
