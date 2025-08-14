@@ -4,7 +4,7 @@ export function CapabilitySection() {
   return (
     <div className="w-full">
       <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6 lg:px-8">
-        <H2 className="text-3xl font-medium md:text-4xl lg:text-5xl">
+        <H2 className="text-center text-3xl font-medium md:text-4xl xl:text-5xl">
           Tailor AI agents to your team needs
         </H2>
         <P size="lg" className="text-base text-muted-foreground sm:text-lg">
@@ -17,7 +17,7 @@ export function CapabilitySection() {
           <div className="order-1 w-full lg:order-1 lg:w-1/2">
             <div className="flex flex-col gap-3 text-center lg:text-left">
               <H2 className="text-center text-2xl font-medium md:text-3xl lg:text-left lg:text-4xl">
-                Build agents with custom instructions and tools
+                Give your agents the context they actually need
               </H2>
               <P
                 size="md"
@@ -77,7 +77,7 @@ export function CapabilitySection() {
           <div className="order-1 w-full lg:order-1 lg:w-1/2">
             <div className="flex flex-col gap-3 text-center lg:text-left">
               <H2 className="text-center text-2xl font-medium md:text-3xl lg:text-left lg:text-4xl">
-                Leverage the best models on the market
+                Use the best models.<br></br> Switch when better ones arrive.
               </H2>
               <P
                 size="md"

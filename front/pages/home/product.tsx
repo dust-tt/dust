@@ -6,8 +6,6 @@ import { JustUseDustSection } from "@app/components/home/content/Product/JustUse
 import { ProductIntroSection } from "@app/components/home/content/Product/ProductIntroSection";
 import { SecurityFeaturesSection } from "@app/components/home/content/Product/SecurityFeaturesSection";
 import { TestimonialSection } from "@app/components/home/content/Product/TestimonialSection";
-import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
-import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { H2 } from "@app/components/home/ContentComponents";
 import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -21,12 +19,6 @@ export async function getStaticProps() {
   };
 }
 
-export const DemoVideo: DemoVideoProps = {
-  sectionTitle: "Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/qtnvwgyt0o?seo=true&videoFoam=true",
-};
-
 export function Landing() {
   return (
     <>
@@ -35,17 +27,14 @@ export function Landing() {
         <CapabilitySection />
       </div>
       <div className="mt-16">
-        <DemoVideoSection demoVideo={DemoVideo} />
-      </div>
-      <div className="mt-16">
         <InteractiveFeaturesSection />
       </div>
       <div className="mt-16">
         <SecurityFeaturesSection />
       </div>
       <div className="mt-16 w-full">
-        <div className="mx-auto mb-8 flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6 lg:px-8">
-          <H2 className="text-3xl font-medium md:text-4xl lg:text-5xl">
+        <div className="mb-8 flex max-w-4xl flex-col gap-6 text-left sm:gap-2">
+          <H2 className="text-center text-3xl font-medium md:text-4xl xl:text-5xl">
             Driving AI ROI Together
           </H2>
         </div>

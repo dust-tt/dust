@@ -13,7 +13,7 @@ interface SecurityFeature {
 const securityFeatures: SecurityFeature[] = [
   {
     id: "ingest",
-    title: "Ingest data on your terms",
+    title: "Your data stays where you want it",
     description:
       "Control data selection and hosting location within rigorous security parameters.",
     placeholder: "Data Control Placeholder",
@@ -40,14 +40,13 @@ export function SecurityFeaturesSection() {
   return (
     <div className="w-full">
       <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6 lg:px-8">
-        <H2 className="text-3xl font-medium md:text-4xl lg:text-5xl">
+        <H2 className="text-center text-3xl font-medium md:text-4xl xl:text-5xl">
           Built with enterprise-grade security
         </H2>
         <P size="lg" className="text-base text-muted-foreground sm:text-lg">
-          We've made security our core focus from day one to safeguard your
-          company data and workspace privacy. Avoid shadow IT and benefit from
-          Enterprise-level privacy from model providers. SOC2, HIPAA & GDPR
-          compliant.
+          We've made security our core focus from day one.<br></br> SOC 2,
+          HIPAA, GDPR, all the acronyms your security team loves. Ship fast
+          without getting blocked by compliance.
         </P>
       </div>
 

@@ -14,7 +14,7 @@ export function JustUseDustSection() {
 
       <div className="container mx-auto max-w-4xl px-6 lg:px-8">
         <div className="relative flex flex-col items-center justify-center py-8 text-center md:py-12">
-          <H2 className="mb-8 text-3xl font-medium text-blue-600 md:text-4xl lg:text-5xl">
+          <H2 className="mb-8 text-3xl font-medium text-blue-600 md:text-4xl xl:text-5xl">
             Just use Dust
           </H2>
           <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
