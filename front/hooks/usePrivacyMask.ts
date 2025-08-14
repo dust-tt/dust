@@ -30,7 +30,7 @@ export function usePrivacyMask() {
     }
   }, []);
 
-  // Initialize state from cookie on mount
+  // Initialize state from cookie on mount.
   useEffect(() => {
     setIsEnabled(getPrivacyMaskState());
   }, [getPrivacyMaskState]);
