@@ -44,7 +44,6 @@ function updateMessageWithAction(
 ): LightAgentMessageType {
   return {
     ...m,
-    chainOfThought: "",
     actions: [...m.actions.filter((a) => a.id !== action.id), action],
   };
 }
@@ -89,7 +88,6 @@ export function messageReducer(
         message: {
           ...state.message,
           content: null,
-          chainOfThought: null,
         },
       };
     case "agent_action_success":
@@ -149,12 +147,8 @@ export function messageReducer(
           newState.agentState = "writing";
           break;
         case "chain_of_thought":
-          if (event.text === "\n\n") {
-            newState.message.chainOfThought = "";
-          } else {
-            newState.message.chainOfThought =
-              (newState.message.chainOfThought || "") + event.text;
-          }
+          newState.message.chainOfThought =
+            (newState.message.chainOfThought || "") + event.text;
           newState.agentState = "thinking";
           break;
         default:

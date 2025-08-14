@@ -222,10 +222,9 @@ export function AgentMessage({
       if (
         isFreshMountWithContent.current &&
         eventType === "generation_tokens" &&
-        (eventPayload.data.classification === "tokens" ||
-          eventPayload.data.classification === "chain_of_thought")
+        eventPayload.data.classification === "tokens"
       ) {
-        // Clear the existing content from the state
+        // Clear the existing content from the state (but not chain of thought)
         dispatch(CLEAR_CONTENT_EVENT);
         isFreshMountWithContent.current = false;
       }
