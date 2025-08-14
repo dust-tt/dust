@@ -7,7 +7,10 @@ import {
   getTemporalWorkerConnection,
   TEMPORAL_MAXED_CACHED_WORKFLOWS,
 } from "@connectors/lib/temporal";
-import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
+import {
+  ActivityInboundLogInterceptor,
+  ActivityOutboundLogInterceptor,
+} from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
 
 import { QUEUE_NAME } from "./config";
@@ -24,11 +27,14 @@ export async function runSlackWorker() {
     maxConcurrentActivityTaskExecutions: 16,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger, "slack");
-        },
-        () => new SlackCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "slack"),
+          outbound: new ActivityOutboundLogInterceptor("slack"),
+        }),
+        () => ({
+          inbound: new SlackCastKnownErrorsInterceptor(),
+        }),
       ],
     },
   });
