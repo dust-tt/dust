@@ -14,7 +14,6 @@ import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_m
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { assertNever } from "@app/types";
 
 export type PatchMCPServerToolsPermissionsResponseBody = {
   success: boolean;
@@ -78,78 +77,56 @@ async function handler(
           },
         });
       }
+      const r = UpdateMCPToolSettingsBodySchema.safeParse(req.body);
+      if (r.error) {
+        return apiError(req, res, {
+          api_error: {
+            type: "invalid_request_error",
+            message: fromError(r.error).toString(),
+          },
+          status_code: 400,
+        });
+      }
 
-      switch (serverType) {
-        case "internal":
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Internal MCP server does not support editing tool permissions.",
-            },
-          });
-        case "remote": {
-          const r = UpdateMCPToolSettingsBodySchema.safeParse(req.body);
-          if (r.error) {
+      const { permission, enabled } = r.data;
+
+      if (serverType === "remote" && permission !== undefined) {
+        if (!CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS.includes(permission as any)) {
+          const remoteMCPServer = await RemoteMCPServerResource.findByPk(
+            auth,
+            id
+          );
+          if (!remoteMCPServer) {
             return apiError(req, res, {
+              status_code: 404,
               api_error: {
-                type: "invalid_request_error",
-                message: fromError(r.error).toString(),
+                type: "data_source_not_found",
+                message: "Remote MCP server not found.",
               },
-              status_code: 400,
             });
           }
-
-          const { permission, enabled } = r.data;
-
-          if (permission !== undefined) {
-            if (
-              !CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS.includes(permission as any)
-            ) {
-              const remoteMCPServer = await RemoteMCPServerResource.findByPk(
-                auth,
-                id
-              );
-              if (!remoteMCPServer) {
-                return apiError(req, res, {
-                  status_code: 404,
-                  api_error: {
-                    type: "data_source_not_found",
-                    message: "Remote MCP server not found.",
-                  },
-                });
-              }
-              const defaultServerConfig = getDefaultRemoteMCPServerByURL(
-                remoteMCPServer.url
-              );
-              if (defaultServerConfig?.toolStakes?.[toolName] !== permission) {
-                return apiError(req, res, {
-                  status_code: 400,
-                  api_error: {
-                    type: "invalid_request_error",
-                    message: `The '${permission}' permission is only allowed for tools pre-configured with this setting in default servers.`,
-                  },
-                });
-              }
-            }
-          }
-
-          await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(
-            auth,
-            {
-              serverId: id,
-              toolName,
-              permission: permission ?? "high",
-              enabled: enabled ?? true,
-            }
+          const defaultServerConfig = getDefaultRemoteMCPServerByURL(
+            remoteMCPServer.url
           );
-          return res.status(200).json({ success: true });
+          if (defaultServerConfig?.toolStakes?.[toolName] !== permission) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `The '${permission}' permission is only allowed for tools pre-configured with this setting in default servers.`,
+              },
+            });
+          }
         }
-        default:
-          assertNever(serverType);
       }
-      break;
+
+      await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(auth, {
+        serverSId: serverId,
+        toolName,
+        permission: permission ?? "high",
+        enabled: enabled ?? true,
+      });
+      return res.status(200).json({ success: true });
     }
     default:
       return apiError(req, res, {

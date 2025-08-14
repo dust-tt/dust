@@ -10,7 +10,8 @@ export class RemoteMCPServerToolMetadataModel extends WorkspaceAwareModel<Remote
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare remoteMCPServerId: ForeignKey<RemoteMCPServerModel["id"]>;
+  declare remoteMCPServerId?: ForeignKey<RemoteMCPServerModel["id"]>;
+  declare internalMCPServerId?: string;
   declare toolName: string;
   declare permission: MCPToolStakeLevelType;
   declare enabled: boolean;
@@ -30,11 +31,15 @@ RemoteMCPServerToolMetadataModel.init(
     },
     remoteMCPServerId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: RemoteMCPServerModel,
         key: "id",
       },
+    },
+    internalMCPServerId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     toolName: {
       type: DataTypes.STRING,
@@ -58,6 +63,11 @@ RemoteMCPServerToolMetadataModel.init(
         unique: true,
         fields: ["workspaceId", "remoteMCPServerId", "toolName"],
         name: "remote_mcp_server_tool_metadata_wid_serverid_tool_name",
+      },
+      {
+        unique: true,
+        fields: ["workspaceId", "internalMCPServerId", "toolName"],
+        name: "remote_mcp_server_tool_metadata_wid_internalserversid_tool_name",
       },
     ],
   }
