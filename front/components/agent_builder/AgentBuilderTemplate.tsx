@@ -131,7 +131,11 @@ function TemplatePresetActions({
   onAddAction,
 }: TemplatePresetActionsProps) {
   const getActionIcon = (type: string) => {
-    if (type === "RETRIEVAL_SEARCH" || type === "TABLES_QUERY" || type === "PROCESS") {
+    if (
+      type === "RETRIEVAL_SEARCH" ||
+      type === "TABLES_QUERY" ||
+      type === "PROCESS"
+    ) {
       return BookOpenIcon;
     }
     return ListAddIcon;

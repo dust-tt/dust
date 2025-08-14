@@ -152,7 +152,8 @@ export default function AgentBuilder({
     ? `Edit agent @${agentConfiguration.name}`
     : "Create new agent";
 
-  const [presetActionToAdd, setPresetActionToAdd] = useState<TemplateActionPreset | null>(null);
+  const [presetActionToAdd, setPresetActionToAdd] =
+    useState<TemplateActionPreset | null>(null);
 
   return (
     <FormProvider form={form}>
