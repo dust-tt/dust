@@ -1,7 +1,5 @@
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import type { RegionType } from "@app/lib/api/regions/config";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetRegionResponseType } from "@app/pages/api/poke/region";
