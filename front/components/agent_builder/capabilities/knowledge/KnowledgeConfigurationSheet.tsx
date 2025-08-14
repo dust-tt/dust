@@ -53,7 +53,10 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { DataSourceViewSelectionConfigurations } from "@app/types";
+import type {
+  DataSourceViewSelectionConfigurations,
+  TemplateActionPreset,
+} from "@app/types";
 
 interface KnowledgeConfigurationSheetProps {
   onSave: (action: AgentBuilderAction) => void;
@@ -63,7 +66,7 @@ interface KnowledgeConfigurationSheetProps {
   isEditing: boolean;
   mcpServerViews: MCPServerViewType[];
   getAgentInstructions: () => string;
-  presetActionData?: any | null;
+  presetActionData?: TemplateActionPreset;
 }
 
 export function KnowledgeConfigurationSheet({
@@ -237,7 +240,7 @@ interface KnowledgeConfigurationSheetContentProps {
   open: boolean;
   getAgentInstructions: () => string;
   isEditing: boolean;
-  presetActionData?: any | null;
+  presetActionData?: TemplateActionPreset;
 }
 
 function KnowledgeConfigurationSheetContent({
