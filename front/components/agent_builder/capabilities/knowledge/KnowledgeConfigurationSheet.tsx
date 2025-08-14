@@ -292,33 +292,24 @@ function KnowledgeConfigurationSheetContent({
   const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
-  // When we have a preset action, skip to data source selection since we already know the MCP server
-  const initialPageId = isEditing
-    ? CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION
-    : presetActionData
-    ? CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION
-    : CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION;
+  const getInitialPageId = () => {
+    if (isEditing) {
+      return CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION;
+    }
+    if (presetActionData) {
+      return CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
+    }
+    return CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION;
+  };
 
   const [currentPageId, setCurrentPageId] =
-    useState<ConfigurationSheetPageId>(initialPageId);
+    useState<ConfigurationSheetPageId>(getInitialPageId());
 
   useEffect(() => {
-    if (!open) {
-      // Reset to initial state when closing
-      setCurrentPageId(
-        presetActionData 
-          ? CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION 
-          : CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION
-      );
-      return;
+    if (open) {
+      setCurrentPageId(getInitialPageId());
     }
-
-    if (isEditing) {
-      setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION);
-    } else if (presetActionData) {
-      setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
-    }
-  }, [isEditing, open, presetActionData]);
+  }, [open, isEditing, presetActionData]);
 
   const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
