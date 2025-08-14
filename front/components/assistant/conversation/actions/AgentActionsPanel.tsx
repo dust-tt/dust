@@ -1,5 +1,5 @@
 import { ContentMessage, Markdown, Separator, Spinner } from "@dust-tt/sparkle";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
@@ -29,6 +29,17 @@ export function AgentActionsPanel({
       messageId: messageId ?? null,
     });
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  }, [fullAgentMessage]);
+
   if (
     !messageId ||
     !messageMetadata ||
@@ -48,7 +59,10 @@ export function AgentActionsPanel({
         title="Breakdown of the tools used"
         onClose={closePanel}
       />
-      <div className="flex-1 overflow-y-auto p-4">
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto p-4 pb-12"
+      >
         {isMessageLoading ? (
           <div className="flex justify-center">
             <Spinner variant="color" />
