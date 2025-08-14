@@ -133,7 +133,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
           workspaceId: owner.id,
         }),
         inputs: action.augmentedInputs,
-        stake: action.toolConfiguration?.permission,
+        stake: action.toolConfiguration.permission,
         metadata: {
           toolName: action.toolConfiguration.originalName,
           mcpServerName: action.toolConfiguration.mcpServerName,
