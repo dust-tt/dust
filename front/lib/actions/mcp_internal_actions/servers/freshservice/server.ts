@@ -7,6 +7,9 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 
+import type { FreshserviceTicket } from "./freshservice_api_helper";
+import { FreshserviceTicketSchema } from "./freshservice_api_helper";
+
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "freshservice",
   icon: "FreshserviceLogo",
@@ -23,7 +26,16 @@ const serverInfo: InternalMCPServerDefinitionType = {
 };
 
 const createServer = (): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = new McpServer(serverInfo, {
+    instructions: `
+     **Best Practices:**
+      - Use specific filters when listing tickets to narrow down results
+      - By default, \`list_tickets\` returns minimal fields (id, subject, status) for performance
+      - By default, \`get_ticket\` returns essential fields for detailed information
+      - Use \`get_ticket_read_fields\` only if you need additional custom fields
+      - Use \`include\` parameter with \`get_ticket\` to get related data like conversations, requester info, etc.
+    `,
+  });
 
   // Helper function to make authenticated API calls
   const withAuth = async <T>({
@@ -104,23 +116,81 @@ const createServer = (): McpServer => {
     return response.json();
   };
 
-  // Tickets endpoints
+  const DEFAULT_TICKET_FIELDS_LIST = [
+    "id",
+    "subject",
+    "status",
+  ] as const satisfies ReadonlyArray<keyof FreshserviceTicket>;
+
+  const DEFAULT_TICKET_FIELDS_DETAIL = [
+    "id",
+    "subject",
+    "description_text",
+    "priority",
+    "status",
+    "requester_id",
+    "responder_id",
+    "department_id",
+    "group_id",
+    "type",
+    "created_at",
+    "updated_at",
+    "due_by",
+  ] as const satisfies ReadonlyArray<keyof FreshserviceTicket>;
+
+  const ALLOWED_TICKET_INCLUDES = [
+    "conversations",
+    "requester",
+    "stats",
+    "problem",
+    "assets",
+    "changes",
+    "related_tickets",
+    "onboarding_context",
+    "offboarding_context",
+  ] as const;
+
+  function pickFields(
+    obj: unknown,
+    fields: ReadonlyArray<string>
+  ): Record<string, unknown> {
+    const source = obj as Record<string, unknown>;
+    const result: Record<string, unknown> = {};
+    for (const field of fields) {
+      if (Object.prototype.hasOwnProperty.call(source, field)) {
+        result[field] = source[field];
+      }
+    }
+    return result;
+  }
+
   server.tool(
     "list_tickets",
-    "Lists tickets with optional filtering and pagination",
+    "Lists tickets with optional filtering and pagination. By default returns minimal fields (id, subject, status) for performance.",
     {
       filter: z
         .object({
           email: z.string().optional().describe("Requester email"),
-          status: z.string().optional().describe("Ticket status"),
-          priority: z.string().optional().describe("Ticket priority"),
+          requester_id: z.number().optional().describe("Requester ID"),
+          updated_since: z
+            .string()
+            .optional()
+            .describe(
+              "ISO 8601 date-time string to filter tickets updated since this time"
+            ),
           type: z.string().optional().describe("Ticket type"),
         })
         .optional(),
+      fields: z
+        .array(FreshserviceTicketSchema.keyof())
+        .optional()
+        .describe(
+          "Optional list of fields to include. Defaults to essential fields for performance."
+        ),
       page: z.number().optional().default(1),
       per_page: z.number().optional().default(30),
     },
-    async ({ filter, page, per_page }, { authInfo }) => {
+    async ({ filter, fields, page, per_page }, { authInfo }) => {
       return withAuth({
         action: async (accessToken, freshserviceDomain) => {
           const params = new URLSearchParams({
@@ -131,14 +201,14 @@ const createServer = (): McpServer => {
           if (filter?.email) {
             params.append("email", filter.email);
           }
-          if (filter?.status) {
-            params.append("filter[status]", filter.status);
+          if (filter?.requester_id !== undefined) {
+            params.append("requester_id", filter.requester_id.toString());
           }
-          if (filter?.priority) {
-            params.append("filter[priority]", filter.priority);
+          if (filter?.updated_since) {
+            params.append("updated_since", filter.updated_since);
           }
           if (filter?.type) {
-            params.append("filter[type]", filter.type);
+            params.append("type", filter.type);
           }
 
           const result = await apiRequest(
@@ -147,9 +217,17 @@ const createServer = (): McpServer => {
             `tickets?${params.toString()}`
           );
 
+          // Filter fields if specified, otherwise use default fields
+          const tickets: FreshserviceTicket[] = result.tickets || [];
+          const selectedFields: ReadonlyArray<string> =
+            fields && fields.length > 0 ? fields : DEFAULT_TICKET_FIELDS_LIST;
+          const filteredTickets = tickets.map((ticket) =>
+            pickFields(ticket, selectedFields)
+          );
+
           return makeMCPToolJSONSuccess({
-            message: `Retrieved ${result.tickets?.length || 0} tickets`,
-            result: result.tickets || [],
+            message: `Retrieved ${filteredTickets.length} tickets`,
+            result: filteredTickets,
           });
         },
         authInfo,
@@ -159,43 +237,80 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_ticket",
-    "Gets detailed information about a specific ticket",
+    "Gets detailed information about a specific ticket. By default returns essential fields for performance, but you can specify specific fields.",
     {
       ticket_id: z.number().describe("The ID of the ticket"),
-      include: z
-        .array(
-          z.enum([
-            "conversations",
-            "requester",
-            "stats",
-            "problem",
-            "assets",
-            "change",
-            "related_tickets",
-            "requested_for",
-            "department",
-            "team",
-            "group",
-            "onboarding_context",
-            "policy_breach",
-          ])
-        )
+      fields: z
+        .array(FreshserviceTicketSchema.keyof())
         .optional()
-        .describe("Additional information to include"),
+        .describe(
+          "Optional list of fields to include. Defaults to essential fields (id, subject, description_text, priority, status, requester_id, responder_id, department_id, group_id, type, created_at, updated_at, due_by) for performance."
+        ),
+      include: z
+        .array(z.enum(ALLOWED_TICKET_INCLUDES))
+        .optional()
+        .describe(
+          "Additional information to include (e.g., conversations, requester, stats, problem, assets, changes, related_tickets, onboarding_context, offboarding_context)."
+        ),
     },
-    async ({ ticket_id, include }, { authInfo }) => {
+    async ({ ticket_id, fields, include }, { authInfo }) => {
       return withAuth({
         action: async (accessToken, freshserviceDomain) => {
-          const params = include?.length ? `?include=${include.join(",")}` : "";
-          const result = await apiRequest(
+          const params = new URLSearchParams();
+          if (include && include.length > 0) {
+            // Filter to allowed just in case
+            const validIncludes = include.filter((i) =>
+              (ALLOWED_TICKET_INCLUDES as readonly string[]).includes(i)
+            );
+            if (validIncludes.length > 0) {
+              params.set("include", validIncludes.join(","));
+            }
+          }
+          const endpointBase = `tickets/${ticket_id}`;
+
+          type TicketResult = { ticket: FreshserviceTicket };
+          const queryString = params.toString();
+          const endpoint = `${endpointBase}${queryString ? `?${queryString}` : ""}`;
+          const result = (await apiRequest(
             accessToken,
             freshserviceDomain,
-            `tickets/${ticket_id}${params}`
+            endpoint
+          )) as TicketResult;
+
+          // Filter fields if specified, otherwise use default fields, but always preserve included keys
+          const ticket = result.ticket as FreshserviceTicket;
+          const baseSelected: ReadonlyArray<string> =
+            fields && fields.length > 0
+              ? fields
+              : (DEFAULT_TICKET_FIELDS_DETAIL as ReadonlyArray<string>);
+          const includeSelected: ReadonlyArray<string> = include ?? [];
+          const unionSelected = Array.from(
+            new Set([...baseSelected, ...includeSelected])
           );
+          const filteredTicket = pickFields(ticket, unionSelected);
 
           return makeMCPToolJSONSuccess({
             message: "Ticket retrieved successfully",
-            result: result.ticket,
+            result: filteredTicket,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_ticket_read_fields",
+    "Lists available Freshservice ticket field ids for use in the get_ticket.fields parameter (read-time).",
+    {},
+    async (_, { authInfo }) => {
+      return withAuth({
+        action: async () => {
+          // Currently static based on documentation. In the future, we can get this from the Freshservice API.
+          // This will require additional authentication scopes, so avoiding in the short term.
+          return makeMCPToolJSONSuccess({
+            message: "Base ticket field ids (without includes)",
+            result: FreshserviceTicketSchema.keyof().options,
           });
         },
         authInfo,
