@@ -192,12 +192,6 @@ export function KnowledgeConfigurationSheet({
     defaultValues,
   });
 
-  useEffect(() => {
-    if (action || presetActionData) {
-      formMethods.reset(defaultValues);
-    }
-  }, [action, presetActionData, defaultValues, formMethods]);
-
   // Reset form when defaultValues change (e.g., when editing different actions)
   useEffect(() => {
     formMethods.reset(defaultValues);
