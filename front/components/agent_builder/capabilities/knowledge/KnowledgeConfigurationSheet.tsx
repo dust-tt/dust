@@ -149,32 +149,34 @@ export function KnowledgeConfigurationSheet({
           ) // TODO: fix type
         : { in: [], notIn: [] };
 
-    let selectedMCPServerView;
-    
-    if (isEditing && action && action.type === "MCP") {
-      // Editing existing action - find by ID
-      selectedMCPServerView = mcpServerViews.find(
-        (mcpServerView) =>
-          mcpServerView.sId === action.configuration.mcpServerViewId
-      );
-    } else if (presetActionData) {
-      // New action from preset - use centralized mapping
-      const targetServerName = getMCPServerNameForTemplateAction(presetActionData);
-      selectedMCPServerView = mcpServerViews.find(
-        (view) => view.server.name === targetServerName
-      );
-    } else {
-      // Default to search
-      selectedMCPServerView = mcpServerViews.find((view) => view.server.name === "search");
-    }
+    const selectedMCPServerView = (() => {
+      if (isEditing && action?.type === "MCP") {
+        return mcpServerViews.find(
+          (view) => view.sId === action.configuration.mcpServerViewId
+        );
+      }
+      
+      if (presetActionData) {
+        const targetServerName = getMCPServerNameForTemplateAction(presetActionData);
+        return mcpServerViews.find(
+          (view) => view.server.name === targetServerName
+        );
+      }
+      
+      return mcpServerViews.find((view) => view.server.name === "search");
+    })();
 
-    const defaultName = action?.name ??
-      presetActionData?.name ??
-      selectedMCPServerView?.name ??
-      selectedMCPServerView?.server.name ??
+    const defaultName = 
+      action?.name ?? 
+      presetActionData?.name ?? 
+      selectedMCPServerView?.name ?? 
+      selectedMCPServerView?.server.name ?? 
       "";
     
-    const defaultDescription = action?.description ?? presetActionData?.description ?? "";
+    const defaultDescription = 
+      action?.description ?? 
+      presetActionData?.description ?? 
+      "";
 
     return {
       sources: dataSourceTree,
@@ -191,7 +193,6 @@ export function KnowledgeConfigurationSheet({
     defaultValues,
   });
   
-  // Update form values when action or presetActionData changes
   useEffect(() => {
     if (action || presetActionData) {
       formMethods.reset(defaultValues);
@@ -326,7 +327,6 @@ function KnowledgeConfigurationSheetContent({
     setValue("mcpServerView", mcpServerView);
 
     const currentName = getValues("name");
-    // Only set the name if we don't have one and we're not using a preset
     if (!currentName && !isEditing && !presetActionData) {
       setValue("name", mcpServerView.name ?? mcpServerView.server.name ?? "");
     }
