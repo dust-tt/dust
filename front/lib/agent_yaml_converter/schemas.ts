@@ -31,6 +31,7 @@ export const agentYAMLGenerationSettingsSchema = z.object({
 });
 
 export const agentYAMLTagSchema = z.object({
+  sId: z.string().min(1, "Tag ID is required"),
   name: z.string().min(1, "Tag name is required"),
   kind: z.enum(["standard", "protected"]),
 });

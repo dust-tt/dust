@@ -70,7 +70,6 @@ async function handler(
 
   const { yamlContent } = bodyValidation.right;
 
-  // Parse YAML content
   const yamlConfigResult = AgentYAMLConverter.fromYAMLString(yamlContent);
   if (yamlConfigResult.isErr()) {
     return apiError(req, res, {
@@ -84,7 +83,6 @@ async function handler(
 
   const yamlConfig = yamlConfigResult.value;
 
-  // Convert YAML actions to MCP configurations
   const mcpConfigurationsResult =
     await AgentYAMLConverter.convertYAMLActionsToMCPConfigurations(
       auth,
@@ -104,12 +102,10 @@ async function handler(
   const { configurations: mcpConfigurations, skipped: skippedActions } =
     mcpConfigurationsResult.value;
 
-  // Check if visualization is enabled
   const hasVisualizationAction = yamlConfig.toolset.some(
     (action) => action.type === "DATA_VISUALIZATION"
   );
 
-  // Create the assistant configuration
   const assistant = {
     name: yamlConfig.agent.handle,
     description: yamlConfig.agent.description,
@@ -130,7 +126,7 @@ async function handler(
     actions: mcpConfigurations,
     templateId: null,
     tags: yamlConfig.tags.map((tag) => ({
-      sId: `tag_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate a temporary sId
+      sId: tag.sId,
       name: tag.name,
       kind: tag.kind,
     })),
@@ -139,7 +135,6 @@ async function handler(
     })),
   };
 
-  // Create the agent configuration
   const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
     auth,
     assistant,
