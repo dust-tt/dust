@@ -24,26 +24,6 @@ export interface AgentMCPActionResource
 export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
   static model: ModelStaticWorkspaceAware<AgentMCPAction> = AgentMCPAction;
 
-  get sId(): string {
-    return AgentMCPActionResource.modelIdToSId({
-      id: this.id,
-      workspaceId: this.workspaceId,
-    });
-  }
-
-  private static modelIdToSId({
-    id,
-    workspaceId,
-  }: {
-    id: ModelId;
-    workspaceId: ModelId;
-  }): string {
-    return makeSId("mcp_action", {
-      id,
-      workspaceId,
-    });
-  }
-
   private static async baseFetch(
     auth: Authenticator,
     { where, limit, order }: ResourceFindOptions<AgentMCPAction> = {}
@@ -157,5 +137,25 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     } catch (err) {
       return new Err(normalizeError(err));
     }
+  }
+
+  get sId(): string {
+    return AgentMCPActionResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  private static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("mcp_action", {
+      id,
+      workspaceId,
+    });
   }
 }
