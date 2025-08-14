@@ -584,7 +584,7 @@ export function AgentMessage({
     const isRunning = messageStatus === "created";
 
     return (
-      <div className="border-structure-100 bg-structure-50/30 overflow-hidden rounded-lg border">
+      <div className="border-structure-100 bg-structure-50/30 overflow-hidden rounded-lg border px-2">
         <CollapsibleComponent
           rootProps={{ defaultOpen: isRunning }}
           triggerChildren={
