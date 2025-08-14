@@ -5,6 +5,8 @@ import {
   CitationIcons,
   CitationIndex,
   CitationTitle,
+  Icon,
+  SparklesIcon,
 } from "@dust-tt/sparkle";
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -57,10 +59,12 @@ function getDescriptionForContentType(
 
 interface InteractiveAgentMessageGeneratedFilesProps {
   files: LightAgentMessageType["generatedFiles"];
+  variant?: "list" | "grid";
 }
 
 export function InteractiveAgentMessageGeneratedFiles({
   files,
+  variant = "list",
 }: InteractiveAgentMessageGeneratedFilesProps) {
   const { openPanel } = useConversationSidePanelContext();
 
@@ -69,7 +73,7 @@ export function InteractiveAgentMessageGeneratedFiles({
   }
 
   return (
-    <CitationGrid variant="list">
+    <CitationGrid variant={variant}>
       {files.map((file) => {
         const handleClick = (e: React.MouseEvent) => {
           e.preventDefault();
@@ -90,13 +94,18 @@ export function InteractiveAgentMessageGeneratedFiles({
           >
             <div className="flex flex-row items-center gap-2">
               <CitationTitle>{file.title}</CitationTitle>
-              {description && (
+              {description && variant === "list" && (
                 <CitationTitle className="text-muted-foreground dark:text-muted-foreground-night">
                   {description}
                 </CitationTitle>
               )}
             </div>
-            <CitationDescription>Interactive Content</CitationDescription>
+            <CitationDescription>
+              <div className="flow-row flex items-center gap-2">
+                <Icon visual={SparklesIcon} size="xs" />
+                Interactive Content
+              </div>
+            </CitationDescription>
           </Citation>
         );
       })}
