@@ -152,9 +152,6 @@ export function messageReducer(
           newState.agentState = "thinking";
 
           break;
-        default:
-          console.log("classification", event.classification);
-          break;
       }
       return newState;
     }
