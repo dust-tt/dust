@@ -132,7 +132,11 @@ function makeInitialMessageStreamState(
   };
 }
 
-export type AgentStateClassification = "thinking" | "acting" | "done";
+export type AgentStateClassification =
+  | "thinking"
+  | "acting"
+  | "writing"
+  | "done";
 
 /**
  *
@@ -520,13 +524,8 @@ export function AgentMessage({
             agentMessage={agentMessage}
             lastAgentStateClassification={messageStreamState.agentState}
             owner={owner}
+            actionProgress={messageStreamState.actionProgress}
           />
-
-          {agentMessage.chainOfThought?.length ? (
-            <ContentMessage title="Agent thoughts" variant="primary">
-              {agentMessage.chainOfThought}
-            </ContentMessage>
-          ) : null}
         </div>
         {agentMessage.content !== null && (
           <div>

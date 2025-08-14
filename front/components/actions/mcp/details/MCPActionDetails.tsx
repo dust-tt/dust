@@ -64,7 +64,7 @@ export interface MCPActionDetailsProps {
 
 export function MCPActionDetails(props: MCPActionDetailsProps) {
   const {
-    action: { output, functionCallName, mcpServerId, params },
+    action: { output, functionCallName, internalMCPServerName, params },
     viewType,
   } = props;
 
@@ -72,8 +72,8 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   const toolName = parts[parts.length - 1];
 
   if (
-    isInternalMCPServerOfName(mcpServerId, "search") ||
-    isInternalMCPServerOfName(mcpServerId, "data_sources_file_system")
+    internalMCPServerName === "search" ||
+    internalMCPServerName === "data_sources_file_system"
   ) {
     if (toolName === SEARCH_TOOL_NAME) {
       const timeFrame = parseTimeFrame(params.relativeTimeFrame as string);
@@ -125,7 +125,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "include_data")) {
+  if (internalMCPServerName === "include_data") {
     if (toolName === INCLUDE_TOOL_NAME) {
       return (
         <SearchResultDetails
@@ -140,7 +140,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "web_search_&_browse")) {
+  if (internalMCPServerName === "web_search_&_browse") {
     if (toolName === WEBSEARCH_TOOL_NAME) {
       return (
         <SearchResultDetails
@@ -159,13 +159,13 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "query_tables")) {
+  if (internalMCPServerName === "query_tables") {
     if (toolName === QUERY_TABLES_TOOL_NAME) {
       return <MCPTablesQueryActionDetails {...props} />;
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "query_tables_v2")) {
+  if (internalMCPServerName === "query_tables_v2") {
     if (toolName === GET_DATABASE_SCHEMA_TOOL_NAME) {
       return <MCPGetDatabaseSchemaActionDetails {...props} />;
     }
@@ -174,21 +174,21 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "reasoning")) {
+  if (internalMCPServerName === "reasoning") {
     return <MCPReasoningActionDetails {...props} />;
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "extract_data")) {
+  if (internalMCPServerName === "extract_data") {
     if (toolName === PROCESS_TOOL_NAME) {
       return <MCPExtractActionDetails {...props} />;
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "run_agent")) {
+  if (internalMCPServerName === "run_agent") {
     return <MCPRunAgentActionDetails {...props} />;
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "agent_management")) {
+  if (internalMCPServerName === "agent_management") {
     return <MCPAgentManagementActionDetails {...props} />;
   }
 

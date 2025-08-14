@@ -738,6 +738,21 @@ export const getInternalMCPServerNameAndWorkspaceId = (
   });
 };
 
+export const getInternalMCPServerNameFromSId = (
+  sId: string | null
+): InternalMCPServerNameType | null => {
+  if (sId === null) {
+    return null;
+  }
+
+  const r = getInternalMCPServerNameAndWorkspaceId(sId);
+  if (r.isOk()) {
+    return r.value.name;
+  }
+
+  return null;
+};
+
 export const isInternalMCPServerName = (
   name: string
 ): name is InternalMCPServerNameType =>
