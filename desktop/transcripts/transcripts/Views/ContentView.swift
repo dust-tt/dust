@@ -237,9 +237,8 @@ struct ContentView: View {
           } else {
             print("Failed to set audio device: \(device.name)")
           }
-          setupWindow.close()
         },
-        onCancel: {
+        onClose: {
           setupWindow.close()
         }
       )

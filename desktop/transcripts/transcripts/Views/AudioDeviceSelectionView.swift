@@ -4,7 +4,7 @@ struct AudioDeviceSelectionView: View {
   @State private var availableDevices: [AudioDevice] = []
   @State private var selectedDevice: AudioDevice?
   let onDeviceSelected: (AudioDevice) -> Void
-  let onCancel: () -> Void
+  let onClose: () -> Void
 
   var body: some View {
     VStack(spacing: 15) {
@@ -53,6 +53,7 @@ struct AudioDeviceSelectionView: View {
             .contentShape(Rectangle())
             .onTapGesture {
               selectedDevice = device
+              onDeviceSelected(device)
             }
           }
         }
@@ -65,20 +66,10 @@ struct AudioDeviceSelectionView: View {
           .foregroundColor(.secondary)
       }
 
-      HStack(spacing: 20) {
-        Button("Cancel") {
-          onCancel()
-        }
-        .keyboardShortcut(.cancelAction)
-
-        Button("Select Device") {
-          if let selectedDevice = selectedDevice {
-            onDeviceSelected(selectedDevice)
-          }
-        }
-        .keyboardShortcut(.defaultAction)
-        .disabled(selectedDevice == nil)
+      Button("Close") {
+        onClose()
       }
+      .keyboardShortcut(.cancelAction)
     }
     .frame(width: 450, height: 350)
     .padding()
@@ -96,6 +87,6 @@ struct AudioDeviceSelectionView: View {
 #Preview {
   AudioDeviceSelectionView(
     onDeviceSelected: { _ in },
-    onCancel: {}
+    onClose: {}
   )
 }
