@@ -28,7 +28,7 @@ export function AgentBuilderTemplate({
   onAddPresetAction,
 }: AgentBuilderTemplateProps) {
   return (
-    <div className="flex-1 overflow-y-auto p-4">
+    <div className="flex-1 overflow-y-auto px-4 pb-4 pt-6">
       <div className="flex flex-col gap-4">
         <TemplateButtons assistantTemplate={assistantTemplate} />
         {assistantTemplate.helpInstructions && (
