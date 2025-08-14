@@ -2,12 +2,12 @@ import assert from "assert";
 
 import type { AuthenticatorType } from "@app/lib/auth";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPAction as AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import logger from "@app/logger/logger";
-import { createToolActionsActivity } from "@app/temporal/agent_loop/activities/create_tool_actions";
-import { runModelActivity } from "@app/temporal/agent_loop/activities/run_model";
+import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
+import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
+import { runModelActivity } from "@app/temporal/agent_loop/lib/run_model";
 import type { ModelId } from "@app/types";
 import { MAX_ACTIONS_PER_STEP } from "@app/types/assistant/agent";
 import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
@@ -16,11 +16,6 @@ import type {
   RunAgentExecutionData,
 } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
-
-interface ActionBlob {
-  action: AgentMCPAction;
-  needsApproval: boolean;
-}
 
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
@@ -164,7 +159,7 @@ async function getExistingActionsAndBlobs(
       );
 
       actionBlobs.push({
-        action: mcpAction,
+        actionId: mcpAction.id,
         needsApproval: mcpAction.executionState === "pending",
       });
     }

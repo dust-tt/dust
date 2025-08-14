@@ -4,13 +4,13 @@ import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/tit
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
-import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import {
   executeAgentLoop,
   SyncTimeoutError,
 } from "@app/temporal/agent_loop/lib/agent_loop_executor";
+import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
   RunAgentArgs,
