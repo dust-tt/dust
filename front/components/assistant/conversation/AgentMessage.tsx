@@ -1,12 +1,15 @@
 import {
-  ArrowPathIcon, Avatar,
+  ArrowPathIcon,
+  Avatar,
   Button,
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
   CollapsibleComponent,
   ConversationMessage,
-  DocumentIcon, Icon,
+  DocumentIcon,
+  GlobeAltIcon,
+  Icon,
   InteractiveImageGrid,
   Markdown,
   Separator,
@@ -582,51 +585,12 @@ export function AgentMessage({
     const hasCompleted = messageStatus === "succeeded";
     const hasFailed = messageStatus === "failed";
 
-    // Get a readable tool name from the function call name
-    const getToolDisplayName = () => {
-      if (!action.functionCallName) {
-        return "Tool";
-      }
-
-      // Remove namespace prefix if present (e.g., "dust_search__search" -> "search")
-      const parts = action.functionCallName.split("__");
-      const toolName = parts[parts.length - 1];
-
-      // Common tool name mappings
-      const toolDisplayNames: Record<string, string> = {
-        search: "Search",
-        include: "Include Data",
-        websearch: "Web Search",
-        webbrowser: "Browse Web",
-        query_tables: "Query Tables",
-        get_database_schema: "Get Database Schema",
-        execute_database_query: "Execute Query",
-        process: "Process Data",
-        run_agent: "Run Agent",
-        filesystem_list: "List Files",
-        filesystem_find: "Find Files",
-        filesystem_cat: "Read File",
-        filesystem_locate_in_tree: "Locate in Tree",
-      };
-
-      return (
-        toolDisplayNames[toolName] ||
-        toolName.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
-      );
-    };
-
-    const toolDisplayName = getToolDisplayName();
-    const IconComponent = MCP_SPECIFICATION.cardIcon;
-
     return (
       <div className="border-structure-100 bg-structure-50/30 overflow-hidden rounded-lg border">
         <CollapsibleComponent
           rootProps={{ defaultOpen: isRunning }}
           triggerChildren={
             <div className="hover:bg-structure-50/50 flex items-center gap-2 p-3 transition-colors">
-              <div className="flex-shrink-0">
-                <IconComponent className="text-element-600 h-4 w-4" />
-              </div>
               {isRunning && <Spinner size="xs" />}
               {hasCompleted && (
                 <div className="text-sm font-medium text-success-500">✓</div>
@@ -636,10 +600,10 @@ export function AgentMessage({
               )}
               <Avatar
                 size="sm"
-                visual={<Icon visual={visual} />}
+                visual={<Icon visual={GlobeAltIcon} />}
                 backgroundColor="bg-muted-background dark:bg-muted-background-night"
               />
-              <span className="heading-base">{actionName}</span>
+              <span className="heading-base">Web search</span>
               {action.params?.query && (
                 <span className="text-element-500 flex-1 truncate text-sm">
                   "{String(action.params.query).substring(0, 50)}
