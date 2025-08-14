@@ -163,7 +163,6 @@ export function getMcpServerDisplayName(
   return displayName;
 }
 
-// Template action to MCP server mapping
 // Only includes action types that are actually used in templates
 const TEMPLATE_ACTION_TO_MCP_SERVER: Record<string, InternalMCPServerNameType> = {
   RETRIEVAL_SEARCH: "search",
@@ -172,18 +171,12 @@ const TEMPLATE_ACTION_TO_MCP_SERVER: Record<string, InternalMCPServerNameType> =
   WEB_NAVIGATION: "web_search_&_browse",
 };
 
-/**
- * Get the MCP server name for a template action preset
- */
 export function getMCPServerNameForTemplateAction(
   presetAction: TemplateActionPreset
 ): InternalMCPServerNameType | null {
   return TEMPLATE_ACTION_TO_MCP_SERVER[presetAction.type] || null;
 }
 
-/**
- * Check if a template action is a knowledge action (requires data source selection)
- */
 export function isKnowledgeTemplateAction(
   presetAction: TemplateActionPreset
 ): boolean {
@@ -194,9 +187,6 @@ export function isKnowledgeTemplateAction(
   );
 }
 
-/**
- * Check if a template action should be added directly (without configuration)
- */
 export function isDirectAddTemplateAction(
   presetAction: TemplateActionPreset
 ): boolean {

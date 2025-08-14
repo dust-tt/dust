@@ -152,7 +152,6 @@ export default function AgentBuilder({
     ? `Edit agent @${agentConfiguration.name}`
     : "Create new agent";
 
-  // State to pass preset action to capabilities block
   const [presetActionToAdd, setPresetActionToAdd] = useState<TemplateActionPreset | null>(null);
 
   return (
