@@ -35,7 +35,7 @@ export function AgentActionsPanel({
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
         top: scrollContainerRef.current.scrollHeight,
-        behavior: 'smooth'
+        behavior: "smooth",
       });
     }
   }, [fullAgentMessage]);
