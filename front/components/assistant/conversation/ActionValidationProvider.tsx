@@ -18,15 +18,12 @@ import { createContext, useCallback, useState } from "react";
 
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
-import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
-import type { LightWorkspaceType } from "@app/types";
+import type {
+  LightWorkspaceType,
+  MCPActionValidationRequest,
+} from "@app/types";
 import { asDisplayName, pluralize } from "@app/types";
-
-type MCPActionValidationRequest = Omit<
-  MCPApproveExecutionEvent,
-  "type" | "created" | "configurationId"
->;
 
 type ActionValidationContextType = {
   showValidationDialog: (validationRequest: MCPActionValidationRequest) => void;
