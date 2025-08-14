@@ -607,7 +607,7 @@ export function AgentMessage({
           contentChildren={
             <div className="border-structure-100 border-t p-3">
               <MCPActionDetails
-                viewType="conversation"
+                viewType="sidebar"
                 action={action}
                 owner={owner}
                 lastNotification={lastNotification}
