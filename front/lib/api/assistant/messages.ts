@@ -227,7 +227,9 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           includeMCPActions: true,
           latestVersionsOnly: true,
         });
-      return agentStepContents.map((sc) => sc.toJSON().mcpActions ?? []).flat();
+      return agentStepContents
+        .map((sc) => sc.toJSON(auth).mcpActions ?? [])
+        .flat();
     })(),
   ]);
 
