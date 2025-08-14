@@ -4,6 +4,8 @@ import React from "react";
 import {
   ChatBubbleBottomCenterTextIcon,
   ContentMessage,
+  ContentMessageAction,
+  ContentMessageInline,
   HeartIcon,
   InformationCircleIcon,
 } from "../index_with_tw_base";
@@ -63,6 +65,15 @@ type Story = StoryObj<typeof meta>;
 export const Basic: Story = {
   args: {
     title: "This is a title",
+    children: "This is a message. It can be multiple lines long.",
+    size: "md",
+  },
+};
+
+export const WithIcon: Story = {
+  args: {
+    title: "This is a title",
+    icon: InformationCircleIcon,
     children: "This is a message. It can be multiple lines long.",
     size: "md",
   },
@@ -142,6 +153,81 @@ export const ColorVariants: Story = {
           This is a {variant} variant message. It shows how the component looks
           with this color scheme.
         </ContentMessage>
+      ))}
+    </div>
+  ),
+};
+
+export const InlineBasic: Story = {
+  render: () => (
+    <ContentMessageInline icon={InformationCircleIcon} variant="info">
+      This is an inline message. It can be used to display a short message.
+    </ContentMessageInline>
+  ),
+};
+
+export const InlineWithAction: Story = {
+  render: () => (
+    <ContentMessageInline icon={InformationCircleIcon} variant="info">
+      This is an inline message. It can be used to display a short message.
+      <ContentMessageAction variant="primary" label="Button" />
+    </ContentMessageInline>
+  ),
+};
+
+export const InlineWithTwoActions: Story = {
+  render: () => (
+    <ContentMessageInline icon={InformationCircleIcon} variant="info">
+      This is an inline message. It can be used to display a short message.
+      <ContentMessageAction variant="primary" label="Button" />
+      <ContentMessageAction variant="highlight" label="Button" />
+    </ContentMessageInline>
+  ),
+};
+
+export const InlineWithTitle: Story = {
+  render: () => (
+    <div className="s-flex s-flex-col s-gap-4">
+      <ContentMessageInline
+        title="Status"
+        icon={InformationCircleIcon}
+        variant="info"
+      >
+        This is an inline message.
+        <ContentMessageAction variant="primary" label="Button" />
+      </ContentMessageInline>
+      <ContentMessageInline
+        title="Alert"
+        icon={InformationCircleIcon}
+        variant="warning"
+      />
+    </div>
+  ),
+};
+
+export const InlineVariants: Story = {
+  render: () => (
+    <div className="s-flex s-flex-col s-gap-4">
+      {["primary", "warning", "success", "highlight", "info"].map((variant) => (
+        <ContentMessageInline
+          key={variant}
+          icon={InformationCircleIcon}
+          variant={
+            variant as
+              | "primary"
+              | "warning"
+              | "success"
+              | "highlight"
+              | "info"
+              | "green"
+              | "blue"
+              | "rose"
+              | "golden"
+          }
+        >
+          {variant.charAt(0).toUpperCase() + variant.slice(1)} inline message
+          <ContentMessageAction variant="primary" label="Action" />
+        </ContentMessageInline>
       ))}
     </div>
   ),
