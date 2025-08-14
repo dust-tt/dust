@@ -22,6 +22,10 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
+import type { MCPActionType } from "@app/lib/actions/mcp";
+import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { StreamingBlock, MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
+import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import {
   DefaultAgentMessageGeneratedFiles,
   InteractiveAgentMessageGeneratedFiles,
@@ -94,7 +98,7 @@ function makeInitialMessageStreamState(
   message: LightAgentMessageType
 ): MessageTemporaryState {
   // Initialize streaming blocks from existing message data
-  const blocks: import("@app/lib/assistant/state/messageReducer").StreamingBlock[] = [];
+  const blocks: StreamingBlock[] = [];
   
   // Add existing chain of thought as a completed thinking block
   if (message.chainOfThought) {
@@ -109,7 +113,7 @@ function makeInitialMessageStreamState(
   message.actions.forEach(action => {
     blocks.push({
       type: "action",
-      action: action as import("@app/lib/actions/mcp").MCPActionType,
+      action: action as MCPActionType,
       status: message.status === "failed" ? "failed" : "succeeded"
     });
   });
@@ -535,8 +539,8 @@ export function AgentMessage({
   const canMention = agentConfiguration.canRead;
   const isArchived = agentConfiguration.status === "archived";
 
-  // Collapsible component for chain of thought
-  const CollapsibleInlineThought = ({
+  // Inline thinking component - always visible with subtle background
+  const InlineThought = ({
     content,
     isStreaming,
   }: {
@@ -544,33 +548,22 @@ export function AgentMessage({
     isStreaming: boolean;
   }) => {
     return (
-      <div className="rounded-lg border border-structure-100 bg-structure-50/30 p-3">
-        <CollapsibleComponent
-          rootProps={{ defaultOpen: isStreaming }}
-          triggerChildren={
-            <div className="flex items-center gap-2">
-              {isStreaming && <Spinner size="xs" />}
-              <div className="text-sm text-element-600 line-clamp-2 flex-1">
-                <Markdown
-                  content={content.split('\n')[0] || "..."}
-                  isStreaming={false}
-                  forcedTextSize="text-sm"
-                  isLastMessage={false}
-                />
-              </div>
+      <div className="rounded-lg bg-structure-50/50 p-4">
+        <div className="flex items-start gap-2">
+          {isStreaming && (
+            <div className="mt-1">
+              <Spinner size="xs" />
             </div>
-          }
-          contentChildren={
-            <div className="mt-3 text-sm text-element-600">
-              <Markdown
-                content={content}
-                isStreaming={isStreaming}
-                forcedTextSize="text-sm"
-                isLastMessage={false}
-              />
-            </div>
-          }
-        />
+          )}
+          <div className="text-sm text-element-600 flex-1">
+            <Markdown
+              content={content}
+              isStreaming={isStreaming}
+              forcedTextSize="text-sm"
+              isLastMessage={false}
+            />
+          </div>
+        </div>
       </div>
     );
   };
@@ -582,40 +575,75 @@ export function AgentMessage({
     lastNotification,
     messageStatus,
   }: {
-    action: import("@app/lib/actions/mcp").MCPActionType;
+    action: MCPActionType;
     owner: WorkspaceType;
-    lastNotification: import("@app/lib/actions/mcp_internal_actions/output_schemas").ProgressNotificationContentType | null;
+    lastNotification: ProgressNotificationContentType | null;
     messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
   }) => {
-    const parts = action.functionCallName ? action.functionCallName.split("__") : [];
-    const toolName = parts[parts.length - 1];
     const isRunning = messageStatus === "created";
     const hasCompleted = messageStatus === "succeeded";
     const hasFailed = messageStatus === "failed";
     
-    // Create a readable action name
-    const actionName = toolName ? toolName.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()) : "Action";
+    // Get a readable tool name from the function call name
+    const getToolDisplayName = () => {
+      if (!action.functionCallName) return "Tool";
+      
+      // Remove namespace prefix if present (e.g., "dust_search__search" -> "search")
+      const parts = action.functionCallName.split("__");
+      const toolName = parts[parts.length - 1];
+      
+      // Common tool name mappings
+      const toolDisplayNames: Record<string, string> = {
+        search: "Search",
+        include: "Include Data",
+        websearch: "Web Search",
+        webbrowser: "Browse Web",
+        query_tables: "Query Tables",
+        get_database_schema: "Get Database Schema",
+        execute_database_query: "Execute Query",
+        process: "Process Data",
+        run_agent: "Run Agent",
+        filesystem_list: "List Files",
+        filesystem_find: "Find Files",
+        filesystem_cat: "Read File",
+        filesystem_locate_in_tree: "Locate in Tree",
+      };
+      
+      return toolDisplayNames[toolName] || 
+        toolName.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+    };
+    
+    const toolDisplayName = getToolDisplayName();
+    const IconComponent = MCP_SPECIFICATION.cardIcon;
     
     return (
-      <div className="rounded-lg border border-structure-100 bg-structure-50/30 p-3">
+      <div className="rounded-lg border border-structure-100 bg-structure-50/30 overflow-hidden">
         <CollapsibleComponent
           rootProps={{ defaultOpen: isRunning }}
           triggerChildren={
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2 p-3 hover:bg-structure-50/50 transition-colors">
+              <div className="flex-shrink-0">
+                <IconComponent className="w-4 h-4 text-element-600" />
+              </div>
               {isRunning && <Spinner size="xs" />}
               {hasCompleted && (
-                <div className="text-success-500">✓</div>
+                <div className="text-success-500 text-sm font-medium">✓</div>
               )}
               {hasFailed && (
-                <div className="text-warning-500">✗</div>
+                <div className="text-warning-500 text-sm font-medium">✗</div>
               )}
-              <span className="text-element-700">
-                {actionName}
+              <span className="text-sm font-medium text-element-700">
+                {toolDisplayName}
               </span>
+              {action.params?.query && (
+                <span className="text-sm text-element-500 truncate flex-1">
+                  "{String(action.params.query).substring(0, 50)}{String(action.params.query).length > 50 ? '...' : ''}"
+                </span>
+              )}
             </div>
           }
           contentChildren={
-            <div className="mt-3">
+            <div className="border-t border-structure-100 p-3">
               <MCPActionDetails
                 viewType="conversation"
                 action={action}
@@ -677,7 +705,7 @@ export function AgentMessage({
   }) {
     const isMCPActionType = (
       action: { type: "tool_action"; id: number } | undefined
-    ): action is import("@app/lib/actions/mcp").MCPActionType => {
+    ): action is MCPActionType => {
       return action !== undefined && "functionCallName" in action;
     };
     if (agentMessage.status === "failed") {
@@ -744,7 +772,7 @@ export function AgentMessage({
         {messageStreamState.streamingBlocks.map((block, index) => {
           if (block.type === "thinking") {
             return (
-              <CollapsibleInlineThought
+              <InlineThought
                 key={`thinking-${index}`}
                 content={block.content}
                 isStreaming={block.isStreaming}
