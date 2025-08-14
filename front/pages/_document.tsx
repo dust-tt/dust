@@ -97,6 +97,30 @@ class MyDocument extends Document {
              })
            `}
           </Script>
+          {/* Privacy mask initialization script */}
+          <Script id="privacy-mask-init" strategy="beforeInteractive">
+            {`
+              (function() {
+                // Initialize privacy mask state from cookie on page load
+                function initPrivacyMask() {
+                  const cookies = document.cookie.split(';');
+                  const privacyCookie = cookies.find(c => c.trim().startsWith('privacy-mask='));
+                  const isEnabled = privacyCookie ? privacyCookie.split('=')[1] === 'true' : false;
+                  
+                  if (isEnabled) {
+                    document.body.classList.add('privacy-mask-enabled');
+                  }
+                }
+                
+                // Run on DOM ready
+                if (document.readyState === 'loading') {
+                  document.addEventListener('DOMContentLoaded', initPrivacyMask);
+                } else {
+                  initPrivacyMask();
+                }
+              })();
+            `}
+          </Script>
         </body>
       </Html>
     );

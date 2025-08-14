@@ -12,6 +12,8 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  EyeIcon,
+  EyeSlashIcon,
   Icon,
   LightbulbIcon,
   LogoutIcon,
@@ -25,6 +27,7 @@ import { useMemo } from "react";
 
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
 import { forceUserRole, showDebugTools } from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
@@ -49,6 +52,7 @@ export function UserMenu({
   });
 
   const sendNotification = useSendNotification();
+  const privacyMask = usePrivacyMask();
 
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "builder" | "admin") => {
@@ -204,6 +208,11 @@ export function UserMenu({
                     icon={UserIcon}
                   />
                 )}
+                <DropdownMenuItem
+                  label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
+                  onClick={privacyMask.toggle}
+                  icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
+                />
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           </>
