@@ -70,9 +70,6 @@ export function SecurityFeaturesSection() {
                   src="/static/landing/product/data.svg"
                   alt="Data Control"
                   className="absolute inset-0 h-full w-full object-contain"
-                  onError={(e) => {
-                    console.error("Failed to load image:", e.currentTarget.src);
-                  }}
                 />
               )}
               {activeFeature === "models" && (
@@ -80,9 +77,6 @@ export function SecurityFeaturesSection() {
                   src="/static/landing/product/model.svg"
                   alt="Model Selection"
                   className="absolute inset-0 h-full w-full object-contain"
-                  onError={(e) => {
-                    console.error("Failed to load image:", e.currentTarget.src);
-                  }}
                 />
               )}
               {activeFeature === "access" && (
@@ -90,9 +84,6 @@ export function SecurityFeaturesSection() {
                   src="/static/landing/product/member.svg"
                   alt="Access Control"
                   className="absolute inset-0 h-full w-full object-contain"
-                  onError={(e) => {
-                    console.error("Failed to load image:", e.currentTarget.src);
-                  }}
                 />
               )}
             </div>
