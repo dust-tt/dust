@@ -287,9 +287,6 @@ export function SearchResultDetails({
       ) : (
         <div className="flex flex-col gap-4 pl-6 pt-4">
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-bold text-foreground dark:text-foreground-night">
-              Query
-            </span>
             <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
               {query}
             </div>
@@ -305,7 +302,7 @@ export function SearchResultDetails({
               <CollapsibleComponent
                 rootProps={{ defaultOpen: true }}
                 triggerChildren={
-                  <span className="text-sm font-bold text-foreground dark:text-foreground-night">
+                  <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                     Results
                   </span>
                 }
