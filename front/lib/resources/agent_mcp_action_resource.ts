@@ -105,7 +105,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       pendingValidations.push({
         messageId: agentMessage.message.sId,
         conversationId,
-        actionId: this.sId,
+        actionId: this.modelIdToSId({
+          id: action.id,
+          workspaceId: owner.id,
+        }),
         inputs: action.augmentedInputs || {},
         stake: action.toolConfiguration?.permission,
         metadata: {
