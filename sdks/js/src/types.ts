@@ -2643,7 +2643,7 @@ export const ActionApprovalStateSchema = z.enum([
 export type ActionApprovalStateType = z.infer<typeof ActionApprovalStateSchema>;
 
 export const ValidateActionRequestBodySchema = z.object({
-  actionId: z.union([z.string(), z.number()]),
+  actionId: z.string(),
   approved: ActionApprovalStateSchema,
 });
 

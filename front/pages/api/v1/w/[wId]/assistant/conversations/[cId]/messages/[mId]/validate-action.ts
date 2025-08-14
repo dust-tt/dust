@@ -2,7 +2,6 @@ import type { ValidateActionResponseType } from "@dust-tt/client";
 import { ValidateActionRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { MCPActionType } from "@app/lib/actions/mcp";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
@@ -121,20 +120,8 @@ async function handler(
 
   const { actionId, approved } = parseResult.data;
 
-  // Temporary code to be backwards compatible with the old actionId format.
-  // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
-  let actionIdString: string;
-  if (typeof actionId === "string") {
-    actionIdString = actionId;
-  } else {
-    actionIdString = MCPActionType.modelIdToSId({
-      id: actionId,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    });
-  }
-
   const result = await validateAction(auth, conversationRes.value, {
-    actionId: actionIdString,
+    actionId,
     approvalState: approved,
     messageId: mId,
   });
