@@ -582,6 +582,49 @@ export function AgentMessage({
     messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
   }) => {
     const isRunning = messageStatus === "created";
+    const [faviconError, setFaviconError] = React.useState(false);
+    
+    // Extract domain from URL in action params or outputs
+    const extractDomain = () => {
+      // Check if action has a URL in params
+      if (action.params?.url && typeof action.params.url === 'string') {
+        try {
+          const url = new URL(action.params.url);
+          return url.hostname;
+        } catch {
+          // Invalid URL
+        }
+      }
+      
+      // For web search, we might have domains in the results
+      // But since we don't have the results in the action params, we can't extract them
+      // We could potentially use a default search engine favicon
+      if (action.functionCallName?.includes('websearch')) {
+        return 'www.google.com'; // Default to Google for web searches
+      }
+      
+      return null;
+    };
+    
+    const domain = extractDomain();
+    const faviconUrl = domain && !faviconError 
+      ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64`
+      : null;
+
+    // Get tool display name
+    const getToolDisplayName = () => {
+      if (!action.functionCallName) return "Tool";
+      const parts = action.functionCallName.split("__");
+      const toolName = parts[parts.length - 1];
+      
+      const toolDisplayNames: Record<string, string> = {
+        search: "Search",
+        websearch: "Web Search",
+        webbrowser: "Browse Web",
+      };
+      
+      return toolDisplayNames[toolName] || "Searching";
+    };
 
     return (
       <div className="border-structure-100 bg-structure-50/30 overflow-hidden rounded-lg border px-2">
@@ -592,10 +635,21 @@ export function AgentMessage({
               {isRunning && <Spinner size="xs" />}
               <Avatar
                 size="sm"
-                visual={<Icon visual={GlobeAltIcon} />}
+                visual={
+                  faviconUrl ? (
+                    <img 
+                      src={faviconUrl} 
+                      alt=""
+                      className="h-full w-full rounded-full object-contain"
+                      onError={() => setFaviconError(true)}
+                    />
+                  ) : (
+                    <Icon visual={GlobeAltIcon} />
+                  )
+                }
                 backgroundColor="bg-muted-background dark:bg-muted-background-night"
               />
-              <span className="heading-base">Searching</span>
+              <span className="heading-base">{getToolDisplayName()}</span>
               {action.params?.query && (
                 <span className="text-element-500 flex-1 truncate text-sm">
                   "{String(action.params.query).substring(0, 50)}
