@@ -314,6 +314,7 @@ function KnowledgeConfigurationSheetContent({
     if (open) {
       setCurrentPageId(getInitialPageId());
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, isEditing, presetActionData]);
 
   const handlePageChange = (pageId: string) => {

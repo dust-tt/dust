@@ -341,7 +341,6 @@ export function AgentBuilderCapabilitiesBlock({
         onActionUpdate={handleMcpActionUpdate}
         actions={fields}
         getAgentInstructions={getAgentInstructions}
-        presetActionData={presetActionToAdd}
       />
     </AgentBuilderSectionContainer>
   );
