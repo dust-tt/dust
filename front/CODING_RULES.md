@@ -56,46 +56,82 @@ function addItem(items: string[], newItem: string) {
 Comments must be full sentences (generally starting with a capital letter and ending with a period)
 and must be consistently wrapped (see examples below).
 
-Example:
-
+<details>
+<summary>Example of bad comments</summary>
 ```
-// BAD
 // new function
 // does something
 // interesting
+```
 
-// BAD
+Rationale: Not full sentences (missing capitalization and punctuation). Also split into multiple short lines instead of wrapping at ~100 characters.
+
+```
 // this is a comment that is neither a full sentence nor wrapped at 100 characters (clearly higher) / it should be wrapped because otherwise it's really hard to read
+```
 
-// BAD
+Rationale: Lacks capitalization at the start, exceeds the 100-character limit without wrapping, making it hard to scan.
+
+```
 // This comment is a valid sentence but it
 // is wrapped at a much lower character count than
 // 100. It should be wrapped at ~100 characters.
+```
 
-// BAD
+Rationale: The sentences are fine, but wrapping occurs at ~50 characters instead of ~100, creating unnecessary line breaks and reducing readability.
+
+```
 // Check if the current tag is the page selector.
 // If it is, we are inside a page.
 // This assumes that we don't have nested pages.
+```
 
-// GOOD
+Rationale: Each sentence is broken into separate lines instead of being wrapped to ~100 characters. This creates excessive vertical space and makes related sentences feel disconnected.
+
+</details>
+
+<details>
+<summary>Example of good comments</summary>
+
+```
 // This function is new and does something interesting.
 // TODO(xxx): improve the efficiency of this.
+```
 
-// GOOD
+Rationale: Full sentences with proper capitalization and punctuation. Lines are wrapped consistently at ~100 characters. TODO is properly formatted and placed.
+
+```
 // This is a comment that is a full sentence and is wrapped at 100 characters. It is easy to read
 // and supports consistency of our code style.
+```
 
-// GOOD
+Rationale: Capitalized first letter, proper ending punctuation, and line wrapping close to 100 characters for consistency and readability.
+
+```
 // Permissions:
 // - "never_ask": Automatically approved
 // - "low": Ask user for approval and allow to automatically approve next time
 // - "high": Ask for approval each time
 // - undefined: Use default permission ("never_ask" for default tools, "high" for other tools)
+```
 
-// GOOD
+Rationale: Uses clear formatting for a list, proper capitalization, and punctuation. Wrapping aligns with ~100 characters, making the block easy to scan.
+
+```
 // Check if the current tag is the page selector. If it is, we are inside a page. This assumes that
 // we don't have nested pages.
 ```
+
+Rationale: Combines related sentences into a single wrapped block at ~100 characters. Maintains full sentences, proper capitalization, and ending punctuation.
+
+</details>
+
+<details>
+<summary>Recommendation on how to make a good Pull Request review comment</summary>
+
+Use GitHub Suggestion Blocks in PR Reviews. This makes it one-click for the author to apply. Also, provide a concise rationale as to why the coding rule is broken.
+
+</details>
 
 ### [GEN7] Avoid loops with quadratic or worse complexity
 
