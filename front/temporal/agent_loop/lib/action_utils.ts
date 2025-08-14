@@ -20,7 +20,6 @@ export async function buildActionBaseParams({
   mcpServerId,
   step,
   stepContentId,
-  toolConfiguration,
 }: {
   agentMessageId: number;
   citationsAllocated: number;
@@ -28,7 +27,6 @@ export async function buildActionBaseParams({
   mcpServerId: string | null;
   step: number;
   stepContentId: ModelId;
-  toolConfiguration: LightMCPToolConfigurationType;
 }): Promise<ActionBaseParams> {
   // Fetch and validate step content.
   const stepContent =
@@ -58,6 +56,5 @@ export async function buildActionBaseParams({
     mcpServerConfigurationId,
     params: rawInputs,
     step,
-    toolConfiguration,
   };
 }

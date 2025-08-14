@@ -63,10 +63,9 @@ export async function runToolActivity(
     mcpServerId,
     step,
     stepContentId: action.stepContentId,
-    toolConfiguration: action.toolConfiguration,
   });
 
-  const mcpAction = new MCPActionType(auth, {
+  const mcpAction = new MCPActionType({
     ...actionBaseParams,
     id: action.id,
     isError: action.isError,

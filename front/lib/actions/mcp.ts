@@ -245,12 +245,11 @@ type RemoveFunctionFields<T> = Pick<
   }[keyof T]
 >;
 
-type MCPActionBlob = Omit<RemoveFunctionFields<MCPActionType>, "sId">;
+type MCPActionBlob = RemoveFunctionFields<MCPActionType>;
 
 // This action uses the MCP protocol to communicate
 export class MCPActionType {
   readonly id: ModelId;
-  readonly sId: string;
   readonly generatedFiles: ActionGeneratedFileType[];
   readonly agentMessageId: ModelId;
   readonly executionState: MCPExecutionState = "pending";
@@ -265,13 +264,11 @@ export class MCPActionType {
   readonly step: number = -1;
   readonly isError: boolean = false;
   readonly citationsAllocated: number = 0;
-  readonly toolConfiguration: LightMCPToolConfigurationType;
   // TODO(2025-07-24 aubin): remove the type here.
   readonly type = "tool_action" as const;
 
-  constructor(auth: Authenticator, blob: MCPActionBlob) {
+  constructor(blob: MCPActionBlob) {
     this.id = blob.id;
-    this.sId = this.getSId(auth.getNonNullableWorkspace());
     this.type = blob.type;
     this.generatedFiles = blob.generatedFiles;
 
@@ -286,7 +283,6 @@ export class MCPActionType {
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
     this.citationsAllocated = blob.citationsAllocated;
-    this.toolConfiguration = blob.toolConfiguration;
   }
 
   getGeneratedFiles(): ActionGeneratedFileType[] {
@@ -465,7 +461,7 @@ export async function* runToolWithStreaming(
     statsDClient.increment("mcp_actions_denied.count", 1, tags);
     localLogger.info("Action execution rejected by user");
 
-    yield await handleMCPActionError(auth, {
+    yield await handleMCPActionError({
       action,
       agentConfiguration,
       agentMessage,
@@ -521,7 +517,7 @@ export async function* runToolWithStreaming(
         `The tool ${actionBaseParams.functionCallName} requires personal ` +
         `authentication, please authenticate to use it.`;
 
-      yield await handleMCPActionError(auth, {
+      yield await handleMCPActionError({
         action,
         actionBaseParams,
         agentConfiguration,
@@ -555,7 +551,7 @@ export async function* runToolWithStreaming(
     errorMessage +=
       "An error occurred while executing the tool. You can inform the user of this issue.";
 
-    yield await handleMCPActionError(auth, {
+    yield await handleMCPActionError({
       action,
       agentConfiguration,
       agentMessage,
@@ -582,7 +578,7 @@ export async function* runToolWithStreaming(
     created: Date.now(),
     configurationId: agentConfiguration.sId,
     messageId: agentMessage.sId,
-    action: new MCPActionType(auth, {
+    action: new MCPActionType({
       ...actionBaseParams,
       generatedFiles,
       executionState,
@@ -632,7 +628,7 @@ export async function createMCPAction(
     workspaceId: auth.getNonNullableWorkspace().id,
   });
 
-  const mcpAction = new MCPActionType(auth, {
+  const mcpAction = new MCPActionType({
     ...actionBaseParams,
     executionState: "pending",
     id: action.id,
@@ -673,7 +669,6 @@ type HandleErrorParams = YieldAsErrorParams | YieldAsSuccessParams;
  * Handles MCP action errors with type-safe discriminated union based on error severity.
  */
 export async function handleMCPActionError(
-  auth: Authenticator,
   params: HandleErrorParams
 ): Promise<MCPErrorEvent | MCPSuccessEvent> {
   const { agentConfiguration, agentMessage, errorMessage, executionState } =
@@ -718,7 +713,7 @@ export async function handleMCPActionError(
     created: Date.now(),
     configurationId: agentConfiguration.sId,
     messageId: agentMessage.sId,
-    action: new MCPActionType(auth, {
+    action: new MCPActionType({
       ...actionBaseParams,
       generatedFiles: [],
       executionState,

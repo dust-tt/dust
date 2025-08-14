@@ -310,7 +310,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     return new Ok(deletedCount);
   }
 
-  toJSON(auth: Authenticator): AgentStepContentType {
+  toJSON(): AgentStepContentType {
     let value = this.value;
     if (this.type === "reasoning" && value.type === "reasoning") {
       value = {
@@ -350,7 +350,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
         base.mcpActions = this.agentMCPActions.map(
           (action: AgentMCPAction) =>
-            new MCPActionType(auth, {
+            new MCPActionType({
               id: action.id,
               params: JSON.parse(value.value.arguments),
               output: removeNulls(
@@ -366,7 +366,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
               isError: action.isError,
               type: "tool_action",
               citationsAllocated: action.citationsAllocated,
-              toolConfiguration: action.toolConfiguration,
               generatedFiles: removeNulls(
                 action.outputItems.map((o) => {
                   if (!o.file) {
