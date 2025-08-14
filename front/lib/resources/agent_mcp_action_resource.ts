@@ -132,13 +132,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
           id: action.id,
           workspaceId: owner.id,
         }),
-        inputs: action.augmentedInputs || {},
+        inputs: action.augmentedInputs,
         stake: action.toolConfiguration?.permission,
         metadata: {
-          toolName: action.toolConfiguration?.originalName,
-          mcpServerName: action.toolConfiguration?.mcpServerName,
+          toolName: action.toolConfiguration.originalName,
+          mcpServerName: action.toolConfiguration.mcpServerName,
           agentName: agentConfiguration.name,
-          icon: action.toolConfiguration?.icon,
+          icon: action.toolConfiguration.icon,
         },
       });
     }
