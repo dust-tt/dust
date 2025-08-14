@@ -20,10 +20,7 @@ export function usePokeRegion() {
   const { data, error } = useSWRWithDefaults("/api/poke/region", regionFetcher);
 
   return {
-    region: useMemo(
-      () => (data?.region ? (data.region as RegionType) : undefined),
-      [data]
-    ),
+    regionData: data,
     isRegionLoading: !error && !data,
     isRegionError: error,
   };

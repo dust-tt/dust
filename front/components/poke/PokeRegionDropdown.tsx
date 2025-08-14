@@ -13,7 +13,7 @@ import { isDevelopment } from "@app/types";
 
 interface PokeRegionDropdownProps {
   currentRegion: RegionType;
-  regionUrls: Record<string, string>;
+  regionUrls?: Record<RegionType, string>;
 }
 
 export function PokeRegionDropdown({
@@ -24,8 +24,10 @@ export function PokeRegionDropdown({
     if (region === currentRegion) {
       return;
     }
-    const regionUrl = regionUrls[region];
-    window.location.href = regionUrl + "/poke";
+    if (regionUrls) {
+      const regionUrl = regionUrls[region];
+      window.location.href = regionUrl + "/poke";
+    }
   };
 
   return (

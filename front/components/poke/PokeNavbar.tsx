@@ -16,9 +16,10 @@ import { isDevelopment } from "@app/types";
 
 interface PokeNavbarProps {
   currentRegion?: RegionType;
+  regionUrls?: Record<RegionType, string>;
 }
 
-function PokeNavbar({ currentRegion }: PokeNavbarProps) {
+function PokeNavbar({ currentRegion, regionUrls }: PokeNavbarProps) {
   return (
     <nav
       className={classNames(
@@ -38,7 +39,12 @@ function PokeNavbar({ currentRegion }: PokeNavbarProps) {
         </div>
       </div>
       <div className="items-right flex gap-6">
-        {currentRegion && <PokeRegionDropdown currentRegion={currentRegion} />}
+        {currentRegion && (
+          <PokeRegionDropdown
+            currentRegion={currentRegion}
+            regionUrls={regionUrls}
+          />
+        )}
         <PokeSearchCommand />
       </div>
     </nav>

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { RegionType } from "@app/lib/api/regions/config";
 import { config, SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -8,8 +9,8 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetRegionResponseType = {
-  region: string;
-  regionUrls: Record<string, string>;
+  region: RegionType;
+  regionUrls: Record<RegionType, string>;
 };
 
 async function handler(
