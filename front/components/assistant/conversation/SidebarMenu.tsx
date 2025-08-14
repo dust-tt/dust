@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  FolderOpenIcon,
   Icon,
   InformationCircleIcon,
   Label,
@@ -34,6 +35,7 @@ import { DeleteConversationsDialog } from "@app/components/assistant/conversatio
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import {
   useConversations,
   useDeleteConversation,
@@ -69,7 +71,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   >([]);
   const doDelete = useDeleteConversation(owner);
 
-  const { featureFlags } = useFeatureFlags({
+  const { featureFlags, hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
@@ -82,6 +84,9 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [titleFilter, setTitleFilter] = useState<string>("");
+  const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
+    owner,
+  });
   const sendNotification = useSendNotification();
 
   const toggleMultiSelect = useCallback(() => {
@@ -271,6 +276,20 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                           data-gtm-label="assistantCreationButton"
                           data-gtm-location="sidebarMenu"
                         />
+                        {hasFeature("agent_builder_v2") && (
+                          <DropdownMenuItem
+                            icon={FolderOpenIcon}
+                            label={
+                              isUploadingYAML
+                                ? "Uploading..."
+                                : "New agent from YAML"
+                            }
+                            disabled={isUploadingYAML}
+                            onClick={triggerYAMLUpload}
+                            data-gtm-label="yamlUploadButton"
+                            data-gtm-location="sidebarMenu"
+                          />
+                        )}
                       </>
                     )}
                     {isBuilder(owner) && (
