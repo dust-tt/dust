@@ -38,9 +38,10 @@ type GroupedFiles = Partial<
 interface FileRendererProps {
   files: ActionGeneratedFileType[];
   owner: LightWorkspaceType;
+  onFileClick: () => void;
 }
 
-function FileRenderer({ files, owner }: FileRendererProps) {
+function FileRenderer({ files, owner, onFileClick }: FileRendererProps) {
   return (
     <CitationGrid variant="grid">
       {files.map((file, idx) => (
@@ -52,6 +53,7 @@ function FileRenderer({ files, owner }: FileRendererProps) {
             title: file.title,
           }}
           index={idx}
+          onClick={onFileClick}
         />
       ))}
     </CitationGrid>
@@ -63,9 +65,10 @@ interface FileGroupProps {
   files: ActionGeneratedFileType[];
   owner: LightWorkspaceType;
   contentType: string;
+  onFileClick: () => void;
 }
 
-function FileGroup({ title, files, owner, contentType }: FileGroupProps) {
+function FileGroup({ title, files, owner, contentType, onFileClick }: FileGroupProps) {
   return (
     <div className="space-y-2">
       <div className="text-xs font-medium text-primary dark:text-primary-night">
@@ -73,9 +76,9 @@ function FileGroup({ title, files, owner, contentType }: FileGroupProps) {
       </div>
       <div>
         {contentType === clientExecutableContentType ? (
-          <InteractiveAgentMessageGeneratedFiles files={files} variant="grid" />
+          <InteractiveAgentMessageGeneratedFiles files={files} variant="grid" onClick={onFileClick} />
         ) : (
-          <FileRenderer files={files} owner={owner} />
+          <FileRenderer files={files} owner={owner} onFileClick={onFileClick} />
         )}
       </div>
     </div>
@@ -171,6 +174,7 @@ export function ConversationFilesPopover({
                   files={files}
                   owner={owner}
                   contentType={groupKey}
+                  onFileClick={() => setIsOpen(false)}
                 />
               );
             })}

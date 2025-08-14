@@ -17,6 +17,7 @@ import { clientExecutableContentType } from "@app/types";
 interface DefaultAgentMessageGeneratedFilesProps {
   document: MarkdownCitation;
   index: number;
+  onClick?: () => void;
 }
 
 function CitationContent({
@@ -37,9 +38,10 @@ function CitationContent({
 export function DefaultAgentMessageGeneratedFiles({
   document,
   index,
+  onClick,
 }: DefaultAgentMessageGeneratedFilesProps) {
   return (
-    <Citation href={document.href} tooltip={document.title}>
+    <Citation href={document.href} tooltip={document.title} onClick={onClick}>
       <CitationContent document={document} index={index} />
     </Citation>
   );
@@ -60,11 +62,13 @@ function getDescriptionForContentType(
 interface InteractiveAgentMessageGeneratedFilesProps {
   files: LightAgentMessageType["generatedFiles"];
   variant?: "list" | "grid";
+  onClick?: () => void;
 }
 
 export function InteractiveAgentMessageGeneratedFiles({
   files,
   variant = "list",
+  onClick,
 }: InteractiveAgentMessageGeneratedFilesProps) {
   const { openPanel } = useConversationSidePanelContext();
 
@@ -81,6 +85,7 @@ export function InteractiveAgentMessageGeneratedFiles({
             type: "content",
             fileId: file.fileId,
           });
+          onClick?.();
         };
 
         const description = getDescriptionForContentType(file);
