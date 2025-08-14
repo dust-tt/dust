@@ -1,5 +1,6 @@
 import { assertNever } from "@dust-tt/client";
 import React, { useEffect, useState } from "react";
+import type { ImperativePanelHandle } from "react-resizable-panels";
 
 import { useHashParam } from "@app/hooks/useHashParams";
 import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
@@ -39,6 +40,8 @@ interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
   openPanel: (params: OpenPanelParams) => void;
   closePanel: () => void;
+  onPanelClosed: () => void;
+  setPanelRef: (ref: ImperativePanelHandle | null) => void;
   data: string | undefined;
   metadata: SidePanelMetadata;
 }
@@ -71,6 +74,12 @@ export function ConversationSidePanelProvider({
   );
   const [metadata, setMetadata] = useState<SidePanelMetadata>(undefined);
 
+  const panelRef = React.useRef<ImperativePanelHandle | null>(null);
+
+  const setPanelRef = (ref: ImperativePanelHandle | null) => {
+    panelRef.current = ref;
+  };
+
   const openPanel = (params: OpenPanelParams) => {
     setCurrentPanel(params.type);
 
@@ -99,6 +108,12 @@ export function ConversationSidePanelProvider({
   };
 
   const closePanel = () => {
+    if (panelRef && panelRef.current) {
+      panelRef.current.collapse();
+    }
+  };
+
+  const onPanelClosed = () => {
     setData(undefined);
     setMetadata(undefined);
     setCurrentPanel(undefined);
@@ -116,7 +131,7 @@ export function ConversationSidePanelProvider({
         });
       }
     } else if (!data) {
-      setCurrentPanel(undefined);
+      closePanel();
     }
   }, [data, currentPanel, setCurrentPanel, metadata]);
 
@@ -128,6 +143,8 @@ export function ConversationSidePanelProvider({
           : undefined,
         openPanel,
         closePanel,
+        onPanelClosed,
+        setPanelRef,
         data,
         metadata,
       }}
