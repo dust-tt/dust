@@ -5,6 +5,7 @@ import {
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
+  ScrollArea,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -31,6 +32,10 @@ const CONTENT_TYPE_GROUPS = {
 
 type ContentTypeGroup = keyof typeof CONTENT_TYPE_GROUPS;
 
+function getGroupedContentType(contentType: AllSupportedFileContentType) {
+  return contentType in CONTENT_TYPE_GROUPS ? contentType : "other";
+}
+
 type GroupedFiles = Partial<
   Record<AllSupportedFileContentType | "other", ActionGeneratedFileType[]>
 >;
@@ -42,8 +47,8 @@ interface FileRendererProps {
 
 function FileRenderer({ files, owner }: FileRendererProps) {
   return (
-    <CitationGrid variant="grid">
-      {files.map((file, idx) => (
+    <CitationGrid variant="grid" className="md:grid-cols-3">
+      {files.map((file) => (
         <DefaultAgentMessageGeneratedFiles
           key={file.fileId}
           document={{
@@ -51,7 +56,7 @@ function FileRenderer({ files, owner }: FileRendererProps) {
             icon: <DocumentIcon />,
             title: file.title,
           }}
-          index={idx}
+          index={-1}
         />
       ))}
     </CitationGrid>
@@ -75,7 +80,7 @@ function FileGroup({
 }: FileGroupProps) {
   return (
     <div className="space-y-2">
-      <div className="text-xs font-medium text-primary dark:text-primary-night">
+      <div className="text-sm font-medium text-primary dark:text-primary-night">
         {title}
       </div>
       <div>
@@ -114,11 +119,10 @@ export function ConversationFilesPopover({
     const groups: GroupedFiles = {};
 
     for (const file of conversationFiles) {
-      const key =
-        file.contentType in CONTENT_TYPE_GROUPS ? file.contentType : "other";
+      const key = getGroupedContentType(file.contentType);
 
-      groups[key] ??= [];
-      groups[key]!.push(file);
+      groups[key] = groups[key] ?? [];
+      groups[key].push(file);
     }
 
     return groups;
@@ -155,39 +159,41 @@ export function ConversationFilesPopover({
         />
       </PopoverTrigger>
       <PopoverContent className="flex w-96 flex-col gap-3" align="end">
-        <div className="font-semibold text-primary dark:text-primary-night">
-          Generated Content
-        </div>
-
-        {!hasFiles ? (
-          <div className="py-4 text-center text-sm text-muted-foreground">
-            No files have been generated in this conversation yet.
+        <ScrollArea>
+          <div className="heading-base text-primary dark:text-primary-night">
+            Generated Content
           </div>
-        ) : (
-          <div className="space-y-4">
-            {Object.entries(groupedFiles).map(([groupKey, files]) => {
-              if (!files?.length) {
-                return null;
-              }
 
-              const title =
-                groupKey === "other"
-                  ? "Other"
-                  : CONTENT_TYPE_GROUPS[groupKey as ContentTypeGroup];
+          {!hasFiles ? (
+            <div className="py-4 text-center text-sm text-muted-foreground">
+              No files have been generated in this conversation yet.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {Object.entries(groupedFiles).map(([groupKey, files]) => {
+                if (!files?.length) {
+                  return null;
+                }
 
-              return (
-                <FileGroup
-                  key={groupKey}
-                  title={title}
-                  files={files}
-                  owner={owner}
-                  contentType={groupKey}
-                  onFileClick={() => setIsOpen(false)}
-                />
-              );
-            })}
-          </div>
-        )}
+                const title =
+                  groupKey === "other"
+                    ? "Other"
+                    : CONTENT_TYPE_GROUPS[groupKey as ContentTypeGroup];
+
+                return (
+                  <FileGroup
+                    key={groupKey}
+                    title={title}
+                    files={files}
+                    owner={owner}
+                    contentType={groupKey}
+                    onFileClick={() => setIsOpen(false)}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </ScrollArea>
       </PopoverContent>
     </PopoverRoot>
   );
