@@ -29,7 +29,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     });
   }
 
-  static modelIdToSId({
+  private static modelIdToSId({
     id,
     workspaceId,
   }: {
