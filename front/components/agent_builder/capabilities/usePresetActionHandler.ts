@@ -8,8 +8,8 @@ import type {
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import {
-  getMcpServerViewDisplayName,
   getMCPServerNameForTemplateAction,
+  getMcpServerViewDisplayName,
   isDirectAddTemplateAction,
   isKnowledgeTemplateAction,
 } from "@app/lib/actions/mcp_helper";
@@ -26,11 +26,13 @@ interface UsePresetActionHandlerProps {
   append: UseFieldArrayAppend<AgentBuilderFormData, "actions">;
   sendNotification: (notification: NotificationType) => void;
   fields: AgentBuilderFormData["actions"];
-  setKnowledgeAction: (action: {
-    action: AgentBuilderAction;
-    index: number | null;
-    presetData?: TemplateActionPreset;
-  } | null) => void;
+  setKnowledgeAction: (
+    action: {
+      action: AgentBuilderAction;
+      index: number | null;
+      presetData?: TemplateActionPreset;
+    } | null
+  ) => void;
 }
 
 export function usePresetActionHandler({
@@ -48,7 +50,9 @@ export function usePresetActionHandler({
   const processingRef = useRef(false);
 
   useEffect(() => {
-    if (!presetActionToAdd || isMCPServerViewsLoading) return;
+    if (!presetActionToAdd || isMCPServerViewsLoading) {
+      return;
+    }
 
     // Prevent duplicate processing
     if (processingRef.current) {
@@ -57,7 +61,8 @@ export function usePresetActionHandler({
 
     processingRef.current = true;
 
-    const targetServerName = getMCPServerNameForTemplateAction(presetActionToAdd);
+    const targetServerName =
+      getMCPServerNameForTemplateAction(presetActionToAdd);
     const mcpServerViewSource = isKnowledgeTemplateAction(presetActionToAdd)
       ? mcpServerViewsWithKnowledge
       : mcpServerViews;
@@ -80,7 +85,8 @@ export function usePresetActionHandler({
 
       if (!allowsMultiple) {
         const toolAlreadyAdded = fields.some(
-          field => field.type === "MCP" &&
+          (field) =>
+            field.type === "MCP" &&
             field.configuration?.mcpServerViewId === mcpServerView.sId
         );
 

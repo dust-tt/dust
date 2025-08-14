@@ -46,9 +46,9 @@ import { useSpacesContext } from "@app/components/assistant_builder/contexts/Spa
 import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
 import {
+  getMCPServerNameForTemplateAction,
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
-  getMCPServerNameForTemplateAction,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -155,28 +155,27 @@ export function KnowledgeConfigurationSheet({
           (view) => view.sId === action.configuration.mcpServerViewId
         );
       }
-      
+
       if (presetActionData) {
-        const targetServerName = getMCPServerNameForTemplateAction(presetActionData);
+        const targetServerName =
+          getMCPServerNameForTemplateAction(presetActionData);
         return mcpServerViews.find(
           (view) => view.server.name === targetServerName
         );
       }
-      
+
       return mcpServerViews.find((view) => view.server.name === "search");
     })();
 
-    const defaultName = 
-      action?.name ?? 
-      presetActionData?.name ?? 
-      selectedMCPServerView?.name ?? 
-      selectedMCPServerView?.server.name ?? 
+    const defaultName =
+      action?.name ??
+      presetActionData?.name ??
+      selectedMCPServerView?.name ??
+      selectedMCPServerView?.server.name ??
       "";
-    
-    const defaultDescription = 
-      action?.description ?? 
-      presetActionData?.description ?? 
-      "";
+
+    const defaultDescription =
+      action?.description ?? presetActionData?.description ?? "";
 
     return {
       sources: dataSourceTree,
@@ -192,7 +191,7 @@ export function KnowledgeConfigurationSheet({
     resolver: zodResolver(capabilityFormSchema),
     defaultValues,
   });
-  
+
   useEffect(() => {
     if (action || presetActionData) {
       formMethods.reset(defaultValues);
