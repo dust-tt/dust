@@ -180,132 +180,145 @@ export function MCPRunAgentActionDetails({
       visual={
         childAgent?.pictureUrl
           ? () => (
-              <Avatar visual={childAgent.pictureUrl} size="sm" busy={isBusy} />
+              <Avatar visual={childAgent.pictureUrl} size="xs" busy={isBusy} />
             )
           : RobotIcon
       }
     >
-      <div className="flex flex-col gap-4 pl-6 pt-4">
-        <div className="flex flex-col gap-4">
-          {query && childAgent && (
+      {viewType === "conversation" ? (
+        <>
+          {query && (
             <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-              <ContentMessage title="Query" variant="primary" size="lg">
-                <Markdown
-                  content={query}
-                  isStreaming={false}
-                  forcedTextSize="text-sm"
-                  textColor="text-muted-foreground"
-                  isLastMessage={false}
-                />
-              </ContentMessage>
+              {query}
             </div>
           )}
-          {childAgent && (
-            <CollapsibleComponent
-              rootProps={{ defaultOpen: true }}
-              triggerChildren={
-                <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                  @{childAgent.name}'s Answer
-                </span>
-              }
-              contentChildren={
-                <div className="flex flex-col gap-4">
-                  {chainOfThought && (
-                    <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                      <ContentMessage
-                        title="Agent thoughts"
-                        variant="primary"
-                        size="lg"
-                      >
-                        <Markdown
-                          content={chainOfThought}
-                          isStreaming={isStreamingChainOfThought}
-                          forcedTextSize="text-sm"
-                          textColor="text-muted-foreground"
-                          isLastMessage={false}
-                        />
-                      </ContentMessage>
-                    </div>
-                  )}
-                  {response && (
-                    <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                      <ContentMessage
-                        title="Response"
-                        variant="primary"
-                        size="lg"
-                      >
-                        <CitationsContext.Provider
-                          value={{
-                            references,
-                            updateActiveReferences,
-                          }}
+        </>
+      ) : (
+        <div className="flex flex-col gap-4 pl-6 pt-4">
+          <div className="flex flex-col gap-4">
+            {query && childAgent && (
+              <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                <ContentMessage title="Query" variant="primary" size="lg">
+                  <Markdown
+                    content={query}
+                    isStreaming={false}
+                    forcedTextSize="text-sm"
+                    textColor="text-muted-foreground"
+                    isLastMessage={false}
+                  />
+                </ContentMessage>
+              </div>
+            )}
+            {childAgent && (
+              <CollapsibleComponent
+                rootProps={{ defaultOpen: true }}
+                triggerChildren={
+                  <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                    @{childAgent.name}'s Answer
+                  </span>
+                }
+                contentChildren={
+                  <div className="flex flex-col gap-4">
+                    {chainOfThought && (
+                      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                        <ContentMessage
+                          title="Agent thoughts"
+                          variant="primary"
+                          size="lg"
                         >
                           <Markdown
-                            content={response}
-                            isStreaming={isStreamingResponse}
+                            content={chainOfThought}
+                            isStreaming={isStreamingChainOfThought}
                             forcedTextSize="text-sm"
                             textColor="text-muted-foreground"
                             isLastMessage={false}
-                            additionalMarkdownPlugins={
-                              additionalMarkdownPlugins
-                            }
-                            additionalMarkdownComponents={
-                              additionalMarkdownComponents
-                            }
                           />
-                        </CitationsContext.Provider>
+                        </ContentMessage>
+                      </div>
+                    )}
+                    {response && (
+                      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                        <ContentMessage
+                          title="Response"
+                          variant="primary"
+                          size="lg"
+                        >
+                          <CitationsContext.Provider
+                            value={{
+                              references,
+                              updateActiveReferences,
+                            }}
+                          >
+                            <Markdown
+                              content={response}
+                              isStreaming={isStreamingResponse}
+                              forcedTextSize="text-sm"
+                              textColor="text-muted-foreground"
+                              isLastMessage={false}
+                              additionalMarkdownPlugins={
+                                additionalMarkdownPlugins
+                              }
+                              additionalMarkdownComponents={
+                                additionalMarkdownComponents
+                              }
+                            />
+                          </CitationsContext.Provider>
 
-                        {activeReferences.length > 0 && (
-                          <div className="mt-4">
-                            <CitationGrid variant="grid">
-                              {activeReferences
-                                .sort((a, b) => a.index - b.index)
-                                .map(({ document, index }) => (
-                                  <Citation
-                                    key={index}
-                                    onClick={
-                                      document.href
-                                        ? () =>
-                                            window.open(document.href, "_blank")
-                                        : undefined
-                                    }
-                                    tooltip={
-                                      document.description || document.title
-                                    }
-                                  >
-                                    <CitationIcons>
-                                      <CitationIndex>{index}</CitationIndex>
-                                      {document.icon}
-                                    </CitationIcons>
-                                    <CitationTitle>
-                                      {document.title}
-                                    </CitationTitle>
-                                  </Citation>
-                                ))}
-                            </CitationGrid>
-                          </div>
-                        )}
-                      </ContentMessage>
-                    </div>
-                  )}
-                </div>
-              }
-            />
-          )}
+                          {activeReferences.length > 0 && (
+                            <div className="mt-4">
+                              <CitationGrid variant="grid">
+                                {activeReferences
+                                  .sort((a, b) => a.index - b.index)
+                                  .map(({ document, index }) => (
+                                    <Citation
+                                      key={index}
+                                      onClick={
+                                        document.href
+                                          ? () =>
+                                              window.open(
+                                                document.href,
+                                                "_blank"
+                                              )
+                                          : undefined
+                                      }
+                                      tooltip={
+                                        document.description || document.title
+                                      }
+                                    >
+                                      <CitationIcons>
+                                        <CitationIndex>{index}</CitationIndex>
+                                        {document.icon}
+                                      </CitationIcons>
+                                      <CitationTitle>
+                                        {document.title}
+                                      </CitationTitle>
+                                    </Citation>
+                                  ))}
+                              </CitationGrid>
+                            </div>
+                          )}
+                        </ContentMessage>
+                      </div>
+                    )}
+                  </div>
+                }
+              />
+            )}
+          </div>
+          <div>
+            {conversationUrl && (
+              <Button
+                icon={ExternalLinkIcon}
+                label="View full conversation"
+                variant="outline"
+                onClick={() => window.open(conversationUrl, "_blank")}
+                size="xs"
+                className="!p-1"
+              />
+            )}
+          </div>
         </div>
-        <div>
-          {conversationUrl && (
-            <Button
-              icon={ExternalLinkIcon}
-              label="View full conversation"
-              variant="outline"
-              onClick={() => window.open(conversationUrl, "_blank")}
-              size="xs"
-              className="!p-1"
-            />
-          )}
-        </div>
-      </div>
+      )}
     </ActionDetailsWrapper>
   );
 }

@@ -63,7 +63,7 @@ export function AgentMessageActions({
     <div
       onClick={onClick}
       className={cn(
-        "flex max-w-[500px] flex-col gap-y-4",
+        "flex flex-col gap-y-4",
         lastAction ? "cursor-pointer" : ""
       )}
     >
@@ -80,7 +80,7 @@ export function AgentMessageActions({
         </Card>
       ) : (
         <div>
-          <ContentMessage variant="primary">
+          <ContentMessage variant="primary" className="max-w-[1000px] p-3">
             <div className="flex w-full flex-row">
               {!chainOfThought ? (
                 <AnimatedText variant="primary">Thinking...</AnimatedText>
@@ -94,7 +94,7 @@ export function AgentMessageActions({
                 />
               )}
               <span className="flex-grow"></span>
-              <div className="w-8 self-start pl-4">
+              <div className="w-8 self-start pl-4 pt-0.5">
                 {lastAgentStateClassification === "thinking" && (
                   <Spinner size="xs" />
                 )}
