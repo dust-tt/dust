@@ -106,6 +106,7 @@ export { LinkWrapper } from "./LinkWrapper";
 export { LoadingBlock } from "./LoadingBlock";
 export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";
+export { MessageCard } from "./MessageCard";
 export type {
   MultiPageDialogFooterProps,
   MultiPageDialogPage,
