@@ -55,8 +55,5 @@
     "tls": false,
     "net": false,
     "hot-shots": false
-  },
-  "bundleDependencies": [
-    "@modelcontextprotocol/sdk"
-  ]
+  }
 }
