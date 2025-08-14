@@ -1,6 +1,9 @@
 import assert from "assert";
 
-import type { ActionBaseParams } from "@app/lib/actions/mcp";
+import type {
+  ActionBaseParams,
+  LightMCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { ModelId } from "@app/types";
 import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
@@ -17,6 +20,7 @@ export async function buildActionBaseParams({
   mcpServerId,
   step,
   stepContentId,
+  toolConfiguration,
 }: {
   agentMessageId: number;
   citationsAllocated: number;
@@ -24,6 +28,7 @@ export async function buildActionBaseParams({
   mcpServerId: string | null;
   step: number;
   stepContentId: ModelId;
+  toolConfiguration: LightMCPToolConfigurationType;
 }): Promise<ActionBaseParams> {
   // Fetch and validate step content.
   const stepContent =
@@ -53,5 +58,6 @@ export async function buildActionBaseParams({
     mcpServerConfigurationId,
     params: rawInputs,
     step,
+    toolConfiguration,
   };
 }

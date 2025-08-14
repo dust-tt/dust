@@ -264,6 +264,7 @@ export class MCPActionType {
   readonly step: number = -1;
   readonly isError: boolean = false;
   readonly citationsAllocated: number = 0;
+  readonly toolConfiguration: LightMCPToolConfigurationType;
   // TODO(2025-07-24 aubin): remove the type here.
   readonly type = "tool_action" as const;
 
@@ -283,6 +284,7 @@ export class MCPActionType {
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
     this.citationsAllocated = blob.citationsAllocated;
+    this.toolConfiguration = blob.toolConfiguration;
   }
 
   getGeneratedFiles(): ActionGeneratedFileType[] {

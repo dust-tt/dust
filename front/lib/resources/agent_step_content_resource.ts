@@ -366,6 +366,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
               isError: action.isError,
               type: "tool_action",
               citationsAllocated: action.citationsAllocated,
+              toolConfiguration: action.toolConfiguration,
               generatedFiles: removeNulls(
                 action.outputItems.map((o) => {
                   if (!o.file) {
