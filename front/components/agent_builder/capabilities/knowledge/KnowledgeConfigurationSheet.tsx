@@ -18,6 +18,7 @@ import {
 } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { useAgentBuilderFormActions } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { KnowledgeFooter } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeFooter";
 import {
   transformSelectionConfigurationsToTree,
@@ -32,7 +33,12 @@ import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/sh
 import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import {
+  getAllowedSpaces,
+  getSpaceIdToActionsMap,
+} from "@app/components/agent_builder/get_allowed_spaces";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type {
   CapabilityFormData,
   ConfigurationSheetPageId,
@@ -42,7 +48,6 @@ import {
   capabilityFormSchema,
   CONFIGURATION_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
-import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
 import {
@@ -227,6 +232,15 @@ function KnowledgeConfigurationSheetContent({
   const { handleSubmit, setValue, getValues } =
     useFormContext<CapabilityFormData>();
 
+  const { actions } = useAgentBuilderFormActions();
+  const { mcpServerViews } = useMCPServerViewsContext();
+  const { spaces } = useSpacesContext();
+  const spaceIdToActions = getSpaceIdToActionsMap(actions, mcpServerViews);
+  const allowedSpaces = getAllowedSpaces({
+    spaces,
+    spaceIdToActions,
+  });
+
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
   });
@@ -356,6 +370,7 @@ function KnowledgeConfigurationSheetContent({
               dataSourceViews={supportedDataSourceViews}
               owner={owner}
               viewType={viewType}
+              allowedSpaces={allowedSpaces}
             />
           </ScrollArea>
         </div>

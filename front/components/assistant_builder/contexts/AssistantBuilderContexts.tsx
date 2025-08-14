@@ -8,7 +8,10 @@ import React, {
   useState,
 } from "react";
 
-import { getAllowedSpaces as getAllowedSpacesOriginal } from "@app/components/agent_builder/utils";
+import {
+  getAllowedSpaces as getAllowedSpacesOriginal,
+  getSpaceIdToActionsMap,
+} from "@app/components/agent_builder/get_allowed_spaces";
 import { DataSourceViewsProvider } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { MCPServerViewsProvider } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
@@ -35,7 +38,6 @@ import type {
   SpaceType,
 } from "@app/types";
 import {
-  assertNever,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
 } from "@app/types";
@@ -178,57 +180,7 @@ const AssistantBuilderProvider = ({
   const configurableActions = builderState.actions;
 
   const spaceIdToActions = useMemo(() => {
-    return configurableActions.reduce<
-      Record<string, AssistantBuilderMCPOrVizState[]>
-    >((acc, action) => {
-      const addActionToSpace = (spaceId?: string) => {
-        if (spaceId) {
-          acc[spaceId] = (acc[spaceId] || []).concat(action);
-        }
-      };
-
-      const actionType = action.type;
-
-      switch (actionType) {
-        case "MCP":
-          if (action.configuration.dataSourceConfigurations) {
-            Object.values(
-              action.configuration.dataSourceConfigurations
-            ).forEach((config) => {
-              addActionToSpace(config.dataSourceView.spaceId);
-            });
-          }
-
-          if (action.configuration.tablesConfigurations) {
-            Object.values(action.configuration.tablesConfigurations).forEach(
-              (config) => {
-                addActionToSpace(config.dataSourceView.spaceId);
-              }
-            );
-          }
-
-          if (action.configuration.mcpServerViewId) {
-            const mcpServerView = mcpServerViews.find(
-              (v) => v.sId === action.configuration.mcpServerViewId
-            );
-            // Default MCP server themselves are not accounted for in the space restriction.
-            if (
-              mcpServerView &&
-              mcpServerView.server.availability === "manual"
-            ) {
-              addActionToSpace(mcpServerView.spaceId);
-            }
-          }
-          break;
-
-        case "DATA_VISUALIZATION": // Data visualization is not an action but we show it in the UI like an action.
-          break;
-
-        default:
-          assertNever(actionType);
-      }
-      return acc;
-    }, {});
+    return getSpaceIdToActionsMap(configurableActions, mcpServerViews);
   }, [configurableActions, mcpServerViews]);
 
   const nonGlobalSpacesUsedInActions = useMemo(() => {
