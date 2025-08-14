@@ -164,7 +164,7 @@ async function handler(
 
       const ctx: UserMessageContext = {
         clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
-        email: context.email ?? null,
+        email: context.email?.toLowerCase() ?? null,
         fullName: context.fullName ?? null,
         origin: context.origin ?? "api",
         profilePictureUrl: context.profilePictureUrl ?? null,
