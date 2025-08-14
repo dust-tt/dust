@@ -9,7 +9,7 @@ const PRIVACY_MASK_CLASS = "privacy-mask-enabled";
 export function usePrivacyMask() {
   const [isEnabled, setIsEnabled] = useState(false);
 
-  // Helper functions
+  // Helper functions for privacy mask management.
   const getPrivacyMaskState = useCallback((): boolean => {
     const cookies = document.cookie.split(";");
     const privacyCookie = cookies.find((c) =>
