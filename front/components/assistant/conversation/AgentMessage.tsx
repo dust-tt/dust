@@ -549,8 +549,8 @@ export function AgentMessage({
     isStreaming: boolean;
   }) => {
     return (
-      <div className="bg-structure-50/50 rounded-lg p-4">
-        <div className="flex items-start gap-2">
+      <div className="bg-structure-50/50 rounded-lg p-2">
+        <div className="flex items-start">
           {isStreaming && (
             <div className="mt-1">
               <Spinner size="xs" />
@@ -724,7 +724,7 @@ export function AgentMessage({
     );
 
     return (
-      <div className="flex flex-col gap-y-3">
+      <div className="flex flex-col gap-y-2">
         {/* Render all streaming blocks in order */}
         {messageStreamState.streamingBlocks.map((block, index) => {
           if (block.type === "thinking") {
