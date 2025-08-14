@@ -1,6 +1,7 @@
 import assert from "assert";
 
 import type { ActionBaseParams } from "@app/lib/actions/mcp";
+import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { ModelId } from "@app/types";
 import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
@@ -39,6 +40,8 @@ export async function buildActionBaseParams({
     );
   }
 
+  const internalMCPServerName = getInternalMCPServerNameFromSId(mcpServerId);
+
   const rawInputs = JSON.parse(stepContent.value.value.arguments);
   const { id: functionCallId, name: functionCallName } =
     stepContent.value.value;
@@ -49,6 +52,7 @@ export async function buildActionBaseParams({
     functionCallId,
     functionCallName,
     mcpServerId,
+    internalMCPServerName,
     generatedFiles: [],
     mcpServerConfigurationId,
     params: rawInputs,

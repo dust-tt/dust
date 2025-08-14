@@ -108,7 +108,7 @@ export function AssistantInputBar({
   const sendInputBarStatus = useCallback(
     (available: boolean) => {
       void platform.messaging?.sendMessage({
-        type: "EXT_INPUT_BAR_STATUS",
+        type: "INPUT_BAR_STATUS",
         available,
       });
     },

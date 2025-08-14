@@ -17,7 +17,10 @@ import type {
   CustomServerIconType,
   InternalAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
-import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
+import type {
+  InternalMCPServerNameType,
+  MCPServerAvailability,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -256,6 +259,7 @@ export class MCPActionType {
 
   readonly mcpServerConfigurationId: string;
   readonly mcpServerId: string | null;
+  readonly internalMCPServerName: InternalMCPServerNameType | null;
   readonly params: Record<string, unknown>; // Hold the inputs for the action.
   readonly output: CallToolResult["content"] | null;
   // TODO(durable-agents): drop this column.
@@ -275,6 +279,7 @@ export class MCPActionType {
     this.agentMessageId = blob.agentMessageId;
     this.mcpServerConfigurationId = blob.mcpServerConfigurationId;
     this.mcpServerId = blob.mcpServerId;
+    this.internalMCPServerName = blob.internalMCPServerName;
     this.executionState = blob.executionState;
     this.isError = blob.isError;
     this.params = blob.params;

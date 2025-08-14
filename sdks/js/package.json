@@ -46,6 +46,7 @@
     "event-source-polyfill": "^1.0.31",
     "eventsource-parser": "^1.1.1",
     "moment-timezone": "^0.5.46",
+    "sqids": "^0.3.0",
     "zod": "^3.23.8"
   },
   "bundledDependencies": [
@@ -55,5 +56,5 @@
     "tls": false,
     "net": false,
     "hot-shots": false
-  }
+  },
 }

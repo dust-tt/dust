@@ -683,9 +683,11 @@ export type WebsearchResultPublicType = z.infer<typeof WebsearchResultSchema>;
 
 const MCPActionTypeSchema = z.object({
   id: ModelIdSchema,
+  mcpServerId: z.string().nullable(),
+  internalMCPServerName: z.string().nullable(),
   agentMessageId: ModelIdSchema,
   functionCallName: z.string().nullable(),
-  params: z.unknown(),
+  params: z.record(z.any()),
   output: CallToolResultSchema.shape.content.nullable(),
   type: z.literal("tool_action"),
 });
