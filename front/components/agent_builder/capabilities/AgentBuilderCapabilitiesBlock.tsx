@@ -145,7 +145,7 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
 }
 interface AgentBuilderCapabilitiesBlockProps {
   isActionsLoading: boolean;
-  presetActionToAdd?: TemplateActionPreset | null;
+  presetActionToAdd?: TemplateActionPreset;
   onPresetActionHandled?: () => void;
 }
 
@@ -170,7 +170,7 @@ export function AgentBuilderCapabilitiesBlock({
   const [knowledgeAction, setKnowledgeAction] = useState<{
     action: AgentBuilderAction;
     index: number | null;
-    presetData?: TemplateActionPreset | null;
+    presetData?: TemplateActionPreset;
   } | null>(null);
   
   // Use a ref to track if we're processing to prevent multiple executions

@@ -16,7 +16,7 @@ interface AgentBuilderLeftPanelProps {
   agentConfigurationId: string | null;
   saveButtonProps?: ButtonProps;
   isActionsLoading: boolean;
-  presetActionToAdd?: TemplateActionPreset | null;
+  presetActionToAdd?: TemplateActionPreset;
   onPresetActionHandled?: () => void;
 }
 
