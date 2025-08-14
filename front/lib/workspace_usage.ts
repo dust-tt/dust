@@ -127,7 +127,7 @@ export async function unsafeGetUsageData(
           WHEN cf."id" IS NOT NULL THEN 'content_fragment'
         END AS "messageType",
         um."userContextFullName" AS "userFullName",
-        um."userContextEmail" AS "userEmail",
+        LOWER(um."userContextEmail") AS "userEmail",
         COALESCE(ac."sId", am."agentConfigurationId") AS "assistantId",
         COALESCE(ac."name", am."agentConfigurationId") AS "assistantName",
         msv."internalMCPServerId" AS "actionType",
@@ -223,7 +223,7 @@ export async function getMessageUsageData(
         m."parentId" AS "parent_message_id",
         um."id" AS "user_message_id",
         um."userId" AS "user_id",
-        um."userContextEmail" AS "user_email",
+        LOWER(um."userContextEmail") AS "user_email",
         um."userContextOrigin" AS "source"
       FROM
         "agent_messages" am
@@ -342,7 +342,7 @@ export async function getUserUsageData(
         attributes: [
           "userMessage.userId",
           "userMessage.userContextFullName",
-          "userMessage.userContextEmail",
+          "LOWER(userMessage.userContextEmail)",
           "userMessage.userContextOrigin",
           [Sequelize.fn("COUNT", Sequelize.col("userMessage.id")), "count"],
           [
@@ -395,7 +395,7 @@ export async function getUserUsageData(
         group: [
           "userMessage.userId",
           "userMessage.userContextFullName",
-          "userMessage.userContextEmail",
+          "LOWER(userMessage.userContextEmail)",
           "userMessage.userContextOrigin",
         ],
         order: [["count", "DESC"]],
