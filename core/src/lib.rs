@@ -79,6 +79,7 @@ pub mod providers {
     }
     pub mod deepseek;
     pub mod fireworks;
+    pub mod gemini;
     pub mod google_ai_studio;
     pub mod helpers;
     pub mod openai_compatible_helpers;
