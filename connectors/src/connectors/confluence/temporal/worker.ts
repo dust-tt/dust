@@ -10,7 +10,10 @@ import {
   getTemporalWorkerConnection,
   TEMPORAL_MAXED_CACHED_WORKFLOWS,
 } from "@connectors/lib/temporal";
-import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
+import {
+  ActivityInboundLogInterceptor,
+  ActivityOutboundLogInterceptor,
+} from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
 
 export async function runConfluenceWorker() {
@@ -25,11 +28,14 @@ export async function runConfluenceWorker() {
     reuseV8Context: true,
     namespace,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger, "confluence");
-        },
-        () => new ConfluenceCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "confluence"),
+          outbound: new ActivityOutboundLogInterceptor("confluence"),
+        }),
+        () => ({
+          inbound: new ConfluenceCastKnownErrorsInterceptor(),
+        }),
       ],
     },
     bundlerOptions: {

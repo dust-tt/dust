@@ -9,7 +9,10 @@ import {
   getTemporalWorkerConnection,
   TEMPORAL_MAXED_CACHED_WORKFLOWS,
 } from "@connectors/lib/temporal";
-import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
+import {
+  ActivityInboundLogInterceptor,
+  ActivityOutboundLogInterceptor,
+} from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
 
 export async function runGongWorker() {
@@ -24,11 +27,14 @@ export async function runGongWorker() {
     reuseV8Context: true,
     namespace,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger, "gong");
-        },
-        () => new GongCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "gong"),
+          outbound: new ActivityOutboundLogInterceptor("gong"),
+        }),
+        () => ({
+          inbound: new GongCastKnownErrorsInterceptor(),
+        }),
       ],
     },
     bundlerOptions: {

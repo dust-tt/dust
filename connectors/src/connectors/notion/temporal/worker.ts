@@ -9,7 +9,10 @@ import {
   QUEUE_NAME,
 } from "@connectors/connectors/notion/temporal/config";
 import { getTemporalWorkerConnection } from "@connectors/lib/temporal";
-import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
+import {
+  ActivityInboundLogInterceptor,
+  ActivityOutboundLogInterceptor,
+} from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
 
 export async function runNotionWorker() {
@@ -24,11 +27,14 @@ export async function runNotionWorker() {
     maxConcurrentActivityTaskExecutions: 24,
     maxCachedWorkflows: 200,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger, "notion");
-        },
-        () => new NotionCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "notion"),
+          outbound: new ActivityOutboundLogInterceptor("notion"),
+        }),
+        () => ({
+          inbound: new NotionCastKnownErrorsInterceptor(),
+        }),
       ],
     },
     bundlerOptions: {
@@ -57,11 +63,14 @@ export async function runNotionGarbageCollectWorker() {
     maxConcurrentActivityTaskExecutions: 24,
     maxCachedWorkflows: 200,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger, "notion");
-        },
-        () => new NotionCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "notion"),
+          outbound: new ActivityOutboundLogInterceptor("notion"),
+        }),
+        () => ({
+          inbound: new NotionCastKnownErrorsInterceptor(),
+        }),
       ],
     },
     bundlerOptions: {

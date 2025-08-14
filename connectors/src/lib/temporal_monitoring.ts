@@ -2,9 +2,12 @@ import type { ConnectorProvider } from "@dust-tt/client";
 import { assertNever } from "@dust-tt/client";
 import type { Context } from "@temporalio/activity";
 import { ApplicationFailure } from "@temporalio/activity";
+import type { MetricTags } from "@temporalio/common";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
+  ActivityOutboundCallsInterceptor,
+  GetLogAttributesInput,
   Next,
 } from "@temporalio/worker";
 import tracer from "dd-trace";
@@ -69,8 +72,6 @@ export class ActivityInboundLogInterceptor
       `attempt:${this.context.info.attempt}`,
       `provider:${this.provider}`,
     ];
-
-    this.context.metricMeter.withTags({ provider: this.provider });
 
     // startToClose timeouts do not log an error by default; this code
     // ensures that the error is logged and the activity is marked as
@@ -252,5 +253,35 @@ export class ActivityInboundLogInterceptor
         statsDClient.increment("activities_success.count", 1, tags);
       }
     }
+  }
+}
+
+export class ActivityOutboundLogInterceptor
+  implements ActivityOutboundCallsInterceptor
+{
+  private readonly provider: ConnectorProvider;
+
+  constructor(provider: ConnectorProvider) {
+    this.provider = provider;
+  }
+
+  getLogAttributes(
+    input: GetLogAttributesInput,
+    next: Next<ActivityOutboundCallsInterceptor, "getLogAttributes">
+  ): Record<string, unknown> {
+    return next({
+      ...input,
+      provider: this.provider,
+    });
+  }
+
+  getMetricTags(
+    input: MetricTags,
+    next: Next<ActivityOutboundCallsInterceptor, "getMetricTags">
+  ): MetricTags {
+    return next({
+      ...input,
+      provider: this.provider,
+    });
   }
 }

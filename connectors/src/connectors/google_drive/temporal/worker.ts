@@ -6,7 +6,10 @@ import * as activities from "@connectors/connectors/google_drive/temporal/activi
 import { GoogleDriveCastKnownErrorsInterceptor } from "@connectors/connectors/google_drive/temporal/cast_known_errors";
 import * as sync_status from "@connectors/lib/sync_status";
 import { getTemporalWorkerConnection } from "@connectors/lib/temporal";
-import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
+import {
+  ActivityInboundLogInterceptor,
+  ActivityOutboundLogInterceptor,
+} from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
 
 import {
@@ -26,11 +29,18 @@ export async function runGoogleWorkers() {
     reuseV8Context: true,
     namespace,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger, "google_drive");
-        },
-        () => new GoogleDriveCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(
+            ctx,
+            logger,
+            "google_drive"
+          ),
+          outbound: new ActivityOutboundLogInterceptor("google_drive"),
+        }),
+        () => ({
+          inbound: new GoogleDriveCastKnownErrorsInterceptor(),
+        }),
       ],
     },
     bundlerOptions: {
@@ -53,11 +63,18 @@ export async function runGoogleWorkers() {
     reuseV8Context: true,
     namespace,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger, "google_drive");
-        },
-        () => new GoogleDriveCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(
+            ctx,
+            logger,
+            "google_drive"
+          ),
+          outbound: new ActivityOutboundLogInterceptor("google_drive"),
+        }),
+        () => ({
+          inbound: new GoogleDriveCastKnownErrorsInterceptor(),
+        }),
       ],
     },
   });
