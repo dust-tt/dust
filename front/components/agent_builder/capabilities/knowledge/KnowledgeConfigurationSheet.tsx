@@ -202,7 +202,6 @@ export function KnowledgeConfigurationSheet({
   useEffect(() => {
     formMethods.reset(defaultValues);
   }, [defaultValues, formMethods]);
-
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       onClose();
