@@ -35,7 +35,7 @@ export function usePrivacyMask() {
     setIsEnabled(getPrivacyMaskState());
   }, [getPrivacyMaskState]);
 
-  // Toggle privacy mask state
+  // Toggle privacy mask state.
   const toggle = useCallback(() => {
     const newState = !isEnabled;
     setIsEnabled(newState);
