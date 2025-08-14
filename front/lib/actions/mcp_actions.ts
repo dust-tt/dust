@@ -785,7 +785,7 @@ async function listToolsForClientSideMCPServer(
   return new Ok(clientSideToolConfigs);
 }
 
-async function listToolsForServerSideMCPServer(
+export async function listToolsForServerSideMCPServer(
   auth: Authenticator,
   connectionParams: ServerSideMCPConnectionParams,
   mcpClient: Client,
