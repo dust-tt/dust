@@ -183,7 +183,10 @@ const MultiPageDialogContent = React.forwardRef<
         {...props}
       >
         <div className={cn(multiPageDialogLayoutVariants())}>
-          <DialogHeader hideButton={true} className="s-flex-none">
+          <DialogHeader
+            hideButton={showHeaderNavigation}
+            className="s-flex-none"
+          >
             <div className="s-flex s-items-center s-justify-between s-pr-8">
               <div className="s-flex s-items-center s-gap-3">
                 {showNavigation && showHeaderNavigation && (

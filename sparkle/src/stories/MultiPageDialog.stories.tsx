@@ -274,6 +274,7 @@ export const SimpleToolDialog: Story = {
         </MultiPageDialogTrigger>
         <MultiPageDialogContent
           pages={toolPages}
+          showHeaderNavigation={false}
           currentPageId="tool-selection"
           onPageChange={() => {}}
           size="xl"
