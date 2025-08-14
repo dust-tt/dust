@@ -154,7 +154,7 @@ function TemplatePresetActions({
 
   return (
     <div className="flex flex-col gap-4">
-      <Page.SectionHeader title="Suggested tools" />
+      <Page.SectionHeader title="Suggested knowledge & tools" />
       {presetActions.map((presetAction, index) => (
         <div className="flex flex-col gap-2" key={index}>
           <div className="text-sm text-foreground">{presetAction.help}</div>
