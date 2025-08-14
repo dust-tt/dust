@@ -12,6 +12,7 @@ vi.mock(import("../../../lib/api/regions/config"), async (importOriginal) => {
     config: {
       ...mod.config,
       getCurrentRegion: vi.fn(),
+      getRegionUrl: vi.fn(),
     },
   };
 });
@@ -28,6 +29,7 @@ describe("GET /api/poke/region", () => {
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual({
       region: "us-central1",
+      regionUrls: expect.any(Object),
     });
   });
 
@@ -42,6 +44,7 @@ describe("GET /api/poke/region", () => {
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual({
       region: "europe-west1",
+      regionUrls: expect.any(Object),
     });
   });
 
@@ -55,6 +58,7 @@ describe("GET /api/poke/region", () => {
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual({
       region: expect.any(String),
+      regionUrls: expect.any(Object),
     });
   });
 
