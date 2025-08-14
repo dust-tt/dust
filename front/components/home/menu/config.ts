@@ -326,7 +326,22 @@ export const menuConfig: DocsConfig = {
   mainNav: [
     {
       title: "Product",
-      href: "/home/product",
+      label: "Product & tools",
+      rows: 3,
+      items: [
+        {
+          title: "Product",
+          href: "/home/product",
+        },
+        {
+          title: "Chrome Extension",
+          href: "/home/chrome-extension",
+        },
+        {
+          title: "Shareables",
+          href: "/home/shareables",
+        },
+      ],
     },
     {
       title: SolutionsMenuConfig.title,
