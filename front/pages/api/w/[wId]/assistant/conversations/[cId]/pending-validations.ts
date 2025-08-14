@@ -30,12 +30,13 @@ async function handler(
   }
 
   const { cId } = req.query;
+
   if (!cId || !isString(cId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "The conversation id is required.",
+        message: "The conversation ID is required.",
       },
     });
   }
