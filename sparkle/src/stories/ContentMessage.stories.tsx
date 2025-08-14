@@ -175,7 +175,7 @@ export const InlineWithAction: Story = {
   ),
 };
 
-export const InlineWitTwohAction: Story = {
+export const InlineWithTwoActions: Story = {
   render: () => (
     <ContentMessageInline icon={InformationCircleIcon} variant="info">
       This is an inline message. It can be used to display a short message.
