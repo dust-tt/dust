@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 
+import { getAllowedSpaces as getAllowedSpacesOriginal } from "@app/components/agent_builder/utils";
 import { DataSourceViewsProvider } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { MCPServerViewsProvider } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
@@ -48,7 +49,6 @@ interface AssistantBuilderContextType {
   setAction: (action: AssistantBuilderSetActionType) => void;
   getAllowedSpaces: (action?: AssistantBuilderMCPOrVizState) => SpaceType[];
   nonGlobalSpacesUsedInActions: SpaceType[];
-  spaceIdToActions: Record<string, AssistantBuilderMCPOrVizState[]>;
 }
 
 function getDefaultBuilderState(
@@ -102,7 +102,6 @@ const AssistantBuilderContext = createContext<AssistantBuilderContextType>({
   setAction: () => {},
   getAllowedSpaces: () => [],
   nonGlobalSpacesUsedInActions: [],
-  spaceIdToActions: {},
 });
 
 export const useAssistantBuilderContext = () => {
@@ -237,25 +236,13 @@ const AssistantBuilderProvider = ({
     return nonGlobalSpaces.filter((s) => spaceIdToActions[s.sId]?.length > 0);
   }, [spaceIdToActions, spaces]);
 
-  // Only allow one space across all actions.
   const getAllowedSpaces = useCallback(
     (action?: AssistantBuilderMCPOrVizState) => {
-      const isSpaceUsedInOtherActions = (space: SpaceType) => {
-        const actionsUsingSpace = spaceIdToActions[space.sId] ?? [];
-        return actionsUsingSpace.some((a) => {
-          // We use the id to compare actions, as the configuration can change.
-          return a.id !== action?.id;
-        });
-      };
-
-      const usedSpacesInOtherActions = spaces.filter(isSpaceUsedInOtherActions);
-      if (usedSpacesInOtherActions.length === 0) {
-        return spaces;
-      }
-
-      return spaces.filter((space) =>
-        usedSpacesInOtherActions.some((s) => s.sId === space.sId)
-      );
+      return getAllowedSpacesOriginal({
+        action,
+        spaces,
+        spaceIdToActions,
+      });
     },
     [spaces, spaceIdToActions]
   );
@@ -270,7 +257,6 @@ const AssistantBuilderProvider = ({
       setAction,
       nonGlobalSpacesUsedInActions,
       getAllowedSpaces,
-      spaceIdToActions,
     }),
     [
       builderState,
@@ -281,7 +267,6 @@ const AssistantBuilderProvider = ({
       setAction,
       nonGlobalSpacesUsedInActions,
       getAllowedSpaces,
-      spaceIdToActions,
     ]
   );
 

@@ -307,17 +307,22 @@ function MCPDropdownMenuItem({
   onClick: (view: MCPServerViewType) => void;
   allowedSpaces: SpaceType[];
 }) {
+  const isDisabled =
+    view.server.availability === "manual" &&
+    !allowedSpaces.some((s) => s.sId === view.spaceId);
+
   return (
     <DropdownMenuItem
       truncateText
       icon={getAvatar(view.server)}
       label={getMcpServerViewDisplayName(view)}
-      description={getMcpServerViewDescription(view)}
-      onClick={() => onClick(view)}
-      disabled={
-        view.serverType === "remote" &&
-        !allowedSpaces.some((s) => s.sId === view.spaceId)
+      description={
+        isDisabled
+          ? `not in: ${allowedSpaces.map((s) => s.name).join(", ")}`
+          : getMcpServerViewDescription(view)
       }
+      onClick={() => onClick(view)}
+      disabled={isDisabled}
     />
   );
 }
