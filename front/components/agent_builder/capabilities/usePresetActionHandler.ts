@@ -50,6 +50,7 @@ export function usePresetActionHandler({
   useEffect(() => {
     if (!presetActionToAdd || isMCPServerViewsLoading) return;
 
+    // Prevent duplicate processing
     if (processingRef.current) {
       return;
     }
@@ -71,6 +72,7 @@ export function usePresetActionHandler({
       return;
     }
 
+    // Check for duplicates only for tools that don't allow multiple instances
     if (isDirectAddTemplateAction(presetActionToAdd)) {
       const allowsMultiple = allowsMultipleInstancesOfInternalMCPServerById(
         mcpServerView.server.sId
@@ -95,10 +97,12 @@ export function usePresetActionHandler({
       }
     }
 
+    // Create action with preset data
     const action = getDefaultMCPAction(mcpServerView);
     action.name = presetActionToAdd.name;
     action.description = presetActionToAdd.description;
 
+    // Open knowledge configuration dialog or add tool directly
     if (isKnowledgeTemplateAction(presetActionToAdd)) {
       setKnowledgeAction({
         action: { ...action, noConfigurationRequired: false },
@@ -115,6 +119,7 @@ export function usePresetActionHandler({
       });
     }
 
+    // Clear the preset action after handling
     onPresetActionHandled?.();
 
     // Reset the processing flag after a short delay to allow for state updates
