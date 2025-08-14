@@ -17,7 +17,6 @@ import { clientExecutableContentType } from "@app/types";
 interface DefaultAgentMessageGeneratedFilesProps {
   document: MarkdownCitation;
   index: number;
-  onClick?: () => void;
 }
 
 function CitationContent({
@@ -38,10 +37,9 @@ function CitationContent({
 export function DefaultAgentMessageGeneratedFiles({
   document,
   index,
-  onClick,
 }: DefaultAgentMessageGeneratedFilesProps) {
   return (
-    <Citation href={document.href} tooltip={document.title} onClick={onClick}>
+    <Citation href={document.href} tooltip={document.title}>
       <CitationContent document={document} index={index} />
     </Citation>
   );

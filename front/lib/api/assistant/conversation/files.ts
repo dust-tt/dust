@@ -1,4 +1,4 @@
-import { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { ConversationType } from "@app/types";
 import { isAgentMessageType } from "@app/types";
 

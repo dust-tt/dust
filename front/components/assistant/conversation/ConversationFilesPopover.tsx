@@ -38,10 +38,9 @@ type GroupedFiles = Partial<
 interface FileRendererProps {
   files: ActionGeneratedFileType[];
   owner: LightWorkspaceType;
-  onFileClick: () => void;
 }
 
-function FileRenderer({ files, owner, onFileClick }: FileRendererProps) {
+function FileRenderer({ files, owner }: FileRendererProps) {
   return (
     <CitationGrid variant="grid">
       {files.map((file, idx) => (
@@ -53,7 +52,6 @@ function FileRenderer({ files, owner, onFileClick }: FileRendererProps) {
             title: file.title,
           }}
           index={idx}
-          onClick={onFileClick}
         />
       ))}
     </CitationGrid>
@@ -68,7 +66,13 @@ interface FileGroupProps {
   onFileClick: () => void;
 }
 
-function FileGroup({ title, files, owner, contentType, onFileClick }: FileGroupProps) {
+function FileGroup({
+  title,
+  files,
+  owner,
+  contentType,
+  onFileClick,
+}: FileGroupProps) {
   return (
     <div className="space-y-2">
       <div className="text-xs font-medium text-primary dark:text-primary-night">
@@ -76,9 +80,13 @@ function FileGroup({ title, files, owner, contentType, onFileClick }: FileGroupP
       </div>
       <div>
         {contentType === clientExecutableContentType ? (
-          <InteractiveAgentMessageGeneratedFiles files={files} variant="grid" onClick={onFileClick} />
+          <InteractiveAgentMessageGeneratedFiles
+            files={files}
+            variant="grid"
+            onClick={onFileClick}
+          />
         ) : (
-          <FileRenderer files={files} owner={owner} onFileClick={onFileClick} />
+          <FileRenderer files={files} owner={owner} />
         )}
       </div>
     </div>
