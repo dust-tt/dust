@@ -10,8 +10,14 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { MCPActionValidationRequest, ModelId, Result } from "@app/types";
+import {
+  MCPActionValidationRequest,
+  ModelId,
+  removeNulls,
+  Result,
+} from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -98,9 +104,26 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
 
     const pendingValidations: MCPActionValidationRequest[] = [];
 
+    // We get the latest version here, it may show a different name than the one used when the
+    // action was created, taking this shortcut for the sake of simplicity.
+    const agentConfigurations = await getAgentConfigurations(auth, {
+      agentIds: [
+        ...new Set(
+          removeNulls(
+            pendingActions.map((a) => a.agentMessage?.agentConfigurationId)
+          )
+        ),
+      ],
+      variant: "extra_light",
+    });
+
     for (const action of pendingActions) {
       const agentMessage = action.agentMessage;
       assert(agentMessage?.message, "No message for agent message.");
+      const agentConfiguration = agentConfigurations.find(
+        (a) => a.sId === agentMessage.agentConfigurationId
+      );
+      assert(agentConfiguration, "Agent not found.");
 
       pendingValidations.push({
         messageId: agentMessage.message.sId,
@@ -114,7 +137,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
         metadata: {
           toolName: action.toolConfiguration?.originalName,
           mcpServerName: action.toolConfiguration?.mcpServerName,
-          agentName: agentMessage.agentConfigurationId,
+          agentName: agentConfiguration.name,
           icon: action.toolConfiguration?.icon,
         },
       });
