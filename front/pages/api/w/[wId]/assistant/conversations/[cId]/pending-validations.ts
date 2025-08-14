@@ -4,11 +4,11 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { apiError } from "@app/logger/withlogging";
-import {
-  isString,
-  type MCPActionValidationRequest,
-  type WithAPIErrorResponse,
+import type {
+  MCPActionValidationRequest,
+  WithAPIErrorResponse,
 } from "@app/types";
+import { isString } from "@app/types";
 
 export type GetPendingValidationsResponseType = {
   pendingValidations: MCPActionValidationRequest[];
