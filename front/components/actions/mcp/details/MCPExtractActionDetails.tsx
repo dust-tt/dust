@@ -57,7 +57,9 @@ export function MCPExtractActionDetails({
   return (
     <ActionDetailsWrapper
       viewType={viewType}
-      actionName="Extract data"
+      actionName={
+        viewType === "conversation" ? "Extracting data" : "Extract data"
+      }
       visual={ScanIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">

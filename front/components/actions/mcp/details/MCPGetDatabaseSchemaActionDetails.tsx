@@ -26,7 +26,11 @@ export function MCPGetDatabaseSchemaActionDetails({
   return (
     <ActionDetailsWrapper
       viewType={viewType}
-      actionName="Get database schema"
+      actionName={
+        viewType === "conversation"
+          ? "Getting database schema"
+          : "Get database schema"
+      }
       visual={TableIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">

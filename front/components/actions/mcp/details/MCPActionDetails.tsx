@@ -89,7 +89,9 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
         <SearchResultDetails
           viewType={viewType}
           defaultQuery={queryResource.text}
-          actionName="Search data"
+          actionName={
+            viewType === "conversation" ? "Searching data" : "Search data"
+          }
           actionOutput={output}
           visual={MagnifyingGlassIcon}
         />
@@ -103,7 +105,11 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
       return (
         <SearchResultDetails
           viewType={viewType}
-          actionName="Browse data sources"
+          actionName={
+            viewType === "conversation"
+              ? "Browsing data sources"
+              : "Browse data sources"
+          }
           actionOutput={output}
           visual={ActionDocumentTextIcon}
         />
@@ -124,7 +130,9 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
       return (
         <SearchResultDetails
           viewType={viewType}
-          actionName="Include data"
+          actionName={
+            viewType === "conversation" ? "Including data" : "Include data"
+          }
           actionOutput={output}
           visual={ClockIcon}
         />
@@ -138,7 +146,9 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
         <SearchResultDetails
           viewType={viewType}
           defaultQuery={params.query as string}
-          actionName="Web search"
+          actionName={
+            viewType === "conversation" ? "Searching the web" : "Web search"
+          }
           actionOutput={output}
           visual={GlobeAltIcon}
         />
@@ -195,12 +205,16 @@ export function GenericActionDetails({
       ? JSON.stringify(action.params, undefined, 2)
       : null;
 
+  const actionName =
+    (viewType === "conversation" ? "Running a tool" : "Run a tool") +
+    (action.functionCallName
+      ? `: ${asDisplayName(action.functionCallName)}`
+      : "");
+
   return (
     <ActionDetailsWrapper
       viewType={viewType}
-      actionName={
-        asDisplayName(action.functionCallName) ?? "Calling MCP Server"
-      }
+      actionName={actionName}
       visual={MCP_SPECIFICATION.cardIcon}
     >
       {viewType !== "conversation" && (
