@@ -109,6 +109,7 @@ export class AgentYAMLConverter {
     return tags
       .filter((tag) => tag.name && tag.kind)
       .map((tag) => ({
+        sId: tag.sId,
         name: tag.name,
         kind: tag.kind,
       }));
