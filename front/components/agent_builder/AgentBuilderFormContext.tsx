@@ -1,4 +1,6 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { createContext, useContext } from "react";
+import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
 import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
@@ -204,3 +206,19 @@ export interface MCPFormData {
     _jsonSchemaString: string | null;
   };
 }
+
+export const AgentBuilderFormContext =
+  createContext<UseFormReturn<AgentBuilderFormData> | null>(null);
+
+export const useAgentBuilderFormActions = () => {
+  const context = useContext(AgentBuilderFormContext);
+  if (!context) {
+    throw new Error("AgentBuilderFormContext not found");
+  }
+
+  const actions = context.getValues("actions");
+
+  return {
+    actions,
+  };
+};
