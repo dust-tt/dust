@@ -53,7 +53,7 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { O4_MINI_MODEL_ID, type TemplateActionPreset } from "@app/types";
+import { O4_MINI_MODEL_ID } from "@app/types";
 
 export type SelectedTool =
   | {
@@ -95,7 +95,6 @@ interface MCPServerViewsDialogProps {
   onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
   actions: AgentBuilderAction[];
   getAgentInstructions: () => string;
-  presetActionData?: TemplateActionPreset;
 }
 
 export function MCPServerViewsDialog({
@@ -106,7 +105,6 @@ export function MCPServerViewsDialog({
   onActionUpdate,
   actions,
   getAgentInstructions,
-  presetActionData,
 }: MCPServerViewsDialogProps) {
   const { owner } = useAgentBuilderContext();
   const { spaces } = useSpaces({ workspaceId: owner.sId });
