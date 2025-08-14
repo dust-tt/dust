@@ -121,7 +121,8 @@ function makeInitialMessageStreamState(
     lastUpdated: new Date(),
     message,
     streamingBlocks: blocks,
-    currentThinkingBlock: null,
+    currentStreamingContent: null,
+    currentStreamingType: null,
   };
 }
 
