@@ -176,7 +176,6 @@ async function createActionForTool(
         messageId: agentMessage.sId,
         conversationId,
         actionId: mcpAction.getSId(auth.getNonNullableWorkspace()),
-        action: mcpAction,
         inputs: mcpAction.params,
         stake: actionConfiguration.permission,
         metadata: {

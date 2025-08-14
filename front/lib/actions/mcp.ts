@@ -156,9 +156,6 @@ export type LightMCPToolConfigurationType =
 
 export type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
-  // Temporary code to be backwards compatible with the old actionId format.
-  // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
-  action: MCPActionType;
   created: number;
   configurationId: string;
   messageId: string;
