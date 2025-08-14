@@ -7,7 +7,6 @@ import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/ins
 import { AgentAccessPublicationDialog } from "@app/components/agent_builder/settings/AgentAccessPublicationDialog";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
 import { ConfirmContext } from "@app/components/Confirm";
-
 import type { TemplateActionPreset } from "@app/types";
 
 interface AgentBuilderLeftPanelProps {
