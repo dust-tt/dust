@@ -322,7 +322,7 @@ const ConversationViewer = React.forwardRef<
         "dd-privacy-mask",
         "s-@container/conversation",
         "flex w-full flex-1 flex-col justify-start gap-8 py-4",
-        isInModal ? "pt-4" : "max-w-5xl px-4 md:px-8"
+        isInModal ? "pt-4" : "max-w-4xl px-4 md:px-8"
       )}
       ref={ref}
     >

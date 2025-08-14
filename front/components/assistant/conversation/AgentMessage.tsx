@@ -93,12 +93,35 @@ type AgentMessageStateWithControlEvent =
 function makeInitialMessageStreamState(
   message: LightAgentMessageType
 ): MessageTemporaryState {
+  // Initialize streaming blocks from existing message data
+  const blocks: import("@app/lib/assistant/state/messageReducer").StreamingBlock[] = [];
+  
+  // Add existing chain of thought as a completed thinking block
+  if (message.chainOfThought) {
+    blocks.push({
+      type: "thinking",
+      content: message.chainOfThought,
+      isStreaming: false
+    });
+  }
+  
+  // Add existing actions as completed action blocks
+  message.actions.forEach(action => {
+    blocks.push({
+      type: "action",
+      action: action as import("@app/lib/actions/mcp").MCPActionType,
+      status: message.status === "failed" ? "failed" : "succeeded"
+    });
+  });
+  
   return {
     actionProgress: new Map(),
     agentState: message.status === "created" ? "thinking" : "done",
     isRetrying: false,
     lastUpdated: new Date(),
     message,
+    streamingBlocks: blocks,
+    currentThinkingBlock: null,
   };
 }
 
@@ -222,9 +245,10 @@ export function AgentMessage({
       if (
         isFreshMountWithContent.current &&
         eventType === "generation_tokens" &&
-        eventPayload.data.classification === "tokens"
+        (eventPayload.data.classification === "tokens" ||
+          eventPayload.data.classification === "chain_of_thought")
       ) {
-        // Clear the existing content from the state (but not chain of thought)
+        // Clear the existing content from the state
         dispatch(CLEAR_CONTENT_EVENT);
         isFreshMountWithContent.current = false;
       }
@@ -715,26 +739,26 @@ export function AgentMessage({
 
     return (
       <div className="flex flex-col gap-y-4">
-        {/* Chain of thought - inline display */}
-        {agentMessage.chainOfThought && (
-          <CollapsibleInlineThought
-            content={agentMessage.chainOfThought}
-            isStreaming={messageStreamState.agentState === "thinking"}
-          />
-        )}
-
-        {/* Actions - inline display */}
-        {agentMessage.actions.map((action) => {
-          const lastNotification =
-            messageStreamState.actionProgress.get(action.id)?.progress ?? null;
-          if (isMCPActionType(action)) {
+        {/* Render all streaming blocks in order */}
+        {messageStreamState.streamingBlocks.map((block, index) => {
+          if (block.type === "thinking") {
+            return (
+              <CollapsibleInlineThought
+                key={`thinking-${index}`}
+                content={block.content}
+                isStreaming={block.isStreaming}
+              />
+            );
+          } else if (block.type === "action") {
+            const lastNotification =
+              messageStreamState.actionProgress.get(block.action.id)?.progress ?? null;
             return (
               <CollapsibleActionDetails
-                key={action.id}
-                action={action}
+                key={`action-${block.action.id}`}
+                action={block.action}
                 owner={owner}
                 lastNotification={lastNotification}
-                messageStatus={agentMessage.status}
+                messageStatus={block.status}
               />
             );
           }
