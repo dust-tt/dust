@@ -1,9 +1,6 @@
 import assert from "assert";
 
-import type {
-  ActionBaseParams,
-  LightMCPToolConfigurationType,
-} from "@app/lib/actions/mcp";
+import type { ActionBaseParams } from "@app/lib/actions/mcp";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { ModelId } from "@app/types";
 import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
