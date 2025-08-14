@@ -297,7 +297,7 @@ async function handler(
             {
               username: context?.username ?? null,
               fullName: context?.fullName ?? null,
-              email: context?.email ?? null,
+              email: context?.email?.toLowerCase() ?? null,
               profilePictureUrl: context?.profilePictureUrl ?? null,
             }
           );
@@ -340,7 +340,7 @@ async function handler(
       if (message) {
         const ctx: UserMessageContext = {
           clientSideMCPServerIds: message.context.clientSideMCPServerIds ?? [],
-          email: message.context.email ?? null,
+          email: message.context.email?.toLowerCase() ?? null,
           fullName: message.context.fullName ?? null,
           origin: message.context.origin ?? "api",
           profilePictureUrl: message.context.profilePictureUrl ?? null,
