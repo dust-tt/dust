@@ -77,7 +77,6 @@ export async function executeAgentLoop(
     // If at least one action needs approval, we break out of the loop and will resume once all
     // actions have been approved.
     const needsApproval = actionBlobs.some((a) => a.needsApproval);
-
     if (needsApproval) {
       // Break the loop - workflow will be restarted externally once approved.
       return;
@@ -85,9 +84,9 @@ export async function executeAgentLoop(
 
     // Execute tools.
     await Promise.all(
-      actionBlobs.map(({ action }) =>
+      actionBlobs.map(({ actionId }) =>
         activities.runToolActivity(authType, {
-          actionId: action.id,
+          actionId,
           runAgentArgs,
           step: i,
         })

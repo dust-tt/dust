@@ -5,7 +5,6 @@ import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { StepContext } from "@app/lib/actions/types";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
@@ -17,12 +16,12 @@ import type {
 } from "@app/types";
 import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
 
-interface ActionBlob {
-  action: AgentMCPAction;
+export interface ActionBlob {
+  actionId: ModelId;
   needsApproval: boolean;
 }
 
-export type CreateToolActionsResult = {
+type CreateToolActionsResult = {
   actionBlobs: ActionBlob[];
 };
 
@@ -201,7 +200,7 @@ async function createActionForTool(
   });
 
   return {
-    action: agentMCPAction,
+    actionId: agentMCPAction.id,
     needsApproval: status === "pending",
   };
 }
