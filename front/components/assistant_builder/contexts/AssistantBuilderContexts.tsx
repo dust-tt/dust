@@ -1,4 +1,4 @@
-import { uniqueId } from "lodash";
+import uniqueId from "lodash/uniqueId";
 import type { ReactNode } from "react";
 import React, {
   createContext,
