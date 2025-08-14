@@ -112,7 +112,7 @@ class MyDocument extends Document {
                   }
                 }
                 
-                // Run on DOM ready
+                // Run on DOM ready.
                 if (document.readyState === 'loading') {
                   document.addEventListener('DOMContentLoaded', initPrivacyMask);
                 } else {
