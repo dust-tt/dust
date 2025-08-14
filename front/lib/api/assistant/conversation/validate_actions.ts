@@ -12,7 +12,6 @@ import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import logger from "@app/logger/logger";
@@ -85,9 +84,6 @@ export async function validateAction(
     },
     "Tool validation request"
   );
-
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const hasAsyncLoopFeature = featureFlags.includes("async_loop");
 
   const {
     agentMessageId,
@@ -167,7 +163,6 @@ export async function validateAction(
       inMemoryData: runAgentDataRes.value,
     },
     {
-      forceAsynchronousLoop: hasAsyncLoopFeature,
       // Resume from the step where the action was created.
       startStep: agentStepContent.step,
     }

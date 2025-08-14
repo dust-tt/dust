@@ -142,10 +142,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Freshservice MCP tool",
     stage: "rolling_out",
   },
-  async_loop: {
-    description: "Asynchronous loop for conversation processing",
-    stage: "dust_only",
-  },
   agent_management_tool: {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",

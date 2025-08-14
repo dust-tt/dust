@@ -84,6 +84,7 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+import type { ExecutionMode } from "@app/types/assistant/agent_run";
 
 // Soft assumption that we will not have more than 10 mentions in the same user message.
 const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;
@@ -339,14 +340,14 @@ export async function postUserMessage(
     mentions,
     context,
     skipToolsValidation,
-    forceAsynchronousLoop = false,
+    executionMode,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
     skipToolsValidation: boolean;
-    forceAsynchronousLoop?: boolean;
+    executionMode?: ExecutionMode;
   }
 ): Promise<
   Result<
@@ -699,7 +700,7 @@ export async function postUserMessage(
       void runAgentLoop(
         auth,
         { sync: true, inMemoryData },
-        { forceAsynchronousLoop, startStep: 0 }
+        { executionMode, startStep: 0 }
       );
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
@@ -1148,11 +1149,7 @@ export async function editUserMessage(
         agentMessageRow,
       };
 
-      void runAgentLoop(
-        auth,
-        { sync: true, inMemoryData },
-        { forceAsynchronousLoop: false, startStep: 0 }
-      );
+      void runAgentLoop(auth, { sync: true, inMemoryData }, { startStep: 0 });
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
   );
@@ -1378,11 +1375,7 @@ export async function retryAgentMessage(
     agentMessageRow,
   };
 
-  void runAgentLoop(
-    auth,
-    { sync: true, inMemoryData },
-    { forceAsynchronousLoop: false, startStep: 0 }
-  );
+  void runAgentLoop(auth, { sync: true, inMemoryData }, { startStep: 0 });
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -
