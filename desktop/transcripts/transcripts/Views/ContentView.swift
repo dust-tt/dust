@@ -5,6 +5,7 @@ struct ContentView: View {
   @StateObject private var viewModel = TranscriptViewModel()
   @State private var hasPermission = false
   @State private var showingLoginDialog = false
+  @State private var deviceSelectionWindow: NSWindow?
 
   var body: some View {
     VStack(spacing: 8) {
@@ -222,6 +223,8 @@ struct ContentView: View {
   }
 
   private func openAudioDeviceSelection() {
+    deviceSelectionWindow?.close()
+
     let setupWindow = NSWindow(
       contentRect: NSRect(x: 0, y: 0, width: 450, height: 350),
       styleMask: [.titled, .closable],
@@ -229,6 +232,7 @@ struct ContentView: View {
       defer: false
     )
     setupWindow.title = "Select Audio Input Device"
+
     setupWindow.contentView = NSHostingView(
       rootView: AudioDeviceSelectionView(
         onDeviceSelected: { device in
@@ -243,9 +247,11 @@ struct ContentView: View {
         }
       )
     )
+
     setupWindow.center()
     setupWindow.makeKeyAndOrderFront(nil)
     setupWindow.orderFrontRegardless()
+    deviceSelectionWindow = setupWindow
   }
 
 }
