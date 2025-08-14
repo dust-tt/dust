@@ -1,4 +1,4 @@
-import { Avatar, cn, Icon, Spinner } from "@dust-tt/sparkle";
+import { cn, Icon, Spinner } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
 interface ActionDetailsWrapperProps {
