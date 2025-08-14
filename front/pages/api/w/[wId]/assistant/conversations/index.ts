@@ -12,7 +12,6 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -28,6 +27,7 @@ import {
   ConversationError,
   InternalPostConversationsRequestBodySchema,
 } from "@app/types";
+import { ExecutionModeSchema } from "@app/types/assistant/agent_run";
 
 export type GetConversationsResponseBody = {
   conversations: ConversationWithoutContentType[];
@@ -76,13 +76,13 @@ async function handler(
       const { title, visibility, message, contentFragments } =
         bodyValidation.right;
 
-      const featureFlags = await getFeatureFlags(
-        auth.getNonNullableWorkspace()
+      const executionModeParseResult = ExecutionModeSchema.safeParse(
+        req.query.execution
       );
-      const hasAsyncLoopFeature = featureFlags.includes("async_loop");
-      const forceAsynchronousLoop =
-        req.query.async === "true" ||
-        (req.query.async !== "false" && hasAsyncLoopFeature);
+
+      const executionMode = executionModeParseResult.success
+        ? executionModeParseResult.data
+        : undefined;
 
       if (message?.context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(
@@ -212,7 +212,7 @@ async function handler(
           },
           // For now we never skip tools when interacting with agents from the web client.
           skipToolsValidation: false,
-          forceAsynchronousLoop,
+          executionMode,
         });
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);
