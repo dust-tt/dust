@@ -205,13 +205,16 @@ export function GenericActionDetails({
       ? JSON.stringify(action.params, undefined, 2)
       : null;
 
+  const actionName =
+    (viewType === "conversation" ? "Running a tool" : "Run a tool") +
+    (action.functionCallName
+      ? `: ${asDisplayName(action.functionCallName)}`
+      : "");
+
   return (
     <ActionDetailsWrapper
       viewType={viewType}
-      actionName={
-        asDisplayName(action.functionCallName) ??
-        (viewType === "conversation" ? "Calling MCP Server" : "MCP Server call")
-      }
+      actionName={actionName}
       visual={MCP_SPECIFICATION.cardIcon}
     >
       {viewType !== "conversation" && (
