@@ -60,7 +60,7 @@ class MyDocument extends Document {
                  ],
                  traceSampleRate: 5,
                  traceContextInjection: 'sampled',
-                 sessionSampleRate: 100,
+                 sessionSampleRate: 20,
                  sessionReplaySampleRate: 5,
                  defaultPrivacyLevel: 'mask-user-input',
                  beforeSend: function (event) {
