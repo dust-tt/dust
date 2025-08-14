@@ -228,7 +228,6 @@ export function MCPServerViewsDialog({
     setIsOpen(!!mode);
   }, [mode, allMcpServerViews, isEditMode, isInfoMode]);
 
-
   const toggleToolSelection = (tool: SelectedTool): void => {
     setSelectedToolsInDialog((prev) => {
       const isSelected = prev.some((selected) => {
