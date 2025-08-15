@@ -14,7 +14,7 @@ import {
   Label,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useContext, useState } from "react";
+import React, { useCallback, useState } from "react";
 
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
@@ -86,7 +86,7 @@ const ActionValidationContext = React.createContext<
 >(undefined);
 
 export function useActionValidationContext() {
-  const context = useContext(ActionValidationContext);
+  const context = React.useContext(ActionValidationContext);
   if (!context) {
     throw new Error(
       "useActionValidationContext must be used within an ActionValidationContext"
