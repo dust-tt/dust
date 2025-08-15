@@ -2,8 +2,7 @@ import { cva } from "class-variance-authority";
 import * as React from "react";
 import { useState } from "react";
 
-import { Button, Icon, ScrollArea } from "@sparkle/components";
-import { Separator } from "@sparkle/components";
+import { Button, Icon, ScrollArea, Separator } from "@sparkle/components";
 import {
   Dialog,
   DialogClose,
@@ -26,6 +25,7 @@ interface MultiPageDialogPage {
   description?: string;
   icon?: React.ComponentType;
   content: React.ReactNode;
+  fixedContent?: React.ReactNode;
 }
 
 const MultiPageDialogRoot = Dialog;
@@ -256,7 +256,7 @@ const MultiPageDialogContent = React.forwardRef<
           </DialogHeader>
 
           <div className="s-min-h-0 s-flex-1 s-overflow-hidden">
-            <ScrollArea
+            <div
               className={cn(
                 "s-h-full s-transition-all s-duration-200 s-ease-out",
                 {
@@ -266,13 +266,26 @@ const MultiPageDialogContent = React.forwardRef<
                   "s--translate-x-2":
                     isTransitioning && transitionDirection === "prev",
                   "s-translate-x-0 s-opacity-100": !isTransitioning,
-                }
+                },
+                currentPage.fixedContent ? "s-flex s-flex-col" : ""
               )}
             >
-              <div className="s-flex s-flex-col s-gap-2 s-px-5 s-py-4">
-                {currentPage.content}
-              </div>
-            </ScrollArea>
+              {currentPage.fixedContent && (
+                <>
+                  <div className="s-flex-none s-px-5 s-py-4">
+                    {currentPage.fixedContent}
+                  </div>
+                  <Separator />
+                </>
+              )}
+              <ScrollArea
+                className={currentPage.fixedContent ? "s-flex-1" : "s-h-full"}
+              >
+                <div className="s-flex s-flex-col s-gap-2 s-px-5 s-py-4">
+                  {currentPage.content}
+                </div>
+              </ScrollArea>
+            </div>
           </div>
 
           <MultiPageDialogFooter

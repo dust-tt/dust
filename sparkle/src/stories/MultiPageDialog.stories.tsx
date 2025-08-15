@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
 
 import { Button } from "@sparkle/components/Button";
+import { SearchInput } from "@sparkle/components";
 import {
   MultiPageDialog,
   MultiPageDialogContent,
@@ -710,6 +711,7 @@ export const ScrollableContent: Story = {
   render: () => {
     const [currentPageId, setCurrentPageId] = useState("long-form");
     const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
 
     const handleSave = () => {
       alert("Long form submitted!");
@@ -739,8 +741,17 @@ export const ScrollableContent: Story = {
       {
         id: "long-form",
         title: "Long Form Content",
-        description: "This page demonstrates scrollable content",
+        description:
+          "This page demonstrates scrollable content with fixed search",
         icon: DocumentTextIcon,
+        fixedContent: (
+          <SearchInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            name="search-content"
+            placeholder="Search through content..."
+          />
+        ),
         content: (
           <div className="s-space-y-6">
             <div>
@@ -749,9 +760,16 @@ export const ScrollableContent: Story = {
               </h3>
               <p className="s-text-sm s-text-muted-foreground">
                 This page contains a lot of content to demonstrate scrolling
-                functionality. The content should be scrollable within the
-                dialog area.
+                functionality with a fixed search input. The search input stays
+                visible while scrolling through the content below.
               </p>
+              {searchTerm && (
+                <div className="s-rounded-md s-border s-bg-yellow-50 s-p-3">
+                  <p className="s-text-sm s-text-yellow-800">
+                    🔍 Searching for: <strong>{searchTerm}</strong>
+                  </p>
+                </div>
+              )}
             </div>
 
             {Array.from({ length: 15 }, (_, i) => (
@@ -794,12 +812,13 @@ export const ScrollableContent: Story = {
 
             <div className="s-rounded-md s-border s-bg-blue-50 s-p-4">
               <h4 className="s-mb-2 s-text-sm s-font-semibold s-text-blue-900">
-                Scroll Test Complete
+                Fixed Content Test Complete
               </h4>
               <p className="s-text-xs s-text-blue-700">
-                If you can see this message, the scrolling functionality is
-                working correctly! The dialog maintains its fixed height while
-                allowing the content to scroll.
+                If you can see this message, the fixed content functionality is
+                working correctly! The search input remains fixed at the top
+                while this content scrolls. Try scrolling back up - the search
+                input should always be visible.
               </p>
             </div>
           </div>
@@ -837,13 +856,14 @@ export const ScrollableContent: Story = {
     return (
       <MultiPageDialog open={isOpen} onOpenChange={setIsOpen}>
         <MultiPageDialogTrigger asChild>
-          <Button label="Open Scrollable Content Dialog" />
+          <Button label="Open Fixed Content Test Dialog" />
         </MultiPageDialogTrigger>
         <MultiPageDialogContent
           pages={scrollablePages}
           currentPageId={currentPageId}
           onPageChange={setCurrentPageId}
-          size="lg"
+          size="xl"
+          height="xl"
           leftButton={{
             label: "Cancel",
             variant: "outline",
