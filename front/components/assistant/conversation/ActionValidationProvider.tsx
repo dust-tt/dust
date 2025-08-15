@@ -28,9 +28,10 @@ import type {
 import { asDisplayName, pluralize } from "@app/types";
 
 function useValidationQueue(pendingValidations: MCPActionValidationRequest[]) {
-  const [validationQueue, setValidationQueue] = useState<
-    MCPActionValidationRequest[]
-  >(pendingValidations.slice(1)); // All except the first one.
+  // All except the first one, which will go into currentValidation.
+  const [validationQueue, setValidationQueue] = useState(
+    pendingValidations.slice(1)
+  );
 
   const [currentValidation, setCurrentValidation] =
     useState<MCPActionValidationRequest | null>(pendingValidations[0] || null);
