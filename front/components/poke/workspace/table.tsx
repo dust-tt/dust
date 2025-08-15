@@ -131,6 +131,9 @@ export function WorkspaceInfoTable({
                     ? "⚠️"
                     : "❌"}
               </PokeTableCell>
+            </PokeTableRow>
+            <PokeTableRow>
+              <PokeTableCell>Verified Domains</PokeTableCell>
               <PokeTableCell>
                 {workspaceVerifiedDomains.map((d) => d.domain).join(", ")}
               </PokeTableCell>
