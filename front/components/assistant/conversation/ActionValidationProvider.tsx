@@ -34,7 +34,7 @@ function useValidationQueue(pendingValidations: MCPActionValidationRequest[]) {
   );
 
   const [currentValidation, setCurrentValidation] =
-    useState<MCPActionValidationRequest | null>(pendingValidations[0] || null);
+    useState<MCPActionValidationRequest | null>(pendingValidations[0] ?? null);
 
   // The current validation request is the one being processed.
   // The queue does not stores the current validation request.
