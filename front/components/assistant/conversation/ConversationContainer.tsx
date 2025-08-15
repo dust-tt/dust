@@ -87,7 +87,7 @@ export function ConversationContainer({
     limit: 50,
   });
 
-  const setInputbarMention = useCallback(
+  const setInputBarMention = useCallback(
     (agentId: string) => {
       setSelectedAssistant({ configurationId: agentId });
       setAnimate(true);
@@ -97,9 +97,9 @@ export function ConversationContainer({
 
   useEffect(() => {
     if (agentIdToMention) {
-      setInputbarMention(agentIdToMention);
+      setInputBarMention(agentIdToMention);
     }
-  }, [agentIdToMention, setInputbarMention]);
+  }, [agentIdToMention, setInputBarMention]);
 
   useEffect(() => {
     if (animate) {
@@ -288,7 +288,7 @@ export function ConversationContainer({
       const observer = new IntersectionObserver(
         () => {
           if (assistantToMention.current) {
-            setInputbarMention(assistantToMention.current.sId);
+            setInputBarMention(assistantToMention.current.sId);
             assistantToMention.current = null;
           }
         },
@@ -303,7 +303,7 @@ export function ConversationContainer({
       }
     };
     router.events.on("routeChangeComplete", handleRouteChange);
-  }, [setAnimate, setInputbarMention, router, setSelectedAssistant]);
+  }, [setAnimate, setInputBarMention, router, setSelectedAssistant]);
 
   const [greeting, setGreeting] = useState<string>("");
   useEffect(() => {
@@ -373,7 +373,7 @@ export function ConversationContainer({
 
       {!activeConversationId && (
         <AssistantBrowserContainer
-          onAgentConfigurationClick={setInputbarMention}
+          onAgentConfigurationClick={setInputBarMention}
           setAssistantToMention={(assistant) => {
             assistantToMention.current = assistant;
           }}
