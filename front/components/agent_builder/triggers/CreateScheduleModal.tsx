@@ -8,13 +8,11 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { TriggersConfigurationPageId } from "@app/components/agent_builder/types";
 import { TRIGGERS_CONFIGURATION_DIALOG_PAGE_IDS } from "@app/components/agent_builder/types";
 import { useSendNotification } from "@app/hooks/useNotification";
 
 export function CreateScheduleModal() {
-  const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
 
   const isLoading = false;
