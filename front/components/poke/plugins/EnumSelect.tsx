@@ -6,6 +6,7 @@ import {
   PopoverTrigger,
 } from "@dust-tt/sparkle";
 import { Check, CheckCircle, Circle } from "lucide-react";
+import React from "react";
 
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import {
@@ -18,7 +19,6 @@ import {
 } from "@app/components/poke/shadcn/ui/command";
 import { PokeFormControl } from "@app/components/poke/shadcn/ui/form";
 import type { AsyncEnumValues, EnumValues } from "@app/types/poke/plugins";
-import React, { useState } from "react";
 
 interface EnumSelectProps {
   label?: string;
@@ -35,7 +35,7 @@ export function EnumSelect({
   placeholder = "Select value",
   value,
 }: EnumSelectProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = React.useState(false);
 
   return (
     <PopoverRoot modal={true} open={open} onOpenChange={setOpen}>
