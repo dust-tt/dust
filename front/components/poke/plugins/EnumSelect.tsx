@@ -35,7 +35,7 @@ export function EnumSelect({
   value,
 }: EnumSelectProps) {
   return (
-    <PopoverRoot modal={false}>
+    <PopoverRoot modal={true}>
       <PopoverTrigger asChild>
         <PokeFormControl>
           <PokeButton
