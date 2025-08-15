@@ -20,7 +20,7 @@ interface PluginCardProps {
 function PluginCard({ onClick, plugin }: PluginCardProps) {
   return (
     <PokeCard
-      className="flex h-20 w-44 cursor-pointer hover:bg-gray-100"
+      className="flex h-20 w-44 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
       onClick={onClick}
     >
       <PokeCardHeader className="flex space-y-1.5 overflow-hidden p-2 text-left">
