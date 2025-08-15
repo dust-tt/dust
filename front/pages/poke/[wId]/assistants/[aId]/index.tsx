@@ -67,7 +67,7 @@ const AssistantDetailsPage = ({
     <div>
       <div className="flex flex-row justify-between gap-4">
         <h3 className="text-xl font-bold">
-          Agent of workspace:{" "}
+          Agent from workspace{" "}
           <a href={`/poke/${workspace.sId}`} className="text-highlight-500">
             {workspace.name}
           </a>
@@ -77,7 +77,7 @@ const AssistantDetailsPage = ({
             <DropdownMenuTrigger asChild>
               <Button
                 icon={UserGroupIcon}
-                onClick={(e: any) => {
+                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.currentTarget.focus();
                 }}
                 label={`Editors`}

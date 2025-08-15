@@ -74,7 +74,7 @@ export default function GroupPage({
   return (
     <>
       <h3 className="text-xl font-bold">
-        Group: {group.name} ({group.kind}) of workspace:{" "}
+        Group {group.name} ({group.kind}) within workspace{" "}
         <a href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </a>
