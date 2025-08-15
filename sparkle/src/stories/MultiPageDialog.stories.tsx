@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
 
-import { Button } from "@sparkle/components/Button";
 import { SearchInput } from "@sparkle/components";
+import { Button } from "@sparkle/components/Button";
 import {
   MultiPageDialog,
   MultiPageDialogContent,
