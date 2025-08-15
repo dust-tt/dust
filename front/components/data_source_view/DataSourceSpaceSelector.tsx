@@ -7,6 +7,7 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import { useContext, useMemo } from "react";
 
+import { DISABLED_REASON } from "@app/components/agent_builder/get_allowed_spaces";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
@@ -17,7 +18,8 @@ import { SPACE_KINDS } from "@app/types";
 type SpaceRowData = SpaceType & {
   id: string;
   icon: React.ComponentType;
-  onClick: () => void;
+  onClick: (() => void) | undefined;
+  disabled: boolean;
 };
 
 export interface DataSourceSpaceSelectorProps {
@@ -35,15 +37,18 @@ export function DataSourceSpaceSelector({
   const confirm = useContext(ConfirmContext);
 
   const spaceRows: SpaceRowData[] = spaces
-    .map((space) => ({
-      ...space,
-      id: space.sId,
-      name: space.name,
-      kind: space.kind,
-      icon: getSpaceIcon(space),
-      onClick: () => setSpaceEntry(space),
-      disabled: allowedSpaces.find((s) => s.sId === space.sId) == null,
-    }))
+    .map((space) => {
+      const disabled = allowedSpaces.find((s) => s.sId === space.sId) == null;
+      return {
+        ...space,
+        id: space.sId,
+        name: space.name,
+        kind: space.kind,
+        icon: getSpaceIcon(space),
+        onClick: disabled ? undefined : () => setSpaceEntry(space),
+        disabled,
+      };
+    })
     .toSorted((a, b) => {
       // First, sort by kind according to the specified order
       const aKindIndex = SPACE_KINDS.indexOf(a.kind);
@@ -79,7 +84,9 @@ export function DataSourceSpaceSelector({
                   <Checkbox
                     size="xs"
                     checked={selectionState}
-                    disabled={selectionState !== "partial"}
+                    disabled={
+                      selectionState !== "partial" || row.original.disabled
+                    }
                     onClick={(event) => event.stopPropagation()}
                     onCheckedChange={async () => {
                       const item: NavigationHistoryEntryType = {
@@ -121,9 +128,20 @@ export function DataSourceSpaceSelector({
         cell: ({ row }) => (
           <DataTable.CellContent
             icon={row.original.icon}
-            className="font-semibold"
+            className="select-none"
           >
-            {row.original.name}
+            {row.original.disabled ? (
+              <Tooltip
+                label={DISABLED_REASON}
+                trigger={
+                  <div className="cursor-not-allowed text-muted-foreground dark:text-muted-foreground-night">
+                    {row.original.name}
+                  </div>
+                }
+              />
+            ) : (
+              <div className="font-semibold">{row.original.name}</div>
+            )}
           </DataTable.CellContent>
         ),
         meta: {

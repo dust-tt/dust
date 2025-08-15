@@ -1046,6 +1046,9 @@ module.exports = {
     {
       pattern: /^grid-rows-/,
     },
+    {
+      pattern: /^cursor-/,
+    },
     // Add copy classes to safelist
     "copy-xs",
     "copy-sm",

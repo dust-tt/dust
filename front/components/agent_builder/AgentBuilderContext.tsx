@@ -21,6 +21,7 @@ interface AgentBuilderContextProps extends AgentBuilderContextType {
 
 // TODO: Move all the components from Assistant Builder to Agent builder
 // and remove the context providers from /assistant_builder
+// (seb) FYI yuka, I did some refactoring to assistant_builder.
 export function AgentBuilderProvider({
   owner,
   user,

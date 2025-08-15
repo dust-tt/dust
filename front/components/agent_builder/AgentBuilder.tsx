@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { AgentBuilderFormContext } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
@@ -150,32 +151,34 @@ export default function AgentBuilder({
     : "Create new agent";
 
   return (
-    <FormProvider form={form}>
-      <AgentBuilderLayout
-        leftPanel={
-          <AgentBuilderLeftPanel
-            title={title}
-            onCancel={handleCancel}
-            saveButtonProps={{
-              size: "sm",
-              label: saveLabel,
-              variant: "highlight",
-              onClick: handleSave,
-              disabled: isSaveDisabled,
-            }}
-            agentConfigurationId={agentConfiguration?.sId || null}
-            isActionsLoading={isActionsLoading}
-          />
-        }
-        rightPanel={
-          <ConversationSidePanelProvider>
-            <AgentBuilderRightPanel
-              agentConfigurationSId={agentConfiguration?.sId}
-              assistantTemplate={assistantTemplate}
+    <AgentBuilderFormContext.Provider value={form}>
+      <FormProvider form={form}>
+        <AgentBuilderLayout
+          leftPanel={
+            <AgentBuilderLeftPanel
+              title={title}
+              onCancel={handleCancel}
+              saveButtonProps={{
+                size: "sm",
+                label: saveLabel,
+                variant: "highlight",
+                onClick: handleSave,
+                disabled: isSaveDisabled,
+              }}
+              agentConfigurationId={agentConfiguration?.sId || null}
+              isActionsLoading={isActionsLoading}
             />
-          </ConversationSidePanelProvider>
-        }
-      />
-    </FormProvider>
+          }
+          rightPanel={
+            <ConversationSidePanelProvider>
+              <AgentBuilderRightPanel
+                agentConfigurationSId={agentConfiguration?.sId}
+                assistantTemplate={assistantTemplate}
+              />
+            </ConversationSidePanelProvider>
+          }
+        />
+      </FormProvider>
+    </AgentBuilderFormContext.Provider>
   );
 }
