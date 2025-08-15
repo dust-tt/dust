@@ -562,7 +562,7 @@ const DataSourcePage = ({
         </a>
       </h3>
       <p>
-        The content source of truth is <b>connectors</b>.
+        The data displayed here is fetched from <b>connectors</b>.
       </p>
 
       <div className="flex flex-row gap-x-6">

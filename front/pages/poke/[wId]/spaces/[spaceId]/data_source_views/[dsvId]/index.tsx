@@ -69,7 +69,8 @@ export default function DataSourceViewPage({
         </a>
       </h3>
       <p>
-        The content source of truth is <b>core</b>.
+        The data displayed here is fetched from <b>core</b> (
+        <i>elasticsearch index</i>).
       </p>
       <div className="flex flex-row gap-x-6">
         <ViewDataSourceViewTable
