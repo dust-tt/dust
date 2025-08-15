@@ -1,8 +1,9 @@
-import { Page } from "@dust-tt/sparkle";
+import { Button, Page } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import { useActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowserContainer";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
@@ -34,7 +35,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { Err, Ok, pluralize, removeNulls } from "@app/types";
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
@@ -56,6 +57,12 @@ export function ConversationContainer({
 
   const { animate, setAnimate, setSelectedAssistant } =
     useContext(InputBarContext);
+
+  const {
+    hasPendingValidations,
+    totalPendingValidations,
+    showValidationDialog,
+  } = useActionValidationContext();
 
   const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
   const { scrollConversationsToTop } = useConversationsNavigation();
@@ -80,7 +87,7 @@ export function ConversationContainer({
     limit: 50,
   });
 
-  const setInputbarMention = useCallback(
+  const setInputBarMention = useCallback(
     (agentId: string) => {
       setSelectedAssistant({ configurationId: agentId });
       setAnimate(true);
@@ -90,9 +97,9 @@ export function ConversationContainer({
 
   useEffect(() => {
     if (agentIdToMention) {
-      setInputbarMention(agentIdToMention);
+      setInputBarMention(agentIdToMention);
     }
-  }, [agentIdToMention, setInputbarMention]);
+  }, [agentIdToMention, setInputBarMention]);
 
   useEffect(() => {
     if (animate) {
@@ -281,7 +288,7 @@ export function ConversationContainer({
       const observer = new IntersectionObserver(
         () => {
           if (assistantToMention.current) {
-            setInputbarMention(assistantToMention.current.sId);
+            setInputBarMention(assistantToMention.current.sId);
             assistantToMention.current = null;
           }
         },
@@ -296,7 +303,7 @@ export function ConversationContainer({
       }
     };
     router.events.on("routeChangeComplete", handleRouteChange);
-  }, [setAnimate, setInputbarMention, router, setSelectedAssistant]);
+  }, [setAnimate, setInputBarMention, router, setSelectedAssistant]);
 
   const [greeting, setGreeting] = useState<string>("");
   useEffect(() => {
@@ -336,6 +343,24 @@ export function ConversationContainer({
         </div>
       )}
 
+      {hasPendingValidations && (
+        // Replace by ContentMessageInline.
+        <div className="flex justify-center px-4 pb-2">
+          <div className="flex items-center gap-3 rounded-xl border border-transparent bg-info-100 px-4 py-3 dark:bg-info-100-night">
+            <span className="flex-1 text-sm text-info-900 dark:text-info-900-night">
+              {totalPendingValidations} action
+              {pluralize(totalPendingValidations)} require manual approval
+            </span>
+            <Button
+              label="Review actions"
+              variant="outline"
+              size="xs"
+              onClick={() => showValidationDialog()}
+            />
+          </div>
+        </div>
+      )}
+
       <FixedAssistantInputBar
         owner={owner}
         onSubmit={
@@ -343,11 +368,12 @@ export function ConversationContainer({
         }
         stickyMentions={stickyMentions}
         conversationId={activeConversationId}
+        disableButton={hasPendingValidations}
       />
 
       {!activeConversationId && (
         <AssistantBrowserContainer
-          onAgentConfigurationClick={setInputbarMention}
+          onAgentConfigurationClick={setInputBarMention}
           setAssistantToMention={(assistant) => {
             assistantToMention.current = assistant;
           }}
