@@ -1,6 +1,3 @@
-import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
-import { TriggerSelectorDropdown } from "@app/components/agent_builder/triggers/TriggerSelectorDropdown";
-import { LightTriggerType, TriggerKind } from "@app/types/assistant/triggers";
 import {
   Card,
   CardActionButton,
@@ -11,6 +8,13 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import React from "react";
+
+import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
+import { TriggerSelectorDropdown } from "@app/components/agent_builder/triggers/TriggerSelectorDropdown";
+import type { TriggerKind, TriggerType } from "@app/types/assistant/triggers";
+import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
+import { Authenticator } from "@app/lib/auth";
+import { WorkspaceType } from "@dust-tt/client";
 
 const BACKGROUND_IMAGE_STYLE_PROPS = {
   backgroundImage: `url("/static/IconBar.svg")`,
@@ -31,7 +35,7 @@ function getIcon(kind: TriggerKind) {
   }
 }
 
-function TriggerCard({ trigger }: { trigger: LightTriggerType }) {
+function TriggerCard({ trigger }: { trigger: TriggerType }) {
   return (
     <Card
       variant="primary"
@@ -64,24 +68,18 @@ function TriggerCard({ trigger }: { trigger: LightTriggerType }) {
 }
 
 interface AgentBuilderTriggersBlockProps {
-  agentConfigurationId?: string | null;
+  owner: WorkspaceType;
+  agentConfigurationId?: string;
 }
 
-export function AgentBuilderTriggersBlock({}: AgentBuilderTriggersBlockProps) {
-  const { triggers, isTriggersLoading } = {
-    triggers: [
-      {
-        name: "New Message",
-        description: "Trigger when a new message is received in the channel.",
-        kind: "schedule" as const,
-        config: {
-          cron: "0 * * * *", // Every hour
-          timezone: "UTC",
-        },
-      },
-    ],
-    isTriggersLoading: false,
-  };
+export function AgentBuilderTriggersBlock({
+  owner,
+  agentConfigurationId,
+}: AgentBuilderTriggersBlockProps) {
+  const { triggers, isTriggersLoading } = useAgentTriggers({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfigurationId ?? null,
+  });
 
   return (
     <AgentBuilderSectionContainer

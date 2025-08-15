@@ -1,11 +1,12 @@
-import { CreateScheduleModal } from "@app/components/agent_builder/triggers/CreateScheduleModal";
 import {
+  BoltIcon,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-  Button,
-  BoltIcon,
 } from "@dust-tt/sparkle";
+
+import { CreateScheduleModal } from "@app/components/agent_builder/triggers/CreateScheduleModal";
 
 export const TriggerSelectorDropdown = ({}) => {
   return (

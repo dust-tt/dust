@@ -2,14 +2,14 @@ import type { ButtonProps } from "@dust-tt/sparkle";
 import { BarFooter, BarHeader, Button, ScrollArea } from "@dust-tt/sparkle";
 import React from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
 import { AgentAccessPublicationDialog } from "@app/components/agent_builder/settings/AgentAccessPublicationDialog";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
-import { ConfirmContext } from "@app/components/Confirm";
 import { AgentBuilderTriggersBlock } from "@app/components/agent_builder/triggers/AgentBuilderTriggersBlock";
+import { ConfirmContext } from "@app/components/Confirm";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 
 interface AgentBuilderLeftPanelProps {
   title: string;
@@ -60,6 +60,7 @@ export function AgentBuilderLeftPanel({
           <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
           {hasFeature("hootl") && (
             <AgentBuilderTriggersBlock
+              auth={owner}
               agentConfigurationId={agentConfigurationId}
             />
           )}
