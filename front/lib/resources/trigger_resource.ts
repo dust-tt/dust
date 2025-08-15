@@ -14,7 +14,10 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { normalizeError } from "@app/types";
-import type { DatabaseTriggerType, TriggerType } from "@app/types/assistant/triggers";
+import type {
+  LightTriggerType,
+  TriggerType,
+} from "@app/types/assistant/triggers";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -122,7 +125,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
   }
 
-  toJSON(): DatabaseTriggerType {
+  toJSON(): TriggerType {
     return {
       id: this.id,
       sId: this.sId,
@@ -137,7 +140,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     };
   }
 
-  toSimpleJSON(): TriggerType {
+  toSimpleJSON(): LightTriggerType {
     return {
       sId: this.sId,
       name: this.name,

@@ -1,4 +1,4 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -19,6 +19,7 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
   declare name: string;
   declare description: string;
 
+  declare agentConfiguration: NonAttribute<AgentConfiguration>;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
   declare kind: TriggerKind;
 

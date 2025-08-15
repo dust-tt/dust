@@ -13,7 +13,7 @@ export type ScheduleConfigType = {
 export type TriggerConfigType = ScheduleConfigType;
 
 // Full database representation
-export type DatabaseTriggerType = {
+export type TriggerType = {
   id: number;
   sId: string;
 
@@ -25,18 +25,18 @@ export type DatabaseTriggerType = {
   subscribers: UserType["id"][] | null;
 
   kind: TriggerKind;
-  config: TriggerConfigType | null;
+  config: TriggerConfigType;
 
   customPrompt: string | null;
 };
 
 // Main type for API and UI (what components expect)
-export type TriggerType = {
+export type LightTriggerType = {
   sId?: string;
   name: string;
   description: string;
   kind: TriggerKind;
-  config?: TriggerConfigType | null;
+  config: TriggerConfigType;
 };
 
 // Type for API operations (create/update)
@@ -44,7 +44,7 @@ export type CreateTriggerType = {
   name: string;
   description: string;
   kind: TriggerKind;
-  config?: TriggerConfigType | null;
+  config: TriggerConfigType;
 };
 
 export type UpdateTriggerType = CreateTriggerType;

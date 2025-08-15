@@ -22,7 +22,7 @@ import {
 } from "@app/lib/swr/agent_triggers";
 import type {
   CreateTriggerType,
-  TriggerType,
+  LightTriggerType,
 } from "@app/types/assistant/triggers";
 
 const scheduleFormSchema = z.object({
@@ -35,7 +35,7 @@ const scheduleFormSchema = z.object({
 type ScheduleFormData = z.infer<typeof scheduleFormSchema>;
 
 interface CreateScheduleModalProps {
-  trigger?: TriggerType;
+  trigger?: LightTriggerType;
   isOpen: boolean;
   onClose: () => void;
   workspaceId: string;

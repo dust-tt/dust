@@ -16,7 +16,10 @@ import { TriggerSelectorDropdown } from "@app/components/agent_builder/triggers/
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
-import type { TriggerKind, TriggerType } from "@app/types/assistant/triggers";
+import type {
+  TriggerKind,
+  LightTriggerType,
+} from "@app/types/assistant/triggers";
 
 const BACKGROUND_IMAGE_STYLE_PROPS = {
   backgroundImage: `url("/static/IconBar.svg")`,
@@ -38,7 +41,7 @@ function getIcon(kind: TriggerKind) {
 }
 
 interface TriggerCardProps {
-  trigger: TriggerType;
+  trigger: LightTriggerType;
   onRemove: () => void;
   onEdit?: () => void;
 }
@@ -91,12 +94,12 @@ export function AgentBuilderTriggersBlock({
   });
   const sendNotification = useSendNotification();
   const [editingTrigger, setEditingTrigger] = useState<{
-    trigger: TriggerType;
+    trigger: LightTriggerType;
     index: number;
   } | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const handleTriggerEdit = (trigger: TriggerType, index: number) => {
+  const handleTriggerEdit = (trigger: LightTriggerType, index: number) => {
     setEditingTrigger({ trigger, index });
   };
 
@@ -109,18 +112,18 @@ export function AgentBuilderTriggersBlock({
     setIsCreateModalOpen(false);
   };
 
-  const handleTriggerRemove = async (trigger: TriggerType) => {
+  const handleTriggerRemove = async (trigger: LightTriggerType) => {
     if (!trigger.sId || !agentConfigurationId) {
       return;
     }
-    
+
     const res = await fetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${trigger.sId}`,
       {
         method: "DELETE",
       }
     );
-    
+
     if (res.ok) {
       void mutateTriggers();
       sendNotification({
@@ -155,7 +158,9 @@ export function AgentBuilderTriggersBlock({
           </div>
         ) : triggers.length === 0 ? (
           <EmptyCTA
-            action={<TriggerSelectorDropdown onCreateTrigger={handleCreateTrigger} />}
+            action={
+              <TriggerSelectorDropdown onCreateTrigger={handleCreateTrigger} />
+            }
             className="pb-5"
             style={BACKGROUND_IMAGE_STYLE_PROPS}
           />
