@@ -185,6 +185,7 @@ export function ActionValidationProvider({
     }
   };
 
+  // This will be used as a dependency of the hook down the line so we need to use useCallback.
   const showValidationDialog = useCallback(
     (validationRequest?: MCPActionValidationRequest) => {
       // If we have a new validation request, queue it.
