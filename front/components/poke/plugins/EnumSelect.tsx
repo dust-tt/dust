@@ -18,6 +18,7 @@ import {
 } from "@app/components/poke/shadcn/ui/command";
 import { PokeFormControl } from "@app/components/poke/shadcn/ui/form";
 import type { AsyncEnumValues, EnumValues } from "@app/types/poke/plugins";
+import React, { useState } from "react";
 
 interface EnumSelectProps {
   label?: string;
@@ -34,8 +35,10 @@ export function EnumSelect({
   placeholder = "Select value",
   value,
 }: EnumSelectProps) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <PopoverRoot modal={true}>
+    <PopoverRoot modal={true} open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <PokeFormControl>
           <PokeButton
@@ -65,6 +68,7 @@ export function EnumSelect({
                   key={option.value}
                   onSelect={() => {
                     onValueChange(option.value);
+                    setOpen(false);
                   }}
                 >
                   <div className="flex w-full items-center gap-2">
