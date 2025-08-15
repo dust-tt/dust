@@ -9,10 +9,7 @@ import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import type {
-  TriggerConfigType,
-  TriggerType,
-} from "@app/types/assistant/triggers";
+import type { TriggerType } from "@app/types/assistant/triggers";
 import { TriggerSchema } from "@app/types/assistant/triggers";
 
 export interface GetTriggerResponseBody {

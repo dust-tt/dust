@@ -5,14 +5,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { generateRandomModelSId, getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import {
+  generateRandomModelSId,
+  getResourceIdFromSId,
+} from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import type {
-  TriggerConfigType,
-  TriggerType,
-} from "@app/types/assistant/triggers";
+import type { TriggerType } from "@app/types/assistant/triggers";
 import { TriggerSchema } from "@app/types/assistant/triggers";
 
 export interface GetTriggersResponseBody {
@@ -47,24 +47,11 @@ async function handler(
     });
   }
 
-  const agentConfigurationModelId = getResourceIdFromSId(
-    agentConfiguration.sId
-  );
-  if (!agentConfigurationModelId) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "agent_configuration_not_found",
-        message: "The agent configuration was not found.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET": {
       const triggers = await TriggerResource.listByAgentConfigurationId(
         auth,
-        agentConfigurationModelId
+        agentConfiguration.id
       );
 
       return res.status(200).json({
@@ -103,7 +90,7 @@ async function handler(
         const trigger = await TriggerResource.makeNew({
           sId,
           workspaceId: workspace.id,
-          agentConfigurationId: agentConfigurationModelId,
+          agentConfigurationId: agentConfiguration.id,
           name: triggerData.name,
           description: triggerData.description,
           kind: triggerData.kind,

@@ -60,7 +60,7 @@ export function AgentBuilderLeftPanel({
           <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
           {hasFeature("hootl") && (
             <AgentBuilderTriggersBlock
-              auth={owner}
+              owner={owner}
               agentConfigurationId={agentConfigurationId}
             />
           )}

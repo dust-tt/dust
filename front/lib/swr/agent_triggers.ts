@@ -37,7 +37,7 @@ export function useAgentTriggers({
 
   return {
     triggers: data?.triggers ?? emptyArray(),
-    isTriggersLoading: !error && !data && !disabled,
+    isTriggersLoading: agentConfigurationId && !error && !data && !disabled,
     isTriggersError: error,
     isTriggersValidating: isValidating,
     mutateTriggers: mutate,
@@ -91,6 +91,12 @@ export function useCreateTrigger({
   const doCreate = useCallback(
     async (triggerData: CreateTriggerType) => {
       if (!agentConfigurationId) {
+        sendNotification({
+          type: "error",
+          title: "Failed to create trigger",
+          description:
+            "You need to add a trigger on an already existing agent.",
+        });
         return null;
       }
 

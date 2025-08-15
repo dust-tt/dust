@@ -1,14 +1,17 @@
 import {
   BoltIcon,
   Button,
+  ClockIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 
-import { CreateScheduleModal } from "@app/components/agent_builder/triggers/CreateScheduleModal";
+interface TriggerSelectorDropdownProps {
+  onCreateTrigger: () => void;
+}
 
-export const TriggerSelectorDropdown = ({}) => {
+export const TriggerSelectorDropdown = ({ onCreateTrigger }: TriggerSelectorDropdownProps) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -22,7 +25,12 @@ export const TriggerSelectorDropdown = ({}) => {
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <div className="flex flex-col gap-2">
-          <CreateScheduleModal />
+          <Button 
+            label="Schedule" 
+            variant="ghost" 
+            icon={ClockIcon}
+            onClick={onCreateTrigger}
+          />
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

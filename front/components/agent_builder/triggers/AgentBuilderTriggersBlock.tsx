@@ -1,3 +1,4 @@
+import type { WorkspaceType } from "@dust-tt/client";
 import {
   Card,
   CardActionButton,
@@ -7,14 +8,15 @@ import {
   TimeIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import React from "react";
+import React, { useState } from "react";
 
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
+import { CreateScheduleModal } from "@app/components/agent_builder/triggers/CreateScheduleModal";
 import { TriggerSelectorDropdown } from "@app/components/agent_builder/triggers/TriggerSelectorDropdown";
-import type { TriggerKind, TriggerType } from "@app/types/assistant/triggers";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
-import { Authenticator } from "@app/lib/auth";
-import { WorkspaceType } from "@dust-tt/client";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
+import type { TriggerKind, TriggerType } from "@app/types/assistant/triggers";
 
 const BACKGROUND_IMAGE_STYLE_PROPS = {
   backgroundImage: `url("/static/IconBar.svg")`,
@@ -35,18 +37,25 @@ function getIcon(kind: TriggerKind) {
   }
 }
 
-function TriggerCard({ trigger }: { trigger: TriggerType }) {
+interface TriggerCardProps {
+  trigger: TriggerType;
+  onRemove: () => void;
+  onEdit?: () => void;
+}
+
+function TriggerCard({ trigger, onRemove, onEdit }: TriggerCardProps) {
   return (
     <Card
       variant="primary"
       className="h-28"
+      onClick={onEdit}
       action={
         <CardActionButton
           size="mini"
           icon={XMarkIcon}
           onClick={(e: Event) => {
             e.stopPropagation();
-            alert("Remove trigger action not implemented yet");
+            onRemove();
           }}
         />
       }
@@ -69,24 +78,74 @@ function TriggerCard({ trigger }: { trigger: TriggerType }) {
 
 interface AgentBuilderTriggersBlockProps {
   owner: WorkspaceType;
-  agentConfigurationId?: string;
+  agentConfigurationId: string | null;
 }
 
 export function AgentBuilderTriggersBlock({
   owner,
   agentConfigurationId,
 }: AgentBuilderTriggersBlockProps) {
-  const { triggers, isTriggersLoading } = useAgentTriggers({
+  const { triggers, isTriggersLoading, mutateTriggers } = useAgentTriggers({
     workspaceId: owner.sId,
-    agentConfigurationId: agentConfigurationId ?? null,
+    agentConfigurationId: agentConfigurationId,
   });
+  const sendNotification = useSendNotification();
+  const [editingTrigger, setEditingTrigger] = useState<{
+    trigger: TriggerType;
+    index: number;
+  } | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const handleTriggerEdit = (trigger: TriggerType, index: number) => {
+    setEditingTrigger({ trigger, index });
+  };
+
+  const handleCreateTrigger = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setEditingTrigger(null);
+    setIsCreateModalOpen(false);
+  };
+
+  const handleTriggerRemove = async (trigger: TriggerType) => {
+    if (!trigger.sId || !agentConfigurationId) {
+      return;
+    }
+    
+    const res = await fetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${trigger.sId}`,
+      {
+        method: "DELETE",
+      }
+    );
+    
+    if (res.ok) {
+      void mutateTriggers();
+      sendNotification({
+        type: "success",
+        title: `Successfully deleted ${trigger.name}`,
+        description: `Trigger "${trigger.name}" was successfully deleted.`,
+      });
+    } else {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Failed to delete trigger",
+        description: `Error: ${errorData.message}`,
+      });
+    }
+  };
 
   return (
     <AgentBuilderSectionContainer
       title="Triggers"
       description="Triggers agent execution based on events."
       headerActions={
-        triggers.length > 0 ? <TriggerSelectorDropdown /> : undefined
+        triggers.length > 0 ? (
+          <TriggerSelectorDropdown onCreateTrigger={handleCreateTrigger} />
+        ) : undefined
       }
     >
       <div className="flex-1">
@@ -96,18 +155,32 @@ export function AgentBuilderTriggersBlock({
           </div>
         ) : triggers.length === 0 ? (
           <EmptyCTA
-            action={<TriggerSelectorDropdown />}
+            action={<TriggerSelectorDropdown onCreateTrigger={handleCreateTrigger} />}
             className="pb-5"
             style={BACKGROUND_IMAGE_STYLE_PROPS}
           />
         ) : (
           <CardGrid>
             {triggers.map((trigger, index) => (
-              <TriggerCard key={index} trigger={trigger} />
+              <TriggerCard
+                key={trigger.sId || index}
+                trigger={trigger}
+                onRemove={() => handleTriggerRemove(trigger)}
+                onEdit={() => handleTriggerEdit(trigger, index)}
+              />
             ))}
           </CardGrid>
         )}
       </div>
+
+      {/* Create/Edit Schedule Modal */}
+      <CreateScheduleModal
+        trigger={editingTrigger?.trigger}
+        isOpen={editingTrigger !== null || isCreateModalOpen}
+        onClose={handleCloseModal}
+        workspaceId={owner.sId}
+        agentConfigurationId={agentConfigurationId || ""}
+      />
     </AgentBuilderSectionContainer>
   );
 }
