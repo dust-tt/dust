@@ -35,7 +35,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { Err, Ok, pluralize, removeNulls } from "@app/types";
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
@@ -349,7 +349,7 @@ export function ConversationContainer({
           <div className="flex items-center gap-3 rounded-xl border border-transparent bg-info-100 px-4 py-3 dark:bg-info-100-night">
             <span className="flex-1 text-sm text-info-900 dark:text-info-900-night">
               {totalPendingValidations} action
-              {totalPendingValidations > 1 ? "s" : ""} require manual approval
+              {pluralize(totalPendingValidations)} require manual approval
             </span>
             <Button
               label="Review actions"
