@@ -53,11 +53,7 @@ export function EnumSelect({
           </PokeButton>
         </PokeFormControl>
       </PopoverTrigger>
-      <PopoverContent
-        className="w-[400px] p-0"
-        mountPortal={false}
-        align="start"
-      >
+      <PopoverContent className="w-[400px] p-0" align="start">
         <PokeCommand className="gap-2 py-3">
           <PokeCommandInput placeholder={label} className="h-9 p-2" />
           <PokeCommandList>
