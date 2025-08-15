@@ -205,9 +205,8 @@ export function ActionValidationProvider({
     ]
   );
 
-  const hasPendingValidations = !!(
-    currentValidation || validationQueue.length > 0
-  );
+  const hasPendingValidations =
+    currentValidation !== null || validationQueue.length > 0;
   const totalPendingValidations =
     (currentValidation ? 1 : 0) + validationQueue.length;
 
