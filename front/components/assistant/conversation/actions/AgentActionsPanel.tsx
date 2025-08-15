@@ -20,7 +20,7 @@ export function AgentActionsPanel({
   owner,
 }: AgentActionsPanelProps) {
   const {
-    closePanel,
+    onPanelClosed,
     data: messageId,
     metadata: messageMetadata,
   } = useConversationSidePanelContext();
@@ -49,6 +49,7 @@ export function AgentActionsPanel({
     !fullAgentMessage ||
     fullAgentMessage.type !== "agent_message"
   ) {
+    onPanelClosed();
     return null;
   }
 
@@ -60,7 +61,7 @@ export function AgentActionsPanel({
     <div className="flex h-full flex-col">
       <AgentActionsPanelHeader
         title="Breakdown of the tools used"
-        onClose={closePanel}
+        onClose={onPanelClosed}
       />
       <div
         ref={scrollContainerRef}
