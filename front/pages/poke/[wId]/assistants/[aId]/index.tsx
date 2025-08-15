@@ -77,7 +77,7 @@ const AssistantDetailsPage = ({
             <DropdownMenuTrigger asChild>
               <Button
                 icon={UserGroupIcon}
-                onClick={(e: any) => {
+                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.currentTarget.focus();
                 }}
                 label={`Editors`}
