@@ -56,14 +56,14 @@ export default function DataSourceViewPage({
   return (
     <>
       <h3 className="text-xl font-bold">
-        {dataSourceView.name} in space:{" "}
+        {dataSourceView.name} in space{" "}
         <a
           href={`/poke/${owner.sId}/spaces/${dataSourceView.space.sId}`}
           className="text-highlight-500"
         >
           {dataSourceView.space.name}
         </a>{" "}
-        of workspace:{" "}
+        within workspace{" "}
         <a href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </a>

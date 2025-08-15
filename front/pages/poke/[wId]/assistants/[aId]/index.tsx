@@ -67,7 +67,7 @@ const AssistantDetailsPage = ({
     <div>
       <div className="flex flex-row justify-between gap-4">
         <h3 className="text-xl font-bold">
-          Agent of workspace:{" "}
+          Agent from workspace{" "}
           <a href={`/poke/${workspace.sId}`} className="text-highlight-500">
             {workspace.name}
           </a>

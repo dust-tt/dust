@@ -556,7 +556,7 @@ const DataSourcePage = ({
   return (
     <>
       <h3 className="text-xl font-bold">
-        Data Source: {dataSource.name} of workspace:{" "}
+        Data Source {dataSource.name} in workspace{" "}
         <a href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </a>
