@@ -84,7 +84,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
         </div>
       </div>
 
-      <div>
+      <div className="h-full">
         {filteredPlugins.length === 0 ? (
           <div className="flex h-full items-center justify-center text-gray-500">
             {searchQuery.trim() ? (
