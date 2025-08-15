@@ -3,13 +3,14 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { Authenticator, AuthenticatorType } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { LightTriggerType } from "@app/types/assistant/triggers";
 
 export async function runScheduledAgentsActivity(
   authType: AuthenticatorType,
-  agentConfigurationId: string,
+  agentConfigurationId: number,
   trigger: LightTriggerType
 ) {
   if (!authType || !authType.workspaceId || !authType.userId) {
@@ -17,9 +18,22 @@ export async function runScheduledAgentsActivity(
   }
 
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    authType.workspaceId,
-    authType.userId
+    authType.userId,
+    authType.workspaceId
   );
+
+  const agentConfiguration = await AgentConfiguration.findOne({
+    where: {
+      id: agentConfigurationId,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+  });
+
+  if (!agentConfiguration) {
+    throw new Error(
+      `Agent configuration with ID ${agentConfigurationId} not found in workspace ${auth.getNonNullableWorkspace().id}.`
+    );
+  }
 
   const newConversation = await createConversation(auth, {
     title: "Scheduled agent call",
@@ -28,8 +42,8 @@ export async function runScheduledAgentsActivity(
 
   const baseContext = {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
-    username: "ScheduledAgent",
-    fullName: "Scheduled Agent",
+    username: auth.getNonNullableUser().username,
+    fullName: auth.getNonNullableUser().fullName(),
     email: auth.getNonNullableUser().email,
     profilePictureUrl: null,
     origin: null,
@@ -37,8 +51,8 @@ export async function runScheduledAgentsActivity(
 
   const messageRes = await postUserMessage(auth, {
     conversation: newConversation,
-    content: "",
-    mentions: [{ configurationId: agentConfigurationId }],
+    content: `:mention[${agentConfiguration.name}]{${agentConfiguration.sId}}`,
+    mentions: [{ configurationId: agentConfiguration.sId }],
     context: baseContext,
     skipToolsValidation: true,
   });
@@ -49,6 +63,8 @@ export async function runScheduledAgentsActivity(
         agentConfigurationId,
         conversationSid: newConversation.sId,
         error: messageRes.error,
+        trigger,
+        timestamp: new Date().toISOString(),
       },
       "scheduledAgentCallActivity: Error sending message."
     );

@@ -14,17 +14,17 @@ import { agentScheduleWorkflow } from "./workflows";
 import { AuthenticatorType } from "@app/lib/auth";
 import { LightTriggerType } from "@app/types/assistant/triggers";
 
-export async function launchScheduledAgentCallWorkflow({
+export async function createOrUpdateAgentScheduleWorkflow({
   authType,
   agentConfigurationId,
   trigger,
 }: {
   authType: AuthenticatorType;
-  agentConfigurationId: string;
+  agentConfigurationId: number;
   trigger: LightTriggerType;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClientForAgentNamespace();
-  const scheduleId = `scheduled-agent-call-${authType.workspaceId}-${agentConfigurationId}`;
+  const scheduleId = `agent-schedule-${authType.workspaceId}-${agentConfigurationId}-${trigger.sId}`;
 
   if (trigger.kind !== "schedule") {
     logger.error(
@@ -66,4 +66,32 @@ export async function launchScheduledAgentCallWorkflow({
   }
 
   return new Ok(scheduleId);
+}
+
+export async function deleteAgentScheduleWorkflow({
+  authType,
+  agentConfigurationId,
+  triggerId,
+}: {
+  authType: AuthenticatorType;
+  agentConfigurationId: number;
+  triggerId: string;
+}): Promise<Result<void, Error>> {
+  const client = await getTemporalClientForAgentNamespace();
+  const scheduleId = `agent-schedule-${authType.workspaceId}-${agentConfigurationId}-${triggerId}`;
+
+  try {
+    const handle = client.schedule.getHandle(scheduleId);
+    await handle.delete();
+    logger.info({ scheduleId }, "Deleted scheduled workflow successfully.");
+    return new Ok(undefined);
+  } catch (err) {
+    if (err instanceof WorkflowNotFoundError) {
+      logger.warn({ scheduleId }, "Workflow not found, nothing to delete.");
+      return new Ok(undefined);
+    }
+
+    logger.error({ err }, "Failed to delete scheduled workflow.");
+    return new Err(normalizeError(err));
+  }
 }

@@ -12,15 +12,18 @@ import {
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import type { TriggerType } from "@app/types/assistant/triggers";
+import type {
+  LightTriggerType,
+  TriggerType,
+} from "@app/types/assistant/triggers";
 import { TriggerSchema } from "@app/types/assistant/triggers";
 
 export interface GetTriggersResponseBody {
-  triggers: TriggerType[];
+  triggers: LightTriggerType[];
 }
 
 export interface PostTriggerResponseBody {
-  trigger: TriggerType;
+  trigger: LightTriggerType;
 }
 
 async function handler(
@@ -87,7 +90,7 @@ async function handler(
 
       try {
         const sId = generateRandomModelSId();
-        const trigger = await TriggerResource.makeNew({
+        const trigger = await TriggerResource.makeNew(auth, {
           sId,
           workspaceId: workspace.id,
           agentConfigurationId: agentConfiguration.id,

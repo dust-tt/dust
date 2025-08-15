@@ -7,6 +7,7 @@ import {
   MODEL_PROVIDER_IDS,
   REASONING_EFFORT_IDS,
 } from "@app/types/assistant/assistant";
+import type { LightTriggerType } from "@app/types/assistant/triggers";
 
 const modelIdSchema = z.enum(MODEL_IDS);
 const providerIdSchema = z.enum(MODEL_PROVIDER_IDS);
@@ -166,11 +167,25 @@ const agentSettingsSchema = z.object({
   tags: z.array(tagSchema),
 });
 
+const scheduleConfigSchema = z.object({
+  cron: z.string(),
+  timezone: z.string(),
+});
+
+const lightTriggerSchema = z.object({
+  sId: z.string().optional(),
+  name: z.string(),
+  description: z.string(),
+  kind: z.enum(["schedule"]),
+  config: scheduleConfigSchema,
+});
+
 export const agentBuilderFormSchema = z.object({
   agentSettings: agentSettingsSchema,
   instructions: z.string().min(1, "Instructions are required"),
   generationSettings: generationSettingsSchema,
   actions: z.array(actionSchema),
+  triggers: z.array(lightTriggerSchema),
   maxStepsPerRun: z
     .number()
     .min(1, "Max steps per run must be at least 1")

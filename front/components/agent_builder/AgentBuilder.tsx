@@ -21,6 +21,7 @@ import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
+import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useEditors } from "@app/lib/swr/editors";
 import { emptyArray } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
@@ -46,6 +47,11 @@ export default function AgentBuilder({
     owner.sId,
     agentConfiguration?.sId ?? null
   );
+
+  const { triggers, isTriggersLoading } = useAgentTriggers({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
+  });
 
   const { editors } = useEditors({
     owner,
@@ -84,6 +90,7 @@ export default function AgentBuilder({
     values: {
       ...defaultValues,
       actions: actions ?? emptyArray(),
+      triggers: triggers ?? emptyArray(),
       agentSettings: {
         ...defaultValues.agentSettings,
         slackProvider,
@@ -141,7 +148,8 @@ export default function AgentBuilder({
 
   const { isDirty, isSubmitting } = form.formState;
 
-  const isSaveDisabled = !isDirty || isSubmitting || isActionsLoading;
+  const isSaveDisabled =
+    !isDirty || isSubmitting || isActionsLoading || isTriggersLoading;
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 

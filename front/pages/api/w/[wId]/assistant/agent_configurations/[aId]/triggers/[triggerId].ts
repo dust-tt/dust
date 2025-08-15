@@ -20,24 +20,15 @@ export interface PatchTriggerResponseBody {
   trigger: LightTriggerType;
 }
 
-export interface DeleteTriggerResponseBody {
-  success: boolean;
-}
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<
-      | GetTriggerResponseBody
-      | PatchTriggerResponseBody
-      | DeleteTriggerResponseBody
-    >
+    WithAPIErrorResponse<GetTriggerResponseBody | PatchTriggerResponseBody>
   >,
   auth: Authenticator
 ): Promise<void> {
-  const { aId, triggerId } = req.query;
-  const agentConfigurationId = aId as string;
-  const triggerSId = triggerId as string;
+  const agentConfigurationId = req.query.aId as string;
+  const triggerId = req.query.triggerId as string;
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: agentConfigurationId,
@@ -54,36 +45,13 @@ async function handler(
     });
   }
 
-  const trigger = await TriggerResource.fetchById(auth, triggerSId);
+  const trigger = await TriggerResource.fetchById(auth, triggerId);
   if (!trigger) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "trigger_not_found",
         message: "The trigger was not found.",
-      },
-    });
-  }
-
-  const agentConfigurationModelId = getResourceIdFromSId(
-    agentConfiguration.sId
-  );
-  if (!agentConfigurationModelId) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "agent_configuration_not_found",
-        message: "The agent configuration was not found.",
-      },
-    });
-  }
-
-  if (trigger.agentConfigurationId !== agentConfigurationModelId) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "trigger_not_found",
-        message: "The trigger was not found for this agent.",
       },
     });
   }
@@ -120,27 +88,40 @@ async function handler(
 
       const triggerData = bodyValidation.right;
 
-      const updateResult = await TriggerResource.update(auth, triggerSId, {
-        name: triggerData.name,
-        description: triggerData.description,
-        kind: triggerData.kind,
-        configuration: triggerData.config || null,
-      });
+      try {
+        const updateResult = await TriggerResource.update(
+          auth,
+          triggerId,
+          {
+            name: triggerData.name,
+            description: triggerData.description,
+            kind: triggerData.kind,
+            configuration: triggerData.config || null,
+          }
+        );
 
-      if (updateResult.isErr()) {
+        if (updateResult.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to update trigger.",
+            },
+          });
+        }
+
+        return res.status(200).json({
+          trigger: updateResult.value.toSimpleJSON(),
+        });
+      } catch (error) {
         return apiError(req, res, {
-          status_code: 400,
+          status_code: 500,
           api_error: {
-            type: "invalid_request_error",
-            message: updateResult.error.message,
+            type: "internal_server_error",
+            message: "Failed to update trigger.",
           },
         });
       }
-
-      const updatedTrigger = updateResult.value;
-      return res.status(200).json({
-        trigger: updatedTrigger.toSimpleJSON(),
-      });
     }
 
     case "DELETE": {
@@ -154,8 +135,21 @@ async function handler(
         });
       }
 
-      const deleteResult = await trigger.delete(auth);
-      if (deleteResult.isErr()) {
+      try {
+        const deleteResult = await trigger.delete(auth);
+        if (deleteResult.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to delete trigger.",
+            },
+          });
+        }
+
+        res.status(204).end();
+        return;
+      } catch (error) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
@@ -164,8 +158,6 @@ async function handler(
           },
         });
       }
-
-      return res.status(200).json({ success: true });
     }
 
     default:
@@ -173,8 +165,7 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message:
-            "The method passed is not supported, GET, PATCH or DELETE is expected.",
+          message: "The method passed is not supported, GET, PATCH, and DELETE are expected.",
         },
       });
   }

@@ -9,13 +9,13 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
+import { useFieldArray, useFormContext } from "react-hook-form";
 
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { CreateScheduleModal } from "@app/components/agent_builder/triggers/CreateScheduleModal";
 import { TriggerSelectorDropdown } from "@app/components/agent_builder/triggers/TriggerSelectorDropdown";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
-import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type {
   TriggerKind,
   LightTriggerType,
@@ -88,10 +88,14 @@ export function AgentBuilderTriggersBlock({
   owner,
   agentConfigurationId,
 }: AgentBuilderTriggersBlockProps) {
-  const { triggers, isTriggersLoading, mutateTriggers } = useAgentTriggers({
-    workspaceId: owner.sId,
-    agentConfigurationId: agentConfigurationId,
+  // Use form context for managing all triggers
+  const { fields: triggers, remove, append, update } = useFieldArray<
+    AgentBuilderFormData,
+    "triggers"
+  >({
+    name: "triggers",
   });
+
   const sendNotification = useSendNotification();
   const [editingTrigger, setEditingTrigger] = useState<{
     trigger: LightTriggerType;
@@ -112,33 +116,24 @@ export function AgentBuilderTriggersBlock({
     setIsCreateModalOpen(false);
   };
 
-  const handleTriggerRemove = async (trigger: LightTriggerType) => {
-    if (!trigger.sId || !agentConfigurationId) {
-      return;
-    }
-
-    const res = await fetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${trigger.sId}`,
-      {
-        method: "DELETE",
-      }
-    );
-
-    if (res.ok) {
-      void mutateTriggers();
-      sendNotification({
-        type: "success",
-        title: `Successfully deleted ${trigger.name}`,
-        description: `Trigger "${trigger.name}" was successfully deleted.`,
-      });
+  const handleTriggerSave = (trigger: LightTriggerType) => {
+    if (editingTrigger) {
+      // Editing existing trigger
+      update(editingTrigger.index, trigger);
     } else {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Failed to delete trigger",
-        description: `Error: ${errorData.message}`,
-      });
+      // Creating new trigger
+      append(trigger);
     }
+    handleCloseModal();
+  };
+
+  const handleTriggerRemove = (trigger: LightTriggerType, index: number) => {
+    remove(index);
+    sendNotification({
+      type: "success",
+      title: `Successfully removed ${trigger.name}`,
+      description: `Trigger "${trigger.name}" will be removed when you save the agent.`,
+    });
   };
 
   return (
@@ -152,11 +147,7 @@ export function AgentBuilderTriggersBlock({
       }
     >
       <div className="flex-1">
-        {isTriggersLoading ? (
-          <div className="flex h-40 w-full items-center justify-center">
-            <Spinner />
-          </div>
-        ) : triggers.length === 0 ? (
+        {triggers.length === 0 ? (
           <EmptyCTA
             action={
               <TriggerSelectorDropdown onCreateTrigger={handleCreateTrigger} />
@@ -170,7 +161,7 @@ export function AgentBuilderTriggersBlock({
               <TriggerCard
                 key={trigger.sId || index}
                 trigger={trigger}
-                onRemove={() => handleTriggerRemove(trigger)}
+                onRemove={() => handleTriggerRemove(trigger, index)}
                 onEdit={() => handleTriggerEdit(trigger, index)}
               />
             ))}
@@ -183,8 +174,7 @@ export function AgentBuilderTriggersBlock({
         trigger={editingTrigger?.trigger}
         isOpen={editingTrigger !== null || isCreateModalOpen}
         onClose={handleCloseModal}
-        workspaceId={owner.sId}
-        agentConfigurationId={agentConfigurationId || ""}
+        onSave={handleTriggerSave}
       />
     </AgentBuilderSectionContainer>
   );

@@ -1,11 +1,13 @@
 import {
   Button,
   Dialog,
+  DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   Input,
+  Label,
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
@@ -15,20 +17,18 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { FormProvider } from "@app/components/sparkle/FormProvider";
-import { useSendNotification } from "@app/hooks/useNotification";
-import {
-  useCreateTrigger,
-  useUpdateTrigger,
-} from "@app/lib/swr/agent_triggers";
-import type {
-  CreateTriggerType,
-  LightTriggerType,
-} from "@app/types/assistant/triggers";
+import type { LightTriggerType } from "@app/types/assistant/triggers";
 
 const scheduleFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),
   description: z.string().max(1000, "Description is too long"),
-  cron: z.string().min(1, "Cron expression is required"),
+  cron: z
+    .string()
+    .min(1, "Cron expression is required")
+    .regex(
+      /^(\*|([0-5]?\d)) (\*|([01]?\d|2[0-3])) (\*|([01]?\d|2[0-9]|3[01])) (\*|(1[0-2]|0?[1-9])) (\*|([0-6]))$/,
+      "Invalid cron expression (expected 5 fields: min hour day month weekday)"
+    ),
   timezone: z.string().min(1, "Timezone is required"),
 });
 
@@ -38,30 +38,15 @@ interface CreateScheduleModalProps {
   trigger?: LightTriggerType;
   isOpen: boolean;
   onClose: () => void;
-  workspaceId: string;
-  agentConfigurationId: string;
+  onSave: (trigger: LightTriggerType) => void;
 }
 
 export function CreateScheduleModal({
   trigger,
   isOpen,
   onClose,
-  workspaceId,
-  agentConfigurationId,
+  onSave,
 }: CreateScheduleModalProps) {
-  const sendNotification = useSendNotification();
-
-  const createTrigger = useCreateTrigger({
-    workspaceId,
-    agentConfigurationId,
-  });
-
-  const updateTrigger = useUpdateTrigger({
-    workspaceId,
-    agentConfigurationId,
-    triggerId: trigger?.sId || null,
-  });
-
   const defaultValues: ScheduleFormData = {
     name: trigger?.name || "",
     description: trigger?.description || "",
@@ -80,13 +65,8 @@ export function CreateScheduleModal({
     defaultValues,
   });
 
-  const {
-    handleSubmit,
-    formState: { isSubmitting },
-    reset,
-  } = form;
+  const { reset } = form;
 
-  // Reset form when trigger changes
   useEffect(() => {
     const newValues: ScheduleFormData = {
       name: trigger?.name || "",
@@ -107,8 +87,9 @@ export function CreateScheduleModal({
     onClose();
   };
 
-  const onSubmit = async (data: ScheduleFormData) => {
-    const triggerData: CreateTriggerType = {
+  const onSubmit = (data: ScheduleFormData) => {
+    const triggerData: LightTriggerType = {
+      sId: trigger?.sId,
       name: data.name.trim(),
       description: data.description.trim(),
       kind: "schedule",
@@ -118,62 +99,40 @@ export function CreateScheduleModal({
       },
     };
 
-    try {
-      if (trigger) {
-        await updateTrigger(triggerData);
-      } else {
-        alert("Creating a new trigger");
-        await createTrigger(triggerData);
-      }
-      onClose();
-    } catch (error) {
-      console.error("Failed to save trigger:", error);
-      sendNotification({
-        title: "Error",
-        description: "Failed to save trigger. Please try again.",
-        type: "error",
-      });
-    }
+    onSave(triggerData);
+    onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent size="md">
-        <DialogHeader>
-          <DialogTitle>
-            {trigger ? "Edit Schedule" : "Create Schedule"}
-          </DialogTitle>
-        </DialogHeader>
+        <FormProvider form={form} onSubmit={onSubmit}>
+          <DialogHeader>
+            <DialogTitle>
+              {trigger ? "Edit Schedule" : "Create Schedule"}
+            </DialogTitle>
+          </DialogHeader>
 
-        {isSubmitting ? (
-          <div className="flex h-40 w-full items-center justify-center">
-            <Spinner />
-          </div>
-        ) : (
-          <FormProvider form={form}>
-            <div className="space-y-4 py-4">
+          <DialogContainer>
+            <div className="space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-foreground dark:text-foreground-night">
-                  Trigger Name
-                </label>
+                <Label htmlFor="trigger-name">Trigger Name</Label>
                 <Input
+                  id="trigger-name"
                   {...form.register("name")}
                   placeholder="Enter trigger name"
-                  disabled={isSubmitting}
                   message={form.formState.errors.name?.message}
                   messageStatus="error"
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-foreground dark:text-foreground-night">
-                  Description
-                </label>
+                <Label htmlFor="trigger-description">Description</Label>
                 <TextArea
+                  id="trigger-description"
                   {...form.register("description")}
                   placeholder="Enter trigger description"
                   rows={3}
-                  disabled={isSubmitting}
                 />
                 {form.formState.errors.description && (
                   <p className="mt-1 text-xs text-red-500">
@@ -183,13 +142,11 @@ export function CreateScheduleModal({
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-foreground dark:text-foreground-night">
-                  Cron Expression
-                </label>
+                <Label htmlFor="trigger-cron">Cron Expression</Label>
                 <Input
+                  id="trigger-cron"
                   {...form.register("cron")}
                   placeholder="e.g., 0 9 * * 1-5 (weekdays at 9 AM)"
-                  disabled={isSubmitting}
                   message={form.formState.errors.cron?.message}
                   messageStatus="error"
                 />
@@ -199,33 +156,31 @@ export function CreateScheduleModal({
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-foreground dark:text-foreground-night">
-                  Timezone
-                </label>
+                <Label htmlFor="trigger-timezone">Timezone</Label>
                 <Input
+                  id="trigger-timezone"
                   {...form.register("timezone")}
                   placeholder="e.g., America/New_York, Europe/Paris"
-                  disabled={isSubmitting}
                   message={form.formState.errors.timezone?.message}
                   messageStatus="error"
                 />
               </div>
             </div>
-          </FormProvider>
-        )}
+          </DialogContainer>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleCancel}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            disabled={isSubmitting}
-            onClick={handleSubmit(onSubmit)}
-          >
-            {trigger ? "Update Trigger" : "Add Trigger"}
-          </Button>
-        </DialogFooter>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: handleCancel,
+            }}
+            rightButtonProps={{
+              label: trigger ? "Update Trigger" : "Add Trigger",
+              variant: "primary",
+              type: "submit",
+            }}
+          />
+        </FormProvider>
       </DialogContent>
     </Dialog>
   );

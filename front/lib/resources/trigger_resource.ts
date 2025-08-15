@@ -18,6 +18,10 @@ import type {
   LightTriggerType,
   TriggerType,
 } from "@app/types/assistant/triggers";
+import {
+  createOrUpdateAgentScheduleWorkflow,
+  deleteAgentScheduleWorkflow,
+} from "@app/temporal/agent_schedule/client";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -35,6 +39,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   static async makeNew(
+    auth: Authenticator,
     blob: CreationAttributes<TriggerModel>,
     { transaction }: { transaction?: Transaction } = {}
   ) {
@@ -42,7 +47,15 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       transaction,
     });
 
-    return new this(TriggerModel, trigger.get());
+    const resource = new this(TriggerModel, trigger.get());
+
+    createOrUpdateAgentScheduleWorkflow({
+      authType: auth.toJSON(),
+      agentConfigurationId: trigger.agentConfigurationId,
+      trigger: resource.toSimpleJSON(),
+    });
+
+    return resource;
   }
 
   private static async baseFetch(
@@ -102,6 +115,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     await trigger.update(blob, transaction);
+
+    createOrUpdateAgentScheduleWorkflow({
+      authType: auth.toJSON(),
+      agentConfigurationId: trigger.agentConfigurationId,
+      trigger: trigger.toSimpleJSON(),
+    });
     return new Ok(trigger);
   }
 
@@ -110,6 +129,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     { transaction }: { transaction?: Transaction | undefined } = {}
   ): Promise<Result<undefined, Error>> {
     const owner = auth.getNonNullableWorkspace();
+
+    deleteAgentScheduleWorkflow({
+      authType: auth.toJSON(),
+      agentConfigurationId: this.agentConfigurationId,
+      triggerId: this.sId,
+    });
 
     try {
       await TriggerModel.destroy({
@@ -136,7 +161,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       subscribers: this.subscribers,
       customPrompt: this.customPrompt,
       kind: this.kind,
-      config: this.configuration,
+      config: this.configuration!,
     };
   }
 
@@ -146,7 +171,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       name: this.name,
       description: this.description,
       kind: this.kind,
-      config: this.configuration,
+      config: this.configuration!,
     };
   }
 }
