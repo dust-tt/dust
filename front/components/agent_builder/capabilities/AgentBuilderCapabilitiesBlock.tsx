@@ -24,12 +24,14 @@ import { AgentBuilderSectionContainer } from "@app/components/agent_builder/Agen
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import type { DialogMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
 import { MCPServerViewsDialog } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
+import { usePresetActionHandler } from "@app/components/agent_builder/capabilities/usePresetActionHandler";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
   getDefaultMCPAction,
   isDefaultActionName,
 } from "@app/components/agent_builder/types";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
@@ -37,6 +39,7 @@ import {
   MCP_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { TemplateActionPreset } from "@app/types";
 import { asDisplayName } from "@app/types";
 
 const dataVisualizationAction = {
@@ -137,10 +140,14 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
 }
 interface AgentBuilderCapabilitiesBlockProps {
   isActionsLoading: boolean;
+  presetActionToAdd?: TemplateActionPreset;
+  onPresetActionHandled?: () => void;
 }
 
 export function AgentBuilderCapabilitiesBlock({
   isActionsLoading,
+  presetActionToAdd,
+  onPresetActionHandled,
 }: AgentBuilderCapabilitiesBlockProps) {
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { fields, remove, append, update } = useFieldArray<
@@ -150,20 +157,37 @@ export function AgentBuilderCapabilitiesBlock({
     name: "actions",
   });
 
-  const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
-    useMCPServerViewsContext();
+  const {
+    mcpServerViewsWithKnowledge,
+    mcpServerViews,
+    isMCPServerViewsLoading,
+  } = useMCPServerViewsContext();
+  const sendNotification = useSendNotification();
 
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
-
   const [knowledgeAction, setKnowledgeAction] = useState<{
     action: AgentBuilderAction;
     index: number | null;
+    presetData?: TemplateActionPreset;
   } | null>(null);
+
   const dataVisualization = fields.some(
     (field) => field.type === "DATA_VISUALIZATION"
   )
     ? null
     : dataVisualizationAction;
+
+  usePresetActionHandler({
+    presetActionToAdd,
+    onPresetActionHandled,
+    mcpServerViews,
+    mcpServerViewsWithKnowledge,
+    isMCPServerViewsLoading,
+    append,
+    sendNotification,
+    fields,
+    setKnowledgeAction,
+  });
 
   const handleEditSave = (updatedAction: AgentBuilderAction) => {
     if (dialogMode?.type === "edit") {
@@ -307,6 +331,7 @@ export function AgentBuilderCapabilitiesBlock({
         isEditing={Boolean(knowledgeAction && knowledgeAction.index !== null)}
         mcpServerViews={mcpServerViewsWithKnowledge}
         getAgentInstructions={getAgentInstructions}
+        presetActionData={knowledgeAction?.presetData}
       />
       <MCPServerViewsDialog
         addTools={append}
