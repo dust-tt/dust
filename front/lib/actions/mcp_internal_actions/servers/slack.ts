@@ -459,17 +459,33 @@ const createServer = async (
             throw new Error(`HTTP ${resp.status}`);
           }
 
-          const data: any = await resp.json();
+          type SlackSemanticSearchMessage = {
+            permalink?: string;
+            content?: string;
+            channel_name?: string;
+            message_ts?: string;
+          };
+
+          type SlackSemanticSearchResponse = {
+            ok: boolean;
+            error?: string;
+            results: {
+              messages: SlackSemanticSearchMessage[];
+            };
+          };
+
+          const data: SlackSemanticSearchResponse = await resp.json();
           if (!data.ok) {
             throw new Error(data.error || "unknown_error");
           }
 
-          const rawMatches: any[] = data.results.messages;
+          const rawMatches: SlackSemanticSearchMessage[] =
+            data.results.messages;
 
           // Filter out matches that don't have a text.
           const matchesWithText = rawMatches.filter((match) => !!match.content);
 
-          // Deduplicate matches by their iid.
+          // Deduplicate matches by their permalink.
           const deduplicatedMatches = uniqBy(matchesWithText, "permalink");
 
           // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
@@ -514,7 +530,6 @@ const createServer = async (
                     INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
                   uri: match.permalink ?? "",
                   text: `#${match.channel_name ?? "Unknown"}, ${match.content ?? ""}`,
-
                   id: match.message_ts ?? "",
                   source: {
                     provider: "slack",
