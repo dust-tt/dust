@@ -46,7 +46,7 @@ export function usePresetActionHandler({
   fields,
   setKnowledgeAction,
 }: UsePresetActionHandlerProps) {
-  // Store preset object reference to prevent duplicate processing
+  // Store preset object reference to prevent duplicate processing.
   const lastProcessedPresetRef = useRef<TemplateActionPreset | null>(null);
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export function usePresetActionHandler({
       return;
     }
 
-    // Skip if same preset instance (handles rapid clicks/re-renders)
+    // Skip if same preset instance (handles rapid clicks and re-renders).
     if (lastProcessedPresetRef.current === presetActionToAdd) {
       return;
     }
@@ -79,7 +79,7 @@ export function usePresetActionHandler({
       return;
     }
 
-    // Check for duplicates only for tools that don't allow multiple instances
+    // Check for duplicates only for tools that don't allow multiple instances.
     if (isDirectAddTemplateAction(presetActionToAdd)) {
       const allowsMultiple = allowsMultipleInstancesOfInternalMCPServerById(
         mcpServerView.server.sId
