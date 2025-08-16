@@ -165,7 +165,7 @@ function ExpandedContent({
 interface AgentBuilderRightPanelProps {
   agentConfigurationSId?: string;
   assistantTemplate: FetchAssistantTemplateResponse | null;
-  onAddPresetAction?: (presetAction: any) => void;
+  onAddPresetAction?: (presetAction: TemplateActionPreset) => void;
 }
 
 export function AgentBuilderRightPanel({
