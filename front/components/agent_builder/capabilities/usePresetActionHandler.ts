@@ -46,20 +46,23 @@ export function usePresetActionHandler({
   fields,
   setKnowledgeAction,
 }: UsePresetActionHandlerProps) {
-  // Use a ref to track if we're processing to prevent multiple executions
-  const processingRef = useRef(false);
+  // Store preset object reference to prevent duplicate processing
+  const lastProcessedPresetRef = useRef<TemplateActionPreset | null>(null);
 
   useEffect(() => {
     if (!presetActionToAdd || isMCPServerViewsLoading) {
+      if (!presetActionToAdd) {
+        lastProcessedPresetRef.current = null;
+      }
       return;
     }
 
-    // Prevent duplicate processing
-    if (processingRef.current) {
+    // Skip if same preset instance (handles rapid clicks/re-renders)
+    if (lastProcessedPresetRef.current === presetActionToAdd) {
       return;
     }
 
-    processingRef.current = true;
+    lastProcessedPresetRef.current = presetActionToAdd;
 
     const targetServerName =
       getMCPServerNameForTemplateAction(presetActionToAdd);
@@ -72,7 +75,6 @@ export function usePresetActionHandler({
     );
 
     if (!mcpServerView) {
-      processingRef.current = false;
       onPresetActionHandled?.();
       return;
     }
@@ -96,19 +98,16 @@ export function usePresetActionHandler({
             description: `${getMcpServerViewDisplayName(mcpServerView)} is already in your agent`,
             type: "info",
           });
-          processingRef.current = false;
           onPresetActionHandled?.();
           return;
         }
       }
     }
 
-    // Create action with preset data
     const action = getDefaultMCPAction(mcpServerView);
     action.name = presetActionToAdd.name;
     action.description = presetActionToAdd.description;
 
-    // Open knowledge configuration dialog or add tool directly
     if (isKnowledgeTemplateAction(presetActionToAdd)) {
       setKnowledgeAction({
         action: { ...action, noConfigurationRequired: false },
@@ -125,13 +124,7 @@ export function usePresetActionHandler({
       });
     }
 
-    // Clear the preset action after handling
     onPresetActionHandled?.();
-
-    // Reset the processing flag after a short delay to allow for state updates
-    setTimeout(() => {
-      processingRef.current = false;
-    }, 100);
   }, [
     presetActionToAdd,
     onPresetActionHandled,
