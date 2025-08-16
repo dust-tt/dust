@@ -221,9 +221,9 @@ class AudioRecorder: NSObject, ObservableObject {
     }
     
     do {
-      // Create a recordings directory on the desktop.
-      let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first!
-      let recordingsDir = desktopURL.appendingPathComponent("recordings")
+      // Create a recordings directory in the app's Documents folder.
+      let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+      let recordingsDir = documentsURL.appendingPathComponent("recordings")
 
       try FileManager.default.createDirectory(at: recordingsDir, withIntermediateDirectories: true, attributes: nil)
       
