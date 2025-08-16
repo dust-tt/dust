@@ -175,7 +175,7 @@ const TEMPLATE_ACTION_TO_MCP_SERVER: Record<string, InternalMCPServerNameType> =
 export function getMCPServerNameForTemplateAction(
   presetAction: TemplateActionPreset
 ): InternalMCPServerNameType | null {
-  return TEMPLATE_ACTION_TO_MCP_SERVER[presetAction.type] || null;
+  return TEMPLATE_ACTION_TO_MCP_SERVER[presetAction.type] ?? null;
 }
 
 export function isKnowledgeTemplateAction(
