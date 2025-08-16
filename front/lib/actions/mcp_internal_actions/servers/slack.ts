@@ -406,7 +406,6 @@ const createServer = async (
         }
 
         const accessToken = authInfo?.token;
-        const slackClient = await getSlackClient(accessToken);
 
         const timeFrame = parseTimeFrame(relativeTimeFrame);
 
@@ -439,26 +438,39 @@ const createServer = async (
             searchQuery = `${searchQuery} ${usersMentioned.map((user) => `${user}`).join(" ")}`;
           }
 
-          const messages = await slackClient.search.messages({
-            query: searchQuery,
-            sort: "score",
-            sort_dir: "desc",
-            highlight: false,
-            count: SLACK_SEARCH_ACTION_NUM_RESULTS,
-            page: 1,
-          });
+          const resp = await fetch(
+            "https://slack.com/api/assistant.search.context",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json; charset=utf-8",
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({
+                query: searchQuery,
+                sort: "score",
+                sort_dir: "desc",
+                limit: SLACK_SEARCH_ACTION_NUM_RESULTS,
+              }),
+            }
+          );
 
-          if (!messages.ok) {
-            throw new Error(messages.error);
+          if (!resp.ok) {
+            throw new Error(`HTTP ${resp.status}`);
           }
 
-          const rawMatches = messages.messages?.matches ?? [];
+          const data: any = await resp.json();
+          if (!data.ok) {
+            throw new Error(data.error || "unknown_error");
+          }
+
+          const rawMatches: any[] = data.results.messages;
 
           // Filter out matches that don't have a text.
-          const matchesWithText = rawMatches.filter((match) => !!match.text);
+          const matchesWithText = rawMatches.filter((match) => !!match.content);
 
           // Deduplicate matches by their iid.
-          const deduplicatedMatches = uniqBy(matchesWithText, "iid");
+          const deduplicatedMatches = uniqBy(matchesWithText, "permalink");
 
           // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
           const matches = deduplicatedMatches.slice(
@@ -501,15 +513,15 @@ const createServer = async (
                   mimeType:
                     INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
                   uri: match.permalink ?? "",
-                  text: `#${match.channel?.name ?? "Unknown"}, ${match.text ?? ""}`,
+                  text: `#${match.channel_name ?? "Unknown"}, ${match.content ?? ""}`,
 
-                  id: match.ts ?? "",
+                  id: match.message_ts ?? "",
                   source: {
                     provider: "slack",
                   },
                   tags: [],
                   ref: refs.shift() as string,
-                  chunks: [stripNullBytes(match.text ?? "")],
+                  chunks: [stripNullBytes(match.content ?? "")],
                 };
               }
             );
