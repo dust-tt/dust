@@ -17,6 +17,7 @@ import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderP
 import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type { TemplateActionPreset } from "@app/types";
 
 type AgentBuilderRightPanelTabType = "testing" | "performance" | "template";
 
@@ -128,7 +129,7 @@ interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
   agentConfigurationSId?: string;
   assistantTemplate: FetchAssistantTemplateResponse | null;
-  onAddPresetAction?: (presetAction: any) => void;
+  onAddPresetAction?: (presetAction: TemplateActionPreset) => void;
 }
 
 function ExpandedContent({
