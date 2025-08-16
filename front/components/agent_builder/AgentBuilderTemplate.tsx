@@ -66,6 +66,7 @@ function TemplateButtons({ assistantTemplate }: TemplateButtonsProps) {
   const { setValue } = useFormContext<AgentBuilderFormData>();
 
   const handleResetInstructions = () => {
+    // Defer confirm dialog to next tick to allow dropdown to close properly
     setTimeout(async () => {
       const confirmed = await confirm({
         title: "Are you sure?",
@@ -81,6 +82,7 @@ function TemplateButtons({ assistantTemplate }: TemplateButtonsProps) {
   };
 
   const handleResetActions = () => {
+    // Defer confirm dialog to next tick to allow dropdown to close properly
     setTimeout(async () => {
       const confirmed = await confirm({
         title: "Are you sure?",
