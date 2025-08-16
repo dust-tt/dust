@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { Avatar, Button, Input } from "@sparkle/components";
+import { Avatar, Button, Input, SearchInput } from "@sparkle/components";
 
 import {
   Dialog,
@@ -168,7 +168,16 @@ export const LargeContent: Story = {
         <DialogHeader>
           <DialogTitle>Terms of Service</DialogTitle>
         </DialogHeader>
-        <DialogContainer>
+        <DialogContainer
+          fixedContent={
+            <SearchInput
+              value=""
+              onChange={() => {}}
+              name="search-terms"
+              placeholder="Search terms..."
+            />
+          }
+        >
           <div className="s-space-y-4">
             <h3 className="s-font-semibold">1. Introduction</h3>
             <p className="s-text-sm s-text-muted-foreground">
@@ -202,6 +211,13 @@ export const LargeContent: Story = {
               Lorem ipsum dolor sit amet consectetur adipisicing elit. Deserunt
               architecto dolorem corrupti accusamus optio neque officia
               perferendis molestiae.
+            </p>
+            <h3 className="s-font-semibold">6. Additional Terms</h3>
+            <p className="s-text-sm s-text-muted-foreground">
+              More content to make the dialog scrollable and test the fixed
+              search input functionality. Lorem ipsum dolor sit amet consectetur
+              adipisicing elit. Quod possimus sit modi reprehenderit sed dolorem
+              nisi nostrum.
             </p>
           </div>
         </DialogContainer>
