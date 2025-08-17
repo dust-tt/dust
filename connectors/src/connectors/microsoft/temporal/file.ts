@@ -416,7 +416,6 @@ export async function syncOneFile({
               "Document too large for upsert, marking as skipped"
             );
 
-            // Save the skipReason to the database
             resourceBlob.skipReason = "payload_too_large";
 
             if (fileResource) {
