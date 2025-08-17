@@ -438,20 +438,22 @@ const createServer = async (
             searchQuery = `${searchQuery} ${usersMentioned.map((user) => `${user}`).join(" ")}`;
           }
 
+          // The slack client library does not support the assistant.search.context endpoint,
+          // so we use the raw fetch API to call it (GET with query params).
+          const params = new URLSearchParams({
+            query: searchQuery,
+            sort: "score",
+            sort_dir: "desc",
+            limit: SLACK_SEARCH_ACTION_NUM_RESULTS.toString(),
+          });
+
           const resp = await fetch(
-            "https://slack.com/api/assistant.search.context",
+            `https://slack.com/api/assistant.search.context?${params.toString()}`,
             {
-              method: "POST",
+              method: "GET",
               headers: {
-                "Content-Type": "application/json; charset=utf-8",
                 Authorization: `Bearer ${accessToken}`,
               },
-              body: JSON.stringify({
-                query: searchQuery,
-                sort: "score",
-                sort_dir: "desc",
-                limit: SLACK_SEARCH_ACTION_NUM_RESULTS,
-              }),
             }
           );
 
