@@ -462,10 +462,11 @@ const createServer = async (
           }
 
           type SlackSemanticSearchMessage = {
-            permalink?: string;
-            content?: string;
+            author_name?: string;
             channel_name?: string;
             message_ts?: string;
+            content?: string;
+            permalink?: string;
           };
 
           type SlackSemanticSearchResponse = {
@@ -531,7 +532,7 @@ const createServer = async (
                   mimeType:
                     INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
                   uri: match.permalink ?? "",
-                  text: `#${match.channel_name ?? "Unknown"}, ${match.content ?? ""}`,
+                  text: `From ${match.author_name ?? "Unknown"} in #${match.channel_name ?? "Unknown"}: ${match.content ?? ""}`,
                   id: match.message_ts ?? "",
                   source: {
                     provider: "slack",
