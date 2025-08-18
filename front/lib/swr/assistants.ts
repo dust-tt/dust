@@ -796,7 +796,7 @@ export const useUpdateGlobalAgentCustomInstructions = ({
 
       return res;
     },
-    [owner, agentConfigurationId]
+    [owner, sendNotification, agentConfigurationId]
   );
 
   return updateGlobalAgentCustomInstructions;
