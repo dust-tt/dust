@@ -15,6 +15,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import logger from "@app/logger/logger";
+import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
 import type { ConversationType, Result } from "@app/types";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
 
@@ -117,13 +118,20 @@ export async function validateAction(
     const user = auth.user();
     if (user) {
       const toolServerId = action.toolConfiguration?.toolServerId;
-      const toolName = action.toolConfiguration?.name;
-      if (toolServerId && toolName) {
-        await user.appendToMetadata(
-          `toolsValidations:${toolServerId}`,
-          `${toolName}`
-        );
-      }
+      const actionBaseParams = await buildActionBaseParams({
+        agentMessageId: action.agentMessageId,
+        citationsAllocated: action.citationsAllocated,
+        mcpServerConfigurationId: action.mcpServerConfigurationId,
+        mcpServerId: action.toolConfiguration.toolServerId,
+        step: agentStepContent.step,
+        stepContentId: action.stepContentId,
+      });
+      const toolName = actionBaseParams.functionCallName;
+
+      await user.appendToMetadata(
+        `toolsValidations:${toolServerId}`,
+        `${toolName}`
+      );
     }
   }
 
