@@ -210,22 +210,16 @@ export function ActionValidationProvider({
   // This will be used as a dependency of the hook down the line so we need to use useCallback.
   const showValidationDialog = useCallback(
     (validationRequest?: MCPActionValidationRequest) => {
+      if (!isDialogOpen) {
+        setIsDialogOpen(true);
+      }
+
       // If we have a new validation request, queue it.
       if (validationRequest) {
         handleValidationRequest(validationRequest);
       }
-
-      // Always open the dialog if there are pending validations (if not already open)/
-      if (!isDialogOpen && (currentValidation || validationQueueLength > 0)) {
-        setIsDialogOpen(true);
-      }
     },
-    [
-      handleValidationRequest,
-      currentValidation,
-      validationQueueLength,
-      isDialogOpen,
-    ]
+    [handleValidationRequest, isDialogOpen]
   );
 
   const hasPendingValidations =
