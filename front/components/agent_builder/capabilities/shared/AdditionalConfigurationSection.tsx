@@ -2,6 +2,7 @@ import {
   Button,
   Checkbox,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
@@ -12,6 +13,7 @@ import React, { useMemo } from "react";
 import { useController } from "react-hook-form";
 
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import { asDisplayName } from "@app/types";
 
 function formatKeyForDisplay(key: string): string {
@@ -40,7 +42,7 @@ function groupKeysByPrefix(keys: string[]): Record<string, string[]> {
 
 interface BooleanConfigurationSectionProps {
   requiredBooleans: string[];
-  additionalConfiguration: Record<string, string | number | boolean>;
+  additionalConfiguration: AdditionalConfigurationType;
   onConfigUpdate: (key: string, value: boolean) => void;
 }
 
@@ -76,7 +78,7 @@ function BooleanConfigurationSection({
 
 interface NumberConfigurationSectionProps {
   requiredNumbers: string[];
-  additionalConfiguration: Record<string, string | number | boolean>;
+  additionalConfiguration: AdditionalConfigurationType;
   onConfigUpdate: (key: string, value: number) => void;
 }
 
@@ -115,7 +117,7 @@ function NumberConfigurationSection({
 
 interface StringConfigurationSectionProps {
   requiredStrings: string[];
-  additionalConfiguration: Record<string, string | number | boolean>;
+  additionalConfiguration: AdditionalConfigurationType;
   onConfigUpdate: (key: string, value: string) => void;
 }
 
@@ -149,7 +151,7 @@ function StringConfigurationSection({
 
 interface EnumConfigurationSectionProps {
   requiredEnums: Record<string, string[]>;
-  additionalConfiguration: Record<string, string | number | boolean>;
+  additionalConfiguration: AdditionalConfigurationType;
   onConfigUpdate: (key: string, value: string) => void;
 }
 
@@ -194,14 +196,84 @@ function EnumConfigurationSection({
   });
 }
 
+interface ListConfigurationSectionProps {
+  requiredLists: Record<string, Record<string, string>>;
+  additionalConfiguration: AdditionalConfigurationType;
+  onConfigUpdate: (key: string, value: string[]) => void;
+}
+
+function ListConfigurationSection({
+  requiredLists,
+  additionalConfiguration,
+  onConfigUpdate,
+}: ListConfigurationSectionProps) {
+  if (Object.keys(requiredLists).length === 0) {
+    return null;
+  }
+
+  return Object.entries(requiredLists).map(([key, listValues]) => {
+    const displayLabel = `Select ${formatKeyForDisplay(key)}`;
+    const rawValue = additionalConfiguration[key];
+    const currentValue: string[] = Array.isArray(rawValue) ? rawValue : [];
+
+    return (
+      <div key={key} className="mb-2 flex items-center gap-1">
+        <Label className="w-1/5 text-sm font-medium">
+          {formatKeyForDisplay(key)}
+        </Label>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              isSelect
+              label={
+                currentValue.length > 0
+                  ? currentValue.map((v) => listValues[v]).join(", ")
+                  : displayLabel
+              }
+              size="sm"
+              tooltip={displayLabel}
+              variant="outline"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {Object.entries(listValues).map(([value, label]) => (
+              <DropdownMenuCheckboxItem
+                key={value}
+                label={label}
+                checked={
+                  Array.isArray(currentValue) && currentValue.includes(value)
+                }
+                onCheckedChange={(checked) => {
+                  const currentValue = additionalConfiguration[key] ?? [];
+                  if (Array.isArray(currentValue)) {
+                    const newValues = checked
+                      ? [...currentValue, value]
+                      : currentValue.filter((v) => v !== value);
+
+                    onConfigUpdate(key, newValues);
+                  }
+                }}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  });
+}
+
 interface GroupedConfigurationSectionProps {
   prefix: string;
   requiredStrings: string[];
   requiredNumbers: string[];
   requiredBooleans: string[];
   requiredEnums: Record<string, string[]>;
-  additionalConfiguration: Record<string, string | number | boolean>;
-  onConfigUpdate: (key: string, value: string | number | boolean) => void;
+  requiredLists: Record<string, Record<string, string>>;
+  additionalConfiguration: AdditionalConfigurationType;
+  onConfigUpdate: (
+    key: string,
+    value: string | number | boolean | string[]
+  ) => void;
 }
 
 function GroupedConfigurationSection({
@@ -210,6 +282,7 @@ function GroupedConfigurationSection({
   requiredNumbers,
   requiredBooleans,
   requiredEnums,
+  requiredLists,
   additionalConfiguration,
   onConfigUpdate,
 }: GroupedConfigurationSectionProps) {
@@ -250,6 +323,11 @@ function GroupedConfigurationSection({
           additionalConfiguration={additionalConfiguration}
           onConfigUpdate={onConfigUpdate}
         />
+        <ListConfigurationSection
+          requiredLists={requiredLists}
+          additionalConfiguration={additionalConfiguration}
+          onConfigUpdate={onConfigUpdate}
+        />
       </div>
     </div>
   );
@@ -260,6 +338,7 @@ interface AdditionalConfigurationSectionProps {
   requiredNumbers: string[];
   requiredBooleans: string[];
   requiredEnums: Record<string, string[]>;
+  requiredLists: Record<string, Record<string, string>>;
 }
 
 export function AdditionalConfigurationSection({
@@ -267,6 +346,7 @@ export function AdditionalConfigurationSection({
   requiredNumbers,
   requiredBooleans,
   requiredEnums,
+  requiredLists,
 }: AdditionalConfigurationSectionProps) {
   const { field, fieldState } = useController<
     MCPFormData,
@@ -279,7 +359,7 @@ export function AdditionalConfigurationSection({
 
   const handleConfigUpdate = (
     key: string,
-    value: string | number | boolean
+    value: string | number | boolean | string[]
   ) => {
     field.onChange({
       ...additionalConfiguration,
@@ -312,6 +392,18 @@ export function AdditionalConfigurationSection({
     return groups;
   }, [requiredEnums]);
 
+  const groupedLists = useMemo(() => {
+    const groups: Record<string, Record<string, Record<string, string>>> = {};
+    Object.entries(requiredLists).forEach(([key, values]) => {
+      const prefix = getKeyPrefix(key);
+      if (!groups[prefix]) {
+        groups[prefix] = {};
+      }
+      groups[prefix][key] = values;
+    });
+    return groups;
+  }, [requiredLists]);
+
   // Get all unique prefixes
   const allPrefixes = useMemo(() => {
     const prefixSet = new Set<string>();
@@ -320,15 +412,23 @@ export function AdditionalConfigurationSection({
     Object.keys(groupedNumbers).forEach((prefix) => prefixSet.add(prefix));
     Object.keys(groupedBooleans).forEach((prefix) => prefixSet.add(prefix));
     Object.keys(groupedEnums).forEach((prefix) => prefixSet.add(prefix));
+    Object.keys(groupedLists).forEach((prefix) => prefixSet.add(prefix));
 
     return Array.from(prefixSet).sort();
-  }, [groupedStrings, groupedNumbers, groupedBooleans, groupedEnums]);
+  }, [
+    groupedStrings,
+    groupedNumbers,
+    groupedBooleans,
+    groupedEnums,
+    groupedLists,
+  ]);
 
   const hasConfiguration =
     Object.keys(requiredStrings).length > 0 ||
     Object.keys(requiredNumbers).length > 0 ||
     Object.keys(requiredBooleans).length > 0 ||
-    Object.keys(requiredEnums).length > 0;
+    Object.keys(requiredEnums).length > 0 ||
+    Object.keys(requiredLists).length > 0;
 
   if (!hasConfiguration) {
     return null;
@@ -354,6 +454,7 @@ export function AdditionalConfigurationSection({
           requiredNumbers={groupedNumbers[prefix] || []}
           requiredBooleans={groupedBooleans[prefix] || []}
           requiredEnums={groupedEnums[prefix] || {}}
+          requiredLists={groupedLists[prefix] || {}}
           additionalConfiguration={additionalConfiguration}
           onConfigUpdate={handleConfigUpdate}
         />

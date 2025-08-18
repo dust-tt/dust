@@ -21,6 +21,8 @@ export const VALIDATION_MESSAGES = {
     booleanRequired: (key: string) => `${key} must be selected`,
     enumRequired: (key: string) =>
       `${key} must be selected from available options`,
+    listRequired: (key: string) =>
+      `${key} must be selected from available options`,
     genericRequired: "All required configuration fields must be filled",
   },
   name: {

@@ -143,7 +143,7 @@ const MCPServerActionConfigurationSchema = t.type({
   jsonSchema: t.union([JsonSchemaCodec, t.null]),
   additionalConfiguration: t.record(
     t.string,
-    t.union([t.boolean, t.number, t.string, t.null])
+    t.union([t.boolean, t.number, t.string, t.array(t.string), t.null])
   ),
   dustAppConfiguration: t.union([DustAppRunActionConfigurationSchema, t.null]),
 });

@@ -441,6 +441,11 @@ export function hasErrorActionMCP(
         missingFields.push(key);
       }
     }
+    for (const key in requirements.requiredLists) {
+      if (!(key in action.configuration.additionalConfiguration)) {
+        missingFields.push(key);
+      }
+    }
     if (missingFields.length > 0) {
       return `Some fields are missing: ${missingFields.map(asDisplayName).join(", ")}.`;
     }

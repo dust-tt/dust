@@ -39,6 +39,7 @@ import type {
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
+import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import {
   AgentMCPAction,
   AgentMCPActionOutputItem,
@@ -83,7 +84,7 @@ export type ServerSideMCPServerConfigurationType =
     reasoningModel: ReasoningModelConfigurationType | null;
     timeFrame: TimeFrame | null;
     jsonSchema: JSONSchema | null;
-    additionalConfiguration: Record<string, boolean | number | string>;
+    additionalConfiguration: AdditionalConfigurationType;
     mcpServerViewId: string;
     dustAppConfiguration: DustAppRunConfigurationType | null;
     // Out of convenience, we hold the sId of the internal server if it is an internal server.

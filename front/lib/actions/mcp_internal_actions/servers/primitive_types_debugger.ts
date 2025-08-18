@@ -41,6 +41,11 @@ function createServer(): McpServer {
         value: z.enum(["A", "B", "C"]),
         mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM),
       }),
+      choices: z.object({
+        values: z.enum(["A", "B", "C"]),
+        labels: z.enum(["label A", "label B", "label C"]),
+        mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.LIST),
+      }),
     },
     async (params) => {
       return {
