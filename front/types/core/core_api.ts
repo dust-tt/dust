@@ -34,6 +34,10 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LoggerInterface } from "@app/types/shared/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import {
+  errorToString,
+  normalizeError,
+} from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
 export const MAX_CHUNK_SIZE = 512;
@@ -57,6 +61,7 @@ export const EMBEDDING_CONFIGS: Record<EmbeddingProviderIdType, EmbedderType> =
 export type CoreAPIError = {
   message: string;
   code: string;
+  isNonRetryable?: boolean;
 };
 
 export function isCoreAPIError(obj: unknown): obj is CoreAPIError {
@@ -68,6 +73,15 @@ export function isCoreAPIError(obj: unknown): obj is CoreAPIError {
     "code" in obj &&
     typeof obj.code === "string"
   );
+}
+
+export const CORE_TABLES_NON_RETRYABLE_ERRORS = [
+  "Too many columns in CSV file",
+  "No columns in CSV file",
+];
+
+export function isCoreAPINonRetryableError(error: Error): boolean {
+  return CORE_TABLES_NON_RETRYABLE_ERRORS.includes(error.message);
 }
 
 export type CoreAPIResponse<T> = Result<T, CoreAPIError>;
@@ -2257,6 +2271,7 @@ export class CoreAPI {
       const err: CoreAPIError = {
         code: "unexpected_network_error",
         message: `Unexpected network error from CoreAPI: ${e}`,
+        isNonRetryable: isCoreAPINonRetryableError(normalizeError(e)),
       };
       this._logger.error(
         {
@@ -2264,6 +2279,11 @@ export class CoreAPI {
           duration,
           coreError: err,
           error: e,
+          errorMessage: errorToString(e),
+          method: init?.method || "GET",
+          isNonRetryableCoreAPIError: isCoreAPINonRetryableError(
+            normalizeError(e)
+          ),
         },
         "CoreAPI error"
       );

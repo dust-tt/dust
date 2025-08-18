@@ -94,21 +94,45 @@ export async function upsertTableActivity(
   });
 
   if (tableRes.isErr()) {
+    // Check if this is a non-retryable error that we should gracefully exit from
+    const isNonRetryableError =
+      tableRes.error.type === "internal_server_error"
+        ? tableRes.error.coreAPIError.isNonRetryable ?? false
+        : false;
+
     logger.error(
       {
         error: tableRes.error,
+        isNonRetryableError,
         latencyMs: Date.now() - upsertTimestamp,
         delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
         csvSize: upsertQueueItem.csv?.length || 0,
       },
       "[UpsertQueue] Failed table upsert"
     );
-    statsDClient.increment("upsert_queue_table_error.count", 1, statsDTags);
+
+    statsDClient.increment("upsert_queue_table_error.count", 1, [
+      ...statsDTags,
+      `retryable:${!isNonRetryableError}`,
+    ]);
     statsDClient.distribution(
       "upsert_queue_upsert_table_error.duration.distribution",
       Date.now() - upsertTimestamp,
       []
     );
+
+    // For non-retryable errors like "Too many columns in CSV file",
+    // we gracefully exit instead of throwing a workflow error that would cause retries
+    if (isNonRetryableError) {
+      logger.info(
+        {
+          error: tableRes.error,
+          delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
+        },
+        "[UpsertQueue] Giving up due to non-retryable error"
+      );
+      return;
+    }
 
     const error: WorkflowError = {
       __is_dust_error: true,
