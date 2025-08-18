@@ -89,7 +89,7 @@ export function AgentMessageActions({
                   content={chainOfThought}
                   isStreaming={false}
                   forcedTextSize="text-sm"
-                  textColor="text-muted-foreground"
+                  textColor="text-muted-foreground dark:text-muted-foreground-night"
                   isLastMessage={false}
                 />
               )}
