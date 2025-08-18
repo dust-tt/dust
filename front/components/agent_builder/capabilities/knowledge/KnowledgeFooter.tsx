@@ -50,18 +50,13 @@ function KnowledgeFooterItemReadablePath({
 }
 
 function KnowledgeFooterItem({
-                               item,
-                             }: {
+  item,
+}: {
   item: DataSourceBuilderTreeItemType;
 }) {
-
-  console.log("KnowledgeFooterItem", item);
   const { isDark } = useTheme();
   const { removeNodeWithPath } = useDataSourceBuilderContext();
   const VisualComponent = getVisualForTreeItem(item, isDark);
-
-  // Extract children count only for node types
-  const childrenCount = item.type === "node" ? item.node.children_count : null;
 
   return (
     <ContextItem
@@ -73,14 +68,7 @@ function KnowledgeFooterItem({
       }
     >
       {item.type === "node" && (
-        <div className="flex flex-col gap-1">
-          <KnowledgeFooterItemReadablePath node={item.node} />
-          {childrenCount !== null && childrenCount && (
-            <span className="text-xs text-muted-foreground">
-              {childrenCount} item{childrenCount !== 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
+        <KnowledgeFooterItemReadablePath node={item.node} />
       )}
     </ContextItem>
   );
