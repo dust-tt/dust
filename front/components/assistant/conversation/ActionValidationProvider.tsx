@@ -27,7 +27,11 @@ import type {
 } from "@app/types";
 import { asDisplayName, pluralize } from "@app/types";
 
-function useValidationQueue(pendingValidations: MCPActionValidationRequest[]) {
+function useValidationQueue({
+  pendingValidations,
+}: {
+  pendingValidations: MCPActionValidationRequest[];
+}) {
   // We store two states: the current validation and a queue.
   // The current validation is the one displayed in the dialog that can be validated.
   // The queue does not store the current validation.
@@ -140,7 +144,7 @@ export function ActionValidationProvider({
     setCurrentValidation,
     handleValidationRequest,
     takeNextFromQueue,
-  } = useValidationQueue(pendingValidations);
+  } = useValidationQueue({ pendingValidations });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
