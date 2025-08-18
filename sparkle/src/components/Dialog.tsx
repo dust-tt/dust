@@ -78,6 +78,7 @@ interface DialogContentProps
   height?: DialogHeightType;
   trapFocusScope?: boolean;
   isAlertDialog?: boolean;
+  preventAutoFocusOnClose?: boolean;
 }
 
 const DialogContent = React.forwardRef<
@@ -92,26 +93,43 @@ const DialogContent = React.forwardRef<
       height,
       trapFocusScope,
       isAlertDialog,
+      preventAutoFocusOnClose = true,
+      onCloseAutoFocus,
       ...props
     },
     ref
-  ) => (
-    <DialogPortal>
-      <DialogOverlay />
-      <FocusScope trapped={trapFocusScope} asChild>
-        <DialogPrimitive.Content
-          ref={ref}
-          className={cn(dialogVariants({ size, height }), className)}
-          onInteractOutside={
-            isAlertDialog ? (e) => e.preventDefault() : props.onInteractOutside
-          }
-          {...props}
-        >
-          {children}
-        </DialogPrimitive.Content>
-      </FocusScope>
-    </DialogPortal>
-  )
+  ) => {
+    const handleCloseAutoFocus = React.useCallback(
+      (event: Event) => {
+        if (preventAutoFocusOnClose) {
+          event.preventDefault();
+        }
+        onCloseAutoFocus?.(event);
+      },
+      [preventAutoFocusOnClose, onCloseAutoFocus]
+    );
+
+    return (
+      <DialogPortal>
+        <DialogOverlay />
+        <FocusScope trapped={trapFocusScope} asChild>
+          <DialogPrimitive.Content
+            ref={ref}
+            className={cn(dialogVariants({ size, height }), className)}
+            onInteractOutside={
+              isAlertDialog
+                ? (e) => e.preventDefault()
+                : props.onInteractOutside
+            }
+            onCloseAutoFocus={handleCloseAutoFocus}
+            {...props}
+          >
+            {children}
+          </DialogPrimitive.Content>
+        </FocusScope>
+      </DialogPortal>
+    );
+  }
 );
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 

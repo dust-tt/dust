@@ -309,7 +309,12 @@ function ModelsDropdownDemo() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button label={selectedModel} variant="outline" size="sm" />
+        <Button
+          label={selectedModel}
+          variant="outline"
+          size="sm"
+          tooltip="Test"
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuLabel label="Best performing models" />

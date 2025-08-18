@@ -79,9 +79,6 @@ export function SearchDropdownMenu({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        onOpenAutoFocus={(e) => {
-          e.preventDefault();
-        }}
         side="bottom"
         align="start"
         className="s-w-[--radix-popper-anchor-width]"

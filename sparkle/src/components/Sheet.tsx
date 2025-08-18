@@ -87,29 +87,57 @@ interface SheetContentProps
   size?: SheetSizeType;
   trapFocusScope?: boolean;
   side?: SheetSideType;
+  preventAutoFocusOnClose?: boolean;
 }
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ className, children, size, side, trapFocusScope, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay />
-    <FocusScope trapped={trapFocusScope} asChild>
-      <SheetPrimitive.Content
-        ref={ref}
-        className={cn(
-          sheetVariants({ size, side }),
-          className,
-          "s-sheet s-text-foreground dark:s-text-foreground-night"
-        )}
-        {...props}
-      >
-        {children}
-      </SheetPrimitive.Content>
-    </FocusScope>
-  </SheetPortal>
-));
+>(
+  (
+    {
+      className,
+      children,
+      size,
+      side,
+      trapFocusScope,
+      preventAutoFocusOnClose = true,
+      onCloseAutoFocus,
+      ...props
+    },
+    ref
+  ) => {
+    const handleCloseAutoFocus = React.useCallback(
+      (event: Event) => {
+        if (preventAutoFocusOnClose) {
+          event.preventDefault();
+        }
+        onCloseAutoFocus?.(event);
+      },
+      [preventAutoFocusOnClose, onCloseAutoFocus]
+    );
+
+    return (
+      <SheetPortal>
+        <SheetOverlay />
+        <FocusScope trapped={trapFocusScope} asChild>
+          <SheetPrimitive.Content
+            ref={ref}
+            className={cn(
+              sheetVariants({ size, side }),
+              className,
+              "s-sheet s-text-foreground dark:s-text-foreground-night"
+            )}
+            onCloseAutoFocus={handleCloseAutoFocus}
+            {...props}
+          >
+            {children}
+          </SheetPrimitive.Content>
+        </FocusScope>
+      </SheetPortal>
+    );
+  }
+);
 SheetContent.displayName = SheetPrimitive.Content.displayName;
 
 interface SheetHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
