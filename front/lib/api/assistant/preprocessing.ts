@@ -403,36 +403,38 @@ async function getSteps(
       // For each step, we look at the contents to find the function calls.
       // If some function calls have no associated function result, we make a dummy "errored" one.
       .map((step) => {
+        if (onMissingAction !== "inject-placeholder") {
+          return step;
+        }
+
         const actions = step.actions;
         const functionResultByCallId: Record<string, FunctionMessageTypeModel> =
           {};
         for (const action of actions) {
           functionResultByCallId[action.call.id] = action.result;
         }
-        if (onMissingAction === "inject-placeholder") {
-          for (const content of step.contents) {
-            if (content.type === "function_call") {
-              const functionCall = content.value;
-              if (!functionResultByCallId[functionCall.id]) {
-                logger.warn(
-                  {
-                    workspaceId,
-                    conversationId,
-                    agentMessageId: message.sId,
-                    functionCallId: functionCall.id,
-                  },
-                  "Unexpected state, agent message step with no action for function call"
-                );
-                actions.push({
-                  call: functionCall,
-                  result: {
-                    role: "function",
-                    name: functionCall.name,
-                    function_call_id: functionCall.id,
-                    content: "Error: tool execution failed",
-                  },
-                });
-              }
+        for (const content of step.contents) {
+          if (content.type === "function_call") {
+            const functionCall = content.value;
+            if (!functionResultByCallId[functionCall.id]) {
+              logger.warn(
+                {
+                  workspaceId,
+                  conversationId,
+                  agentMessageId: message.sId,
+                  functionCallId: functionCall.id,
+                },
+                "Unexpected state, agent message step with no action for function call"
+              );
+              actions.push({
+                call: functionCall,
+                result: {
+                  role: "function",
+                  name: functionCall.name,
+                  function_call_id: functionCall.id,
+                  content: "Error: tool execution failed",
+                },
+              });
             }
           }
         }
