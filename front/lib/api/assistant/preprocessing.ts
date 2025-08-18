@@ -49,7 +49,7 @@ export async function renderConversationForModel(
     allowedTokenCount,
     excludeActions,
     excludeImages,
-    checkMissingActions = true,
+    onMissingAction = "inject-placeholder",
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -58,7 +58,7 @@ export async function renderConversationForModel(
     allowedTokenCount: number;
     excludeActions?: boolean;
     excludeImages?: boolean;
-    checkMissingActions?: boolean;
+    onMissingAction?: "inject-placeholder" | "skip";
   }
 ): Promise<
   Result<
@@ -82,7 +82,7 @@ export async function renderConversationForModel(
         message: m,
         workspaceId: conversation.owner.sId,
         conversationId: conversation.sId,
-        checkMissingActions,
+        onMissingAction,
       });
 
       if (excludeActions) {
@@ -331,13 +331,13 @@ async function getSteps(
     message,
     workspaceId,
     conversationId,
-    checkMissingActions,
+    onMissingAction,
   }: {
     model: ModelConfigurationType;
     message: AgentMessageType;
     workspaceId: string;
     conversationId: string;
-    checkMissingActions: boolean;
+    onMissingAction: "inject-placeholder" | "skip";
   }
 ): Promise<Step[]> {
   const supportedModel = getSupportedModelConfig(model);
@@ -409,7 +409,7 @@ async function getSteps(
         for (const action of actions) {
           functionResultByCallId[action.call.id] = action.result;
         }
-        if (checkMissingActions) {
+        if (onMissingAction === "inject-placeholder") {
           for (const content of step.contents) {
             if (content.type === "function_call") {
               const functionCall = content.value;
@@ -437,6 +437,19 @@ async function getSteps(
           }
         }
         return { ...step, actions };
+      })
+      .filter((step) => {
+        if (onMissingAction !== "skip") {
+          return true;
+        }
+        const functionResultByCallId = Object.fromEntries(
+          step.actions.map((action) => [action.call.id, action.result])
+        );
+        return step.contents.every(
+          (content) =>
+            content.type !== "function_call" ||
+            functionResultByCallId[content.value.id]
+        );
       })
   );
 }

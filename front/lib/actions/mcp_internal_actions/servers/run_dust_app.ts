@@ -326,7 +326,7 @@ async function prepareParamsWithHistory(
         tools: "",
         allowedTokenCount,
         excludeImages: true,
-        checkMissingActions: false,
+        onMissingAction: "skip",
       });
 
       if (convoRes.isOk()) {
