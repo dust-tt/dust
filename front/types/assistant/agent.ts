@@ -183,8 +183,7 @@ export function isTemplateAgentConfiguration(
   );
 }
 
-export const DEFAULT_MAX_STEPS_USE_PER_RUN = 8;
-export const MAX_STEPS_USE_PER_RUN_LIMIT = 128;
+export const MAX_STEPS_USE_PER_RUN_LIMIT = 64;
 export const MAX_ACTIONS_PER_STEP = 16;
 
 /**
