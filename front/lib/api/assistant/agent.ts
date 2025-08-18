@@ -83,6 +83,12 @@ async function runAgentSynchronousWithStreaming(
     });
   } catch (error) {
     if (error instanceof SyncTimeoutError) {
+      // Ensure title is computed and update in-memory conversation before launching async workflow.
+      const generatedTitle = await titlePromise;
+      if (generatedTitle) {
+        runAgentExecutionData.conversation.title = generatedTitle;
+      }
+
       await launchAsyncWorkflowFromSyncData(authType, runAgentExecutionData, {
         startStep: error.currentStep,
       });

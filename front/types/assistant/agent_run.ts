@@ -100,8 +100,8 @@ export async function getRunAgentData(
   }
 
   // Find the user message group by searching in reverse order.
-  const userMessageGroup = conversation.content.findLast(
-    (messageGroup) => messageGroup[0]?.sId === userMessageId
+  const userMessageGroup = conversation.content.findLast((messageGroup) =>
+    messageGroup.some((m) => m.sId === userMessageId)
   );
 
   // We assume that the message group is ordered by version ASC. Message version starts from 0.
