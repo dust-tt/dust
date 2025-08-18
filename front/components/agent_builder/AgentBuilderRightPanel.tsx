@@ -12,12 +12,11 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type { TemplateActionPreset } from "@app/types";
 
 type AgentBuilderRightPanelTabType = "testing" | "performance" | "template";
 
@@ -128,22 +127,20 @@ function CollapsedTabs({ onTabSelect, hasTemplate }: CollapsedTabsProps) {
 interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
   agentConfigurationSId?: string;
-  assistantTemplate: FetchAssistantTemplateResponse | null;
-  onAddPresetAction?: (presetAction: TemplateActionPreset) => void;
 }
 
 function ExpandedContent({
   selectedTab,
   agentConfigurationSId,
-  assistantTemplate,
-  onAddPresetAction,
 }: ExpandedContentProps) {
+  const { assistantTemplate, setPresetActionToAdd } = useAgentBuilderContext();
+  
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {selectedTab === "template" && assistantTemplate && (
         <AgentBuilderTemplate
           assistantTemplate={assistantTemplate}
-          onAddPresetAction={onAddPresetAction}
+          onAddPresetAction={setPresetActionToAdd}
         />
       )}
       {selectedTab === "testing" && (
@@ -164,17 +161,14 @@ function ExpandedContent({
 
 interface AgentBuilderRightPanelProps {
   agentConfigurationSId?: string;
-  assistantTemplate: FetchAssistantTemplateResponse | null;
-  onAddPresetAction?: (presetAction: TemplateActionPreset) => void;
 }
 
 export function AgentBuilderRightPanel({
   agentConfigurationSId,
-  assistantTemplate,
-  onAddPresetAction,
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
+  const { assistantTemplate } = useAgentBuilderContext();
 
   const hasTemplate = !!assistantTemplate;
 
@@ -208,8 +202,6 @@ export function AgentBuilderRightPanel({
         <ExpandedContent
           selectedTab={selectedTab}
           agentConfigurationSId={agentConfigurationSId}
-          assistantTemplate={assistantTemplate}
-          onAddPresetAction={onAddPresetAction}
         />
       ) : (
         <CollapsedTabs

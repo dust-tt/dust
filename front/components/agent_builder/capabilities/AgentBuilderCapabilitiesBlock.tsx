@@ -16,6 +16,7 @@ import { isEmpty } from "lodash";
 import React, { useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderDataVizAction,
   AgentBuilderFormData,
@@ -140,15 +141,12 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
 }
 interface AgentBuilderCapabilitiesBlockProps {
   isActionsLoading: boolean;
-  presetActionToAdd?: TemplateActionPreset | null;
-  onPresetActionHandled?: () => void;
 }
 
 export function AgentBuilderCapabilitiesBlock({
   isActionsLoading,
-  presetActionToAdd,
-  onPresetActionHandled,
 }: AgentBuilderCapabilitiesBlockProps) {
+  const { presetActionToAdd, setPresetActionToAdd } = useAgentBuilderContext();
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { fields, remove, append, update } = useFieldArray<
     AgentBuilderFormData,
@@ -179,7 +177,7 @@ export function AgentBuilderCapabilitiesBlock({
 
   usePresetActionHandler({
     presetActionToAdd,
-    onPresetActionHandled,
+    onPresetActionHandled: () => setPresetActionToAdd(null),
     mcpServerViews,
     mcpServerViewsWithKnowledge,
     isMCPServerViewsLoading,
