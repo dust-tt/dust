@@ -14,7 +14,7 @@ import {
   Label,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
@@ -28,17 +28,24 @@ import type {
 import { asDisplayName, pluralize } from "@app/types";
 
 function useValidationQueue(pendingValidations: MCPActionValidationRequest[]) {
-  // All except the first one, which will go into currentValidation.
-  const [validationQueue, setValidationQueue] = useState(
-    pendingValidations.slice(1)
+  // We store two states: the current validation and a queue.
+  // The current validation is the one displayed in the dialog that can be validated.
+  // The queue does not store the current validation.
+  const [validationQueue, setValidationQueue] = useState<
+    // Store validations by `actionId` to prevent duplicate entries.
+    Record<string, MCPActionValidationRequest>
+  >(
+    Object.fromEntries(
+      pendingValidations
+        // Skip the first one as it's the current validation.
+        .slice(1)
+        .map((validation) => [validation.actionId, validation])
+    )
   );
 
   const [currentValidation, setCurrentValidation] =
     useState<MCPActionValidationRequest | null>(pendingValidations[0] ?? null);
 
-  // The current validation request is the one being processed.
-  // The queue does not stores the current validation request.
-  // It's memoized since it's used as a dependency of the hook.
   const handleValidationRequest = useCallback(
     (validationRequest: MCPActionValidationRequest) => {
       setCurrentValidation((current) => {
@@ -46,7 +53,10 @@ function useValidationQueue(pendingValidations: MCPActionValidationRequest[]) {
           return validationRequest;
         }
 
-        setValidationQueue((prevQueue) => [...prevQueue, validationRequest]);
+        setValidationQueue((prevRecord) => ({
+          ...prevRecord,
+          [validationRequest.actionId]: validationRequest,
+        }));
         return current;
       });
     },
@@ -54,19 +64,30 @@ function useValidationQueue(pendingValidations: MCPActionValidationRequest[]) {
   );
 
   // We don't update the current validation here to avoid content flickering.
-  const takeNextFromQueue = () => {
-    if (validationQueue.length > 0) {
-      const nextValidation = validationQueue[0];
-      const newQueue = validationQueue.slice(1);
-      setValidationQueue(newQueue);
+  const takeNextFromQueue = useCallback(() => {
+    const enqueuedActionIds = Object.keys(validationQueue);
+    if (enqueuedActionIds.length > 0) {
+      const nextValidationActionId = enqueuedActionIds[0];
+      const nextValidation = validationQueue[nextValidationActionId];
+
+      setValidationQueue((prevRecord) => {
+        const newRecord = { ...prevRecord };
+        delete newRecord[nextValidationActionId];
+        return newRecord;
+      });
       return nextValidation;
     } else {
       return null;
     }
-  };
+  }, [validationQueue]);
+
+  const validationQueueLength = useMemo(
+    () => Object.keys(validationQueue).length,
+    [validationQueue]
+  );
 
   return {
-    validationQueue,
+    validationQueueLength,
     currentValidation,
     handleValidationRequest,
     takeNextFromQueue,
@@ -113,7 +134,7 @@ export function ActionValidationProvider({
   });
 
   const {
-    validationQueue,
+    validationQueueLength,
     currentValidation,
     setCurrentValidation,
     handleValidationRequest,
@@ -195,22 +216,22 @@ export function ActionValidationProvider({
       }
 
       // Always open the dialog if there are pending validations (if not already open)/
-      if (!isDialogOpen && (currentValidation || validationQueue.length > 0)) {
+      if (!isDialogOpen && (currentValidation || validationQueueLength > 0)) {
         setIsDialogOpen(true);
       }
     },
     [
       handleValidationRequest,
       currentValidation,
-      validationQueue.length,
+      validationQueueLength,
       isDialogOpen,
     ]
   );
 
   const hasPendingValidations =
-    currentValidation !== null || validationQueue.length > 0;
+    currentValidation !== null || validationQueueLength > 0;
   const totalPendingValidations =
-    (currentValidation ? 1 : 0) + validationQueue.length;
+    (currentValidation ? 1 : 0) + validationQueueLength;
 
   return (
     <ActionValidationContext.Provider
@@ -279,10 +300,10 @@ export function ActionValidationProvider({
                   />
                 )}
 
-              {validationQueue.length > 0 && (
+              {validationQueueLength > 0 && (
                 <div className="mt-2 text-sm font-medium text-info-900 dark:text-info-900-night">
-                  {validationQueue.length} more request
-                  {pluralize(validationQueue.length)} in the queue
+                  {validationQueueLength} more request
+                  {pluralize(validationQueueLength)} in the queue
                 </div>
               )}
 
