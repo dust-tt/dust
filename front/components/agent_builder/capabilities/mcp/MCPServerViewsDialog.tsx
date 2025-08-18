@@ -185,7 +185,6 @@ export function MCPServerViewsDialog({
     [nonDefaultMCPServerViews, actions]
   );
 
-  // Search filtering using useMemo for better performance
   const allSelectableViews = useMemo(
     () => [
       ...selectableDefaultMCPServerViews,
@@ -578,9 +577,7 @@ export function MCPServerViewsDialog({
         throw new Error("Expected MCP action for configuration save");
       }
 
-      // TODO: it should not be null but sometimes mode is not set properly when you add a new action.
       const isNewActionOrNameChanged =
-        mode === null ||
         mode?.type === "add" ||
         (mode?.type === "edit" && defaultFormValues.name !== formData.name);
 
@@ -750,6 +747,7 @@ export function MCPServerViewsDialog({
     >
       <MultiPageDialogContent
         showNavigation={false}
+        showHeaderNavigation={false}
         isAlertDialog
         size="2xl"
         height="xl"
