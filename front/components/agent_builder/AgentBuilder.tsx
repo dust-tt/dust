@@ -171,7 +171,7 @@ export default function AgentBuilder({
             }}
             agentConfigurationId={agentConfiguration?.sId || null}
             isActionsLoading={isActionsLoading}
-            presetActionToAdd={presetActionToAdd ?? undefined}
+            presetActionToAdd={presetActionToAdd}
             onPresetActionHandled={() => setPresetActionToAdd(null)}
           />
         }

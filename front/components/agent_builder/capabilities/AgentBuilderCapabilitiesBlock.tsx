@@ -140,7 +140,7 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
 }
 interface AgentBuilderCapabilitiesBlockProps {
   isActionsLoading: boolean;
-  presetActionToAdd?: TemplateActionPreset;
+  presetActionToAdd?: TemplateActionPreset | null;
   onPresetActionHandled?: () => void;
 }
 

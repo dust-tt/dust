@@ -18,7 +18,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
 
 interface UsePresetActionHandlerProps {
-  presetActionToAdd?: TemplateActionPreset;
+  presetActionToAdd?: TemplateActionPreset | null;
   onPresetActionHandled?: () => void;
   mcpServerViews: MCPServerViewType[];
   mcpServerViewsWithKnowledge: MCPServerViewType[];
