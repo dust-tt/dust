@@ -76,10 +76,8 @@ export const HeroVisual = ({
                 <iframe
                   src={videoUrl.toString()}
                   title="Dust product tour"
-                  allow="autoplay; fullscreen"
-                  title="Dust product tour"
-                  allow="autoplay; fullscreen"
-                  className="absolute inset-0 h-full w-full overflow-hidden rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl"
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
                   className="absolute inset-0 h-full w-full overflow-hidden rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl"
                 />
               ) : (
