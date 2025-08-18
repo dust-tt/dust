@@ -30,9 +30,8 @@ import {
   useConversationMessages,
   useConversations,
 } from "@app/lib/swr/conversations";
-import {
+import type {
   AgentMention,
-  conjugate,
   ContentFragmentsType,
   LightAgentConfigurationType,
   MentionType,
@@ -41,7 +40,7 @@ import {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, Ok, pluralize, removeNulls } from "@app/types";
+import { conjugate, Err, Ok, pluralize, removeNulls } from "@app/types";
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
