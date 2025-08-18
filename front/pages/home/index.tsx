@@ -3,8 +3,6 @@ import type { ReactElement } from "react";
 import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import { CallToActionSection } from "@app/components/home/content/Product/CallToActionSection";
 import { IntroSection } from "@app/components/home/content/Product/IntroSection";
-import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
-import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { QuoteSection } from "@app/components/home/ContentBlocks";
 import { SecurityComplianceSection } from "@app/components/home/ContentComponents";
 import { CloudConnectorsSection } from "@app/components/home/ContentComponents";
@@ -21,12 +19,6 @@ export async function getStaticProps() {
   };
 }
 
-export const DemoVideo: DemoVideoProps = {
-  sectionTitle: "Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/3eqngftomq?seo=true&videoFoam=true",
-};
-
 export function Landing() {
   return (
     <UTMPageWrapper>
@@ -40,7 +32,6 @@ export function Landing() {
         logo="/static/landing/logos/color/clay.png"
       />
       {/* <FutureSection /> */}
-      <DemoVideoSection demoVideo={DemoVideo} id="demo-video" />
       <BlogSection />
       <CallToActionSection />
     </UTMPageWrapper>

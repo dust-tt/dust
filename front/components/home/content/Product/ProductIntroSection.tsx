@@ -1,24 +1,13 @@
 import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
+import { useState } from "react";
 
-import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
+import { HeroVisual } from "@app/components/home/content/Product/IntroSection";
 import { H1, P } from "@app/components/home/ContentComponents";
 import TrustedBy from "@app/components/home/TrustedBy";
 
-const VideoPlayer = () => {
-  return (
-    <DemoVideoSection
-      demoVideo={{
-        videoUrl:
-          "https://fast.wistia.net/embed/iframe/3eqngftomq?seo=true&videoFoam=true",
-        autoPlay: false,
-        showCaptions: false,
-      }}
-    />
-  );
-};
-
 export function ProductIntroSection() {
+  const [showHeroVideo, setShowHeroVideo] = useState(false);
   return (
     <div className="sm:pt-18 w-full pt-12 lg:pt-36">
       <div className="flex flex-col gap-16">
@@ -49,9 +38,10 @@ export function ProductIntroSection() {
             </Link>
           </div>
         </div>
-        <div className="w-full">
-          <VideoPlayer />
-        </div>
+        <HeroVisual
+          showVideo={showHeroVideo}
+          onWatch={() => setShowHeroVideo(true)}
+        />
         <div className="mt-16">
           <TrustedBy />
         </div>
