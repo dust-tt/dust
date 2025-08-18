@@ -406,7 +406,6 @@ const createServer = async (
         }
 
         const accessToken = authInfo?.token;
-        const slackClient = await getSlackClient(accessToken);
 
         const timeFrame = parseTimeFrame(relativeTimeFrame);
 
@@ -439,26 +438,58 @@ const createServer = async (
             searchQuery = `${searchQuery} ${usersMentioned.map((user) => `${user}`).join(" ")}`;
           }
 
-          const messages = await slackClient.search.messages({
+          // The slack client library does not support the assistant.search.context endpoint,
+          // so we use the raw fetch API to call it (GET with query params).
+          const params = new URLSearchParams({
             query: searchQuery,
             sort: "score",
             sort_dir: "desc",
-            highlight: false,
-            count: SLACK_SEARCH_ACTION_NUM_RESULTS,
-            page: 1,
+            limit: SLACK_SEARCH_ACTION_NUM_RESULTS.toString(),
           });
 
-          if (!messages.ok) {
-            throw new Error(messages.error);
+          const resp = await fetch(
+            `https://slack.com/api/assistant.search.context?${params.toString()}`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            }
+          );
+
+          if (!resp.ok) {
+            throw new Error(`HTTP ${resp.status}`);
           }
 
-          const rawMatches = messages.messages?.matches ?? [];
+          type SlackSemanticSearchMessage = {
+            author_name?: string;
+            channel_name?: string;
+            message_ts?: string;
+            content?: string;
+            permalink?: string;
+          };
+
+          type SlackSemanticSearchResponse = {
+            ok: boolean;
+            error?: string;
+            results: {
+              messages: SlackSemanticSearchMessage[];
+            };
+          };
+
+          const data: SlackSemanticSearchResponse = await resp.json();
+          if (!data.ok) {
+            throw new Error(data.error || "unknown_error");
+          }
+
+          const rawMatches: SlackSemanticSearchMessage[] =
+            data.results.messages;
 
           // Filter out matches that don't have a text.
-          const matchesWithText = rawMatches.filter((match) => !!match.text);
+          const matchesWithText = rawMatches.filter((match) => !!match.content);
 
-          // Deduplicate matches by their iid.
-          const deduplicatedMatches = uniqBy(matchesWithText, "iid");
+          // Deduplicate matches by their permalink.
+          const deduplicatedMatches = uniqBy(matchesWithText, "permalink");
 
           // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
           const matches = deduplicatedMatches.slice(
@@ -495,21 +526,39 @@ const createServer = async (
               citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
             );
 
+            const getTextFromMatch = (match: SlackSemanticSearchMessage) => {
+              const author = match.author_name || "Unknown";
+              const channel = match.channel_name || "Unknown";
+              let content = match.content || "";
+
+              // assistant.search.context wraps search words in \uE000 and \uE001,
+              // which display as squares in the UI, so we strip them out.
+              // Ideally, there would be a way to disable this behavior in the Slack API.
+              content = content.replace(/[\uE000\uE001]/g, "");
+
+              // Replace <@U050CALAKFD|someone> with just @someone
+              content = content.replace(
+                /<@([A-Z0-9]+)\|([^>]+)>/g,
+                (_m, _id, username) => `@${username}`
+              );
+
+              return `From ${author} in #${channel}: ${content}`;
+            };
+
             const results: SearchResultResourceType[] = matches.map(
               (match): SearchResultResourceType => {
                 return {
                   mimeType:
                     INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
                   uri: match.permalink ?? "",
-                  text: `#${match.channel?.name ?? "Unknown"}, ${match.text ?? ""}`,
-
-                  id: match.ts ?? "",
+                  text: getTextFromMatch(match),
+                  id: match.message_ts ?? "",
                   source: {
                     provider: "slack",
                   },
                   tags: [],
                   ref: refs.shift() as string,
-                  chunks: [stripNullBytes(match.text ?? "")],
+                  chunks: [stripNullBytes(match.content ?? "")],
                 };
               }
             );
