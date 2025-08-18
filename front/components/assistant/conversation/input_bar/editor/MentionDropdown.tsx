@@ -75,7 +75,6 @@ export const MentionDropdown = ({
         side="bottom"
         sideOffset={4}
         onCloseAutoFocus={(e) => e.preventDefault()}
-        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         {isLoading ? (
           <div className="flex h-12 w-full items-center justify-center">
