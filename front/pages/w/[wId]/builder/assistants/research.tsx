@@ -20,11 +20,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import {
-  getDisplayNameForDataSource,
-  isRemoteDatabase,
-  isWebsite,
-} from "@app/lib/data_sources";
+import { getDisplayNameForDataSource, isWebsite } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
