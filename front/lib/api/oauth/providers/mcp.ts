@@ -58,6 +58,7 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
     const code_challenge = connection.metadata.code_challenge;
     const client_id = connection.metadata.client_id;
     const authorization_endpoint = connection.metadata.authorization_endpoint;
+    const scope = connection.metadata.scope;
 
     if (!code_challenge) {
       throw new Error("Missing code challenge");
@@ -83,6 +84,10 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
       finalizeUriForProvider(this.provider)
     );
     authUrl.searchParams.set("state", connection.connection_id);
+
+    if (scope) {
+      authUrl.searchParams.set("scope", scope);
+    }
 
     return authUrl.toString();
   }
