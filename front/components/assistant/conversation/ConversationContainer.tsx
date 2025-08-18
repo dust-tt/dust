@@ -363,7 +363,7 @@ export function ConversationContainer({
             label="Review actions"
             variant="outline"
             size="xs"
-            onClick={showValidationDialog}
+            onClick={() => showValidationDialog()}
           />
         </ContentMessageInline>
       )}
