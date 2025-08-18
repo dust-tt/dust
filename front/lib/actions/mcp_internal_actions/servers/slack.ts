@@ -601,6 +601,40 @@ const createServer = (
   );
 
   server.tool(
+    "get_user",
+    "Get user information given a Slack user ID. Use this to retrieve details about a user when you have their user ID.",
+    {
+      userId: z
+        .string()
+        .describe("The Slack user ID to look up (for example: U0123456789)."),
+    },
+    async ({ userId }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      const slackClient = await getSlackClient(accessToken);
+
+      try {
+        const response = await slackClient.users.info({ user: userId });
+
+        if (!response.ok || !response.user) {
+          return makeMCPToolTextError(
+            `Error retrieving user info: ${response.error ?? "Unknown error"}`
+          );
+        }
+
+        return makeMCPToolJSONSuccess({
+          message: `Retrieved user information for ${userId}`,
+          result: response.user,
+        });
+      } catch (error) {
+        if (isSlackTokenRevoked(error)) {
+          return makePersonalAuthenticationError({ serverInfo });
+        }
+        return makeMCPToolTextError(`Error retrieving user info: ${error}`);
+      }
+    }
+  );
+
+  server.tool(
     "list_public_channels",
     "List all public channels in the workspace",
     {
