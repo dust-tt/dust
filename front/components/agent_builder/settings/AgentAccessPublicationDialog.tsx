@@ -49,7 +49,7 @@ export function AgentAccessPublicationDialog() {
           defaultValue="editors"
           className="flex flex-grow flex-col overflow-hidden"
         >
-          <div className="flex-shrink-0 p-4">
+          <div className="flex-shrink-0 px-4">
             <TabsList className="inline-flex w-auto">
               <TabsTrigger value="editors" label="Editors" />
               <TabsTrigger value="slack" label="Slack Access" />
