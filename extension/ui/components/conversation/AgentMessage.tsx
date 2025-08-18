@@ -519,14 +519,12 @@ export function AgentMessage({
 
     return (
       <div className="flex flex-col gap-y-4">
-        <div className="flex flex-col gap-2">
-          <AgentMessageActions
-            agentMessage={agentMessage}
-            lastAgentStateClassification={messageStreamState.agentState}
-            owner={owner}
-            actionProgress={messageStreamState.actionProgress}
-          />
-        </div>
+        <AgentMessageActions
+          agentMessage={agentMessage}
+          lastAgentStateClassification={messageStreamState.agentState}
+          owner={owner}
+          actionProgress={messageStreamState.actionProgress}
+        />
         {agentMessage.content !== null && (
           <div>
             {lastTokenClassification !== "chain_of_thought" &&
