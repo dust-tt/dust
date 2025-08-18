@@ -159,7 +159,7 @@ export default function EditResearchAssistant({
   const defaultCustomInstructions = useMemo(() => {
     if (researchAgentConfiguration?.instructions) {
       const guidelinesMatch = researchAgentConfiguration?.instructions?.match(
-        /<custom_instructions>([\s\S]*?)<\/custom_instructions>/
+        /<guidelines>([\s\S]*?)<\/guidelines>/
       );
       if (guidelinesMatch?.[1]) {
         return guidelinesMatch[1].trim();
@@ -350,7 +350,7 @@ export default function EditResearchAssistant({
               />
               <TextArea
                 className="min-h-[300px] text-[13px]"
-                name="custom_instructions"
+                name="guidelines"
                 value={guidelines}
                 placeholder="Paste guidelines here"
                 onChange={(e) => setGuidelines(e.target.value)}

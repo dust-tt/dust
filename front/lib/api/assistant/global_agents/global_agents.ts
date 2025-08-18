@@ -436,11 +436,11 @@ export async function upsertGlobalAgentSettings(
   {
     agentId,
     status,
-    customInstructions,
+    guidelines,
   }: {
     agentId: string;
     status: GlobalAgentStatus | undefined;
-    customInstructions: string | undefined;
+    guidelines: string | undefined;
   }
 ): Promise<boolean> {
   const owner = auth.getNonNullableWorkspace();
@@ -454,13 +454,13 @@ export async function upsertGlobalAgentSettings(
   });
 
   if (settings) {
-    await settings.update({ status, customInstructions });
+    await settings.update({ status, guidelines });
   } else {
     await GlobalAgentSettings.create({
       workspaceId: owner.id,
       agentId,
       status: status ?? "disabled_by_admin",
-      customInstructions,
+      guidelines,
     });
   }
 
