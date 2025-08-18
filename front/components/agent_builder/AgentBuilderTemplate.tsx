@@ -16,7 +16,7 @@ import { useFormContext } from "react-hook-form";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfirmContext } from "@app/components/Confirm";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type { TemplateActionPreset } from "@app/types";
+import type { MultiActionPreset, TemplateActionPreset } from "@app/types";
 
 interface AgentBuilderTemplateProps {
   assistantTemplate: FetchAssistantTemplateResponse;
@@ -132,7 +132,7 @@ function TemplatePresetActions({
   presetActions,
   onAddAction,
 }: TemplatePresetActionsProps) {
-  const getActionIcon = (type: string) => {
+  const getActionIcon = (type: MultiActionPreset) => {
     if (
       type === "RETRIEVAL_SEARCH" ||
       type === "TABLES_QUERY" ||
@@ -143,7 +143,7 @@ function TemplatePresetActions({
     return ListAddIcon;
   };
 
-  const getActionLabel = (type: string) => {
+  const getActionLabel = (type: MultiActionPreset) => {
     switch (type) {
       case "RETRIEVAL_SEARCH":
         return "Search Data";
