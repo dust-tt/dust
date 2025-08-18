@@ -1,4 +1,5 @@
 import { AgentConfigurationType } from "@app/types/assistant/agent";
+import { ModelId } from "@app/types/shared/model_id";
 import { UserType } from "@app/types/user";
 import * as t from "io-ts";
 
@@ -24,7 +25,7 @@ export function isScheduleConfiguration(
 export type TriggerConfigType = ScheduleConfigType | null;
 
 export type TriggerType = {
-  id: number;
+  id: ModelId;
   sId: string;
 
   name: string;
