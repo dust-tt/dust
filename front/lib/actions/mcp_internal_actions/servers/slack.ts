@@ -536,6 +536,12 @@ const createServer = async (
               // Ideally, there would be a way to disable this behavior in the Slack API.
               content = content.replace(/[\uE000\uE001]/g, "");
 
+              // Replace <@U050CALAKFD|someone> with just @someone
+              content = content.replace(
+                /<@([A-Z0-9]+)\|([^>]+)>/g,
+                (_m, _id, username) => `@${username}`
+              );
+
               return `From ${author} in #${channel}: ${content}`;
             };
 
