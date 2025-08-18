@@ -13,7 +13,12 @@ type PatchGlobalAgentSettingResponseBody = {
   success: boolean;
 };
 const PatchGlobalAgentSettingsRequestBodySchema = t.type({
-  status: t.union([t.literal("active"), t.literal("disabled_by_admin")]),
+  status: t.union([
+    t.undefined,
+    t.literal("active"),
+    t.literal("disabled_by_admin"),
+  ]),
+  customInstructions: t.union([t.string, t.undefined]),
 });
 
 async function handler(
@@ -53,6 +58,7 @@ async function handler(
       const created = await upsertGlobalAgentSettings(auth, {
         agentId: req.query.aId as string,
         status: bodyValidation.right.status,
+        customInstructions: bodyValidation.right.customInstructions,
       });
 
       if (!created) {

@@ -1,15 +1,17 @@
 import {
   Avatar,
+  Button,
   CloudArrowDownIcon,
   ContextItem,
   DustLogoSquare,
   Page,
   PlusIcon,
   SliderToggle,
+  TextArea,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -23,8 +25,12 @@ import {
   isRemoteDatabase,
 } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import {
+  useAgentConfigurations,
+  useUpdateGlobalAgentCustomInstructions,
+} from "@app/lib/swr/assistants";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import type {
   APIError,
@@ -109,6 +115,8 @@ export default function EditResearchAssistant({
     spaceId: globalSpace.sId,
   });
 
+  const [customInstructions, setCustomInstructions] = useState("");
+
   // We do not support remote databases for the Research agent at the moment.
   const spaceDataSourceViews = useMemo(
     () =>
@@ -143,6 +151,26 @@ export default function EditResearchAssistant({
   const researchAgentConfiguration = agentConfigurations?.find(
     (c) => c.name === "research"
   );
+
+  const updateGlobalAgentCustomInstructions =
+    useUpdateGlobalAgentCustomInstructions({
+      owner,
+      agentConfigurationId: researchAgentConfiguration?.sId,
+    });
+
+  useEffect(() => {
+    if (researchAgentConfiguration?.instructions) {
+      const customInstructionsMatch =
+        researchAgentConfiguration?.instructions?.match(
+          /<custom_instructions>(.*?)<\/custom_instructions>/s
+        );
+      if (customInstructionsMatch?.[1]) {
+        const customInstructions = customInstructionsMatch[1].trim();
+        setCustomInstructions(customInstructions);
+      }
+    }
+  }, [researchAgentConfiguration]);
+
   if (!researchAgentConfiguration) {
     return null;
   }
@@ -159,27 +187,19 @@ export default function EditResearchAssistant({
       });
       return;
     }
-    const res = await fetch(
-      `/api/w/${owner.sId}/assistant/global_agents/${agent.sId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          status:
-            agent.status === "disabled_by_admin"
-              ? "active"
-              : "disabled_by_admin",
-        }),
-      }
-    );
 
-    if (!res.ok) {
-      const data = await res.json();
-      window.alert(`Error toggling agent: ${data.error.message}`);
-      return;
-    }
+    await updateGlobalAgentCustomInstructions({
+      status:
+        agent.status === "disabled_by_admin" ? "active" : "disabled_by_admin",
+    });
+
+    await mutateAgentConfigurations();
+  };
+
+  const handleUpdateInstructions = async () => {
+    await updateGlobalAgentCustomInstructions({
+      customInstructions: customInstructions,
+    });
 
     await mutateAgentConfigurations();
   };
@@ -321,6 +341,26 @@ export default function EditResearchAssistant({
               />
             </>
           ) : null}
+          {researchAgentConfiguration?.status === "active" && (
+            <>
+              <Page.SectionHeader
+                title="Custom Instructions"
+                description="Custom instructions for the Research agent."
+              />
+              <TextArea
+                className="min-h-[300px] text-[13px]"
+                name="custom_instructions"
+                value={customInstructions}
+                placeholder="Paste custom instructions here"
+                onChange={(e) => setCustomInstructions(e.target.value)}
+              />
+              <Button
+                label="Update instructions"
+                variant="primary"
+                onClick={handleUpdateInstructions}
+              />
+            </>
+          )}
         </div>
       </div>
     </AppCenteredLayout>

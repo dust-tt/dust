@@ -758,3 +758,46 @@ export function useBatchUpdateAgentScope({
 
   return batchUpdateAgentScope;
 }
+
+export const useUpdateGlobalAgentCustomInstructions = ({
+  owner,
+  agentConfigurationId,
+}: {
+  owner: LightWorkspaceType;
+  agentConfigurationId: string | undefined;
+}) => {
+  const sendNotification = useSendNotification();
+  const updateGlobalAgentCustomInstructions = useCallback(
+    async (data: { status?: string; customInstructions?: string }) => {
+      if (!agentConfigurationId) {
+        return;
+      }
+
+      const res = await fetch(
+        `/api/w/${owner.sId}/assistant/global_agents/${agentConfigurationId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        }
+      );
+
+      if (!res.ok) {
+        const data = await res.json();
+        sendNotification({
+          title: `Error toggling agent`,
+          description: data.error.message,
+          type: "error",
+        });
+        return;
+      }
+
+      return res;
+    },
+    [owner, agentConfigurationId]
+  );
+
+  return updateGlobalAgentCustomInstructions;
+};
