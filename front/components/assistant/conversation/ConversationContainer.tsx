@@ -351,6 +351,7 @@ export function ConversationContainer({
       {hasPendingValidations && (
         <ContentMessageInline
           icon={InformationCircleIcon}
+          variant="primary"
           className="mb-5 flex max-h-screen w-full pb-2 sm:w-full sm:max-w-3xl sm:pb-4"
         >
           <b>
