@@ -14,7 +14,7 @@ import {
   Label,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
@@ -38,17 +38,26 @@ function useValidationQueue({
   const [validationQueue, setValidationQueue] = useState<
     // Store validations by `actionId` to prevent duplicate entries.
     Record<string, MCPActionValidationRequest>
-  >(
-    Object.fromEntries(
-      pendingValidations
-        // Skip the first one as it's the current validation.
-        .slice(1)
-        .map((validation) => [validation.actionId, validation])
-    )
-  );
+  >({});
 
   const [currentValidation, setCurrentValidation] =
-    useState<MCPActionValidationRequest | null>(pendingValidations[0] ?? null);
+    useState<MCPActionValidationRequest | null>(null);
+
+  useEffect(() => {
+    const nextValidation = pendingValidations[0];
+    if (nextValidation) {
+      setCurrentValidation(nextValidation);
+    }
+    if (pendingValidations.length > 1) {
+      setValidationQueue(
+        Object.fromEntries(
+          pendingValidations
+            .slice(1)
+            .map((validation) => [validation.actionId, validation])
+        )
+      );
+    }
+  }, [currentValidation]);
 
   const handleValidationRequest = useCallback(
     (validationRequest: MCPActionValidationRequest) => {
