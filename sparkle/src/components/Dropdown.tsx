@@ -245,6 +245,7 @@ interface DropdownMenuContentProps
   mountPortalContainer?: HTMLElement;
   dropdownHeaders?: React.ReactNode;
   preventAutoFocusOnClose?: boolean;
+  onOpenAutoFocus?: (e: React.FocusEvent<HTMLDivElement>) => void;
 }
 
 const DropdownMenuContent = React.forwardRef<
