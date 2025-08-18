@@ -44,13 +44,15 @@ export function AgentAccessPublicationDialog() {
         <DialogHeader className="border-b border-border">
           <DialogTitle>Access & Publication Settings</DialogTitle>
         </DialogHeader>
-        <DialogContainer>
-          <Tabs defaultValue="editors" className="w-full">
-            <TabsList className="mb-4 inline-flex w-auto">
+        <DialogContainer
+          fixedContent={
+            <TabsList className="inline-flex w-auto">
               <TabsTrigger value="editors" label="Editors" />
               <TabsTrigger value="slack" label="Slack Access" />
             </TabsList>
-
+          }
+        >
+          <Tabs defaultValue="editors" className="w-full">
             <TabsContent value="editors">
               <EditorsTab />
             </TabsContent>

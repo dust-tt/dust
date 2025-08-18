@@ -8,7 +8,6 @@ import {
   cn,
   Icon,
   PlusIcon,
-  SearchInput,
 } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
@@ -146,13 +145,6 @@ export function MCPServerSelectionPage({
   onDataVisualizationClick,
   selectedToolsInDialog = [],
 }: MCPServerSelectionPageProps) {
-  const [filteredServerViews, setFilteredServerViews] =
-    React.useState<MCPServerViewTypeWithLabel[]>(mcpServerViews);
-  const [showDataVisualization, setShowDataVisualization] =
-    React.useState(true);
-
-  const [searchTerm, setSearchTerm] = React.useState("");
-
   // Optimize selection lookup with Set-based approach
   const selectedMCPIds = useMemo(() => {
     const mcpIds = new Set<string>();
@@ -164,64 +156,24 @@ export function MCPServerSelectionPage({
     return mcpIds;
   }, [selectedToolsInDialog]);
 
-  const applySearch = (newSearchTerm?: string) => {
-    const searchToUse = newSearchTerm ?? searchTerm;
-    let filtered = mcpServerViews;
-
-    if (searchToUse.trim()) {
-      const searchTermLower = searchToUse.toLowerCase();
-      filtered = filtered.filter(
-        (view) =>
-          view.label.toLowerCase().includes(searchTermLower) ||
-          view.description?.toLowerCase().includes(searchTermLower) ||
-          view.name?.toLowerCase().includes(searchTermLower)
-      );
-
-      setShowDataVisualization(
-        dataVisualization?.label.toLowerCase().includes(searchTermLower) ||
-          dataVisualization?.description
-            ?.toLowerCase()
-            .includes(searchTermLower) ||
-          false
-      );
-    } else {
-      setShowDataVisualization(true);
-    }
-    setFilteredServerViews(filtered);
-  };
-
-  const handleSearchTermChange = (term: string) => {
-    setSearchTerm(term);
-    applySearch(term);
-  };
-
   const isDataVisualizationSelected = selectedToolsInDialog.some(
     (tool) => tool.type === "DATA_VISUALIZATION"
   );
 
   return (
-    <div className="space-y-4">
-      <SearchInput
-        value={searchTerm}
-        onChange={handleSearchTermChange}
-        name="Search"
-      />
-      {(filteredServerViews.length > 0 ||
-        (dataVisualization &&
-          onDataVisualizationClick &&
-          showDataVisualization)) && (
+    <>
+      {(mcpServerViews.length > 0 ||
+        (dataVisualization && onDataVisualizationClick)) && (
         <CardGrid>
-          {dataVisualization &&
-            onDataVisualizationClick &&
-            showDataVisualization && (
-              <DataVisualizationCard
-                key="data-visualization"
-                specification={dataVisualization}
-                isSelected={isDataVisualizationSelected}
-                onClick={onDataVisualizationClick}
-              />
-            )}
-          {filteredServerViews.map((view) => (
+          {dataVisualization && onDataVisualizationClick && (
+            <DataVisualizationCard
+              key="data-visualization"
+              specification={dataVisualization}
+              isSelected={isDataVisualizationSelected}
+              onClick={onDataVisualizationClick}
+            />
+          )}
+          {mcpServerViews.map((view) => (
             <MCPServerCard
               key={view.id}
               view={view}
@@ -231,6 +183,6 @@ export function MCPServerSelectionPage({
           ))}
         </CardGrid>
       )}
-    </div>
+    </>
   );
 }
