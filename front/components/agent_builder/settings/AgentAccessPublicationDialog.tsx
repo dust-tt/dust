@@ -40,7 +40,7 @@ export function AgentAccessPublicationDialog() {
           tooltip="Access & Publication Settings"
         />
       </DialogTrigger>
-      <DialogContent size="xl" height="md">
+      <DialogContent size="xl" height="xl">
         <DialogHeader>
           <DialogTitle>Access & Publication Settings</DialogTitle>
         </DialogHeader>
