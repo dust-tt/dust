@@ -44,7 +44,6 @@ export function AgentMessageActions({
 
   const lastNotification = actionProgress.get(lastAction?.id)?.progress ?? null;
 
-  console.log(lastAction);
   return (
     lastAgentStateClassification !== "done" && (
       <div
@@ -74,7 +73,7 @@ export function AgentMessageActions({
                     content={chainOfThought}
                     isStreaming={false}
                     forcedTextSize="text-sm"
-                    textColor="text-muted-foreground"
+                    textColor="text-muted-foreground dark:text-muted-foreground-night"
                     isLastMessage={false}
                   />
                 )}

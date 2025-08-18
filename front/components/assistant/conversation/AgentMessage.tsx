@@ -610,14 +610,12 @@ export function AgentMessage({
 
     return (
       <div className="flex flex-col gap-y-4">
-        <div className="flex flex-col gap-2">
-          <AgentMessageActions
-            agentMessage={agentMessage}
-            lastAgentStateClassification={messageStreamState.agentState}
-            actionProgress={messageStreamState.actionProgress}
-            owner={owner}
-          />
-        </div>
+        <AgentMessageActions
+          agentMessage={agentMessage}
+          lastAgentStateClassification={messageStreamState.agentState}
+          actionProgress={messageStreamState.actionProgress}
+          owner={owner}
+        />
         <InteractiveAgentMessageGeneratedFiles files={interactiveFiles} />
         {(inProgressImages.length > 0 || completedImages.length > 0) && (
           <InteractiveImageGrid
