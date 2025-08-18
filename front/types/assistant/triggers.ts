@@ -31,7 +31,7 @@ export type TriggerType = {
   name: string;
   description: string;
 
-  agentConfigurationId: AgentConfigurationType["sId"];
+  agentConfigurationId: AgentConfigurationType["id"];
   editor: UserType["id"];
   subscribers: UserType["id"][] | null;
 

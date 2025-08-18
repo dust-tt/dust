@@ -157,7 +157,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   hootl: {
-    description: "Humans Out Of The Loop",
+    description: "Human Out Of The Loop (aka Triggers)",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

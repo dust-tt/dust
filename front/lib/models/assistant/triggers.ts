@@ -18,16 +18,15 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
   declare sId: string;
   declare name: string;
   declare description: string;
-
-  declare agentConfiguration: NonAttribute<AgentConfiguration>;
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]>;
   declare kind: TriggerKind;
-
-  declare editor: ForeignKey<UserModel["id"]>;
-  declare subscribers: ForeignKey<UserModel["id"]>[] | null;
   declare customPrompt: string | null;
 
-  declare configuration: TriggerConfigType | null;
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+
+  declare editor: ForeignKey<UserModel["id"]>;
+  declare subscribers: ForeignKey<UserModel["id"]>[];
+
+  declare configuration: TriggerConfigType;
 }
 
 TriggerModel.init(
@@ -54,10 +53,6 @@ TriggerModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    agentConfigurationId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     kind: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -65,10 +60,14 @@ TriggerModel.init(
         isIn: [TRIGGER_KINDS],
       },
     },
-    configuration: {
-      type: DataTypes.JSONB,
+    customPrompt: {
+      type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
+    },
+    configuration: {
+      type: DataTypes.JSONB,
+      allowNull: false,
     },
   },
   {
