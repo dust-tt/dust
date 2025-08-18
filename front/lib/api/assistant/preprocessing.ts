@@ -408,11 +408,9 @@ async function getSteps(
         }
 
         const actions = step.actions;
-        const functionResultByCallId: Record<string, FunctionMessageTypeModel> =
-          {};
-        for (const action of actions) {
-          functionResultByCallId[action.call.id] = action.result;
-        }
+        const functionResultByCallId = Object.fromEntries(
+          step.actions.map((action) => [action.call.id, action.result])
+        );
         for (const content of step.contents) {
           if (content.type === "function_call") {
             const functionCall = content.value;
@@ -444,6 +442,7 @@ async function getSteps(
         if (onMissingAction !== "skip") {
           return true;
         }
+
         const functionResultByCallId = Object.fromEntries(
           step.actions.map((action) => [action.call.id, action.result])
         );
