@@ -1,15 +1,17 @@
 import {
   Avatar,
+  Button,
   CloudArrowDownIcon,
   ContextItem,
   DustLogoSquare,
   Page,
   PlusIcon,
   SliderToggle,
+  TextArea,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -18,13 +20,13 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import {
-  getDisplayNameForDataSource,
-  isRemoteDatabase,
-} from "@app/lib/data_sources";
+import { getDisplayNameForDataSource, isWebsite } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import {
+  useAgentConfigurations,
+  useUpdateGlobalAgentCustomInstructions,
+} from "@app/lib/swr/assistants";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import type {
   APIError,
@@ -109,12 +111,12 @@ export default function EditResearchAssistant({
     spaceId: globalSpace.sId,
   });
 
+  const [guidelines, setGuidelines] = useState("");
+
   // We do not support remote databases for the Research agent at the moment.
   const spaceDataSourceViews = useMemo(
     () =>
-      unfilteredSpaceDataSourceViews.filter(
-        (ds) => !isRemoteDatabase(ds.dataSource)
-      ),
+      unfilteredSpaceDataSourceViews.filter((ds) => !isWebsite(ds.dataSource)),
     [unfilteredSpaceDataSourceViews]
   );
 
@@ -143,6 +145,29 @@ export default function EditResearchAssistant({
   const researchAgentConfiguration = agentConfigurations?.find(
     (c) => c.name === "research"
   );
+
+  const updateGlobalAgentCustomInstructions =
+    useUpdateGlobalAgentCustomInstructions({
+      owner,
+      agentConfigurationId: researchAgentConfiguration?.sId,
+    });
+
+  const defaultCustomInstructions = useMemo(() => {
+    if (researchAgentConfiguration?.instructions) {
+      const guidelinesMatch = researchAgentConfiguration?.instructions?.match(
+        /<guidelines>([\s\S]*?)<\/guidelines>/
+      );
+      if (guidelinesMatch?.[1]) {
+        return guidelinesMatch[1].trim();
+      }
+    }
+    return "";
+  }, [researchAgentConfiguration]);
+
+  useEffect(() => {
+    setGuidelines(defaultCustomInstructions);
+  }, [defaultCustomInstructions]);
+
   if (!researchAgentConfiguration) {
     return null;
   }
@@ -159,27 +184,19 @@ export default function EditResearchAssistant({
       });
       return;
     }
-    const res = await fetch(
-      `/api/w/${owner.sId}/assistant/global_agents/${agent.sId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          status:
-            agent.status === "disabled_by_admin"
-              ? "active"
-              : "disabled_by_admin",
-        }),
-      }
-    );
 
-    if (!res.ok) {
-      const data = await res.json();
-      window.alert(`Error toggling agent: ${data.error.message}`);
-      return;
-    }
+    await updateGlobalAgentCustomInstructions({
+      status:
+        agent.status === "disabled_by_admin" ? "active" : "disabled_by_admin",
+    });
+
+    await mutateAgentConfigurations();
+  };
+
+  const handleUpdateInstructions = async () => {
+    await updateGlobalAgentCustomInstructions({
+      guidelines: guidelines,
+    });
 
     await mutateAgentConfigurations();
   };
@@ -321,6 +338,29 @@ export default function EditResearchAssistant({
               />
             </>
           ) : null}
+          {researchAgentConfiguration?.status === "active" && (
+            <div className="flex flex-col gap-2">
+              <Page.SectionHeader
+                title="Additional guidelines"
+                description="Add guidelines for the agent on how to use to the data sources and the tools."
+              />
+              <TextArea
+                className="min-h-[300px] text-[13px]"
+                name="guidelines"
+                value={guidelines}
+                placeholder="Paste guidelines here"
+                onChange={(e) => setGuidelines(e.target.value)}
+              />
+              <div className="self-end">
+                <Button
+                  disabled={guidelines === defaultCustomInstructions}
+                  label="Update guidelines"
+                  variant="primary"
+                  onClick={handleUpdateInstructions}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </AppCenteredLayout>

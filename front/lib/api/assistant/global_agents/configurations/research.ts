@@ -284,7 +284,11 @@ You must never output text outside of \`<thinking>\` tags between tool use. Only
     versionAuthorId: null,
     name,
     description,
-    instructions,
+    instructions:
+      instructions +
+      (settings?.guidelines
+        ? "\n\n<guidelines>\n" + settings.guidelines + "\n</guidelines>"
+        : ""),
     pictureUrl,
     scope: "global" as const,
     userFavorite: false,
