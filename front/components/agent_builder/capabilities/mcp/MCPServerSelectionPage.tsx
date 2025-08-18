@@ -57,39 +57,39 @@ function BaseToolCard({
       variant={isSelected ? "secondary" : "primary"}
       onClick={canAdd ? onClick : undefined}
       disabled={!canAdd}
-      className="h-32"
+      className="h-32 p-3"
     >
-      <div className="flex w-full flex-col justify-between gap-2 text-sm">
-        <div>
-          <div className="mb-2 flex h-7 items-center gap-2">
-            <Icon visual={icon} size="sm" />
-            <span className="text-sm font-medium">{label}</span>
-            <div
-              className={cn(
-                FADE_TRANSITION_CLASSES,
-                isSelected ? "opacity-100" : "opacity-0"
-              )}
-            >
-              {isSelected && <Chip size="xs" color="green" label="ADDED" />}
-            </div>
-          </div>
-          <div className="line-clamp-2 w-full text-xs text-gray-600">
-            {description}
+      <div className="flex h-full w-full flex-col text-sm">
+        <div className="mb-2 flex h-7 items-center gap-2">
+          <Icon visual={icon} size="sm" />
+          <span className="text-sm font-medium">{label}</span>
+          <div
+            className={cn(
+              FADE_TRANSITION_CLASSES,
+              isSelected ? "opacity-100" : "opacity-0"
+            )}
+          >
+            {isSelected && <Chip size="xs" color="green" label="ADDED" />}
           </div>
         </div>
-        <div
-          className={cn(
-            FADE_TRANSITION_CLASSES,
-            canAdd ? "opacity-100" : "opacity-0"
-          )}
-        >
-          {canAdd && (
-            <Button size="xs" variant="outline" icon={PlusIcon} label="Add" />
+        <div className="line-clamp-2 min-h-0 flex-1 overflow-hidden text-xs text-gray-600">
+          {description}
+        </div>
+        <div className="mt-2 flex-shrink-0">
+          <div
+            className={cn(
+              FADE_TRANSITION_CLASSES,
+              canAdd ? "opacity-100" : "opacity-0"
+            )}
+          >
+            {canAdd && (
+              <Button size="xs" variant="outline" icon={PlusIcon} label="Add" />
+            )}
+          </div>
+          {!canAdd && cantAddReason && (
+            <div className="text-xs italic text-gray-600">{cantAddReason}</div>
           )}
         </div>
-        {!canAdd && cantAddReason && (
-          <div className="text-xs italic text-gray-600">{cantAddReason}</div>
-        )}
       </div>
     </Card>
   );
