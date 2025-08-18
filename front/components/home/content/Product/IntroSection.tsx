@@ -77,7 +77,9 @@ export const HeroVisual = ({
                   src={videoUrl.toString()}
                   title="Dust product tour"
                   allow="autoplay; fullscreen"
-                  frameBorder="0"
+                  title="Dust product tour"
+                  allow="autoplay; fullscreen"
+                  className="absolute inset-0 h-full w-full overflow-hidden rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl"
                   className="absolute inset-0 h-full w-full overflow-hidden rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl"
                 />
               ) : (
