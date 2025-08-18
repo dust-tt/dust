@@ -17,6 +17,7 @@ import type {
   ContentNodesViewType,
   DataSourceViewType,
   LightWorkspaceType,
+  SpaceType,
 } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
@@ -24,12 +25,14 @@ type DataSourceBuilderSelectorProps = {
   owner: LightWorkspaceType;
   dataSourceViews: DataSourceViewType[];
   viewType: ContentNodesViewType;
+  allowedSpaces: SpaceType[];
 };
 
 export const DataSourceBuilderSelector = ({
   owner,
   dataSourceViews,
   viewType,
+  allowedSpaces,
 }: DataSourceBuilderSelectorProps) => {
   const { spaces } = useSpacesContext();
   const { navigationHistory, navigateTo } = useDataSourceBuilderContext();
@@ -142,7 +145,7 @@ export const DataSourceBuilderSelector = ({
       {currentNavigationEntry.type === "root" ? (
         <DataSourceSpaceSelector
           spaces={filteredSpaces}
-          allowedSpaces={spaces}
+          allowedSpaces={allowedSpaces}
         />
       ) : (
         <div className="flex flex-col gap-2">
