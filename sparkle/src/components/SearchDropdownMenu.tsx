@@ -82,6 +82,9 @@ export function SearchDropdownMenu({
         side="bottom"
         align="start"
         className="s-w-[--radix-popper-anchor-width]"
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+        }}
         onFocusOutside={(e) => {
           // Prevent closing when search input is focused
           if (e.target === searchInputRef.current) {
