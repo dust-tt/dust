@@ -361,12 +361,18 @@ export async function confluenceSyncTopLevelChildContentWorkflow(
     }
 
     // Get child content using either initial empty cursor or saved cursor.
-    const { childContentRefs, nextPageCursor } =
+    const childContentRefsRes =
       await confluenceGetActiveChildContentRefsActivity({
         ...params,
         parentContentId: isContentRef ? current.id : current.parentId,
         pageCursor: isContentRef ? "" : current.cursor,
       });
+
+    if (!childContentRefsRes) {
+      continue;
+    }
+
+    const { childContentRefs, nextPageCursor } = childContentRefsRes;
 
     // Add children and next cursor if there are more.
     stack.push(...childContentRefs);
