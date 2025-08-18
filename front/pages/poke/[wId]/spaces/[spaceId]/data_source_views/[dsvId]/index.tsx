@@ -56,20 +56,21 @@ export default function DataSourceViewPage({
   return (
     <>
       <h3 className="text-xl font-bold">
-        {dataSourceView.name} in space:{" "}
+        {dataSourceView.name} in space{" "}
         <a
           href={`/poke/${owner.sId}/spaces/${dataSourceView.space.sId}`}
           className="text-highlight-500"
         >
           {dataSourceView.space.name}
         </a>{" "}
-        of workspace:{" "}
+        within workspace{" "}
         <a href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </a>
       </h3>
       <p>
-        The content source of truth is <b>core</b>.
+        The data displayed here is fetched from <b>core</b> (
+        <i>elasticsearch index</i>).
       </p>
       <div className="flex flex-row gap-x-6">
         <ViewDataSourceViewTable

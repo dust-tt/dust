@@ -10,7 +10,10 @@ import {
   getTemporalWorkerConnection,
   TEMPORAL_MAXED_CACHED_WORKFLOWS,
 } from "@connectors/lib/temporal";
-import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
+import {
+  ActivityInboundLogInterceptor,
+  ActivityOutboundLogInterceptor,
+} from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
 
 export async function runSalesforceWorker() {
@@ -25,11 +28,14 @@ export async function runSalesforceWorker() {
     reuseV8Context: true,
     namespace,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger, "salesforce");
-        },
-        () => new SalesforceCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "salesforce"),
+          outbound: new ActivityOutboundLogInterceptor("salesforce"),
+        }),
+        () => ({
+          inbound: new SalesforceCastKnownErrorsInterceptor(),
+        }),
       ],
     },
     bundlerOptions: {

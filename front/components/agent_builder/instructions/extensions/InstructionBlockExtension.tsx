@@ -229,6 +229,10 @@ export const InstructionBlockExtension =
           handler: ({ range, match, commands }) => {
             const type = match[1].toLowerCase();
 
+            if (this.editor.isActive(this.name)) {
+              return;
+            }
+
             commands.insertContentAt(
               { from: range.from, to: range.to },
               {
@@ -313,7 +317,7 @@ export const InstructionBlockExtension =
           return true;
         },
         /**
-         * Handles Enter to leave the block when the current paragraph is empty.
+         * Handles Enter to leave the block when hitting enter at the last line of the block.
          */
         Enter: () => {
           if (!this.editor.isActive(this.name)) {
@@ -346,6 +350,15 @@ export const InstructionBlockExtension =
           const posBeforeBlock = $from.before(blockDepth);
           const posAfterBlock = posBeforeBlock + blockNode.nodeSize;
 
+          // Check if we're at the last line of the block
+          const isInLastChildOfBlock =
+            $from.index(blockDepth) === blockNode.childCount - 1;
+
+          if (!isInLastChildOfBlock) {
+            // Let default behavior handle non-last lines
+            return false;
+          }
+
           // Current paragraph inside the block
           const paragraphNode = $from.node(blockDepth + 1);
           const isParagraphEmpty =
@@ -364,6 +377,19 @@ export const InstructionBlockExtension =
             tr.insert(posAfterBlock, state.schema.nodes.paragraph.create());
           }
           tr.setSelection(TextSelection.create(tr.doc, posAfterBlock + 1));
+
+          // Trim the last paragraph of the block if it's not the only paragraph
+          if (blockNode.childCount > 1) {
+            const lastChildIndex = blockNode.childCount - 1;
+            const lastChild = blockNode.child(lastChildIndex);
+            if (lastChild.type.name === "paragraph") {
+              let pos = posBeforeBlock + 1;
+              for (let i = 0; i < lastChildIndex; i++) {
+                pos += blockNode.child(i).nodeSize;
+              }
+              tr.delete(pos, pos + lastChild.nodeSize);
+            }
+          }
 
           this.editor.view.dispatch(tr);
           this.editor.commands.focus();

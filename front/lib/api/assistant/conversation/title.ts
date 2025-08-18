@@ -18,7 +18,7 @@ const MIN_GENERATION_TOKENS = 1024;
 export async function ensureConversationTitle(
   authType: AuthenticatorType,
   runAgentArgs: RunAgentArgs
-): Promise<void> {
+): Promise<string | null> {
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
     throw runAgentDataRes.error;
@@ -28,7 +28,7 @@ export async function ensureConversationTitle(
 
   // If the conversation has a title, return early.
   if (conversation.title) {
-    return;
+    return conversation.title;
   }
   const auth = await Authenticator.fromJSON(authType);
 
@@ -46,7 +46,7 @@ export async function ensureConversationTitle(
       },
       "Conversation title generation error"
     );
-    return;
+    return null;
   }
 
   const title = titleRes.value;
@@ -64,6 +64,8 @@ export async function ensureConversationTitle(
     }),
     "user_message_events"
   );
+
+  return title;
 }
 
 async function generateConversationTitle(

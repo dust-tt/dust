@@ -1139,6 +1139,7 @@ fn handle_response_error(
     } else if let Some(reason) = event.reason {
         format!("Response failed: {}", reason)
     } else {
+        println!("Unknown OpenAI Responses API error event: {:?}", event);
         "Unknown error in response".to_string()
     };
 

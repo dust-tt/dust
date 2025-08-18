@@ -1,4 +1,7 @@
-import type { MCPActionType } from "@app/lib/actions/mcp";
+import type {
+  MCPActionType,
+  MCPApproveExecutionEvent,
+} from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 
 import type { ContentFragmentType } from "../content_fragment";
@@ -332,3 +335,8 @@ export type ConversationMCPServerViewType = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export type MCPActionValidationRequest = Omit<
+  MCPApproveExecutionEvent,
+  "type" | "created" | "configurationId"
+>;

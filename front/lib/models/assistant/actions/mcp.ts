@@ -286,6 +286,11 @@ AgentMCPAction.init(
         unique: true,
         concurrently: true,
       },
+      {
+        fields: ["workspaceId", "agentMessageId", "executionState"],
+        name: "agent_mcp_action_workspace_agent_message_execution_state",
+        concurrently: true,
+      },
     ],
   }
 );
