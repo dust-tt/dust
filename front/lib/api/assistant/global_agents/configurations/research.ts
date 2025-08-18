@@ -286,10 +286,8 @@ You must never output text outside of \`<thinking>\` tags between tool use. Only
     description,
     instructions:
       instructions +
-      (settings?.customInstructions
-        ? "\n\n<custom_instructions>\n" +
-          settings.customInstructions +
-          "\n</custom_instructions>"
+      (settings?.guidelines
+        ? "\n\n<guidelines>\n" + settings.guidelines + "\n</guidelines>"
         : ""),
     pictureUrl,
     scope: "global" as const,

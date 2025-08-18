@@ -23,6 +23,7 @@ import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_provide
 import {
   getDisplayNameForDataSource,
   isRemoteDatabase,
+  isWebsite,
 } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -114,14 +115,12 @@ export default function EditResearchAssistant({
     spaceId: globalSpace.sId,
   });
 
-  const [customInstructions, setCustomInstructions] = useState("");
+  const [guidelines, setGuidelines] = useState("");
 
   // We do not support remote databases for the Research agent at the moment.
   const spaceDataSourceViews = useMemo(
     () =>
-      unfilteredSpaceDataSourceViews.filter(
-        (ds) => !isRemoteDatabase(ds.dataSource)
-      ),
+      unfilteredSpaceDataSourceViews.filter((ds) => !isWebsite(ds.dataSource)),
     [unfilteredSpaceDataSourceViews]
   );
 
@@ -159,19 +158,18 @@ export default function EditResearchAssistant({
 
   const defaultCustomInstructions = useMemo(() => {
     if (researchAgentConfiguration?.instructions) {
-      const customInstructionsMatch =
-        researchAgentConfiguration?.instructions?.match(
-          /<custom_instructions>([\s\S]*?)<\/custom_instructions>/
-        );
-      if (customInstructionsMatch?.[1]) {
-        return customInstructionsMatch[1].trim();
+      const guidelinesMatch = researchAgentConfiguration?.instructions?.match(
+        /<custom_instructions>([\s\S]*?)<\/custom_instructions>/
+      );
+      if (guidelinesMatch?.[1]) {
+        return guidelinesMatch[1].trim();
       }
     }
     return "";
   }, [researchAgentConfiguration]);
 
   useEffect(() => {
-    setCustomInstructions(defaultCustomInstructions);
+    setGuidelines(defaultCustomInstructions);
   }, [defaultCustomInstructions]);
 
   if (!researchAgentConfiguration) {
@@ -201,7 +199,7 @@ export default function EditResearchAssistant({
 
   const handleUpdateInstructions = async () => {
     await updateGlobalAgentCustomInstructions({
-      customInstructions: customInstructions,
+      guidelines: guidelines,
     });
 
     await mutateAgentConfigurations();
@@ -347,20 +345,20 @@ export default function EditResearchAssistant({
           {researchAgentConfiguration?.status === "active" && (
             <div className="flex flex-col gap-2">
               <Page.SectionHeader
-                title="Custom Instructions"
-                description="Custom instructions for the Research agent."
+                title="Additional guidelines"
+                description="Add guidelines for the agent on how to use to the data sources and the tools."
               />
               <TextArea
                 className="min-h-[300px] text-[13px]"
                 name="custom_instructions"
-                value={customInstructions}
-                placeholder="Paste custom instructions here"
-                onChange={(e) => setCustomInstructions(e.target.value)}
+                value={guidelines}
+                placeholder="Paste guidelines here"
+                onChange={(e) => setGuidelines(e.target.value)}
               />
               <div className="self-end">
                 <Button
-                  disabled={customInstructions === defaultCustomInstructions}
-                  label="Update instructions"
+                  disabled={guidelines === defaultCustomInstructions}
+                  label="Update guidelines"
                   variant="primary"
                   onClick={handleUpdateInstructions}
                 />

@@ -18,7 +18,7 @@ const PatchGlobalAgentSettingsRequestBodySchema = t.type({
     t.literal("active"),
     t.literal("disabled_by_admin"),
   ]),
-  customInstructions: t.union([t.string, t.undefined]),
+  guidelines: t.union([t.string, t.undefined]),
 });
 
 async function handler(
@@ -58,7 +58,7 @@ async function handler(
       const created = await upsertGlobalAgentSettings(auth, {
         agentId: req.query.aId as string,
         status: bodyValidation.right.status,
-        customInstructions: bodyValidation.right.customInstructions,
+        guidelines: bodyValidation.right.guidelines,
       });
 
       if (!created) {

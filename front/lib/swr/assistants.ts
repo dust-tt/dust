@@ -768,7 +768,7 @@ export const useUpdateGlobalAgentCustomInstructions = ({
 }) => {
   const sendNotification = useSendNotification();
   const updateGlobalAgentCustomInstructions = useCallback(
-    async (data: { status?: string; customInstructions?: string }) => {
+    async (data: { status?: string; guidelines?: string }) => {
       if (!agentConfigurationId) {
         return;
       }
