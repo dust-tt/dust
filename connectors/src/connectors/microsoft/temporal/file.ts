@@ -52,6 +52,7 @@ import {
   cacheWithRedis,
   concurrentExecutor,
   INTERNAL_MIME_TYPES,
+  WithRetriesError,
 } from "@connectors/types";
 
 const PARENT_SYNC_CACHE_TTL_MS = 30 * 60 * 1000;
@@ -404,7 +405,13 @@ export async function syncOneFile({
             ? new Date(upsertTimestampMs)
             : null;
         } catch (error) {
-          if (axios.isAxiosError(error) && error.response?.status === 413) {
+          if (
+            error instanceof WithRetriesError &&
+            error.errors.every(
+              ({ error }) =>
+                axios.isAxiosError(error) && error.response?.status === 413
+            )
+          ) {
             localLogger.info(
               {
                 status: 413,
