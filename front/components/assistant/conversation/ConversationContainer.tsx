@@ -30,8 +30,9 @@ import {
   useConversationMessages,
   useConversations,
 } from "@app/lib/swr/conversations";
-import type {
+import {
   AgentMention,
+  conjugate,
   ContentFragmentsType,
   LightAgentConfigurationType,
   MentionType,
@@ -357,7 +358,7 @@ export function ConversationContainer({
             {totalPendingValidations} action
             {pluralize(totalPendingValidations)}
           </b>{" "}
-          require manual approval
+          require{conjugate(totalPendingValidations)} manual approval
           <ContentMessageAction
             label="Review actions"
             variant="outline"
