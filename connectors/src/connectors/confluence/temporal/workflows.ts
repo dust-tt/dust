@@ -188,7 +188,7 @@ export async function confluenceSpaceSyncWorkflow(
     confluenceCloudId: confluenceConfig?.cloudId,
   });
   // If the space does not exist, launch a workflow to remove the space.
-  if (space === null) {
+  if (!space) {
     return startConfluenceRemoveSpaceWorkflow(wInfo, connectorId, spaceId);
   }
 
