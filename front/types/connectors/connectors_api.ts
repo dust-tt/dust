@@ -139,6 +139,7 @@ export interface ContentNode {
 export interface ContentNodeWithParent extends ContentNode {
   parentInternalIds: string[] | null;
   parentTitle: string | null;
+  children_count?: number;
 }
 
 export type GoogleDriveFolderType = {

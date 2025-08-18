@@ -1,7 +1,11 @@
 import React from "react";
 import { useRef, useState } from "react";
 
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@sparkle/components/Dropdown";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@sparkle/components/Dropdown";
 import { SearchInput } from "@sparkle/components/SearchInput";
 
 type SearchDropdownMenuProps = {

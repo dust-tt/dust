@@ -2,12 +2,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 import { SPREADSHEET_INTERNAL_MIME_TYPES } from "@app/lib/content_nodes";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type {
-  ContentNodesViewType,
-  ContentNodeWithParent,
-  CoreAPIContentNode,
-  DataSourceViewType,
-} from "@app/types";
+import type { ContentNodesViewType, ContentNodeWithParent, CoreAPIContentNode, DataSourceViewType } from "@app/types";
 import { assertNever } from "@app/types";
 
 export const NON_EXPANDABLE_NODES_MIME_TYPES = [
@@ -112,5 +107,6 @@ export function getContentNodeFromCoreNode(
         : FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(coreNode.mime_type) ||
           (viewType === "table" && coreNode.node_type !== "table"),
     parentTitle: coreNode.parent_title,
+    children_count: coreNode.children_count,
   };
 }
