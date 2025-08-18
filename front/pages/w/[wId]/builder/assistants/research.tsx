@@ -25,7 +25,6 @@ import {
   isRemoteDatabase,
 } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   useAgentConfigurations,
@@ -158,18 +157,22 @@ export default function EditResearchAssistant({
       agentConfigurationId: researchAgentConfiguration?.sId,
     });
 
-  useEffect(() => {
+  const defaultCustomInstructions = useMemo(() => {
     if (researchAgentConfiguration?.instructions) {
       const customInstructionsMatch =
         researchAgentConfiguration?.instructions?.match(
-          /<custom_instructions>(.*?)<\/custom_instructions>/s
+          /<custom_instructions>([\s\S]*?)<\/custom_instructions>/
         );
       if (customInstructionsMatch?.[1]) {
-        const customInstructions = customInstructionsMatch[1].trim();
-        setCustomInstructions(customInstructions);
+        return customInstructionsMatch[1].trim();
       }
     }
+    return "";
   }, [researchAgentConfiguration]);
+
+  useEffect(() => {
+    setCustomInstructions(defaultCustomInstructions);
+  }, [defaultCustomInstructions]);
 
   if (!researchAgentConfiguration) {
     return null;
@@ -342,7 +345,7 @@ export default function EditResearchAssistant({
             </>
           ) : null}
           {researchAgentConfiguration?.status === "active" && (
-            <>
+            <div className="flex flex-col gap-2">
               <Page.SectionHeader
                 title="Custom Instructions"
                 description="Custom instructions for the Research agent."
@@ -354,12 +357,15 @@ export default function EditResearchAssistant({
                 placeholder="Paste custom instructions here"
                 onChange={(e) => setCustomInstructions(e.target.value)}
               />
-              <Button
-                label="Update instructions"
-                variant="primary"
-                onClick={handleUpdateInstructions}
-              />
-            </>
+              <div className="self-end">
+                <Button
+                  disabled={customInstructions === defaultCustomInstructions}
+                  label="Update instructions"
+                  variant="primary"
+                  onClick={handleUpdateInstructions}
+                />
+              </div>
+            </div>
           )}
         </div>
       </div>
