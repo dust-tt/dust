@@ -113,6 +113,20 @@ export async function validateAction(
     getMCPApprovalStateFromUserApprovalState(approvalState)
   );
 
+  if (approvalState === "always_approved") {
+    const user = auth.user();
+    if (user) {
+      const toolServerId = action.toolConfiguration?.toolServerId;
+      const toolName = action.toolConfiguration?.name;
+      if (toolServerId && toolName) {
+        await user.appendToMetadata(
+          `toolsValidations:${toolServerId}`,
+          `${toolName}`
+        );
+      }
+    }
+  }
+
   if (!actionUpdated) {
     logger.info(
       {
