@@ -97,7 +97,7 @@ function createServer(
         tools: "",
         allowedTokenCount,
         excludeImages: true,
-        checkMissingActions: false,
+        onMissingAction: "skip",
       });
       if (renderedConversationRes.isErr()) {
         return makeMCPToolTextError(
