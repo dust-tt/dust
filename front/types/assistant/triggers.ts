@@ -22,7 +22,7 @@ export function isScheduleConfiguration(
   );
 }
 
-export type TriggerConfigType = ScheduleConfigType | null;
+export type TriggerConfigType = ScheduleConfigType;
 
 export type TriggerType = {
   id: ModelId;
