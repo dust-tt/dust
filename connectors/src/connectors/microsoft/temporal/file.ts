@@ -382,26 +382,54 @@ export async function syncOneFile({
           })),
         ];
 
-        await upsertDataSourceDocument({
-          dataSourceConfig,
-          documentId,
-          documentContent: content,
-          documentUrl: file.webUrl ?? undefined,
-          timestampMs: upsertTimestampMs,
-          tags,
-          parents,
-          parentId: parents[1] || null,
-          upsertContext: {
-            sync_type: isBatchSync ? "batch" : "incremental",
-          },
-          title: file.name ?? "",
-          mimeType: file.file.mimeType ?? "application/octet-stream",
-          async: true,
-        });
+        try {
+          await upsertDataSourceDocument({
+            dataSourceConfig,
+            documentId,
+            documentContent: content,
+            documentUrl: file.webUrl ?? undefined,
+            timestampMs: upsertTimestampMs,
+            tags,
+            parents,
+            parentId: parents[1] || null,
+            upsertContext: {
+              sync_type: isBatchSync ? "batch" : "incremental",
+            },
+            title: file.name ?? "",
+            mimeType: file.file.mimeType ?? "application/octet-stream",
+            async: true,
+          });
 
-        resourceBlob.lastUpsertedTs = upsertTimestampMs
-          ? new Date(upsertTimestampMs)
-          : null;
+          resourceBlob.lastUpsertedTs = upsertTimestampMs
+            ? new Date(upsertTimestampMs)
+            : null;
+        } catch (error) {
+          if (axios.isAxiosError(error) && error.response?.status === 413) {
+            localLogger.info(
+              {
+                status: 413,
+                fileName: file.name,
+                internalId: documentId,
+                webUrl: file.webUrl,
+                documentLen: documentLength,
+              },
+              "Document too large for upsert, marking as skipped"
+            );
+
+            resourceBlob.skipReason = "payload_too_large";
+
+            if (fileResource) {
+              await fileResource.update(resourceBlob);
+            } else {
+              await MicrosoftNodeResource.makeNew(resourceBlob);
+            }
+
+            return false;
+          }
+
+          // Re-throw other errors
+          throw error;
+        }
       } else {
         localLogger.info(
           {
