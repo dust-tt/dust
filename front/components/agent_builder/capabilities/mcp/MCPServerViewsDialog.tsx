@@ -2,6 +2,7 @@ import type { MultiPageDialogPage } from "@dust-tt/sparkle";
 import {
   MultiPageDialog,
   MultiPageDialogContent,
+  SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -124,6 +125,7 @@ export function MCPServerViewsDialog({
   const [selectedToolsInDialog, setSelectedToolsInDialog] = useState<
     SelectedTool[]
   >([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [isOpen, setIsOpen] = useState(!!mode);
   const [currentPageId, setCurrentPageId] = useState<ConfigurationPagePageId>(
@@ -183,6 +185,44 @@ export function MCPServerViewsDialog({
     [nonDefaultMCPServerViews, actions]
   );
 
+  const allSelectableViews = useMemo(
+    () => [
+      ...selectableDefaultMCPServerViews,
+      ...selectableNonDefaultMCPServerViews,
+    ],
+    [selectableDefaultMCPServerViews, selectableNonDefaultMCPServerViews]
+  );
+
+  const filteredViews = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return allSelectableViews;
+    }
+
+    const searchTermLower = searchTerm.toLowerCase();
+    return allSelectableViews.filter(
+      (view) =>
+        view.label.toLowerCase().includes(searchTermLower) ||
+        view.description?.toLowerCase().includes(searchTermLower) ||
+        view.name?.toLowerCase().includes(searchTermLower)
+    );
+  }, [allSelectableViews, searchTerm]);
+
+  const showDataVisualization = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return true;
+    }
+    if (!dataVisualization) {
+      return false;
+    }
+
+    const searchTermLower = searchTerm.toLowerCase();
+    return (
+      dataVisualization.label.toLowerCase().includes(searchTermLower) ||
+      dataVisualization.description?.toLowerCase().includes(searchTermLower) ||
+      false
+    );
+  }, [searchTerm, dataVisualization]);
+
   useEffect(() => {
     if (isEditMode) {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION);
@@ -222,53 +262,53 @@ export function MCPServerViewsDialog({
       setConfigurationTool(null);
       setConfigurationMCPServerView(null);
       setInfoMCPServerView(null);
+      setSearchTerm("");
     }
     setIsOpen(!!mode);
   }, [mode, allMcpServerViews, isEditMode, isInfoMode]);
 
-  const toggleToolSelection = (tool: SelectedTool): void => {
+  const toggleToolSelection = useCallback((tool: SelectedTool) => {
     setSelectedToolsInDialog((prev) => {
-      const isSelected = prev.some((selected) => {
-        if (tool.type !== selected.type) {
-          return false;
-        }
-        if (tool.type === "DATA_VISUALIZATION") {
+      const isAlreadySelected = prev.some((selected) => {
+        if (
+          tool.type === "DATA_VISUALIZATION" &&
+          selected.type === "DATA_VISUALIZATION"
+        ) {
           return true;
         }
-        return (
-          tool.type === "MCP" &&
-          selected.type === "MCP" &&
-          tool.view.sId === selected.view.sId
-        );
+        if (tool.type === "MCP" && selected.type === "MCP") {
+          return tool.view.sId === selected.view.sId;
+        }
+        return false;
       });
 
-      if (isSelected) {
+      if (isAlreadySelected) {
         return prev.filter((selected) => {
-          if (tool.type !== selected.type) {
-            return true;
-          }
-          if (tool.type === "DATA_VISUALIZATION") {
+          if (
+            tool.type === "DATA_VISUALIZATION" &&
+            selected.type === "DATA_VISUALIZATION"
+          ) {
             return false;
           }
-          return (
-            tool.type === "MCP" &&
-            selected.type === "MCP" &&
-            tool.view.sId !== selected.view.sId
-          );
+          if (tool.type === "MCP" && selected.type === "MCP") {
+            return tool.view.sId !== selected.view.sId;
+          }
+          return true;
         });
-      } else {
-        return [...prev, tool];
       }
+
+      return [...prev, tool];
     });
-  };
+  }, []);
 
   // Data Visualization is not an action but we show like an action in UI.
-  const onClickDataVisualization = () => {
-    if (!dataVisualization) {
-      return;
+  const onClickDataVisualization = useCallback(() => {
+    if (dataVisualization) {
+      toggleToolSelection({
+        type: "DATA_VISUALIZATION",
+      });
     }
-    toggleToolSelection({ type: "DATA_VISUALIZATION" });
-  };
+  }, [dataVisualization, toggleToolSelection]);
 
   function onClickMCPServer(mcpServerView: MCPServerViewType) {
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
@@ -404,11 +444,17 @@ export function MCPServerViewsDialog({
     resetFormValues(form);
   }, [resetFormValues, form]);
 
-  const handleBackToSelection = () => {
+  const resetToSelection = useCallback(() => {
     setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
     setConfigurationTool(null);
     setConfigurationMCPServerView(null);
-  };
+  }, []);
+
+  const resetDialog = useCallback(() => {
+    setSelectedToolsInDialog([]);
+    setSearchTerm("");
+    resetToSelection();
+  }, [resetToSelection]);
 
   const pages: MultiPageDialogPage[] = [
     {
@@ -416,18 +462,23 @@ export function MCPServerViewsDialog({
       title: actions.length === 0 ? "Add tools" : "Add more",
       description: "",
       icon: undefined,
+      fixedContent: !isMCPServerViewsLoading ? (
+        <SearchInput
+          value={searchTerm}
+          onChange={setSearchTerm}
+          name="search-mcp-servers"
+          placeholder="Search servers..."
+        />
+      ) : undefined,
       content: isMCPServerViewsLoading ? (
         <div className="flex h-40 w-full items-center justify-center">
           <Spinner />
         </div>
       ) : (
         <MCPServerSelectionPage
-          mcpServerViews={[
-            ...selectableDefaultMCPServerViews,
-            ...selectableNonDefaultMCPServerViews,
-          ]}
+          mcpServerViews={filteredViews}
           onItemClick={onClickMCPServer}
-          dataVisualization={dataVisualization}
+          dataVisualization={showDataVisualization ? dataVisualization : null}
           onDataVisualizationClick={onClickDataVisualization}
           selectedToolsInDialog={selectedToolsInDialog}
         />
@@ -511,10 +562,7 @@ export function MCPServerViewsDialog({
     setIsOpen(false);
     onModeChange(null);
     if (isAddMode) {
-      setSelectedToolsInDialog([]);
-      setConfigurationTool(null);
-      setConfigurationMCPServerView(null);
-      setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
+      resetDialog();
     }
   };
 
@@ -529,9 +577,7 @@ export function MCPServerViewsDialog({
         throw new Error("Expected MCP action for configuration save");
       }
 
-      // TODO: it should not be null but sometimes mode is not set properly when you add a new action.
       const isNewActionOrNameChanged =
-        mode === null ||
         mode?.type === "add" ||
         (mode?.type === "edit" && defaultFormValues.name !== formData.name);
 
@@ -658,7 +704,7 @@ export function MCPServerViewsDialog({
           leftButton: {
             label: "Back",
             variant: "outline",
-            onClick: handleBackToSelection,
+            onClick: resetToSelection,
           },
           rightButton: {
             label: "Save Configuration",
@@ -691,10 +737,7 @@ export function MCPServerViewsDialog({
         setIsOpen(open);
 
         if (!open && isAddMode) {
-          setConfigurationTool(null);
-          setConfigurationMCPServerView(null);
-          setSelectedToolsInDialog([]);
-          setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
+          resetDialog();
         }
 
         if (!open) {
@@ -704,6 +747,7 @@ export function MCPServerViewsDialog({
     >
       <MultiPageDialogContent
         showNavigation={false}
+        showHeaderNavigation={false}
         isAlertDialog
         size="2xl"
         height="xl"
@@ -711,7 +755,7 @@ export function MCPServerViewsDialog({
         currentPageId={currentPageId}
         onPageChange={(pageId) => {
           if (pageId === CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION) {
-            handleBackToSelection();
+            resetToSelection();
           } else {
             setCurrentPageId(pageId as ConfigurationPagePageId);
           }

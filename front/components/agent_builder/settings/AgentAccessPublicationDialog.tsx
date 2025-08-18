@@ -41,16 +41,22 @@ export function AgentAccessPublicationDialog() {
         />
       </DialogTrigger>
       <DialogContent size="xl" height="md">
-        <DialogHeader className="border-b border-border">
+        <DialogHeader>
           <DialogTitle>Access & Publication Settings</DialogTitle>
         </DialogHeader>
-        <DialogContainer>
-          <Tabs defaultValue="editors" className="w-full">
-            <TabsList className="mb-4 inline-flex w-auto">
+
+        <Tabs
+          defaultValue="editors"
+          className="flex flex-grow flex-col overflow-hidden"
+        >
+          <div className="flex-shrink-0 px-4">
+            <TabsList className="inline-flex w-auto">
               <TabsTrigger value="editors" label="Editors" />
               <TabsTrigger value="slack" label="Slack Access" />
             </TabsList>
+          </div>
 
+          <DialogContainer>
             <TabsContent value="editors">
               <EditorsTab />
             </TabsContent>
@@ -58,10 +64,10 @@ export function AgentAccessPublicationDialog() {
             <TabsContent value="slack">
               <SlackTab />
             </TabsContent>
-          </Tabs>
-        </DialogContainer>
+          </DialogContainer>
+        </Tabs>
 
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0">
           <div className="flex w-full flex-col gap-2 px-2 pb-2">
             <Separator />
             <div className="mt-2 flex items-center justify-between gap-2">
