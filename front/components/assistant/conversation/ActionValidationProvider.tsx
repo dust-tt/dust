@@ -66,6 +66,7 @@ function useValidationQueue(pendingValidations: MCPActionValidationRequest[]) {
   // We don't update the current validation here to avoid content flickering.
   const takeNextFromQueue = useCallback(() => {
     const enqueuedActionIds = Object.keys(validationQueue);
+
     if (enqueuedActionIds.length > 0) {
       const nextValidationActionId = enqueuedActionIds[0];
       const nextValidation = validationQueue[nextValidationActionId];
@@ -76,9 +77,9 @@ function useValidationQueue(pendingValidations: MCPActionValidationRequest[]) {
         return newRecord;
       });
       return nextValidation;
-    } else {
-      return null;
     }
+
+    return null;
   }, [validationQueue]);
 
   const validationQueueLength = useMemo(
