@@ -526,13 +526,26 @@ const createServer = async (
               citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
             );
 
+            const getTextFromMatch = (match: SlackSemanticSearchMessage) => {
+              const author = match.author_name || "Unknown";
+              const channel = match.channel_name || "Unknown";
+              let content = match.content || "";
+
+              // assistant.search.context wraps search words in \uE000 and \uE001,
+              // which display as squares in the UI, so we strip them out.
+              // Ideally, there would be a way to disable this behavior in the Slack API.
+              content = content.replace(/[\uE000\uE001]/g, "");
+
+              return `From ${author} in #${channel}: ${content}`;
+            };
+
             const results: SearchResultResourceType[] = matches.map(
               (match): SearchResultResourceType => {
                 return {
                   mimeType:
                     INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
                   uri: match.permalink ?? "",
-                  text: `From ${match.author_name ?? "Unknown"} in #${match.channel_name ?? "Unknown"}: ${match.content ?? ""}`,
+                  text: getTextFromMatch(match),
                   id: match.message_ts ?? "",
                   source: {
                     provider: "slack",
