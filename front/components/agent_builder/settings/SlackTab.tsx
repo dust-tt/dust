@@ -139,6 +139,13 @@ export function SlackTab() {
     name: "agentSettings.slackChannels",
   });
 
+  const handleSelectionChange = useCallback(
+    (slackChannels: SlackChannel[]) => {
+      onChange(slackChannels);
+    },
+    [onChange]
+  );
+
   if (!slackProvider) {
     return (
       <div className="space-y-4">
@@ -176,9 +183,7 @@ export function SlackTab() {
 
       <SlackIntegration
         existingSelection={slackChannels}
-        onSelectionChange={(slackChannels: SlackChannel[]) => {
-          onChange(slackChannels);
-        }}
+        onSelectionChange={handleSelectionChange}
         owner={owner}
         slackDataSource={slackDataSource}
       />
