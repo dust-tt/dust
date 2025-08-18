@@ -1,11 +1,7 @@
 import React from "react";
 import { useRef, useState } from "react";
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@sparkle/components/Dropdown";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@sparkle/components/Dropdown";
 import { SearchInput } from "@sparkle/components/SearchInput";
 
 type SearchDropdownMenuProps = {
@@ -79,9 +75,6 @@ export function SearchDropdownMenu({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        onOpenAutoFocus={(e) => {
-          e.preventDefault();
-        }}
         side="bottom"
         align="start"
         className="s-w-[--radix-popper-anchor-width]"

@@ -85,6 +85,7 @@ interface MultiPageDialogProps {
   height?: React.ComponentProps<typeof DialogContent>["height"];
   trapFocusScope?: boolean;
   isAlertDialog?: boolean;
+  preventAutoFocusOnClose?: boolean;
   showNavigation?: boolean;
   showHeaderNavigation?: boolean;
   className?: string;
@@ -113,6 +114,7 @@ const MultiPageDialogContent = React.forwardRef<
       height,
       trapFocusScope,
       isAlertDialog,
+      preventAutoFocusOnClose,
       showNavigation = true,
       showHeaderNavigation = true,
       className,
@@ -179,6 +181,7 @@ const MultiPageDialogContent = React.forwardRef<
         height={height}
         trapFocusScope={trapFocusScope}
         isAlertDialog={isAlertDialog}
+        preventAutoFocusOnClose={preventAutoFocusOnClose}
         className={className}
         {...props}
       >
