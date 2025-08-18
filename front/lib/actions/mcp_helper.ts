@@ -19,7 +19,7 @@ import {
   LEGACY_REGION_BIT,
   makeSId,
 } from "@app/lib/resources/string_ids";
-import type { ModelId, TemplateActionPreset } from "@app/types";
+import type { ModelId, MultiActionPreset, TemplateActionPreset } from "@app/types";
 import { asDisplayName } from "@app/types";
 
 export const getServerTypeAndIdFromSId = (
@@ -163,14 +163,16 @@ export function getMcpServerDisplayName(
   return displayName;
 }
 
-// Only includes action types that are actually used in templates
-const TEMPLATE_ACTION_TO_MCP_SERVER: Record<string, InternalMCPServerNameType> =
-  {
-    RETRIEVAL_SEARCH: "search",
-    TABLES_QUERY: "query_tables",
-    PROCESS: "extract_data",
-    WEB_NAVIGATION: "web_search_&_browse",
-  };
+// Only includes action types that are actually used in templates.
+const TEMPLATE_ACTION_TO_MCP_SERVER: Record<
+  MultiActionPreset,
+  InternalMCPServerNameType
+> = {
+  RETRIEVAL_SEARCH: "search",
+  TABLES_QUERY: "query_tables",
+  PROCESS: "extract_data",
+  WEB_NAVIGATION: "web_search_&_browse",
+};
 
 export function getMCPServerNameForTemplateAction(
   presetAction: TemplateActionPreset
