@@ -34,6 +34,7 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LoggerInterface } from "@app/types/shared/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { errorToString } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
 export const MAX_CHUNK_SIZE = 512;
@@ -2264,6 +2265,7 @@ export class CoreAPI {
           duration,
           coreError: err,
           error: e,
+          errorMessage: errorToString(e),
         },
         "CoreAPI error"
       );
