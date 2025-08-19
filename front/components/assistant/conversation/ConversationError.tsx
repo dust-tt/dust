@@ -1,4 +1,4 @@
-import { Button } from "@dust-tt/sparkle";
+import { Button, Icon } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import React, { useCallback, useState } from "react";
@@ -12,7 +12,6 @@ interface ConversationErrorProps {
 }
 
 export function ConversationErrorDisplay({ error }: ConversationErrorProps) {
-  // SWR may throw either a plain API error object or an Error whose message is a JSON string.
   const apiErr = (() => {
     if (isAPIErrorResponse(error)) {
       return error;
@@ -88,7 +87,7 @@ function ConversationAccessRestricted() {
       </p>
       <Button
         label="Leave this conversation"
-        variant="secondary"
+        variant="outline"
         onClick={onLeave}
         disabled={leaving || !workspaceId || !conversationId}
       />
