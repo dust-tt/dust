@@ -19,7 +19,11 @@ import {
   LEGACY_REGION_BIT,
   makeSId,
 } from "@app/lib/resources/string_ids";
-import type { ModelId, MultiActionPreset, TemplateActionPreset } from "@app/types";
+import type {
+  ModelId,
+  MultiActionPreset,
+  TemplateActionPreset,
+} from "@app/types";
 import { asDisplayName } from "@app/types";
 
 export const getServerTypeAndIdFromSId = (

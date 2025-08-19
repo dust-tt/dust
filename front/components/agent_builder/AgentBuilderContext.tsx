@@ -34,7 +34,8 @@ export function AgentBuilderProvider({
   assistantTemplate,
   children,
 }: AgentBuilderProviderProps) {
-  const [presetActionToAdd, setPresetActionToAdd] = useState<TemplateActionPreset | null>(null);
+  const [presetActionToAdd, setPresetActionToAdd] =
+    useState<TemplateActionPreset | null>(null);
 
   const value = useMemo(
     () => ({

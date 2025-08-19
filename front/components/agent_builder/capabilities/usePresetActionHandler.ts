@@ -36,10 +36,10 @@ export function usePresetActionHandler({
   setKnowledgeAction,
 }: UsePresetActionHandlerProps) {
   const { presetActionToAdd, setPresetActionToAdd } = useAgentBuilderContext();
-  const { 
-    mcpServerViews, 
-    mcpServerViewsWithKnowledge, 
-    isMCPServerViewsLoading 
+  const {
+    mcpServerViews,
+    mcpServerViewsWithKnowledge,
+    isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
   const sendNotification = useSendNotification();
   // Store preset object reference to prevent duplicate processing.
