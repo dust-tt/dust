@@ -45,22 +45,23 @@ async function handler(
   }
 
   switch (req.method) {
-    case "GET":
-      {
-        const conversationRes =
-          await ConversationResource.fetchConversationWithoutContent(auth, cId);
+    case "GET": {
+      const conversationRes =
+        await ConversationResource.fetchConversationWithoutContent(auth, cId);
 
-        if (conversationRes.isErr()) {
-          return apiErrorForConversation(req, res, conversationRes.error);
-        }
-
-        const conversation = conversationRes.value;
-      res.status(200).json({ conversation });
-      return;
+      if (conversationRes.isErr()) {
+        return apiErrorForConversation(req, res, conversationRes.error);
       }
 
+      const conversation = conversationRes.value;
+      res.status(200).json({ conversation });
+      return;
+    }
+
     case "DELETE": {
-      const result = await deleteOrLeaveConversation(auth, { conversationId: cId });
+      const result = await deleteOrLeaveConversation(auth, {
+        conversationId: cId,
+      });
       if (result.isErr()) {
         return apiErrorForConversation(req, res, result.error);
       }
@@ -70,7 +71,8 @@ async function handler(
     }
 
     case "PATCH": {
-      const conversationRes = await ConversationResource.fetchConversationWithoutContent(auth, cId);
+      const conversationRes =
+        await ConversationResource.fetchConversationWithoutContent(auth, cId);
 
       if (conversationRes.isErr()) {
         return apiErrorForConversation(req, res, conversationRes.error);
