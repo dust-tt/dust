@@ -4,9 +4,9 @@ import { statsDClient } from "@app/logger/statsDClient";
 
 // StatsD metric names.
 const METRICS = {
-  LOOP_COMPLETIONS: "agent_loop_loop.completions",
-  LOOP_DURATION: "agent_loop_loop.duration_ms",
-  LOOP_STARTS: "agent_loop_loop.starts",
+  LOOP_COMPLETIONS: "agent_loop.completions",
+  LOOP_DURATION: "agent_loop.duration_ms",
+  LOOP_STARTS: "agent_loop.starts",
   PHASE_COMPLETIONS: "agent_loop_phase.completions",
   PHASE_DURATION: "agent_loop_phase.duration_ms",
   PHASE_STARTS: "agent_loop_phase.starts",
@@ -41,7 +41,7 @@ const METRICS = {
  * METRICS:
  * - `agent_loop_step.*` → Individual step performance (model + tools)
  * - `agent_loop_phase.*` → Individual `executeAgentLoop` performance
- * - `agent_loop_loop.*` → Complete agent loop performance
+ * - `agent_loop.*` → Complete agent loop performance
  *
  * Note: Functions are async because they're used as Temporal activities.
  */
@@ -157,7 +157,7 @@ export async function logAgentLoopPhaseCompletionActivity({
     1,
     createExecutionModeTag(eventData.executionMode)
   );
-  statsDClient.histogram(
+  statsDClient.distribution(
     METRICS.LOOP_DURATION,
     totalDurationMs,
     createExecutionModeTag(eventData.executionMode)
@@ -187,7 +187,7 @@ export function logAgentLoopPhaseTimeout({
   logAgentLoopPhaseCompletion(eventData);
 
   statsDClient.increment(METRICS.PHASE_SYNC_TIMEOUTS);
-  statsDClient.histogram(
+  statsDClient.distribution(
     METRICS.PHASE_TIMEOUT_DURATION,
     eventData.phaseDurationMs
   );
@@ -224,7 +224,7 @@ export async function logAgentLoopStepCompletionActivity(
   ];
 
   statsDClient.increment(METRICS.STEP_COMPLETIONS, 1, tags);
-  statsDClient.histogram(METRICS.STEP_DURATION, stepDurationMs, tags);
+  statsDClient.distribution(METRICS.STEP_DURATION, stepDurationMs, tags);
 }
 
 /**
@@ -239,7 +239,7 @@ function logAgentLoopPhaseCompletion(
   const tags = createExecutionModeTag(eventData.executionMode);
 
   statsDClient.increment(METRICS.PHASE_COMPLETIONS, 1, tags);
-  statsDClient.histogram(
+  statsDClient.distribution(
     METRICS.PHASE_DURATION,
     eventData.phaseDurationMs,
     tags
