@@ -122,7 +122,7 @@ export default function AgentBuilder({
       agentSettings: {
         ...baseValues.agentSettings,
         slackProvider,
-        editors: editors ?? [],
+        editors: editors ?? emptyArray(),
       },
     };
   }, [
