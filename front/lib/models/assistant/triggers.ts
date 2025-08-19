@@ -1,15 +1,11 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
-import type { UserModel } from "@app/lib/resources/storage/models/user";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type {
-  TriggerConfigType,
-  TriggerKind,
-} from "@app/types/assistant/triggers";
-import { TRIGGER_KINDS } from "@app/types/assistant/triggers";
+import type { TriggerKind } from "@app/types/assistant/triggers";
 
 export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
   declare createdAt: CreationOptional<Date>;
@@ -22,11 +18,9 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
   declare customPrompt: string | null;
 
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
-
   declare editor: ForeignKey<UserModel["id"]>;
-  declare subscribers: ForeignKey<UserModel["id"]>[];
 
-  declare configuration: TriggerConfigType;
+  declare configuration: Record<string, unknown>;
 }
 
 TriggerModel.init(
@@ -56,9 +50,6 @@ TriggerModel.init(
     kind: {
       type: DataTypes.STRING,
       allowNull: false,
-      validate: {
-        isIn: [TRIGGER_KINDS],
-      },
     },
     customPrompt: {
       type: DataTypes.STRING,
@@ -79,3 +70,10 @@ TriggerModel.init(
     ],
   }
 );
+
+TriggerModel.belongsTo(AgentConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+});
+TriggerModel.belongsTo(UserModel, {
+  foreignKey: { name: "editor", allowNull: false },
+});
