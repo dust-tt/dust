@@ -346,6 +346,7 @@ export const INTERNAL_MCP_SERVERS = {
       list_public_channels: "never_ask",
       list_threads: "never_ask",
       post_message: "low",
+      get_user: "never_ask",
     },
     timeoutMs: undefined,
   },
