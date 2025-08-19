@@ -366,6 +366,7 @@ export const MicrosoftCommandSchema = t.type({
     t.literal("skip-file"),
     t.literal("sync-node"),
     t.literal("get-parents"),
+    t.literal("update-parents"),
   ]),
   args: t.record(
     t.string,
