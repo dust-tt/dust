@@ -158,7 +158,7 @@ export async function fetchDatabaseChildPages({
       cursor,
     });
   } catch (e) {
-    // Sometimes a cursor will consistently fail with 500.
+    // Sometimes a cursor will consistently fail with 500 or 503.
     // In this case, there is not much we can do, so we just give up and move on.
     // Notion workspaces are resynced daily so nothing is lost forever.
     const potentialNotionError = e as {
@@ -167,8 +167,10 @@ export async function fetchDatabaseChildPages({
       status: number;
     };
     if (
-      potentialNotionError.code === "internal_server_error" &&
-      potentialNotionError.status === 500
+      (potentialNotionError.code === "internal_server_error" &&
+        potentialNotionError.status === 500) ||
+      (potentialNotionError.code === "service_unavailable" &&
+        potentialNotionError.status === 503)
     ) {
       if (Context.current().info.attempt > 20) {
         localLogger.error(
