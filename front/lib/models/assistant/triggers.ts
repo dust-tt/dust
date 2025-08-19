@@ -1,13 +1,13 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type {TriggerKind} from "@app/types/assistant/triggers";
 import {
-  isValidTriggerKind,
-  type TriggerKind,
+  isValidTriggerKind
 } from "@app/types/assistant/triggers";
 
 export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
