@@ -85,7 +85,8 @@ function createAdditionalConfigurationSchema(
     requirements.requiredStrings.length > 0 ||
     requirements.requiredNumbers.length > 0 ||
     requirements.requiredBooleans.length > 0 ||
-    Object.keys(requirements.requiredEnums).length > 0;
+    Object.keys(requirements.requiredEnums).length > 0 ||
+    Object.keys(requirements.requiredLists).length > 0;
 
   if (!hasRequiredFields) {
     return additionalConfigurationSchema.default({});
@@ -141,6 +142,18 @@ function createAdditionalConfigurationSchema(
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: VALIDATION_MESSAGES.additionalConfig.enumRequired(key),
+            path: [key],
+          });
+        }
+      }
+
+      // Validate required lists
+      for (const [key] of Object.entries(requirements.requiredLists)) {
+        const value = additionalConfig[key];
+        if (!value || !Array.isArray(value) || value.length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: VALIDATION_MESSAGES.additionalConfig.listRequired(key),
             path: [key],
           });
         }

@@ -28,6 +28,7 @@ import {
   getMCPConfigurationFormSchema,
   validateMCPActionConfiguration,
 } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
+import { AdditionalConfigurationSection } from "@app/components/agent_builder/capabilities/shared/AdditionalConfigurationSection";
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
@@ -49,6 +50,7 @@ import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -521,6 +523,14 @@ export function MCPServerViewsDialog({
                     getAgentInstructions={getAgentInstructions}
                   />
                 )}
+
+                <AdditionalConfigurationSection
+                  requiredStrings={requirements.requiredStrings}
+                  requiredNumbers={requirements.requiredNumbers}
+                  requiredBooleans={requirements.requiredBooleans}
+                  requiredEnums={requirements.requiredEnums}
+                  requiredLists={requirements.requiredLists}
+                />
               </div>
             </div>
           </FormProvider>
@@ -604,7 +614,7 @@ export function MCPServerViewsDialog({
 
         sendNotification({
           title: "Tool updated successfully",
-          description: `${mcpServerView.server.name} configuration has been updated.`,
+          description: `${getMcpServerViewDisplayName(mcpServerView)} configuration has been updated.`,
           type: "success",
         });
       } else {

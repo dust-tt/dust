@@ -31,7 +31,8 @@ export function getDefaultConfiguration(
     return defaults;
   }
 
-  const additionalConfig: Record<string, boolean | number | string> = {};
+  const additionalConfig: Record<string, boolean | number | string | string[]> =
+    {};
 
   // Set default values only for boolean and enums
   // Strings and numbers should be left empty to trigger validation
@@ -43,6 +44,10 @@ export function getDefaultConfiguration(
     if (enumValues.length > 0) {
       additionalConfig[key] = enumValues[0];
     }
+  }
+
+  for (const [key] of Object.entries(requirements.requiredLists)) {
+    additionalConfig[key] = [];
   }
 
   defaults.additionalConfiguration = additionalConfig;

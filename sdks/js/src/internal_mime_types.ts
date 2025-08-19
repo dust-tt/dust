@@ -232,6 +232,7 @@ const TOOL_MIME_TYPES = {
       "NUMBER",
       "BOOLEAN",
       "ENUM",
+      "LIST",
       "REASONING_MODEL",
       "DUST_APP",
       "NULLABLE_TIME_FRAME",

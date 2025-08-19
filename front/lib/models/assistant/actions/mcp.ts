@@ -16,6 +16,11 @@ import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type { TimeFrame } from "@app/types";
 import { isTimeFrame } from "@app/types";
 
+export type AdditionalConfigurationType = Record<
+  string,
+  boolean | number | string | string[]
+>;
+
 export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPServerConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -25,7 +30,7 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
   declare sId: string;
 
   declare timeFrame: TimeFrame | null;
-  declare additionalConfiguration: Record<string, boolean | number | string>;
+  declare additionalConfiguration: AdditionalConfigurationType;
   declare jsonSchema: JSONSchema | null;
 
   declare appId: string | null;

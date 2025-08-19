@@ -13,6 +13,7 @@ import {
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
   AgentConfigurationScope,
@@ -65,7 +66,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   childAgentId: string | null;
   reasoningModel: ReasoningModelConfigurationType | null;
   timeFrame: TimeFrame | null;
-  additionalConfiguration: Record<string, boolean | number | string>;
+  additionalConfiguration: AdditionalConfigurationType;
   dustAppConfiguration: DustAppRunConfigurationType | null;
   jsonSchema: JSONSchema | null;
   _jsonSchemaString: string | null;
