@@ -87,18 +87,6 @@ export default function AgentBuilder({
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
 
-  const defaultValues = useMemo((): AgentBuilderFormData => {
-    if (agentConfiguration) {
-      return transformAgentConfigurationToFormData(agentConfiguration);
-    }
-
-    if (assistantTemplate) {
-      return transformTemplateToFormData(assistantTemplate, user);
-    }
-
-    return getDefaultAgentFormData(user);
-  }, [agentConfiguration, assistantTemplate, user]);
-
   const slackProvider = useMemo(() => {
     const slackBotProvider = supportedDataSourceViews.find(
       (dsv) => dsv.dataSource.connectorProvider === "slack_bot"
@@ -113,19 +101,46 @@ export default function AgentBuilder({
     return slackProvider ? "slack" : null;
   }, [supportedDataSourceViews]);
 
+  const processedActions = useMemo(() => {
+    return processActionsFromStorage(actions ?? emptyArray());
+  }, [actions]);
+
+  const formValues = useMemo((): AgentBuilderFormData => {
+    let baseValues: AgentBuilderFormData;
+
+    if (agentConfiguration) {
+      baseValues = transformAgentConfigurationToFormData(agentConfiguration);
+    } else if (assistantTemplate) {
+      baseValues = transformTemplateToFormData(assistantTemplate, user);
+    } else {
+      baseValues = getDefaultAgentFormData(user);
+    }
+
+    return {
+      ...baseValues,
+      actions: processedActions,
+      agentSettings: {
+        ...baseValues.agentSettings,
+        slackProvider,
+        editors: editors ?? [],
+      },
+    };
+  }, [
+    agentConfiguration,
+    assistantTemplate,
+    user,
+    processedActions,
+    slackProvider,
+    editors,
+  ]);
+
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
-    defaultValues,
-    values: {
-      ...defaultValues,
-      actions: processActionsFromStorage(actions ?? emptyArray()),
-      agentSettings: {
-        ...defaultValues.agentSettings,
-        slackProvider,
-        editors,
-      },
+    values: formValues,
+    resetOptions: {
+      keepDirtyValues: true,
+      keepErrors: true,
     },
-    resetOptions: { keepDefaultValues: true },
   });
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {

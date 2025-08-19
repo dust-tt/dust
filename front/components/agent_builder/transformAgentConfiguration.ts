@@ -7,6 +7,8 @@ import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types";
 
 /**
  * Transforms a light agent configuration (server-side) into agent builder form data (client-side).
+ * Dynamic values (editors, slackProvider, actions) are intentionally set to empty defaults
+ * as they will be populated reactively in the component.
  */
 export function transformAgentConfigurationToFormData(
   agentConfiguration: LightAgentConfigurationType
@@ -20,9 +22,9 @@ export function transformAgentConfigurationToFormData(
         agentConfiguration.scope === "global"
           ? "visible"
           : agentConfiguration.scope,
-      editors: [], // Fallback - editors will be updated reactively
-      slackProvider: null, // TODO: determine from agent configuration
-      slackChannels: [], // TODO: determine from agent configuration
+      editors: [], // Will be populated reactively from useEditors hook
+      slackProvider: null, // Will be populated reactively from supportedDataSourceViews
+      slackChannels: [], // Will be populated reactively if needed
       tags: agentConfiguration.tags,
     },
     instructions: agentConfiguration.instructions || "",
@@ -35,7 +37,7 @@ export function transformAgentConfigurationToFormData(
       reasoningEffort: agentConfiguration.model.reasoningEffort || "none",
       responseFormat: agentConfiguration.model.responseFormat,
     },
-    actions: [], // Actions are always loaded client-side via SWR
+    actions: [], // Will be populated reactively from useAgentConfigurationActions hook
     maxStepsPerRun: agentConfiguration.maxStepsPerRun || 8,
   };
 }

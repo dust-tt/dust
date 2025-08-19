@@ -61,7 +61,12 @@ export function AgentBuilderLeftPanel({
         variant="default"
         className="mx-4 justify-between"
         leftActions={
-          <Button variant="outline" label="Close" onClick={handleCancel} />
+          <Button
+            variant="outline"
+            label="Close"
+            onClick={handleCancel}
+            type="button"
+          />
         }
         rightActions={
           <BarFooter.ButtonBar
