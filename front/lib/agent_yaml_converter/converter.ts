@@ -1,5 +1,4 @@
 import * as yaml from "js-yaml";
-import { z } from "zod";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
@@ -124,7 +123,6 @@ export class AgentYAMLConverter {
       const convertedActions: AgentYAMLAction[] = [];
       for (const action of actions) {
         const baseAction = {
-          id: action.id,
           name: action.name,
           description: action.description,
         };

@@ -113,6 +113,7 @@ export function transformTemplateToFormData(
 /**
  * Converts AssistantBuilderMCPConfiguration actions to AgentBuilderFormData actions format.
  * Used for YAML export to include actions that are normally loaded client-side.
+ * Generates unique IDs since they're only needed for UI purposes.
  */
 export function convertActionsForFormData(
   actions: AssistantBuilderMCPConfiguration[]
@@ -121,7 +122,7 @@ export function convertActionsForFormData(
     id: uniqueId(),
     name: action.name,
     description: action.description,
-    type: "MCP",
+    type: "MCP" as const,
     configuration: action.configuration,
   }));
 }

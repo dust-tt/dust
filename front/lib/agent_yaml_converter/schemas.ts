@@ -56,7 +56,6 @@ export const agentYAMLDataSourceConfigurationSchema = z.object({
 });
 
 export const baseAgentYAMLActionSchema = z.object({
-  id: z.string().min(1, "Action ID is required"),
   name: z.string().min(1, "Action name is required"),
   description: z.string().min(1, "Action description is required"),
 });
