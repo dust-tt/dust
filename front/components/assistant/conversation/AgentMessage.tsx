@@ -640,8 +640,8 @@ export function AgentMessage({
           <div>
             {lastTokenClassification !== "chain_of_thought" &&
             agentMessage.content === "" ? (
-              <div className="blinking-cursor">
-                <span></span>
+              <div className="typing-caret">
+                <span />
               </div>
             ) : (
               <CitationsContext.Provider
@@ -650,15 +650,17 @@ export function AgentMessage({
                   updateActiveReferences,
                 }}
               >
-                <Markdown
-                  content={sanitizeVisualizationContent(agentMessage.content)}
-                  isStreaming={
-                    streaming && lastTokenClassification === "tokens"
-                  }
-                  isLastMessage={isLastMessage}
-                  additionalMarkdownComponents={additionalMarkdownComponents}
-                  additionalMarkdownPlugins={additionalMarkdownPlugins}
-                />
+                <div className={streaming ? "typing-caret" : undefined}>
+                  <Markdown
+                    content={sanitizeVisualizationContent(agentMessage.content)}
+                    isStreaming={
+                      streaming && lastTokenClassification === "tokens"
+                    }
+                    isLastMessage={isLastMessage}
+                    additionalMarkdownComponents={additionalMarkdownComponents}
+                    additionalMarkdownPlugins={additionalMarkdownPlugins}
+                  />
+                </div>
               </CitationsContext.Provider>
             )}
           </div>
