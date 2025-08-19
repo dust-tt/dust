@@ -149,9 +149,7 @@ export function KnowledgeConfigurationSheet({
 
     const dataSourceTree =
       dataSourceConfigurations && action
-        ? transformSelectionConfigurationsToTree(
-            dataSourceConfigurations as DataSourceViewSelectionConfigurations
-          ) // TODO: fix type
+        ? transformSelectionConfigurationsToTree(dataSourceConfigurations)
         : { in: [], notIn: [] };
 
     const selectedMCPServerView = (() => {

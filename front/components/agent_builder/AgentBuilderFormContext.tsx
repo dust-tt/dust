@@ -73,14 +73,12 @@ const tagsFilterSchema = z
   })
   .nullable();
 
-const dataSourceViewSelectionConfigurationSchema = z
-  .object({
-    dataSourceView: z.custom<DataSourceViewType>(),
-    selectedResources: z.array(z.custom<DataSourceViewContentNode>()),
-    isSelectAll: z.boolean(),
-    tagsFilter: tagsFilterSchema,
-  })
-  .nullable();
+const dataSourceViewSelectionConfigurationSchema = z.object({
+  dataSourceView: z.custom<DataSourceViewType>(),
+  selectedResources: z.array(z.custom<DataSourceViewContentNode>()),
+  isSelectAll: z.boolean(),
+  tagsFilter: tagsFilterSchema,
+});
 
 export const dataSourceConfigurationSchema = z
   .record(z.string(), dataSourceViewSelectionConfigurationSchema)
