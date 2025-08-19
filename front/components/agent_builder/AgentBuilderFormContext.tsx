@@ -3,7 +3,6 @@ import { createContext, useContext } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
-import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
 import {
   MODEL_IDS,
@@ -31,10 +30,24 @@ export const mcpServerViewIdSchema = z.string();
 
 export const childAgentIdSchema = z.string().nullable();
 
-export const additionalConfigurationSchema = z.record(
+const additionalConfigurationSchema = z.record(
   z.string(),
-  z.union([z.boolean(), z.number(), z.string(), z.array(z.string())])
+  z.union([
+    z.boolean(),
+    z.number(),
+    z.string(),
+    z.array(z.string()),
+    // Allow only one level of nesting
+    z.record(
+      z.string(),
+      z.union([z.boolean(), z.number(), z.string(), z.array(z.string())])
+    ),
+  ])
 );
+
+export type AdditionalConfigurationInBuilderType = z.infer<
+  typeof additionalConfigurationSchema
+>;
 
 export const dustAppConfigurationSchema = z
   .object({
@@ -116,11 +129,11 @@ export const mcpServerConfigurationSchema = z.object({
   dataSourceConfigurations: dataSourceConfigurationSchema,
   tablesConfigurations: dataSourceConfigurationSchema,
   childAgentId: childAgentIdSchema,
-  reasoningModel: reasoningModelSchema,
   timeFrame: mcpTimeFrameSchema,
   additionalConfiguration: additionalConfigurationSchema,
   dustAppConfiguration: dustAppConfigurationSchema,
   jsonSchema: jsonSchemaFieldSchema,
+  reasoningModel: reasoningModelSchema,
   _jsonSchemaString: jsonSchemaStringSchema,
 });
 
@@ -202,7 +215,7 @@ export interface MCPFormData {
       duration: number;
       unit: "hour" | "day" | "week" | "month" | "year";
     } | null;
-    additionalConfiguration: AdditionalConfigurationType;
+    additionalConfiguration: AdditionalConfigurationInBuilderType;
     dustAppConfiguration: any;
     jsonSchema: any;
     _jsonSchemaString: string | null;

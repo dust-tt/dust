@@ -1,4 +1,9 @@
-import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { set } from "lodash";
+
+import type {
+  AdditionalConfigurationInBuilderType,
+  MCPServerConfigurationType,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
@@ -31,23 +36,22 @@ export function getDefaultConfiguration(
     return defaults;
   }
 
-  const additionalConfig: Record<string, boolean | number | string | string[]> =
-    {};
+  const additionalConfig: AdditionalConfigurationInBuilderType = {};
 
   // Set default values only for boolean and enums
   // Strings and numbers should be left empty to trigger validation
   for (const key of requirements.requiredBooleans) {
-    additionalConfig[key] = false;
+    set(additionalConfig, key, false);
   }
 
   for (const [key, enumValues] of Object.entries(requirements.requiredEnums)) {
     if (enumValues.length > 0) {
-      additionalConfig[key] = enumValues[0];
+      set(additionalConfig, key, enumValues[0]);
     }
   }
 
   for (const [key] of Object.entries(requirements.requiredLists)) {
-    additionalConfig[key] = [];
+    set(additionalConfig, key, []);
   }
 
   defaults.additionalConfiguration = additionalConfig;

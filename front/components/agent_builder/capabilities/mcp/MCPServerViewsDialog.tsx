@@ -438,7 +438,7 @@ export function MCPServerViewsDialog({
   // Create stable form instance with conditional resolver
   const form = useForm<MCPFormData>({
     resolver: formSchema ? zodResolver(formSchema) : undefined,
-    mode: "onChange",
+    mode: "onSubmit",
     defaultValues: defaultFormValues,
     // Prevent form recreation by providing stable shouldUnregister
     shouldUnregister: false,

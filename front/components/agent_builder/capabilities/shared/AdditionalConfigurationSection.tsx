@@ -13,7 +13,7 @@ import React, { useMemo } from "react";
 import { useController } from "react-hook-form";
 
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
+import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { asDisplayName } from "@app/types";
 
 function formatKeyForDisplay(key: string): string {
@@ -40,226 +40,266 @@ function groupKeysByPrefix(keys: string[]): Record<string, string[]> {
   return groups;
 }
 
-interface BooleanConfigurationSectionProps {
-  requiredBooleans: string[];
-  additionalConfiguration: AdditionalConfigurationType;
-  onConfigUpdate: (key: string, value: boolean) => void;
+function BooleanConfigurationInput({ configKey }: { configKey: string }) {
+  const { field } = useController<MCPFormData>({
+    name: `configuration.additionalConfiguration.${configKey}`,
+  });
+
+  return (
+    <div key={configKey} className="mb-2 flex items-center gap-1">
+      <Label
+        htmlFor={`boolean-${configKey}`}
+        className="w-1/5 text-sm font-medium"
+      >
+        {formatKeyForDisplay(configKey)}
+      </Label>
+      <Checkbox
+        id={`boolean-${configKey}`}
+        checked={field.value === true}
+        onCheckedChange={(checked) => field.onChange(checked)}
+      />
+    </div>
+  );
 }
 
 function BooleanConfigurationSection({
   requiredBooleans,
-  additionalConfiguration,
-  onConfigUpdate,
-}: BooleanConfigurationSectionProps) {
+}: {
+  requiredBooleans: string[];
+}) {
   if (requiredBooleans.length === 0) {
     return null;
   }
 
-  return requiredBooleans.map((key) => {
-    // Ugly hack but the type of additionalConfiguration is highly dynamic.
-    // We make sure to save a boolean value that said.
-    const value = !!additionalConfiguration[key];
-    return (
-      <div key={key} className="mb-2 flex items-center gap-1">
-        <Label htmlFor={`boolean-${key}`} className="w-1/5 text-sm font-medium">
-          {formatKeyForDisplay(key)}
-        </Label>
-        <div className="w-full flex-1">
-          <Checkbox
-            id={`boolean-${key}`}
-            checked={value}
-            onCheckedChange={(checked) => onConfigUpdate(key, !!checked)}
-          />
-        </div>
-      </div>
-    );
-  });
+  return requiredBooleans.map((key) => (
+    <BooleanConfigurationInput key={key} configKey={key} />
+  ));
 }
 
-interface NumberConfigurationSectionProps {
-  requiredNumbers: string[];
-  additionalConfiguration: AdditionalConfigurationType;
-  onConfigUpdate: (key: string, value: number) => void;
+function NumberConfigurationInput({ configKey }: { configKey: string }) {
+  const { field, fieldState } = useController<MCPFormData>({
+    name: `configuration.additionalConfiguration.${configKey}`,
+  });
+
+  return (
+    <div key={configKey} className="mb-2 flex items-center gap-1">
+      <Label
+        htmlFor={`number-${configKey}`}
+        className="w-1/5 text-sm font-medium"
+      >
+        {formatKeyForDisplay(configKey)}
+      </Label>
+      <Input
+        id={`number-${configKey}`}
+        type="number"
+        {...field}
+        placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
+        isError={!!fieldState.error}
+        message={fieldState.error?.message}
+      />
+    </div>
+  );
 }
 
 function NumberConfigurationSection({
   requiredNumbers,
-  additionalConfiguration,
-  onConfigUpdate,
-}: NumberConfigurationSectionProps) {
+}: {
+  requiredNumbers: string[];
+}) {
   if (requiredNumbers.length === 0) {
     return null;
   }
 
-  return requiredNumbers.map((key) => {
-    const value = additionalConfiguration[key] ?? null;
-    return (
-      <div key={key} className="mb-2 flex items-center gap-1">
-        <Label htmlFor={`number-${key}`} className="w-1/5 text-sm font-medium">
-          {formatKeyForDisplay(key)}
-        </Label>
-        <Input
-          id={`number-${key}`}
-          type="number"
-          value={value?.toString() || ""}
-          onChange={(e) => {
-            const parsed = parseFloat(e.target.value);
-            if (!isNaN(parsed)) {
-              onConfigUpdate(key, parsed);
-            }
-          }}
-          placeholder={`Enter value for ${formatKeyForDisplay(key)}`}
-        />
-      </div>
-    );
-  });
+  return requiredNumbers.map((key) => (
+    <NumberConfigurationInput key={key} configKey={key} />
+  ));
 }
 
-interface StringConfigurationSectionProps {
-  requiredStrings: string[];
-  additionalConfiguration: AdditionalConfigurationType;
-  onConfigUpdate: (key: string, value: string) => void;
+function StringConfigurationInput({ configKey }: { configKey: string }) {
+  const { field, fieldState } = useController<MCPFormData>({
+    name: `configuration.additionalConfiguration.${configKey}`,
+  });
+
+  return (
+    <div key={configKey} className="mb-2 flex items-center gap-1">
+      <Label
+        htmlFor={`string-${configKey}`}
+        className="w-1/5 text-sm font-medium"
+      >
+        {formatKeyForDisplay(configKey)}
+      </Label>
+      <Input
+        id={`string-${configKey}`}
+        type="text"
+        {...field}
+        placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
+        isError={!!fieldState.error}
+        message={fieldState.error?.message}
+      />
+    </div>
+  );
 }
 
 function StringConfigurationSection({
   requiredStrings,
-  additionalConfiguration,
-  onConfigUpdate,
-}: StringConfigurationSectionProps) {
+}: {
+  requiredStrings: string[];
+}) {
   if (requiredStrings.length === 0) {
     return null;
   }
 
-  return requiredStrings.map((key) => {
-    const value = additionalConfiguration[key] ?? "";
-    return (
-      <div key={key} className="mb-2 flex items-center gap-1">
-        <Label htmlFor={`string-${key}`} className="w-1/5 text-sm font-medium">
-          {formatKeyForDisplay(key)}
-        </Label>
-        <Input
-          id={`string-${key}`}
-          type="text"
-          value={value.toString()}
-          onChange={(e) => onConfigUpdate(key, e.target.value)}
-          placeholder={`Enter value for ${formatKeyForDisplay(key)}`}
-        />
-      </div>
-    );
-  });
+  return requiredStrings.map((key) => (
+    <StringConfigurationInput key={key} configKey={key} />
+  ));
 }
 
-interface EnumConfigurationSectionProps {
-  requiredEnums: Record<string, string[]>;
-  additionalConfiguration: AdditionalConfigurationType;
-  onConfigUpdate: (key: string, value: string) => void;
+function EnumConfigurationInput({
+  configKey,
+  enumValues,
+}: {
+  configKey: string;
+  enumValues: string[];
+}) {
+  const { field, fieldState } = useController<MCPFormData>({
+    name: `configuration.additionalConfiguration.${configKey}`,
+  });
+
+  const displayLabel = `Select ${formatKeyForDisplay(configKey)}`;
+  return (
+    <>
+      <div key={configKey} className="mb-2 flex items-center gap-1">
+        <Label className="w-1/5 text-sm font-medium">
+          {formatKeyForDisplay(configKey)}
+        </Label>
+        <div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                isSelect
+                label={field.value?.toString() ?? displayLabel}
+                size="sm"
+                tooltip={displayLabel}
+                variant="outline"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {enumValues.map((enumValue) => (
+                <DropdownMenuItem
+                  key={enumValue}
+                  label={enumValue}
+                  onSelect={() => field.onChange(enumValue)}
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {!!fieldState.error && (
+            <div className={"error flex items-center gap-1 text-xs"}>
+              {fieldState.error.message}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
 }
 
 function EnumConfigurationSection({
   requiredEnums,
-  additionalConfiguration,
-  onConfigUpdate,
-}: EnumConfigurationSectionProps) {
+}: {
+  requiredEnums: Record<string, string[]>;
+}) {
   if (Object.keys(requiredEnums).length === 0) {
     return null;
   }
 
-  return Object.entries(requiredEnums).map(([key, enumValues]) => {
-    const displayLabel = `Select ${formatKeyForDisplay(key)}`;
-    return (
-      <div key={key} className="mb-2 flex items-center gap-1">
-        <Label className="w-1/5 text-sm font-medium">
-          {formatKeyForDisplay(key)}
-        </Label>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              isSelect
-              label={additionalConfiguration[key]?.toString() ?? displayLabel}
-              size="sm"
-              tooltip={displayLabel}
-              variant="outline"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {enumValues.map((enumValue) => (
-              <DropdownMenuItem
-                key={enumValue}
-                label={enumValue}
-                onSelect={() => onConfigUpdate(key, enumValue)}
-              />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    );
-  });
+  return Object.entries(requiredEnums).map(([key, enumValues]) => (
+    <EnumConfigurationInput key={key} configKey={key} enumValues={enumValues} />
+  ));
 }
 
-interface ListConfigurationSectionProps {
-  requiredLists: Record<string, Record<string, string>>;
-  additionalConfiguration: AdditionalConfigurationType;
-  onConfigUpdate: (key: string, value: string[]) => void;
+function ListConfigurationInput({
+  configKey,
+  listValues,
+}: {
+  configKey: string;
+  listValues: Record<string, string>;
+}) {
+  const { field, fieldState } = useController<MCPFormData>({
+    name: `configuration.additionalConfiguration.${configKey}`,
+  });
+
+  const displayLabel = `Select ${formatKeyForDisplay(configKey)}`;
+  const rawValue = field.value;
+  const currentValue: string[] = Array.isArray(rawValue) ? rawValue : [];
+
+  return (
+    <>
+      <div key={configKey} className="mb-2 flex items-center gap-1">
+        <Label className="w-1/5 text-sm font-medium">
+          {formatKeyForDisplay(configKey)}
+        </Label>
+        <div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                isSelect
+                label={
+                  currentValue.length > 0
+                    ? currentValue.map((v) => listValues[v]).join(", ")
+                    : displayLabel
+                }
+                size="sm"
+                tooltip={displayLabel}
+                variant="outline"
+              />
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="start">
+              {Object.entries(listValues).map(([value, label]) => (
+                <DropdownMenuCheckboxItem
+                  key={value}
+                  label={label}
+                  checked={
+                    Array.isArray(currentValue) && currentValue.includes(value)
+                  }
+                  onCheckedChange={(checked) => {
+                    const currentValue = field.value ?? [];
+                    if (Array.isArray(currentValue)) {
+                      const newValues = checked
+                        ? [...currentValue, value]
+                        : currentValue.filter((v) => v !== value);
+
+                      field.onChange(newValues);
+                    }
+                  }}
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {!!fieldState.error && (
+            <div className={"error flex items-center gap-1 text-xs"}>
+              {fieldState.error.message}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
 }
 
 function ListConfigurationSection({
   requiredLists,
-  additionalConfiguration,
-  onConfigUpdate,
-}: ListConfigurationSectionProps) {
+}: {
+  requiredLists: Record<string, Record<string, string>>;
+}) {
   if (Object.keys(requiredLists).length === 0) {
     return null;
   }
 
-  return Object.entries(requiredLists).map(([key, listValues]) => {
-    const displayLabel = `Select ${formatKeyForDisplay(key)}`;
-    const rawValue = additionalConfiguration[key];
-    const currentValue: string[] = Array.isArray(rawValue) ? rawValue : [];
-
-    return (
-      <div key={key} className="mb-2 flex items-center gap-1">
-        <Label className="w-1/5 text-sm font-medium">
-          {formatKeyForDisplay(key)}
-        </Label>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              isSelect
-              label={
-                currentValue.length > 0
-                  ? currentValue.map((v) => listValues[v]).join(", ")
-                  : displayLabel
-              }
-              size="sm"
-              tooltip={displayLabel}
-              variant="outline"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {Object.entries(listValues).map(([value, label]) => (
-              <DropdownMenuCheckboxItem
-                key={value}
-                label={label}
-                checked={
-                  Array.isArray(currentValue) && currentValue.includes(value)
-                }
-                onCheckedChange={(checked) => {
-                  const currentValue = additionalConfiguration[key] ?? [];
-                  if (Array.isArray(currentValue)) {
-                    const newValues = checked
-                      ? [...currentValue, value]
-                      : currentValue.filter((v) => v !== value);
-
-                    onConfigUpdate(key, newValues);
-                  }
-                }}
-              />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    );
-  });
+  return Object.entries(requiredLists).map(([key, listValues]) => (
+    <ListConfigurationInput key={key} configKey={key} listValues={listValues} />
+  ));
 }
 
 interface GroupedConfigurationSectionProps {
@@ -269,11 +309,6 @@ interface GroupedConfigurationSectionProps {
   requiredBooleans: string[];
   requiredEnums: Record<string, string[]>;
   requiredLists: Record<string, Record<string, string>>;
-  additionalConfiguration: AdditionalConfigurationType;
-  onConfigUpdate: (
-    key: string,
-    value: string | number | boolean | string[]
-  ) => void;
 }
 
 function GroupedConfigurationSection({
@@ -283,8 +318,6 @@ function GroupedConfigurationSection({
   requiredBooleans,
   requiredEnums,
   requiredLists,
-  additionalConfiguration,
-  onConfigUpdate,
 }: GroupedConfigurationSectionProps) {
   const hasConfiguration =
     Object.keys(requiredStrings).length > 0 ||
@@ -303,31 +336,11 @@ function GroupedConfigurationSection({
         </Label>
       )}
       <div className="w-full space-y-4">
-        <StringConfigurationSection
-          requiredStrings={requiredStrings}
-          additionalConfiguration={additionalConfiguration}
-          onConfigUpdate={onConfigUpdate}
-        />
-        <NumberConfigurationSection
-          requiredNumbers={requiredNumbers}
-          additionalConfiguration={additionalConfiguration}
-          onConfigUpdate={onConfigUpdate}
-        />
-        <BooleanConfigurationSection
-          requiredBooleans={requiredBooleans}
-          additionalConfiguration={additionalConfiguration}
-          onConfigUpdate={onConfigUpdate}
-        />
-        <EnumConfigurationSection
-          requiredEnums={requiredEnums}
-          additionalConfiguration={additionalConfiguration}
-          onConfigUpdate={onConfigUpdate}
-        />
-        <ListConfigurationSection
-          requiredLists={requiredLists}
-          additionalConfiguration={additionalConfiguration}
-          onConfigUpdate={onConfigUpdate}
-        />
+        <StringConfigurationSection requiredStrings={requiredStrings} />
+        <NumberConfigurationSection requiredNumbers={requiredNumbers} />
+        <BooleanConfigurationSection requiredBooleans={requiredBooleans} />
+        <EnumConfigurationSection requiredEnums={requiredEnums} />
+        <ListConfigurationSection requiredLists={requiredLists} />
       </div>
     </div>
   );
@@ -348,25 +361,6 @@ export function AdditionalConfigurationSection({
   requiredEnums,
   requiredLists,
 }: AdditionalConfigurationSectionProps) {
-  const { field, fieldState } = useController<
-    MCPFormData,
-    "configuration.additionalConfiguration"
-  >({
-    name: "configuration.additionalConfiguration",
-  });
-
-  const additionalConfiguration = field.value;
-
-  const handleConfigUpdate = (
-    key: string,
-    value: string | number | boolean | string[]
-  ) => {
-    field.onChange({
-      ...additionalConfiguration,
-      [key]: value,
-    });
-  };
-
   // Group configuration fields by prefix.
   const groupedStrings = useMemo(
     () => groupKeysByPrefix(requiredStrings),
@@ -436,34 +430,22 @@ export function AdditionalConfigurationSection({
 
   return (
     <>
-      <div className="mt-6 w-full">
-        <Label className="text-lg font-medium text-foreground dark:text-foreground-night">
-          Additional configuration
-        </Label>
-        <br />
-        <Label className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
-          Configure additional parameters required by this action.
-        </Label>
-      </div>
-
-      {allPrefixes.map((prefix) => (
-        <GroupedConfigurationSection
-          key={prefix || "general"}
-          prefix={prefix}
-          requiredStrings={groupedStrings[prefix] || []}
-          requiredNumbers={groupedNumbers[prefix] || []}
-          requiredBooleans={groupedBooleans[prefix] || []}
-          requiredEnums={groupedEnums[prefix] || {}}
-          requiredLists={groupedLists[prefix] || {}}
-          additionalConfiguration={additionalConfiguration}
-          onConfigUpdate={handleConfigUpdate}
-        />
-      ))}
-      {fieldState.error && (
-        <div className="mt-2 text-sm text-red-500">
-          {fieldState.error.message}
-        </div>
-      )}
+      <ConfigurationSectionContainer
+        title="Additional configuration"
+        description="Configure additional parameters required by this action."
+      >
+        {allPrefixes.map((prefix) => (
+          <GroupedConfigurationSection
+            key={prefix || "general"}
+            prefix={prefix}
+            requiredStrings={groupedStrings[prefix] || []}
+            requiredNumbers={groupedNumbers[prefix] || []}
+            requiredBooleans={groupedBooleans[prefix] || []}
+            requiredEnums={groupedEnums[prefix] || {}}
+            requiredLists={groupedLists[prefix] || {}}
+          />
+        ))}
+      </ConfigurationSectionContainer>
     </>
   );
 }
