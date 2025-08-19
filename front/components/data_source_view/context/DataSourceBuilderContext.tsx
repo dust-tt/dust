@@ -346,9 +346,20 @@ export function DataSourceBuilderProvider({
           return true;
         }
 
+        // Check if any parent path is already selected
+        // We check all parent paths by iterating from the full path down to the root
+        for (let i = nodePath.length - 1; i > 0; i--) {
+          const parentPath = nodePath.slice(0, i);
+          const selectionState = isNodeSelected(field.value, parentPath);
+          if (selectionState === true) {
+            // A parent is fully selected, so this row cannot be selected
+            return false;
+          }
+        }
+
         return nonCompanySpacesSelected.has(currentSpaceId);
       },
-      [nonCompanySpacesSelected, state.navigationHistory]
+      [nonCompanySpacesSelected, state.navigationHistory, field.value]
     );
 
   const isCurrentNavigationEntrySelected: DataSourceBuilderState["isCurrentNavigationEntrySelected"] =
