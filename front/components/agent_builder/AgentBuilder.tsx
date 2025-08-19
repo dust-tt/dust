@@ -26,19 +26,16 @@ import { useAgentConfigurationActions } from "@app/lib/swr/actions";
 import { useEditors } from "@app/lib/swr/editors";
 import { emptyArray } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { LightAgentConfigurationType } from "@app/types";
 
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
-  assistantTemplate: FetchAssistantTemplateResponse | null;
 }
 
 export default function AgentBuilder({
   agentConfiguration,
-  assistantTemplate,
 }: AgentBuilderProps) {
-  const { owner, user } = useAgentBuilderContext();
+  const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
 
   const router = useRouter();
@@ -176,7 +173,6 @@ export default function AgentBuilder({
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel
                 agentConfigurationSId={agentConfiguration?.sId}
-                assistantTemplate={assistantTemplate}
               />
             </ConversationSidePanelProvider>
           }

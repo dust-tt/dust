@@ -19,7 +19,11 @@ import {
   LEGACY_REGION_BIT,
   makeSId,
 } from "@app/lib/resources/string_ids";
-import type { ModelId } from "@app/types";
+import type {
+  ModelId,
+  MultiActionPreset,
+  TemplateActionPreset,
+} from "@app/types";
 import { asDisplayName } from "@app/types";
 
 export const getServerTypeAndIdFromSId = (
@@ -161,4 +165,37 @@ export function getMcpServerDisplayName(
     }
   }
   return displayName;
+}
+
+// Only includes action types that are actually used in templates.
+const TEMPLATE_ACTION_TO_MCP_SERVER: Record<
+  MultiActionPreset,
+  InternalMCPServerNameType
+> = {
+  RETRIEVAL_SEARCH: "search",
+  TABLES_QUERY: "query_tables",
+  PROCESS: "extract_data",
+  WEB_NAVIGATION: "web_search_&_browse",
+};
+
+export function getMCPServerNameForTemplateAction(
+  presetAction: TemplateActionPreset
+): InternalMCPServerNameType | null {
+  return TEMPLATE_ACTION_TO_MCP_SERVER[presetAction.type] ?? null;
+}
+
+export function isKnowledgeTemplateAction(
+  presetAction: TemplateActionPreset
+): boolean {
+  return (
+    presetAction.type === "RETRIEVAL_SEARCH" ||
+    presetAction.type === "TABLES_QUERY" ||
+    presetAction.type === "PROCESS"
+  );
+}
+
+export function isDirectAddTemplateAction(
+  presetAction: TemplateActionPreset
+): boolean {
+  return presetAction.type === "WEB_NAVIGATION";
 }
