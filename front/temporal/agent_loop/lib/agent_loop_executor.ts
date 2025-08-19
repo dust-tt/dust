@@ -25,6 +25,71 @@ export class SyncTimeoutError extends Error {
   }
 }
 
+async function executeStepIteration({
+  activities,
+  authType,
+  currentStep,
+  runAgentArgs,
+  runIds,
+  startStep,
+}: {
+  activities: AgentLoopActivities;
+  authType: AuthenticatorType;
+  currentStep: number;
+  runAgentArgs: RunAgentArgs;
+  runIds: string[];
+  startStep: number;
+}): Promise<{
+  runId: string | null;
+  shouldContinue: boolean;
+}> {
+  const result = await activities.runModelAndCreateActionsActivity({
+    authType,
+    autoRetryCount: 0,
+    checkForResume: currentStep === startStep, // Only run resume the first time.
+    runAgentArgs,
+    runIds,
+    step: currentStep,
+  });
+
+  if (!result) {
+    // Generation completed or error occurred.
+    return {
+      runId: null,
+      shouldContinue: false,
+    };
+  }
+
+  const { runId, actionBlobs } = result;
+
+  // If at least one action needs approval, we break out of the loop and will resume once all
+  // actions have been approved.
+  const needsApproval = actionBlobs.some((a) => a.needsApproval);
+  if (needsApproval) {
+    // Break the loop - workflow will be restarted externally once approved.
+    return {
+      runId,
+      shouldContinue: false,
+    };
+  }
+
+  // Execute tools.
+  await Promise.all(
+    actionBlobs.map(({ actionId }) =>
+      activities.runToolActivity(authType, {
+        actionId,
+        runAgentArgs,
+        step: currentStep,
+      })
+    )
+  );
+
+  return {
+    runId,
+    shouldContinue: true,
+  };
+}
+
 /**
  * Core agent loop executor that works with both Temporal workflows and direct execution.
  *
@@ -73,57 +138,33 @@ export async function executeAgentLoop(
       }
     }
 
-    const result = await activities.runModelAndCreateActionsActivity({
+    const stepStartTime = Date.now();
+
+    const { runId, shouldContinue } = await executeStepIteration({
       authType,
-      autoRetryCount: 0,
-      checkForResume: i === startStep, // Only run resume the first time.
       runAgentArgs,
+      activities,
+      currentStep,
       runIds,
-      step: i,
+      startStep,
     });
-
-    if (!result) {
-      // Generation completed or error occurred.
-      break;
-    }
-
-    const { runId, actionBlobs } = result;
 
     // Update state with results.
     if (runId) {
       runIds.push(runId);
     }
 
-    // If at least one action needs approval, we break out of the loop and will resume once all
-    // actions have been approved.
-    const needsApproval = actionBlobs.some((a) => a.needsApproval);
-    if (needsApproval) {
-      // Break the loop - workflow will be restarted externally once approved.
-      await activities.logAgentLoopPhaseCompletionActivity({
-        authType,
-        eventData: {
-          agentMessageId,
-          conversationId,
-          executionMode: runAgentArgs.sync ? "sync" : "async",
-          initialStartTime: runAgentArgs.initialStartTime,
-          stepsCompleted: currentStep - startStep,
-          syncStartTime,
-        },
-      });
+    await activities.logAgentLoopStepCompletionActivity({
+      agentMessageId,
+      conversationId,
+      executionMode: runAgentArgs.sync ? "sync" : "async",
+      step: currentStep,
+      stepStartTime,
+    });
 
-      return;
+    if (!shouldContinue) {
+      break;
     }
-
-    // Execute tools.
-    await Promise.all(
-      actionBlobs.map(({ actionId }) =>
-        activities.runToolActivity(authType, {
-          actionId,
-          runAgentArgs,
-          step: i,
-        })
-      )
-    );
   }
 
   const stepsCompleted = currentStep - startStep;

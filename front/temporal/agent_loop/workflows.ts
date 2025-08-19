@@ -42,6 +42,8 @@ const activities: AgentLoopActivities = {
     logMetricsActivities.logAgentLoopPhaseStartActivity,
   logAgentLoopPhaseCompletionActivity:
     logMetricsActivities.logAgentLoopPhaseCompletionActivity,
+  logAgentLoopStepCompletionActivity:
+    logMetricsActivities.logAgentLoopStepCompletionActivity,
 };
 
 const { ensureConversationTitleActivity } = proxyActivities<

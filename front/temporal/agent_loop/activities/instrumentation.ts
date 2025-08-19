@@ -14,27 +14,34 @@ const METRICS = {
   PHASE_SYNC_TIMEOUTS: "agent_loop_phase.sync_timeouts",
   PHASE_TIMEOUT_DURATION: "agent_loop_phase.timeout_duration_ms",
   PHASE_TIMEOUT_STEPS: "agent_loop_phase.timeout_steps",
+  STEP_COMPLETIONS: "agent_loop_step.completions",
+  STEP_DURATION: "agent_loop_step.duration_ms",
+  STEP_STARTS: "agent_loop_step.starts",
 } as const;
 
 /**
  * Agent Loop Instrumentation
  *
- * PHASE vs LOOP METRICS:
+ * THREE-LEVEL METRICS SYSTEM:
  *
- * A "phase" = single execution of `executeAgentLoop` function
- * A "loop" = complete agent loop processing (may span multiple phases)
+ * 1. **STEP** = Individual model execution + tool(s) execution within a phase
+ * 2. **PHASE** = Single execution of `executeAgentLoop` function (contains multiple steps)
+ * 3. **LOOP** = Complete agent processing (may span multiple phases)
  *
  * EXAMPLES:
- * 1. Sync completion: 1 phase = 1 loop (same duration)
- * 2. Sync→async transition: 2 phases, 1 loop (loop duration = sum of both phases)
+ * - Sync completion: N steps → 1 phase → 1 loop
+ * - Sync→async transition: N steps → 2 phases → 1 loop
+ * - Approval interruption: N steps → M phases → 1 loop (excludes user wait time)
  *
  * TIMING PARAMETERS:
+ * - stepStartTime: When current step started (model + tools execution)
  * - syncStartTime: When current phase started (used for phase duration)
  * - initialStartTime: When agent processing originally began (used for loop duration)
  *
  * METRICS:
+ * - `agent_loop_step.*` → Individual step performance (model + tools)
  * - `agent_loop_phase.*` → Individual `executeAgentLoop` performance
- * - `agent_loop_loop.*` → Complete agent loop processing performance
+ * - `agent_loop_loop.*` → Complete agent loop performance
  *
  * Note: Functions are async because they're used as Temporal activities.
  */
@@ -59,6 +66,14 @@ interface TimeoutEventData extends BaseEventData {
   currentStep: number;
   phaseDurationMs: number;
   stepsCompleted: number;
+}
+
+interface StepStartEventData extends BaseEventData {
+  step: number;
+}
+
+interface StepCompletionEventData extends StepStartEventData {
+  stepStartTime: number;
 }
 
 /**
@@ -177,6 +192,39 @@ export function logAgentLoopPhaseTimeout({
     eventData.phaseDurationMs
   );
   statsDClient.histogram(METRICS.PHASE_TIMEOUT_STEPS, eventData.currentStep);
+}
+
+/**
+ * Step Instrumentation
+ *
+ * Tracks individual step execution (model + tools) within phases.
+ */
+
+// Log step start - called at the beginning of runModelAndCreateActionsActivity.
+export function logAgentLoopStepStart(eventData: StepStartEventData): number {
+  const stepStartTime = Date.now();
+
+  statsDClient.increment(METRICS.STEP_STARTS, 1, [
+    ...createExecutionModeTag(eventData.executionMode),
+    `step:${eventData.step}`,
+  ]);
+
+  return stepStartTime;
+}
+
+// Log step completion - called after tools are executed.
+export async function logAgentLoopStepCompletionActivity(
+  eventData: StepCompletionEventData
+): Promise<void> {
+  const stepDurationMs = Date.now() - eventData.stepStartTime;
+
+  const tags = [
+    ...createExecutionModeTag(eventData.executionMode),
+    `step:${eventData.step}`,
+  ];
+
+  statsDClient.increment(METRICS.STEP_COMPLETIONS, 1, tags);
+  statsDClient.histogram(METRICS.STEP_DURATION, stepDurationMs, tags);
 }
 
 /**

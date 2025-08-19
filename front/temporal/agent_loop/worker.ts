@@ -9,6 +9,7 @@ import { ensureConversationTitleActivity } from "@app/temporal/agent_loop/activi
 import {
   logAgentLoopPhaseCompletionActivity,
   logAgentLoopPhaseStartActivity,
+  logAgentLoopStepCompletionActivity,
 } from "@app/temporal/agent_loop/activities/instrumentation";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
@@ -26,6 +27,7 @@ export async function runAgentLoopWorker() {
       ensureConversationTitleActivity,
       logAgentLoopPhaseCompletionActivity,
       logAgentLoopPhaseStartActivity,
+      logAgentLoopStepCompletionActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,
     },

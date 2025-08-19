@@ -1,6 +1,7 @@
 import type {
   logAgentLoopPhaseCompletionActivity,
   logAgentLoopPhaseStartActivity,
+  logAgentLoopStepCompletionActivity,
 } from "@app/temporal/agent_loop/activities/instrumentation";
 import type { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
@@ -8,6 +9,7 @@ import type { runToolActivity } from "@app/temporal/agent_loop/activities/run_to
 export interface AgentLoopActivities {
   logAgentLoopPhaseCompletionActivity: typeof logAgentLoopPhaseCompletionActivity;
   logAgentLoopPhaseStartActivity: typeof logAgentLoopPhaseStartActivity;
+  logAgentLoopStepCompletionActivity: typeof logAgentLoopStepCompletionActivity;
   runModelAndCreateActionsActivity: typeof runModelAndCreateActionsActivity;
   runToolActivity: typeof runToolActivity;
 }

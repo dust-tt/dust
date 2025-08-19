@@ -8,6 +8,7 @@ import {
   logAgentLoopPhaseStartActivity,
   logAgentLoopPhaseTimeout,
   logAgentLoopStart,
+  logAgentLoopStepCompletionActivity,
 } from "@app/temporal/agent_loop/activities/instrumentation";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
@@ -86,6 +87,7 @@ async function runAgentSynchronousWithStreaming(
           {
             logAgentLoopPhaseCompletionActivity,
             logAgentLoopPhaseStartActivity,
+            logAgentLoopStepCompletionActivity,
             runModelAndCreateActionsActivity,
             runToolActivity,
           },
