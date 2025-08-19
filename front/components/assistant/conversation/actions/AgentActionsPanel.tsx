@@ -47,7 +47,7 @@ export function AgentActionsPanel({
     if (!messageId) {
       onPanelClosed();
     }
-  }, [messageId]);
+  }, [messageId, onPanelClosed]);
 
   if (
     !messageId ||

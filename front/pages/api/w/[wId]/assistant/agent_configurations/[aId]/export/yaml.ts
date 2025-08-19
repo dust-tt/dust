@@ -1,6 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { transformAgentConfigurationToFormData } from "@app/components/agent_builder/transformAgentConfiguration";
+import {
+  convertActionsForFormData,
+  transformAgentConfigurationToFormData,
+} from "@app/components/agent_builder/transformAgentConfiguration";
+import {
+  buildInitialActions,
+  getAccessibleSourcesAndAppsForActions,
+} from "@app/components/assistant_builder/server_side_props_helpers";
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -69,9 +76,26 @@ async function handler(
     });
   }
 
+  const { dataSourceViews, mcpServerViews } =
+    await getAccessibleSourcesAndAppsForActions(auth);
+  const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
+
+  const actions = await buildInitialActions({
+    dataSourceViews,
+    configuration: agentConfiguration,
+    mcpServerViews: mcpServerViewsJSON,
+  });
+
+  const baseFormData =
+    transformAgentConfigurationToFormData(agentConfiguration);
+  const formData = {
+    ...baseFormData,
+    actions: convertActionsForFormData(actions),
+  };
+
   const yamlConfigResult = await AgentYAMLConverter.fromBuilderFormData(
     auth,
-    transformAgentConfigurationToFormData(agentConfiguration),
+    formData,
     {
       version: `${agentConfiguration.version}`,
       agentSId: agentConfiguration.sId,

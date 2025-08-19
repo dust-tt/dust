@@ -107,7 +107,7 @@ export class AgentYAMLConverter {
     tags: AgentBuilderFormData["agentSettings"]["tags"]
   ): AgentYAMLTag[] {
     return tags
-      .filter((tag) => tag.name && tag.kind)
+      .filter((tag) => tag && tag.name && tag.kind)
       .map((tag) => ({
         sId: tag.sId,
         name: tag.name,
@@ -181,6 +181,23 @@ export class AgentYAMLConverter {
                 : undefined,
               time_frame: action.configuration.timeFrame || undefined,
               json_schema: action.configuration.jsonSchema || undefined,
+              reasoning_model: action.configuration.reasoningModel
+                ? {
+                    model_id: action.configuration.reasoningModel.modelId,
+                    provider_id: action.configuration.reasoningModel.providerId,
+                    temperature:
+                      action.configuration.reasoningModel.temperature ??
+                      undefined,
+                    reasoning_effort:
+                      action.configuration.reasoningModel.reasoningEffort ??
+                      undefined,
+                  }
+                : undefined,
+              additional_configuration:
+                Object.keys(action.configuration.additionalConfiguration || {})
+                  .length > 0
+                  ? action.configuration.additionalConfiguration
+                  : undefined,
             },
           });
         }
@@ -373,13 +390,28 @@ export class AgentYAMLConverter {
             : null,
         tables: null,
         childAgentId: null,
-        reasoningModel: null,
+        reasoningModel:
+          "reasoning_model" in action.configuration &&
+          action.configuration.reasoning_model
+            ? {
+                modelId: action.configuration.reasoning_model.model_id,
+                providerId: action.configuration.reasoning_model.provider_id,
+                temperature:
+                  action.configuration.reasoning_model.temperature ?? null,
+                reasoningEffort:
+                  action.configuration.reasoning_model.reasoning_effort ?? null,
+              }
+            : null,
         jsonSchema:
           "json_schema" in action.configuration &&
           action.configuration.json_schema
             ? action.configuration.json_schema
             : null,
-        additionalConfiguration: {},
+        additionalConfiguration:
+          "additional_configuration" in action.configuration &&
+          action.configuration.additional_configuration
+            ? action.configuration.additional_configuration
+            : {},
         dustAppConfiguration: null,
         timeFrame:
           "time_frame" in action.configuration &&

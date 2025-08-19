@@ -90,6 +90,15 @@ export const agentYAMLDataVisualizationActionSchema =
     configuration: z.object({}), // Empty configuration
   });
 
+export const agentYAMLReasoningModelSchema = z
+  .object({
+    model_id: z.enum(MODEL_IDS),
+    provider_id: z.enum(MODEL_PROVIDER_IDS),
+    temperature: z.number().min(0).max(2).nullable().optional(),
+    reasoning_effort: z.enum(REASONING_EFFORT_IDS).nullable().optional(),
+  })
+  .nullable();
+
 export const agentYAMLMCPActionSchema = baseAgentYAMLActionSchema.extend({
   type: z.literal("MCP"),
   configuration: z.object({
@@ -99,6 +108,8 @@ export const agentYAMLMCPActionSchema = baseAgentYAMLActionSchema.extend({
       .optional(),
     time_frame: agentYAMLTimeFrameSchema.optional(),
     json_schema: z.object({}).nullable().optional(),
+    reasoning_model: agentYAMLReasoningModelSchema.optional(),
+    additional_configuration: z.record(z.string(), z.any()).optional(),
   }),
 });
 
