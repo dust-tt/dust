@@ -2,7 +2,6 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { isString } from "@app/types";
 
 import {
   deleteOrLeaveConversation,
@@ -17,6 +16,7 @@ import type {
   ConversationWithoutContentType,
   WithAPIErrorResponse,
 } from "@app/types";
+import { isString } from "@app/types";
 
 export const PatchConversationsRequestBodySchema = t.type({
   title: t.string,
