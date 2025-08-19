@@ -277,7 +277,7 @@ export const microsoft = async ({
               parentInternalId
             );
 
-            if (parentNode) {
+            if (!parentNode) {
               logger.info(
                 { internalId: node.internalId, parentInternalId },
                 "Parent does not exist, skipping"
