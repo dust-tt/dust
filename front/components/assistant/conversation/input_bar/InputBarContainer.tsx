@@ -62,6 +62,7 @@ export interface InputBarContainerProps {
   actions: InputBarAction[];
   disableAutoFocus: boolean;
   disableSendButton: boolean;
+  preventTyping: boolean;
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
@@ -81,6 +82,7 @@ const InputBarContainer = ({
   actions,
   disableAutoFocus,
   disableSendButton,
+  preventTyping,
   fileUploaderService,
   onNodeSelect,
   onNodeUnselect,
@@ -126,10 +128,17 @@ const InputBarContainer = ({
     suggestionHandler: mentionDropdown.getSuggestionHandler(),
   });
 
-  // Update the editor ref when the editor is created
+  // Update the editor ref when the editor is created.
   useEffect(() => {
     editorRef.current = editor;
   }, [editor]);
+
+  // Disable the editor when preventTyping is true.
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(!preventTyping);
+    }
+  }, [editor, preventTyping]);
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 

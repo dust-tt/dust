@@ -414,8 +414,11 @@ export function AssistantInputBar({
                 stickyMentions={stickyMentions}
                 fileUploaderService={fileUploaderService}
                 disableSendButton={
-                  disableSendButton || fileUploaderService.isProcessingFiles
+                  disableSendButton ||
+                  fileUploaderService.isProcessingFiles ||
+                  disable
                 }
+                preventTyping={disable}
                 onNodeSelect={handleNodesAttachmentSelect}
                 onNodeUnselect={handleNodesAttachmentRemove}
                 selectedMCPServerViewIds={selectedMCPServerViewIds}
