@@ -80,6 +80,10 @@ async function runAgentSynchronousWithStreaming(
           startStep,
         }
       );
+    }, {
+      operation: "agent_sync_execution",
+      conversationId: runAgentExecutionData.conversation.sId,
+      agentMessageId: runAgentExecutionData.agentMessage.sId,
     });
   } catch (error) {
     if (error instanceof SyncTimeoutError) {
