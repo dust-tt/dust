@@ -1,5 +1,7 @@
 import type { MultiPageDialogPage } from "@dust-tt/sparkle";
 import {
+  Chip,
+  ContentMessage,
   MultiPageDialog,
   MultiPageDialogContent,
   SearchInput,
@@ -57,6 +59,7 @@ import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -556,19 +559,59 @@ export function MCPServerViewsDialog({
       description: "",
       icon: undefined,
       content: infoMCPServerView ? (
-        <div className="flex h-full flex-col space-y-2">
-          <div className="flex items-center space-x-2 text-base font-medium">
-            {getAvatarFromIcon(infoMCPServerView.server.icon, "sm")}
-            <span className="">{infoMCPServerView.server.name}</span>
+        <div className="flex h-full flex-col space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-foreground dark:text-foreground-night">
+                Server Details
+              </h3>
+              <div className="flex items-center space-x-3 rounded-lg border border-border bg-muted-background p-4 dark:border-border-night dark:bg-muted-background-night">
+                {getAvatarFromIcon(infoMCPServerView.server.icon, "md")}
+                <div className="flex-1 space-y-1">
+                  <div className="text-base font-medium text-foreground dark:text-foreground-night">
+                    {getMcpServerViewDisplayName(infoMCPServerView)}
+                  </div>
+                  <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    {infoMCPServerView.server.description ||
+                      "No description available"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-foreground dark:text-foreground-night">
+                  Available Tools
+                </h3>
+                <Chip
+                  size="xs"
+                  color="info"
+                  label={`${infoMCPServerView.server.tools?.length || 0} tools`}
+                />
+              </div>
+
+              {infoMCPServerView.server.tools &&
+              infoMCPServerView.server.tools.length > 0 ? (
+                <div className="flex flex-col gap-4">
+                  <span className="text-md text-muted-foreground dark:text-muted-foreground-night">
+                    These tools will be available to your agent during
+                    conversations and can be configured with different
+                    permission levels:
+                  </span>
+                  <ToolsList
+                    owner={owner}
+                    mcpServerView={infoMCPServerView}
+                    disableUpdates
+                  />
+                </div>
+              ) : (
+                <ContentMessage variant="primary" size="sm">
+                  No tools are currently available for this server.
+                </ContentMessage>
+              )}
+            </div>
           </div>
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            {infoMCPServerView.server.description}
-          </span>
-          <ToolsList
-            owner={owner}
-            mcpServerView={infoMCPServerView}
-            disableUpdates
-          />
         </div>
       ) : (
         <div className="flex h-40 w-full items-center justify-center">
