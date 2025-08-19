@@ -14,7 +14,15 @@ import {
   Label,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
@@ -117,12 +125,12 @@ type ActionValidationContextType = {
   totalPendingValidations: number;
 };
 
-const ActionValidationContext = React.createContext<
+const ActionValidationContext = createContext<
   ActionValidationContextType | undefined
 >(undefined);
 
 export function useActionValidationContext() {
-  const context = React.useContext(ActionValidationContext);
+  const context = useContext(ActionValidationContext);
   if (!context) {
     throw new Error(
       "useActionValidationContext must be used within an ActionValidationContext"
@@ -134,7 +142,7 @@ export function useActionValidationContext() {
 interface ActionValidationProviderProps {
   owner: LightWorkspaceType;
   conversation: ConversationWithoutContentType | null;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export function ActionValidationProvider({
