@@ -356,7 +356,6 @@ export function AssistantInputBar({
       ) && (
         <div className="flex justify-center px-4 pb-4">
           <Button
-            className="mt-4"
             variant="outline"
             label={isStopping ? "Stopping generation..." : "Stop generation"}
             icon={StopIcon}
