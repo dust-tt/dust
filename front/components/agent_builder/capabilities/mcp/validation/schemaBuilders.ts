@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import {
-  additionalConfigurationSchema,
   childAgentIdSchema,
   dataSourceConfigurationSchema,
   dustAppConfigurationSchema,
@@ -89,76 +88,69 @@ function createAdditionalConfigurationSchema(
     Object.keys(requirements.requiredLists).length > 0;
 
   if (!hasRequiredFields) {
-    return additionalConfigurationSchema.default({});
+    return z.object({});
   }
 
-  return additionalConfigurationSchema
-    .default({})
-    .superRefine((additionalConfig, ctx) => {
-      // Validate required strings
-      for (const key of requirements.requiredStrings) {
-        const value = additionalConfig[key];
-        if (!value || (typeof value === "string" && value.trim() === "")) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: VALIDATION_MESSAGES.additionalConfig.stringRequired(key),
-            path: [key],
-          });
-        }
-      }
+  // Build a schema dynamically based on the requirements.
+  // We must take into account the nested structure of the additional configuration.
 
-      // Validate required numbers
-      for (const key of requirements.requiredNumbers) {
-        if (
-          additionalConfig[key] === undefined ||
-          additionalConfig[key] === null
-        ) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: VALIDATION_MESSAGES.additionalConfig.numberRequired(key),
-            path: [key],
-          });
-        }
-      }
+  // Build a dynamic schema that handles nested structure
+  const buildNestedSchema = (keys: string[], prefix?: string): z.ZodSchema => {
+    const nestedStructure: Record<string, any> = {};
 
-      // Validate required booleans
-      for (const key of requirements.requiredBooleans) {
-        if (
-          additionalConfig[key] === undefined ||
-          additionalConfig[key] === null
-        ) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: VALIDATION_MESSAGES.additionalConfig.booleanRequired(key),
-            path: [key],
-          });
-        }
-      }
+    // Group keys by their root level
+    const rootKeys = new Set<string>();
+    const nestedKeys: Record<string, string[]> = {};
 
-      // Validate required enums
-      for (const [key] of Object.entries(requirements.requiredEnums)) {
-        const value = additionalConfig[key];
-        if (!value || (typeof value === "string" && value.trim() === "")) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: VALIDATION_MESSAGES.additionalConfig.enumRequired(key),
-            path: [key],
-          });
-        }
-      }
+    keys.forEach((key) => {
+      const parts = key.split(".");
+      const rootKey = parts[0];
+      rootKeys.add(rootKey);
 
-      // Validate required lists
-      for (const [key] of Object.entries(requirements.requiredLists)) {
-        const value = additionalConfig[key];
-        if (!value || !Array.isArray(value) || value.length === 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: VALIDATION_MESSAGES.additionalConfig.listRequired(key),
-            path: [key],
-          });
+      if (parts.length > 1) {
+        if (!nestedKeys[rootKey]) {
+          nestedKeys[rootKey] = [];
+        }
+        nestedKeys[rootKey].push(parts.slice(1).join("."));
+      }
+    });
+
+    // Build schema for each root key
+    rootKeys.forEach((rootKey) => {
+      const path = prefix ? `${prefix}.${rootKey}` : rootKey;
+      if (nestedKeys[rootKey] && nestedKeys[rootKey].length > 0) {
+        // This is a nested object
+        nestedStructure[rootKey] = buildNestedSchema(nestedKeys[rootKey], path);
+      } else {
+        // This is a leaf value - determine type based on requirements
+        if (requirements.requiredStrings.includes(path)) {
+          nestedStructure[rootKey] = z.string().min(1);
+        } else if (requirements.requiredNumbers.includes(path)) {
+          nestedStructure[rootKey] = z.coerce.number();
+        } else if (requirements.requiredBooleans.includes(path)) {
+          nestedStructure[rootKey] = z.coerce.boolean();
+        } else if (requirements.requiredEnums[path]) {
+          nestedStructure[rootKey] = z.enum(
+            requirements.requiredEnums[path] as [string, ...string[]]
+          );
+        } else if (requirements.requiredLists[rootKey]) {
+          nestedStructure[rootKey] = z
+            .array(z.string())
+            .min(1, `You must select at least one value for "${rootKey}"`);
         }
       }
     });
+
+    return z.object(nestedStructure);
+  };
+
+  return buildNestedSchema([
+    ...requirements.requiredStrings,
+    ...requirements.requiredNumbers,
+    ...requirements.requiredBooleans,
+    ...Object.keys(requirements.requiredEnums),
+    ...Object.keys(requirements.requiredLists),
+  ]);
 }
 
 /**
@@ -171,7 +163,7 @@ export function createDefaultConfigurationSchema() {
     childAgentId: childAgentIdSchema,
     reasoningModel: reasoningModelSchema,
     dustAppConfiguration: dustAppConfigurationSchema,
-    additionalConfiguration: additionalConfigurationSchema,
+    additionalConfiguration: z.object({}),
   });
 }
 

@@ -16,6 +16,7 @@ import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type { TimeFrame } from "@app/types";
 import { isTimeFrame } from "@app/types";
 
+// Note, in storage, we store the path using "." in the key of the record.
 export type AdditionalConfigurationType = Record<
   string,
   boolean | number | string | string[]
