@@ -42,36 +42,47 @@ async function handler(
     });
   }
 
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      req.query.cId
-    );
-
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
-  }
-
-  const conversation = conversationRes.value;
-
   switch (req.method) {
     case "GET":
+      {
+        const conversationRes =
+          await ConversationResource.fetchConversationWithoutContent(
+            auth,
+            req.query.cId
+          );
+
+        if (conversationRes.isErr()) {
+          return apiErrorForConversation(req, res, conversationRes.error);
+        }
+
+        const conversation = conversationRes.value;
       res.status(200).json({ conversation });
       return;
+      }
 
     case "DELETE": {
       const result = await deleteOrLeaveConversation(auth, {
-        conversationId: conversation.sId,
+        conversationId: req.query.cId,
       });
       if (result.isErr()) {
         return apiErrorForConversation(req, res, result.error);
       }
 
-      res.status(200).end();
+      res.status(204).end();
       return;
     }
 
     case "PATCH": {
+      const conversationRes = await ConversationResource.fetchConversationWithoutContent(
+        auth,
+        req.query.cId
+      );
+
+      if (conversationRes.isErr()) {
+        return apiErrorForConversation(req, res, conversationRes.error);
+      }
+
+      const conversation = conversationRes.value;
       const bodyValidation = PatchConversationsRequestBodySchema.decode(
         req.body
       );
