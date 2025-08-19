@@ -53,7 +53,7 @@ interface AssistantInputBarProps {
   disableAutoFocus: boolean;
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
-  disableButton?: boolean;
+  disable?: boolean;
 }
 
 /**
@@ -71,9 +71,9 @@ export function AssistantInputBar({
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   isFloating = true,
-  disableButton = false,
+  disable = false,
 }: AssistantInputBarProps) {
-  const [disableSendButton, setDisableSendButton] = useState(disableButton);
+  const [disableSendButton, setDisableSendButton] = useState(disable);
   const [isFocused, setIsFocused] = useState(false);
   const rainbowEffectRef = useRef<HTMLDivElement>(null);
 
@@ -346,8 +346,8 @@ export function AssistantInputBar({
   }, [isStopping, generationContext.generatingMessages, conversationId]);
 
   useEffect(() => {
-    setDisableSendButton(disableButton);
-  }, [disableButton]);
+    setDisableSendButton(disable);
+  }, [disable]);
 
   return (
     <div className="flex w-full flex-col">
@@ -440,6 +440,7 @@ export function FixedAssistantInputBar({
   additionalAgentConfiguration,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
+  disable = false,
 }: {
   owner: WorkspaceType;
   onSubmit: (
@@ -453,6 +454,7 @@ export function FixedAssistantInputBar({
   additionalAgentConfiguration?: LightAgentConfigurationType;
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus?: boolean;
+  disable?: boolean;
 }) {
   return (
     <div
@@ -470,6 +472,7 @@ export function FixedAssistantInputBar({
         additionalAgentConfiguration={additionalAgentConfiguration}
         actions={actions}
         disableAutoFocus={disableAutoFocus}
+        disable={disable}
       />
     </div>
   );

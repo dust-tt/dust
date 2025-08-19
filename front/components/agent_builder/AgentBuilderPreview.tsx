@@ -138,7 +138,7 @@ export function AgentBuilderPreview() {
           </div>
           <div className="flex-shrink-0 p-4">
             <AssistantInputBar
-              disableButton={isSavingDraftAgent}
+              disable={isSavingDraftAgent}
               owner={owner}
               onSubmit={handleSubmit}
               stickyMentions={stickyMentions}
@@ -162,7 +162,7 @@ export function AgentBuilderPreview() {
 
   return (
     <div className="flex h-full w-full flex-col" aria-label="Agent preview">
-      <ActionValidationProvider owner={owner}>
+      <ActionValidationProvider owner={owner} conversation={conversation}>
         <GenerationContextProvider>{renderContent()}</GenerationContextProvider>
       </ActionValidationProvider>
     </div>
