@@ -39,6 +39,7 @@ import { TagsSelector } from "@app/components/assistant_builder/TagsSelector";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MembersList } from "@app/components/members/MembersList";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { emptyArray } from "@app/lib/swr/swr";
 import { useTags } from "@app/lib/swr/tags";
 import { debounce } from "@app/lib/utils/debounce";
 import type {
@@ -771,7 +772,9 @@ function EditorsMembersList({
   );
 
   const members = useMemo(
-    () => builderState.editors?.map((m) => ({ ...m, workspace: owner })) ?? [],
+    () =>
+      builderState.editors?.map((m) => ({ ...m, workspace: owner })) ??
+      emptyArray(),
     [builderState, owner]
   );
 

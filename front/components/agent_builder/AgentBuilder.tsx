@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { set } from "lodash";
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 import { useForm } from "react-hook-form";
@@ -11,7 +12,6 @@ import { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuild
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
-import { setValueAtPathInAdditionalConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/additionalConfigurationUtils";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
@@ -58,11 +58,7 @@ function processAdditionalConfigurationFromStorage(
   const additionalConfig: AdditionalConfigurationInBuilderType = {};
 
   for (const [key, value] of Object.entries(config)) {
-    setValueAtPathInAdditionalConfiguration({
-      additionalConfiguration: additionalConfig,
-      path: key,
-      value: value,
-    });
+    set(additionalConfig, key, value);
   }
 
   return additionalConfig;

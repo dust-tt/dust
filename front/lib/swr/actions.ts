@@ -50,7 +50,7 @@ export function useAgentConfigurationActions(
       data?.actions.map((action) => ({
         ...action,
         id: uniqueId(),
-      })) ?? [],
+      })) ?? emptyArray(),
     [data?.actions]
   );
 
