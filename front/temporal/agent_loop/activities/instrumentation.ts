@@ -67,8 +67,8 @@ interface TimeoutEventData extends BaseEventData {
  * Tracks complete agent loop processing that may span multiple phases.
  */
 
+// Log start of complete agent loop - only called once per loop.
 export function logAgentLoopStart(eventData: StartEventData): void {
-  // Log start of complete agent loop - only called once per loop.
   statsDClient.increment(
     METRICS.LOOP_STARTS,
     1,
@@ -82,6 +82,7 @@ export function logAgentLoopStart(eventData: StartEventData): void {
  * Tracks individual executeAgentLoop calls.
  */
 
+// Log start of individual phase - called for each executeAgentLoop execution.
 export async function logAgentLoopPhaseStartActivity({
   authType,
   eventData,
@@ -99,7 +100,6 @@ export async function logAgentLoopPhaseStartActivity({
     "Agent loop phase execution started"
   );
 
-  // Log start of individual phase - called for each executeAgentLoop execution.
   statsDClient.increment(
     METRICS.PHASE_STARTS,
     1,
@@ -107,6 +107,7 @@ export async function logAgentLoopPhaseStartActivity({
   );
 }
 
+// Logs both phase completion and loop completion metrics.
 export async function logAgentLoopPhaseCompletionActivity({
   authType,
   eventData,
@@ -130,14 +131,12 @@ export async function logAgentLoopPhaseCompletionActivity({
     "Agent loop execution completed"
   );
 
-  // Phase-level metrics - tracks individual executeAgentLoop performance.
   logAgentLoopPhaseCompletion({
     executionMode: eventData.executionMode,
     phaseDurationMs,
     stepsCompleted: eventData.stepsCompleted,
   });
 
-  // Loop metrics - tracks complete agent loop processing from start to finish.
   statsDClient.increment(
     METRICS.LOOP_COMPLETIONS,
     1,
@@ -150,6 +149,7 @@ export async function logAgentLoopPhaseCompletionActivity({
   );
 }
 
+// Logs phase timeout when sync execution switches to async due to timeout.
 export function logAgentLoopPhaseTimeout({
   authType,
   eventData,
@@ -169,10 +169,8 @@ export function logAgentLoopPhaseTimeout({
     "Agent loop sync timeout - switching to async"
   );
 
-  // Phase completion metrics - sync phase is "done" even though it timed out.
   logAgentLoopPhaseCompletion(eventData);
 
-  // Timeout-specific metrics.
   statsDClient.increment(METRICS.PHASE_SYNC_TIMEOUTS);
   statsDClient.histogram(
     METRICS.PHASE_TIMEOUT_DURATION,
