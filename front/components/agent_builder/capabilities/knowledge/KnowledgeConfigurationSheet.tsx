@@ -321,7 +321,7 @@ function KnowledgeConfigurationSheetContent({
     setValue("mcpServerView", mcpServerView);
 
     const currentName = getValues("name");
-    if (!currentName && !isEditing && !presetActionData) {
+    if (!currentName || !isEditing) {
       setValue("name", mcpServerView.name ?? mcpServerView.server.name ?? "");
     }
 
