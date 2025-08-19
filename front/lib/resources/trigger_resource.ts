@@ -45,7 +45,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
 
     const resource = new this(TriggerModel, trigger.get());
-    await resource.postRegister(auth);
+    await resource.postRegistration(auth);
     return resource;
   }
 
@@ -106,7 +106,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     await trigger.update(blob, transaction);
-    await trigger.postRegister(auth);
+    await trigger.postRegistration(auth);
     return new Ok(trigger);
   }
 
@@ -116,11 +116,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   ): Promise<Result<undefined, Error>> {
     const owner = auth.getNonNullableWorkspace();
 
-    await deleteAgentScheduleWorkflow({
-      authType: auth.toJSON(),
-      agentConfigurationId: this.agentConfigurationId,
-      triggerId: this.sId,
-    });
+    await this.preDeletion(auth);
 
     try {
       await TriggerModel.destroy({
@@ -136,12 +132,26 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
   }
 
-  async postRegister(auth: Authenticator) {
+  async postRegistration(auth: Authenticator) {
     switch (this.kind) {
       case "schedule":
         await createOrUpdateAgentScheduleWorkflow({
           authType: auth.toJSON(),
           trigger: this.toJSON(),
+        });
+        break;
+      default:
+        assertNever(this.kind);
+    }
+  }
+
+  async preDeletion(auth: Authenticator) {
+    switch (this.kind) {
+      case "schedule":
+        await deleteAgentScheduleWorkflow({
+          authType: auth.toJSON(),
+          agentConfigurationId: this.agentConfigurationId,
+          triggerId: this.sId,
         });
         break;
       default:
