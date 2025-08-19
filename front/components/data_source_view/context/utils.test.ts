@@ -262,6 +262,7 @@ describe("DataSourceBuilder utilities", () => {
 
       expect(result).toEqual({
         in: [createTreeItem("root/a", "a")],
+        notIn: [],
       });
     });
   });
