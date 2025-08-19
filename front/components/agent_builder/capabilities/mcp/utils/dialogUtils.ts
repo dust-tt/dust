@@ -2,14 +2,17 @@ import type { UseFormReturn } from "react-hook-form";
 
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type {
+  DialogMode,
+  SelectedTool,
+} from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
+import type {
   AgentBuilderAction,
   ConfigurationPagePageId,
 } from "@app/components/agent_builder/types";
 import { CONFIGURATION_DIALOG_PAGE_IDS } from "@app/components/agent_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-
-import type { DialogMode, SelectedTool } from "../MCPServerViewsDialog";
+import { pluralize } from "@app/types";
 
 export interface ModeState {
   isEditMode: boolean;
@@ -96,7 +99,7 @@ export function getFooterButtons({
       rightButton: {
         label:
           selectedToolsInDialog.length > 0
-            ? `Add ${selectedToolsInDialog.length} tool${selectedToolsInDialog.length > 1 ? "s" : ""}`
+            ? `Add ${selectedToolsInDialog.length} tool${pluralize(selectedToolsInDialog.length)}`
             : "Add tools",
         variant: "primary",
         disabled: selectedToolsInDialog.length === 0,
