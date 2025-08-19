@@ -204,43 +204,6 @@ export function handleConfigurationSave({
     return;
   }
 
-  if (mode?.type === "configure") {
-    // Configure mode: add the configured tool to selected tools and go back to selection
-    setSelectedToolsInDialog((prev) => {
-      const existingToolIndex = prev.findIndex(
-        (tool) =>
-          tool.type === "MCP" &&
-          tool.configuredAction?.name === configuredAction.name
-      );
-
-      if (existingToolIndex >= 0) {
-        // Update existing tool with configuration
-        const updated = [...prev];
-        updated[existingToolIndex] = {
-          type: "MCP",
-          view: mcpServerView,
-          configuredAction,
-        };
-        return updated;
-      } else {
-        // Add new configured tool
-        return [
-          ...prev,
-          {
-            type: "MCP",
-            view: mcpServerView,
-            configuredAction,
-          },
-        ];
-      }
-    });
-
-    // Go back to add mode and tool selection
-    onModeChange({ type: "add" });
-    return;
-  }
-
-  // Default case (add mode or other): add to selected tools and navigate back
   setSelectedToolsInDialog((prev) => {
     const existingToolIndex = prev.findIndex(
       (tool) =>
@@ -269,6 +232,12 @@ export function handleConfigurationSave({
       ];
     }
   });
+
+  if (mode?.type === "configure") {
+    // Go back to add mode and tool selection
+    onModeChange({ type: "add" });
+    return;
+  }
 }
 
 export function shouldGenerateUniqueName(
