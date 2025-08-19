@@ -1,4 +1,4 @@
-import { Button, Icon, StopSignIcon } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import React, { useCallback, useState } from "react";
@@ -12,13 +12,26 @@ interface ConversationErrorProps {
 }
 
 export function ConversationErrorDisplay({ error }: ConversationErrorProps) {
-  const errorMessageRes = safeParseJSON(error.message);
+  // SWR may throw either a plain API error object or an Error whose message is a JSON string.
+  const apiErr = (() => {
+    if (isAPIErrorResponse(error)) {
+      return error;
+    }
+    const msg = (error as any)?.message;
+    if (typeof msg === "string") {
+      const parsed = safeParseJSON(msg);
+      if (parsed.isOk() && isAPIErrorResponse(parsed.value)) {
+        return parsed.value;
+      }
+    }
+    return null;
+  })();
 
-  if (errorMessageRes.isErr() || !isAPIErrorResponse(errorMessageRes.value)) {
+  if (!apiErr) {
     return <ConversationGenericError />;
   }
 
-  switch (errorMessageRes.value.error.type) {
+  switch (apiErr.error.type) {
     case "conversation_access_restricted":
       return <ConversationAccessRestricted />;
 
@@ -70,17 +83,12 @@ function ConversationAccessRestricted() {
 
   return (
     <div className="flex h-screen flex-col items-center justify-center gap-3">
-      <Icon
-        visual={StopSignIcon}
-        className="text-warning-400 dark:text-warning-400-night"
-        size="lg"
-      />
       <p className="heading-xl text-center text-foreground dark:text-foreground-night">
         You no longer have access to this conversation
       </p>
       <Button
         label="Leave this conversation"
-        variant="warning"
+        variant="secondary"
         onClick={onLeave}
         disabled={leaving || !workspaceId || !conversationId}
       />
