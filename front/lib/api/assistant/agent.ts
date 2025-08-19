@@ -22,7 +22,6 @@ import type {
   ExecutionMode,
   RunAgentArgs,
   RunAgentArgsInput,
-  RunAgentAsynchronousArgs,
 } from "@app/types/assistant/agent_run";
 
 // 2 minutes timeout before switching from sync to async execution.
