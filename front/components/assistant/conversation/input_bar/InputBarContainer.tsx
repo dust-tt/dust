@@ -62,7 +62,7 @@ export interface InputBarContainerProps {
   actions: InputBarAction[];
   disableAutoFocus: boolean;
   disableSendButton: boolean;
-  preventTyping: boolean;
+  disableTextInput: boolean;
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
@@ -82,7 +82,7 @@ const InputBarContainer = ({
   actions,
   disableAutoFocus,
   disableSendButton,
-  preventTyping,
+  disableTextInput,
   fileUploaderService,
   onNodeSelect,
   onNodeUnselect,
@@ -133,12 +133,12 @@ const InputBarContainer = ({
     editorRef.current = editor;
   }, [editor]);
 
-  // Disable the editor when preventTyping is true.
+  // Disable the editor when disableTextInput is true.
   useEffect(() => {
     if (editor) {
-      editor.setEditable(!preventTyping);
+      editor.setEditable(!disableTextInput);
     }
-  }, [editor, preventTyping]);
+  }, [editor, disableTextInput]);
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
@@ -275,12 +275,13 @@ const InputBarContainer = ({
     >
       <div className="flex w-0 flex-grow flex-col">
         <EditorContent
+          disabled={disableTextInput}
           editor={editor}
           className={classNames(
             contentEditableClasses,
             "scrollbar-hide",
             "overflow-y-auto",
-            preventTyping && "cursor-not-allowed text-muted-foreground",
+            disableTextInput && "cursor-not-allowed",
             isExpanded
               ? "h-[60vh] max-h-[60vh] lg:h-[80vh] lg:max-h-[80vh]"
               : "max-h-64 min-h-24 sm:min-h-14"
@@ -310,6 +311,7 @@ const InputBarContainer = ({
                 onNodeSelect={onNodeSelect}
                 onNodeUnselect={onNodeUnselect}
                 attachedNodes={attachedNodes}
+                disabled={disableTextInput}
               />
             </>
           )}
@@ -319,6 +321,7 @@ const InputBarContainer = ({
               selectedMCPServerViewIds={selectedMCPServerViewIds}
               onSelect={onMCPServerViewSelect}
               onDeselect={onMCPServerViewDeselect}
+              disabled={disableTextInput}
             />
           )}
           {(actions.includes("assistants-list") ||
@@ -334,6 +337,7 @@ const InputBarContainer = ({
               showFooterButtons={actions.includes(
                 "assistants-list-with-actions"
               )}
+              disabled={disableTextInput}
             />
           )}
         </div>
@@ -344,6 +348,7 @@ const InputBarContainer = ({
           {actions.includes("fullscreen") && (
             <div className="hidden sm:flex">
               <Button
+                disabled={disableTextInput}
                 variant="ghost-secondary"
                 icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
                 size="xs"

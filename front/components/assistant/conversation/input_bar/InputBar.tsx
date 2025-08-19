@@ -420,7 +420,7 @@ export function AssistantInputBar({
                   fileUploaderService.isProcessingFiles ||
                   disable
                 }
-                preventTyping={disable}
+                disableTextInput={disable}
                 onNodeSelect={handleNodesAttachmentSelect}
                 onNodeUnselect={handleNodesAttachmentRemove}
                 selectedMCPServerViewIds={selectedMCPServerViewIds}

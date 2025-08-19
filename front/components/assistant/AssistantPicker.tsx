@@ -24,6 +24,7 @@ interface AssistantPickerProps {
   showFooterButtons?: boolean;
   size?: "xs" | "sm" | "md";
   isLoading?: boolean;
+  disabled?: boolean;
   mountPortal?: boolean;
 }
 
@@ -36,6 +37,7 @@ export function AssistantPicker({
   showFooterButtons = true,
   size = "md",
   isLoading = false,
+  disabled = false,
 }: AssistantPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -62,7 +64,7 @@ export function AssistantPicker({
             isSelect={showDropdownArrow}
             size={size}
             tooltip="Pick an agent"
-            disabled={isLoading}
+            disabled={disabled || isLoading}
           />
         )}
       </DropdownMenuTrigger>
