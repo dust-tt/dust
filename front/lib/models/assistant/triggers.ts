@@ -5,10 +5,8 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type {TriggerKind} from "@app/types/assistant/triggers";
-import {
-  isValidTriggerKind
-} from "@app/types/assistant/triggers";
+import type { TriggerKind } from "@app/types/assistant/triggers";
+import { isValidTriggerKind } from "@app/types/assistant/triggers";
 
 export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
   declare createdAt: CreationOptional<Date>;
