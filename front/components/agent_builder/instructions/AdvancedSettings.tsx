@@ -19,19 +19,20 @@ import { isSupportingResponseFormat } from "@app/types";
 export function AdvancedSettings() {
   const { owner } = useAgentBuilderContext();
   const { models } = useModels({ owner });
-  const { field: modelIdField } = useController<
+  const { field: modelSettingsField } = useController<
     AgentBuilderFormData,
-    "generationSettings.modelSettings.modelId"
+    "generationSettings.modelSettings"
   >({
-    name: "generationSettings.modelSettings.modelId",
+    name: "generationSettings.modelSettings",
   });
 
   if (!models) {
     return null;
   }
 
-  const supportsResponseFormat = isSupportingResponseFormat(modelIdField.value);
-
+  const supportsResponseFormat = isSupportingResponseFormat(
+    modelSettingsField.value.modelId
+  );
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
