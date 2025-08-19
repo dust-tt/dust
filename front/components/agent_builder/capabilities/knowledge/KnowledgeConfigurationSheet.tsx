@@ -79,7 +79,7 @@ export function KnowledgeConfigurationSheet({
   getAgentInstructions,
 }: KnowledgeConfigurationSheetProps) {
   const open = action !== null;
-  const { spaces, isSpacesLoading } = useSpacesContext();
+  const { spaces } = useSpacesContext();
 
   const handleSave = (
     formData: CapabilityFormData,
@@ -186,14 +186,6 @@ export function KnowledgeConfigurationSheet({
       formMethods.reset(defaultValues);
     }
   };
-
-  if (isSpacesLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Spinner variant="dark" size="md" />
-      </div>
-    );
-  }
 
   return (
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
