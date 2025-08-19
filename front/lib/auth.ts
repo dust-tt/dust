@@ -810,6 +810,11 @@ export class Authenticator {
     resourcePermission: ResourcePermission,
     permission: PermissionType
   ): boolean {
+    console.log(
+      "============================xcxx?? ",
+      resourcePermission,
+      permission
+    );
     // First path: Role-based permission check.
     if (hasRolePermissions(resourcePermission)) {
       const workspace = this.getNonNullableWorkspace();
@@ -826,6 +831,9 @@ export class Authenticator {
       const hasRolePermission = resourcePermission.roles.some(
         (r) => this.role() === r.role && r.permissions.includes(permission)
       );
+      console.log("resourcePermission", resourcePermission.roles);
+      console.log("role", this.role());
+      console.log("hasRolePermission", hasRolePermission, this.role());
 
       if (
         hasRolePermission &&
@@ -835,6 +843,7 @@ export class Authenticator {
       }
     }
 
+    console.log("groups", this.groups());
     // Second path: Group-based permission check.
     return this.groups().some((userGroup) =>
       resourcePermission.groups.some(
