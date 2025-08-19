@@ -9,6 +9,7 @@ import {
   Markdown,
   Page,
   PencilSquareIcon,
+  Separator,
 } from "@dust-tt/sparkle";
 import React, { useContext } from "react";
 import { useFormContext } from "react-hook-form";
@@ -34,9 +35,7 @@ export function AgentBuilderTemplate({
         {assistantTemplate.helpInstructions && (
           <>
             <Markdown content={assistantTemplate.helpInstructions} />
-            {assistantTemplate.helpActions && (
-              <div className="h-px bg-border" />
-            )}
+            {assistantTemplate.helpActions && <Separator />}
           </>
         )}
         {assistantTemplate.helpActions && (
@@ -45,7 +44,7 @@ export function AgentBuilderTemplate({
         {assistantTemplate.presetActions &&
           assistantTemplate.presetActions.length > 0 && (
             <>
-              <div className="h-px bg-border" />
+              <Separator />
               <TemplatePresetActions
                 presetActions={assistantTemplate.presetActions}
                 onAddAction={onAddPresetAction}
