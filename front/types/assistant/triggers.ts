@@ -7,16 +7,7 @@ export type ScheduleConfig = {
   timezone: string;
 };
 
-export type WebhookConfig = {
-  url: string;
-  method: "GET" | "POST" | "PUT" | "DELETE";
-  headers?: Record<string, string>;
-  body?: string;
-};
-
-export type TriggerConfiguration =
-  | { kind: "schedule"; config: ScheduleConfig }
-  | { kind: "webhook"; config: WebhookConfig };
+export type TriggerConfiguration = { kind: "schedule"; config: ScheduleConfig };
 
 export type TriggerType = {
   id: ModelId;
@@ -31,5 +22,5 @@ export type TriggerType = {
 export type TriggerKind = TriggerType["kind"];
 
 export function isValidTriggerKind(kind: string): kind is TriggerKind {
-  return ["schedule", "webhook"].includes(kind);
+  return ["schedule"].includes(kind);
 }
