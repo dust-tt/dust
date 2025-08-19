@@ -1,12 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { transformAgentConfigurationToFormData } from "@app/components/agent_builder/transformAgentConfiguration";
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { transformAgentConfigurationToFormData } from "@app/components/agent_builder/transformAgentConfiguration";
 
 export type GetAgentConfigurationYAMLExportResponseBody = {
   yamlContent: string;

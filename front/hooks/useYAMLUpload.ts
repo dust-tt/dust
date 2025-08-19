@@ -2,7 +2,8 @@ import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { LightWorkspaceType } from "@app/types";
+import { normalizeError, type LightWorkspaceType } from "@app/types";
+import logger from "@app/logger/logger";
 
 interface UseYAMLUploadOptions {
   owner: LightWorkspaceType;
@@ -31,65 +32,65 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
       }
 
       setIsUploading(true);
-      try {
-        const yamlContent = await file.text();
+      const yamlContent = await file.text();
+      const response = await fetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/new/yaml`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ yamlContent }),
+        }
+      );
 
-        const response = await fetch(
-          `/api/w/${owner.sId}/assistant/agent_configurations/new/yaml`,
+      if (!response.ok) {
+        const errorData = await response.json();
+        logger.error(
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ yamlContent }),
-          }
+            workspaceId: owner.sId,
+          },
+          normalizeError(errorData).message ||
+            "Failed to create agent from YAML file."
         );
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(
-            errorData.error?.message || "Failed to create agent from YAML"
-          );
-        }
-
-        const result = await response.json();
-        if (result.skippedActions && result.skippedActions.length > 0) {
-          sendNotification({
-            title: "Agent created with warnings",
-            description: `Agent "${result.agentConfiguration.name}" was created, but some actions were skipped.`,
-            type: "info",
-          });
-
-          for (const skipped of result.skippedActions) {
-            sendNotification({
-              title: `Action skipped: ${skipped.name}`,
-              description: skipped.reason,
-              type: "info",
-            });
-          }
-        } else {
-          sendNotification({
-            title: "Agent created successfully",
-            description: `Agent "${result.agentConfiguration.name}" was created from YAML`,
-            type: "success",
-          });
-        }
-
-        await router.push(
-          `/w/${owner.sId}/builder/agents/${result.agentConfiguration.sId}`
-        );
-
-        target.value = "";
-      } catch (error) {
         sendNotification({
-          title: "Error creating agent",
-          description:
-            error instanceof Error ? error.message : "Unknown error occurred",
+          title: "Agent creation failed",
+          description: "An error occurred while creating the agent from YAML",
           type: "error",
         });
-      } finally {
         setIsUploading(false);
+        return;
       }
+
+      const result = await response.json();
+      if (result.skippedActions && result.skippedActions.length > 0) {
+        sendNotification({
+          title: "Agent created with warnings",
+          description: `Agent "${result.agentConfiguration.name}" was created, but some actions were skipped.`,
+          type: "info",
+        });
+
+        for (const skipped of result.skippedActions) {
+          sendNotification({
+            title: `Action skipped: ${skipped.name}`,
+            description: skipped.reason,
+            type: "info",
+          });
+        }
+      } else {
+        sendNotification({
+          title: "Agent created successfully",
+          description: `Agent "${result.agentConfiguration.name}" was created from YAML`,
+          type: "success",
+        });
+      }
+
+      await router.push(
+        `/w/${owner.sId}/builder/agents/${result.agentConfiguration.sId}`
+      );
+
+      setIsUploading(false);
     },
     [owner.sId, router, sendNotification]
   );

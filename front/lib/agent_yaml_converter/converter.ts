@@ -426,7 +426,6 @@ export class AgentYAMLConverter {
         const originalAction = yamlActions[i];
 
         if (result.isErr()) {
-          // Instead of failing, skip this action and continue
           skippedActions.push({
             action: originalAction,
             reason: result.error.message,

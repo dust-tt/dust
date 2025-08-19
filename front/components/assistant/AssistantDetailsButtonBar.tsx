@@ -24,7 +24,8 @@ import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
-import { isAdmin, isBuilder } from "@app/types";
+import { isAdmin, isBuilder, normalizeError } from "@app/types";
+import logger from "@app/logger/logger";
 
 interface AssistantDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
@@ -75,22 +76,28 @@ export function AssistantDetailsButtonBar({
 
   const handleExportToYAML = async () => {
     setIsExporting(true);
+    const response = await fetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/export/yaml`
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      sendNotification({
+        title: "Export failed",
+        description:
+          errorData.error?.message || "An error occurred while exporting",
+        type: "error",
+      });
+      setIsExporting(false);
+      return;
+    }
+
+    const { yamlContent, filename } = await response.json();
     try {
-      const response = await fetch(
-        `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/export/yaml`
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.error?.message || "Failed to export agent to YAML"
-        );
-      }
-
-      const { yamlContent, filename } = await response.json();
-
-      // Create and download the file
-      const blob = new Blob([yamlContent], { type: "application/x-yaml" });
+      /**
+       * Try to create a Blob from the YAML content and download it.
+       */
+      const blob = new Blob([yamlContent], { type: "application/yaml" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -109,9 +116,14 @@ export function AssistantDetailsButtonBar({
       sendNotification({
         title: "Export failed",
         description:
-          error instanceof Error ? error.message : "Unknown error occurred",
+          normalizeError(error).message || "An error occurred while exporting",
         type: "error",
       });
+
+      logger.error(
+        { workspaceId: owner.sId, agentId: agentConfiguration.sId },
+        "Failed to export agent configuration to YAML"
+      );
     } finally {
       setIsExporting(false);
     }
