@@ -99,7 +99,7 @@ export async function executeAgentLoop(
     const needsApproval = actionBlobs.some((a) => a.needsApproval);
     if (needsApproval) {
       // Break the loop - workflow will be restarted externally once approved.
-      await activities.logAgentLoopCompletionActivity({
+      await activities.logAgentLoopPhaseCompletionActivity({
         authType,
         eventData: {
           agentMessageId,
@@ -128,7 +128,7 @@ export async function executeAgentLoop(
 
   const stepsCompleted = currentStep - startStep;
 
-  await activities.logAgentLoopCompletionActivity({
+  await activities.logAgentLoopPhaseCompletionActivity({
     authType,
     eventData: {
       agentMessageId,

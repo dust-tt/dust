@@ -4,7 +4,7 @@ import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/tit
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { wakeLock } from "@app/lib/wake_lock";
 import {
-  logAgentLoopCompletionActivity,
+  logAgentLoopPhaseCompletionActivity,
   logAgentLoopPhaseStartActivity,
   logAgentLoopPhaseTimeout,
   logAgentLoopStart,
@@ -23,7 +23,7 @@ import type {
 } from "@app/types/assistant/agent_run";
 
 // 2 minutes timeout before switching from sync to async execution.
-const SYNC_TO_ASYNC_TIMEOUT_MS = 2 * 10 * 1000;
+const SYNC_TO_ASYNC_TIMEOUT_MS = 2 * 60 * 1000;
 
 /**
  * Helper to launch async workflow from sync data.
@@ -84,7 +84,7 @@ async function runAgentSynchronousWithStreaming(
           authType,
           runAgentArgsForExecution,
           {
-            logAgentLoopCompletionActivity,
+            logAgentLoopPhaseCompletionActivity,
             logAgentLoopPhaseStartActivity,
             runModelAndCreateActionsActivity,
             runToolActivity,

@@ -7,7 +7,7 @@ import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import { ensureConversationTitleActivity } from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import {
-  logAgentLoopCompletionActivity,
+  logAgentLoopPhaseCompletionActivity,
   logAgentLoopPhaseStartActivity,
 } from "@app/temporal/agent_loop/activities/instrumentation";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
@@ -24,7 +24,7 @@ export async function runAgentLoopWorker() {
     workflowsPath: require.resolve("./workflows"),
     activities: {
       ensureConversationTitleActivity,
-      logAgentLoopCompletionActivity,
+      logAgentLoopPhaseCompletionActivity,
       logAgentLoopPhaseStartActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,
