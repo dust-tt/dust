@@ -202,7 +202,7 @@ export const microsoft = async ({
       let internalIds: string[];
 
       if (idsFile) {
-        // Read permissions from JSON file
+        // Read ids from JSON file
         if (!fs.existsSync(idsFile)) {
           throw new Error(`Ids file not found: ${idsFile}`);
         }
