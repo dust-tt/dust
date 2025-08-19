@@ -1,12 +1,14 @@
-import type { NotificationType } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 import type { UseFieldArrayAppend } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderAction,
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getMCPServerNameForTemplateAction,
   getMcpServerViewDisplayName,
@@ -14,18 +16,11 @@ import {
   isKnowledgeTemplateAction,
 } from "@app/lib/actions/mcp_helper";
 import { allowsMultipleInstancesOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
 
 interface UsePresetActionHandlerProps {
-  presetActionToAdd?: TemplateActionPreset | null;
-  onPresetActionHandled?: () => void;
-  mcpServerViews: MCPServerViewType[];
-  mcpServerViewsWithKnowledge: MCPServerViewType[];
-  isMCPServerViewsLoading: boolean;
-  append: UseFieldArrayAppend<AgentBuilderFormData, "actions">;
-  sendNotification: (notification: NotificationType) => void;
   fields: AgentBuilderFormData["actions"];
+  append: UseFieldArrayAppend<AgentBuilderFormData, "actions">;
   setKnowledgeAction: (
     action: {
       action: AgentBuilderAction;
@@ -36,16 +31,17 @@ interface UsePresetActionHandlerProps {
 }
 
 export function usePresetActionHandler({
-  presetActionToAdd,
-  onPresetActionHandled,
-  mcpServerViews,
-  mcpServerViewsWithKnowledge,
-  isMCPServerViewsLoading,
-  append,
-  sendNotification,
   fields,
+  append,
   setKnowledgeAction,
 }: UsePresetActionHandlerProps) {
+  const { presetActionToAdd, setPresetActionToAdd } = useAgentBuilderContext();
+  const { 
+    mcpServerViews, 
+    mcpServerViewsWithKnowledge, 
+    isMCPServerViewsLoading 
+  } = useMCPServerViewsContext();
+  const sendNotification = useSendNotification();
   // Store preset object reference to prevent duplicate processing.
   const lastProcessedPresetRef = useRef<TemplateActionPreset | null>(null);
 
@@ -75,7 +71,7 @@ export function usePresetActionHandler({
     );
 
     if (!mcpServerView) {
-      onPresetActionHandled?.();
+      setPresetActionToAdd(null);
       return;
     }
 
@@ -98,7 +94,7 @@ export function usePresetActionHandler({
             description: `${getMcpServerViewDisplayName(mcpServerView)} is already in your agent`,
             type: "info",
           });
-          onPresetActionHandled?.();
+          setPresetActionToAdd(null);
           return;
         }
       }
@@ -124,10 +120,10 @@ export function usePresetActionHandler({
       });
     }
 
-    onPresetActionHandled?.();
+    setPresetActionToAdd(null);
   }, [
     presetActionToAdd,
-    onPresetActionHandled,
+    setPresetActionToAdd,
     mcpServerViews,
     mcpServerViewsWithKnowledge,
     isMCPServerViewsLoading,

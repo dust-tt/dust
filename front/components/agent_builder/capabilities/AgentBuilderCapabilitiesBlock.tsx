@@ -32,7 +32,6 @@ import {
   getDefaultMCPAction,
   isDefaultActionName,
 } from "@app/components/agent_builder/types";
-import { useSendNotification } from "@app/hooks/useNotification";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
@@ -160,7 +159,6 @@ export function AgentBuilderCapabilitiesBlock({
     mcpServerViews,
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
-  const sendNotification = useSendNotification();
 
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
   const [knowledgeAction, setKnowledgeAction] = useState<{
@@ -176,14 +174,8 @@ export function AgentBuilderCapabilitiesBlock({
     : dataVisualizationAction;
 
   usePresetActionHandler({
-    presetActionToAdd,
-    onPresetActionHandled: () => setPresetActionToAdd(null),
-    mcpServerViews,
-    mcpServerViewsWithKnowledge,
-    isMCPServerViewsLoading,
-    append,
-    sendNotification,
     fields,
+    append,
     setKnowledgeAction,
   });
 
