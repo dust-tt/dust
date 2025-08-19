@@ -2,6 +2,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { isString } from "@app/types";
 
 import {
   deleteOrLeaveConversation,
@@ -32,7 +33,8 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (!(typeof req.query.cId === "string")) {
+  const { cId } = req.query;
+  if (!isString(cId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -46,10 +48,7 @@ async function handler(
     case "GET":
       {
         const conversationRes =
-          await ConversationResource.fetchConversationWithoutContent(
-            auth,
-            req.query.cId
-          );
+          await ConversationResource.fetchConversationWithoutContent(auth, cId);
 
         if (conversationRes.isErr()) {
           return apiErrorForConversation(req, res, conversationRes.error);
@@ -61,9 +60,7 @@ async function handler(
       }
 
     case "DELETE": {
-      const result = await deleteOrLeaveConversation(auth, {
-        conversationId: req.query.cId,
-      });
+      const result = await deleteOrLeaveConversation(auth, { conversationId: cId });
       if (result.isErr()) {
         return apiErrorForConversation(req, res, result.error);
       }
@@ -73,10 +70,7 @@ async function handler(
     }
 
     case "PATCH": {
-      const conversationRes = await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        req.query.cId
-      );
+      const conversationRes = await ConversationResource.fetchConversationWithoutContent(auth, cId);
 
       if (conversationRes.isErr()) {
         return apiErrorForConversation(req, res, conversationRes.error);
