@@ -1,6 +1,9 @@
-import { Icon, StopSignIcon } from "@dust-tt/sparkle";
+import { Button, Icon, StopSignIcon } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
 import type { ComponentType } from "react";
+import React, { useCallback, useState } from "react";
 
+import { useConversations } from "@app/lib/swr/conversations";
 import type { ConversationError } from "@app/types";
 import { isAPIErrorResponse, safeParseJSON } from "@app/types";
 
@@ -28,15 +31,60 @@ export function ConversationErrorDisplay({ error }: ConversationErrorProps) {
 }
 
 function ConversationAccessRestricted() {
+  const router = useRouter();
+  const { wId, cId } = router.query as { wId?: string; cId?: string };
+  const workspaceId = typeof wId === "string" ? wId : undefined;
+  const conversationId = typeof cId === "string" ? cId : undefined;
+
+  const { mutateConversations } = useConversations({
+    workspaceId: workspaceId || "",
+  });
+
+  const [leaving, setLeaving] = useState(false);
+
+  const onLeave = useCallback(async () => {
+    if (!workspaceId || !conversationId) {
+      return;
+    }
+    setLeaving(true);
+    const res = await fetch(
+      `/api/w/${workspaceId}/assistant/conversations/${conversationId}`,
+      { method: "DELETE" }
+    );
+    if (res.ok) {
+      void mutateConversations((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        return {
+          ...prev,
+          conversations: prev.conversations.filter(
+            (c) => c.sId !== conversationId
+          ),
+        };
+      });
+      await router.push(`/w/${workspaceId}/assistant/new`);
+    }
+    setLeaving(false);
+  }, [workspaceId, conversationId, router, mutateConversations]);
+
   return (
-    <ErrorDisplay
-      icon={StopSignIcon}
-      title="Permission Required"
-      message={[
-        "This conversation contains protected information.",
-        "Request access to view it.",
-      ]}
-    />
+    <div className="flex h-screen flex-col items-center justify-center gap-3">
+      <Icon
+        visual={StopSignIcon}
+        className="text-warning-400 dark:text-warning-400-night"
+        size="lg"
+      />
+      <p className="heading-xl text-center text-foreground dark:text-foreground-night">
+        You no longer have access to this conversation
+      </p>
+      <Button
+        label="Leave this conversation"
+        variant="warning"
+        onClick={onLeave}
+        disabled={leaving || !workspaceId || !conversationId}
+      />
+    </div>
   );
 }
 
