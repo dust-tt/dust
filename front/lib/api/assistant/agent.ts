@@ -21,6 +21,8 @@ import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
   ExecutionMode,
   RunAgentArgs,
+  RunAgentArgsInput,
+  RunAgentAsynchronousArgs,
 } from "@app/types/assistant/agent_run";
 
 // 2 minutes timeout before switching from sync to async execution.
@@ -151,7 +153,7 @@ async function runAgentSynchronousWithStreaming(
  */
 export async function runAgentLoop(
   auth: Authenticator,
-  runAgentArgs: RunAgentArgs,
+  runAgentArgs: RunAgentArgsInput,
   {
     executionMode = "auto",
     startStep,
