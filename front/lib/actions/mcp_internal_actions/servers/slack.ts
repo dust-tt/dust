@@ -7,6 +7,7 @@ import { uniqBy } from "lodash";
 import slackifyMarkdown from "slackify-markdown";
 import { z } from "zod";
 
+import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import type {
   SearchQueryResourceType,
   SearchResultResourceType,
@@ -23,9 +24,9 @@ import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { removeDiacritics } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { cacheWithRedis } from "@app/lib/utils/cache";
 import type { TimeFrame } from "@app/types";
 import { parseTimeFrame, stripNullBytes, timeFrameFromNow } from "@app/types";
 
@@ -99,8 +100,60 @@ function isSlackTokenRevoked(error: unknown): boolean {
   );
 }
 
+// Unknown is expected when we don't have a Slack connection yet
+type SlackAIStatus = "enabled" | "disabled" | "unknown";
+
+const SLACK_AI_STATUS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Cache the result as this involved a call to the Slack API
+const getCachedSlackAIEnablementStatus = cacheWithRedis<
+  SlackAIStatus,
+  [auth: Authenticator, mcpServerId: string]
+>(
+  async (auth: Authenticator, mcpServerId: string): Promise<SlackAIStatus> => {
+    if (!mcpServerId) {
+      return "unknown";
+    }
+
+    const connection = await getConnectionForMCPServer(auth, {
+      mcpServerId,
+      connectionType: "workspace",
+    });
+
+    if (!connection) {
+      return "unknown";
+    }
+
+    const assistantSearchInfo = await fetch(
+      "https://slack.com/api/assistant.search.info",
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${connection.access_token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!assistantSearchInfo.ok) {
+      return "unknown";
+    }
+
+    const assistantSearchInfoJson = await assistantSearchInfo.json();
+
+    return assistantSearchInfoJson.is_ai_search_enabled
+      ? "enabled"
+      : "disabled";
+  },
+  (_auth: Authenticator, id: string) => `slack-ai-enablement-status-${id}`,
+  {
+    ttlMs: SLACK_AI_STATUS_CACHE_TTL_MS,
+  }
+);
+
 const createServer = async (
   auth: Authenticator,
+  mcpServerId: string,
   agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> => {
   const server = new McpServer(serverInfo, {
@@ -111,11 +164,14 @@ const createServer = async (
       "NEVER use the channel name or the user name directly in a message as it will not be parsed correctly and appear as plain text.",
   });
 
-  if (
-    !(await getFeatureFlags(auth.getNonNullableWorkspace())).includes(
-      "slack_semantic_search"
-    )
-  ) {
+  // If it's enabled or disabled, we end up with only one of the two tools. Otherwise we add both,
+  // which is expected to happen before we have a Slack connection.
+  const slackAIStatus = await getCachedSlackAIEnablementStatus(
+    auth,
+    mcpServerId
+  );
+
+  if (slackAIStatus === "disabled" || slackAIStatus === "unknown") {
     server.tool(
       "search_messages",
       "Search messages accross all channels and dms for the current user",
@@ -341,7 +397,9 @@ const createServer = async (
         }
       }
     );
-  } else {
+  }
+
+  if (slackAIStatus === "enabled" || slackAIStatus === "unknown") {
     server.tool(
       "semantic_search_messages",
       "Use semantic search to find messages across all channels and DMs for the current user",

@@ -121,10 +121,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Display debug tools in the interface",
     stage: "dust_only",
   },
-  slack_semantic_search: {
-    description: "Enable semantic search in Slack",
-    stage: "on_demand",
-  },
   usage_data_api: {
     description:
       "API for accessing usage data (Means that any builder with an API key can access usage data of the workspace from API)",

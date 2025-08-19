@@ -45,6 +45,7 @@ export const connectToInternalMCPServer = async (
     auth,
     {
       internalMCPServerName: res.value.name,
+      mcpServerId,
     },
     agentLoopContext
   );

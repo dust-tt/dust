@@ -70,8 +70,10 @@ export async function getInternalMCPServer(
   auth: Authenticator,
   {
     internalMCPServerName,
+    mcpServerId,
   }: {
     internalMCPServerName: InternalMCPServerNameType;
+    mcpServerId: string;
   },
   agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> {
@@ -135,7 +137,7 @@ export async function getInternalMCPServer(
     case "monday":
       return mondayServer();
     case "slack":
-      return slackServer(auth, agentLoopContext);
+      return slackServer(auth, mcpServerId, agentLoopContext);
     case "agent_memory":
       return agentMemoryServer(auth, agentLoopContext);
     case "outlook":
