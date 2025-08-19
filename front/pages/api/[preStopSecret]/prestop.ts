@@ -4,6 +4,7 @@ import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import type { WakeLockEntry } from "@app/lib/wake_lock";
 import { getWakeLockDetails, wakeLockIsFree } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import { withLogging } from "@app/logger/withlogging";
 
 const PRESTOP_GRACE_PERIOD_MS = 130 * 1000; // 130 seconds grace period.
@@ -34,11 +35,18 @@ async function handler(
     return;
   }
 
-  logger.info("Received prestop request, waiting 10s");
+  const childLogger = logger.child({
+    action: "preStop",
+  });
+
+  childLogger.info("Received prestop request, waiting 10s");
+
+  // Record pre-stop initiation.
+  statsDClient.increment("prestop.requests");
+
   await setTimeoutAsync(10000);
 
   const preStopStartTime = Date.now();
-
   let initialWakeLockCount: number | null = null;
 
   while (!wakeLockIsFree()) {
@@ -47,16 +55,24 @@ async function handler(
 
     if (initialWakeLockCount === null) {
       initialWakeLockCount = currentWakeLockCount;
-      logger.info(
+      childLogger.info(
         { wakeLockCount: currentWakeLockCount },
         "Starting to wait for wake locks to be free"
       );
+
+      // Record initial wake lock metrics.
+      statsDClient.gauge("prestop.initial_wake_locks", currentWakeLockCount);
+      if (currentWakeLockCount > 0) {
+        statsDClient.increment("prestop.has_wake_locks");
+      } else {
+        statsDClient.increment("prestop.no_wake_locks");
+      }
 
       // Log details of all active wake locks.
       wakeLockDetails.forEach((lock, index) => {
         const durationMs = Date.now() - lock.startTime;
         const context = lock.context;
-        logger.info(
+        childLogger.info(
           {
             context,
             durationSeconds: Math.round(durationMs / 1000),
@@ -80,7 +96,7 @@ async function handler(
       .sort((a, b) => b.durationMs - a.durationMs)
       .slice(0, PRESTOP_LOG_MAX_LOCKS);
 
-    logger.info(
+    childLogger.info(
       {
         currentWakeLockCount,
         initialWakeLockCount,
@@ -96,7 +112,7 @@ async function handler(
 
     // Safety timeout to avoid exceeding grace period.
     if (elapsedMs >= PRESTOP_MAX_WAIT_MS) {
-      logger.warn(
+      childLogger.warn(
         {
           timeoutMs: PRESTOP_MAX_WAIT_MS,
           currentWakeLockCount,
@@ -111,19 +127,35 @@ async function handler(
         },
         "Pre-stop timeout reached, terminating with active wake locks"
       );
+
+      // Record timeout metrics.
+      statsDClient.increment("prestop.timeouts");
+      statsDClient.gauge("prestop.timeout_wake_locks", currentWakeLockCount);
+      statsDClient.histogram("prestop.timeout_duration_ms", elapsedMs);
+
       break;
     }
 
     await setTimeoutAsync(PRESTOP_LOG_INTERVAL_MS);
   }
 
+  const totalWaitMs = Date.now() - preStopStartTime;
+
   if (wakeLockIsFree()) {
-    logger.info(
+    childLogger.info(
       {
-        totalWaitSeconds: Math.round((Date.now() - preStopStartTime) / 1000),
+        totalWaitSeconds: Math.round(totalWaitMs / 1000),
       },
       "All wake locks cleared successfully"
     );
+
+    // Record successful completion metrics.
+    statsDClient.increment("prestop.completions");
+    statsDClient.histogram("prestop.wait_duration_ms", totalWaitMs);
+  } else {
+    // Record forced termination metrics.
+    statsDClient.increment("prestop.forced_terminations");
+    statsDClient.histogram("prestop.forced_duration_ms", totalWaitMs);
   }
 
   res.status(200).end();
