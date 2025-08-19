@@ -102,37 +102,84 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
 
   const deleteSelection = useCallback(async () => {
     setIsDeleting(true);
-    if (selectedConversations.length > 0) {
+    const total = selectedConversations.length;
+    let successCount = 0;
+    if (total > 0) {
       for (const conversation of selectedConversations) {
-        await doDelete(conversation);
+        const ok = await doDelete(conversation);
+        if (ok) {
+          successCount += 1;
+        }
       }
       toggleMultiSelect();
     }
     setIsDeleting(false);
     setShowDeleteDialog(null);
-    sendNotification({
-      type: "success",
-      title: "Conversations successfully deleted",
-      description:
-        selectedConversations.length > 1
-          ? `${selectedConversations.length} conversations have been deleted.`
-          : `${selectedConversations.length} conversation has been deleted.`,
-    });
+    if (!total) {
+      return;
+    }
+    if (successCount === total) {
+      sendNotification({
+        type: "success",
+        title: "Conversations successfully deleted",
+        description:
+          total > 1
+            ? `${total} conversations have been deleted.`
+            : `${total} conversation has been deleted.`,
+      });
+    } else if (successCount === 0) {
+      sendNotification({
+        type: "error",
+        title: "Failed to delete conversations",
+        description:
+          total > 1
+            ? "Could not delete the selected conversations."
+            : "Could not delete the selected conversation.",
+      });
+    } else {
+      sendNotification({
+        type: "error",
+        title: "Some conversations couldn’t be deleted",
+        description: `Deleted ${successCount} of ${total} conversations.`,
+      });
+    }
   }, [doDelete, selectedConversations, sendNotification, toggleMultiSelect]);
 
   const deleteAll = useCallback(async () => {
     setIsDeleting(true);
+    const total = conversations.length;
+    let successCount = 0;
     for (const conversation of conversations) {
-      await doDelete(conversation);
+      const ok = await doDelete(conversation);
+      if (ok) {
+        successCount += 1;
+      }
     }
-    sendNotification({
-      type: "success",
-      title: "Conversations successfully deleted",
-      description:
-        conversations.length > 1
-          ? `${conversations.length} conversations have been deleted.`
-          : `${conversations.length} conversation has been deleted.`,
-    });
+    if (!total) {
+      return;
+    }
+    if (successCount === total) {
+      sendNotification({
+        type: "success",
+        title: "Conversations successfully deleted",
+        description:
+          total > 1
+            ? `${total} conversations have been deleted.`
+            : `${total} conversation has been deleted.`,
+      });
+    } else if (successCount === 0) {
+      sendNotification({
+        type: "error",
+        title: "Failed to delete conversations",
+        description: "Could not delete conversation history.",
+      });
+    } else {
+      sendNotification({
+        type: "error",
+        title: "Some conversations couldn’t be deleted",
+        description: `Deleted ${successCount} of ${total} conversations.`,
+      });
+    }
     setIsDeleting(false);
     setShowDeleteDialog(null);
   }, [conversations, doDelete, sendNotification]);
