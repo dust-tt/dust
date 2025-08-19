@@ -18,6 +18,7 @@ import {
   transformTemplateToFormData,
 } from "@app/components/agent_builder/transformAgentConfiguration";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -141,6 +142,8 @@ export default function AgentBuilder({
   };
 
   const { isDirty, isSubmitting } = form.formState;
+
+  useNavigationLock(isDirty);
 
   const isSaveDisabled = !isDirty || isSubmitting || isActionsLoading;
 
