@@ -62,32 +62,16 @@ main {
   }
 }
 
-/* Smooth, subtle caret used while tokens stream */
-.typing-caret {
-  position: relative;
-}
-.typing-caret > :not(pre):last-child::after {
+.blinking-cursor > :not(pre):last-child::after {
   content: "";
+  width: 8px;
+  height: 16px;
+  @apply bg-success-400;
   display: inline-block;
-  width: 1px;
-  height: 1em;
-  background: currentColor;
-  opacity: 0.6;
-  margin-left: 2px;
-  transform: translateY(0.15em);
-  animation: caretPulse 900ms ease-in-out infinite;
-}
-
-@keyframes caretPulse {
-  0% {
-    opacity: 0.2;
-  }
-  50% {
-    opacity: 0.8;
-  }
-  100% {
-    opacity: 0.2;
-  }
+  @apply animate-cursor-blink;
+  margin-left: 5px;
+  position: relative;
+  top: 4px;
 }
 
 @keyframes shake {
@@ -157,17 +141,8 @@ main {
   animation: fade-collapse 500ms ease-out forwards;
 }
 
-/* Reserved: older blinking cursor style (kept for compatibility) */
 .s-blinking-cursor > :not(pre):last-child::after {
-  content: "";
-  display: inline-block;
-  width: 1px;
-  height: 1em;
-  background: currentColor;
-  opacity: 0.6;
-  margin-left: 2px;
-  transform: translateY(0.15em);
-  animation: caretPulse 900ms ease-in-out infinite;
+  /* ... existing code ... */
 }
 
 /* Privacy mask style for dd-privacy-mask elements - only when enabled */
