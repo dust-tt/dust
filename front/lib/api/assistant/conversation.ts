@@ -204,6 +204,92 @@ export async function deleteConversation(
   return new Ok({ success: true });
 }
 
+/**
+ * Leave a conversation: removes the current user as a participant.
+ * If no participants remain after removal, soft-deletes the conversation.
+ * Intentionally does NOT perform a canAccessConversation check so users who
+ * lost access (e.g., space membership changed) can still leave.
+ */
+export async function leaveConversation(
+  auth: Authenticator,
+  { conversationId }: { conversationId: string }
+): Promise<Result<{ success: true }, Error>> {
+  const user = auth.user();
+  if (!user) {
+    return new Err(
+      new Error("Cannot leave conversation: user not authenticated.")
+    );
+  }
+
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId,
+    {
+      includeDeleted: true,
+    }
+  );
+
+  if (!conversation) {
+    return new Err(new ConversationError("conversation_not_found"));
+  }
+
+  // Remove caller participation; if none remain, soft-delete the conversation.
+  const r = await conversation.leaveConversation(auth);
+  if (r.isErr()) {
+    return new Err(r.error);
+  }
+  if (r.value.affectedCount > 0 && r.value.isConversationEmpty) {
+    await conversation.updateVisibilityToDeleted();
+  }
+
+  return new Ok({ success: true });
+}
+
+/**
+ * Delete-or-Leave: if the user has access to the conversation, perform a soft-delete
+ * (update visibility to "deleted"). If the user lacks access, perform a
+ * leave (remove participation) so the entry disappears from their history without
+ * returning 403. If the conversation is empty after the leave, hard-delete it.
+ */
+export async function deleteOrLeaveConversation(
+  auth: Authenticator,
+  {
+    conversationId,
+  }: {
+    conversationId: string;
+  }
+): Promise<Result<{ success: true }, Error>> {
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId,
+    {
+      includeDeleted: true,
+    }
+  );
+
+  if (!conversation) {
+    return new Err(new ConversationError("conversation_not_found"));
+  }
+
+  const hasAccess = ConversationResource.canAccessConversation(
+    auth,
+    conversation
+  );
+  if (hasAccess) {
+    const del = await deleteConversation(auth, { conversationId });
+    if (del.isErr()) {
+      return new Err(del.error);
+    }
+    return new Ok({ success: true });
+  }
+
+  const leave = await leaveConversation(auth, { conversationId });
+  if (leave.isErr()) {
+    return new Err(leave.error);
+  }
+  return new Ok({ success: true });
+}
+
 export async function getConversationMessageType(
   auth: Authenticator,
   conversation: ConversationType | ConversationWithoutContentType,

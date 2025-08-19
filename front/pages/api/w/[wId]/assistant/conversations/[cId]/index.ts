@@ -4,7 +4,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
-  deleteConversation,
+  deleteOrLeaveConversation,
   updateConversationTitle,
 } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -60,7 +60,7 @@ async function handler(
       return;
 
     case "DELETE": {
-      const result = await deleteConversation(auth, {
+      const result = await deleteOrLeaveConversation(auth, {
         conversationId: conversation.sId,
       });
       if (result.isErr()) {
