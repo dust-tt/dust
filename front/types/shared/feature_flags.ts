@@ -156,6 +156,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Data warehouses file system navigation with hierarchical warehouse structure",
     stage: "dust_only",
   },
+  hootl: {
+    description: "Human Out Of The Loop (aka Triggers)",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

@@ -600,6 +600,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "exploded_tables_query"
   | "google_ai_studio_experimental_models_feature"
   | "google_sheets_tool"
+  | "hootl"
   | "index_private_slack_channel"
   | "interactive_content_server"
   | "jira_tool"
