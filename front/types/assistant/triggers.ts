@@ -30,6 +30,6 @@ export type TriggerType = {
 
 export type TriggerKind = TriggerType["kind"];
 
-export function isValidKind(kind: string): kind is TriggerKind {
+export function isValidTriggerKind(kind: string): kind is TriggerKind {
   return ["schedule", "webhook"].includes(kind);
 }
