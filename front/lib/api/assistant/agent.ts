@@ -68,19 +68,26 @@ async function runAgentSynchronousWithStreaming(
   // we use throwing as the common mechanism that works in both contexts. The SyncTimeoutError
   // is only thrown in sync mode and never reaches Temporal workflows.
   try {
-    await wakeLock(async () => {
-      await executeAgentLoop(
-        authType,
-        runAgentArgs,
-        {
-          runModelAndCreateActionsActivity,
-          runToolActivity,
-        },
-        {
-          startStep,
-        }
-      );
-    });
+    await wakeLock(
+      async () => {
+        await executeAgentLoop(
+          authType,
+          runAgentArgs,
+          {
+            runModelAndCreateActionsActivity,
+            runToolActivity,
+          },
+          {
+            startStep,
+          }
+        );
+      },
+      {
+        operation: "agent_sync_execution",
+        conversationId: runAgentExecutionData.conversation.sId,
+        agentMessageId: runAgentExecutionData.agentMessage.sId,
+      }
+    );
   } catch (error) {
     if (error instanceof SyncTimeoutError) {
       // Ensure title is computed and update in-memory conversation before launching async workflow.
