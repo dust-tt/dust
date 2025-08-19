@@ -45,12 +45,14 @@ export type RunAgentExecutionData = {
 export type RunAgentArgs =
   | {
       sync: true;
+      initialStartTime: number;
       inMemoryData: RunAgentExecutionData;
       syncToAsyncTimeoutMs?: number;
     }
   | {
       sync: false;
       idArgs: RunAgentAsynchronousArgs;
+      initialStartTime: number;
     };
 
 export async function getRunAgentData(

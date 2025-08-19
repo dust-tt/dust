@@ -8,6 +8,7 @@ import {
 
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
+import type * as logAgentLoopMetricsActivities from "@app/temporal/agent_loop/activities/instrumentation";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
 import type { AgentLoopActivities } from "@app/temporal/agent_loop/lib/activity_interface";
@@ -17,6 +18,12 @@ import type {
   RunAgentArgs,
   RunAgentAsynchronousArgs,
 } from "@app/types/assistant/agent_run";
+
+const logMetricsActivities = proxyActivities<
+  typeof logAgentLoopMetricsActivities
+>({
+  startToCloseTimeout: "30 seconds",
+});
 
 const activities: AgentLoopActivities = {
   runModelAndCreateActionsActivity: proxyActivities<
@@ -31,6 +38,10 @@ const activities: AgentLoopActivities = {
       maximumAttempts: 1,
     },
   }).runToolActivity,
+  logAgentLoopPhaseStartActivity:
+    logMetricsActivities.logAgentLoopPhaseStartActivity,
+  logAgentLoopCompletionActivity:
+    logMetricsActivities.logAgentLoopCompletionActivity,
 };
 
 const { ensureConversationTitleActivity } = proxyActivities<
@@ -49,6 +60,7 @@ export async function agentLoopConversationTitleWorkflow({
   const runAgentArgs: RunAgentArgs = {
     sync: false,
     idArgs: runAsynchronousAgentArgs,
+    initialStartTime: 0,
   };
 
   await ensureConversationTitleActivity(authType, runAgentArgs);
@@ -56,10 +68,12 @@ export async function agentLoopConversationTitleWorkflow({
 
 export async function agentLoopWorkflow({
   authType,
+  initialStartTime,
   runAsynchronousAgentArgs,
   startStep,
 }: {
   authType: AuthenticatorType;
+  initialStartTime: number;
   runAsynchronousAgentArgs: RunAgentAsynchronousArgs;
   startStep: number;
 }) {
@@ -68,6 +82,7 @@ export async function agentLoopWorkflow({
   const runAgentArgs: RunAgentArgs = {
     sync: false,
     idArgs: runAsynchronousAgentArgs,
+    initialStartTime,
   };
 
   let childWorkflowHandle: ChildWorkflowHandle<

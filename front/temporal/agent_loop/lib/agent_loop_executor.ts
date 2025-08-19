@@ -43,13 +43,33 @@ export async function executeAgentLoop(
 ): Promise<void> {
   const runIds: string[] = [];
   const syncStartTime = Date.now();
+  let currentStep = startStep;
+
+  const conversationId = runAgentArgs.sync
+    ? runAgentArgs.inMemoryData.conversation.sId
+    : runAgentArgs.idArgs.conversationId;
+  const agentMessageId = runAgentArgs.sync
+    ? runAgentArgs.inMemoryData.agentMessage.sId
+    : runAgentArgs.idArgs.agentMessageId;
+
+  await activities.logAgentLoopPhaseStartActivity({
+    authType,
+    eventData: {
+      agentMessageId,
+      conversationId,
+      executionMode: runAgentArgs.sync ? "sync" : "async",
+      startStep,
+    },
+  });
 
   for (let i = startStep; i < MAX_STEPS_USE_PER_RUN_LIMIT + 1; i++) {
+    currentStep = i;
+
     // Check if we should switch to async mode due to timeout (only in sync mode).
     if (runAgentArgs.sync && runAgentArgs.syncToAsyncTimeoutMs) {
       const elapsedMs = Date.now() - syncStartTime;
       if (elapsedMs > runAgentArgs.syncToAsyncTimeoutMs) {
-        throw new SyncTimeoutError({ currentStep: i, elapsedMs });
+        throw new SyncTimeoutError({ currentStep, elapsedMs });
       }
     }
 
@@ -64,7 +84,7 @@ export async function executeAgentLoop(
 
     if (!result) {
       // Generation completed or error occurred.
-      return;
+      break;
     }
 
     const { runId, actionBlobs } = result;
@@ -79,6 +99,18 @@ export async function executeAgentLoop(
     const needsApproval = actionBlobs.some((a) => a.needsApproval);
     if (needsApproval) {
       // Break the loop - workflow will be restarted externally once approved.
+      await activities.logAgentLoopCompletionActivity({
+        authType,
+        eventData: {
+          agentMessageId,
+          conversationId,
+          executionMode: runAgentArgs.sync ? "sync" : "async",
+          initialStartTime: runAgentArgs.initialStartTime,
+          stepsCompleted: currentStep - startStep,
+          syncStartTime,
+        },
+      });
+
       return;
     }
 
@@ -93,4 +125,18 @@ export async function executeAgentLoop(
       )
     );
   }
+
+  const stepsCompleted = currentStep - startStep;
+
+  await activities.logAgentLoopCompletionActivity({
+    authType,
+    eventData: {
+      agentMessageId,
+      conversationId,
+      executionMode: runAgentArgs.sync ? "sync" : "async",
+      initialStartTime: runAgentArgs.initialStartTime,
+      stepsCompleted,
+      syncStartTime,
+    },
+  });
 }
