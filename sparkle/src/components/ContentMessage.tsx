@@ -58,7 +58,7 @@ const contentMessageVariants = cva(
 );
 
 const contentMessageInlineVariants = cva(
-  "s-flex s-items-center s-gap-3 s-rounded-lg s-py-3 s-px-4 s-border",
+  "s-flex s-items-center s-gap-3 s-rounded-xl s-py-3 s-px-4 s-border",
   {
     variants: {
       variant: sharedVariantStyles,
