@@ -22,6 +22,14 @@ import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
 import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
+import {
+  getFooterButtons,
+  getInitialConfigurationTool,
+  getInitialPageId,
+  getModeState,
+  handleConfigurationSave as handleConfigurationSaveUtil,
+  shouldGenerateUniqueName,
+} from "@app/components/agent_builder/capabilities/mcp/utils/dialogUtils";
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { createFormResetHandler } from "@app/components/agent_builder/capabilities/mcp/utils/formStateUtils";
 import {
@@ -50,7 +58,6 @@ import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -70,6 +77,11 @@ const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
 export type DialogMode =
   | { type: "add" }
+  | {
+      type: "configure";
+      action: AgentBuilderAction;
+      mcpServerView: MCPServerViewType;
+    }
   | { type: "edit"; action: AgentBuilderAction; index: number }
   | { type: "info"; action: AgentBuilderAction };
 
@@ -120,9 +132,8 @@ export function MCPServerViewsDialog({
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
 
-  const isEditMode = !!mode && mode.type === "edit";
-  const isInfoMode = !!mode && mode.type === "info";
-  const isAddMode = !mode || mode.type === "add";
+  const modeState = getModeState(mode);
+  const { isEditMode, isInfoMode, isConfigureMode, isAddMode } = modeState;
 
   const [selectedToolsInDialog, setSelectedToolsInDialog] = useState<
     SelectedTool[]
@@ -131,14 +142,10 @@ export function MCPServerViewsDialog({
 
   const [isOpen, setIsOpen] = useState(!!mode);
   const [currentPageId, setCurrentPageId] = useState<ConfigurationPagePageId>(
-    isEditMode
-      ? CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION
-      : isInfoMode
-        ? CONFIGURATION_DIALOG_PAGE_IDS.INFO
-        : CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION
+    getInitialPageId(mode)
   );
   const [configurationTool, setConfigurationTool] =
-    useState<AgentBuilderAction | null>(isEditMode ? mode.action : null);
+    useState<AgentBuilderAction | null>(getInitialConfigurationTool(mode));
 
   const [configurationMCPServerView, setConfigurationMCPServerView] =
     useState<MCPServerViewType | null>(null);
@@ -226,7 +233,7 @@ export function MCPServerViewsDialog({
   }, [searchTerm, dataVisualization]);
 
   useEffect(() => {
-    if (isEditMode) {
+    if (isEditMode && mode?.type === "edit") {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION);
       setConfigurationTool(mode.action);
       setSelectedToolsInDialog([]);
@@ -243,7 +250,11 @@ export function MCPServerViewsDialog({
           setConfigurationMCPServerView(mcpServerView);
         }
       }
-    } else if (isInfoMode) {
+    } else if (isConfigureMode && mode?.type === "configure") {
+      setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION);
+      setConfigurationTool(mode.action);
+      setConfigurationMCPServerView(mode.mcpServerView);
+    } else if (isInfoMode && mode?.type === "info") {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.INFO);
       setSelectedToolsInDialog([]);
 
@@ -267,7 +278,7 @@ export function MCPServerViewsDialog({
       setSearchTerm("");
     }
     setIsOpen(!!mode);
-  }, [mode, allMcpServerViews, isEditMode, isInfoMode]);
+  }, [mode, allMcpServerViews, isEditMode, isConfigureMode, isInfoMode]);
 
   const toggleToolSelection = useCallback((tool: SelectedTool) => {
     setSelectedToolsInDialog((prev) => {
@@ -320,6 +331,7 @@ export function MCPServerViewsDialog({
       const action = getDefaultMCPAction(mcpServerView);
       const isReasoning = requirement.requiresReasoningConfiguration;
 
+      let configuredAction = action;
       if (action.type === "MCP" && isReasoning) {
         if (reasoningModels.length === 0) {
           sendNotification({
@@ -336,7 +348,7 @@ export function MCPServerViewsDialog({
             (model) => model.modelId === DEFAULT_REASONING_MODEL_ID
           ) ?? reasoningModels[0];
 
-        setConfigurationTool({
+        configuredAction = {
           ...action,
           configuration: {
             ...action.configuration,
@@ -347,13 +359,15 @@ export function MCPServerViewsDialog({
               reasoningEffort: null,
             },
           },
-        });
-      } else {
-        setConfigurationTool(action);
+        };
       }
 
-      setConfigurationMCPServerView(mcpServerView);
-      setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION);
+      // Switch to configure mode instead of directly setting states
+      onModeChange({
+        type: "configure",
+        action: configuredAction,
+        mcpServerView,
+      });
       return;
     }
 
@@ -587,9 +601,11 @@ export function MCPServerViewsDialog({
         throw new Error("Expected MCP action for configuration save");
       }
 
-      const isNewActionOrNameChanged =
-        mode?.type === "add" ||
-        (mode?.type === "edit" && defaultFormValues.name !== formData.name);
+      const isNewActionOrNameChanged = shouldGenerateUniqueName(
+        mode,
+        defaultFormValues,
+        formData
+      );
 
       const newActionName = isNewActionOrNameChanged
         ? generateUniqueActionName({
@@ -606,50 +622,19 @@ export function MCPServerViewsDialog({
         configuration: formData.configuration,
       };
 
-      if (mode?.type === "edit" && onActionUpdate) {
-        // Edit mode: save the updated action and close dialog
-        onActionUpdate(configuredAction, mode.index);
-        setIsOpen(false);
-        onModeChange(null);
+      handleConfigurationSaveUtil({
+        mode,
+        configuredAction,
+        mcpServerView,
+        onActionUpdate,
+        onModeChange,
+        setSelectedToolsInDialog,
+        setIsOpen,
+        sendNotification,
+      });
 
-        sendNotification({
-          title: "Tool updated successfully",
-          description: `${getMcpServerViewDisplayName(mcpServerView)} configuration has been updated.`,
-          type: "success",
-        });
-      } else {
-        // You can add one tool multiple times if it's configurable, but you cannot have the same name,
-        // so we should check its name and not its id
-        setSelectedToolsInDialog((prev) => {
-          const existingToolIndex = prev.findIndex(
-            (tool) =>
-              tool.type === "MCP" &&
-              tool.configuredAction?.name === newActionName
-          );
-
-          if (existingToolIndex >= 0) {
-            // Update existing tool with configuration
-            const updated = [...prev];
-            updated[existingToolIndex] = {
-              type: "MCP",
-              view: mcpServerView,
-              configuredAction,
-            };
-            return updated;
-          } else {
-            // Add new configured tool
-            return [
-              ...prev,
-              {
-                type: "MCP",
-                view: mcpServerView,
-                configuredAction,
-              },
-            ];
-          }
-        });
-
-        // Navigate back to tool selection page
+      // Handle legacy navigation for non-configure modes
+      if (mode?.type !== "edit" && mode?.type !== "configure") {
         setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
         setConfigurationTool(null);
         setConfigurationMCPServerView(null);
@@ -664,81 +649,21 @@ export function MCPServerViewsDialog({
     }
   };
 
-  const getFooterButtons = () => {
-    const isToolSelectionPage =
-      currentPageId === CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION;
-    const isConfigurationPage =
-      currentPageId === CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION;
-    const isInfoPage = currentPageId === CONFIGURATION_DIALOG_PAGE_IDS.INFO;
-
-    if (isToolSelectionPage) {
-      return {
-        leftButton: {
-          label: "Cancel",
-          variant: "outline" as const,
-          onClick: handleCancel,
-        },
-        rightButton: {
-          label:
-            selectedToolsInDialog.length > 0
-              ? `Add ${selectedToolsInDialog.length} tool${selectedToolsInDialog.length > 1 ? "s" : ""}`
-              : "Add tools",
-          variant: "primary",
-          disabled: selectedToolsInDialog.length === 0,
-          onClick: () => {
-            handleAddSelectedTools();
-            setIsOpen(false);
-            onModeChange(null);
-          },
-        },
-      };
-    }
-
-    if (isConfigurationPage) {
-      if (isEditMode) {
-        // Edit mode: only Cancel and Save buttons
-        return {
-          leftButton: {
-            label: "Cancel",
-            variant: "outline",
-            onClick: handleCancel,
-          },
-          rightButton: {
-            label: "Save Changes",
-            variant: "primary",
-            onClick: form.handleSubmit(handleConfigurationSave),
-          },
-        };
-      } else {
-        return {
-          leftButton: {
-            label: "Back",
-            variant: "outline",
-            onClick: resetToSelection,
-          },
-          rightButton: {
-            label: "Save Configuration",
-            variant: "primary",
-            onClick: form.handleSubmit(handleConfigurationSave),
-          },
-        };
-      }
-    }
-
-    if (isInfoPage) {
-      return {
-        rightButton: {
-          label: "Close",
-          variant: "primary",
-          onClick: handleCancel,
-        },
-      };
-    }
-
-    return {};
-  };
-
-  const { leftButton, rightButton } = getFooterButtons();
+  const { leftButton, rightButton } = getFooterButtons({
+    currentPageId,
+    modeState,
+    selectedToolsInDialog,
+    form,
+    onCancel: handleCancel,
+    onModeChange,
+    onAddSelectedTools: () => {
+      handleAddSelectedTools();
+      setIsOpen(false);
+      onModeChange(null);
+    },
+    onConfigurationSave: handleConfigurationSave,
+    resetToSelection,
+  });
 
   return (
     <MultiPageDialog
@@ -774,11 +699,13 @@ export function MCPServerViewsDialog({
         rightButton={rightButton}
         addFooterSeparator
         footerContent={
-          <MCPServerViewsFooter
-            selectedToolsInDialog={selectedToolsInDialog}
-            dataVisualization={dataVisualization}
-            onRemoveSelectedTool={toggleToolSelection}
-          />
+          !isConfigureMode ? (
+            <MCPServerViewsFooter
+              selectedToolsInDialog={selectedToolsInDialog}
+              dataVisualization={dataVisualization}
+              onRemoveSelectedTool={toggleToolSelection}
+            />
+          ) : undefined
         }
       />
     </MultiPageDialog>
