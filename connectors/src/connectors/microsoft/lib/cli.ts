@@ -195,7 +195,7 @@ export const microsoft = async ({
       return { status: 200, content: { totalCount }, type: typeof totalCount };
     }
 
-    case "update-parents": {
+    case "update-parent-in-node-table": {
       const connector = await getConnector(args);
       const { internalId, idsFile } = args;
 
