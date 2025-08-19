@@ -354,10 +354,10 @@ export function ConversationContainer({
           variant="primary"
           className="mb-5 flex max-h-screen w-full pb-2 sm:w-full sm:max-w-3xl sm:pb-4"
         >
-          <b>
+          <span className="font-bold">
             {totalPendingValidations} action
             {pluralize(totalPendingValidations)}
-          </b>{" "}
+          </span>{" "}
           require{conjugate(totalPendingValidations)} manual approval
           <ContentMessageAction
             label="Review actions"
