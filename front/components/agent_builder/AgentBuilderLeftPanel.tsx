@@ -6,7 +6,6 @@ import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/cap
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
 import { AgentAccessPublicationDialog } from "@app/components/agent_builder/settings/AgentAccessPublicationDialog";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
-import { ConfirmContext } from "@app/components/Confirm";
 
 interface AgentBuilderLeftPanelProps {
   title: string;
@@ -23,20 +22,8 @@ export function AgentBuilderLeftPanel({
   saveButtonProps,
   isActionsLoading,
 }: AgentBuilderLeftPanelProps) {
-  const confirm = React.useContext(ConfirmContext);
-
   const handleCancel = async () => {
-    const confirmed = await confirm({
-      title: "Confirm Exit",
-      message:
-        "Are you sure you want to exit? Any unsaved changes will be lost.",
-      validateLabel: "Yes",
-      validateVariant: "warning",
-    });
-
-    if (confirmed) {
-      onCancel();
-    }
+    onCancel();
   };
   return (
     <div className="flex h-full flex-col">
