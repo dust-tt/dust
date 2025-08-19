@@ -122,19 +122,13 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
       sendNotification({
         type: "success",
         title: "Conversations successfully deleted",
-        description:
-          total > 1
-            ? `${total} conversations have been deleted.`
-            : `${total} conversation has been deleted.`,
+        description: `${total} conversation${total > 1 ? "s" : ""} have been deleted.`,
       });
     } else if (successCount === 0) {
       sendNotification({
         type: "error",
         title: "Failed to delete conversations",
-        description:
-          total > 1
-            ? "Could not delete the selected conversations."
-            : "Could not delete the selected conversation.",
+        description: `Could not delete the selected ${total > 1 ? "conversations" : "conversation"}.`,
       });
     } else {
       sendNotification({
@@ -162,10 +156,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
       sendNotification({
         type: "success",
         title: "Conversations successfully deleted",
-        description:
-          total > 1
-            ? `${total} conversations have been deleted.`
-            : `${total} conversation has been deleted.`,
+        description: `${total} conversation${total > 1 ? "s" : ""} have been deleted.`,
       });
     } else if (successCount === 0) {
       sendNotification({
