@@ -106,7 +106,7 @@ async function handler(
     (action) => action.type === "DATA_VISUALIZATION"
   );
 
-  const assistant = {
+  const agent = {
     name: yamlConfig.agent.handle,
     description: yamlConfig.agent.description,
     instructions: yamlConfig.instructions,
@@ -137,7 +137,7 @@ async function handler(
 
   const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
     auth,
-    assistant,
+    assistant: agent,
   });
 
   if (agentConfigurationRes.isErr()) {

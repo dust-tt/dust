@@ -95,15 +95,7 @@ async function handler(
 
   const yamlConfigResult = await AgentYAMLConverter.fromBuilderFormData(
     auth,
-    formData,
-    {
-      version: `${agentConfiguration.version}`,
-      agentSId: agentConfiguration.sId,
-      createdBy: agentConfiguration.editors
-        ? agentConfiguration.editors[0].sId
-        : "unknown",
-      lastModified: new Date(),
-    }
+    formData
   );
 
   if (yamlConfigResult.isErr()) {

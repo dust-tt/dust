@@ -24,15 +24,6 @@ import type {
 } from "./schemas";
 import { agentYAMLConfigSchema } from "./schemas";
 
-const yamlConverterMetadataSchema = z.object({
-  agentSId: z.string().min(1, "Agent ID is required"),
-  createdBy: z.string().min(1, "Created by user ID is required"),
-  lastModified: z.date(),
-  version: z.string().min(1, "Version is required"),
-});
-
-type YamlConverterMetadata = z.infer<typeof yamlConverterMetadataSchema>;
-
 /**
  * AgentYAMLConverter provides utilities for converting between AgentBuilderFormData
  * and YAML format, with proper error handling and type safety.
@@ -51,24 +42,15 @@ export class AgentYAMLConverter {
    */
   static async fromBuilderFormData(
     auth: Authenticator,
-    formData: AgentBuilderFormData,
-    metadata: YamlConverterMetadata
+    formData: AgentBuilderFormData
   ): Promise<Result<AgentYAMLConfig, Error>> {
     try {
-      const validatedMetadata = yamlConverterMetadataSchema.parse(metadata);
-
       const actionsResult = await this.convertActions(auth, formData.actions);
       if (actionsResult.isErr()) {
         return actionsResult;
       }
 
       const yamlConfig = {
-        metadata: {
-          version: validatedMetadata.version,
-          agent_id: validatedMetadata.agentSId,
-          last_modified: validatedMetadata.lastModified.toISOString(),
-          created_by: validatedMetadata.createdBy,
-        },
         agent: {
           handle: formData.agentSettings.name,
           description: formData.agentSettings.description,

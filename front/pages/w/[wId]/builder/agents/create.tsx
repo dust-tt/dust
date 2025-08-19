@@ -26,7 +26,6 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   SubscriptionType,
   TemplateTagCodeType,
@@ -92,8 +91,6 @@ export default function CreateAgent({
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
   });
-
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const { assistantTemplates } = useAssistantTemplates();
 
@@ -190,20 +187,16 @@ export default function CreateAgent({
                   variant="highlight"
                   href={`/w/${owner.sId}/builder/agents/new`}
                 />
-                {hasFeature("agent_builder_v2") && (
-                  <Button
-                    icon={FolderOpenIcon}
-                    label={
-                      isUploadingYAML ? "Uploading..." : "Upload from YAML"
-                    }
-                    data-gtm-label="yamlUploadButton"
-                    data-gtm-location="assistantCreationPage"
-                    size="md"
-                    variant="outline"
-                    disabled={isUploadingYAML}
-                    onClick={triggerYAMLUpload}
-                  />
-                )}
+                <Button
+                  icon={FolderOpenIcon}
+                  label={isUploadingYAML ? "Uploading..." : "Upload from YAML"}
+                  data-gtm-label="yamlUploadButton"
+                  data-gtm-location="assistantCreationPage"
+                  size="md"
+                  variant="outline"
+                  disabled={isUploadingYAML}
+                  onClick={triggerYAMLUpload}
+                />
               </div>
             </div>
 
