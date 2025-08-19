@@ -7,6 +7,8 @@ export type ScheduleConfig = {
   timezone: string;
 };
 
+export type TriggerConfigurationsType = ScheduleConfig;
+
 export type TriggerConfiguration = { kind: "schedule"; config: ScheduleConfig };
 
 export type TriggerType = {
