@@ -138,7 +138,7 @@ export function AgentBuilderPreview() {
           </div>
           <div className="flex-shrink-0 p-4">
             <AssistantInputBar
-              disable={isSavingDraftAgent}
+              disableButton={isSavingDraftAgent}
               owner={owner}
               onSubmit={handleSubmit}
               stickyMentions={stickyMentions}
