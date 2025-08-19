@@ -375,7 +375,7 @@ export function ConversationContainer({
         }
         stickyMentions={stickyMentions}
         conversationId={activeConversationId}
-        disableButton={hasPendingValidations}
+        disable={hasPendingValidations}
       />
 
       {!activeConversationId && (
