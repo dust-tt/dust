@@ -149,7 +149,8 @@ const getCachedSlackAIEnablementStatus = cacheWithRedis<
       return "unknown";
     }
   },
-  (_auth: Authenticator, id: string) => `slack-ai-enablement-status-${id}`,
+  (_auth: Authenticator, mcpServerId: string) =>
+    `slack-ai-enablement-status-${mcpServerId}`,
   {
     ttlMs: SLACK_AI_STATUS_CACHE_TTL_MS,
   }
