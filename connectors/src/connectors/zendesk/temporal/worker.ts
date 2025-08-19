@@ -4,10 +4,7 @@ import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import { ZendeskCastKnownErrorsInterceptor } from "@connectors/connectors/zendesk/temporal/cast_known_errors";
 import { getTemporalWorkerConnection } from "@connectors/lib/temporal";
-import {
-  ActivityInboundLogInterceptor,
-  ActivityOutboundLogInterceptor,
-} from "@connectors/lib/temporal_monitoring";
+import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
 
 import * as activities from "./activities";
@@ -29,7 +26,6 @@ export async function runZendeskWorkers() {
       activity: [
         (ctx: Context) => ({
           inbound: new ActivityInboundLogInterceptor(ctx, logger, "zendesk"),
-          outbound: new ActivityOutboundLogInterceptor("zendesk"),
         }),
         () => ({
           inbound: new ZendeskCastKnownErrorsInterceptor(),
