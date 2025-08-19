@@ -247,6 +247,23 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [createTreeItem("temp/cache"), createTreeItem("logs/old")],
       });
     });
+
+    it("should remove child in when adding its parent", () => {
+      const tree = {
+        in: [createTreeItem("root/a/b", "a.b")],
+        notIn: [],
+      };
+
+      const result = addNodeToTree(tree, {
+        path: "root/a",
+        name: "a",
+        type: "root",
+      });
+
+      expect(result).toEqual({
+        in: [createTreeItem("root/a", "a")],
+      });
+    });
   });
 
   describe("removeNodeFromTree", () => {
