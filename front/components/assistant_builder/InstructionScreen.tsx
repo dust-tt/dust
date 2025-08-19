@@ -37,6 +37,7 @@ import { useUserMetadata } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { classNames } from "@app/lib/utils";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
   ModelConfigurationType,
@@ -106,6 +107,7 @@ export function InstructionScreen({
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
+  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
 
   const extensions = useMemo(() => {
     return getAgentBuilderInstructionsExtensionsForWorkspace(
@@ -335,7 +337,12 @@ export function InstructionScreen({
                 size="xs"
                 onClick={() => {
                   void router.push(
-                    `/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`
+                    getAgentBuilderRoute(
+                      owner.sId,
+                      "create",
+                      hasAgentBuilderV2,
+                      "flow=personal_assistants"
+                    )
                   );
                 }}
                 label="Browse templates"
@@ -364,7 +371,11 @@ export function InstructionScreen({
                   You can also use one of our{" "}
                   <Hoverable
                     variant="highlight"
-                    href={`/w/${owner.sId}/builder/assistants/create`}
+                    href={getAgentBuilderRoute(
+                      owner.sId,
+                      "create",
+                      hasAgentBuilderV2
+                    )}
                     target="_blank"
                   >
                     templates
