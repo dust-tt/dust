@@ -124,26 +124,30 @@ const getCachedSlackAIEnablementStatus = cacheWithRedis<
       return "unknown";
     }
 
-    const assistantSearchInfo = await fetch(
-      "https://slack.com/api/assistant.search.info",
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${connection.access_token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    try {
+      const assistantSearchInfo = await fetch(
+        "https://slack.com/api/assistant.search.info",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${connection.access_token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-    if (!assistantSearchInfo.ok) {
+      if (!assistantSearchInfo.ok) {
+        return "unknown";
+      }
+
+      const assistantSearchInfoJson = await assistantSearchInfo.json();
+
+      return assistantSearchInfoJson.is_ai_search_enabled
+        ? "enabled"
+        : "disabled";
+    } catch (e) {
       return "unknown";
     }
-
-    const assistantSearchInfoJson = await assistantSearchInfo.json();
-
-    return assistantSearchInfoJson.is_ai_search_enabled
-      ? "enabled"
-      : "disabled";
   },
   (_auth: Authenticator, id: string) => `slack-ai-enablement-status-${id}`,
   {
