@@ -130,10 +130,11 @@ export function AdvancedSettings() {
               onChange={(e) => setTempResponseFormat(e.target.value)}
               minHeight={450}
               className={cn(
-                "rounded-lg",
-                isInvalidJson(tempResponseFormat ?? responseFormatField.value)
-                  ? "border-2 border-red-500 bg-slate-100 dark:bg-slate-100-night"
-                  : "bg-slate-100 dark:bg-slate-100-night"
+                "rounded-lg bg-slate-100 dark:bg-slate-100-night",
+                isInvalidJson(
+                  tempResponseFormat ?? responseFormatField.value
+                ) &&
+                  "border-2 border-red-500 bg-slate-100 dark:bg-slate-100-night"
               )}
               style={{
                 fontSize: 13,
