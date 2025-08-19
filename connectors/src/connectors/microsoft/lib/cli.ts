@@ -235,7 +235,7 @@ export const microsoft = async ({
         internalIds = [internalId];
       }
 
-      //get node grom ms graph api
+      // Get node from MS Graph API.
       const client = await getClient(connector.connectionId);
 
       for (const internalId of internalIds) {
