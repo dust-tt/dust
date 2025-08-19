@@ -5,6 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction as AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import logger from "@app/logger/logger";
+import { logAgentLoopStepStart } from "@app/temporal/agent_loop/activities/instrumentation";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { runModelActivity } from "@app/temporal/agent_loop/lib/run_model";
@@ -49,6 +50,14 @@ export async function runModelAndCreateActionsActivity({
   }
 
   const { auth, ...runAgentData } = runAgentDataRes.value;
+
+  // Log step start.
+  logAgentLoopStepStart({
+    agentMessageId: runAgentData.agentMessage.sId,
+    conversationId: runAgentData.conversation.sId,
+    executionMode: runAgentArgs.sync ? "sync" : "async",
+    step,
+  });
 
   if (checkForResume) {
     // Check if actions already exist for this step. If so, we are resuming from tool validation.

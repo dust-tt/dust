@@ -3,7 +3,13 @@ import assert from "assert";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { wakeLock } from "@app/lib/wake_lock";
-import logger from "@app/logger/logger";
+import {
+  logAgentLoopPhaseCompletionActivity,
+  logAgentLoopPhaseStartActivity,
+  logAgentLoopPhaseTimeout,
+  logAgentLoopStart,
+  logAgentLoopStepCompletionActivity,
+} from "@app/temporal/agent_loop/activities/instrumentation";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
@@ -15,7 +21,7 @@ import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
   ExecutionMode,
   RunAgentArgs,
-  RunAgentExecutionData,
+  RunAgentArgsInput,
 } from "@app/types/assistant/agent_run";
 
 // 2 minutes timeout before switching from sync to async execution.
@@ -26,10 +32,10 @@ const SYNC_TO_ASYNC_TIMEOUT_MS = 2 * 60 * 1000;
  */
 async function launchAsyncWorkflowFromSyncData(
   authType: AuthenticatorType,
-  runAgentExecutionData: RunAgentExecutionData,
+  runAgentArgs: RunAgentArgs & { sync: true },
   { startStep }: { startStep: number }
 ): Promise<void> {
-  const { agentMessage, conversation, userMessage } = runAgentExecutionData;
+  const { agentMessage, conversation, userMessage } = runAgentArgs.inMemoryData;
 
   await launchAgentLoopWorkflow({
     authType,
@@ -42,6 +48,7 @@ async function launchAsyncWorkflowFromSyncData(
       userMessageVersion: userMessage.version,
     },
     startStep,
+    initialStartTime: runAgentArgs.initialStartTime,
   });
 }
 
@@ -49,19 +56,24 @@ async function launchAsyncWorkflowFromSyncData(
 // but it now handles updating it based on the execution results.
 async function runAgentSynchronousWithStreaming(
   authType: AuthenticatorType,
-  runAgentExecutionData: RunAgentExecutionData,
+  runAgentArgs: RunAgentArgs & { sync: true },
   {
     startStep,
     withTimeout = true,
   }: { startStep: number; withTimeout?: boolean }
 ): Promise<void> {
-  const runAgentArgs: RunAgentArgs = {
+  const runAgentExecutionData = runAgentArgs.inMemoryData;
+  const runAgentArgsForExecution: RunAgentArgs = {
     sync: true,
     inMemoryData: runAgentExecutionData,
+    initialStartTime: runAgentArgs.initialStartTime,
     ...(withTimeout && { syncToAsyncTimeoutMs: SYNC_TO_ASYNC_TIMEOUT_MS }),
   };
 
-  const titlePromise = ensureConversationTitle(authType, runAgentArgs);
+  const titlePromise = ensureConversationTitle(
+    authType,
+    runAgentArgsForExecution
+  );
 
   // NOTE: This is an exception to our usual Result<> pattern. Since executeAgentLoop is shared
   // between Temporal workflows (which have serialization constraints) and direct execution,
@@ -72,8 +84,11 @@ async function runAgentSynchronousWithStreaming(
       async () => {
         await executeAgentLoop(
           authType,
-          runAgentArgs,
+          runAgentArgsForExecution,
           {
+            logAgentLoopPhaseCompletionActivity,
+            logAgentLoopPhaseStartActivity,
+            logAgentLoopStepCompletionActivity,
             runModelAndCreateActionsActivity,
             runToolActivity,
           },
@@ -96,20 +111,21 @@ async function runAgentSynchronousWithStreaming(
         runAgentExecutionData.conversation.title = generatedTitle;
       }
 
-      await launchAsyncWorkflowFromSyncData(authType, runAgentExecutionData, {
+      await launchAsyncWorkflowFromSyncData(authType, runAgentArgs, {
         startStep: error.currentStep,
       });
 
-      logger.info(
-        {
+      logAgentLoopPhaseTimeout({
+        authType,
+        eventData: {
           agentMessageId: runAgentExecutionData.agentMessage.sId,
           conversationId: runAgentExecutionData.conversation.sId,
           currentStep: error.currentStep,
-          elapsedMs: error.elapsedMs,
-          workspaceId: authType.workspaceId,
+          executionMode: "sync",
+          phaseDurationMs: error.elapsedMs,
+          stepsCompleted: error.currentStep - startStep,
         },
-        "Sync execution timeout reached - switching to async"
-      );
+      });
 
       // Don't continue with sync execution after switching to async.
       return;
@@ -136,7 +152,7 @@ async function runAgentSynchronousWithStreaming(
  */
 export async function runAgentLoop(
   auth: Authenticator,
-  runAgentArgs: RunAgentArgs,
+  runAgentArgs: RunAgentArgsInput,
   {
     executionMode = "auto",
     startStep,
@@ -144,21 +160,43 @@ export async function runAgentLoop(
 ): Promise<void> {
   const authType = auth.toJSON();
 
-  if (runAgentArgs.sync && executionMode !== "async") {
-    await runAgentSynchronousWithStreaming(
-      authType,
-      runAgentArgs.inMemoryData,
-      { startStep, withTimeout: executionMode !== "sync" }
-    );
-  } else if (runAgentArgs.sync) {
-    await launchAsyncWorkflowFromSyncData(authType, runAgentArgs.inMemoryData, {
+  // Capture initial start time and log total execution start.
+  const initialStartTime = Date.now();
+  const conversationId = runAgentArgs.sync
+    ? runAgentArgs.inMemoryData.conversation.sId
+    : runAgentArgs.idArgs.conversationId;
+  const agentMessageId = runAgentArgs.sync
+    ? runAgentArgs.inMemoryData.agentMessage.sId
+    : runAgentArgs.idArgs.agentMessageId;
+
+  logAgentLoopStart({
+    conversationId,
+    agentMessageId,
+    executionMode: runAgentArgs.sync ? "sync" : "async",
+    startStep,
+  });
+
+  // Thread initial start time through execution
+  const runAgentArgsWithTiming = {
+    ...runAgentArgs,
+    initialStartTime,
+  };
+
+  if (runAgentArgsWithTiming.sync && executionMode !== "async") {
+    await runAgentSynchronousWithStreaming(authType, runAgentArgsWithTiming, {
+      startStep,
+      withTimeout: executionMode !== "sync",
+    });
+  } else if (runAgentArgsWithTiming.sync) {
+    await launchAsyncWorkflowFromSyncData(authType, runAgentArgsWithTiming, {
       startStep,
     });
   } else {
     await launchAgentLoopWorkflow({
       authType,
-      runAsynchronousAgentArgs: runAgentArgs.idArgs,
+      runAsynchronousAgentArgs: runAgentArgsWithTiming.idArgs,
       startStep,
+      initialStartTime: runAgentArgsWithTiming.initialStartTime,
     });
   }
 }
