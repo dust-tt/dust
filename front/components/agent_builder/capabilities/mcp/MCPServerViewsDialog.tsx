@@ -26,7 +26,6 @@ import {
   getFooterButtons,
   getInitialConfigurationTool,
   getInitialPageId,
-  getModeState,
   handleConfigurationSave as handleConfigurationSaveUtil,
   shouldGenerateUniqueName,
 } from "@app/components/agent_builder/capabilities/mcp/utils/dialogUtils";
@@ -132,9 +131,6 @@ export function MCPServerViewsDialog({
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
 
-  const modeState = getModeState(mode);
-  const { isEditMode, isInfoMode, isConfigureMode, isAddMode } = modeState;
-
   const [selectedToolsInDialog, setSelectedToolsInDialog] = useState<
     SelectedTool[]
   >([]);
@@ -233,7 +229,7 @@ export function MCPServerViewsDialog({
   }, [searchTerm, dataVisualization]);
 
   useEffect(() => {
-    if (isEditMode && mode?.type === "edit") {
+    if (mode?.type === "edit") {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION);
       setConfigurationTool(mode.action);
       setSelectedToolsInDialog([]);
@@ -250,11 +246,11 @@ export function MCPServerViewsDialog({
           setConfigurationMCPServerView(mcpServerView);
         }
       }
-    } else if (isConfigureMode && mode?.type === "configure") {
+    } else if (mode?.type === "configure") {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION);
       setConfigurationTool(mode.action);
       setConfigurationMCPServerView(mode.mcpServerView);
-    } else if (isInfoMode && mode?.type === "info") {
+    } else if (mode?.type === "info") {
       setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.INFO);
       setSelectedToolsInDialog([]);
 
@@ -278,7 +274,7 @@ export function MCPServerViewsDialog({
       setSearchTerm("");
     }
     setIsOpen(!!mode);
-  }, [mode, allMcpServerViews, isEditMode, isConfigureMode, isInfoMode]);
+  }, [mode, allMcpServerViews]);
 
   const toggleToolSelection = useCallback((tool: SelectedTool) => {
     setSelectedToolsInDialog((prev) => {
@@ -582,10 +578,12 @@ export function MCPServerViewsDialog({
     },
   ];
 
+  const currentMode = mode?.type ?? "add";
+
   const handleCancel = () => {
     setIsOpen(false);
     onModeChange(null);
-    if (isAddMode) {
+    if (currentMode) {
       resetDialog();
     }
   };
@@ -651,7 +649,7 @@ export function MCPServerViewsDialog({
 
   const { leftButton, rightButton } = getFooterButtons({
     currentPageId,
-    modeState,
+    modeType: currentMode,
     selectedToolsInDialog,
     form,
     onCancel: handleCancel,
@@ -671,7 +669,7 @@ export function MCPServerViewsDialog({
       onOpenChange={(open) => {
         setIsOpen(open);
 
-        if (!open && isAddMode) {
+        if (!open && currentMode === "add") {
           resetDialog();
         }
 
@@ -699,7 +697,7 @@ export function MCPServerViewsDialog({
         rightButton={rightButton}
         addFooterSeparator
         footerContent={
-          !isConfigureMode ? (
+          currentMode !== "configure" ? (
             <MCPServerViewsFooter
               selectedToolsInDialog={selectedToolsInDialog}
               dataVisualization={dataVisualization}

@@ -14,31 +14,15 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { pluralize } from "@app/types";
 
-export interface ModeState {
-  isEditMode: boolean;
-  isInfoMode: boolean;
-  isConfigureMode: boolean;
-  isAddMode: boolean;
-}
-
-export function getModeState(mode: DialogMode | null): ModeState {
-  const isEditMode = !!mode && mode.type === "edit";
-  const isInfoMode = !!mode && mode.type === "info";
-  const isConfigureMode = !!mode && mode.type === "configure";
-  const isAddMode = !mode || mode.type === "add";
-
-  return { isEditMode, isInfoMode, isConfigureMode, isAddMode };
-}
-
 export function getInitialPageId(
   mode: DialogMode | null
 ): ConfigurationPagePageId {
-  const { isEditMode, isConfigureMode, isInfoMode } = getModeState(mode);
+  const currentMode = mode?.type ?? "add";
 
-  if (isEditMode || isConfigureMode) {
+  if (currentMode === "edit" || currentMode === "configure") {
     return CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION;
   }
-  if (isInfoMode) {
+  if (currentMode === "info") {
     return CONFIGURATION_DIALOG_PAGE_IDS.INFO;
   }
   return CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION;
@@ -60,7 +44,7 @@ export function getInitialConfigurationTool(
 
 export interface FooterButtonOptions {
   currentPageId: ConfigurationPagePageId;
-  modeState: ModeState;
+  modeType: DialogMode["type"];
   selectedToolsInDialog: SelectedTool[];
   form: UseFormReturn<MCPFormData>;
   onCancel: () => void;
@@ -72,7 +56,7 @@ export interface FooterButtonOptions {
 
 export function getFooterButtons({
   currentPageId,
-  modeState,
+  modeType,
   selectedToolsInDialog,
   form,
   onCancel,
@@ -81,8 +65,6 @@ export function getFooterButtons({
   onConfigurationSave,
   resetToSelection,
 }: FooterButtonOptions) {
-  const { isEditMode, isConfigureMode } = modeState;
-
   const isToolSelectionPage =
     currentPageId === CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION;
   const isConfigurationPage =
@@ -109,7 +91,7 @@ export function getFooterButtons({
   }
 
   if (isConfigurationPage) {
-    if (isEditMode) {
+    if (modeType === "edit") {
       return {
         leftButton: {
           label: "Cancel",
@@ -124,7 +106,7 @@ export function getFooterButtons({
       };
     }
 
-    if (isConfigureMode) {
+    if (modeType === "configure") {
       return {
         leftButton: {
           label: "Back",
