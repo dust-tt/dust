@@ -6,10 +6,7 @@ import {
   getTemporalWorkerConnection,
   TEMPORAL_MAXED_CACHED_WORKFLOWS,
 } from "@connectors/lib/temporal";
-import {
-  ActivityInboundLogInterceptor,
-  ActivityOutboundLogInterceptor,
-} from "@connectors/lib/temporal_monitoring";
+import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
 
 import { WebCrawlerQueueNames } from "./config";
@@ -34,7 +31,6 @@ export async function runWebCrawlerWorker() {
               logger,
               "webcrawler"
             ),
-            outbound: new ActivityOutboundLogInterceptor("webcrawler"),
           }),
         ],
       },
@@ -56,7 +52,6 @@ export async function runWebCrawlerWorker() {
               logger,
               "webcrawler"
             ),
-            outbound: new ActivityOutboundLogInterceptor("webcrawler"),
           }),
         ],
       },
@@ -78,7 +73,6 @@ export async function runWebCrawlerWorker() {
               logger,
               "webcrawler"
             ),
-            outbound: new ActivityOutboundLogInterceptor("webcrawler"),
           }),
         ],
       },
