@@ -35,6 +35,7 @@ function isParentOrSamePath(parentPath: string, childPath: string): boolean {
 /**
  * Adds a path to the tree by adding it to the 'in' array and removing it from 'notIn' if present.
  * If a parent path is already included, don't add child paths to avoid redundancy.
+ * When adding a parent path, removes any child paths from 'in' to avoid redundancy.
  *
  * @returns New tree with the node added
  */
@@ -75,7 +76,11 @@ export function addNodeToTree(
     };
   }
 
-  const newIn = [...tree.in, item];
+  const newIn = tree.in.filter(
+    ({ path: inPath }) => !inPath.startsWith(pathPrefix)
+  );
+
+  newIn.push(item);
 
   return {
     in: newIn,
