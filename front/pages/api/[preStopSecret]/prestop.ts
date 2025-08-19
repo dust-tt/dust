@@ -134,7 +134,7 @@ async function handler(
       // Record timeout metrics.
       statsDClient.increment("prestop.timeouts");
       statsDClient.gauge("prestop.timeout_wake_locks", currentWakeLockCount);
-      statsDClient.histogram("prestop.timeout_duration_ms", elapsedMs);
+      statsDClient.distribution("prestop.timeout_duration_ms", elapsedMs);
 
       break;
     }
@@ -154,11 +154,11 @@ async function handler(
 
     // Record successful completion metrics.
     statsDClient.increment("prestop.completions");
-    statsDClient.histogram("prestop.wait_duration_ms", totalWaitMs);
+    statsDClient.distribution("prestop.wait_duration_ms", totalWaitMs);
   } else {
     // Record forced termination metrics.
     statsDClient.increment("prestop.forced_terminations");
-    statsDClient.histogram("prestop.forced_duration_ms", totalWaitMs);
+    statsDClient.distribution("prestop.forced_duration_ms", totalWaitMs);
   }
 
   res.status(200).end();
