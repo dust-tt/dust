@@ -280,6 +280,7 @@ const InputBarContainer = ({
             contentEditableClasses,
             "scrollbar-hide",
             "overflow-y-auto",
+            preventTyping && "cursor-not-allowed text-muted-foreground",
             isExpanded
               ? "h-[60vh] max-h-[60vh] lg:h-[80vh] lg:max-h-[80vh]"
               : "max-h-64 min-h-24 sm:min-h-14"
