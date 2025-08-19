@@ -1,4 +1,3 @@
-import { isArray } from "lodash";
 import { z } from "zod";
 
 import {
@@ -151,7 +150,7 @@ function createAdditionalConfigurationSchema(
       // Validate required lists
       for (const [key] of Object.entries(requirements.requiredLists)) {
         const value = additionalConfig[key];
-        if (!value || !isArray(value) || value.length === 0) {
+        if (!value || !Array.isArray(value) || value.length === 0) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: VALIDATION_MESSAGES.additionalConfig.listRequired(key),

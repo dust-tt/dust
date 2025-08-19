@@ -577,7 +577,6 @@ export function MCPServerViewsDialog({
   };
 
   const handleConfigurationSave = async (formData: MCPFormData) => {
-    console.log("formData", formData);
     if (!configurationTool || !form || !mcpServerView) {
       return;
     }
