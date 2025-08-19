@@ -252,7 +252,7 @@ export const microsoft = async ({
           client,
           typeAndPathFromInternalId(internalId).itemAPIPath
         );
-        //get parent reference from driveItem
+        // Get parent reference from driveItem.
         if (driveItem && !driveItem.root && driveItem.parentReference) {
           const parentInternalId = getParentReferenceInternalId(
             driveItem.parentReference
