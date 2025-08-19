@@ -650,6 +650,8 @@ impl LocalTable {
     ) -> Result<()> {
         let now = utils::now();
 
+        info!(bucket, bucket_csv_path, "CSV upsert started");
+
         let rows = GoogleCloudStorageCSVContent {
             bucket: bucket.to_string(),
             bucket_csv_path: bucket_csv_path.to_string(),
