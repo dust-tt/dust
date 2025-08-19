@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import logger from "@app/logger/logger";
 import { TriggerType } from "@app/types/assistant/triggers";
 
 export async function runScheduledAgentsActivity(
@@ -55,7 +56,7 @@ export async function runScheduledAgentsActivity(
   });
 
   if (messageRes.isErr()) {
-    console.error(
+    logger.error(
       {
         agentConfigurationId: trigger.agentConfigurationId,
         conversationId: newConversation.sId,
@@ -67,6 +68,4 @@ export async function runScheduledAgentsActivity(
     );
     return;
   }
-
-  console.log("scheduledAgentCallActivity: Message sent.");
 }
