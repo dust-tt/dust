@@ -280,14 +280,14 @@ export function AgentBuilderCapabilitiesBlock({
                   type="button"
                   onClick={onClickKnowledge}
                   label="Add knowledge"
-                  icon={BoltIcon}
+                  icon={BookOpenIcon}
                   variant="primary"
                 />
                 <Button
                   type="button"
                   onClick={() => setDialogMode({ type: "add" })}
                   label="Add tools"
-                  icon={ListAddIcon}
+                  icon={BoltIcon}
                   variant="outline"
                 />
               </div>
