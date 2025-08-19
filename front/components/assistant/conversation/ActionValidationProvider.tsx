@@ -57,7 +57,7 @@ function useValidationQueue({
         )
       );
     }
-  }, [currentValidation]);
+  }, [pendingValidations]);
 
   const handleValidationRequest = useCallback(
     (validationRequest: MCPActionValidationRequest) => {
