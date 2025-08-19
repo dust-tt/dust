@@ -16,7 +16,6 @@ import { isEmpty } from "lodash";
 import React, { useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderDataVizAction,
   AgentBuilderFormData,
@@ -145,7 +144,6 @@ interface AgentBuilderCapabilitiesBlockProps {
 export function AgentBuilderCapabilitiesBlock({
   isActionsLoading,
 }: AgentBuilderCapabilitiesBlockProps) {
-  const { presetActionToAdd, setPresetActionToAdd } = useAgentBuilderContext();
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { fields, remove, append, update } = useFieldArray<
     AgentBuilderFormData,
@@ -154,11 +152,8 @@ export function AgentBuilderCapabilitiesBlock({
     name: "actions",
   });
 
-  const {
-    mcpServerViewsWithKnowledge,
-    mcpServerViews,
-    isMCPServerViewsLoading,
-  } = useMCPServerViewsContext();
+  const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
+    useMCPServerViewsContext();
 
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
   const [knowledgeAction, setKnowledgeAction] = useState<{
