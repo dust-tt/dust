@@ -24,8 +24,8 @@ import type {
   RunAgentArgsInput,
 } from "@app/types/assistant/agent_run";
 
-// 80 seconds timeout before switching from sync to async execution.
-const SYNC_TO_ASYNC_TIMEOUT_MS = 80 * 1000;
+// 70 seconds timeout before switching from sync to async execution.
+const SYNC_TO_ASYNC_TIMEOUT_MS = 70 * 1000;
 
 /**
  * Helper to launch async workflow from sync data.
