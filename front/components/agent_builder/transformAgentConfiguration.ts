@@ -122,7 +122,7 @@ export function convertActionsForFormData(
     id: uniqueId(),
     name: action.name,
     description: action.description,
-    type: "MCP" as const,
+    type: "MCP",
     configuration: action.configuration,
   }));
 }
