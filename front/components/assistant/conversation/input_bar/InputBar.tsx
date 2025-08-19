@@ -370,7 +370,7 @@ export function AssistantInputBar({
           className="w-full"
           containerClassName="w-full"
           size={isFocused ? "large" : "medium"}
-          disabled={!isFloating || disable}
+          disabled={disable || !isFloating}
         >
           <div
             className={classNames(
@@ -381,18 +381,17 @@ export function AssistantInputBar({
               "border-border-dark dark:border-border-dark-night",
               "sm:border-border-dark/50 sm:focus-within:border-border-dark",
               "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
-              disable && "cursor-not-allowed bg-muted/50 opacity-50",
-              isFloating && !disable
+              disable && "cursor-not-allowed opacity-75",
+              isFloating
                 ? classNames(
                     "focus-within:ring-1 dark:focus-within:ring-1",
                     "dark:focus-within:ring-highlight/30-night focus-within:ring-highlight/30",
                     "sm:focus-within:ring-2 dark:sm:focus-within:ring-2"
                   )
-                : !disable &&
-                    classNames(
-                      "focus-within:border-highlight-300",
-                      "dark:focus-within:border-highlight-300-night"
-                    ),
+                : classNames(
+                    "focus-within:border-highlight-300",
+                    "dark:focus-within:border-highlight-300-night"
+                  ),
               isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}
           >
@@ -416,9 +415,7 @@ export function AssistantInputBar({
                 stickyMentions={stickyMentions}
                 fileUploaderService={fileUploaderService}
                 disableSendButton={
-                  disableSendButton ||
-                  fileUploaderService.isProcessingFiles ||
-                  disable
+                  disableSendButton || fileUploaderService.isProcessingFiles
                 }
                 disableTextInput={disable}
                 onNodeSelect={handleNodesAttachmentSelect}
