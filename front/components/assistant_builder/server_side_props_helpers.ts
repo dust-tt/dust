@@ -19,6 +19,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
+  DataSourceViewContentNode,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
   TemplateAgentConfigurationType,
@@ -171,9 +172,17 @@ async function renderDataSourcesConfigurations(
   },
   dataSourceViews: DataSourceViewResource[]
 ): Promise<DataSourceViewSelectionConfigurations> {
+  const localLogger = logger.child({
+    action: {
+      id: action.id,
+      type: action.type,
+    },
+  });
+
   const selectedResources = action.dataSources.map((ds) => ({
     dataSourceViewId: ds.dataSourceViewId,
     resources: ds.filter.parents?.in ?? null,
+    excludedResources: ds.filter.parents?.not ?? null,
     isSelectAll: !ds.filter.parents,
     tagsFilter: ds.filter.tags || null, // todo(TAF) Remove this when we don't need to support optional tags from builder.
   }));
@@ -210,12 +219,8 @@ async function renderDataSourcesConfigurations(
       );
 
       if (contentNodesRes.isErr()) {
-        logger.error(
+        localLogger.error(
           {
-            action: {
-              id: action.id,
-              type: action.type,
-            },
             dataSourceView: dataSourceView.toTraceJSON(),
             error: contentNodesRes.error,
             internalIds: sr.resources,
@@ -235,10 +240,33 @@ async function renderDataSourcesConfigurations(
         };
       }
 
+      let excludedResources: DataSourceViewContentNode[] = [];
+      if (sr.excludedResources && sr.excludedResources.length > 0) {
+        const excludedContentNodes = await getContentNodesForDataSourceView(
+          dataSourceView,
+          { internalIds: sr.excludedResources, viewType: "document" }
+        );
+        if (excludedContentNodes.isErr()) {
+          localLogger.error(
+            {
+              dataSourceView: dataSourceView.toTraceJSON(),
+              error: excludedContentNodes.error,
+              internalIds: sr.excludedResources,
+              workspace: {
+                id: dataSourceView.workspaceId,
+              },
+            },
+            "Agent Builder: Error fetching excluded content nodes for documents."
+          );
+        } else {
+          excludedResources = excludedContentNodes.value.nodes;
+        }
+      }
+
       return {
         dataSourceView: serializedDataSourceView,
         selectedResources: contentNodesRes.value.nodes,
-        excludedResources: [],
+        excludedResources,
         isSelectAll: sr.isSelectAll,
         tagsFilter: sr.tagsFilter,
       };
