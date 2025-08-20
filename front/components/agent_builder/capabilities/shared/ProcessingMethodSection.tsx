@@ -30,18 +30,29 @@ export function ProcessingMethodSection() {
   });
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
 
-  const hasOnlyTablesSelected = useMemo(() => {
+  const { hasOnlyTablesSelected, hasSomeTablesSelected } = useMemo(() => {
     if (!sources?.in?.length) {
-      return false;
+      return { hasOnlyTablesSelected: false, hasSomeTablesSelected: false };
     }
 
-    return sources.in.every((item) => {
-      // Check if the item is a node and has table type
-      if (item.type === "node" && item.node) {
-        return item.node.type === "table";
+    let tableCount = 0;
+    let totalCount = 0;
+
+    for (const item of sources.in) {
+      // Count all selectable items (nodes)
+      if (item.type === "node") {
+        totalCount++;
+        // Check if this node is a table
+        if (item.node?.type === "table") {
+          tableCount++;
+        }
       }
-      return false;
-    });
+    }
+
+    return {
+      hasOnlyTablesSelected: totalCount > 0 && tableCount === totalCount,
+      hasSomeTablesSelected: tableCount > 0,
+    };
   }, [sources]);
 
   useEffect(() => {
@@ -53,6 +64,15 @@ export function ProcessingMethodSection() {
       );
       if (tableServer) {
         onChange(tableServer);
+      }
+    } else {
+      const searchServer = mcpServerViewsWithKnowledge.find(
+        (serverView) =>
+          serverView.serverType === "internal" &&
+          serverView.server.name === "search"
+      );
+      if (searchServer) {
+        onChange(searchServer);
       }
     }
   }, [hasOnlyTablesSelected, mcpServerViewsWithKnowledge, onChange]);
@@ -84,17 +104,29 @@ export function ProcessingMethodSection() {
           </DropdownMenuTrigger>
 
           <DropdownMenuContent>
-            {mcpServerViewsWithKnowledge.map((view) => (
-              <DropdownMenuItem
-                key={view.id}
-                label={getMcpServerViewDisplayName(view)}
-                icon={getAvatar(view.server)}
-                onClick={() => onChange(view)}
-                description={getMcpServerViewDescription(view)}
-              />
-            ))}
+            {mcpServerViewsWithKnowledge
+              .filter((view) =>
+                hasOnlyTablesSelected
+                  ? view.server.name === "query_tables"
+                  : view.server.name !== "query_tables"
+              )
+              .map((view) => (
+                <DropdownMenuItem
+                  key={view.id}
+                  label={getMcpServerViewDisplayName(view)}
+                  icon={getAvatar(view.server)}
+                  onClick={() => onChange(view)}
+                  description={getMcpServerViewDescription(view)}
+                />
+              ))}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {!hasOnlyTablesSelected && hasSomeTablesSelected && (
+          <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+            Your tables will be ignored
+          </div>
+        )}
       </div>
     </div>
   );
