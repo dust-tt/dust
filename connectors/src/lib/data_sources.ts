@@ -22,11 +22,7 @@ import { toMarkdown } from "mdast-util-to-markdown";
 import { gfm } from "micromark-extension-gfm";
 
 import { apiConfig } from "@connectors/lib/api/config";
-import {
-  DustConnectorWorkflowError,
-  TablesError,
-  WorkspaceQuotaExceededError,
-} from "@connectors/lib/error";
+import { DustConnectorWorkflowError, TablesError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { ProviderVisibility } from "@connectors/types";
