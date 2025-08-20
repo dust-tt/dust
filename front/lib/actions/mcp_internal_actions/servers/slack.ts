@@ -32,7 +32,12 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { TimeFrame } from "@app/types";
-import { parseTimeFrame, stripNullBytes, timeFrameFromNow } from "@app/types";
+import {
+  parseTimeFrame,
+  sha256,
+  stripNullBytes,
+  timeFrameFromNow,
+} from "@app/types";
 import { isDevelopment, isDustWorkspace } from "@app/types/shared/env";
 
 const serverInfo: InternalMCPServerDefinitionType & {
@@ -167,52 +172,43 @@ type SlackAIStatus = "enabled" | "disabled" | "unknown";
 
 const SLACK_AI_STATUS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-// Cache the result as this involved a call to the Slack API
+const getSlackAIEnablementStatus = async (
+  accessToken: string
+): Promise<SlackAIStatus> => {
+  try {
+    const assistantSearchInfo = await fetch(
+      "https://slack.com/api/assistant.search.info",
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!assistantSearchInfo.ok) {
+      return "unknown";
+    }
+
+    const assistantSearchInfoJson = await assistantSearchInfo.json();
+
+    return assistantSearchInfoJson.is_ai_search_enabled
+      ? "enabled"
+      : "disabled";
+  } catch (e) {
+    return "unknown";
+  }
+};
+
+// Cache the result as this involves a call to the Slack API
+// We use a hash of the access token as the cache key to avoid storing sensitive information directly
 const getCachedSlackAIEnablementStatus = cacheWithRedis<
   SlackAIStatus,
-  [auth: Authenticator, mcpServerId: string]
+  [accessToken: string]
 >(
-  async (auth: Authenticator, mcpServerId: string): Promise<SlackAIStatus> => {
-    if (!mcpServerId) {
-      return "unknown";
-    }
-
-    const connection = await getConnectionForMCPServer(auth, {
-      mcpServerId,
-      connectionType: "workspace",
-    });
-
-    if (!connection) {
-      return "unknown";
-    }
-
-    try {
-      const assistantSearchInfo = await fetch(
-        "https://slack.com/api/assistant.search.info",
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${connection.access_token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!assistantSearchInfo.ok) {
-        return "unknown";
-      }
-
-      const assistantSearchInfoJson = await assistantSearchInfo.json();
-
-      return assistantSearchInfoJson.is_ai_search_enabled
-        ? "enabled"
-        : "disabled";
-    } catch (e) {
-      return "unknown";
-    }
-  },
-  (_auth: Authenticator, mcpServerId: string) =>
-    `slack-ai-enablement-status-${mcpServerId}`,
+  getSlackAIEnablementStatus,
+  (accessToken: string) => `slack-ai-enablement-status-${sha256(accessToken)}`,
   {
     ttlMs: SLACK_AI_STATUS_CACHE_TTL_MS,
   }
@@ -225,19 +221,16 @@ const createServer = async (
 ): Promise<McpServer> => {
   const server = makeInternalMCPServer(serverInfo);
 
-  if (isDustWorkspace(auth.getNonNullableWorkspace()) || isDevelopment()) {
-    const c = await getConnectionForMCPServer(auth, {
-      mcpServerId,
-      connectionType: "workspace", // Always get the admin token.
-    });
+  const conn = await getConnectionForMCPServer(auth, {
+    mcpServerId,
+    connectionType: "workspace", // Always get the admin token.
+  });
 
-    if (!c) {
-      logger.warn("No connection found for slack");
-    }
-    // Note: this is a temporary tool to test the dynamic configuration of channels, but it's meant to be added directly to one of the tools below.
-    else {
+  if (isDustWorkspace(auth.getNonNullableWorkspace()) || isDevelopment()) {
+    if (conn) {
+      // Note: this is a temporary tool to test the dynamic configuration of channels, but it's meant to be added directly to one of the tools below.
       try {
-        const slackClient = await getSlackClient(c.access_token);
+        const slackClient = await getSlackClient(conn.access_token);
         const channels = await getCachedPublicChannels({
           mcpServerId,
           slackClient,
@@ -281,13 +274,12 @@ const createServer = async (
     }
   }
 
+  const slackAIStatus = conn
+    ? await getCachedSlackAIEnablementStatus(conn.access_token)
+    : "unknown";
+
   // If it's enabled or disabled, we end up with only one of the two tools. Otherwise we add both,
   // which is expected to happen before we have a Slack connection.
-  const slackAIStatus = await getCachedSlackAIEnablementStatus(
-    auth,
-    mcpServerId
-  );
-
   if (slackAIStatus === "disabled" || slackAIStatus === "unknown") {
     server.tool(
       "search_messages",
