@@ -34,7 +34,7 @@ export function AgentBuilderLeftPanel({
         rightActions={<AgentAccessPublicationDialog />}
       />
       <ScrollArea className="flex-1">
-        <div className="space-y-10 p-4">
+        <div className="mx-auto space-y-10 p-4 2xl:max-w-4xl">
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
