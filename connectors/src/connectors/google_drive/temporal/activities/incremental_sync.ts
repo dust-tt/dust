@@ -304,6 +304,13 @@ export async function incrementalSync(
       );
       return undefined;
     } else {
+      localLogger.error(
+        {
+          error: e,
+          isWithRetries: e instanceof WithRetriesError,
+        },
+        `Unhandled error in incremental sync`
+      );
       throw e;
     }
   }
