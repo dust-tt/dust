@@ -744,7 +744,7 @@ export async function handleMCPActionError(
       isError: false,
       output: [outputContent],
       type: "tool_action",
-      runningState: "completed",
+      runningState: "errored",
     }),
   };
 }

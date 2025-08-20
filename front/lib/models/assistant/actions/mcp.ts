@@ -243,7 +243,7 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   /**
    * Tracks the actual execution status of the MCP action.
    * This is separate from executionState which tracks user approval.
-   * Values: "not_started", "running", "completed", "failed", "cancelled"
+   * Values: "not_started", "running", "completed", "errored"
    */
   declare runningState: MCPRunningState;
 
