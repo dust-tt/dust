@@ -261,6 +261,7 @@ AgentMCPAction.init(
     status: {
       type: DataTypes.STRING,
       allowNull: true,
+      defaultValue: "succeeded",
     },
     isError: {
       type: DataTypes.BOOLEAN,
