@@ -3,7 +3,11 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type {
+  LightMCPToolConfigurationType,
+  MCPExecutionState,
+} from "@app/lib/actions/mcp";
+import type { MCPRunningState } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -187,28 +191,33 @@ AgentMCPServerConfiguration.belongsTo(MCPServerViewModel, {
 
 export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare createdAt: CreationOptional<Date>;
+
   declare updatedAt: CreationOptional<Date>;
 
   declare mcpServerConfigurationId: string;
 
   declare version: number;
+
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+
   declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
 
   declare isError: boolean;
-  declare executionState:
-    | "pending"
-    | "timeout"
-    | "allowed_explicitly"
-    | "allowed_implicitly"
-    | "denied";
+
+  declare executionState: MCPExecutionState;
+
+  declare runningState: MCPRunningState;
 
   declare citationsAllocated: number;
+
   declare augmentedInputs: Record<string, unknown>;
+
   declare toolConfiguration: LightMCPToolConfigurationType;
+
   declare stepContext: StepContext;
 
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
+
   declare agentMessage?: NonAttribute<AgentMessage>;
 }
 
@@ -246,6 +255,13 @@ AgentMCPAction.init(
             "denied",
           ],
         ],
+      },
+    },
+    runningState: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        isIn: [["not_started", "running", "completed", "errored"]],
       },
     },
     isError: {
