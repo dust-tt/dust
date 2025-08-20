@@ -64,6 +64,9 @@ function getSlackActivities() {
 // this is to avoid "Failed to signalWithStart Workflow: 3 INVALID_ARGUMENT: exceeded workflow execution limit for signal events"
 const MAX_SIGNAL_RECEIVED_COUNT = 990;
 
+// Max debounce
+const MAX_DEBOUNCE_COUNT = 100;
+
 /**
  * This workflow is in charge of synchronizing all the content of the Slack channels selected by the user.
  * The channel IDs are sent via Temporal signals.
@@ -91,7 +94,7 @@ export async function workspaceFullSync(
   });
   setHandler(syncChannelSignal, async (input) => {
     for (const channelId of input.channelIds) {
-      void childWorkflowQueue.add(async () => {
+      await childWorkflowQueue.add(async () => {
         await getSlackActivities().reportInitialSyncProgressActivity(
           connectorId,
           `${i - 1}/${input.channelIds.length} channels`
@@ -195,7 +198,7 @@ export async function syncOneThreadDebounced(
     signaled = true;
   });
 
-  while (signaled) {
+  while (signaled && debounceCount < MAX_DEBOUNCE_COUNT) {
     signaled = false;
     await sleep(10000);
     if (signaled) {
@@ -224,6 +227,12 @@ export async function syncOneThreadDebounced(
     );
     await getSlackActivities().saveSuccessSyncActivity(connectorId);
   }
+
+  // If we hit max iterations, continue as new
+  if (debounceCount >= MAX_DEBOUNCE_COUNT) {
+    await continueAsNew(connectorId, channelId, threadTs);
+  }
+
   // /!\ Any signal received outside of the while loop will be lost, so don't make any async
   // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
 }
@@ -257,12 +266,11 @@ export async function syncOneMessageDebounced(
     signaled = true;
   });
 
-  while (signaled) {
+  while (signaled && debounceCount < MAX_DEBOUNCE_COUNT) {
     signaled = false;
     await sleep(10000);
     if (signaled) {
       debounceCount++;
-
       continue;
     }
 
@@ -293,6 +301,12 @@ export async function syncOneMessageDebounced(
 
     await getSlackActivities().saveSuccessSyncActivity(connectorId);
   }
+
+  // If we hit max iterations, continue as new
+  if (debounceCount >= MAX_DEBOUNCE_COUNT) {
+    await continueAsNew(connectorId, channelId, threadTs);
+  }
+
   // /!\ Any signal received outside of the while loop will be lost, so don't make any async
   // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
 }
