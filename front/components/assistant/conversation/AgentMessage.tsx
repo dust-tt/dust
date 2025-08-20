@@ -321,6 +321,31 @@ export function AgentMessage({
       "AgentMessage must be used within a GenerationContextProvider"
     );
   }
+  // Keep the GenerationContext in sync with the current agent state so the
+  // input bar can know when a tool is executing (acting) and hide the stop button.
+  React.useEffect(() => {
+    if (agentMessageToRender.status === "created") {
+      generationContext.setMessageStates((prev) => {
+        if (prev[message.sId] === messageStreamState.agentState) {
+          return prev;
+        }
+        return { ...prev, [message.sId]: messageStreamState.agentState };
+        });
+    } else {
+      generationContext.setMessageStates((prev) => {
+        if (!(message.sId in prev)) {
+          return prev;
+        }
+        const { [message.sId]: _removed, ...rest } = prev;
+        return rest;
+      });
+    }
+  }, [
+    agentMessageToRender.status,
+    messageStreamState.agentState,
+    message.sId,
+    generationContext,
+  ]);
   React.useEffect(() => {
     const isInArray = generationContext.generatingMessages.some(
       (m) => m.messageId === message.sId

@@ -349,11 +349,18 @@ export function AssistantInputBar({
     setDisableSendButton(disable);
   }, [disable]);
 
+  // Hide the stop button if the current generating message is in acting state (tool execution).
+  const hasGeneratingInThisConversation =
+    generationContext.generatingMessages.some(
+      (m) => m.conversationId === conversationId
+    );
+  const isActingInThisConversation = generationContext.generatingMessages
+    .filter((m) => m.conversationId === conversationId)
+    .some((m) => generationContext.messageStates[m.messageId] === "acting");
+
   return (
     <div className="flex w-full flex-col">
-      {generationContext.generatingMessages.some(
-        (m) => m.conversationId === conversationId
-      ) && (
+      {hasGeneratingInThisConversation && !isActingInThisConversation && (
         <div className="flex justify-center px-4 pb-4">
           <Button
             variant="outline"
