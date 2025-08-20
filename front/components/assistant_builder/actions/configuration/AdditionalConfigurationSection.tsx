@@ -210,9 +210,15 @@ function ListConfigurationSection({
   }
 
   return Object.entries(requiredLists).map(([key, listValues]) => {
-    const displayLabel = `Select ${formatKeyForDisplay(key)}`;
     const rawValue = additionalConfiguration[key];
     const currentValue: string[] = Array.isArray(rawValue) ? rawValue : [];
+    let displayLabel =
+      currentValue.length > 0
+        ? currentValue.map((v) => listValues[v]).join(", ")
+        : `Select ${formatKeyForDisplay(key)}`;
+    if (displayLabel.length > 16) {
+      displayLabel = `${currentValue.length} selected`;
+    }
 
     return (
       <div key={key} className="mb-2 flex items-center gap-1">
@@ -223,11 +229,7 @@ function ListConfigurationSection({
           <DropdownMenuTrigger asChild>
             <Button
               isSelect
-              label={
-                currentValue.length > 0
-                  ? currentValue.map((v) => listValues[v]).join(", ")
-                  : displayLabel
-              }
+              label={displayLabel}
               size="sm"
               tooltip={displayLabel}
               variant="outline"
@@ -287,7 +289,9 @@ function GroupedConfigurationSection({
   const hasConfiguration =
     Object.keys(requiredStrings).length > 0 ||
     Object.keys(requiredNumbers).length > 0 ||
-    Object.keys(requiredBooleans).length > 0;
+    Object.keys(requiredBooleans).length > 0 ||
+    Object.keys(requiredEnums).length > 0 ||
+    Object.keys(requiredLists).length > 0;
 
   if (!hasConfiguration) {
     return null;

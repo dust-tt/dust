@@ -1,12 +1,14 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebClient } from "@slack/web-api";
+import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
 import type { Match } from "@slack/web-api/dist/response/SearchMessagesResponse";
 import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
 import uniqBy from "lodash/uniqBy";
 import slackifyMarkdown from "slackify-markdown";
 import { z } from "zod";
 
+import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import type {
   SearchQueryResourceType,
   SearchResultResourceType,
@@ -28,8 +30,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { removeDiacritics } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { cacheWithRedis } from "@app/lib/utils/cache";
+import logger from "@app/logger/logger";
 import type { TimeFrame } from "@app/types";
 import { parseTimeFrame, stripNullBytes, timeFrameFromNow } from "@app/types";
+import { isDevelopment, isDustWorkspace } from "@app/types/shared/env";
 
 const serverInfo: InternalMCPServerDefinitionType & {
   authorization: AuthorizationInfo;
@@ -64,6 +69,56 @@ const getSlackClient = async (accessToken?: string) => {
     },
   });
 };
+
+type GetPublicChannelsArgs = {
+  mcpServerId: string;
+  slackClient: WebClient;
+};
+
+type ChannelWithIdAndName = Omit<Channel, "id" | "name"> & {
+  id: string;
+  name: string;
+};
+
+const _getPublicChannels = async ({
+  slackClient,
+}: GetPublicChannelsArgs): Promise<ChannelWithIdAndName[]> => {
+  const channels: Channel[] = [];
+
+  let cursor: string | undefined = undefined;
+  do {
+    const response = await slackClient.conversations.list({
+      cursor,
+      limit: 100,
+      exclude_archived: true,
+      types: "public_channel",
+    });
+    if (!response.ok) {
+      throw new Error(`Error listing channels: ${response.error}`);
+    }
+    channels.push(...(response.channels ?? []));
+    cursor = response.response_metadata?.next_cursor;
+  } while (cursor);
+
+  return channels
+    .filter((c) => !!c.id && !!c.name)
+    .map((c) => ({
+      ...c,
+      id: c.id!,
+      name: c.name!,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+};
+
+const getCachedPublicChannels = cacheWithRedis(
+  _getPublicChannels,
+  ({ mcpServerId }: GetPublicChannelsArgs) => {
+    return `public-channels-${mcpServerId}`;
+  },
+  {
+    ttlMs: 60 * 10 * 1000, // 10 minutes
+  }
+);
 
 function makeQueryResource(
   keywords: string[],
@@ -110,9 +165,66 @@ function isSlackTokenRevoked(error: unknown): boolean {
 
 const createServer = async (
   auth: Authenticator,
+  mcpServerId: string,
   agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> => {
   const server = makeInternalMCPServer(serverInfo);
+
+  if (isDustWorkspace(auth.getNonNullableWorkspace()) || isDevelopment()) {
+    const c = await getConnectionForMCPServer(auth, {
+      mcpServerId,
+      connectionType: "workspace", // Always get the admin token.
+    });
+
+    if (!c) {
+      logger.warn("No connection found for slack");
+    }
+    // Note: this is a temporary tool to test the dynamic configuration of channels, but it's meant to be added directly to one of the tools below.
+    else {
+      try {
+        const slackClient = await getSlackClient(c.access_token);
+        const channels = await getCachedPublicChannels({
+          mcpServerId,
+          slackClient,
+        });
+
+        channels.unshift({
+          id: "*",
+          name: "All public channels",
+        });
+
+        const options = channels.map((c) =>
+          z.object({
+            value: z.literal(c.id),
+            label: z.literal(c.id === "*" ? c.name : `#${c.name}`),
+          })
+        );
+
+        server.tool(
+          "list_picked_channels",
+          "List all channels that the user has picked",
+          {
+            channels: z.object({
+              // "options" are optionals because we only need them for the UI but they won't be provided when the tool is called.
+              // Note: I don't know how to make this work without the any.
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              options: z.union(options as any).optional(),
+              values: z.array(z.string()),
+              mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.LIST),
+            }),
+          },
+          async ({ channels }) => {
+            return makeMCPToolJSONSuccess({
+              message: "Channels listed",
+              result: channels.values,
+            });
+          }
+        );
+      } catch (error) {
+        logger.warn("Error listing channels: ", error);
+      }
+    }
+  }
 
   if (
     !(await getFeatureFlags(auth.getNonNullableWorkspace())).includes(
@@ -913,47 +1025,33 @@ const createServer = async (
       const slackClient = await getSlackClient(accessToken);
 
       try {
-        const channels: any[] = [];
+        const channels = await getCachedPublicChannels({
+          mcpServerId,
+          slackClient,
+        });
 
-        let cursor: string | undefined = undefined;
-        do {
-          const response = await slackClient.conversations.list({
-            cursor,
-            limit: 100,
-            types: "public_channel",
-          });
-          if (!response.ok) {
-            return makeMCPToolTextError(
-              `Error listing channels: ${response.error}`
-            );
+        if (nameFilter) {
+          const normalizedNameFilter = removeDiacritics(
+            nameFilter.toLowerCase()
+          );
+          const filteredChannels = channels.filter(
+            (channel) =>
+              removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
+                normalizedNameFilter
+              ) ||
+              removeDiacritics(
+                channel.topic?.value?.toLowerCase() ?? ""
+              ).includes(normalizedNameFilter)
+          );
+
+          // Early return if we found a channel
+          if (filteredChannels.length > 0) {
+            return makeMCPToolJSONSuccess({
+              message: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"`,
+              result: filteredChannels,
+            });
           }
-          channels.push(...(response.channels ?? []));
-          cursor = response.response_metadata?.next_cursor;
-
-          if (nameFilter) {
-            const normalizedNameFilter = removeDiacritics(
-              nameFilter.toLowerCase()
-            );
-            const filteredChannels = channels.filter(
-              (channel) =>
-                removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
-                  normalizedNameFilter
-                ) ||
-                removeDiacritics(
-                  channel.topic?.value?.toLowerCase() ?? ""
-                ).includes(normalizedNameFilter)
-            );
-
-            // Early return if we found a channel
-            if (filteredChannels.length > 0) {
-              return makeMCPToolJSONSuccess({
-                message: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"`,
-                result: filteredChannels,
-              });
-            }
-          }
-        } while (cursor);
-
+        }
         if (nameFilter) {
           return makeMCPToolJSONSuccess({
             message: `The workspace has ${channels.length} channels but none containing "${nameFilter}"`,
