@@ -1,4 +1,4 @@
-import uniqueId from 'lodash/uniqueId';
+import uniqueId from "lodash/uniqueId";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
