@@ -10,7 +10,7 @@ import {
   SparklesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -282,6 +282,7 @@ function AgentDescriptionInput() {
 function AgentPictureInput() {
   const { owner } = useAgentBuilderContext();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const hasSuggestedRef = useRef(false);
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
     name: "instructions",
   });
@@ -326,10 +327,20 @@ function AgentPictureInput() {
   useEffect(() => {
     if (
       !field.value &&
+      !hasSuggestedRef.current &&
       instructions &&
       instructions.length >= MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
     ) {
+      hasSuggestedRef.current = true;
       void updateEmojiFromSuggestions();
+    }
+
+    // Reset the flag if instructions become too short again
+    if (
+      instructions &&
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+    ) {
+      hasSuggestedRef.current = false;
     }
   }, [field.value, instructions, updateEmojiFromSuggestions]);
 
