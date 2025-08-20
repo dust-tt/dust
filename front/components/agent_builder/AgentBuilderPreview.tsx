@@ -1,4 +1,4 @@
-import { ArrowPathIcon, Button, Spinner } from "@dust-tt/sparkle";
+import { Button, Spinner } from "@dust-tt/sparkle";
 import React from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -50,6 +50,7 @@ function LoadingState({ message }: LoadingStateProps) {
     </div>
   );
 }
+
 
 export function AgentBuilderPreview() {
   const { owner } = useAgentBuilderContext();
@@ -108,17 +109,6 @@ export function AgentBuilderPreview() {
     return (
       <>
         <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
-          {conversation && (
-            <div className="flex items-center justify-end px-6 py-3">
-              <Button
-                variant="outline"
-                size="sm"
-                icon={ArrowPathIcon}
-                onClick={resetConversation}
-                label="Reset conversation"
-              />
-            </div>
-          )}
           <div className="flex-1 overflow-y-auto px-4">
             {conversation && user && (
               <div className={currentPanel ? "hidden" : "block"}>
@@ -133,6 +123,15 @@ export function AgentBuilderPreview() {
               </div>
             )}
           </div>
+          {conversation && (
+            <div className="flex justify-center px-4">
+              <Button
+                variant="outline"
+                onClick={resetConversation}
+                label="Clear conversation"
+              />
+            </div>
+          )}
           <div className="flex-shrink-0 p-4">
             <AssistantInputBar
               disable={isSavingDraftAgent}
