@@ -70,6 +70,7 @@ const MultiPageSheetFooter = ({
       {...props}
     >
       {children}
+      <Separator />
       <div className="s-flex s-flex-row s-justify-between">
         <div>{leftButton && <Button {...leftButton} />}</div>
         <div className="s-flex s-gap-2">
