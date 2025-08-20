@@ -23,6 +23,7 @@ import type {
   Result,
 } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+import type { PluginRunType } from "@app/types/poke/plugins";
 
 import type { UserResource } from "./user_resource";
 
@@ -101,6 +102,21 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
     return new this(PluginRunResource.model, pluginRun.get());
   }
 
+  static async findByWorkspaceId(auth: Authenticator) {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const pluginRuns = await this.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return pluginRuns.map(
+      (pluginRun) => new this(PluginRunResource.model, pluginRun.get())
+    );
+  }
+
   async recordError(error: string) {
     await this.model.update(
       {
@@ -145,6 +161,18 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
     } catch (err) {
       return new Err(normalizeError(err));
     }
+  }
+
+  toJSON(): PluginRunType {
+    return {
+      createdAt: this.createdAt.getTime(),
+      author: this.author,
+      pluginId: this.pluginId,
+      status: this.status,
+      resourceType: this.resourceType,
+      resourceId: this.resourceId,
+      args: this.args ? JSON.parse(this.args) : {},
+    };
   }
 
   static async deleteAllForWorkspace(auth: Authenticator) {
