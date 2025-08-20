@@ -66,7 +66,7 @@ async function handler(
         return apiErrorForConversation(req, res, result.error);
       }
 
-      res.status(204).end();
+      res.status(200).end();
       return;
     }
 
