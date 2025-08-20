@@ -9,7 +9,7 @@ import { withLogging } from "@app/logger/withlogging";
 
 // This is defined as terminationGracePeriodSeconds in the deployment specification.
 // DO NOT CHANGE THIS VALUE unless you update the deployment specification.
-const PRESTOP_GRACE_PERIOD_MS = 130 * 1000; // 130 seconds grace period.
+export const PRESTOP_GRACE_PERIOD_MS = 130 * 1000; // 130 seconds grace period.
 
 const PRESTOP_MAX_WAIT_MS = 120 * 1000; // 120 seconds max wait.
 const PRESTOP_LOG_INTERVAL_MS = 1000; // 1 second log interval.
