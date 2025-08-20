@@ -161,7 +161,15 @@ export function transformSelectionConfigurationsToTree(
       for (const [parentId, nodes] of resourcesByParent) {
         for (const node of nodes) {
           if (parentId) {
-            const pathParts = [baseParts, parentId, node.internalId];
+            const pathParts = [
+              baseParts,
+              ...(
+                node.parentInternalIds?.filter(
+                  (id) => id !== node.internalId
+                ) ?? []
+              ).toReversed(),
+              node.internalId,
+            ];
             inPaths.push({
               path: pathParts.join("/"),
               name: parentId,
@@ -200,7 +208,15 @@ export function transformSelectionConfigurationsToTree(
       for (const [parentId, nodes] of excludedResourcesByParent) {
         for (const node of nodes) {
           if (parentId) {
-            const pathParts = [baseParts, parentId, node.internalId];
+            const pathParts = [
+              baseParts,
+              ...(
+                node.parentInternalIds?.filter(
+                  (id) => id !== node.internalId
+                ) ?? []
+              ).toReversed(),
+              node.internalId,
+            ];
             notInPaths.push({
               path: pathParts.join("/"),
               name: node.title,
@@ -212,8 +228,8 @@ export function transformSelectionConfigurationsToTree(
             notInPaths.push({
               path: pathParts.join("/"),
               name: node.title,
-              type: "node",
-              node,
+              type: "data_source",
+              dataSourceView: node.dataSourceView,
             });
           }
         }
