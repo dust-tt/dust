@@ -326,7 +326,7 @@ AgentMCPAction.init(
       allowNull: false,
       defaultValue: "not_started",
       validate: {
-        isIn: [["not_started", "running", "completed", "failed", "cancelled"]],
+        isIn: [["not_started", "running", "completed", "errored"]],
       },
     },
     isError: {

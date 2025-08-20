@@ -194,11 +194,10 @@ export type MCPExecutionState =
   | "timeout";
 
 export type MCPRunningState =
-  | "not_started" // Action created but not yet executed
-  | "running" // Currently executing
-  | "completed" // Successfully completed
-  | "failed" // Execution failed
-  | "cancelled"; // Execution was cancelled
+  | "not_started"
+  | "running"
+  | "completed"
+  | "errored";
 
 type MCPParamsEvent = {
   type: "tool_params";
