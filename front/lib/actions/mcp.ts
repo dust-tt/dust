@@ -390,6 +390,17 @@ export class MCPActionType {
       };
     }
 
+    // TODO(durable-agents): uncomment the following once the `status` has been filled.
+    // if (this.status === "denied") {
+    //   return {
+    //     role: "function" as const,
+    //     name: this.functionCallName,
+    //     function_call_id: this.functionCallId,
+    //     content:
+    //       "The user rejected this specific action execution. Using this action is hence forbidden for this message.",
+    //   };
+    // }
+
     const outputItems = removeNulls(
       this.output?.map(rewriteContentForModel) ?? []
     );

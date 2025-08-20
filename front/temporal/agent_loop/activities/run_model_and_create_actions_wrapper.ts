@@ -168,13 +168,14 @@ async function getExistingActionsAndBlobs(
         "Unexpected: step content is not a function call"
       );
 
-      // If the tool is not already in a final state we must add it to the list of actions to run.
-      if (!isToolExecutionStatusFinal(mcpAction.executionState)) {
-        actionBlobs.push({
-          actionId: mcpAction.id,
-          needsApproval: mcpAction.executionState === "pending",
-        });
-      }
+      // TODO(durable-agents): uncomment the following once `status` has been filled.
+      // // If the tool is not already in a final state we must add it to the list of actions to run.
+      // if (!isToolExecutionStatusFinal(mcpAction.executionState)) {
+      actionBlobs.push({
+        actionId: mcpAction.id,
+        needsApproval: mcpAction.executionState === "pending",
+      });
+      // }
     }
   }
 
