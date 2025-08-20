@@ -1,5 +1,5 @@
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodRawShape } from "zod";
 import { z } from "zod";
@@ -16,7 +16,10 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeInternalMCPServer,
+  makeMCPToolTextError,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isMCPConfigurationForDustAppRun } from "@app/lib/actions/types/guards";
@@ -343,7 +346,7 @@ export default async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer(serverInfo);
   const owner = auth.getNonNullableWorkspace();
 
   if (agentLoopContext && agentLoopContext.listToolsContext) {

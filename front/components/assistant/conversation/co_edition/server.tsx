@@ -5,6 +5,7 @@ import { registerEditorTools } from "@app/components/assistant/conversation/co_e
 import type { CoEditionContent } from "@app/components/assistant/conversation/co_edition/tools/editor/types";
 import { registerToggleTool } from "@app/components/assistant/conversation/co_edition/tools/toggle_co_edition";
 import type { CoEditionTransport } from "@app/components/assistant/conversation/co_edition/transport";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 
 export interface CoEditionState {
   isEnabled: boolean;

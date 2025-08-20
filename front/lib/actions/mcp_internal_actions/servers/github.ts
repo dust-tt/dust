@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Octokit } from "@octokit/core";
 import type {
   RequestInfo as UndiciRequestInfo,
@@ -8,6 +8,7 @@ import { fetch as undiciFetch, ProxyAgent } from "undici";
 import { z } from "zod";
 
 import {
+  makeInternalMCPServer,
   makeMCPToolTextError,
   makeMCPToolTextSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -60,7 +61,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 };
 
 const createServer = (auth: Authenticator): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer(serverInfo);
 
   server.tool(
     "create_issue",

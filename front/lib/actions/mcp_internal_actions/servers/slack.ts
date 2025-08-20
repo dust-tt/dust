@@ -1,5 +1,5 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebClient } from "@slack/web-api";
 import type { Match } from "@slack/web-api/dist/response/SearchMessagesResponse";
 import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
@@ -14,9 +14,11 @@ import type {
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/personal_authentication";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
+  makeInternalMCPServer,
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
@@ -29,7 +31,9 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { TimeFrame } from "@app/types";
 import { parseTimeFrame, stripNullBytes, timeFrameFromNow } from "@app/types";
 
-const serverInfo = {
+const serverInfo: InternalMCPServerDefinitionType & {
+  authorization: AuthorizationInfo;
+} = {
   name: "slack",
   version: "1.0.0",
   description: "Slack tools for searching and posting messages.",
@@ -39,7 +43,12 @@ const serverInfo = {
   },
   icon: "SlackLogo",
   documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
-} satisfies InternalMCPServerDefinitionType;
+  instructions:
+    "When posting a message on slack, you MUST use slack-flavored markdown to format the message." +
+    "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
+    "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the name of the channel you want to reference.\n" +
+    "NEVER use the channel name or the user name directly in a message as it will not be parsed correctly and appear as plain text.",
+};
 
 const getSlackClient = async (accessToken?: string) => {
   if (!accessToken) {
@@ -103,13 +112,7 @@ const createServer = async (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> => {
-  const server = new McpServer(serverInfo, {
-    instructions:
-      "When posting a message on slack, you MUST use slack-flavored markdown to format the message." +
-      "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
-      "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the name of the channel you want to reference.\n" +
-      "NEVER use the channel name or the user name directly in a message as it will not be parsed correctly and appear as plain text.",
-  });
+  const server = makeInternalMCPServer(serverInfo);
 
   if (
     !(await getFeatureFlags(auth.getNonNullableWorkspace())).includes(
