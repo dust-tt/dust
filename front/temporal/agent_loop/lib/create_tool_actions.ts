@@ -96,6 +96,12 @@ async function createActionForTool(
     step: number;
   }
 ): Promise<ActionBlob | void> {
+  const { status } = await getExecutionStatusFromConfig(
+    auth,
+    actionConfiguration,
+    agentMessage
+  );
+
   const actionBaseParams = await buildActionBaseParams({
     agentMessageId: agentMessage.agentMessageId,
     citationsAllocated: stepContext.citationsCount,
@@ -103,6 +109,7 @@ async function createActionForTool(
     mcpServerConfigurationId: actionConfiguration.id.toString(),
     step,
     stepContentId,
+    status,
   });
 
   const validateToolInputsResult = validateToolInputs(actionBaseParams.params);
@@ -142,6 +149,7 @@ async function createActionForTool(
     augmentedInputs,
     stepContentId,
     stepContext,
+    approvalStatus: status,
   });
 
   // Publish the tool params event.
@@ -158,13 +166,6 @@ async function createActionForTool(
       conversationId,
       step,
     }
-  );
-
-  // Handle tool approval.
-  const { status } = await getExecutionStatusFromConfig(
-    auth,
-    actionConfiguration,
-    agentMessage
   );
 
   if (status === "pending") {

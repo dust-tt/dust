@@ -67,6 +67,7 @@ export async function runToolActivity(
     mcpServerId,
     step,
     stepContentId: action.stepContentId,
+    status: action.status,
   });
 
   const mcpAction = new MCPActionType({

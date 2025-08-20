@@ -318,6 +318,7 @@ export class MCPActionType {
   readonly citationsAllocated: number = 0;
   // TODO(2025-07-24 aubin): remove the type here.
   readonly type = "tool_action" as const;
+  readonly status: ToolExecutionStatus;
 
   readonly runningState: MCPRunningState;
 
@@ -339,6 +340,7 @@ export class MCPActionType {
     this.step = blob.step;
     this.citationsAllocated = blob.citationsAllocated;
     this.runningState = blob.runningState;
+    this.status = blob.status;
   }
 
   getGeneratedFiles(): ActionGeneratedFileType[] {
@@ -658,12 +660,14 @@ export async function createMCPAction(
     augmentedInputs,
     stepContentId,
     stepContext,
+    approvalStatus,
   }: {
     actionBaseParams: ActionBaseParams;
     actionConfiguration: MCPToolConfigurationType;
     augmentedInputs: Record<string, unknown>;
     stepContentId: ModelId;
     stepContext: StepContext;
+    approvalStatus: "allowed_implicitly" | "pending";
   }
 ): Promise<{ action: AgentMCPAction; mcpAction: MCPActionType }> {
   const toolConfiguration = omit(
@@ -679,6 +683,7 @@ export async function createMCPAction(
     isError: false,
     mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
     runningState: "not_started",
+    status: approvalStatus,
     stepContentId,
     stepContext,
     toolConfiguration,
