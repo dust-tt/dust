@@ -1,12 +1,15 @@
 import { DustAPI } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeInternalMCPServer,
+  makeMCPToolTextError,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import { getSuggestedAgentsForContent } from "@app/lib/api/assistant/agent_suggestion";
 import apiConfig from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
@@ -23,20 +26,17 @@ const serverInfo: InternalMCPServerDefinitionType = {
   icon: "ActionRobotIcon",
   authorization: null,
   documentationUrl: null,
+  instructions: `These tools provide discoverability to published agents available in the workspace.
+The tools return agents with their "mention" markdown directive.
+The directive should be used to display a clickable version of the agent name in the response.`,
 };
 
 const MAX_INSTRUCTIONS_LENGTH = 1000;
 const LIST_ALL_AGENTS_TOOL_NAME = "list_all_published_agents";
 export const SUGGEST_AGENTS_TOOL_NAME = "suggest_agents_for_content";
 
-const SERVER_INSTRUCTIONS = `These tools provide discoverability to published agents available in the workspace.
-The tools return agents with their "mention" markdown directive.
-The directive should be used to display a clickable version of the agent name in the response.`;
-
 const createServer = (auth: Authenticator): McpServer => {
-  const server = new McpServer(serverInfo, {
-    instructions: SERVER_INSTRUCTIONS,
-  });
+  const server = makeInternalMCPServer(serverInfo);
 
   server.tool(
     LIST_ALL_AGENTS_TOOL_NAME,

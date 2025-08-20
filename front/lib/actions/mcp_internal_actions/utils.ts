@@ -1,7 +1,18 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type {
   CallToolResult,
   TextContent,
 } from "@modelcontextprotocol/sdk/types.js";
+
+import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
+
+export function makeInternalMCPServer(
+  serverInfo: InternalMCPServerDefinitionType
+): McpServer {
+  return new McpServer(serverInfo, {
+    instructions: serverInfo.instructions,
+  });
+}
 
 export function makeMCPToolTextError(text: string): {
   isError: true;

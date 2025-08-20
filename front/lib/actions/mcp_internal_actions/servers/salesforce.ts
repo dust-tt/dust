@@ -1,8 +1,9 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import jsforce from "jsforce";
 import { z } from "zod";
 
 import {
+  makeInternalMCPServer,
   makeMCPToolJSONSuccess,
   makeMCPToolTextSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -18,13 +19,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   },
   icon: "SalesforceLogo",
   documentationUrl: "https://docs.dust.tt/docs/salesforce",
-};
-
-const SF_API_VERSION = "57.0";
-
-const createServer = (): McpServer => {
-  const server = new McpServer(serverInfo, {
-    instructions: `You have access to the following tools: execute_read_query, list_objects, and describe_object.
+  instructions: `You have access to the following tools: execute_read_query, list_objects, and describe_object.
 
 # General Workflow for Salesforce Data:
 1.  **List Objects (Optional):** If you don't know the exact name of an object, use \`list_objects\` to find it.
@@ -69,7 +64,12 @@ The output includes:
 -   Other object-level properties.
 This is the most reliable way to discover the correct names for fields and relationships before writing an \`execute_read_query\`.
 `,
-  });
+};
+
+const SF_API_VERSION = "57.0";
+
+const createServer = (): McpServer => {
+  const server = makeInternalMCPServer(serverInfo);
 
   server.tool(
     "execute_read_query",
