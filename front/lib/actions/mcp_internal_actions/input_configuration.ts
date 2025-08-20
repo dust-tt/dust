@@ -188,7 +188,7 @@ function generateConfiguredInput({
           `Expected array of string values for key ${keyPath}, got ${typeof value} for mime type ${mimeType}`
         );
       }
-      return { values: value, labels: value, mimeType };
+      return { values: value, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP: {
@@ -514,24 +514,26 @@ export function getMCPServerRequirements(
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
       })
     ).map(([key, schema]) => {
-      const valueProperty = schema.properties?.values;
-      const labelProperty = schema.properties?.labels;
+      const optionsProperty = schema.properties?.options;
 
-      if (
-        !valueProperty ||
-        !labelProperty ||
-        !isJSONSchemaObject(valueProperty) ||
-        !isJSONSchemaObject(labelProperty)
-      ) {
+      if (!optionsProperty || !isJSONSchemaObject(optionsProperty)) {
         return [key, []];
       }
 
       const values =
-        valueProperty.enum?.filter((v): v is string => typeof v === "string") ??
-        [];
+        optionsProperty.anyOf?.map(
+          (v) =>
+            isJSONSchemaObject(v) &&
+            isJSONSchemaObject(v.properties?.value) &&
+            v.properties.value.const
+        ) ?? [];
       const labels =
-        labelProperty.enum?.filter((v): v is string => typeof v === "string") ??
-        [];
+        optionsProperty.anyOf?.map(
+          (v) =>
+            isJSONSchemaObject(v) &&
+            isJSONSchemaObject(v.properties?.label) &&
+            v.properties.label.const
+        ) ?? [];
 
       if (values.length !== labels.length) {
         throw new Error(
@@ -610,11 +612,12 @@ function isSchemaConfigurable(
   }
 
   if (mimeType === INTERNAL_MIME_TYPES.TOOL_INPUT.LIST) {
-    // We only check that the schema has a `values` property and a `mimeType` property with the correct value.
+    // We only check that the schema has a `options` property, a `values` property and a `mimeType` property with the correct value.
     const mimeTypeProperty = schema.properties?.mimeType;
+
     if (
+      schema.properties?.options &&
       schema.properties?.values &&
-      schema.properties?.labels &&
       mimeTypeProperty &&
       isJSONSchemaObject(mimeTypeProperty)
     ) {

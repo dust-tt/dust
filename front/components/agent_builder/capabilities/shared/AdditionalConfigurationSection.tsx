@@ -229,9 +229,15 @@ function ListConfigurationInput({
     name: `configuration.additionalConfiguration.${configKey}`,
   });
 
-  const displayLabel = `Select ${formatKeyForDisplay(configKey)}`;
   const rawValue = field.value;
   const currentValue: string[] = Array.isArray(rawValue) ? rawValue : [];
+  let displayLabel =
+    currentValue.length > 0
+      ? currentValue.map((v) => listValues[v]).join(", ")
+      : `Select ${formatKeyForDisplay(configKey)}`;
+  if (displayLabel.length > 16) {
+    displayLabel = `${currentValue.length} selected`;
+  }
 
   return (
     <>
@@ -244,11 +250,7 @@ function ListConfigurationInput({
             <DropdownMenuTrigger asChild>
               <Button
                 isSelect
-                label={
-                  currentValue.length > 0
-                    ? currentValue.map((v) => listValues[v]).join(", ")
-                    : displayLabel
-                }
+                label={displayLabel}
                 size="sm"
                 tooltip={displayLabel}
                 variant="outline"

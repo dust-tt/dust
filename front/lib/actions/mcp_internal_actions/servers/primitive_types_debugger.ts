@@ -42,8 +42,25 @@ function createServer(): McpServer {
         mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM),
       }),
       choices: z.object({
-        values: z.enum(["A", "B", "C"]),
-        labels: z.enum(["label A", "label B", "label C"]),
+        options: z
+          .union([
+            z.object({
+              value: z.literal("A"),
+              label: z.literal("Label A"),
+            }),
+            z.object({
+              value: z.literal("B"),
+              label: z.literal("Label B"),
+            }),
+            z.object({
+              value: z.literal("C"),
+              label: z.literal("Label C"),
+            }),
+          ])
+          // Options are optionals because we only need them for the UI but they won't be provided when the tool is called.
+          .optional(),
+        // "values" are required because they are used to provide the selected values when the tool is called.
+        values: z.array(z.string()),
         mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.LIST),
       }),
     },
