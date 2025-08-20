@@ -6,6 +6,10 @@ import { makeScript } from "@app/scripts/helpers";
 
 const BATCH_SIZE = 2048;
 
+// There are 3 possible final states: errored, succeeded, denied.
+// succeeded is the default (99.1% of actions), we backfill errored using the `isError` column
+// and denied using the `executionState` column.
+
 async function getNextBatch({
   lastId,
   targetStatus,
