@@ -279,9 +279,17 @@ export async function extractGitHubTarballToGCS(
 
   // Create directory placeholder files to preserve GitHub hierarchy.
   Array.from(seenDirs).forEach((dirPath) =>
-    uploadQueue.add(() =>
-      gcsManager.createDirectoryPlaceholder(gcsBasePath, dirPath)
-    )
+    uploadQueue.add(async () => {
+      try {
+        await gcsManager.createDirectoryPlaceholder(gcsBasePath, dirPath);
+      } catch (error) {
+        childLogger.error(
+          { error, dirPath, gcsBasePath },
+          "Error creating directory placeholder in GCS"
+        );
+        uploadErrors.push(error);
+      }
+    })
   );
 
   // Wait for all queued uploads to complete.
