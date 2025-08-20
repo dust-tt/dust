@@ -41,7 +41,7 @@ export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
   const [error, setError] = useState<APIError | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [shouldPulse, setShouldPulse] = useState(false);
-  const lastInstructionsRef = useRef<string>("");
+  const lastInstructionsRef = useRef("");
 
   // Reset pulse after animation completes so it can trigger again
   useEffect(() => {
