@@ -109,6 +109,11 @@ export async function runToolActivity(
             step,
           }
         );
+
+        await action.update({
+          runningState: "errored",
+        });
+
         return;
 
       case "tool_success":
@@ -126,6 +131,10 @@ export async function runToolActivity(
             step,
           }
         );
+
+        await action.update({
+          runningState: "completed",
+        });
 
         // We stitch the action into the agent message. The conversation is expected to include
         // the agentMessage object, updating this object will update the conversation as well.
