@@ -140,7 +140,10 @@ export function transformSelectionConfigurationsToTree(
         type: "data_source",
         dataSourceView,
       });
-    } else if (config.selectedResources.length > 0) {
+      continue;
+    }
+
+    if (config.selectedResources.length > 0) {
       // Group selected resources by parent for efficient processing
       const resourcesByParent = new Map<
         string | null,
@@ -177,12 +180,55 @@ export function transformSelectionConfigurationsToTree(
         }
       }
     }
+
+    // Process excluded resources and add them to notInPaths
+    if (config.excludedResources.length > 0) {
+      // Group excluded resources by parent for efficient processing
+      const excludedResourcesByParent = new Map<
+        string | null,
+        typeof config.excludedResources
+      >();
+
+      for (const node of config.excludedResources) {
+        const parentId = node.parentInternalId || null;
+        const nodes = excludedResourcesByParent.get(parentId) || [];
+        nodes.push(node);
+        excludedResourcesByParent.set(parentId, nodes);
+      }
+
+      // Add paths for excluded resources
+      for (const [parentId, nodes] of excludedResourcesByParent) {
+        for (const node of nodes) {
+          if (parentId) {
+            const pathParts = [baseParts, parentId, node.internalId];
+            notInPaths.push({
+              path: pathParts.join("/"),
+              name: node.title,
+              type: "node",
+              node,
+            });
+          } else {
+            const pathParts = [baseParts, node.internalId];
+            notInPaths.push({
+              path: pathParts.join("/"),
+              name: node.title,
+              type: "node",
+              node,
+            });
+          }
+        }
+      }
+    }
   }
 
-  return {
+  const res = {
     in: deduplicatePaths(inPaths),
     notIn: deduplicatePaths(notInPaths),
   };
+
+  console.log("RES", res);
+
+  return res;
 }
 
 /**
