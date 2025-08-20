@@ -174,7 +174,9 @@ function AgentActionsPanelContent({
         return;
       }
 
-      setCurrentStreamingStep(eventPayload.data.step + 1);
+      if (currentStreamingStep !== eventPayload.data.step + 1) {
+        setCurrentStreamingStep(eventPayload.data.step + 1);
+      }
 
       if (eventType === "tool_approve_execution") {
         return;
