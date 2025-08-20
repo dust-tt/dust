@@ -210,7 +210,7 @@ function AgentActionsPanelContent({
 
       dispatch(eventPayload.data);
     },
-    [mutateMessage]
+    [mutateMessage, currentStreamingStep]
   );
 
   useEventSource(
