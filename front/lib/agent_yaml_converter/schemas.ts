@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { additionalConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
   MODEL_IDS,
   MODEL_PROVIDER_IDS,
@@ -100,12 +101,7 @@ export const agentYAMLMCPActionSchema = baseAgentYAMLActionSchema.extend({
     time_frame: agentYAMLTimeFrameSchema.optional(),
     json_schema: z.object({}).nullable().optional(),
     reasoning_model: agentYAMLReasoningModelSchema.optional(),
-    additional_configuration: z
-      .record(
-        z.string(),
-        z.union([z.number(), z.string(), z.boolean(), z.array(z.string())])
-      )
-      .optional(),
+    additional_configuration: additionalConfigurationSchema.optional(),
   }),
 });
 

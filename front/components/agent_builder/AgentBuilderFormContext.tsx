@@ -30,7 +30,7 @@ export const mcpServerViewIdSchema = z.string();
 
 export const childAgentIdSchema = z.string().nullable();
 
-const additionalConfigurationSchema = z.record(
+export const additionalConfigurationSchema = z.record(
   z.string(),
   z.union([
     z.boolean(),
