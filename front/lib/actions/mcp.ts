@@ -756,6 +756,7 @@ export async function handleMCPActionError(
     // Update action to mark it as having an error.
     await action.update({
       isError: true,
+      status: "errored",
     });
 
     return {
@@ -769,6 +770,13 @@ export async function handleMCPActionError(
         metadata: params.errorMetadata ?? null,
       },
     };
+  }
+
+  // If the tool is not already in a terminal state
+  if (!isToolExecutionStatusTerminal(executionState)) {
+    await action.update({
+      status: "errored",
+    });
   }
 
   // Yields tool_success to continue conversation.
