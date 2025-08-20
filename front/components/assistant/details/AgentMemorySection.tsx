@@ -150,7 +150,7 @@ export function AgentMemorySection({
                         {timeAgoFrom(new Date(memory.lastUpdated).getTime())}{" "}
                         ago
                       </div>
-                      <div className="text-sm text-foreground">
+                      <div className="text-sm text-foreground dark:text-foreground-night">
                         {memory.content}
                       </div>
                     </div>
