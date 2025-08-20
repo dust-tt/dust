@@ -191,8 +191,7 @@ export type MCPExecutionState =
   | "allowed_explicitly"
   | "allowed_implicitly"
   | "denied"
-  | "pending"
-  | "timeout";
+  | "pending";
 
 // TODO(2025-08-20 aubin): remove this (consolidated into a single column).
 export type MCPRunningState =
