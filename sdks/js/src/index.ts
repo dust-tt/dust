@@ -694,12 +694,16 @@ export class DustAPI {
     contentFragments,
     blocking = false,
     skipToolsValidation = false,
-  }: PublicPostConversationsRequestBody): Promise<
-    Result<CreateConversationResponseType, APIError>
-  > {
+    params,
+  }: PublicPostConversationsRequestBody & {
+    params?: Record<string, string>;
+  }): Promise<Result<CreateConversationResponseType, APIError>> {
+    const queryParams = new URLSearchParams(params);
+
     const res = await this.request({
       method: "POST",
       path: "assistant/conversations",
+      query: queryParams.toString() ? queryParams : undefined,
       body: {
         title,
         visibility,

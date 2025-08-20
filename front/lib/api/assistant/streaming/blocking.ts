@@ -15,6 +15,7 @@ import type {
   UserMessageType,
 } from "@app/types";
 import { Ok } from "@app/types";
+import type { ExecutionMode } from "@app/types/assistant/agent_run";
 
 // We wait for 60 seconds for agent messages to complete.
 const WAIT_FOR_AGENT_COMPLETION_TIMEOUT_MS = 60000 * 3; // 3 minutes.
@@ -129,16 +130,18 @@ async function waitForAgentCompletion(
 export async function postUserMessageAndWaitForCompletion(
   auth: Authenticator,
   {
-    conversation,
     content,
-    mentions,
     context,
+    conversation,
+    executionMode,
+    mentions,
     skipToolsValidation,
   }: {
-    conversation: ConversationType;
     content: string;
-    mentions: MentionType[];
     context: UserMessageContext;
+    conversation: ConversationType;
+    executionMode?: ExecutionMode;
+    mentions: MentionType[];
     skipToolsValidation: boolean;
   }
 ): Promise<
@@ -151,10 +154,11 @@ export async function postUserMessageAndWaitForCompletion(
   >
 > {
   const postResult = await postUserMessage(auth, {
-    conversation,
     content,
-    mentions,
     context,
+    conversation,
+    executionMode,
+    mentions,
     skipToolsValidation,
   });
 
