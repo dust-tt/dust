@@ -6,7 +6,6 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { PluginRunType, WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
 
 export interface PokeListPluginRunsResponseBody {
   pluginRuns: PluginRunType[];
@@ -31,7 +30,8 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const { workspaceId } = req.query;
-      if (!isString(workspaceId)) {
+
+      if (workspaceId && typeof workspaceId !== "string") {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -41,7 +41,10 @@ async function handler(
         });
       }
 
-      auth = await Authenticator.fromSuperUserSession(session, workspaceId);
+      // If the run targets a specific workspace, use a workspace-scoped authenticator.
+      if (workspaceId) {
+        auth = await Authenticator.fromSuperUserSession(session, workspaceId);
+      }
 
       const pluginRuns = await PluginRunResource.findByWorkspaceId(auth);
 

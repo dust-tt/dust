@@ -103,11 +103,11 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
   }
 
   static async findByWorkspaceId(auth: Authenticator) {
-    const workspace = auth.getNonNullableWorkspace();
+    const workspace = auth.workspace();
 
     const pluginRuns = await this.model.findAll({
       where: {
-        workspaceId: workspace.id,
+        workspaceId: workspace?.id ?? null,
       },
       order: [["createdAt", "DESC"]],
     });
