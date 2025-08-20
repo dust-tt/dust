@@ -41,7 +41,8 @@ async function backfillActions(
   do {
     const mcpActions = await getNextBatch({ lastId, targetStatus });
     logger.info(
-      `Processing ${mcpActions.length} ${targetStatus} actions starting from ${lastId}`
+      { lastId, targetStatus },
+      `Processing ${mcpActions.length} actions`
     );
 
     if (execute) {
@@ -55,9 +56,15 @@ async function backfillActions(
           },
         }
       );
-      logger.info(`Updated ${mcpActions.length} actions`);
+      logger.info(
+        { lastId, targetStatus },
+        `Updated ${mcpActions.length} actions`
+      );
     } else {
-      logger.info(`Would update ${mcpActions.length} actions`);
+      logger.info(
+        { lastId, targetStatus },
+        `Would update ${mcpActions.length} actions`
+      );
     }
 
     lastId = mcpActions[mcpActions.length - 1].id;
