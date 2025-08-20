@@ -11,8 +11,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import React from "react";
 import { useWatch } from "react-hook-form";
 
-import { useDebounce } from "@app/hooks/useDebounce";
-
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type {
   APIError,
@@ -44,14 +42,6 @@ export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [shouldPulse, setShouldPulse] = useState(false);
   const lastInstructionsRef = useRef<string>("");
-
-  const {
-    debouncedValue: debouncedInstructions,
-    setValue: setDebouncedInstructions,
-  } = useDebounce(instructions || "", {
-    delay: 500,
-    minLength: 10,
-  });
 
   // Reset pulse after animation completes so it can trigger again
   useEffect(() => {
@@ -117,20 +107,24 @@ export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
     }
   }
 
-  // Trigger debounce when instructions change
+  // Debounced fetch tips when instructions change
   useEffect(() => {
-    setDebouncedInstructions(instructions || "");
-  }, [instructions, setDebouncedInstructions]);
+    const currentInstructions = instructions || "";
 
-  // Fetch tips when debounced instructions change
-  useEffect(() => {
+    // Skip if too short or same as last
     if (
-      debouncedInstructions &&
-      debouncedInstructions !== lastInstructionsRef.current
+      currentInstructions.length < 10 ||
+      currentInstructions === lastInstructionsRef.current
     ) {
-      void fetchTips(debouncedInstructions);
+      return;
     }
-  }, [debouncedInstructions, fetchTips]);
+
+    const timer = setTimeout(() => {
+      void fetchTips(currentInstructions);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [instructions, fetchTips]);
 
   return (
     <PopoverRoot open={isOpen} onOpenChange={onOpenChange}>
