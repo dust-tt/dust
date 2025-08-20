@@ -28,9 +28,7 @@ export function transformTreeToSelectionConfigurations(
     dataSourceViews.map((dsv) => [dsv.sId, dsv])
   );
 
-  const existingResourcesMap = new Map<string, Set<string>>();
-
-  // Parse the tree paths to extract data source configurations
+  // Parse the tree paths to extract data source configurations from included items
   for (const item of tree.in) {
     // We can skip for item that aren't data_source or node. As we only allow those
     // to be selected, it safe to skip, and make our life easier type wise after that checks
@@ -62,15 +60,54 @@ export function transformTreeToSelectionConfigurations(
       configurations[dataSourceView.sId] = {
         dataSourceView,
         selectedResources: [],
+        excludedResources: [],
         isSelectAll: isFullDataSource,
         tagsFilter: null,
       };
-      existingResourcesMap.set(dataSourceView.sId, new Set<string>());
     }
 
     // If it's not a full data source selection, extract the selected nodes
     if (item.type === "node") {
       configurations[dataSourceView.sId].selectedResources.push(item.node);
+    }
+  }
+
+  // Parse the tree paths to extract excluded resources from notIn items
+  for (const item of tree.notIn) {
+    // We can skip for item that aren't data_source or node. As we only allow those
+    // to be excluded, it safe to skip, and make our life easier type wise after that checks
+    if (item.type !== "node" && item.type !== "data_source") {
+      continue;
+    }
+
+    const parts = item.path.split("/");
+    // Find the data source view ID in the path - optimize with early break
+    const dsvIdIndex = parts.findIndex((part) => isDataSourceViewId(part));
+    const dsvId = parts[dsvIdIndex];
+
+    if (dsvId == null) {
+      continue;
+    }
+
+    const dataSourceView = dataSourceViewMap.get(dsvId);
+    if (!dataSourceView || dataSourceView.spaceId !== parts[1]) {
+      continue;
+    }
+
+    // Initialize configuration if not exists
+    if (!configurations[dataSourceView.sId]) {
+      configurations[dataSourceView.sId] = {
+        dataSourceView,
+        selectedResources: [],
+        excludedResources: [],
+        isSelectAll: false,
+        tagsFilter: null,
+      };
+    }
+
+    // Extract the excluded nodes
+    if (item.type === "node") {
+      configurations[dataSourceView.sId].excludedResources.push(item.node);
     }
   }
 
@@ -103,49 +140,76 @@ export function transformSelectionConfigurationsToTree(
         type: "data_source",
         dataSourceView,
       });
-    } else if (config.selectedResources.length > 0) {
-      // Group selected resources by parent for efficient processing
-      const resourcesByParent = new Map<
-        string | null,
-        typeof config.selectedResources
-      >();
+      continue;
+    }
 
+    if (config.selectedResources.length > 0) {
       for (const node of config.selectedResources) {
-        const parentId = node.parentInternalId || null;
-        const nodes = resourcesByParent.get(parentId) || [];
-        nodes.push(node);
-        resourcesByParent.set(parentId, nodes);
+        if (node.parentInternalId) {
+          const pathParts = [
+            baseParts,
+            ...(
+              node.parentInternalIds?.filter((id) => id !== node.internalId) ??
+              []
+            ).toReversed(),
+            node.internalId,
+          ];
+          inPaths.push({
+            path: pathParts.join("/"),
+            name: node.title,
+            type: "node",
+            node,
+          });
+        } else {
+          const pathParts = [baseParts, node.internalId];
+          inPaths.push({
+            path: pathParts.join("/"),
+            name: node.title,
+            type: "data_source",
+            dataSourceView: node.dataSourceView,
+          });
+        }
       }
+    }
 
-      // Add paths for selected resources
-      for (const [parentId, nodes] of resourcesByParent) {
-        for (const node of nodes) {
-          if (parentId) {
-            const pathParts = [baseParts, parentId, node.internalId];
-            inPaths.push({
-              path: pathParts.join("/"),
-              name: parentId,
-              type: "node",
-              node,
-            });
-          } else {
-            const pathParts = [baseParts, node.internalId];
-            inPaths.push({
-              path: pathParts.join("/"),
-              name: node.title,
-              type: "data_source",
-              dataSourceView: node.dataSourceView,
-            });
-          }
+    // Process excluded resources and add them to notInPaths
+    if (config.excludedResources.length > 0) {
+      // Add paths for excluded resources
+      for (const node of config.excludedResources) {
+        if (node.parentInternalId) {
+          const pathParts = [
+            baseParts,
+            ...(
+              node.parentInternalIds?.filter((id) => id !== node.internalId) ??
+              []
+            ).toReversed(),
+            node.internalId,
+          ];
+          notInPaths.push({
+            path: pathParts.join("/"),
+            name: node.title,
+            type: "node",
+            node,
+          });
+        } else {
+          const pathParts = [baseParts, node.internalId];
+          notInPaths.push({
+            path: pathParts.join("/"),
+            name: node.title,
+            type: "data_source",
+            dataSourceView: node.dataSourceView,
+          });
         }
       }
     }
   }
 
-  return {
+  const res = {
     in: deduplicatePaths(inPaths),
     notIn: deduplicatePaths(notInPaths),
   };
+
+  return res;
 }
 
 /**

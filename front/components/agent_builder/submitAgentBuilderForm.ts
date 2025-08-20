@@ -7,6 +7,7 @@ import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/config
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import type {
   AgentConfigurationType,
+  DataSourcesConfigurationsCodecType,
   DataSourceViewSelectionConfigurations,
   LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
@@ -17,14 +18,9 @@ import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 function processDataSourceConfigurations(
-  dataSourceConfigurations: DataSourceViewSelectionConfigurations | null,
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations,
   owner: WorkspaceType
-) {
-  // TODO: fix type, it should not be null.
-  if (dataSourceConfigurations === null) {
-    return [];
-  }
-
+): DataSourcesConfigurationsCodecType {
   return Object.values(dataSourceConfigurations).map((config) => ({
     dataSourceViewId: config.dataSourceView.sId,
     workspaceId: owner.sId,
@@ -33,7 +29,9 @@ function processDataSourceConfigurations(
         ? null
         : {
             in: config.selectedResources.map((resource) => resource.internalId),
-            not: [],
+            not: config.excludedResources.map(
+              (resource) => resource.internalId
+            ),
           },
       tags: config.tagsFilter
         ? {
@@ -139,16 +137,14 @@ export async function submitAgentBuilderForm({
               dataSources:
                 action.configuration.dataSourceConfigurations !== null
                   ? processDataSourceConfigurations(
-                      action.configuration
-                        .dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type
+                      action.configuration.dataSourceConfigurations,
                       owner
                     )
                   : null,
               tables:
                 action.configuration.tablesConfigurations !== null
                   ? processTableSelection(
-                      action.configuration
-                        .tablesConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type
+                      action.configuration.tablesConfigurations,
                       owner
                     )
                   : null,

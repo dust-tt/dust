@@ -59,6 +59,7 @@ export function StorageConfiguration({
           [dataSourceView.sId]: {
             dataSourceView,
             selectedResources: [],
+            excludedResources: [],
             isSelectAll: true,
             tagsFilter: null,
           },
@@ -110,6 +111,7 @@ export function StorageConfiguration({
           [dataSourceView.sId]: {
             dataSourceView,
             selectedResources: [],
+            excludedResources: [],
             isSelectAll: true,
             tagsFilter: null,
           },
