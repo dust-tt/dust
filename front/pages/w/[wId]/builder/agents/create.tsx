@@ -27,6 +27,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   SubscriptionType,
   TemplateTagCodeType,
@@ -34,7 +35,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;

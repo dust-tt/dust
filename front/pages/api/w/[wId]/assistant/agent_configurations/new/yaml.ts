@@ -1,6 +1,7 @@
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
+import uniqueId from "lodash/uniqueId";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
@@ -126,7 +127,7 @@ async function handler(
     actions: mcpConfigurations,
     templateId: null,
     tags: yamlConfig.tags.map((tag) => ({
-      sId: tag.sId,
+      sId: uniqueId(),
       name: tag.name,
       kind: tag.kind,
     })),
