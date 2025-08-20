@@ -1,5 +1,5 @@
 import type { Icon } from "@dust-tt/sparkle";
-import { uniqueId } from "lodash";
+import uniqueId from "lodash/uniqueId";
 import { z } from "zod";
 
 import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";

@@ -1,5 +1,5 @@
 import assert from "assert";
-import { uniq } from "lodash";
+import uniq from "lodash/uniq";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
 import {
