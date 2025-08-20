@@ -1,7 +1,6 @@
 import {
   continueAsNew,
   executeChild,
-  log,
   proxyActivities,
   setHandler,
   sleep,
@@ -58,10 +57,6 @@ function getSlackActivities() {
     syncThread,
   };
 }
-
-// we have a maximum of 990 signal received before we continue as new
-// this is to avoid "Failed to signalWithStart Workflow: 3 INVALID_ARGUMENT: exceeded workflow execution limit for signal events"
-const MAX_SIGNAL_RECEIVED_COUNT = 990;
 
 // Max debounce
 const MAX_DEBOUNCE_COUNT = 100;
