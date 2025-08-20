@@ -50,7 +50,7 @@ const serpapiSearch = async (
 ): Promise<Result<SearchResponse, Error>> => {
   if (options.api_key == null) {
     return new Err(
-      new Error("util/webtools: a DUST_MANAGED_SERP_API_KEY is required")
+      new Error("utils/websearch: a DUST_MANAGED_SERP_API_KEY is required")
     );
   }
 
@@ -98,13 +98,20 @@ const serpapiSearch = async (
         },
         [] as SearchResultItem[]
       );
+
       return new Ok(results);
     }
 
     return new Ok([]);
   }
 
-  return new Err(new Error("Bad request on SerpAPI"));
+  // TODO: Remove once we have a proper error handling.
+  logger.error(
+    { status: res.status, statusText: res.statusText },
+    "Bad request on SerpAPI"
+  );
+
+  return new Err(new Error(`Bad request on SerpAPI: ${res.statusText}`));
 };
 
 const serperSearch = async (
@@ -128,7 +135,13 @@ const serperSearch = async (
     return new Ok(json);
   }
 
-  return new Err(new Error("Bad request on SerpAPI"));
+  // TODO: Remove once we have a proper error handling.
+  logger.error(
+    { status: res.status, statusText: res.statusText },
+    "Bad request on Serper"
+  );
+
+  return new Err(new Error(`Bad request on Serper: ${res.statusText}`));
 };
 
 /**
