@@ -258,7 +258,7 @@ const MultiPageDialogContent = React.forwardRef<
             </div>
           </DialogHeader>
 
-          <div className="s-min-h-0 s-flex-1 s-overflow-hidden">
+          <div className="s-min-h-0 s-flex-1 s-overflow-y-auto">
             <div
               className={cn(
                 "s-h-full s-transition-all s-duration-200 s-ease-out",
