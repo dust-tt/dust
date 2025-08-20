@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 
 export interface WakeLockEntry {
-  context?: Record<string, string>;
+  context?: Record<string, string | null>;
   id: string;
   startTime: number;
 }
@@ -13,11 +13,7 @@ declare global {
 
 export async function wakeLock<T>(
   autoCallback: () => Promise<T>,
-  context?: {
-    conversationId?: string;
-    agentMessageId?: string;
-    operation?: string;
-  }
+  context?: WakeLockEntry["context"]
 ): Promise<T> {
   if (!global.wakeLocks) {
     global.wakeLocks = new Map();

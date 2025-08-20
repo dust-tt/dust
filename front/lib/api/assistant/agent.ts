@@ -161,6 +161,7 @@ async function runAgentSynchronousWithStreaming(
         operation: "agent_sync_execution",
         conversationId: runAgentExecutionData.conversation.sId,
         agentMessageId: runAgentExecutionData.agentMessage.sId,
+        workspaceId: authType.workspaceId,
       }
     );
   } catch (error) {
