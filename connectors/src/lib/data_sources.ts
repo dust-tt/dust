@@ -22,7 +22,11 @@ import { toMarkdown } from "mdast-util-to-markdown";
 import { gfm } from "micromark-extension-gfm";
 
 import { apiConfig } from "@connectors/lib/api/config";
-import { DustConnectorWorkflowError, TablesError } from "@connectors/lib/error";
+import {
+  DustConnectorWorkflowError,
+  TablesError,
+  WorkspaceQuotaExceededError,
+} from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { ProviderVisibility } from "@connectors/types";
@@ -185,6 +189,18 @@ async function _upsertDataSourceDocument({
         if (axios.isAxiosError(e) && e.config?.data) {
           e.config.data = "[REDACTED]";
         }
+
+        // Handle quota errors specifically
+        if (axios.isAxiosError(e) && e.response?.status === 403) {
+          const errorType = e.response?.data?.error?.type;
+          if (
+            errorType === "workspace_quota_error" ||
+            errorType === "data_source_quota_error"
+          ) {
+            throw new WorkspaceQuotaExceededError(e);
+          }
+        }
+
         statsDClient.increment(
           "data_source_upserts_error.count",
           1,
