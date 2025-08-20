@@ -1,7 +1,16 @@
 import assert from "assert";
 
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import {
+  getInternalMCPServerNameAndWorkspaceId,
+  INTERNAL_MCP_SERVERS,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
+import {
+  LONG_RUNNING_TOOL_THRESHOLD_MS,
+  SYNC_TO_ASYNC_TIMEOUT_MS,
+} from "@app/lib/constants/timeouts";
 import { wakeLock } from "@app/lib/wake_lock";
 import {
   logAgentLoopPhaseCompletionActivity,
@@ -18,14 +27,51 @@ import {
   SyncTimeoutError,
 } from "@app/temporal/agent_loop/lib/agent_loop_executor";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ExecutionMode,
   RunAgentArgs,
   RunAgentArgsInput,
 } from "@app/types/assistant/agent_run";
 
-// 40 seconds timeout before switching from sync to async execution.
-const SYNC_TO_ASYNC_TIMEOUT_MS = 40 * 1000;
+/**
+ * TODO(DURABLE_AGENT 2025-08-20): This is a temporary solution to handle long-running tools. To be
+ * removed if we decide to always use async mode.
+ *
+ * Checks if an agent has any MCP actions that could potentially run longer than the threshold.
+ * For internal servers, we check the server-level timeout configuration.
+ * For remote servers, we assume they use the default 2-minute timeout which exceeds our threshold.
+ */
+function hasLongRunningTools(
+  agentConfiguration: AgentConfigurationType
+): boolean {
+  return agentConfiguration.actions.some((action) => {
+    // For server-side MCP configurations, check if they have long timeouts.
+    if ("internalMCPServerId" in action && action.internalMCPServerId) {
+      const { serverType } = getServerTypeAndIdFromSId(
+        action.internalMCPServerId
+      );
+      if (serverType === "internal") {
+        const serverResult = getInternalMCPServerNameAndWorkspaceId(
+          action.internalMCPServerId
+        );
+        if (serverResult.isOk()) {
+          const serverName = serverResult.value.name;
+          const serverConfig = INTERNAL_MCP_SERVERS[serverName];
+          const serverTimeoutMs = serverConfig?.timeoutMs;
+          if (
+            serverTimeoutMs &&
+            serverTimeoutMs > LONG_RUNNING_TOOL_THRESHOLD_MS
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  });
+}
 
 /**
  * Helper to launch async workflow from sync data.
@@ -63,6 +109,20 @@ async function runAgentSynchronousWithStreaming(
   }: { startStep: number; withTimeout?: boolean }
 ): Promise<void> {
   const runAgentExecutionData = runAgentArgs.inMemoryData;
+
+  // Check if the agent has tools that might run longer than the prestop grace period threshold.
+  const hasLongTools = hasLongRunningTools(
+    runAgentExecutionData.agentConfiguration
+  );
+
+  // If agent has long-running tools, start directly in async mode.
+  if (hasLongTools) {
+    await launchAsyncWorkflowFromSyncData(authType, runAgentArgs, {
+      startStep,
+    });
+    return;
+  }
+
   const runAgentArgsForExecution: RunAgentArgs = {
     sync: true,
     inMemoryData: runAgentExecutionData,
