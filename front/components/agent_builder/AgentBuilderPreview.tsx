@@ -109,10 +109,7 @@ export function AgentBuilderPreview() {
       <>
         <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
           {conversation && (
-            <div className="flex items-center justify-between px-6 py-3">
-              <h2 className="font-semibold text-foreground dark:text-foreground-night">
-                {conversation.title}
-              </h2>
+            <div className="flex items-center justify-end px-6 py-3">
               <Button
                 variant="outline"
                 size="sm"
