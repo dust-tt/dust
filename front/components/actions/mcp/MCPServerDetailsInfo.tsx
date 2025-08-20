@@ -16,7 +16,6 @@ type MCPServerDetailsInfoProps = {
 
 export function MCPServerDetailsInfo({
   mcpServerView,
-
   owner,
 }: MCPServerDetailsInfoProps) {
   const editedAt = useMemo(() => {
