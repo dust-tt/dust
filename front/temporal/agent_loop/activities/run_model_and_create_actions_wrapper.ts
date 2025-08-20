@@ -1,5 +1,6 @@
 import assert from "assert";
 
+import { isToolExecutionStatusTerminal } from "@app/lib/actions/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction as AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
@@ -167,10 +168,13 @@ async function getExistingActionsAndBlobs(
         "Unexpected: step content is not a function call"
       );
 
-      actionBlobs.push({
-        actionId: mcpAction.id,
-        needsApproval: mcpAction.executionState === "pending",
-      });
+      // We want to skip the runModel if there are actions that are not in a terminal state.
+      if (!isToolExecutionStatusTerminal(mcpAction.status)) {
+        actionBlobs.push({
+          actionId: mcpAction.id,
+          needsApproval: mcpAction.executionState === "pending",
+        });
+      }
     }
   }
 
