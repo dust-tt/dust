@@ -473,14 +473,6 @@ export function AgentActionsPanel({
     }
   }, [messageId, onPanelClosed]);
 
-  if (
-    !messageId ||
-    !fullAgentMessage ||
-    fullAgentMessage.type !== "agent_message"
-  ) {
-    return null;
-  }
-
   if (isMessageLoading) {
     return (
       <div className="flex h-full flex-col">
@@ -493,6 +485,14 @@ export function AgentActionsPanel({
         </div>
       </div>
     );
+  }
+
+  if (
+    !messageId ||
+    !fullAgentMessage ||
+    fullAgentMessage.type !== "agent_message"
+  ) {
+    return null;
   }
 
   // Use key to force remount when message changes for proper state reset

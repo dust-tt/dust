@@ -12,7 +12,6 @@ export type EventPayload = {
   id: string;
   message: {
     payload: string;
-    step?: number;
   };
 };
 

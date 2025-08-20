@@ -84,7 +84,6 @@ export async function* getConversationEvents({
       const event = {
         eventId: rawEvent.id,
         data: JSON.parse(rawEvent.message.payload),
-        step: rawEvent.message.step,
       };
 
       yield event;

@@ -41,7 +41,7 @@ async function publishMessageEvent(
   {
     step,
   }: {
-    step?: number;
+    step: number;
   }
 ) {
   const redisHybridManager = getRedisHybridManager();
@@ -70,7 +70,7 @@ export async function publishConversationRelatedEvent(
     step,
   }: {
     conversationId: string;
-    step?: number;
+    step: number;
   }
 ) {
   switch (event.type) {
@@ -121,10 +121,12 @@ export async function publishMessageEventsOnMessagePostOrEdit(
   return Promise.all([
     publishConversationRelatedEvent(userMessageEvent, {
       conversationId: conversation.sId,
+      step: -1,
     }),
     ...agentMessageEvents.map((event) =>
       publishConversationRelatedEvent(event, {
         conversationId: conversation.sId,
+        step: -1,
       })
     ),
   ]);
@@ -144,5 +146,6 @@ export async function publishAgentMessageEventOnMessageRetry(
 
   return publishConversationRelatedEvent(agentMessageEvent, {
     conversationId: conversation.sId,
+    step: -1,
   });
 }
