@@ -193,6 +193,13 @@ export type MCPExecutionState =
   | "pending"
   | "timeout";
 
+export type MCPRunningState =
+  | "not_started" // Action created but not yet executed
+  | "running" // Currently executing
+  | "completed" // Successfully completed
+  | "failed" // Execution failed
+  | "cancelled"; // Execution was cancelled
+
 type MCPParamsEvent = {
   type: "tool_params";
   created: number;
@@ -272,6 +279,13 @@ export class MCPActionType {
   // TODO(2025-07-24 aubin): remove the type here.
   readonly type = "tool_action" as const;
 
+  /**
+   * Tracks the actual execution status of the MCP action.
+   * This is separate from executionState which tracks user approval.
+   * Values: "not_started", "running", "completed", "failed", "cancelled"
+   */
+  readonly runningState: MCPRunningState;
+
   constructor(blob: MCPActionBlob) {
     this.id = blob.id;
     this.type = blob.type;
@@ -289,6 +303,7 @@ export class MCPActionType {
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
     this.citationsAllocated = blob.citationsAllocated;
+    this.runningState = blob.runningState;
   }
 
   getGeneratedFiles(): ActionGeneratedFileType[] {
@@ -592,6 +607,7 @@ export async function* runToolWithStreaming(
       isError: false,
       output: removeNulls(outputItems.map(hideFileFromActionOutput)),
       type: "tool_action",
+      runningState: "completed",
     }),
   };
 }
@@ -627,6 +643,7 @@ export async function createMCPAction(
     executionState: "pending",
     isError: false,
     mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
+    runningState: "not_started",
     stepContentId,
     stepContext,
     toolConfiguration,
@@ -641,6 +658,7 @@ export async function createMCPAction(
     isError: false,
     output: null,
     type: "tool_action",
+    runningState: "not_started",
   });
 
   return { action, mcpAction };
@@ -727,6 +745,7 @@ export async function handleMCPActionError(
       isError: false,
       output: [outputContent],
       type: "tool_action",
+      runningState: "failed",
     }),
   };
 }

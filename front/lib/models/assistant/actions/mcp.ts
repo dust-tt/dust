@@ -3,7 +3,11 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type {
+  LightMCPToolConfigurationType,
+  MCPExecutionState,
+} from "@app/lib/actions/mcp";
+import type { MCPRunningState } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -185,30 +189,99 @@ AgentMCPServerConfiguration.belongsTo(MCPServerViewModel, {
   as: "mcpServerView",
 });
 
+/**
+ * AgentMCPAction represents an MCP (Model Context Protocol) tool execution by an AI agent.
+ *
+ * This model stores metadata about tool calls made by agents through the MCP protocol,
+ * including execution state, inputs, outputs, and approval workflow tracking.
+ * It's part of Dust's action system that allows agents to interact with external tools
+ * and services in a controlled, auditable manner.
+ */
 export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
+  /** When the action was created in the database */
   declare createdAt: CreationOptional<Date>;
+  /** When the action was last updated in the database */
   declare updatedAt: CreationOptional<Date>;
 
+  /**
+   * References the MCP server configuration that defines which MCP server
+   * and tools are available for this action. This links to AgentMCPServerConfiguration.
+   */
   declare mcpServerConfigurationId: string;
 
+  /**
+   * Version number for this action. Used for tracking iterations when an action
+   * is retried or updated. Starts at 0 and increments on each version.
+   */
   declare version: number;
+
+  /**
+   * Links to the agent message that triggered this action.
+   * Each action belongs to a specific message in a conversation.
+   */
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+
+  /**
+   * Links to the step content that contains this action.
+   * Step content groups actions by conversation step for versioning and organization.
+   */
   declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
 
+  /**
+   * Whether this action execution resulted in an error.
+   * Used to distinguish between successful and failed tool executions.
+   */
   declare isError: boolean;
-  declare executionState:
-    | "pending"
-    | "timeout"
-    | "allowed_explicitly"
-    | "allowed_implicitly"
-    | "denied";
 
+  /**
+   * User approval state for this action execution.
+   * Controls whether the action can proceed, has been approved/denied, or timed out.
+   * Values: "pending", "timeout", "allowed_explicitly", "allowed_implicitly", "denied"
+   */
+  declare executionState: MCPExecutionState;
+
+  /**
+   * Tracks the actual execution status of the MCP action.
+   * This is separate from executionState which tracks user approval.
+   * Values: "not_started", "running", "completed", "failed", "cancelled"
+   */
+  declare runningState: MCPRunningState;
+
+  /**
+   * Number of citations allocated to this action for tracking usage limits.
+   * Used in conjunction with workspace limits and billing.
+   */
   declare citationsAllocated: number;
+
+  /**
+   * The actual inputs passed to the MCP tool, after any augmentation or processing.
+   * This is what gets sent to the MCP server when executing the tool.
+   */
   declare augmentedInputs: Record<string, unknown>;
+
+  /**
+   * Configuration metadata about the MCP tool being executed.
+   * Includes tool name, server info, permissions, timeouts, and other settings.
+   */
   declare toolConfiguration: LightMCPToolConfigurationType;
+
+  /**
+   * Context information about the step where this action was created.
+   * Includes conversation state, citations count, and other step-specific metadata.
+   */
   declare stepContext: StepContext;
 
+  /**
+   * Output items produced by this action execution.
+   * Can include text, images, files, or other content returned by the MCP tool.
+   * This is a virtual field populated when fetching the action with includes.
+   */
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
+
+  /**
+   * The associated agent message for this action.
+   * This is a virtual field populated when fetching the action with includes.
+   */
   declare agentMessage?: NonAttribute<AgentMessage>;
 }
 
@@ -246,6 +319,14 @@ AgentMCPAction.init(
             "denied",
           ],
         ],
+      },
+    },
+    runningState: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "not_started",
+      validate: {
+        isIn: [["not_started", "running", "completed", "failed", "cancelled"]],
       },
     },
     isError: {
