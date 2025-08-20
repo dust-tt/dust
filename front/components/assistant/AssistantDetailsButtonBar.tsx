@@ -3,12 +3,14 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   ClipboardIcon,
+  DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   MoreIcon,
   PencilSquareIcon,
+  Spinner,
   StarIcon,
   StarStrokeIcon,
   TrashIcon,
@@ -17,12 +19,14 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
-import { isAdmin, isBuilder } from "@app/types";
+import { isAdmin, isBuilder, normalizeError } from "@app/types";
 
 interface AssistantDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
@@ -39,8 +43,10 @@ export function AssistantDetailsButtonBar({
   owner,
 }: AssistantDetailsButtonBarProps) {
   const { user } = useUser();
+  const sendNotification = useSendNotification();
 
   const [showDeletionModal, setShowDeletionModal] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const { onOpenChange: onOpenChangeAssistantModal } =
     useURLSheet("assistantDetails");
 
@@ -69,6 +75,61 @@ export function AssistantDetailsButtonBar({
 
   const allowDeletion = agentConfiguration.canEdit || isAdmin(owner);
 
+  const handleExportToYAML = async () => {
+    setIsExporting(true);
+    const response = await fetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/export/yaml`
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      sendNotification({
+        title: "Export failed",
+        description:
+          errorData.error?.message || "An error occurred while exporting",
+        type: "error",
+      });
+      setIsExporting(false);
+      return;
+    }
+
+    const { yamlContent, filename } = await response.json();
+    try {
+      /**
+       * Try to create a Blob from the YAML content and download it.
+       */
+      const blob = new Blob([yamlContent], { type: "application/yaml" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      sendNotification({
+        title: "Export successful",
+        description: `Agent "${agentConfiguration.name}" exported to YAML`,
+        type: "success",
+      });
+    } catch (error) {
+      sendNotification({
+        title: "Export failed",
+        description:
+          normalizeError(error).message || "An error occurred while exporting",
+        type: "error",
+      });
+
+      logger.error(
+        { workspaceId: owner.sId, agentId: agentConfiguration.sId },
+        "Failed to export agent configuration to YAML"
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   function AssistantDetailsDropdownMenu() {
     return (
       <>
@@ -93,6 +154,15 @@ export function AssistantDetailsButtonBar({
                 await navigator.clipboard.writeText(agentConfiguration.sId);
               }}
               icon={BracesIcon}
+            />
+            <DropdownMenuItem
+              label={isExporting ? "Exporting..." : "Export to YAML"}
+              onClick={(e) => {
+                e.stopPropagation();
+                void handleExportToYAML();
+              }}
+              icon={isExporting ? <Spinner size="xs" /> : DocumentIcon}
+              disabled={isExporting}
             />
             {agentConfiguration.scope !== "global" && (
               <>

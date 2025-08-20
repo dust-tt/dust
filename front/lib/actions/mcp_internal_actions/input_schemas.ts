@@ -170,8 +170,12 @@ type FlexibleConfigurableToolInput = {
     mimeType: typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM;
   };
   [INTERNAL_MIME_TYPES.TOOL_INPUT.LIST]: {
+    // Added "options" here but allow undefined because it's expected in the input schema to build the configuration UI but useless in the MCP tool call.
+    options?: {
+      value: string;
+      label: string;
+    }[];
     values: string[];
-    labels: string[];
     mimeType: typeof INTERNAL_MIME_TYPES.TOOL_INPUT.LIST;
   };
 };

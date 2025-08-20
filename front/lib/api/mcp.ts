@@ -86,7 +86,10 @@ export type MCPServerDefinitionType = Omit<
 
 type InternalMCPServerType = MCPServerType & {
   name: InternalMCPServerNameType;
-  icon: InternalAllowedIconType; // We enforce that we pass an icon here.
+  // We enforce that we pass an icon here.
+  icon: InternalAllowedIconType;
+  // Instructions that are appended to the overall prompt
+  instructions?: string;
 };
 
 export type InternalMCPServerDefinitionType = Omit<

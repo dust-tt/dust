@@ -357,6 +357,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
             output: removeNulls(
               action.outputItems.map(hideFileFromActionOutput)
             ),
+            runningState: action.runningState,
             functionCallId: value.value.id,
             functionCallName: value.value.name,
             mcpServerId,

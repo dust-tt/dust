@@ -79,6 +79,7 @@ interface DialogContentProps
   trapFocusScope?: boolean;
   isAlertDialog?: boolean;
   preventAutoFocusOnClose?: boolean;
+  mountPortalContainer?: HTMLElement;
 }
 
 const DialogContent = React.forwardRef<
@@ -95,6 +96,7 @@ const DialogContent = React.forwardRef<
       isAlertDialog,
       preventAutoFocusOnClose = true,
       onCloseAutoFocus,
+      mountPortalContainer,
       ...props
     },
     ref
@@ -110,7 +112,7 @@ const DialogContent = React.forwardRef<
     );
 
     return (
-      <DialogPortal>
+      <DialogPortal container={mountPortalContainer}>
         <DialogOverlay />
         <FocusScope trapped={trapFocusScope} asChild>
           <DialogPrimitive.Content

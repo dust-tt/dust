@@ -50,7 +50,11 @@ export function withRetries<Args extends unknown[], Return>(
           e.code === "ERR_BAD_REQUEST" &&
           e.status === 403
         ) {
-          if (e.response?.data?.error?.type === "workspace_quota_error") {
+          const errorType = e.response?.data?.error?.type;
+          if (
+            errorType === "workspace_quota_error" ||
+            errorType === "data_source_quota_error"
+          ) {
             throw new WorkspaceQuotaExceededError(e);
           }
         }

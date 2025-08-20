@@ -8,7 +8,7 @@ import {
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
-import { sortBy } from "lodash";
+import sortBy from "lodash/sortBy";
 import React, { useMemo } from "react";
 
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";

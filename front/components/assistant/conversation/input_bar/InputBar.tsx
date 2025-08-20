@@ -356,7 +356,6 @@ export function AssistantInputBar({
       ) && (
         <div className="flex justify-center px-4 pb-4">
           <Button
-            className="mt-4"
             variant="outline"
             label={isStopping ? "Stopping generation..." : "Stop generation"}
             icon={StopIcon}
@@ -371,7 +370,7 @@ export function AssistantInputBar({
           className="w-full"
           containerClassName="w-full"
           size={isFocused ? "large" : "medium"}
-          disabled={!isFloating}
+          disabled={disable || !isFloating}
         >
           <div
             className={classNames(
@@ -382,6 +381,7 @@ export function AssistantInputBar({
               "border-border-dark dark:border-border-dark-night",
               "sm:border-border-dark/50 sm:focus-within:border-border-dark",
               "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
+              disable && "cursor-not-allowed opacity-75",
               isFloating
                 ? classNames(
                     "focus-within:ring-1 dark:focus-within:ring-1",
@@ -417,6 +417,7 @@ export function AssistantInputBar({
                 disableSendButton={
                   disableSendButton || fileUploaderService.isProcessingFiles
                 }
+                disableTextInput={disable}
                 onNodeSelect={handleNodesAttachmentSelect}
                 onNodeUnselect={handleNodesAttachmentRemove}
                 selectedMCPServerViewIds={selectedMCPServerViewIds}

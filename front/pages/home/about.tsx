@@ -214,13 +214,6 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/ginakabasakalis/",
     github: "https://github.com/gina-dust/",
   },
-  apara: {
-    name: "Apara Sivaraman",
-    title: "Business Operations (US)",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U08FS7GNBM3-12d42049c6a8-512",
-    linkedIn: "https://www.linkedin.com/in/aparasivaraman/",
-    github: "https://github.com/apara-dust/",
-  },
   adrsimon: {
     name: "Adrien Simon",
     title: "Software Engineer",
@@ -284,13 +277,6 @@ const PEOPLE: Record<
     github: "https://github.com/btoueg",
     linkedIn: "https://www.linkedin.com/in/toueg",
   },
-  joshua: {
-    name: "Joshua Gisiger",
-    title: "Software Engineer Intern",
-    image: "https://avatars.githubusercontent.com/u/192242584?v=4",
-    github: "https://github.com/jgr142",
-    linkedIn: "https://www.linkedin.com/in/joshuagisiger",
-  },
   david: {
     name: "David Ebbo",
     title: "Software Engineer",
@@ -311,6 +297,13 @@ const PEOPLE: Record<
     image: "https://avatars.githubusercontent.com/u/1455646?v=4",
     github: "https://github.com/vincesarkisian",
     linkedIn: "https://www.linkedin.com/in/vincesarkisian/",
+  },
+  lvndry: {
+    name: "Landry Monga",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/23080211?v=4",
+    github: "https://github.com/lvndry",
+    linkedIn: "https://www.linkedin.com/in/landry-monga",
   },
 };
 

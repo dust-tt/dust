@@ -1,8 +1,13 @@
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  AdditionalConfigurationInBuilderType,
+  AgentBuilderFormData,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
+import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import type {
   AgentConfigurationType,
+  DataSourcesConfigurationsCodecType,
   DataSourceViewSelectionConfigurations,
   LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
@@ -12,15 +17,10 @@ import type {
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-function convertDataSourceConfigurations(
-  dataSourceConfigurations: DataSourceViewSelectionConfigurations | null,
+function processDataSourceConfigurations(
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations,
   owner: WorkspaceType
-) {
-  // TODO: fix type, it should not be null.
-  if (dataSourceConfigurations === null) {
-    return [];
-  }
-
+): DataSourcesConfigurationsCodecType {
   return Object.values(dataSourceConfigurations).map((config) => ({
     dataSourceViewId: config.dataSourceView.sId,
     workspaceId: owner.sId,
@@ -29,7 +29,9 @@ function convertDataSourceConfigurations(
         ? null
         : {
             in: config.selectedResources.map((resource) => resource.internalId),
-            not: [],
+            not: config.excludedResources.map(
+              (resource) => resource.internalId
+            ),
           },
       tags: config.tagsFilter
         ? {
@@ -61,6 +63,33 @@ function processTableSelection(
   );
 
   return tables.length > 0 ? tables : null;
+}
+
+export function processAdditionalConfiguration(
+  additionalConfiguration: AdditionalConfigurationInBuilderType
+): AdditionalConfigurationType {
+  // In agent builder v2, the additional configuration can be nested.
+  // However, in the database, we store the additional configuration as a flat object with the nested objects flattened using the dot notation.
+  // We need to flatten the additional configuration back into a nested object.
+
+  const flattenConfig = (
+    config: AdditionalConfigurationInBuilderType,
+    output: AdditionalConfigurationType,
+    prefix?: string
+  ): AdditionalConfigurationType => {
+    for (const [key, value] of Object.entries(config)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+      if (typeof value === "object" && !Array.isArray(value)) {
+        output = flattenConfig(value, output, path);
+      } else {
+        output[path] = value;
+      }
+    }
+
+    return output;
+  };
+
+  return flattenConfig(additionalConfiguration, {});
 }
 
 export async function submitAgentBuilderForm({
@@ -107,17 +136,15 @@ export async function submitAgentBuilderForm({
               description: action.description,
               dataSources:
                 action.configuration.dataSourceConfigurations !== null
-                  ? convertDataSourceConfigurations(
-                      action.configuration
-                        .dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type
+                  ? processDataSourceConfigurations(
+                      action.configuration.dataSourceConfigurations,
                       owner
                     )
                   : null,
               tables:
                 action.configuration.tablesConfigurations !== null
                   ? processTableSelection(
-                      action.configuration
-                        .tablesConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type
+                      action.configuration.tablesConfigurations,
                       owner
                     )
                   : null,
@@ -126,7 +153,11 @@ export async function submitAgentBuilderForm({
               timeFrame: action.configuration.timeFrame,
               jsonSchema: action.configuration.jsonSchema,
               additionalConfiguration:
-                action.configuration.additionalConfiguration,
+                action.configuration.additionalConfiguration !== null
+                  ? processAdditionalConfiguration(
+                      action.configuration.additionalConfiguration
+                    )
+                  : {},
               dustAppConfiguration: action.configuration.dustAppConfiguration,
             },
           ];

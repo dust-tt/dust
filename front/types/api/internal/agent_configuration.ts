@@ -77,6 +77,9 @@ const DataSourcesConfigurationsCodec = t.array(
     filter: DataSourceFilterCodec,
   })
 );
+export type DataSourcesConfigurationsCodecType = t.TypeOf<
+  typeof DataSourcesConfigurationsCodec
+>;
 
 // Tables
 

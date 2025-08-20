@@ -12,7 +12,7 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { isEmpty } from "lodash";
+import isEmpty from "lodash/isEmpty";
 import React, { useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -24,6 +24,7 @@ import { AgentBuilderSectionContainer } from "@app/components/agent_builder/Agen
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import type { DialogMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
 import { MCPServerViewsDialog } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
+import { usePresetActionHandler } from "@app/components/agent_builder/capabilities/usePresetActionHandler";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
@@ -37,6 +38,7 @@ import {
   MCP_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { TemplateActionPreset } from "@app/types";
 import { asDisplayName } from "@app/types";
 
 const dataVisualizationAction = {
@@ -154,16 +156,23 @@ export function AgentBuilderCapabilitiesBlock({
     useMCPServerViewsContext();
 
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
-
   const [knowledgeAction, setKnowledgeAction] = useState<{
     action: AgentBuilderAction;
     index: number | null;
+    presetData?: TemplateActionPreset;
   } | null>(null);
+
   const dataVisualization = fields.some(
     (field) => field.type === "DATA_VISUALIZATION"
   )
     ? null
     : dataVisualizationAction;
+
+  usePresetActionHandler({
+    fields,
+    append,
+    setKnowledgeAction,
+  });
 
   const handleEditSave = (updatedAction: AgentBuilderAction) => {
     if (dialogMode?.type === "edit") {
@@ -271,14 +280,14 @@ export function AgentBuilderCapabilitiesBlock({
                   type="button"
                   onClick={onClickKnowledge}
                   label="Add knowledge"
-                  icon={BoltIcon}
+                  icon={BookOpenIcon}
                   variant="primary"
                 />
                 <Button
                   type="button"
                   onClick={() => setDialogMode({ type: "add" })}
                   label="Add tools"
-                  icon={ListAddIcon}
+                  icon={BoltIcon}
                   variant="outline"
                 />
               </div>
@@ -307,6 +316,7 @@ export function AgentBuilderCapabilitiesBlock({
         isEditing={Boolean(knowledgeAction && knowledgeAction.index !== null)}
         mcpServerViews={mcpServerViewsWithKnowledge}
         getAgentInstructions={getAgentInstructions}
+        presetActionData={knowledgeAction?.presetData}
       />
       <MCPServerViewsDialog
         addTools={append}

@@ -199,3 +199,13 @@ export function isSupportedResourceType(
 ): resourceType is SupportedResourceType {
   return supportedResourceTypes.includes(resourceType as SupportedResourceType);
 }
+
+export interface PluginRunType {
+  createdAt: number;
+  author: string;
+  pluginId: string;
+  status: string;
+  resourceType: string;
+  resourceId: string | null;
+  args: object;
+}

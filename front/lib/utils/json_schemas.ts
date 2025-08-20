@@ -3,7 +3,7 @@ import type {
   JSONSchema7 as JSONSchema,
   JSONSchema7Definition as JSONSchemaDefinition,
 } from "json-schema";
-import { isEqual } from "lodash";
+import isEqual from "lodash/isEqual";
 
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 
