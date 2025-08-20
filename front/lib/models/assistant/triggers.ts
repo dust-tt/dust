@@ -6,7 +6,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
-  TriggerConfigurationsType,
+  TriggerConfigurationType,
   TriggerKind,
 } from "@app/types/assistant/triggers";
 import { isValidTriggerKind } from "@app/types/assistant/triggers";
@@ -24,7 +24,7 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
   declare editor: ForeignKey<UserModel["id"]>;
 
-  declare configuration: TriggerConfigurationsType;
+  declare configuration: TriggerConfigurationType;
 }
 
 TriggerModel.init(

@@ -39,14 +39,18 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     auth: Authenticator,
     blob: CreationAttributes<TriggerModel>,
     { transaction }: { transaction?: Transaction } = {}
-  ) {
+  ): Promise<Result<TriggerResource, Error>> {
     const trigger = await TriggerModel.create(blob, {
       transaction,
     });
 
     const resource = new this(TriggerModel, trigger.get());
-    await resource.postRegistration(auth);
-    return resource;
+    const r = await resource.postRegistration(auth);
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(resource);
   }
 
   private static async baseFetch(
@@ -106,7 +110,11 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     await trigger.update(blob, transaction);
-    await trigger.postRegistration(auth);
+    const r = await trigger.postRegistration(auth);
+    if (r.isErr()) {
+      return r;
+    }
+
     return new Ok(trigger);
   }
 
@@ -116,7 +124,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   ): Promise<Result<undefined, Error>> {
     const owner = auth.getNonNullableWorkspace();
 
-    await this.preDeletion(auth);
+    const r = await this.preDeletion(auth);
+    if (r.isErr()) {
+      return r;
+    }
 
     try {
       await TriggerModel.destroy({
@@ -135,11 +146,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   async postRegistration(auth: Authenticator) {
     switch (this.kind) {
       case "schedule":
-        await createOrUpdateAgentScheduleWorkflow({
+        return await createOrUpdateAgentScheduleWorkflow({
           authType: auth.toJSON(),
           trigger: this.toJSON(),
         });
-        break;
       default:
         assertNever(this.kind);
     }
@@ -148,12 +158,11 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   async preDeletion(auth: Authenticator) {
     switch (this.kind) {
       case "schedule":
-        await deleteAgentScheduleWorkflow({
+        return await deleteAgentScheduleWorkflow({
           authType: auth.toJSON(),
           agentConfigurationId: this.agentConfigurationId,
           triggerId: this.sId,
         });
-        break;
       default:
         assertNever(this.kind);
     }

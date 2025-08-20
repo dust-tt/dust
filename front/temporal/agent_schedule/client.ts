@@ -8,8 +8,8 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
-import { QUEUE_NAME } from "./config";
-import { agentScheduleWorkflow } from "./workflows";
+import { QUEUE_NAME } from "@app/temporal/agent_schedule/config";
+import { agentScheduleWorkflow } from "@app/temporal/agent_schedule/workflows";
 import { AuthenticatorType } from "@app/lib/auth";
 import { TriggerType } from "@app/types/assistant/triggers";
 
@@ -23,8 +23,12 @@ export async function createOrUpdateAgentScheduleWorkflow({
   const client = await getTemporalClientForAgentNamespace();
   const scheduleId = `agent-schedule-${authType.workspaceId}-${trigger.agentConfigurationId}-${trigger.sId}`;
 
+  const childLogger = logger.child({
+    workspaceId: authType.workspaceId,
+  });
+
   if (trigger.kind !== "schedule") {
-    logger.error(
+    childLogger.error(
       { triggerConfig: trigger.config },
       "Trigger is not a schedule."
     );
@@ -58,9 +62,8 @@ export async function createOrUpdateAgentScheduleWorkflow({
 
     return new Ok(scheduleId);
   } catch {
-    logger.info(
+    childLogger.info(
       {
-        wId: authType.workspaceId,
         trigger,
       },
       "Creating a new schedule."
@@ -89,17 +92,16 @@ export async function createOrUpdateAgentScheduleWorkflow({
       },
     });
 
-    logger.info(
+    childLogger.info(
       {
         scheduleId,
       },
       "Scheduled workflow."
     );
   } catch (err) {
-    logger.error(
+    childLogger.error(
       {
         err,
-        wId: authType.workspaceId,
         trigger,
       },
       "Failed to schedule workflow."
@@ -123,18 +125,28 @@ export async function deleteAgentScheduleWorkflow({
   const client = await getTemporalClientForAgentNamespace();
   const scheduleId = `agent-schedule-${authType.workspaceId}-${agentConfigurationId}-${triggerId}`;
 
+  const childLogger = logger.child({
+    workspaceId: authType.workspaceId,
+  });
+
   try {
     const handle = client.schedule.getHandle(scheduleId);
     await handle.delete();
-    logger.info({ scheduleId }, "Deleted scheduled workflow successfully.");
+    childLogger.info(
+      { scheduleId },
+      "Deleted scheduled workflow successfully."
+    );
     return new Ok(undefined);
   } catch (err) {
     if (err instanceof WorkflowNotFoundError) {
-      logger.warn({ scheduleId }, "Workflow not found, nothing to delete.");
+      childLogger.warn(
+        { scheduleId },
+        "Workflow not found, nothing to delete."
+      );
       return new Ok(undefined);
     }
 
-    logger.error({ err }, "Failed to delete scheduled workflow.");
+    childLogger.error({ err }, "Failed to delete scheduled workflow.");
     return new Err(normalizeError(err));
   }
 }

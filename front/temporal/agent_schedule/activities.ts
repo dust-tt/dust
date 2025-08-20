@@ -15,14 +15,11 @@ export async function runScheduledAgentsActivity(
     throw new Error("Invalid authentication. Missing workspaceId or userId.");
   }
 
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    authType.userId,
-    authType.workspaceId
-  );
+  const auth = await Authenticator.fromJSON(authType);
 
   const agentConfiguration = await AgentConfiguration.findOne({
     where: {
-      sId: trigger.agentConfigurationId,
+      id: trigger.agentConfigurationId,
       workspaceId: auth.getNonNullableWorkspace().id,
     },
   });
