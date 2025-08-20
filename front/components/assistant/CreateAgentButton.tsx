@@ -5,12 +5,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  FolderOpenIcon,
   MagicIcon,
   PlusIcon,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
+import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 
 interface CreateAgentButtonProps {
@@ -24,6 +28,11 @@ export const CreateAgentButton = ({
 }: CreateAgentButtonProps) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
+    owner,
+  });
+
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   return (
     <DropdownMenu>
@@ -61,6 +70,14 @@ export const CreateAgentButton = ({
             );
           }}
         />
+        {hasFeature("agent_to_yaml") && (
+          <DropdownMenuItem
+            label={isUploadingYAML ? "Uploading..." : "agent from YAML"}
+            icon={isUploadingYAML ? <Spinner size="xs" /> : FolderOpenIcon}
+            disabled={isUploadingYAML}
+            onClick={triggerYAMLUpload}
+          />
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

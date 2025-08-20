@@ -6,13 +6,6 @@ import {
   REASONING_EFFORT_IDS,
 } from "@app/types/assistant/assistant";
 
-export const agentYAMLMetadataSchema = z.object({
-  version: z.string().min(1, "Version is required"),
-  agent_id: z.string().min(1, "Agent ID is required"),
-  last_modified: z.string().datetime("Invalid date format"),
-  created_by: z.string().min(1, "Created by is required"),
-});
-
 export const agentYAMLBasicInfoSchema = z.object({
   handle: z.string().min(1, "Handle is required"),
   description: z.string().min(1, "Description is required"),
@@ -62,7 +55,6 @@ export const agentYAMLDataSourceConfigurationSchema = z.object({
 });
 
 export const baseAgentYAMLActionSchema = z.object({
-  id: z.string().min(1, "Action ID is required"),
   name: z.string().min(1, "Action name is required"),
   description: z.string().min(1, "Action description is required"),
 });
@@ -89,6 +81,15 @@ export const agentYAMLDataVisualizationActionSchema =
     configuration: z.object({}), // Empty configuration
   });
 
+export const agentYAMLReasoningModelSchema = z
+  .object({
+    model_id: z.enum(MODEL_IDS),
+    provider_id: z.enum(MODEL_PROVIDER_IDS),
+    temperature: z.number().min(0).max(1).nullable().optional(),
+    reasoning_effort: z.enum(REASONING_EFFORT_IDS).nullable().optional(),
+  })
+  .nullable();
+
 export const agentYAMLMCPActionSchema = baseAgentYAMLActionSchema.extend({
   type: z.literal("MCP"),
   configuration: z.object({
@@ -98,6 +99,13 @@ export const agentYAMLMCPActionSchema = baseAgentYAMLActionSchema.extend({
       .optional(),
     time_frame: agentYAMLTimeFrameSchema.optional(),
     json_schema: z.object({}).nullable().optional(),
+    reasoning_model: agentYAMLReasoningModelSchema.optional(),
+    additional_configuration: z
+      .record(
+        z.string(),
+        z.union([z.number(), z.string(), z.boolean(), z.array(z.string())])
+      )
+      .optional(),
   }),
 });
 
@@ -121,7 +129,6 @@ export const agentYAMLSlackIntegrationSchema = z.object({
  * The main schema that validates the entire YAML structure
  */
 export const agentYAMLConfigSchema = z.object({
-  metadata: agentYAMLMetadataSchema,
   agent: agentYAMLBasicInfoSchema,
   instructions: z.string().min(1, "Instructions are required"),
   generation_settings: agentYAMLGenerationSettingsSchema,
