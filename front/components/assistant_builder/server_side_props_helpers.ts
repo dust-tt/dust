@@ -195,6 +195,7 @@ async function renderDataSourcesConfigurations(
         return {
           dataSourceView: serializedDataSourceView,
           selectedResources: [],
+          excludedResources: [],
           isSelectAll: sr.isSelectAll,
           tagsFilter: sr.tagsFilter,
         };
@@ -228,6 +229,7 @@ async function renderDataSourcesConfigurations(
         return {
           dataSourceView: serializedDataSourceView,
           selectedResources: [],
+          excludedResources: [],
           isSelectAll: sr.isSelectAll,
           tagsFilter: sr.tagsFilter,
         };
@@ -236,6 +238,7 @@ async function renderDataSourcesConfigurations(
       return {
         dataSourceView: serializedDataSourceView,
         selectedResources: contentNodesRes.value.nodes,
+        excludedResources: [],
         isSelectAll: sr.isSelectAll,
         tagsFilter: sr.tagsFilter,
       };
@@ -307,6 +310,7 @@ async function renderTableDataSourcesConfigurations(
           return {
             dataSourceView: serializedDataSourceView,
             selectedResources: [],
+            excludedResources: [],
             isSelectAll: sr.isSelectAll,
             tagsFilter: sr.tagsFilter,
           };
@@ -315,6 +319,7 @@ async function renderTableDataSourcesConfigurations(
         return {
           dataSourceView: serializedDataSourceView,
           selectedResources: contentNodesRes.value.nodes,
+          excludedResources: [],
           isSelectAll: sr.isSelectAll,
           tagsFilter: sr.tagsFilter,
         };

@@ -28,9 +28,7 @@ export function transformTreeToSelectionConfigurations(
     dataSourceViews.map((dsv) => [dsv.sId, dsv])
   );
 
-  const existingResourcesMap = new Map<string, Set<string>>();
-
-  // Parse the tree paths to extract data source configurations
+  // Parse the tree paths to extract data source configurations from included items
   for (const item of tree.in) {
     // We can skip for item that aren't data_source or node. As we only allow those
     // to be selected, it safe to skip, and make our life easier type wise after that checks
@@ -62,15 +60,54 @@ export function transformTreeToSelectionConfigurations(
       configurations[dataSourceView.sId] = {
         dataSourceView,
         selectedResources: [],
+        excludedResources: [],
         isSelectAll: isFullDataSource,
         tagsFilter: null,
       };
-      existingResourcesMap.set(dataSourceView.sId, new Set<string>());
     }
 
     // If it's not a full data source selection, extract the selected nodes
     if (item.type === "node") {
       configurations[dataSourceView.sId].selectedResources.push(item.node);
+    }
+  }
+
+  // Parse the tree paths to extract excluded resources from notIn items
+  for (const item of tree.notIn) {
+    // We can skip for item that aren't data_source or node. As we only allow those
+    // to be excluded, it safe to skip, and make our life easier type wise after that checks
+    if (item.type !== "node" && item.type !== "data_source") {
+      continue;
+    }
+
+    const parts = item.path.split("/");
+    // Find the data source view ID in the path - optimize with early break
+    const dsvIdIndex = parts.findIndex((part) => isDataSourceViewId(part));
+    const dsvId = parts[dsvIdIndex];
+
+    if (dsvId == null) {
+      continue;
+    }
+
+    const dataSourceView = dataSourceViewMap.get(dsvId);
+    if (!dataSourceView || dataSourceView.spaceId !== parts[1]) {
+      continue;
+    }
+
+    // Initialize configuration if not exists
+    if (!configurations[dataSourceView.sId]) {
+      configurations[dataSourceView.sId] = {
+        dataSourceView,
+        selectedResources: [],
+        excludedResources: [],
+        isSelectAll: false,
+        tagsFilter: null,
+      };
+    }
+
+    // Extract the excluded nodes
+    if (item.type === "node") {
+      configurations[dataSourceView.sId].excludedResources.push(item.node);
     }
   }
 

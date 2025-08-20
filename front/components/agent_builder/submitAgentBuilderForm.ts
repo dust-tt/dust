@@ -29,7 +29,9 @@ function processDataSourceConfigurations(
         ? null
         : {
             in: config.selectedResources.map((resource) => resource.internalId),
-            not: [],
+            not: config.excludedResources.map(
+              (resource) => resource.internalId
+            ),
           },
       tags: config.tagsFilter
         ? {

@@ -76,6 +76,7 @@ const tagsFilterSchema = z
 const dataSourceViewSelectionConfigurationSchema = z.object({
   dataSourceView: z.custom<DataSourceViewType>(),
   selectedResources: z.array(z.custom<DataSourceViewContentNode>()),
+  excludedResources: z.array(z.custom<DataSourceViewContentNode>()),
   isSelectAll: z.boolean(),
   tagsFilter: tagsFilterSchema,
 });
