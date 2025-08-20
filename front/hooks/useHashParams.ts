@@ -118,7 +118,8 @@ export const useHashParam = (
         }
       }
     }
-    // Router object reference changes between renders, excluding it prevents unnecessary updates.
+    // Router object reference changes between renders, excluding it prevents unnecessary updates,
+    // some of which cause an infinite rendering loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultValue, innerValue, key, router.isReady]);
 
