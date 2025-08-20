@@ -5,12 +5,13 @@ import {
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useEventSource } from "@app/hooks/useEventSource";
+import type { MCPActionType } from "@app/lib/actions/mcp";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type {
   AgentMessageStateEvent,
@@ -34,9 +35,24 @@ interface AgentActionsPanelProps {
   owner: LightWorkspaceType;
 }
 
+interface AgentActionsPanelContentProps {
+  conversation: ConversationWithoutContentType | null;
+  owner: LightWorkspaceType;
+  fullAgentMessage: AgentMessageType;
+  messageId: string;
+  closePanel: () => void;
+  mutateMessage: () => void;
+}
+
 type AgentMessageStateWithControlEvent =
   | AgentMessageStateEvent
   | { type: "end-of-stream" };
+
+function isMCPActionType(
+  action: { type: "tool_action"; id: number } | undefined
+): action is MCPActionType {
+  return action !== undefined && "functionCallName" in action;
+}
 
 function makeInitialMessageStreamState(
   message: LightAgentMessageType
@@ -55,37 +71,33 @@ function AgentActionsPanelContent({
   owner,
   fullAgentMessage,
   messageId,
-  messageMetadata,
   closePanel,
   mutateMessage,
-}: {
-  conversation: ConversationWithoutContentType | null;
-  owner: LightWorkspaceType;
-  fullAgentMessage: AgentMessageType;
-  messageId: string;
-  messageMetadata: any;
-  closePanel: () => void;
-  mutateMessage: () => void;
-}) {
-  const [messageStreamState, dispatch] = React.useReducer(
+}: AgentActionsPanelContentProps) {
+  const [messageStreamState, dispatch] = useReducer(
     messageReducer,
     makeInitialMessageStreamState(
       getLightAgentMessageFromAgentMessage(fullAgentMessage)
     )
   );
 
-  const isFreshMountWithContent = React.useRef(
+  const isFreshMountWithContent = useRef(
     fullAgentMessage?.type === "agent_message" &&
       fullAgentMessage?.status === "created" &&
       !!fullAgentMessage.chainOfThought
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     isFreshMountWithContent.current =
       fullAgentMessage?.type === "agent_message" &&
       fullAgentMessage?.status === "created" &&
       !!fullAgentMessage.chainOfThought;
-  }, [fullAgentMessage?.sId]);
+  }, [
+    fullAgentMessage?.sId,
+    fullAgentMessage?.type,
+    fullAgentMessage?.status,
+    fullAgentMessage.chainOfThought,
+  ]);
 
   const steps =
     fullAgentMessage?.type === "agent_message"
@@ -95,7 +107,7 @@ function AgentActionsPanelContent({
   const maxParsedStep = Math.max(...Object.keys(steps || {}).map(Number), 0);
   const currentStreamingStep = maxParsedStep + 1;
 
-  const shouldStream = React.useMemo(() => {
+  const shouldStream = useMemo(() => {
     if (fullAgentMessage.status !== "created") {
       return false;
     }
@@ -133,7 +145,7 @@ function AgentActionsPanelContent({
     [shouldStream, owner.sId, conversation?.sId, messageId]
   );
 
-  const onEventCallback = React.useCallback(
+  const onEventCallback = useCallback(
     (eventStr: string) => {
       const eventPayload: {
         eventId: string;
@@ -189,14 +201,25 @@ function AgentActionsPanelContent({
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Keep track of the last chain of thought content before it gets reset
-  const lastChainOfThoughtRef = useRef<string>("");
+  /**
+   * Preserve chain of thought content to prevent flickering during state transitions.
+   * We store the step of the cot item to ensure we don't start displaying the next step
+   * when a subagent is still running.
+   */
+
+  const lastChainOfThoughtRef = useRef<{ step: number; content: string }>({
+    step: 0,
+    content: "",
+  });
 
   useEffect(() => {
     if (messageStreamState.message?.chainOfThought) {
-      lastChainOfThoughtRef.current = messageStreamState.message.chainOfThought;
+      lastChainOfThoughtRef.current = {
+        step: currentStreamingStep,
+        content: messageStreamState.message.chainOfThought,
+      };
     }
-  }, [messageStreamState.message?.chainOfThought]);
+  }, [messageStreamState.message?.chainOfThought, currentStreamingStep]);
 
   useEffect(() => {
     if (scrollContainerRef.current) {
@@ -212,14 +235,11 @@ function AgentActionsPanelContent({
       ? messageStreamState.message
       : fullAgentMessage;
 
-  const { actionProgress } = messageMetadata;
   const streamActionProgress = messageStreamState?.actionProgress ?? new Map();
   const isActing =
     (agentMessageToRender?.type === "agent_message" &&
       agentMessageToRender.status === "created") ||
     (messageStreamState && messageStreamState.agentState !== "done");
-
-  console.log(messageStreamState.message?.chainOfThought);
 
   return (
     <div className="flex h-full flex-col">
@@ -252,7 +272,7 @@ function AgentActionsPanelContent({
                     </span>
                   </div>
 
-                  {entries.map((entry: any, idx: number) => {
+                  {entries.map((entry: ParsedContentItem, idx: number) => {
                     if (entry.kind === "reasoning") {
                       return (
                         <div key={`reasoning-${step}-${idx}`}>
@@ -267,38 +287,37 @@ function AgentActionsPanelContent({
                           </ContentMessage>
                         </div>
                       );
-                    } else {
-                      const streamProgress = streamActionProgress.get(
-                        entry.action.id
-                      )?.progress;
-                      const metadataProgress = actionProgress.get(
-                        entry.action.id
-                      )?.progress;
-                      const lastNotification =
-                        streamProgress ?? metadataProgress ?? null;
-
-                      return (
-                        <div key={`action-${entry.action.id}`}>
-                          <MCPActionDetails
-                            viewType="sidebar"
-                            action={entry.action}
-                            lastNotification={lastNotification}
-                            owner={owner}
-                            messageStatus={
-                              agentMessageToRender?.type === "agent_message"
-                                ? agentMessageToRender.status
-                                : "succeeded"
-                            }
-                          />
-                        </div>
-                      );
                     }
+
+                    if (entry.kind !== "action") {
+                      return null;
+                    }
+
+                    const streamProgress = streamActionProgress.get(
+                      entry.action.id
+                    )?.progress;
+
+                    return (
+                      <div key={`action-${entry.action.id}`}>
+                        <MCPActionDetails
+                          viewType="sidebar"
+                          action={entry.action}
+                          lastNotification={streamProgress ?? null}
+                          owner={owner}
+                          messageStatus={
+                            agentMessageToRender?.type === "agent_message"
+                              ? agentMessageToRender.status
+                              : "succeeded"
+                          }
+                        />
+                      </div>
+                    );
                   })}
                 </div>
               );
             })}
 
-          {/* Show current streaming step at the bottom */}
+          {/* Show current streaming step with live updates. */}
           {shouldStream &&
             messageStreamState.agentState !== "done" &&
             !steps[currentStreamingStep] && (
@@ -312,24 +331,27 @@ function AgentActionsPanelContent({
                 <div className="transition-all duration-300 animate-in fade-in slide-in-from-bottom-1">
                   <ContentMessage variant="primary" size="lg">
                     <Markdown
-                      content={lastChainOfThoughtRef.current}
+                      content={
+                        lastChainOfThoughtRef.current.step ===
+                        currentStreamingStep
+                          ? lastChainOfThoughtRef.current.content
+                          : ""
+                      }
                       isStreaming={messageStreamState.agentState === "thinking"}
                       forcedTextSize="text-sm"
                       textColor="text-muted-foreground"
                       isLastMessage={false}
                     />
-                    {messageStreamState.agentState === "thinking" && (
-                      <div className="ml-1 inline-block h-3 w-[2px] animate-pulse bg-blue-500" />
-                    )}
                   </ContentMessage>
                 </div>
 
-                {/* Show streaming actions when acting */}
+                {/* Show streaming actions for current step only. */}
                 {messageStreamState.agentState === "acting" &&
                   messageStreamState.message.actions.length > 0 && (
                     <div className="mt-4">
                       {messageStreamState.message.actions
-                        .filter((action: any) => {
+                        .filter((action) => {
+                          // Only show actions not yet in any completed step.
                           return !Object.values(steps || {}).some(
                             (entries: ParsedContentItem[]) =>
                               Array.isArray(entries) &&
@@ -340,7 +362,12 @@ function AgentActionsPanelContent({
                               )
                           );
                         })
-                        .map((action: any) => {
+                        .map((action) => {
+                          // Only render MCP actions with complete type information.
+                          if (!isMCPActionType(action)) {
+                            return null;
+                          }
+
                           const streamProgress = streamActionProgress.get(
                             action.id
                           )?.progress;
@@ -380,11 +407,7 @@ export function AgentActionsPanel({
   conversation,
   owner,
 }: AgentActionsPanelProps) {
-  const {
-    onPanelClosed,
-    data: messageId,
-    metadata: messageMetadata,
-  } = useConversationSidePanelContext();
+  const { onPanelClosed, data: messageId } = useConversationSidePanelContext();
 
   const {
     message: fullAgentMessage,
@@ -411,11 +434,10 @@ export function AgentActionsPanel({
     if (!messageId) {
       onPanelClosed();
     }
-  }, [messageId]);
+  }, [messageId, onPanelClosed]);
 
   if (
     !messageId ||
-    !messageMetadata ||
     !fullAgentMessage ||
     fullAgentMessage.type !== "agent_message"
   ) {
@@ -444,7 +466,6 @@ export function AgentActionsPanel({
       owner={owner}
       fullAgentMessage={fullAgentMessage}
       messageId={messageId}
-      messageMetadata={messageMetadata}
       closePanel={onPanelClosed}
       mutateMessage={mutateMessage}
     />

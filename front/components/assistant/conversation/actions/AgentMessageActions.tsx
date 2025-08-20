@@ -47,9 +47,6 @@ export function AgentMessageActions({
     openPanel({
       type: "actions",
       messageId: agentMessage.sId,
-      metadata: {
-        actionProgress,
-      },
     });
   };
 
