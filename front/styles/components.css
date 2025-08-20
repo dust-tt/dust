@@ -1,3 +1,51 @@
 /* Tailwind components and utilities here, need to placed after sparkle.css to have more priority */
 @tailwind components;
 @tailwind utilities;
+
+/* Smooth streaming helpers */
+@keyframes streamFadeA {
+  from { opacity: 0.25; }
+  to { opacity: 1; }
+}
+@keyframes streamFadeB {
+  from { opacity: 0.25; }
+  to { opacity: 1; }
+}
+
+.stream-fade-a {
+  animation: streamFadeA 300ms ease-out;
+}
+.stream-fade-b {
+  animation: streamFadeB 300ms ease-out;
+}
+
+/* Subtle gradient mask at the bottom during streaming to soften hard edges */
+.stream-gradient-mask {
+  position: relative;
+}
+.stream-gradient-mask::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28px;
+  pointer-events: none;
+  /* neutral, subtle gradient */
+  background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(125,125,125,0.12) 100%);
+  opacity: 0.12;
+}
+
+/* Pulse only the gradient overlay (not the text) when new content arrives */
+@keyframes streamPulseA {
+  0% { opacity: 0.26; }
+  60% { opacity: 0.14; }
+  100% { opacity: 0.12; }
+}
+@keyframes streamPulseB {
+  0% { opacity: 0.26; }
+  60% { opacity: 0.14; }
+  100% { opacity: 0.12; }
+}
+.stream-gradient-mask.stream-pulse-a::after { animation: streamPulseA 900ms cubic-bezier(0.22, 1, 0.36, 1); }
+.stream-gradient-mask.stream-pulse-b::after { animation: streamPulseB 900ms cubic-bezier(0.22, 1, 0.36, 1); }

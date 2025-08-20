@@ -7,7 +7,6 @@ import {
   ConversationMessage,
   DocumentIcon,
   InteractiveImageGrid,
-  Markdown,
   Separator,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
@@ -30,6 +29,7 @@ import { FeedbackSelector } from "@app/components/assistant/conversation/Feedbac
 import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
+import { StreamingMarkdown } from "@app/components/assistant/conversation/StreamingMarkdown";
 import {
   CitationsContext,
   CiteBlock,
@@ -44,7 +44,6 @@ import {
 } from "@app/components/markdown/MentionBlock";
 import {
   getVisualizationPlugin,
-  sanitizeVisualizationContent,
   visualizationDirective,
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -650,10 +649,13 @@ export function AgentMessage({
                   updateActiveReferences,
                 }}
               >
-                <Markdown
-                  content={sanitizeVisualizationContent(agentMessage.content)}
+                <StreamingMarkdown
+                  content={agentMessage.content}
                   isStreaming={
-                    streaming && lastTokenClassification === "tokens"
+                    streaming && messageStreamState.agentState === "writing"
+                  }
+                  isStreamingTokensForCursor={
+                    streaming && messageStreamState.agentState === "writing"
                   }
                   isLastMessage={isLastMessage}
                   additionalMarkdownComponents={additionalMarkdownComponents}
