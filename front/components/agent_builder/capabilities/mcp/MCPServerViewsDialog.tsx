@@ -7,6 +7,7 @@ import {
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
+import { ActionIcons } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -61,7 +62,8 @@ import {
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
+import { InternalActionIcons } from "@app/lib/actions/mcp_icons";
+import { isCustomServerIconType } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
@@ -557,30 +559,19 @@ export function MCPServerViewsDialog({
     },
     {
       id: CONFIGURATION_DIALOG_PAGE_IDS.INFO,
-      title: infoMCPServerView?.name || "Tool Information",
-      description: "",
-      icon: undefined,
+      title: infoMCPServerView
+        ? getMcpServerViewDisplayName(infoMCPServerView)
+        : "Tool information",
+      description:
+        infoMCPServerView?.server.description ?? "No description available",
+      icon: infoMCPServerView
+        ? isCustomServerIconType(infoMCPServerView.server.icon)
+          ? ActionIcons[infoMCPServerView.server.icon]
+          : InternalActionIcons[infoMCPServerView.server.icon]
+        : undefined,
       content: infoMCPServerView ? (
         <div className="flex h-full flex-col space-y-6">
           <div className="space-y-4">
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-foreground dark:text-foreground-night">
-                Server Details
-              </h3>
-              <div className="flex items-center space-x-3 rounded-lg border border-border bg-muted-background p-4 dark:border-border-night dark:bg-muted-background-night">
-                {getAvatarFromIcon(infoMCPServerView.server.icon, "md")}
-                <div className="flex-1 space-y-1">
-                  <div className="text-base font-medium text-foreground dark:text-foreground-night">
-                    {getMcpServerViewDisplayName(infoMCPServerView)}
-                  </div>
-                  <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    {infoMCPServerView.server.description ||
-                      "No description available"}
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-foreground dark:text-foreground-night">
@@ -722,7 +713,6 @@ export function MCPServerViewsDialog({
       leftButton: leftButton ?? {
         label: "Cancel",
         variant: "outline",
-        size: "sm",
         onClick: handleCancel,
       },
       rightButton,
@@ -747,7 +737,7 @@ export function MCPServerViewsDialog({
       }}
     >
       <MultiPageSheetContent
-        showNavigation={true}
+        showNavigation={false}
         showHeaderNavigation={false}
         size="lg"
         pages={pages}

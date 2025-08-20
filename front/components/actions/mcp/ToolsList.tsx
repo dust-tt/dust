@@ -136,17 +136,18 @@ export function ToolsList({
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={toolEnabled}
-                        disabled={!mayUpdate}
-                        onClick={() =>
-                          handleClick(
-                            tool.name,
-                            getToolPermission(tool.name),
-                            !toolEnabled
-                          )
-                        }
-                      />
+                      {mayUpdate && (
+                        <Checkbox
+                          checked={toolEnabled}
+                          onClick={() =>
+                            handleClick(
+                              tool.name,
+                              getToolPermission(tool.name),
+                              !toolEnabled
+                            )
+                          }
+                        />
+                      )}
                       <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
                         {asDisplayName(tool.name)}
                       </h4>
