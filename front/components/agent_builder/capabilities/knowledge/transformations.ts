@@ -172,7 +172,7 @@ export function transformSelectionConfigurationsToTree(
             ];
             inPaths.push({
               path: pathParts.join("/"),
-              name: parentId,
+              name: node.title,
               type: "node",
               node,
             });
