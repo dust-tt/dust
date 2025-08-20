@@ -11,12 +11,12 @@ interface NotificationButtonProps {
 }
 
 const NotificationButton = React.forwardRef<
-  HTMLDivElement,
+  HTMLButtonElement,
   NotificationButtonProps
 >(({ className, buttonProps, counterProps }, ref) => {
   return (
-    <div ref={ref} className={cn("s-relative", className)}>
-      <Button {...buttonProps} />
+    <div className={cn("s-relative", className)}>
+      <Button ref={ref} {...buttonProps} />
       {counterProps.value > 0 && (
         <Counter {...counterProps} className="s-absolute -s-right-2 -s-top-2" />
       )}
