@@ -1,4 +1,7 @@
 import {
+  Client,
+  ScheduleHandle,
+  ScheduleOptions,
   ScheduleOverlapPolicy,
   WorkflowNotFoundError,
 } from "@temporalio/client";
@@ -12,6 +15,39 @@ import { QUEUE_NAME } from "@app/temporal/agent_schedule/config";
 import { agentScheduleWorkflow } from "@app/temporal/agent_schedule/workflows";
 import { AuthenticatorType } from "@app/lib/auth";
 import { TriggerType } from "@app/types/assistant/triggers";
+
+function getExistingSchedule(client: Client, scheduleId: string) {
+  let schedule: ScheduleHandle | null;
+  try {
+    schedule = client.schedule.getHandle(scheduleId);
+  } catch (err) {
+    return null;
+  }
+  return schedule;
+}
+
+function getScheduleOptions(
+  authType: AuthenticatorType,
+  trigger: TriggerType,
+  scheduleId: string
+): ScheduleOptions {
+  return {
+    action: {
+      type: "startWorkflow",
+      workflowType: agentScheduleWorkflow,
+      args: [authType, trigger],
+      taskQueue: QUEUE_NAME,
+    },
+    scheduleId,
+    policies: {
+      overlap: ScheduleOverlapPolicy.SKIP,
+    },
+    spec: {
+      cronExpressions: [trigger.config.cron],
+      timezone: trigger.config.timezone,
+    },
+  };
+}
 
 export async function createOrUpdateAgentScheduleWorkflow({
   authType,
@@ -38,76 +74,34 @@ export async function createOrUpdateAgentScheduleWorkflow({
   /**
    * First, we try to get and update the existing schedule
    */
-  try {
-    const handle = client.schedule.getHandle(scheduleId);
-    await handle.update((previous) => {
-      return {
-        action: {
-          type: "startWorkflow",
-          workflowType: agentScheduleWorkflow,
-          args: [authType, trigger],
-          taskQueue: QUEUE_NAME,
-        },
-        scheduleId,
-        policies: {
-          overlap: ScheduleOverlapPolicy.SKIP,
-        },
-        spec: {
-          cronExpressions: [trigger.config.cron],
-          timezone: trigger.config.timezone,
-        },
-        state: previous.state,
-      };
-    });
+  const existingSchedule = getExistingSchedule(client, scheduleId);
+  const scheduleOptions = getScheduleOptions(authType, trigger, scheduleId);
 
-    return new Ok(scheduleId);
+  try {
+    if (existingSchedule) {
+      await existingSchedule.update((previous) => {
+        return {
+          ...scheduleOptions,
+          state: previous.state,
+        };
+      });
+    } else {
+      await client.schedule.create(scheduleOptions);
+    }
+
+    childLogger.info(
+      { scheduleId, trigger },
+      "Scheduled workflow successfully."
+    );
   } catch {
-    childLogger.info(
-      {
-        trigger,
-      },
-      "Creating a new schedule."
-    );
-  }
-
-  /**
-   * If we're still here, it means the schedule does not exist yet,
-   * so we create a new one.
-   */
-  try {
-    await client.schedule.create({
-      action: {
-        type: "startWorkflow",
-        workflowType: agentScheduleWorkflow,
-        args: [authType, trigger],
-        taskQueue: QUEUE_NAME,
-      },
-      scheduleId,
-      policies: {
-        overlap: ScheduleOverlapPolicy.SKIP,
-      },
-      spec: {
-        cronExpressions: [trigger.config.cron],
-        timezone: trigger.config.timezone,
-      },
-    });
-
-    childLogger.info(
-      {
-        scheduleId,
-      },
-      "Scheduled workflow."
-    );
-  } catch (err) {
     childLogger.error(
       {
-        err,
+        scheduleId,
         trigger,
       },
-      "Failed to schedule workflow."
+      "Failed to update existing schedule."
     );
-
-    return new Err(normalizeError(err));
+    return new Err(new Error("Failed to update existing schedule"));
   }
 
   return new Ok(scheduleId);
