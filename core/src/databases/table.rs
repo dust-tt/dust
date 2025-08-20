@@ -990,6 +990,7 @@ impl Row {
 
     pub fn to_csv_record(&self, headers: &Vec<String>) -> Result<Vec<String>> {
         let mut record = Vec::new();
+        let row_val = self.value();
         for header in headers {
             // We need to set the row_id in a __dust_id field
             if header == "__dust_id" {
@@ -997,7 +998,7 @@ impl Row {
                 continue;
             }
 
-            match self.value().get(header) {
+            match row_val.get(header) {
                 Some(Value::Bool(b)) => record.push(b.to_string()),
                 Some(Value::Number(x)) => {
                     if x.is_i64() {
