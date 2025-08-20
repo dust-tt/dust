@@ -38,6 +38,7 @@ import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/sh
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import type {
   ActionSpecification,
   AgentBuilderAction,
@@ -187,28 +188,26 @@ export function MCPServerViewsDialog({
     [nonDefaultMCPServerViews, actions]
   );
 
-  const allSelectableViews = useMemo(
-    () => [
-      ...selectableDefaultMCPServerViews,
-      ...selectableNonDefaultMCPServerViews,
-    ],
-    [selectableDefaultMCPServerViews, selectableNonDefaultMCPServerViews]
-  );
-
   const filteredViews = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return allSelectableViews;
-    }
+    const filterViews = (views: MCPServerViewTypeWithLabel[]) =>
+      !searchTerm.trim()
+        ? views
+        : views.filter((view) => {
+            const term = searchTerm.toLowerCase();
+            return [view.label, view.description, view.name].some((field) =>
+              field?.toLowerCase().includes(term)
+            );
+          });
 
-    const searchTermLower = searchTerm.toLowerCase();
-    return allSelectableViews.filter(
-      (view) =>
-        view.label.toLowerCase().includes(searchTermLower) ||
-        view.description?.toLowerCase().includes(searchTermLower) ||
-        view.name?.toLowerCase().includes(searchTermLower)
-    );
-  }, [allSelectableViews, searchTerm]);
-
+    return {
+      defaultViews: filterViews(selectableDefaultMCPServerViews),
+      nonDefaultViews: filterViews(selectableNonDefaultMCPServerViews),
+    };
+  }, [
+    searchTerm,
+    selectableDefaultMCPServerViews,
+    selectableNonDefaultMCPServerViews,
+  ]);
   const showDataVisualization = useMemo(() => {
     if (!searchTerm.trim()) {
       return true;
@@ -476,7 +475,7 @@ export function MCPServerViewsDialog({
           <Spinner />
         </div>
       ) : (
-        <div className="space-y-4">
+        <>
           {!isMCPServerViewsLoading && (
             <SearchInput
               value={searchTerm}
@@ -486,13 +485,14 @@ export function MCPServerViewsDialog({
             />
           )}
           <MCPServerSelectionPage
-            mcpServerViews={filteredViews}
+            defaultMcpServerViews={filteredViews.defaultViews}
+            nonDefaultMcpServerViews={filteredViews.nonDefaultViews}
             onItemClick={onClickMCPServer}
             dataVisualization={showDataVisualization ? dataVisualization : null}
             onDataVisualizationClick={onClickDataVisualization}
             selectedToolsInDialog={selectedToolsInDialog}
           />
-        </div>
+        </>
       ),
     },
     {
@@ -708,35 +708,18 @@ export function MCPServerViewsDialog({
     if (isInfoPage) {
       return {
         leftButton: undefined,
-        rightButton: rightButton
-          ? {
-              ...rightButton,
-              size: "sm",
-            }
-          : undefined,
+        rightButton,
       };
     }
 
-    console.log(">>>>> mode.type", mode?.type);
-
     return {
-      leftButton: leftButton
-        ? {
-            ...leftButton,
-            size: "sm",
-          }
-        : {
-            label: "Cancel",
-            variant: "outline",
-            size: "sm",
-            onClick: handleCancel,
-          },
-      rightButton: rightButton
-        ? {
-            ...rightButton,
-            size: "sm",
-          }
-        : undefined,
+      leftButton: leftButton ?? {
+        label: "Cancel",
+        variant: "outline",
+        size: "sm",
+        onClick: handleCancel,
+      },
+      rightButton,
     };
   };
 
@@ -760,7 +743,7 @@ export function MCPServerViewsDialog({
       <MultiPageSheetContent
         showNavigation={true}
         showHeaderNavigation={false}
-        size="xl"
+        size="lg"
         pages={pages}
         currentPageId={currentPageId}
         onPageChange={(pageId) => {

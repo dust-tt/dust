@@ -3,7 +3,6 @@ import {
   BookOpenIcon,
   Button,
   Card,
-  CardGrid,
   Chip,
   cn,
   Icon,
@@ -57,37 +56,42 @@ function BaseToolCard({
       variant={isSelected ? "secondary" : "primary"}
       onClick={canAdd ? onClick : undefined}
       disabled={!canAdd}
-      className="h-32 p-3"
+      className="h-20 p-3"
     >
-      <div className="flex h-full w-full flex-col text-sm">
-        <div className="mb-2 flex h-7 items-center gap-2">
-          <Icon visual={icon} size="sm" />
-          <span className="text-sm font-medium">{label}</span>
-          <div
-            className={cn(
-              FADE_TRANSITION_CLASSES,
-              isSelected ? "opacity-100" : "opacity-0"
-            )}
-          >
-            {isSelected && <Chip size="xs" color="green" label="ADDED" />}
-          </div>
-        </div>
-        <div className="line-clamp-2 min-h-0 flex-1 overflow-hidden text-xs text-gray-600">
-          {description}
-        </div>
-        <div className="mt-2 flex-shrink-0">
-          <div
-            className={cn(
-              FADE_TRANSITION_CLASSES,
-              canAdd ? "opacity-100" : "opacity-0"
-            )}
-          >
-            {canAdd && (
-              <Button size="xs" variant="outline" icon={PlusIcon} label="Add" />
+      <div className="flex h-full w-full items-center justify-between gap-3">
+        <div className="flex-1">
+          <div className="mb-2 flex items-center gap-2">
+            <Icon visual={icon} size="sm" />
+            <span className="text-sm font-medium">{label}</span>
+            {isSelected && (
+              <Chip
+                size="xs"
+                color="green"
+                label="ADDED"
+                className={cn(FADE_TRANSITION_CLASSES, "opacity-100")}
+              />
             )}
           </div>
-          {!canAdd && cantAddReason && (
-            <div className="text-xs italic text-gray-600">{cantAddReason}</div>
+          <div className="line-clamp-2 text-xs text-gray-600">
+            {description}
+          </div>
+        </div>
+
+        <div className="flex-shrink-0">
+          {canAdd ? (
+            <Button
+              size="xs"
+              variant="outline"
+              icon={PlusIcon}
+              label="Add"
+              className={cn(FADE_TRANSITION_CLASSES, "opacity-100")}
+            />
+          ) : (
+            cantAddReason && (
+              <div className="text-xs italic text-gray-600">
+                {cantAddReason}
+              </div>
+            )
           )}
         </div>
       </div>
@@ -153,7 +157,8 @@ function MCPServerCard({
 }
 
 interface MCPServerSelectionPageProps {
-  mcpServerViews: MCPServerViewTypeWithLabel[];
+  defaultMcpServerViews: MCPServerViewTypeWithLabel[];
+  nonDefaultMcpServerViews: MCPServerViewTypeWithLabel[];
   onItemClick: (mcpServerView: MCPServerViewType) => void;
   dataVisualization?: ActionSpecification | null;
   onDataVisualizationClick?: () => void;
@@ -161,7 +166,8 @@ interface MCPServerSelectionPageProps {
 }
 
 export function MCPServerSelectionPage({
-  mcpServerViews = [],
+  defaultMcpServerViews,
+  nonDefaultMcpServerViews,
   onItemClick,
   dataVisualization,
   onDataVisualizationClick,
@@ -195,7 +201,7 @@ export function MCPServerSelectionPage({
   const { spaces } = useSpacesContext();
   const spaceIdToActions = getSpaceIdToActionsMap(
     [...alreadyAddedActions, ...selectedActions],
-    mcpServerViews
+    [...defaultMcpServerViews, ...nonDefaultMcpServerViews]
   );
   const allowedSpaces = getAllowedSpaces({
     spaces,
@@ -208,30 +214,45 @@ export function MCPServerSelectionPage({
 
   return (
     <>
-      {(mcpServerViews.length > 0 ||
-        (dataVisualization && onDataVisualizationClick)) && (
-        <CardGrid>
-          {dataVisualization && onDataVisualizationClick && (
-            <DataVisualizationCard
-              key="data-visualization"
-              specification={dataVisualization}
-              isSelected={isDataVisualizationSelected}
-              onClick={onDataVisualizationClick}
-            />
-          )}
-          {mcpServerViews.map((view) => (
-            <MCPServerCard
-              key={view.id}
-              view={view}
-              isSelected={selectedMCPIds.has(view.sId)}
-              isSpaceAllowed={
-                !!allowedSpaces.find((space) => space.sId === view.spaceId)
-              }
-              onClick={() => onItemClick(view)}
-            />
-          ))}
-        </CardGrid>
-      )}
+      <div className="flex flex-col gap-4">
+        {((dataVisualization && onDataVisualizationClick) ||
+          defaultMcpServerViews) && (
+          <span className="text-sm font-semibold">Top tools</span>
+        )}
+        {dataVisualization && onDataVisualizationClick && (
+          <DataVisualizationCard
+            key="data-visualization"
+            specification={dataVisualization}
+            isSelected={isDataVisualizationSelected}
+            onClick={onDataVisualizationClick}
+          />
+        )}
+        {defaultMcpServerViews.map((view) => (
+          <MCPServerCard
+            key={view.id}
+            view={view}
+            isSelected={selectedMCPIds.has(view.sId)}
+            isSpaceAllowed={
+              !!allowedSpaces.find((space) => space.sId === view.spaceId)
+            }
+            onClick={() => onItemClick(view)}
+          />
+        ))}
+        {nonDefaultMcpServerViews.length && (
+          <span className="text-sm font-semibold">Other tools</span>
+        )}
+        {nonDefaultMcpServerViews.map((view) => (
+          <MCPServerCard
+            key={view.id}
+            view={view}
+            isSelected={selectedMCPIds.has(view.sId)}
+            isSpaceAllowed={
+              !!allowedSpaces.find((space) => space.sId === view.spaceId)
+            }
+            onClick={() => onItemClick(view)}
+          />
+        ))}
+      </div>
     </>
   );
 }
