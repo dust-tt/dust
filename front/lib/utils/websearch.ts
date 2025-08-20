@@ -105,6 +105,12 @@ const serpapiSearch = async (
     return new Ok([]);
   }
 
+  // TODO: Remove once we have a proper error handling.
+  logger.error(
+    { status: res.status, statusText: res.statusText },
+    "Bad request on SerpAPI"
+  );
+
   return new Err(new Error(`Bad request on SerpAPI: ${res.statusText}`));
 };
 
@@ -128,6 +134,12 @@ const serperSearch = async (
     // WARN: need to format Serper results before using
     return new Ok(json);
   }
+
+  // TODO: Remove once we have a proper error handling.
+  logger.error(
+    { status: res.status, statusText: res.statusText },
+    "Bad request on Serper"
+  );
 
   return new Err(new Error(`Bad request on Serper: ${res.statusText}`));
 };
