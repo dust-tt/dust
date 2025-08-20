@@ -63,7 +63,7 @@ const DEFAULT_QUERY_TIMEOUT_MS: u64 = 10_000;
 // Cleanup databases every 30 seconds instead of every loop iteration.
 const DATABASE_CLEANUP_INTERVAL: Duration = Duration::from_secs(30);
 
-const CORE_API_TIMEOUT: Duration = Duration::from_secs(5);
+const CORE_API_TIMEOUT: Duration = Duration::from_secs(2);
 
 struct DatabaseEntry {
     database: Arc<Mutex<SqliteDatabase>>,
