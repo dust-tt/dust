@@ -146,7 +146,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   async postRegistration(auth: Authenticator) {
     switch (this.kind) {
       case "schedule":
-        return await createOrUpdateAgentScheduleWorkflow({
+        return createOrUpdateAgentScheduleWorkflow({
           authType: auth.toJSON(),
           trigger: this.toJSON(),
         });
@@ -158,7 +158,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   async preDeletion(auth: Authenticator) {
     switch (this.kind) {
       case "schedule":
-        return await deleteAgentScheduleWorkflow({
+        return deleteAgentScheduleWorkflow({
           authType: auth.toJSON(),
           agentConfigurationId: this.agentConfigurationId,
           triggerId: this.sId,
