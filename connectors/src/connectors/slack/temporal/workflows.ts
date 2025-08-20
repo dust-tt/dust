@@ -7,7 +7,6 @@ import {
   sleep,
   workflowInfo,
 } from "@temporalio/workflow";
-import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
 import type { ModelId } from "@connectors/types";
@@ -89,31 +88,40 @@ export async function workspaceFullSync(
   fromTs: number | null
 ): Promise<void> {
   let i = 1;
-  const childWorkflowQueue = new PQueue({
-    concurrency: 1,
-  });
+  const signalQueue: Array<{ channelIds: string[] }> = [];
+
   setHandler(syncChannelSignal, async (input) => {
-    for (const channelId of input.channelIds) {
-      await childWorkflowQueue.add(async () => {
-        await getSlackActivities().reportInitialSyncProgressActivity(
-          connectorId,
-          `${i - 1}/${input.channelIds.length} channels`
-        );
-        await executeChild(syncOneChannel, {
-          workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
-          searchAttributes: {
-            connectorId: [connectorId],
-          },
-          args: [connectorId, channelId, false, fromTs],
-          memo: workflowInfo().memo,
-        });
-        i++;
-      });
-    }
+    // Add signal to queue
+    signalQueue.push(input);
   });
 
   await getSlackActivities().fetchUsers(connectorId);
-  await childWorkflowQueue.onIdle();
+
+  while (signalQueue.length > 0) {
+    const signal = signalQueue.shift();
+    if (!signal) {
+      continue;
+    }
+
+    // Process channels sequentially for this signal
+    for (const channelId of signal.channelIds) {
+      await getSlackActivities().reportInitialSyncProgressActivity(
+        connectorId,
+        `${i - 1}/${signal.channelIds.length} channels`
+      );
+
+      await executeChild(syncOneChannel, {
+        workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
+        args: [connectorId, channelId, false, fromTs],
+        memo: workflowInfo().memo,
+      });
+
+      i++;
+    }
+  }
 
   await executeChild(slackGarbageCollectorWorkflow, {
     workflowId: slackGarbageCollectorWorkflowId(connectorId),
