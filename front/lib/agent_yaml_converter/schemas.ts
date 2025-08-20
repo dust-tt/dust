@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { additionalConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
   MODEL_IDS,
   MODEL_PROVIDER_IDS,
@@ -89,21 +90,6 @@ export const agentYAMLReasoningModelSchema = z
     reasoning_effort: z.enum(REASONING_EFFORT_IDS).nullable().optional(),
   })
   .nullable();
-
-const additionalConfigurationSchema = z.record(
-  z.string(),
-  z.union([
-    z.boolean(),
-    z.number(),
-    z.string(),
-    z.array(z.string()),
-    // Allow only one level of nesting
-    z.record(
-      z.string(),
-      z.union([z.boolean(), z.number(), z.string(), z.array(z.string())])
-    ),
-  ])
-);
 
 export const agentYAMLMCPActionSchema = baseAgentYAMLActionSchema.extend({
   type: z.literal("MCP"),
