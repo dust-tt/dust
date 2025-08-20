@@ -242,8 +242,6 @@ export function transformSelectionConfigurationsToTree(
     notIn: deduplicatePaths(notInPaths),
   };
 
-  console.log("RES", res);
-
   return res;
 }
 

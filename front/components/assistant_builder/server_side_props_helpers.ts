@@ -367,6 +367,8 @@ async function renderTableDataSourcesConfigurations(
         acc[sId].selectedResources.push(...config.selectedResources);
       }
 
+      acc[sId].excludedResources = [];
+
       return acc;
     },
     {}
