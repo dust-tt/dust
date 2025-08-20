@@ -447,9 +447,9 @@ export const SpaceDataSourceViewContentList = ({
     if (!isTablesValidating && !isDocumentsValidating) {
       // If the view only has content in one of the two views, we switch to that view.
       // if both views have content, or neither view has content, we default to documents.
-      if (hasTables && !hasDocuments) {
+      if (hasTables && !hasDocuments && viewType !== "table") {
         handleViewTypeChange("table");
-      } else if (!hasTables && hasDocuments) {
+      } else if (!hasTables && hasDocuments && viewType !== "document") {
         handleViewTypeChange("document");
       } else if (!viewType) {
         handleViewTypeChange(DEFAULT_VIEW_TYPE);
