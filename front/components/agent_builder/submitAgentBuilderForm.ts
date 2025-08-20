@@ -67,7 +67,7 @@ function processTableSelection(
   return tables.length > 0 ? tables : null;
 }
 
-function processAdditionalConfiguration(
+export function processAdditionalConfiguration(
   additionalConfiguration: AdditionalConfigurationInBuilderType
 ): AdditionalConfigurationType {
   // In agent builder v2, the additional configuration can be nested.

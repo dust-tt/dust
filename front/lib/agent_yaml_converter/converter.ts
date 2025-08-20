@@ -1,6 +1,7 @@
 import * as yaml from "js-yaml";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { processAdditionalConfiguration } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
   isAutoInternalMCPServerName,
   isInternalMCPServerName,
@@ -391,7 +392,9 @@ export class AgentYAMLConverter {
         additionalConfiguration:
           "additional_configuration" in action.configuration &&
           action.configuration.additional_configuration
-            ? action.configuration.additional_configuration
+            ? processAdditionalConfiguration(
+                action.configuration.additional_configuration
+              )
             : {},
         dustAppConfiguration: null,
         timeFrame:

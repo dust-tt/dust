@@ -90,6 +90,21 @@ export const agentYAMLReasoningModelSchema = z
   })
   .nullable();
 
+const additionalConfigurationSchema = z.record(
+  z.string(),
+  z.union([
+    z.boolean(),
+    z.number(),
+    z.string(),
+    z.array(z.string()),
+    // Allow only one level of nesting
+    z.record(
+      z.string(),
+      z.union([z.boolean(), z.number(), z.string(), z.array(z.string())])
+    ),
+  ])
+);
+
 export const agentYAMLMCPActionSchema = baseAgentYAMLActionSchema.extend({
   type: z.literal("MCP"),
   configuration: z.object({
@@ -100,12 +115,7 @@ export const agentYAMLMCPActionSchema = baseAgentYAMLActionSchema.extend({
     time_frame: agentYAMLTimeFrameSchema.optional(),
     json_schema: z.object({}).nullable().optional(),
     reasoning_model: agentYAMLReasoningModelSchema.optional(),
-    additional_configuration: z
-      .record(
-        z.string(),
-        z.union([z.number(), z.string(), z.boolean(), z.array(z.string())])
-      )
-      .optional(),
+    additional_configuration: additionalConfigurationSchema.optional(),
   }),
 });
 
