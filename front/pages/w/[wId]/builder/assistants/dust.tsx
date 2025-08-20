@@ -78,7 +78,6 @@ function DustAgentDataSourceVisual({
     <ContextItem.Visual
       visual={getConnectorProviderLogoWithFallback({
         provider: dataSourceView.dataSource.connectorProvider,
-        fallback: CloudArrowDownIcon,
         isDark,
       })}
     />
