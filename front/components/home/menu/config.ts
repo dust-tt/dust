@@ -338,8 +338,8 @@ export const menuConfig: DocsConfig = {
           href: "/home/chrome-extension",
         },
         {
-          title: "Shareables",
-          href: "/home/shareables",
+          title: "Canvas",
+          href: "/home/canvas",
         },
       ],
     },
