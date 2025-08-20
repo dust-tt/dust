@@ -33,6 +33,7 @@ import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
+import { WithRetriesError } from "@connectors/types";
 
 export async function incrementalSync(
   connectorId: ModelId,
@@ -273,7 +274,15 @@ export async function incrementalSync(
 
     return { nextPageToken, newFolders };
   } catch (e) {
-    if (e instanceof GaxiosError && e.response?.status === 403) {
+    if (
+      (e instanceof GaxiosError && e.response?.status === 403) ||
+      (e instanceof WithRetriesError &&
+        e.errors.every(
+          (error) =>
+            error.error instanceof GaxiosError &&
+            error.error.response?.status === 403
+        ))
+    ) {
       localLogger.error(
         {
           error: e.message,
@@ -281,7 +290,11 @@ export async function incrementalSync(
         `Looks like we lost access to this drive. Skipping`
       );
       return undefined;
-    } else if (isSharedDriveNotFoundError(e)) {
+    } else if (
+      isSharedDriveNotFoundError(e) ||
+      (e instanceof WithRetriesError &&
+        e.errors.every((error) => isSharedDriveNotFoundError(error.error)))
+    ) {
       localLogger.error(
         {
           error: e instanceof Error ? e.message : "Unknown error",
