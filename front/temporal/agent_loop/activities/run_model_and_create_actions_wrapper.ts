@@ -168,13 +168,10 @@ async function getExistingActionsAndBlobs(
         "Unexpected: step content is not a function call"
       );
 
-      // We want to skip the runModel if there are actions that are not in a terminal state.
-      if (!isToolExecutionStatusTerminal(mcpAction.status)) {
-        actionBlobs.push({
-          actionId: mcpAction.id,
-          needsApproval: mcpAction.executionState === "pending",
-        });
-      }
+      actionBlobs.push({
+        actionId: mcpAction.id,
+        needsApproval: mcpAction.executionState === "pending",
+      });
     }
   }
 

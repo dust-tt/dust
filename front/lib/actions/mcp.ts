@@ -515,6 +515,7 @@ export async function* runToolWithStreaming(
 
   const { executionState } = mcpAction;
 
+  // TODO(2025-08-20 aubin): use the status here: `if (isToolExecutionStatusTerminal(status))`.
   if (executionState === "denied") {
     statsDClient.increment("mcp_actions_denied.count", 1, tags);
     localLogger.info("Action execution rejected by user");
