@@ -133,6 +133,7 @@ export async function syncOneFile({
   }
 
   localLogger.info("Syncing file");
+  await heartbeat();
 
   const client = await getClient(connector.connectionId);
   const { itemAPIPath } = typeAndPathFromInternalId(documentId);
