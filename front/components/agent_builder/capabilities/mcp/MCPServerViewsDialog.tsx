@@ -1,12 +1,7 @@
-import type { MultiPageDialogPage } from "@dust-tt/sparkle";
-import {
-  Chip,
-  ContentMessage,
-  MultiPageDialog,
-  MultiPageDialogContent,
-  SearchInput,
-  Spinner,
-} from "@dust-tt/sparkle";
+import type { MultiPageSheetPage } from "@dust-tt/sparkle";
+import { Chip, ContentMessage, SearchInput, Spinner } from "@dust-tt/sparkle";
+import { MultiPageSheet } from "@dust-tt/sparkle";
+import { MultiPageSheetContent } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -22,7 +17,6 @@ import type {
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
-import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
 import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import {
   getFooterButtons,
@@ -471,32 +465,34 @@ export function MCPServerViewsDialog({
     resetToSelection();
   }, [resetToSelection]);
 
-  const pages: MultiPageDialogPage[] = [
+  const pages: MultiPageSheetPage[] = [
     {
       id: CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION,
       title: actions.length === 0 ? "Add tools" : "Add more",
       description: "",
       icon: undefined,
-      fixedContent: !isMCPServerViewsLoading ? (
-        <SearchInput
-          value={searchTerm}
-          onChange={setSearchTerm}
-          name="search-mcp-servers"
-          placeholder="Search servers..."
-        />
-      ) : undefined,
       content: isMCPServerViewsLoading ? (
         <div className="flex h-40 w-full items-center justify-center">
           <Spinner />
         </div>
       ) : (
-        <MCPServerSelectionPage
-          mcpServerViews={filteredViews}
-          onItemClick={onClickMCPServer}
-          dataVisualization={showDataVisualization ? dataVisualization : null}
-          onDataVisualizationClick={onClickDataVisualization}
-          selectedToolsInDialog={selectedToolsInDialog}
-        />
+        <div className="space-y-4">
+          {!isMCPServerViewsLoading && (
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              name="search-mcp-servers"
+              placeholder="Search servers..."
+            />
+          )}
+          <MCPServerSelectionPage
+            mcpServerViews={filteredViews}
+            onItemClick={onClickMCPServer}
+            dataVisualization={showDataVisualization ? dataVisualization : null}
+            onDataVisualizationClick={onClickDataVisualization}
+            selectedToolsInDialog={selectedToolsInDialog}
+          />
+        </div>
       ),
     },
     {
@@ -706,8 +702,48 @@ export function MCPServerViewsDialog({
     resetToSelection,
   });
 
+  const getSheetButtonProps = () => {
+    const isInfoPage = currentPageId === CONFIGURATION_DIALOG_PAGE_IDS.INFO;
+
+    if (isInfoPage) {
+      return {
+        leftButton: undefined,
+        rightButton: rightButton
+          ? {
+              ...rightButton,
+              size: "sm",
+            }
+          : undefined,
+      };
+    }
+
+    console.log(">>>>> mode.type", mode?.type);
+
+    return {
+      leftButton: leftButton
+        ? {
+            ...leftButton,
+            size: "sm",
+          }
+        : {
+            label: "Cancel",
+            variant: "outline",
+            size: "sm",
+            onClick: handleCancel,
+          },
+      rightButton: rightButton
+        ? {
+            ...rightButton,
+            size: "sm",
+          }
+        : undefined,
+    };
+  };
+
+  const sheetButtonProps = getSheetButtonProps();
+
   return (
-    <MultiPageDialog
+    <MultiPageSheet
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
@@ -721,12 +757,10 @@ export function MCPServerViewsDialog({
         }
       }}
     >
-      <MultiPageDialogContent
-        showNavigation={false}
+      <MultiPageSheetContent
+        showNavigation={true}
         showHeaderNavigation={false}
-        isAlertDialog
-        size="2xl"
-        height="xl"
+        size="xl"
         pages={pages}
         currentPageId={currentPageId}
         onPageChange={(pageId) => {
@@ -736,19 +770,9 @@ export function MCPServerViewsDialog({
             setCurrentPageId(pageId as ConfigurationPagePageId);
           }
         }}
-        leftButton={leftButton}
-        rightButton={rightButton}
         addFooterSeparator
-        footerContent={
-          currentMode !== "configure" ? (
-            <MCPServerViewsFooter
-              selectedToolsInDialog={selectedToolsInDialog}
-              dataVisualization={dataVisualization}
-              onRemoveSelectedTool={toggleToolSelection}
-            />
-          ) : undefined
-        }
+        {...sheetButtonProps}
       />
-    </MultiPageDialog>
+    </MultiPageSheet>
   );
 }
