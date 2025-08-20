@@ -75,7 +75,7 @@ function PanelHeader({
           </ScrollArea>
         </div>
       ) : (
-        <div className="flex h-full w-full items-end justify-center">
+        <div className="flex h-full w-full items-end justify-center pb-3.5">
           <Button
             icon={SidebarRightOpenIcon}
             size="sm"
