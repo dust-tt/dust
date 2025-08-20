@@ -144,94 +144,61 @@ export function transformSelectionConfigurationsToTree(
     }
 
     if (config.selectedResources.length > 0) {
-      // Group selected resources by parent for efficient processing
-      const resourcesByParent = new Map<
-        string | null,
-        typeof config.selectedResources
-      >();
-
       for (const node of config.selectedResources) {
-        const parentId = node.parentInternalId || null;
-        const nodes = resourcesByParent.get(parentId) || [];
-        nodes.push(node);
-        resourcesByParent.set(parentId, nodes);
-      }
-
-      // Add paths for selected resources
-      for (const [parentId, nodes] of resourcesByParent) {
-        for (const node of nodes) {
-          if (parentId) {
-            const pathParts = [
-              baseParts,
-              ...(
-                node.parentInternalIds?.filter(
-                  (id) => id !== node.internalId
-                ) ?? []
-              ).toReversed(),
-              node.internalId,
-            ];
-            inPaths.push({
-              path: pathParts.join("/"),
-              name: node.title,
-              type: "node",
-              node,
-            });
-          } else {
-            const pathParts = [baseParts, node.internalId];
-            inPaths.push({
-              path: pathParts.join("/"),
-              name: node.title,
-              type: "data_source",
-              dataSourceView: node.dataSourceView,
-            });
-          }
+        if (node.parentInternalId) {
+          const pathParts = [
+            baseParts,
+            ...(
+              node.parentInternalIds?.filter((id) => id !== node.internalId) ??
+              []
+            ).toReversed(),
+            node.internalId,
+          ];
+          inPaths.push({
+            path: pathParts.join("/"),
+            name: node.title,
+            type: "node",
+            node,
+          });
+        } else {
+          const pathParts = [baseParts, node.internalId];
+          inPaths.push({
+            path: pathParts.join("/"),
+            name: node.title,
+            type: "data_source",
+            dataSourceView: node.dataSourceView,
+          });
         }
       }
     }
 
     // Process excluded resources and add them to notInPaths
     if (config.excludedResources.length > 0) {
-      // Group excluded resources by parent for efficient processing
-      const excludedResourcesByParent = new Map<
-        string | null,
-        typeof config.excludedResources
-      >();
-
-      for (const node of config.excludedResources) {
-        const parentId = node.parentInternalId || null;
-        const nodes = excludedResourcesByParent.get(parentId) || [];
-        nodes.push(node);
-        excludedResourcesByParent.set(parentId, nodes);
-      }
-
       // Add paths for excluded resources
-      for (const [parentId, nodes] of excludedResourcesByParent) {
-        for (const node of nodes) {
-          if (parentId) {
-            const pathParts = [
-              baseParts,
-              ...(
-                node.parentInternalIds?.filter(
-                  (id) => id !== node.internalId
-                ) ?? []
-              ).toReversed(),
-              node.internalId,
-            ];
-            notInPaths.push({
-              path: pathParts.join("/"),
-              name: node.title,
-              type: "node",
-              node,
-            });
-          } else {
-            const pathParts = [baseParts, node.internalId];
-            notInPaths.push({
-              path: pathParts.join("/"),
-              name: node.title,
-              type: "data_source",
-              dataSourceView: node.dataSourceView,
-            });
-          }
+      for (const node of config.excludedResources) {
+        if (node.parentInternalId) {
+          const pathParts = [
+            baseParts,
+            ...(
+              node.parentInternalIds?.filter((id) => id !== node.internalId) ??
+              []
+            ).toReversed(),
+            node.internalId,
+          ];
+          notInPaths.push({
+            path: pathParts.join("/"),
+            name: node.title,
+            type: "node",
+            node,
+          });
+        } else {
+          const pathParts = [baseParts, node.internalId];
+          notInPaths.push({
+            path: pathParts.join("/"),
+            name: node.title,
+            type: "data_source",
+            dataSourceView: node.dataSourceView,
+          });
         }
       }
     }
