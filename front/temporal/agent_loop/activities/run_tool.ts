@@ -54,6 +54,10 @@ export async function runToolActivity(
   const action = await AgentMCPAction.findByPk(actionId);
   assert(action, "Action not found");
 
+  await action.update({
+    runningState: "running",
+  });
+
   const mcpServerId = action.toolConfiguration.toolServerId;
 
   const actionBaseParams = await buildActionBaseParams({
