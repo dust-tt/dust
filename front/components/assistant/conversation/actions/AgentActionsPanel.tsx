@@ -5,6 +5,7 @@ import {
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
+import type React from "react";
 import {
   useCallback,
   useEffect,
@@ -217,6 +218,8 @@ function AgentActionsPanelContent({
   );
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // Track whether the user is currently scrolled to the bottom of the panel
+  const isUserAtBottomRef = useRef<boolean>(true);
 
   /**
    * Preserve chain of thought content to prevent flickering during state transitions.
@@ -238,13 +241,30 @@ function AgentActionsPanelContent({
   }, [messageStreamState.message?.chainOfThought, currentStreamingStep]);
 
   useEffect(() => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({
-        top: scrollContainerRef.current.scrollHeight,
+    const el = scrollContainerRef.current;
+    if (!el) {
+      return;
+    }
+
+    if (isUserAtBottomRef.current) {
+      el.scrollTo({
+        top: el.scrollHeight,
         behavior: "smooth",
       });
     }
   }, [fullAgentMessage, messageStreamState]);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    /**
+     * 1000px threshold is used to determine if the user is at the bottom of the panel.
+     * If the user is within 1000px of the bottom, we consider them to be at the bottom.
+     * This is to prevent loosing auto-scroll when we receive a visually BIG chunk.
+     */
+    const threshold = 1000;
+    isUserAtBottomRef.current =
+      el.scrollHeight - el.clientHeight <= el.scrollTop + threshold;
+  };
 
   const agentMessageToRender =
     shouldStream && messageStreamState
@@ -266,6 +286,7 @@ function AgentActionsPanelContent({
       <div
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto p-4 pb-12"
+        onScroll={handleScroll}
       >
         <div className="flex flex-col gap-4">
           {/* Render all parsed steps in order */}
