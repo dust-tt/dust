@@ -118,7 +118,8 @@ export const useHashParam = (
         }
       }
     }
-  }, [defaultValue, innerValue, key, router.isReady, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultValue, innerValue, key, router.isReady]);
 
   const setValue = useCallback<Setter>(
     async (
