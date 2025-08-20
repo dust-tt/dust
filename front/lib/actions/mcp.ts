@@ -201,42 +201,42 @@ export type MCPRunningState =
   | "completed"
   | "errored";
 
-const TOOL_EXECUTION_TERMINAL_STATES = [
+const TOOL_EXECUTION_TERMINAL_STATUS = [
   "succeeded",
   "errored",
   "denied",
 ] as const;
 
-export type ToolExecutionTerminalState =
-  (typeof TOOL_EXECUTION_TERMINAL_STATES)[number];
+export type ToolExecutionTerminalStatus =
+  (typeof TOOL_EXECUTION_TERMINAL_STATUS)[number];
 
-const TOOL_EXECUTION_TRANSITIONARY_STATES = [
+const TOOL_EXECUTION_TRANSITIONARY_STATUS = [
   "allowed_explicitly",
   "allowed_implicitly",
   "pending",
   "running",
 ] as const;
 
-export type ToolExecutionTransitionaryState =
-  (typeof TOOL_EXECUTION_TRANSITIONARY_STATES)[number];
+export type ToolExecutionTransitionaryStatus =
+  (typeof TOOL_EXECUTION_TRANSITIONARY_STATUS)[number];
 
-export type ToolExecutionState =
-  | ToolExecutionTerminalState
-  | ToolExecutionTransitionaryState;
+export type ToolExecutionStatus =
+  | ToolExecutionTerminalStatus
+  | ToolExecutionTransitionaryStatus;
 
-export function isToolExecutionStateTerminal(
-  state: ToolExecutionState
-): state is ToolExecutionTerminalState {
-  return TOOL_EXECUTION_TERMINAL_STATES.includes(
-    state as ToolExecutionTerminalState
+export function isToolExecutionStatusTerminal(
+  state: ToolExecutionStatus
+): state is ToolExecutionTerminalStatus {
+  return TOOL_EXECUTION_TERMINAL_STATUS.includes(
+    state as ToolExecutionTerminalStatus
   );
 }
 
-export function isToolExecutionStateTransitionary(
-  state: ToolExecutionState
-): state is ToolExecutionTransitionaryState {
-  return TOOL_EXECUTION_TRANSITIONARY_STATES.includes(
-    state as ToolExecutionTransitionaryState
+export function isToolExecutionStatusTransitionary(
+  state: ToolExecutionStatus
+): state is ToolExecutionTransitionaryStatus {
+  return TOOL_EXECUTION_TRANSITIONARY_STATUS.includes(
+    state as ToolExecutionTransitionaryStatus
   );
 }
 
