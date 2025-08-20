@@ -91,6 +91,10 @@ export async function runToolActivity(
   for await (const event of eventStream) {
     switch (event.type) {
       case "tool_error":
+        await action.update({
+          runningState: "errored",
+        });
+
         await updateResourceAndPublishEvent(
           {
             type: "tool_error",
@@ -110,13 +114,13 @@ export async function runToolActivity(
           }
         );
 
-        await action.update({
-          runningState: "errored",
-        });
-
         return;
 
       case "tool_success":
+        await action.update({
+          runningState: "completed",
+        });
+
         await updateResourceAndPublishEvent(
           {
             type: "agent_action_success",
@@ -131,10 +135,6 @@ export async function runToolActivity(
             step,
           }
         );
-
-        await action.update({
-          runningState: "completed",
-        });
 
         // We stitch the action into the agent message. The conversation is expected to include
         // the agentMessage object, updating this object will update the conversation as well.
