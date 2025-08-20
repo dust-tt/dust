@@ -29,12 +29,12 @@ export function AgentBuilderLeftPanel({
     <div className="flex h-full flex-col">
       <BarHeader
         variant="default"
-        className="px-4"
+        className="mx-4"
         title={title}
         rightActions={<AgentAccessPublicationDialog />}
       />
       <ScrollArea className="flex-1">
-        <div className="mx-auto space-y-10 py-4 2xl:max-w-4xl">
+        <div className="mx-auto space-y-10 p-4 2xl:max-w-4xl">
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
@@ -46,7 +46,7 @@ export function AgentBuilderLeftPanel({
       </ScrollArea>
       <BarFooter
         variant="default"
-        className="justify-between"
+        className="mx-4 justify-between"
         leftActions={
           <Button
             variant="outline"
