@@ -184,25 +184,8 @@ export async function syncOneThreadDebounced(
 ) {
   let signaled = false;
   let debounceCount = 0;
-  let receivedSignalsCount = 0;
 
   setHandler(newWebhookSignal, async () => {
-    receivedSignalsCount++;
-
-    if (receivedSignalsCount >= MAX_SIGNAL_RECEIVED_COUNT) {
-      log.info(
-        `Continuing as Workflow as new due to too many signals received for syncOneThreadDebounced: ${receivedSignalsCount}`,
-        {
-          connectorId,
-          channelId,
-          threadTs,
-          debounceCount,
-          receivedSignalsCount,
-        }
-      );
-      await continueAsNew(connectorId, channelId, threadTs);
-      return;
-    }
     signaled = true;
   });
 
@@ -252,25 +235,8 @@ export async function syncOneMessageDebounced(
 ) {
   let signaled = false;
   let debounceCount = 0;
-  let receivedSignalsCount = 0;
 
   setHandler(newWebhookSignal, async () => {
-    receivedSignalsCount++;
-
-    if (receivedSignalsCount >= MAX_SIGNAL_RECEIVED_COUNT) {
-      log.info(
-        `Continuing as Workflow as new due to too many signals received for syncOneMessageDebounced: ${receivedSignalsCount}`,
-        {
-          connectorId,
-          channelId,
-          threadTs,
-          debounceCount,
-          receivedSignalsCount,
-        }
-      );
-      await continueAsNew(connectorId, channelId, threadTs);
-      return;
-    }
     signaled = true;
   });
 
