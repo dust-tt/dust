@@ -190,17 +190,6 @@ async function _upsertDataSourceDocument({
           e.config.data = "[REDACTED]";
         }
 
-        // Handle quota errors specifically
-        if (axios.isAxiosError(e) && e.response?.status === 403) {
-          const errorType = e.response?.data?.error?.type;
-          if (
-            errorType === "workspace_quota_error" ||
-            errorType === "data_source_quota_error"
-          ) {
-            throw new WorkspaceQuotaExceededError(e);
-          }
-        }
-
         statsDClient.increment(
           "data_source_upserts_error.count",
           1,
