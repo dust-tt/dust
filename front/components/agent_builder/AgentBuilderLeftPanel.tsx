@@ -44,20 +44,24 @@ export function AgentBuilderLeftPanel({
           />
         </div>
       </ScrollArea>
-      <div className="border-t border-border bg-structure-50 dark:border-structure-200-night dark:bg-structure-50-night">
-        <div className="mx-auto flex h-16 items-center justify-between px-4 2xl:max-w-4xl">
+      <BarFooter
+        variant="default"
+        className="justify-between"
+        leftActions={
           <Button
             variant="outline"
             label="Close"
             onClick={handleCancel}
             type="button"
           />
+        }
+        rightActions={
           <BarFooter.ButtonBar
             variant="validate"
             saveButtonProps={saveButtonProps}
           />
-        </div>
-      </div>
+        }
+      />
     </div>
   );
 }
