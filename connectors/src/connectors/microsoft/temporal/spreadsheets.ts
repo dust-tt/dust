@@ -381,6 +381,8 @@ export async function handleSpreadSheet({
     });
   }
 
+  localLogger.info("[Spreadsheet] Done.");
+
   return new Ok(null);
 }
 
