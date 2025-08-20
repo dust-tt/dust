@@ -1,18 +1,18 @@
 import * as React from "react";
 
-import { Button, Icon } from "@sparkle/components";
+import { Button, Icon, Separator } from "@sparkle/components";
 import {
   Sheet,
   SheetClose,
   SheetContainer,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from "@sparkle/components/Sheet";
 import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/app";
+import { cn } from "@sparkle/lib/utils";
 
 interface MultiPageSheetPage {
   id: string;
@@ -20,6 +20,7 @@ interface MultiPageSheetPage {
   description?: string;
   icon?: React.ComponentType;
   content: React.ReactNode;
+  fixedContent?: React.ReactNode;
 }
 
 interface MultiPageSheetProps {
@@ -36,14 +37,60 @@ interface MultiPageSheetProps {
   className?: string;
   disableNext?: boolean;
   disableSave?: boolean;
-  leftButtonProps?: React.ComponentProps<typeof Button>;
-  rightButtonProps?: React.ComponentProps<typeof Button>;
-  rightEndButtonProps?: React.ComponentProps<typeof Button>;
+  leftButton?: React.ComponentProps<typeof Button>;
+  centerButton?: React.ComponentProps<typeof Button>;
+  rightButton?: React.ComponentProps<typeof Button>;
+  addFooterSeparator?: boolean;
 }
 
 const MultiPageSheetRoot = Sheet;
 const MultiPageSheetTrigger = SheetTrigger;
 const MultiPageSheetClose = SheetClose;
+
+interface MultiPageSheetFooterProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  addTopSeparator: boolean;
+  leftButton?: React.ComponentProps<typeof Button>;
+  centerButton?: React.ComponentProps<typeof Button>;
+  rightButton?: React.ComponentProps<typeof Button>;
+}
+
+const MultiPageSheetFooter = ({
+  className,
+  addTopSeparator,
+  children,
+  leftButton,
+  centerButton,
+  rightButton,
+  ...props
+}: MultiPageSheetFooterProps) => {
+  const content = (
+    <div
+      className={cn("s-flex s-flex-none s-flex-col s-gap-3 s-p-4", className)}
+      {...props}
+    >
+      {children}
+      <div className="s-flex s-flex-row s-justify-between">
+        <div>{leftButton && <Button {...leftButton} />}</div>
+        <div className="s-flex s-gap-2">
+          {centerButton && <Button {...centerButton} />}
+          {rightButton && <Button {...rightButton} />}
+        </div>
+      </div>
+    </div>
+  );
+
+  return addTopSeparator ? (
+    <>
+      <Separator />
+      {content}
+    </>
+  ) : (
+    <>{content}</>
+  );
+};
+
+MultiPageSheetFooter.displayName = "MultiPageSheetFooter";
 
 interface MultiPageSheetContentProps extends MultiPageSheetProps {
   children?: never;
@@ -64,13 +111,12 @@ const MultiPageSheetContent = React.forwardRef<
       showNavigation = true,
       showHeaderNavigation = true,
       footerContent,
-      onSave,
       className,
       disableNext = false,
-      disableSave = false,
-      leftButtonProps,
-      rightButtonProps,
-      rightEndButtonProps,
+      addFooterSeparator = false,
+      leftButton,
+      centerButton,
+      rightButton,
       ...props
     },
     ref
@@ -164,54 +210,37 @@ const MultiPageSheetContent = React.forwardRef<
           </div>
         </SheetHeader>
 
-        <SheetContainer>{currentPage.content}</SheetContainer>
+        <div className="s-min-h-0 s-flex-1 s-overflow-hidden">
+          <div
+            className={cn(
+              "s-h-full",
+              currentPage.fixedContent ? "s-flex s-flex-col" : ""
+            )}
+          >
+            {currentPage.fixedContent && (
+              <>
+                <div className="s-flex-none s-px-5 s-py-4">
+                  {currentPage.fixedContent}
+                </div>
+                <Separator />
+              </>
+            )}
+            <SheetContainer
+              className={currentPage.fixedContent ? "s-flex-1" : undefined}
+            >
+              {currentPage.content}
+            </SheetContainer>
+          </div>
+        </div>
 
-        <SheetFooter
-          leftButtonProps={
-            leftButtonProps || {
-              label: "Cancel",
-              variant: "outline",
-              size: "sm",
-            }
-          }
-          rightButtonProps={
-            rightButtonProps ||
-            (showNavigation && pages.length > 1 && hasPrevious
-              ? {
-                  label: "Previous",
-                  variant: "outline",
-                  size: "sm",
-                  onClick: handlePrevious,
-                }
-              : undefined)
-          }
-          rightEndButtonProps={
-            rightEndButtonProps ||
-            (showNavigation && pages.length > 1 && hasNext
-              ? {
-                  label: "Next",
-                  variant: "outline",
-                  size: "sm",
-                  disabled: disableNext,
-                  onClick: handleNext,
-                }
-              : showNavigation && pages.length > 1 && !hasNext && onSave
-                ? {
-                    label: "Save changes",
-                    variant: "primary",
-                    size: "sm",
-                    disabled: disableSave,
-                    onClick: (
-                      e: React.MouseEvent<HTMLButtonElement, MouseEvent>
-                    ) => {
-                      onSave(e);
-                    },
-                  }
-                : undefined)
-          }
+        <MultiPageSheetFooter
+          leftButton={leftButton}
+          centerButton={centerButton}
+          rightButton={rightButton}
+          addTopSeparator={addFooterSeparator}
         >
           {footerContent}
-        </SheetFooter>
+        </MultiPageSheetFooter>
       </SheetContent>
     );
   }
@@ -223,6 +252,8 @@ export {
   MultiPageSheetRoot as MultiPageSheet,
   MultiPageSheetClose,
   MultiPageSheetContent,
+  MultiPageSheetFooter,
+  type MultiPageSheetFooterProps,
   type MultiPageSheetPage,
   type MultiPageSheetProps,
   MultiPageSheetTrigger,
