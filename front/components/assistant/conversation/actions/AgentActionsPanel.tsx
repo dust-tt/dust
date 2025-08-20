@@ -5,7 +5,14 @@ import {
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
@@ -81,6 +88,13 @@ function AgentActionsPanelContent({
     )
   );
 
+  /**
+   * This ref is used to determine if this is a fresh mount with content.
+   * If it is, we need to clear the content when we start receiving
+   * generation_tokens events to avoid duplication.
+   * This is necessary because the content is already present in the state
+   * when the component mounts, and we don't want to append to it.
+   */
   const isFreshMountWithContent = useRef(
     fullAgentMessage?.type === "agent_message" &&
       fullAgentMessage?.status === "created" &&
@@ -104,8 +118,7 @@ function AgentActionsPanelContent({
       ? fullAgentMessage.parsedContents
       : {};
 
-  const maxParsedStep = Math.max(...Object.keys(steps || {}).map(Number), 0);
-  const currentStreamingStep = maxParsedStep + 1;
+  const [currentStreamingStep, setCurrentStreamingStep] = useState(1);
 
   const shouldStream = useMemo(() => {
     if (fullAgentMessage.status !== "created") {
@@ -160,12 +173,16 @@ function AgentActionsPanelContent({
         return;
       }
 
+      setCurrentStreamingStep(eventPayload.data.step + 1);
+
       if (eventType === "tool_approve_execution") {
         return;
       }
 
-      // If this is a fresh mount with existing content and we're getting generation_tokens,
-      // we need to clear the content first to avoid duplication
+      /**
+       * If this is a fresh mount with existing content and we're getting generation_tokens,
+       * we need to clear the content first to avoid duplication.
+       */
       if (
         isFreshMountWithContent.current &&
         eventType === "generation_tokens" &&
@@ -206,7 +223,6 @@ function AgentActionsPanelContent({
    * We store the step of the cot item to ensure we don't start displaying the next step
    * when a subagent is still running.
    */
-
   const lastChainOfThoughtRef = useRef<{ step: number; content: string }>({
     step: 0,
     content: "",

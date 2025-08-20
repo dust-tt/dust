@@ -31,7 +31,10 @@ export interface MessageTemporaryState {
   actionProgress: ActionProgressState;
 }
 
-export type AgentMessageStateEvent = AgentMessageEvents | ToolNotificationEvent;
+export type AgentMessageStateEvent = (
+  | AgentMessageEvents
+  | ToolNotificationEvent
+) & { step: number };
 
 type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
   AgentMessageStateEvent,
