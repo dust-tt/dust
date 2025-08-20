@@ -188,6 +188,7 @@ const getSlackAIEnablementStatus = async (
     );
 
     if (!assistantSearchInfo.ok) {
+      logger.warn("assistant.search.info returner !ok");
       return "unknown";
     }
 
@@ -197,6 +198,7 @@ const getSlackAIEnablementStatus = async (
       ? "enabled"
       : "disabled";
   } catch (e) {
+    logger.warn("Error fetching Slack AI enablement status: ", e);
     return "unknown";
   }
 };
