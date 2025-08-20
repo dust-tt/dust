@@ -1,5 +1,5 @@
 import assert from "assert";
-import { sortBy } from "lodash";
+import sortBy from "lodash/sortBy";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 

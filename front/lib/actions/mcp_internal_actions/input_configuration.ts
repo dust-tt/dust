@@ -3,7 +3,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { Ajv } from "ajv";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { zip } from "lodash";
+import zip from "lodash/zip";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";

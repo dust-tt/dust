@@ -4,7 +4,8 @@ module.exports = {
   meta: {
     type: "problem",
     docs: {
-      description: "Disallow bulk lodash imports in frontend code to prevent bundle bloat",
+      description:
+        "Disallow bulk lodash imports in frontend code to prevent bundle bloat",
       category: "Best Practices",
       recommended: true,
       url: "https://lodash.com/docs/4.17.15#lodash",
@@ -33,18 +34,6 @@ module.exports = {
   create(context) {
     return {
       ImportDeclaration(node) {
-        // Only check files in specified paths
-        const pathsToCheck = [
-          "front/components/",
-          "front/lib/client/",
-          "front/lib/swr/",
-        ];
-
-        const filename = context.getFilename();
-        if (!pathsToCheck.some((path) => filename.includes(path))) {
-          return;
-        }
-
         if (
           node.source.value === "lodash" &&
           node.specifiers.length > 0 &&
@@ -54,8 +43,7 @@ module.exports = {
 
           context.report({
             node,
-            message:
-              `Bulk lodash imports significantly increase bundle size (~70KB). Use individual imports instead (e.g., 'lodash/debounce') to reduce bundle size by 90%+. Importing: ${imports.join(", ")}`,
+            message: `Bulk lodash imports significantly increase bundle size (~70KB). Use individual imports instead (e.g., 'lodash/debounce') to reduce bundle size by 90%+. Importing: ${imports.join(", ")}`,
             fix(fixer) {
               const newImports = imports
                 .map((name) => `import ${name} from 'lodash/${name}';`)

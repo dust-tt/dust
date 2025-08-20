@@ -2,7 +2,7 @@ import type { ActionApprovalStateType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { omit } from "lodash";
+import omit from "lodash/omit";
 
 import type {
   MCPToolStakeLevelType,

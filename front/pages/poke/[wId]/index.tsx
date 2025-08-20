@@ -12,7 +12,7 @@ import {
   SheetTrigger,
 } from "@dust-tt/sparkle";
 import { format } from "date-fns/format";
-import { keyBy } from "lodash";
+import keyBy from "lodash/keyBy";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";

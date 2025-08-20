@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebClient } from "@slack/web-api";
 import type { Match } from "@slack/web-api/dist/response/SearchMessagesResponse";
 import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
-import { uniqBy } from "lodash";
+import uniqBy from "lodash/uniqBy";
 import slackifyMarkdown from "slackify-markdown";
 import { z } from "zod";
 
