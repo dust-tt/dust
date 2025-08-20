@@ -217,7 +217,7 @@ export function MCPServerSelectionPage({
       <div className="flex flex-col gap-4">
         {((dataVisualization && onDataVisualizationClick) ||
           defaultMcpServerViews) && (
-          <span className="text-sm font-semibold">Top tools</span>
+          <span className="text-lg font-semibold">Top tools</span>
         )}
         {dataVisualization && onDataVisualizationClick && (
           <DataVisualizationCard
@@ -239,7 +239,7 @@ export function MCPServerSelectionPage({
           />
         ))}
         {nonDefaultMcpServerViews.length && (
-          <span className="text-sm font-semibold">Other tools</span>
+          <span className="text-lg font-semibold">Other tools</span>
         )}
         {nonDefaultMcpServerViews.map((view) => (
           <MCPServerCard

@@ -35,7 +35,7 @@ export function MCPServerViewsFooter({
                     ? () => onRemoveSelectedTool(tool)
                     : undefined
                 }
-                size="sm"
+                size="xs"
               />
             ))}
           </div>

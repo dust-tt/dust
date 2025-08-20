@@ -1,7 +1,12 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
-import { Chip, ContentMessage, SearchInput, Spinner } from "@dust-tt/sparkle";
-import { MultiPageSheet } from "@dust-tt/sparkle";
-import { MultiPageSheetContent } from "@dust-tt/sparkle";
+import {
+  Chip,
+  ContentMessage,
+  MultiPageSheet,
+  MultiPageSheetContent,
+  SearchInput,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -17,6 +22,7 @@ import type {
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
+import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
 import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import {
   getFooterButtons,
@@ -37,8 +43,8 @@ import { DustAppSection } from "@app/components/agent_builder/capabilities/share
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
+import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
-import { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import type {
   ActionSpecification,
   AgentBuilderAction,
@@ -755,6 +761,15 @@ export function MCPServerViewsDialog({
         }}
         addFooterSeparator
         {...sheetButtonProps}
+        footerContent={
+          currentMode !== "configure" ? (
+            <MCPServerViewsFooter
+              selectedToolsInDialog={selectedToolsInDialog}
+              dataVisualization={dataVisualization}
+              onRemoveSelectedTool={toggleToolSelection}
+            />
+          ) : undefined
+        }
       />
     </MultiPageSheet>
   );
