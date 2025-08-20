@@ -1,7 +1,6 @@
 import {
   Avatar,
   Button,
-  CloudArrowDownIcon,
   ContextItem,
   DustLogoSquare,
   Page,
