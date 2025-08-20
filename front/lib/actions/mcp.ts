@@ -186,6 +186,7 @@ export function getMCPApprovalStateFromUserApprovalState(
   }
 }
 
+// TODO(2025-08-20 aubin): remove this (consolidated into a single column).
 export type MCPExecutionState =
   | "allowed_explicitly"
   | "allowed_implicitly"
@@ -193,11 +194,51 @@ export type MCPExecutionState =
   | "pending"
   | "timeout";
 
+// TODO(2025-08-20 aubin): remove this (consolidated into a single column).
 export type MCPRunningState =
   | "not_started"
   | "running"
   | "completed"
   | "errored";
+
+const TOOL_EXECUTION_TERMINAL_STATES = [
+  "succeeded",
+  "errored",
+  "denied",
+] as const;
+
+export type ToolExecutionTerminalState =
+  (typeof TOOL_EXECUTION_TERMINAL_STATES)[number];
+
+const TOOL_EXECUTION_TRANSITIONARY_STATES = [
+  "allowed_explicitly",
+  "allowed_implicitly",
+  "pending",
+  "running",
+] as const;
+
+export type ToolExecutionTransitionaryState =
+  (typeof TOOL_EXECUTION_TRANSITIONARY_STATES)[number];
+
+export type ToolExecutionState =
+  | ToolExecutionTerminalState
+  | ToolExecutionTransitionaryState;
+
+export function isToolExecutionStateTerminal(
+  state: ToolExecutionState
+): state is ToolExecutionTerminalState {
+  return TOOL_EXECUTION_TERMINAL_STATES.includes(
+    state as ToolExecutionTerminalState
+  );
+}
+
+export function isToolExecutionStateTransitionary(
+  state: ToolExecutionState
+): state is ToolExecutionTransitionaryState {
+  return TOOL_EXECUTION_TRANSITIONARY_STATES.includes(
+    state as ToolExecutionTransitionaryState
+  );
+}
 
 type MCPParamsEvent = {
   type: "tool_params";
