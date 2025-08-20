@@ -7,8 +7,11 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
+import {
+  LONG_RUNNING_TOOL_THRESHOLD_MS,
+  SYNC_TO_ASYNC_TIMEOUT_MS,
+} from "@app/lib/constants/timeouts";
 import { wakeLock } from "@app/lib/wake_lock";
-import { PRESTOP_GRACE_PERIOD_MS } from "@app/pages/api/[preStopSecret]/prestop";
 import {
   logAgentLoopPhaseCompletionActivity,
   logAgentLoopPhaseStartActivity,
@@ -30,12 +33,6 @@ import type {
   RunAgentArgs,
   RunAgentArgsInput,
 } from "@app/types/assistant/agent_run";
-
-// 40 seconds timeout before switching from sync to async execution.
-const SYNC_TO_ASYNC_TIMEOUT_MS = 40 * 1000;
-
-// 10 seconds before prestop grace period.
-const LONG_RUNNING_TOOL_THRESHOLD_MS = PRESTOP_GRACE_PERIOD_MS - 10_000;
 
 /**
  * TODO(DURABLE_AGENT 2025-08-20): This is a temporary solution to handle long-running tools. To be

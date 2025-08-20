@@ -1,15 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { PRESTOP_GRACE_PERIOD_MS } from "@app/lib/constants/timeouts";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import type { WakeLockEntry } from "@app/lib/wake_lock";
 import { getWakeLockDetails, wakeLockIsFree } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { withLogging } from "@app/logger/withlogging";
-
-// This is defined as terminationGracePeriodSeconds in the deployment specification.
-// DO NOT CHANGE THIS VALUE unless you update the deployment specification.
-export const PRESTOP_GRACE_PERIOD_MS = 130 * 1000; // 130 seconds grace period.
 
 const PRESTOP_MAX_WAIT_MS = 120 * 1000; // 120 seconds max wait.
 const PRESTOP_LOG_INTERVAL_MS = 1000; // 1 second log interval.
