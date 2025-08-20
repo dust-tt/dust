@@ -223,16 +223,16 @@ const createServer = async (
 ): Promise<McpServer> => {
   const server = makeInternalMCPServer(serverInfo);
 
-  const conn = await getConnectionForMCPServer(auth, {
+  const c = await getConnectionForMCPServer(auth, {
     mcpServerId,
     connectionType: "workspace", // Always get the admin token.
   });
 
   if (isDustWorkspace(auth.getNonNullableWorkspace()) || isDevelopment()) {
-    if (conn) {
+    if (c) {
       // Note: this is a temporary tool to test the dynamic configuration of channels, but it's meant to be added directly to one of the tools below.
       try {
-        const slackClient = await getSlackClient(conn.access_token);
+        const slackClient = await getSlackClient(c.access_token);
         const channels = await getCachedPublicChannels({
           mcpServerId,
           slackClient,
@@ -276,8 +276,8 @@ const createServer = async (
     }
   }
 
-  const slackAIStatus = conn
-    ? await getCachedSlackAIEnablementStatus(conn.access_token)
+  const slackAIStatus = c
+    ? await getCachedSlackAIEnablementStatus(c.access_token)
     : "unknown";
 
   // If it's enabled or disabled, we end up with only one of the two tools. Otherwise we add both,
