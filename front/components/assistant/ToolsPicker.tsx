@@ -33,6 +33,7 @@ interface ToolsPickerProps {
   onSelect: (serverView: MCPServerViewType) => void;
   onDeselect: (serverView: MCPServerViewType) => void;
   isLoading?: boolean;
+  disabled?: boolean;
 }
 
 export function ToolsPicker({
@@ -41,6 +42,7 @@ export function ToolsPicker({
   onSelect,
   onDeselect,
   isLoading = false,
+  disabled = false,
 }: ToolsPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -112,7 +114,7 @@ export function ToolsPicker({
           variant="ghost-secondary"
           size="xs"
           tooltip="Tools"
-          disabled={isLoading}
+          disabled={disabled || isLoading}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
