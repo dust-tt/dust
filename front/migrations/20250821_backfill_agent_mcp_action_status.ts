@@ -6,76 +6,47 @@ import { makeScript } from "@app/scripts/helpers";
 
 const BATCH_SIZE = 2048;
 
-async function backfillErroredActions(
-  { execute }: { execute: boolean },
-  logger: Logger
-) {
-  let lastId = 0;
-  let hasMore = true;
-  do {
-    // Get a batch of actions that are errored.
-    const mcpActions = await AgentMCPAction.findAll({
-      where: {
-        id: {
-          [Op.gt]: lastId,
-        },
-        isError: true,
-      },
-      order: [["id", "ASC"]],
-      limit: BATCH_SIZE,
-    });
-    logger.info(
-      `Processing ${mcpActions.length} errored actions starting from ${lastId}`
-    );
-
-    // Update the status accordingly.
-    if (execute) {
-      await AgentMCPAction.update(
-        { status: "errored" },
-        {
-          where: {
-            id: {
-              [Op.in]: mcpActions.map((a) => a.id),
-            },
+async function getNextBatch({
+  lastId,
+  targetStatus,
+}: {
+  lastId: number;
+  targetStatus: "errored" | "denied";
+}) {
+  return AgentMCPAction.findAll({
+    where:
+      targetStatus === "errored"
+        ? {
+            id: { [Op.gt]: lastId },
+            isError: true,
+          }
+        : {
+            id: { [Op.gt]: lastId },
+            executionState: "denied",
           },
-        }
-      );
-      logger.info(`Updated ${mcpActions.length} actions`);
-    } else {
-      logger.info(`Would update ${mcpActions.length} actions`);
-    }
-
-    lastId = mcpActions[mcpActions.length - 1].id;
-    hasMore = mcpActions.length === BATCH_SIZE;
-  } while (hasMore);
+    order: [["id", "ASC"]],
+    limit: BATCH_SIZE,
+  });
 }
 
-async function backfillDeniedActions(
-  { execute }: { execute: boolean },
+async function backfillActions(
+  {
+    targetStatus,
+    execute,
+  }: { targetStatus: "errored" | "denied"; execute: boolean },
   logger: Logger
 ) {
   let lastId = 0;
   let hasMore = true;
   do {
-    // Get a batch of actions that are errored.
-    const mcpActions = await AgentMCPAction.findAll({
-      where: {
-        id: {
-          [Op.gt]: lastId,
-        },
-        executionState: "denied",
-      },
-      order: [["id", "ASC"]],
-      limit: BATCH_SIZE,
-    });
+    const mcpActions = await getNextBatch({ lastId, targetStatus });
     logger.info(
-      `Processing ${mcpActions.length} denied actions starting from ${lastId}`
+      `Processing ${mcpActions.length} ${targetStatus} actions starting from ${lastId}`
     );
 
-    // Update the status accordingly.
     if (execute) {
       await AgentMCPAction.update(
-        { status: "denied" },
+        { status: targetStatus },
         {
           where: {
             id: {
@@ -95,11 +66,11 @@ async function backfillDeniedActions(
 }
 
 makeScript({}, async ({ execute }, logger) => {
-  logger.info("Starting backfill");
+  logger.info("Starting backfill of errored actions");
+  await backfillActions({ targetStatus: "errored", execute }, logger);
+  logger.info("Completed backfill of errored actions");
 
-  await backfillErroredActions({ execute }, logger);
-
-  await backfillDeniedActions({ execute }, logger);
-
-  logger.info("Completed backfill");
+  logger.info("Completed backfill of denied actions");
+  await backfillActions({ targetStatus: "denied", execute }, logger);
+  logger.info("Completed backfill of denied actions");
 });
