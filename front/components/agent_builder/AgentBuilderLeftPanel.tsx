@@ -29,12 +29,12 @@ export function AgentBuilderLeftPanel({
     <div className="flex h-full flex-col">
       <BarHeader
         variant="default"
-        className="mx-4"
+        className="px-4"
         title={title}
         rightActions={<AgentAccessPublicationDialog />}
       />
       <ScrollArea className="flex-1">
-        <div className="space-y-10 p-4">
+        <div className="mx-auto space-y-10 py-4 2xl:max-w-4xl">
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
@@ -44,24 +44,20 @@ export function AgentBuilderLeftPanel({
           />
         </div>
       </ScrollArea>
-      <BarFooter
-        variant="default"
-        className="mx-4 justify-between"
-        leftActions={
+      <div className="border-t border-border bg-structure-50 dark:border-structure-200-night dark:bg-structure-50-night">
+        <div className="mx-auto flex h-16 items-center justify-between px-4 2xl:max-w-4xl">
           <Button
             variant="outline"
             label="Close"
             onClick={handleCancel}
             type="button"
           />
-        }
-        rightActions={
           <BarFooter.ButtonBar
             variant="validate"
             saveButtonProps={saveButtonProps}
           />
-        }
-      />
+        </div>
+      </div>
     </div>
   );
 }

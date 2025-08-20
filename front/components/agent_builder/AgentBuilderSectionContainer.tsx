@@ -49,7 +49,7 @@ export function AgentBuilderSectionContainer({
 
   if (collapsible) {
     return (
-      <section className="px-6">
+      <section className="px-4">
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           <CollapsibleTrigger
             isOpen={isOpen}
@@ -64,7 +64,7 @@ export function AgentBuilderSectionContainer({
   }
 
   return (
-    <section className="flex flex-col gap-3 px-6">
+    <section className="flex flex-col gap-3 px-4">
       {header}
       {children}
     </section>
