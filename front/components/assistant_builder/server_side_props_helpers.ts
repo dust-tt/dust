@@ -347,7 +347,7 @@ async function renderTableDataSourcesConfigurations(
         return {
           dataSourceView: serializedDataSourceView,
           selectedResources: contentNodesRes.value.nodes,
-          excludedResources: [],
+          excludedResources: [], // this will stay empty as TablesQueryConfiguration doesn't support exclusions
           isSelectAll: sr.isSelectAll,
           tagsFilter: sr.tagsFilter,
         };
