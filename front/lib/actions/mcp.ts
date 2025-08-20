@@ -278,11 +278,6 @@ export class MCPActionType {
   // TODO(2025-07-24 aubin): remove the type here.
   readonly type = "tool_action" as const;
 
-  /**
-   * Tracks the actual execution status of the MCP action.
-   * This is separate from executionState which tracks user approval.
-   * Values: "not_started", "running", "completed", "errored"
-   */
   readonly runningState: MCPRunningState;
 
   constructor(blob: MCPActionBlob) {
