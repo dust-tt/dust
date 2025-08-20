@@ -1,6 +1,6 @@
 import assert from "assert";
 
-import { isToolExecutionStatusTerminal } from "@app/lib/actions/mcp";
+import { isToolExecutionStatusFinal } from "@app/lib/actions/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction as AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";

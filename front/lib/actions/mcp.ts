@@ -200,42 +200,38 @@ export type MCPRunningState =
   | "completed"
   | "errored";
 
-const TOOL_EXECUTION_TERMINAL_STATUS = [
-  "succeeded",
-  "errored",
-  "denied",
-] as const;
+const TOOL_EXECUTION_FINAL_STATUS = ["succeeded", "errored", "denied"] as const;
 
-export type ToolExecutionTerminalStatus =
-  (typeof TOOL_EXECUTION_TERMINAL_STATUS)[number];
+export type ToolExecutionFinalStatus =
+  (typeof TOOL_EXECUTION_FINAL_STATUS)[number];
 
-const TOOL_EXECUTION_TRANSITIONARY_STATUS = [
+const TOOL_EXECUTION_TRANSIENT_STATUS = [
   "allowed_explicitly",
   "allowed_implicitly",
   "pending",
   "running",
 ] as const;
 
-export type ToolExecutionTransitionaryStatus =
-  (typeof TOOL_EXECUTION_TRANSITIONARY_STATUS)[number];
+export type ToolExecutionTransientStatus =
+  (typeof TOOL_EXECUTION_TRANSIENT_STATUS)[number];
 
 export type ToolExecutionStatus =
-  | ToolExecutionTerminalStatus
-  | ToolExecutionTransitionaryStatus;
+  | ToolExecutionFinalStatus
+  | ToolExecutionTransientStatus;
 
-export function isToolExecutionStatusTerminal(
+export function isToolExecutionStatusFinal(
   state: ToolExecutionStatus
-): state is ToolExecutionTerminalStatus {
-  return TOOL_EXECUTION_TERMINAL_STATUS.includes(
-    state as ToolExecutionTerminalStatus
+): state is ToolExecutionFinalStatus {
+  return TOOL_EXECUTION_FINAL_STATUS.includes(
+    state as ToolExecutionFinalStatus
   );
 }
 
-export function isToolExecutionStatusTransitionary(
+export function isToolExecutionStatusTransient(
   state: ToolExecutionStatus
-): state is ToolExecutionTransitionaryStatus {
-  return TOOL_EXECUTION_TRANSITIONARY_STATUS.includes(
-    state as ToolExecutionTransitionaryStatus
+): state is ToolExecutionTransientStatus {
+  return TOOL_EXECUTION_TRANSIENT_STATUS.includes(
+    state as ToolExecutionTransientStatus
   );
 }
 
@@ -514,7 +510,7 @@ export async function* runToolWithStreaming(
 
   const { executionState } = mcpAction;
 
-  // TODO(2025-08-20 aubin): use the status here: `if (isToolExecutionStatusTerminal(status))`.
+  // TODO(2025-08-20 aubin): use the status here: `if (isToolExecutionStatusFinal(status))`.
   if (executionState === "denied") {
     statsDClient.increment("mcp_actions_denied.count", 1, tags);
     localLogger.info("Action execution rejected by user");
@@ -772,8 +768,8 @@ export async function handleMCPActionError(
     };
   }
 
-  // If the tool is not already in a terminal state
-  if (!isToolExecutionStatusTerminal(executionState)) {
+  // If the tool is not already in a final state, we set it to errored (could be denied).
+  if (!isToolExecutionStatusFinal(executionState)) {
     await action.update({
       status: "errored",
     });
