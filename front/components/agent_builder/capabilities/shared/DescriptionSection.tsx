@@ -30,7 +30,9 @@ export function DescriptionSection({
     <div className="space-y-4">
       <div>
         <h3 className="mb-2 text-lg font-semibold">{title}</h3>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          {description}
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -43,7 +45,9 @@ export function DescriptionSection({
           error={fieldState.error?.message}
         />
         {helpText && (
-          <p className="text-xs text-muted-foreground">{helpText}</p>
+          <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+            {helpText}
+          </p>
         )}
       </div>
     </div>
