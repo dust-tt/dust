@@ -311,6 +311,11 @@ AgentMCPAction.init(
         name: "agent_mcp_action_workspace_agent_message_execution_state",
         concurrently: true,
       },
+      {
+        fields: ["workspaceId", "agentMessageId", "status"],
+        name: "agent_mcp_action_workspace_agent_message_status",
+        concurrently: true,
+      },
     ],
   }
 );
