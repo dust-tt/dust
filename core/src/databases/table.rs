@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::{info, warn};
 
+use crate::databases::csv::MAX_TABLE_COLUMNS;
 use crate::databases::table_upserts_background_worker::{
     TableUpsertActivityData, REDIS_CLIENT, REDIS_LOCK_TTL_SECONDS, REDIS_TABLE_UPSERT_HASH_NAME,
     REDIS_URI,
@@ -385,6 +386,15 @@ impl LocalTable {
             let rows = rows.clone();
             tokio::task::spawn_blocking(move || {
                 for (row_index, row) in rows.iter().enumerate() {
+                    if row.headers.len() > MAX_TABLE_COLUMNS {
+                        Err(anyhow!(
+                            "Row {} has more than {} values ({})",
+                            row_index,
+                            MAX_TABLE_COLUMNS,
+                            row.headers.len()
+                        ))?;
+                    }
+
                     match row.value().keys().find(|key| match key.chars().next() {
                         Some(c) => c.is_ascii_uppercase(),
                         None => false,
