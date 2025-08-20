@@ -20,6 +20,8 @@ export type GetAgentConfigurationYAMLExportResponseBody = {
   filename: string;
 };
 
+const AGENT_NAME_SANITATION_REGEX: RegExp = /[^a-zA-Z0-9-_]/g;
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -122,7 +124,10 @@ async function handler(
     });
   }
 
-  const sanitizedName = agentConfiguration.name.replace(/[^a-zA-Z0-9-_]/g, "_");
+  const sanitizedName = agentConfiguration.name.replace(
+    AGENT_NAME_SANITATION_REGEX,
+    "_"
+  );
   const filename = `${sanitizedName}_agent.yaml`;
 
   return res.status(200).json({

@@ -7,6 +7,7 @@ import {
   Page,
   PencilSquareIcon,
   SearchInput,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -33,6 +34,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
@@ -91,6 +93,8 @@ export default function CreateAgent({
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
   });
+
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const { assistantTemplates } = useAssistantTemplates();
 
@@ -187,16 +191,24 @@ export default function CreateAgent({
                   variant="highlight"
                   href={`/w/${owner.sId}/builder/agents/new`}
                 />
-                <Button
-                  icon={FolderOpenIcon}
-                  label={isUploadingYAML ? "Uploading..." : "Upload from YAML"}
-                  data-gtm-label="yamlUploadButton"
-                  data-gtm-location="assistantCreationPage"
-                  size="md"
-                  variant="outline"
-                  disabled={isUploadingYAML}
-                  onClick={triggerYAMLUpload}
-                />
+                {hasFeature("agent_to_yaml") && (
+                  <Button
+                    icon={
+                      isUploadingYAML
+                        ? () => <Spinner size="xs" />
+                        : FolderOpenIcon
+                    }
+                    label={
+                      isUploadingYAML ? "Uploading..." : "Upload from YAML"
+                    }
+                    data-gtm-label="yamlUploadButton"
+                    data-gtm-location="assistantCreationPage"
+                    size="md"
+                    variant="outline"
+                    disabled={isUploadingYAML}
+                    onClick={triggerYAMLUpload}
+                  />
+                )}
               </div>
             </div>
 

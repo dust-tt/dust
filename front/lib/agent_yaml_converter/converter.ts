@@ -88,9 +88,8 @@ export class AgentYAMLConverter {
     tags: AgentBuilderFormData["agentSettings"]["tags"]
   ): AgentYAMLTag[] {
     return tags
-      .filter((tag) => tag && tag.name && tag.kind)
+      .filter((tag) => tag.name && tag.kind)
       .map((tag) => ({
-        sId: tag.sId,
         name: tag.name,
         kind: tag.kind,
       }));
@@ -368,7 +367,9 @@ export class AgentYAMLConverter {
                 auth.getNonNullableWorkspace().sId
               )
             : null,
+        // TODO(ab-v2): Handle tables configuration if needed
         tables: null,
+        // TODO(ab-v2): Handle child agent ID if needed
         childAgentId: null,
         reasoningModel:
           "reasoning_model" in action.configuration &&

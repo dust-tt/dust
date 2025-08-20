@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
   MoreIcon,
   PencilSquareIcon,
+  Spinner,
   StarIcon,
   StarStrokeIcon,
   TrashIcon,
@@ -160,7 +161,7 @@ export function AssistantDetailsButtonBar({
                 e.stopPropagation();
                 void handleExportToYAML();
               }}
-              icon={DocumentIcon}
+              icon={isExporting ? <Spinner size="xs" /> : DocumentIcon}
               disabled={isExporting}
             />
             {agentConfiguration.scope !== "global" && (

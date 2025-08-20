@@ -21,6 +21,7 @@ import {
   NavigationListLabel,
   RobotIcon,
   SearchInput,
+  Spinner,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -276,9 +277,15 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                           data-gtm-label="assistantCreationButton"
                           data-gtm-location="sidebarMenu"
                         />
-                        {hasFeature("agent_builder_v2") && (
+                        {hasFeature("agent_to_yaml") && (
                           <DropdownMenuItem
-                            icon={FolderOpenIcon}
+                            icon={
+                              isUploadingYAML ? (
+                                <Spinner size="xs" />
+                              ) : (
+                                FolderOpenIcon
+                              )
+                            }
                             label={
                               isUploadingYAML
                                 ? "Uploading..."

@@ -8,6 +8,7 @@ import {
   FolderOpenIcon,
   MagicIcon,
   PlusIcon,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useState } from "react";
@@ -69,10 +70,10 @@ export const CreateAgentButton = ({
             );
           }}
         />
-        {hasFeature("agent_builder_v2") && (
+        {hasFeature("agent_to_yaml") && (
           <DropdownMenuItem
             label={isUploadingYAML ? "Uploading..." : "agent from YAML"}
-            icon={FolderOpenIcon}
+            icon={isUploadingYAML ? <Spinner size="xs" /> : FolderOpenIcon}
             disabled={isUploadingYAML}
             onClick={triggerYAMLUpload}
           />
