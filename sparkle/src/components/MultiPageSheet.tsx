@@ -36,6 +36,9 @@ interface MultiPageSheetProps {
   className?: string;
   disableNext?: boolean;
   disableSave?: boolean;
+  leftButtonProps?: React.ComponentProps<typeof Button>;
+  rightButtonProps?: React.ComponentProps<typeof Button>;
+  rightEndButtonProps?: React.ComponentProps<typeof Button>;
 }
 
 const MultiPageSheetRoot = Sheet;
@@ -65,6 +68,9 @@ const MultiPageSheetContent = React.forwardRef<
       className,
       disableNext = false,
       disableSave = false,
+      leftButtonProps,
+      rightButtonProps,
+      rightEndButtonProps,
       ...props
     },
     ref
@@ -161,23 +167,27 @@ const MultiPageSheetContent = React.forwardRef<
         <SheetContainer>{currentPage.content}</SheetContainer>
 
         <SheetFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-            size: "sm",
-          }}
+          leftButtonProps={
+            leftButtonProps || {
+              label: "Cancel",
+              variant: "outline",
+              size: "sm",
+            }
+          }
           rightButtonProps={
-            showNavigation && pages.length > 1 && hasPrevious
+            rightButtonProps ||
+            (showNavigation && pages.length > 1 && hasPrevious
               ? {
                   label: "Previous",
                   variant: "outline",
                   size: "sm",
                   onClick: handlePrevious,
                 }
-              : undefined
+              : undefined)
           }
           rightEndButtonProps={
-            showNavigation && pages.length > 1 && hasNext
+            rightEndButtonProps ||
+            (showNavigation && pages.length > 1 && hasNext
               ? {
                   label: "Next",
                   variant: "outline",
@@ -197,7 +207,7 @@ const MultiPageSheetContent = React.forwardRef<
                       onSave(e);
                     },
                   }
-                : undefined
+                : undefined)
           }
         >
           {footerContent}
