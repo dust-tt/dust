@@ -1,4 +1,4 @@
-import { groupBy } from "lodash";
+import groupBy from "lodash/groupBy";
 import type { ReactNode } from "react";
 import React, { createContext, useContext, useMemo } from "react";
 

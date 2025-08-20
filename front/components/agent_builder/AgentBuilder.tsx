@@ -1,10 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import set from "lodash/set";
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AdditionalConfigurationInBuilderType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderFormContext } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
@@ -17,27 +19,59 @@ import {
   transformAgentConfigurationToFormData,
   transformTemplateToFormData,
 } from "@app/components/agent_builder/transformAgentConfiguration";
+import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import type { AssistantBuilderMCPConfigurationWithId } from "@app/components/assistant_builder/types";
+import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
 import { useEditors } from "@app/lib/swr/editors";
 import { emptyArray } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { LightAgentConfigurationType } from "@app/types";
+
+function processActionsFromStorage(
+  actions: AssistantBuilderMCPConfigurationWithId[]
+): AgentBuilderAction[] {
+  return actions.map((action) => {
+    if (action.type === "MCP") {
+      return {
+        ...action,
+        configuration: {
+          ...action.configuration,
+          additionalConfiguration: processAdditionalConfigurationFromStorage(
+            action.configuration.additionalConfiguration
+          ),
+        },
+      };
+    }
+    return action;
+  });
+}
+
+function processAdditionalConfigurationFromStorage(
+  config: AdditionalConfigurationType
+): AdditionalConfigurationInBuilderType {
+  const additionalConfig: AdditionalConfigurationInBuilderType = {};
+
+  for (const [key, value] of Object.entries(config)) {
+    set(additionalConfig, key, value);
+  }
+
+  return additionalConfig;
+}
 
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
-  assistantTemplate: FetchAssistantTemplateResponse | null;
 }
 
 export default function AgentBuilder({
   agentConfiguration,
-  assistantTemplate,
 }: AgentBuilderProps) {
-  const { owner, user } = useAgentBuilderContext();
+  const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
 
   const router = useRouter();
@@ -53,18 +87,6 @@ export default function AgentBuilder({
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
 
-  const defaultValues = useMemo((): AgentBuilderFormData => {
-    if (agentConfiguration) {
-      return transformAgentConfigurationToFormData(agentConfiguration);
-    }
-
-    if (assistantTemplate) {
-      return transformTemplateToFormData(assistantTemplate, user);
-    }
-
-    return getDefaultAgentFormData(user);
-  }, [agentConfiguration, assistantTemplate, user]);
-
   const slackProvider = useMemo(() => {
     const slackBotProvider = supportedDataSourceViews.find(
       (dsv) => dsv.dataSource.connectorProvider === "slack_bot"
@@ -79,19 +101,46 @@ export default function AgentBuilder({
     return slackProvider ? "slack" : null;
   }, [supportedDataSourceViews]);
 
+  const processedActions = useMemo(() => {
+    return processActionsFromStorage(actions ?? emptyArray());
+  }, [actions]);
+
+  const formValues = useMemo((): AgentBuilderFormData => {
+    let baseValues: AgentBuilderFormData;
+
+    if (agentConfiguration) {
+      baseValues = transformAgentConfigurationToFormData(agentConfiguration);
+    } else if (assistantTemplate) {
+      baseValues = transformTemplateToFormData(assistantTemplate, user);
+    } else {
+      baseValues = getDefaultAgentFormData(user);
+    }
+
+    return {
+      ...baseValues,
+      actions: processedActions,
+      agentSettings: {
+        ...baseValues.agentSettings,
+        slackProvider,
+        editors: editors ?? emptyArray(),
+      },
+    };
+  }, [
+    agentConfiguration,
+    assistantTemplate,
+    user,
+    processedActions,
+    slackProvider,
+    editors,
+  ]);
+
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
-    defaultValues,
-    values: {
-      ...defaultValues,
-      actions: actions ?? emptyArray(),
-      agentSettings: {
-        ...defaultValues.agentSettings,
-        slackProvider,
-        editors,
-      },
+    values: formValues,
+    resetOptions: {
+      keepDirtyValues: true,
+      keepErrors: true,
     },
-    resetOptions: { keepDefaultValues: true },
   });
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
@@ -142,6 +191,8 @@ export default function AgentBuilder({
 
   const { isDirty, isSubmitting } = form.formState;
 
+  useNavigationLock(isDirty);
+
   const isSaveDisabled = !isDirty || isSubmitting || isActionsLoading;
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
@@ -173,7 +224,6 @@ export default function AgentBuilder({
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel
                 agentConfigurationSId={agentConfiguration?.sId}
-                assistantTemplate={assistantTemplate}
               />
             </ConversationSidePanelProvider>
           }

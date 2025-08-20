@@ -14,34 +14,59 @@ import {
   Label,
   Spinner,
 } from "@dust-tt/sparkle";
-import { createContext, useCallback, useState } from "react";
+import type { ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
+import { usePendingValidations } from "@app/lib/swr/pending_validations";
 import type {
+  ConversationWithoutContentType,
   LightWorkspaceType,
   MCPActionValidationRequest,
 } from "@app/types";
 import { asDisplayName, pluralize } from "@app/types";
 
-type ActionValidationContextType = {
-  showValidationDialog: (validationRequest: MCPActionValidationRequest) => void;
-};
-
-export const ActionValidationContext =
-  createContext<ActionValidationContextType>({} as ActionValidationContextType);
-
-function useValidationQueue() {
+function useValidationQueue({
+  pendingValidations,
+}: {
+  pendingValidations: MCPActionValidationRequest[];
+}) {
+  // We store two states: the current validation and a queue.
+  // The current validation is the one displayed in the dialog that can be validated.
+  // The queue does not store the current validation.
   const [validationQueue, setValidationQueue] = useState<
-    MCPActionValidationRequest[]
-  >([]);
+    // Store validations by `actionId` to prevent duplicate entries.
+    Record<string, MCPActionValidationRequest>
+  >({});
+
   const [currentValidation, setCurrentValidation] =
     useState<MCPActionValidationRequest | null>(null);
 
-  // The current validation request is the one being processed.
-  // The queue does not stores the current validation request.
-  // It's memoized since it's used as a dependency of the hook.
+  useEffect(() => {
+    const nextValidation = pendingValidations[0];
+    if (nextValidation) {
+      setCurrentValidation(nextValidation);
+    }
+    if (pendingValidations.length > 1) {
+      setValidationQueue(
+        Object.fromEntries(
+          pendingValidations
+            .slice(1)
+            .map((validation) => [validation.actionId, validation])
+        )
+      );
+    }
+  }, [pendingValidations]);
+
   const handleValidationRequest = useCallback(
     (validationRequest: MCPActionValidationRequest) => {
       setCurrentValidation((current) => {
@@ -49,7 +74,10 @@ function useValidationQueue() {
           return validationRequest;
         }
 
-        setValidationQueue((prevQueue) => [...prevQueue, validationRequest]);
+        setValidationQueue((prevRecord) => ({
+          ...prevRecord,
+          [validationRequest.actionId]: validationRequest,
+        }));
         return current;
       });
     },
@@ -57,42 +85,83 @@ function useValidationQueue() {
   );
 
   // We don't update the current validation here to avoid content flickering.
-  const takeNextFromQueue = () => {
-    if (validationQueue.length > 0) {
-      const nextValidation = validationQueue[0];
-      const newQueue = validationQueue.slice(1);
-      setValidationQueue(newQueue);
+  const takeNextFromQueue = useCallback(() => {
+    const enqueuedActionIds = Object.keys(validationQueue);
+
+    if (enqueuedActionIds.length > 0) {
+      const nextValidationActionId = enqueuedActionIds[0];
+      const nextValidation = validationQueue[nextValidationActionId];
+
+      setValidationQueue((prevRecord) => {
+        const newRecord = { ...prevRecord };
+        delete newRecord[nextValidationActionId];
+        return newRecord;
+      });
       return nextValidation;
-    } else {
-      return null;
     }
-  };
+
+    return null;
+  }, [validationQueue]);
+
+  const validationQueueLength = useMemo(
+    () => Object.keys(validationQueue).length,
+    [validationQueue]
+  );
 
   return {
-    validationQueue,
+    validationQueueLength,
     currentValidation,
     handleValidationRequest,
     takeNextFromQueue,
     setCurrentValidation,
   };
+}
+
+type ActionValidationContextType = {
+  showValidationDialog: (
+    validationRequest?: MCPActionValidationRequest
+  ) => void;
+  hasPendingValidations: boolean;
+  totalPendingValidations: number;
+};
+
+const ActionValidationContext = createContext<
+  ActionValidationContextType | undefined
+>(undefined);
+
+export function useActionValidationContext() {
+  const context = useContext(ActionValidationContext);
+  if (!context) {
+    throw new Error(
+      "useActionValidationContext must be used within an ActionValidationContext"
+    );
+  }
+  return context;
 }
 
 interface ActionValidationProviderProps {
   owner: LightWorkspaceType;
-  children: React.ReactNode;
+  conversation: ConversationWithoutContentType | null;
+  children: ReactNode;
 }
 
 export function ActionValidationProvider({
   owner,
+  conversation,
   children,
 }: ActionValidationProviderProps) {
+  const { pendingValidations } = usePendingValidations({
+    conversationId: conversation?.sId || null,
+    workspaceId: owner.sId,
+  });
+
   const {
-    validationQueue,
+    validationQueueLength,
     currentValidation,
     setCurrentValidation,
     handleValidationRequest,
     takeNextFromQueue,
-  } = useValidationQueue();
+  } = useValidationQueue({ pendingValidations });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -162,27 +231,39 @@ export function ActionValidationProvider({
 
   // This will be used as a dependency of the hook down the line so we need to use useCallback.
   const showValidationDialog = useCallback(
-    (validationRequest: MCPActionValidationRequest) => {
+    (validationRequest?: MCPActionValidationRequest) => {
       if (!isDialogOpen) {
         setIsDialogOpen(true);
       }
 
-      handleValidationRequest(validationRequest);
+      // If we have a new validation request, queue it.
+      if (validationRequest) {
+        handleValidationRequest(validationRequest);
+      }
     },
     [handleValidationRequest, isDialogOpen]
   );
 
+  const hasPendingValidations =
+    currentValidation !== null || validationQueueLength > 0;
+  const totalPendingValidations =
+    (currentValidation ? 1 : 0) + validationQueueLength;
+
   return (
-    <ActionValidationContext.Provider value={{ showValidationDialog }}>
+    <ActionValidationContext.Provider
+      value={{
+        showValidationDialog,
+        hasPendingValidations,
+        totalPendingValidations,
+      }}
+    >
       {children}
 
       <Dialog
         open={isDialogOpen}
         onOpenChange={(open) => {
-          if (open === false && !isProcessing) {
-            if (currentValidation) {
-              void handleSubmit("rejected");
-            }
+          if (!open && !isProcessing && currentValidation) {
+            void handleSubmit("rejected");
           }
         }}
       >
@@ -235,10 +316,10 @@ export function ActionValidationProvider({
                   />
                 )}
 
-              {validationQueue.length > 0 && (
+              {validationQueueLength > 0 && (
                 <div className="mt-2 text-sm font-medium text-info-900 dark:text-info-900-night">
-                  {validationQueue.length} more request
-                  {pluralize(validationQueue.length)} in the queue
+                  {validationQueueLength} more request
+                  {pluralize(validationQueueLength)} in the queue
                 </div>
               )}
 

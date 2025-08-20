@@ -1,4 +1,4 @@
-import { groupBy } from "lodash";
+import groupBy from "lodash/groupBy";
 import { useMemo } from "react";
 
 import { sortMCPServerViewsByPriority } from "@app/components/agent_builder/MCPServerViewsContext";

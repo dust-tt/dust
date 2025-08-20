@@ -6,7 +6,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { sortBy } from "lodash";
+import sortBy from "lodash/sortBy";
 import Link from "next/link";
 import type { ComponentType } from "react";
 import * as React from "react";

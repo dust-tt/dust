@@ -43,13 +43,18 @@ export function AgentActionsPanel({
     }
   }, [fullAgentMessage]);
 
+  useEffect(() => {
+    if (!messageId) {
+      onPanelClosed();
+    }
+  }, [messageId, onPanelClosed]);
+
   if (
     !messageId ||
     !messageMetadata ||
     !fullAgentMessage ||
     fullAgentMessage.type !== "agent_message"
   ) {
-    onPanelClosed();
     return null;
   }
 

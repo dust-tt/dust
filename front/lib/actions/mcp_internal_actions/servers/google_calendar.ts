@@ -1,10 +1,11 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import { google } from "googleapis";
 import { z } from "zod";
 
 import {
+  makeInternalMCPServer,
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -26,7 +27,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 };
 
 const createServer = (): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer(serverInfo);
 
   async function getCalendarClient(authInfo?: AuthInfo) {
     const accessToken = authInfo?.token;

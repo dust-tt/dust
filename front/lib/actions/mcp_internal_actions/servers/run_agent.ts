@@ -1,6 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import { z } from "zod";
 
@@ -9,7 +9,10 @@ import {
   ConfigurableToolInputSchemas,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeInternalMCPServer,
+  makeMCPToolTextError,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
@@ -104,7 +107,7 @@ export default async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer(serverInfo);
   const owner = auth.getNonNullableWorkspace();
 
   let childAgentId: string | null = null;
@@ -224,6 +227,10 @@ export default async function createServer(
         },
         skipToolsValidation:
           agentLoopContext.runContext.agentMessage.skipToolsValidation ?? false,
+        params: {
+          // TODO(DURABLE_AGENT 2025-08-20): Remove this if we decided to always use async mode.
+          execution: "async",
+        },
       });
 
       if (convRes.isErr()) {

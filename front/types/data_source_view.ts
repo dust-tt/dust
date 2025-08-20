@@ -40,6 +40,7 @@ export const isEqualNode = (
 export type DataSourceViewSelectionConfiguration = {
   dataSourceView: DataSourceViewType;
   selectedResources: DataSourceViewContentNode[];
+  excludedResources: DataSourceViewContentNode[];
   isSelectAll: boolean;
   tagsFilter: TagsFilter;
 };
@@ -57,6 +58,7 @@ export function defaultSelectionConfiguration(
     dataSourceView,
     isSelectAll: false,
     selectedResources: [],
+    excludedResources: [],
     tagsFilter: null,
   };
 }

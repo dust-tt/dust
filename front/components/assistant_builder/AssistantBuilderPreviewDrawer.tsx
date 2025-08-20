@@ -213,7 +213,10 @@ export default function AssistantBuilderRightPanel({
               </div>
             ) : (
               <ConversationsNavigationProvider>
-                <ActionValidationProvider owner={owner}>
+                <ActionValidationProvider
+                  owner={owner}
+                  conversation={conversation}
+                >
                   <GenerationContextProvider>
                     <div
                       className={
@@ -250,7 +253,7 @@ export default function AssistantBuilderRightPanel({
                       </div>
                       <div className="shrink-0">
                         <AssistantInputBar
-                          disableButton={isSavingDraftAgent}
+                          disable={isSavingDraftAgent}
                           owner={owner}
                           onSubmit={handleSubmit}
                           stickyMentions={stickyMentions}

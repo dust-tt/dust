@@ -8,7 +8,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { uniqueId } from "lodash";
+import uniqueId from "lodash/uniqueId";
 import { useEffect, useMemo, useState } from "react";
 import {
   FormProvider,
@@ -51,13 +51,17 @@ import {
 import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
 import {
+  getMCPServerNameForTemplateAction,
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { DataSourceViewSelectionConfigurations } from "@app/types";
+import type {
+  DataSourceViewSelectionConfigurations,
+  TemplateActionPreset,
+} from "@app/types";
 
 interface KnowledgeConfigurationSheetProps {
   onSave: (action: AgentBuilderAction) => void;
@@ -67,6 +71,7 @@ interface KnowledgeConfigurationSheetProps {
   isEditing: boolean;
   mcpServerViews: MCPServerViewType[];
   getAgentInstructions: () => string;
+  presetActionData?: TemplateActionPreset;
 }
 
 export function KnowledgeConfigurationSheet({
@@ -77,9 +82,10 @@ export function KnowledgeConfigurationSheet({
   isEditing,
   mcpServerViews,
   getAgentInstructions,
+  presetActionData,
 }: KnowledgeConfigurationSheetProps) {
   const open = action !== null;
-  const { spaces, isSpacesLoading } = useSpacesContext();
+  const { spaces } = useSpacesContext();
 
   const handleSave = (
     formData: CapabilityFormData,
@@ -143,32 +149,46 @@ export function KnowledgeConfigurationSheet({
 
     const dataSourceTree =
       dataSourceConfigurations && action
-        ? transformSelectionConfigurationsToTree(
-            dataSourceConfigurations as DataSourceViewSelectionConfigurations
-          ) // TODO: fix type
+        ? transformSelectionConfigurationsToTree(dataSourceConfigurations)
         : { in: [], notIn: [] };
 
-    const selectedMCPServerView =
-      isEditing && action && action.type === "MCP"
-        ? mcpServerViews.find(
-            (mcpServerView) =>
-              mcpServerView.sId === action.configuration.mcpServerViewId
-          )
-        : mcpServerViews.find((view) => view.server.name === "search"); // select search as default
+    const selectedMCPServerView = (() => {
+      if (isEditing && action?.type === "MCP") {
+        return mcpServerViews.find(
+          (view) => view.sId === action.configuration.mcpServerViewId
+        );
+      }
+
+      if (presetActionData) {
+        const targetServerName =
+          getMCPServerNameForTemplateAction(presetActionData);
+        return mcpServerViews.find(
+          (view) => view.server.name === targetServerName
+        );
+      }
+
+      return mcpServerViews.find((view) => view.server.name === "search");
+    })();
+
+    const defaultName =
+      action?.name ??
+      presetActionData?.name ??
+      selectedMCPServerView?.name ??
+      selectedMCPServerView?.server.name ??
+      "";
+
+    const defaultDescription =
+      action?.description ?? presetActionData?.description ?? "";
 
     return {
       sources: dataSourceTree,
-      description: action?.description ?? "",
+      description: defaultDescription,
       configuration:
         action?.configuration ?? getDefaultConfiguration(selectedMCPServerView),
       mcpServerView: selectedMCPServerView ?? null,
-      name:
-        action?.name ??
-        selectedMCPServerView?.name ??
-        selectedMCPServerView?.server.name ??
-        "",
+      name: defaultName,
     };
-  }, [action, mcpServerViews, isEditing]);
+  }, [action, mcpServerViews, isEditing, presetActionData]);
 
   const formMethods = useForm<CapabilityFormData>({
     resolver: zodResolver(capabilityFormSchema),
@@ -187,14 +207,6 @@ export function KnowledgeConfigurationSheet({
     }
   };
 
-  if (isSpacesLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Spinner variant="dark" size="md" />
-      </div>
-    );
-  }
-
   return (
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
       <FormProvider {...formMethods}>
@@ -205,6 +217,7 @@ export function KnowledgeConfigurationSheet({
               open={open}
               getAgentInstructions={getAgentInstructions}
               isEditing={isEditing}
+              presetActionData={presetActionData}
             />
           </DataSourceBuilderProvider>
         )}
@@ -221,6 +234,7 @@ interface KnowledgeConfigurationSheetContentProps {
   open: boolean;
   getAgentInstructions: () => string;
   isEditing: boolean;
+  presetActionData?: TemplateActionPreset;
 }
 
 function KnowledgeConfigurationSheetContent({
@@ -228,6 +242,7 @@ function KnowledgeConfigurationSheetContent({
   open,
   getAgentInstructions,
   isEditing,
+  presetActionData,
 }: KnowledgeConfigurationSheetContentProps) {
   const { handleSubmit, setValue, getValues } =
     useFormContext<CapabilityFormData>();
@@ -280,24 +295,25 @@ function KnowledgeConfigurationSheetContent({
   const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
-  const initialPageId = isEditing
-    ? CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION
-    : CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION;
+  const getInitialPageId = () => {
+    if (isEditing) {
+      return CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION;
+    }
+    if (presetActionData) {
+      return CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
+    }
+    return CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION;
+  };
 
   const [currentPageId, setCurrentPageId] =
-    useState<ConfigurationSheetPageId>(initialPageId);
+    useState<ConfigurationSheetPageId>(getInitialPageId());
 
   useEffect(() => {
-    if (!open) {
-      setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION);
-
-      return;
+    if (open) {
+      setCurrentPageId(getInitialPageId());
     }
-
-    if (isEditing) {
-      setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION);
-    }
-  }, [isEditing, open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isEditing, presetActionData]);
 
   const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {

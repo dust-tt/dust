@@ -1,5 +1,5 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { trim } from "lodash";
+import trim from "lodash/trim";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";

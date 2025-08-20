@@ -5,7 +5,7 @@ import {
   OrganizationDomainState,
 } from "@workos-inc/node";
 import assert from "assert";
-import { uniqueId } from "lodash";
+import uniqueId from "lodash/uniqueId";
 
 import { config } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";

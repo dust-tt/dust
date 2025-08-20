@@ -21,6 +21,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Version 2 of the agent builder interface (wip)",
     stage: "dust_only",
   },
+  agent_to_yaml: {
+    description: "Export and Import agents to/from YAML format",
+    stage: "dust_only",
+  },
   agent_builder_instructions_autocomplete: {
     description: "Autocomplete feature for agent builder instructions (wip)",
     stage: "dust_only",
@@ -150,6 +154,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   data_warehouses_tool: {
     description:
       "Data warehouses file system navigation with hierarchical warehouse structure",
+    stage: "dust_only",
+  },
+  hootl: {
+    description: "Human Out Of The Loop (aka Triggers)",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

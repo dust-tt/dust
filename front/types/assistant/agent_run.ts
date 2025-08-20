@@ -42,7 +42,7 @@ export type RunAgentExecutionData = {
   userMessage: UserMessageType;
 };
 
-export type RunAgentArgs =
+export type RunAgentArgsInput =
   | {
       sync: true;
       inMemoryData: RunAgentExecutionData;
@@ -53,9 +53,13 @@ export type RunAgentArgs =
       idArgs: RunAgentAsynchronousArgs;
     };
 
+export type RunAgentArgs = RunAgentArgsInput & {
+  initialStartTime: number;
+};
+
 export async function getRunAgentData(
   authType: AuthenticatorType,
-  runAgentArgs: RunAgentArgs
+  runAgentArgs: RunAgentArgsInput
 ): Promise<Result<RunAgentExecutionData & { auth: Authenticator }, Error>> {
   const auth = await Authenticator.fromJSON(authType);
 

@@ -57,5 +57,6 @@ export async function buildActionBaseParams({
     mcpServerConfigurationId,
     params: rawInputs,
     step,
+    runningState: "running",
   };
 }

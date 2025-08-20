@@ -6,7 +6,6 @@ import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/cap
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
 import { AgentAccessPublicationDialog } from "@app/components/agent_builder/settings/AgentAccessPublicationDialog";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
-import { ConfirmContext } from "@app/components/Confirm";
 
 interface AgentBuilderLeftPanelProps {
   title: string;
@@ -23,20 +22,8 @@ export function AgentBuilderLeftPanel({
   saveButtonProps,
   isActionsLoading,
 }: AgentBuilderLeftPanelProps) {
-  const confirm = React.useContext(ConfirmContext);
-
   const handleCancel = async () => {
-    const confirmed = await confirm({
-      title: "Confirm Exit",
-      message:
-        "Are you sure you want to exit? Any unsaved changes will be lost.",
-      validateLabel: "Yes",
-      validateVariant: "warning",
-    });
-
-    if (confirmed) {
-      onCancel();
-    }
+    onCancel();
   };
   return (
     <div className="flex h-full flex-col">
@@ -47,7 +34,7 @@ export function AgentBuilderLeftPanel({
         rightActions={<AgentAccessPublicationDialog />}
       />
       <ScrollArea className="flex-1">
-        <div className="space-y-10 p-4">
+        <div className="mx-auto space-y-10 p-4 2xl:max-w-4xl">
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
@@ -61,7 +48,12 @@ export function AgentBuilderLeftPanel({
         variant="default"
         className="mx-4 justify-between"
         leftActions={
-          <Button variant="outline" label="Close" onClick={handleCancel} />
+          <Button
+            variant="outline"
+            label="Close"
+            onClick={handleCancel}
+            type="button"
+          />
         }
         rightActions={
           <BarFooter.ButtonBar

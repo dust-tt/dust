@@ -1,8 +1,9 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -16,7 +17,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 };
 
 function createServer(): McpServer {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer(serverInfo);
 
   server.tool(
     "pass_through",
@@ -42,8 +43,25 @@ function createServer(): McpServer {
         mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM),
       }),
       choices: z.object({
-        values: z.enum(["A", "B", "C"]),
-        labels: z.enum(["label A", "label B", "label C"]),
+        options: z
+          .union([
+            z.object({
+              value: z.literal("A"),
+              label: z.literal("Label A"),
+            }),
+            z.object({
+              value: z.literal("B"),
+              label: z.literal("Label B"),
+            }),
+            z.object({
+              value: z.literal("C"),
+              label: z.literal("Label C"),
+            }),
+          ])
+          // Options are optionals because we only need them for the UI but they won't be provided when the tool is called.
+          .optional(),
+        // "values" are required because they are used to provide the selected values when the tool is called.
+        values: z.array(z.string()),
         mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.LIST),
       }),
     },

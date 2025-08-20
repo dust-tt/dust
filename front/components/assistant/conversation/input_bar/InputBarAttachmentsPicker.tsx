@@ -39,8 +39,9 @@ interface InputBarAttachmentsPickerProps {
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
-  isLoading?: boolean;
   attachedNodes: DataSourceViewContentNode[];
+  isLoading?: boolean;
+  disabled?: boolean;
 }
 
 const PAGE_SIZE = 25;
@@ -52,6 +53,7 @@ export const InputBarAttachmentsPicker = ({
   onNodeUnselect,
   attachedNodes,
   isLoading = false,
+  disabled = false,
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
@@ -128,7 +130,7 @@ export const InputBarAttachmentsPicker = ({
           variant="ghost-secondary"
           icon={AttachmentIcon}
           size="xs"
-          disabled={isLoading}
+          disabled={disabled || isLoading}
           onClick={() => setIsOpen(!isOpen)}
         />
       </DropdownMenuTrigger>

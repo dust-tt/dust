@@ -1,3 +1,8 @@
+import { isLeft } from "fp-ts/lib/Either";
+import fs from "fs";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+
 import { getConnectorManager } from "@connectors/connectors";
 import { getClient } from "@connectors/connectors/microsoft";
 import {
@@ -188,6 +193,104 @@ export const microsoft = async ({
       }
 
       return { status: 200, content: { totalCount }, type: typeof totalCount };
+    }
+
+    case "update-parent-in-node-table": {
+      const connector = await getConnector(args);
+      const { internalId, idsFile } = args;
+
+      let internalIds: string[];
+
+      if (idsFile) {
+        // Read ids from JSON file
+        if (!fs.existsSync(idsFile)) {
+          throw new Error(`Ids file not found: ${idsFile}`);
+        }
+
+        try {
+          const fileContent = fs.readFileSync(idsFile, "utf8");
+          const parsedIds = JSON.parse(fileContent);
+
+          // Validate using io-ts schema
+          const validation = t.array(t.string).decode(parsedIds);
+
+          if (isLeft(validation)) {
+            const pathError = reporter.formatValidationErrors(validation.left);
+            throw new Error(`Invalid permissions file format: ${pathError}`);
+          }
+
+          internalIds = validation.right;
+        } catch (error) {
+          if (error instanceof SyntaxError) {
+            throw new Error(
+              `Invalid JSON in permissions file: ${error.message}`
+            );
+          }
+          throw error;
+        }
+      } else {
+        if (!internalId) {
+          throw new Error("Missing --internalId argument");
+        }
+        internalIds = [internalId];
+      }
+
+      // Get node from MS Graph API.
+      const client = await getClient(connector.connectionId);
+
+      for (const internalId of internalIds) {
+        const node = await MicrosoftNodeResource.fetchByInternalId(
+          connector.id,
+          internalId
+        );
+
+        if (!node) {
+          throw new Error(`Could not find node for internalId ${internalId}`);
+        }
+        const driveItem: DriveItem = await getItem(
+          logger,
+          client,
+          typeAndPathFromInternalId(internalId).itemAPIPath
+        );
+        // Get parent reference from driveItem.
+        if (driveItem && !driveItem.root && driveItem.parentReference) {
+          const parentInternalId = getParentReferenceInternalId(
+            driveItem.parentReference
+          );
+
+          if (parentInternalId === node.parentInternalId) {
+            logger.info(
+              { internalId: node.internalId, parentInternalId },
+              "Parent internalId is the same as the node's parentInternalId, nothing to update"
+            );
+          } else {
+            logger.info(
+              {
+                internalId: node.internalId,
+                previousValue: node.parentInternalId,
+                parentInternalId,
+              },
+              "Updating parentInternalId"
+            );
+            const parentNode = await MicrosoftNodeResource.fetchByInternalId(
+              connector.id,
+              parentInternalId
+            );
+
+            if (!parentNode) {
+              logger.info(
+                { internalId: node.internalId, parentInternalId },
+                "Parent does not exist, skipping"
+              );
+            } else {
+              await node.update({ parentInternalId });
+            }
+          }
+        } else {
+          logger.info({ driveItem }, "Node not found, nothing to update");
+        }
+      }
+      return { success: true };
     }
 
     case "start-incremental-sync": {

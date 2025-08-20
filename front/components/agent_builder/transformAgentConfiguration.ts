@@ -1,5 +1,8 @@
+import uniqueId from "lodash/uniqueId";
+
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
+import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { UserType } from "@app/types";
 import type { LightAgentConfigurationType } from "@app/types";
@@ -7,6 +10,8 @@ import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types";
 
 /**
  * Transforms a light agent configuration (server-side) into agent builder form data (client-side).
+ * Dynamic values (editors, slackProvider, actions) are intentionally set to empty defaults
+ * as they will be populated reactively in the component.
  */
 export function transformAgentConfigurationToFormData(
   agentConfiguration: LightAgentConfigurationType
@@ -20,9 +25,9 @@ export function transformAgentConfigurationToFormData(
         agentConfiguration.scope === "global"
           ? "visible"
           : agentConfiguration.scope,
-      editors: [], // Fallback - editors will be updated reactively
-      slackProvider: null, // TODO: determine from agent configuration
-      slackChannels: [], // TODO: determine from agent configuration
+      editors: [], // Will be populated reactively from useEditors hook
+      slackProvider: null, // Will be populated reactively from supportedDataSourceViews
+      slackChannels: [], // Will be populated reactively if needed
       tags: agentConfiguration.tags,
     },
     instructions: agentConfiguration.instructions || "",
@@ -35,7 +40,7 @@ export function transformAgentConfigurationToFormData(
       reasoningEffort: agentConfiguration.model.reasoningEffort || "none",
       responseFormat: agentConfiguration.model.responseFormat,
     },
-    actions: [], // Actions are always loaded client-side via SWR
+    actions: [], // Will be populated reactively from useAgentConfigurationActions hook
     maxStepsPerRun: agentConfiguration.maxStepsPerRun || 8,
   };
 }
@@ -105,4 +110,21 @@ export function transformTemplateToFormData(
     },
     actions: [],
   };
+}
+
+/**
+ * Converts AssistantBuilderMCPConfiguration actions to AgentBuilderFormData actions format.
+ * Used for YAML export to include actions that are normally loaded client-side.
+ * Generates unique IDs since they're only needed for UI purposes.
+ */
+export function convertActionsForFormData(
+  actions: AssistantBuilderMCPConfiguration[]
+): AgentBuilderFormData["actions"] {
+  return actions.map((action) => ({
+    id: uniqueId(),
+    name: action.name,
+    description: action.description,
+    type: "MCP",
+    configuration: action.configuration,
+  }));
 }

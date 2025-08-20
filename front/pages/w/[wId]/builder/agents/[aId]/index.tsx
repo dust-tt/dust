@@ -88,11 +88,8 @@ export default function EditAgent({
   }
 
   return (
-    <AgentBuilderProvider owner={owner} user={user}>
-      <AgentBuilder
-        agentConfiguration={agentConfiguration}
-        assistantTemplate={null}
-      />
+    <AgentBuilderProvider owner={owner} user={user} assistantTemplate={null}>
+      <AgentBuilder agentConfiguration={agentConfiguration} />
     </AgentBuilderProvider>
   );
 }

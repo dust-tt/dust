@@ -1,7 +1,7 @@
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   Counter,
@@ -193,6 +193,7 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     isSelect?: boolean;
     isLoading?: boolean;
     isPulsing?: boolean;
+    pulseOnce?: boolean;
     tooltip?: string;
     isCounter?: boolean;
     counterValue?: string;
@@ -223,6 +224,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       tooltip,
       isSelect = false,
       isPulsing = false,
+      pulseOnce = false,
       isCounter = false,
       counterValue,
       size = "sm",
@@ -238,6 +240,19 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const iconSize = ICON_SIZE_MAP[size];
     const counterSize = COUNTER_SIZE_MAP[size];
+
+    const [isPulsingOnce, setIsPulsingOnce] = useState(false);
+
+    useEffect(() => {
+      if (!pulseOnce) {
+        return;
+      }
+      const startPulse = () => {
+        setIsPulsingOnce(true);
+        setTimeout(() => setIsPulsingOnce(false), 1500);
+      };
+      startPulse();
+    }, [pulseOnce]);
 
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
       <Icon visual={visual} size={iconSize} className={cn(extraClass)} />
@@ -319,7 +334,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         size={size}
         variant={variant}
         disabled={isLoading || props.disabled}
-        className={cn(isPulsing && "s-animate-pulse", className)}
+        className={cn(
+          (isPulsing || isPulsingOnce) && "s-animate-pulse",
+          className
+        )}
         aria-label={ariaLabel || tooltip || label}
         style={
           {
