@@ -11,7 +11,7 @@ import {
 import { Cog6ToothIcon, DocumentTextIcon, UserIcon } from "@sparkle/icons/app";
 
 const meta: Meta<typeof MultiPageSheetContent> = {
-  title: "Primitives/MultiPageSheet",
+  title: "Modules/MultiPageSheet",
   component: MultiPageSheetContent,
 };
 

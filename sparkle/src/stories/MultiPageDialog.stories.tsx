@@ -12,7 +12,7 @@ import {
 import { Cog6ToothIcon, DocumentTextIcon, UserIcon } from "@sparkle/icons/app";
 
 const meta: Meta<typeof MultiPageDialogContent> = {
-  title: "Primitives/MultiPageDialog",
+  title: "Modules/MultiPageDialog",
   component: MultiPageDialogContent,
 };
 
