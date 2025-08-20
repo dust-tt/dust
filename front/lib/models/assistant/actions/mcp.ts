@@ -189,7 +189,6 @@ AgentMCPServerConfiguration.belongsTo(MCPServerViewModel, {
   as: "mcpServerView",
 });
 
-
 export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare createdAt: CreationOptional<Date>;
 
@@ -261,7 +260,6 @@ AgentMCPAction.init(
     runningState: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "not_started",
       validate: {
         isIn: [["not_started", "running", "completed", "errored"]],
       },
