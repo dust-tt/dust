@@ -210,7 +210,7 @@ const MultiPageSheetContent = React.forwardRef<
           </div>
         </SheetHeader>
 
-        <div className="s-min-h-0 s-flex-1 s-overflow-hidden">
+        <div className="s-min-h-0 s-flex-1 s-overflow-y-auto">
           <div
             className={cn(
               "s-h-full",
