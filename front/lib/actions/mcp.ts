@@ -172,7 +172,7 @@ export type MCPApproveExecutionEvent = {
 
 export function getMCPApprovalStateFromUserApprovalState(
   userApprovalState: ActionApprovalStateType
-): MCPExecutionState {
+) {
   switch (userApprovalState) {
     case "always_approved":
     case "approved":
@@ -521,7 +521,7 @@ export async function* runToolWithStreaming(
 
   const { executionState } = mcpAction;
 
-  // TODO(2025-08-20 aubin): use the status here: `if (isToolExecutionStatusFinal(status))`.
+  // TODO(durable-agents): remove this part once `status` has been filled (unreachable code path).
   if (executionState === "denied") {
     statsDClient.increment("mcp_actions_denied.count", 1, tags);
     localLogger.info("Action execution rejected by user");
@@ -826,7 +826,7 @@ export async function getMCPAction(
 // TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent mcp action.
 export async function updateMCPApprovalState(
   action: AgentMCPAction,
-  executionState: MCPExecutionState
+  executionState: "denied" | "allowed_explicitly"
 ): Promise<boolean> {
   if (action.executionState === executionState) {
     return false;
@@ -834,6 +834,7 @@ export async function updateMCPApprovalState(
 
   await action.update({
     executionState,
+    status: executionState,
   });
 
   return true;
