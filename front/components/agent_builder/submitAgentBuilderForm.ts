@@ -139,16 +139,14 @@ export async function submitAgentBuilderForm({
               dataSources:
                 action.configuration.dataSourceConfigurations !== null
                   ? processDataSourceConfigurations(
-                      action.configuration
-                        .dataSourceConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type
+                      action.configuration.dataSourceConfigurations,
                       owner
                     )
                   : null,
               tables:
                 action.configuration.tablesConfigurations !== null
                   ? processTableSelection(
-                      action.configuration
-                        .tablesConfigurations as DataSourceViewSelectionConfigurations, // TODO fix type
+                      action.configuration.tablesConfigurations,
                       owner
                     )
                   : null,
