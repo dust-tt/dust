@@ -115,7 +115,20 @@ async function handler(
         });
       }
 
-      await u.updateName(firstName, lastName);
+      if (firstName !== user.firstName || lastName !== user.lastName) {
+        // Provisioned users cannot update their name.
+        if (user.origin === "provisioned") {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Cannot update name for provisioned users.",
+            },
+          });
+        }
+
+        await u.updateName(firstName, lastName);
+      }
 
       // Update user's jobType
       if (jobType !== undefined && !isJobType(jobType)) {
