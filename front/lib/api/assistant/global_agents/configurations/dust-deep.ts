@@ -12,6 +12,7 @@ import type {
   AgentModelConfigurationType,
   AgentReasoningEffort,
   ModelConfigurationType,
+  WorkspaceType,
 } from "@app/types";
 import {
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
@@ -110,6 +111,124 @@ Output length should not be artificially long.
 const dustDeepInstructions = `${dustDeepPrimaryGoal}\n${requestComplexityPrompt}\n${toolsPrompt}\n${outputPrompt}`;
 const subAgentInstructions = `${subAgentPrimaryGoal}\n${toolsPrompt}`;
 
+function getModelConfig(owner: WorkspaceType): {
+  modelConfiguration: ModelConfigurationType;
+  reasoningEffort: AgentReasoningEffort;
+} | null {
+  // if openai is whitelisted, we use gpt-5 in medium
+  if (isProviderWhitelisted(owner, "openai")) {
+    return {
+      modelConfiguration: GPT_5_MODEL_CONFIG,
+      reasoningEffort: "medium",
+    } as {
+      modelConfiguration: ModelConfigurationType;
+      reasoningEffort: AgentReasoningEffort;
+    };
+  }
+
+  // if anthropic is whitelisted, we use claude 4 sonnet in medium
+  if (isProviderWhitelisted(owner, "anthropic")) {
+    return {
+      modelConfiguration: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+      reasoningEffort: "medium",
+    } as {
+      modelConfiguration: ModelConfigurationType;
+      reasoningEffort: AgentReasoningEffort;
+    };
+  }
+
+  // Otherwise we use whatever the default large model is, using the default reasoning effort.
+  const modelConfiguration = getLargeWhitelistedModel(owner);
+  if (!modelConfiguration) {
+    return null;
+  }
+  return {
+    modelConfiguration,
+    reasoningEffort: modelConfiguration.defaultReasoningEffort,
+  };
+}
+
+function getCompanyDataAction(
+  preFetchedDataSources: PrefetchedDataSourcesType | null,
+  dataSourcesFileSystemMCPServerView: MCPServerViewResource | null
+): MCPServerConfigurationType | null {
+  if (!preFetchedDataSources) {
+    return null;
+  }
+
+  const dataSourceViews = preFetchedDataSources.dataSourceViews.filter(
+    (dsView) =>
+      dsView.isInGlobalSpace &&
+      dsView.dataSource.connectorProvider !== "webcrawler"
+  );
+  if (dataSourceViews.length === 0 || !dataSourcesFileSystemMCPServerView) {
+    return null;
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.RESEARCH + "-company-data-action",
+    type: "mcp_server_configuration",
+    name: "company_data",
+    description: "The user's internal company data.",
+    mcpServerViewId: dataSourcesFileSystemMCPServerView.sId,
+    internalMCPServerId: dataSourcesFileSystemMCPServerView.internalMCPServerId,
+    dataSources: dataSourceViews.map((dsView) => ({
+      dataSourceViewId: dsView.sId,
+      workspaceId: preFetchedDataSources.workspaceId,
+      filter: { parents: null, tags: null },
+    })),
+    tables: null,
+    childAgentId: null,
+    reasoningModel: null,
+    additionalConfiguration: {},
+    timeFrame: null,
+    dustAppConfiguration: null,
+    jsonSchema: null,
+  };
+}
+
+function getCompanyDataWarehousesAction(
+  preFetchedDataSources: PrefetchedDataSourcesType | null,
+  dataWarehousesMCPServerView: MCPServerViewResource | null
+): MCPServerConfigurationType | null {
+  if (!preFetchedDataSources) {
+    return null;
+  }
+
+  const globalWarehouses = preFetchedDataSources.dataSourceViews.filter(
+    (dsView) => dsView.isInGlobalSpace && isRemoteDatabase(dsView.dataSource)
+  );
+  if (globalWarehouses.length === 0 || !dataWarehousesMCPServerView) {
+    return null;
+  }
+
+  if (globalWarehouses.length > 0) {
+    return {
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.RESEARCH + "-data-warehouses-action",
+      type: "mcp_server_configuration",
+      name: "data_warehouses",
+      description: "The user's data warehouses.",
+      mcpServerViewId: dataWarehousesMCPServerView.sId,
+      internalMCPServerId: dataWarehousesMCPServerView.internalMCPServerId,
+      dataSources: globalWarehouses.map((dsView) => ({
+        dataSourceViewId: dsView.sId,
+        workspaceId: preFetchedDataSources.workspaceId,
+        filter: { parents: null, tags: null },
+      })),
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+    };
+  }
+  return null;
+}
+
 export function _getDustDeepGlobalAgent(
   auth: Authenticator,
   {
@@ -139,39 +258,7 @@ export function _getDustDeepGlobalAgent(
   const pictureUrl =
     "https://dust.tt/static/systemavatar/research_avatar_full.png";
 
-  const modelConfig = (() => {
-    // if openai is whitelisted, we use gpt-5 in medium
-    if (isProviderWhitelisted(owner, "openai")) {
-      return {
-        modelConfiguration: GPT_5_MODEL_CONFIG,
-        reasoningEffort: "medium",
-      } as {
-        modelConfiguration: ModelConfigurationType;
-        reasoningEffort: AgentReasoningEffort;
-      };
-    }
-
-    // if anthropic is whitelisted, we use claude 4 sonnet in medium
-    if (isProviderWhitelisted(owner, "anthropic")) {
-      return {
-        modelConfiguration: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
-        reasoningEffort: "medium",
-      } as {
-        modelConfiguration: ModelConfigurationType;
-        reasoningEffort: AgentReasoningEffort;
-      };
-    }
-
-    // Otherwise we use whatever the default large model is, using the default reasoning effort
-    const modelConfiguration = getLargeWhitelistedModel(owner);
-    if (!modelConfiguration) {
-      return null;
-    }
-    return {
-      modelConfiguration,
-      reasoningEffort: modelConfiguration.defaultReasoningEffort,
-    };
-  })();
+  const modelConfig = getModelConfig(owner);
 
   const deepAgent: Omit<
     AgentConfigurationType,
@@ -215,46 +302,14 @@ export function _getDustDeepGlobalAgent(
 
   deepAgent.model = model;
 
-  if (!preFetchedDataSources) {
-    return {
-      ...deepAgent,
-      status: "active",
-      actions: [],
-      maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    };
-  }
-
   const actions: MCPServerConfigurationType[] = [];
 
-  const dataSourceViews = preFetchedDataSources.dataSourceViews.filter(
-    (dsView) =>
-      dsView.isInGlobalSpace &&
-      dsView.dataSource.connectorProvider !== "webcrawler"
+  const companyDataAction = getCompanyDataAction(
+    preFetchedDataSources,
+    dataSourcesFileSystemMCPServerView
   );
-
-  if (dataSourceViews.length > 0 && dataSourcesFileSystemMCPServerView) {
-    actions.push({
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.RESEARCH + "-file-system-action",
-      type: "mcp_server_configuration",
-      name: "data_sources_file_system" satisfies InternalMCPServerNameType,
-      description: "Our company's internal data sources",
-      mcpServerViewId: dataSourcesFileSystemMCPServerView.sId,
-      internalMCPServerId:
-        dataSourcesFileSystemMCPServerView.internalMCPServerId,
-      dataSources: dataSourceViews.map((dsView) => ({
-        dataSourceViewId: dsView.sId,
-        workspaceId: preFetchedDataSources.workspaceId,
-        filter: { parents: null, tags: null },
-      })),
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-    });
+  if (companyDataAction) {
+    actions.push(companyDataAction);
   }
 
   actions.push(
@@ -265,34 +320,12 @@ export function _getDustDeepGlobalAgent(
   );
 
   // Add data warehouses tool with all warehouses in global space (all remote DBs)
-  if (preFetchedDataSources && dataWarehousesMCPServerView) {
-    const globalWarehouses = preFetchedDataSources.dataSourceViews.filter(
-      (dsView) => dsView.isInGlobalSpace && isRemoteDatabase(dsView.dataSource)
-    );
-    if (globalWarehouses.length > 0) {
-      actions.push({
-        id: -1,
-        sId: GLOBAL_AGENTS_SID.RESEARCH + "-data-warehouses",
-        type: "mcp_server_configuration",
-        name: "data_warehouses" satisfies InternalMCPServerNameType,
-        description:
-          "Query and navigate data warehouses (global space remote databases).",
-        mcpServerViewId: dataWarehousesMCPServerView.sId,
-        internalMCPServerId: dataWarehousesMCPServerView.internalMCPServerId,
-        dataSources: globalWarehouses.map((dsView) => ({
-          dataSourceViewId: dsView.sId,
-          workspaceId: preFetchedDataSources.workspaceId,
-          filter: { parents: null, tags: null },
-        })),
-        tables: null,
-        childAgentId: null,
-        reasoningModel: null,
-        additionalConfiguration: {},
-        timeFrame: null,
-        dustAppConfiguration: null,
-        jsonSchema: null,
-      });
-    }
+  const dataWarehousesAction = getCompanyDataWarehousesAction(
+    preFetchedDataSources,
+    dataWarehousesMCPServerView
+  );
+  if (dataWarehousesAction) {
+    actions.push(dataWarehousesAction);
   }
 
   // Add interactive content tool
@@ -322,7 +355,7 @@ export function _getDustDeepGlobalAgent(
       id: -1,
       sId: GLOBAL_AGENTS_SID.RESEARCH + "-run-agent-dust-task",
       type: "mcp_server_configuration",
-      name: "run_agent" satisfies InternalMCPServerNameType,
+      name: "sub_agent",
       description: "Run the dust-task sub-agent for focused tasks.",
       mcpServerViewId: runAgentMCPServerView.sId,
       internalMCPServerId: runAgentMCPServerView.internalMCPServerId,
@@ -375,40 +408,6 @@ export function _getDustTaskGlobalAgent(
   const pictureUrl =
     "https://dust.tt/static/systemavatar/research_avatar_full.png";
 
-  const modelConfig = (() => {
-    // if openai is whitelisted, we use gpt-5 in medium
-    if (isProviderWhitelisted(owner, "openai")) {
-      return {
-        modelConfiguration: GPT_5_MODEL_CONFIG,
-        reasoningEffort: "medium",
-      } as {
-        modelConfiguration: ModelConfigurationType;
-        reasoningEffort: AgentReasoningEffort;
-      };
-    }
-
-    // if anthropic is whitelisted, we use claude 4 sonnet in medium
-    if (isProviderWhitelisted(owner, "anthropic")) {
-      return {
-        modelConfiguration: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
-        reasoningEffort: "medium",
-      } as {
-        modelConfiguration: ModelConfigurationType;
-        reasoningEffort: AgentReasoningEffort;
-      };
-    }
-
-    // Otherwise we use whatever the default large model is, using the default reasoning effort
-    const modelConfiguration = getLargeWhitelistedModel(owner);
-    if (!modelConfiguration) {
-      return null;
-    }
-    return {
-      modelConfiguration,
-      reasoningEffort: modelConfiguration.defaultReasoningEffort,
-    };
-  })();
-
   const dustTaskAgent: Omit<
     AgentConfigurationType,
     "status" | "maxStepsPerRun" | "actions"
@@ -433,6 +432,8 @@ export function _getDustTaskGlobalAgent(
     canEdit: false,
   };
 
+  const modelConfig = getModelConfig(owner);
+
   if (!modelConfig || settings?.status === "disabled_by_admin") {
     return {
       ...dustTaskAgent,
@@ -451,45 +452,14 @@ export function _getDustTaskGlobalAgent(
 
   dustTaskAgent.model = model;
 
-  if (!preFetchedDataSources) {
-    return {
-      ...dustTaskAgent,
-      status: "active",
-      actions: [],
-      maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    };
-  }
-
   const actions: MCPServerConfigurationType[] = [];
-  const dataSourceViews = preFetchedDataSources.dataSourceViews.filter(
-    (dsView) =>
-      dsView.isInGlobalSpace &&
-      dsView.dataSource.connectorProvider !== "webcrawler"
-  );
 
-  if (dataSourceViews.length > 0 && dataSourcesFileSystemMCPServerView) {
-    actions.push({
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST_TASK + "-file-system-action",
-      type: "mcp_server_configuration",
-      name: "data_sources_file_system" satisfies InternalMCPServerNameType,
-      description: "Our company's internal data sources",
-      mcpServerViewId: dataSourcesFileSystemMCPServerView.sId,
-      internalMCPServerId:
-        dataSourcesFileSystemMCPServerView.internalMCPServerId,
-      dataSources: dataSourceViews.map((dsView) => ({
-        dataSourceViewId: dsView.sId,
-        workspaceId: preFetchedDataSources.workspaceId,
-        filter: { parents: null, tags: null },
-      })),
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-    });
+  const companyDataAction = getCompanyDataAction(
+    preFetchedDataSources,
+    dataSourcesFileSystemMCPServerView
+  );
+  if (companyDataAction) {
+    actions.push(companyDataAction);
   }
 
   actions.push(
@@ -499,37 +469,13 @@ export function _getDustTaskGlobalAgent(
     })
   );
 
-  if (preFetchedDataSources && dataWarehousesMCPServerView) {
-    const globalWarehouses = preFetchedDataSources.dataSourceViews.filter(
-      (dsView) =>
-        dsView.isInGlobalSpace &&
-        (dsView.dataSource.connectorProvider === "snowflake" ||
-          dsView.dataSource.connectorProvider === "bigquery")
-    );
-    if (globalWarehouses.length > 0) {
-      actions.push({
-        id: -1,
-        sId: GLOBAL_AGENTS_SID.DUST_TASK + "-data-warehouses",
-        type: "mcp_server_configuration",
-        name: "data_warehouses" satisfies InternalMCPServerNameType,
-        description:
-          "Query and navigate data warehouses (global space remote databases).",
-        mcpServerViewId: dataWarehousesMCPServerView.sId,
-        internalMCPServerId: dataWarehousesMCPServerView.internalMCPServerId,
-        dataSources: globalWarehouses.map((dsView) => ({
-          dataSourceViewId: dsView.sId,
-          workspaceId: preFetchedDataSources.workspaceId,
-          filter: { parents: null, tags: null },
-        })),
-        tables: null,
-        childAgentId: null,
-        reasoningModel: null,
-        additionalConfiguration: {},
-        timeFrame: null,
-        dustAppConfiguration: null,
-        jsonSchema: null,
-      });
-    }
+  // Add data warehouses tool with all warehouses in global space (all remote DBs)
+  const dataWarehousesAction = getCompanyDataWarehousesAction(
+    preFetchedDataSources,
+    dataWarehousesMCPServerView
+  );
+  if (dataWarehousesAction) {
+    actions.push(dataWarehousesAction);
   }
 
   actions.forEach((action, i) => (action.id = -i));
