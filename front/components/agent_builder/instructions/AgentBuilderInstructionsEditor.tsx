@@ -1,23 +1,21 @@
 import { cn, markdownStyles } from "@dust-tt/sparkle";
 import { CharacterCount } from "@tiptap/extension-character-count";
-import { CodeBlock } from "@tiptap/extension-code-block";
-import Document from "@tiptap/extension-document";
-import { History } from "@tiptap/extension-history";
-import { ListItem } from "@tiptap/extension-list-item";
 import Placeholder from "@tiptap/extension-placeholder";
-import Text from "@tiptap/extension-text";
+import type { Editor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/BlockInsertDropdown";
 import { AgentInstructionDiffExtension } from "@app/components/agent_builder/instructions/extensions/AgentInstructionDiffExtension";
+import { BlockInsertExtension } from "@app/components/agent_builder/instructions/extensions/BlockInsertExtension";
 import { InstructionBlockExtension } from "@app/components/agent_builder/instructions/extensions/InstructionBlockExtension";
-import { InsertBlockMenu } from "@app/components/agent_builder/instructions/InsertBlockMenu";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
-import { useInsertBlockMenu } from "@app/components/agent_builder/instructions/useInsertBlockMenu";
+import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import {
   plainTextFromTipTapContent,
@@ -70,19 +68,42 @@ export function AgentBuilderInstructionsEditor({
     name: "instructions",
   });
 
+  // Create a ref to hold the editor instance
+  const editorRef = useRef<Editor | null>(null);
+
+  // Setup the block insert dropdown
+  const blockDropdown = useBlockInsertDropdown(editorRef);
+  
+  // Store the dropdown ref to access in callbacks without causing re-renders
+  const blockDropdownRef = useRef(blockDropdown);
+  blockDropdownRef.current = blockDropdown;
+
+  // Memoize the suggestion handler to prevent recreating extensions
+  const suggestionHandler = useMemo(
+    () => blockDropdown.getSuggestionHandler(),
+    // Empty dependency array - the handler itself doesn't change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
   const extensions = useMemo(() => {
     return [
-      ListItem,
-      Document,
-      Text,
+      StarterKit.configure({
+        paragraph: false, // We use custom ParagraphExtension
+        history: {
+          depth: 100,
+        },
+        codeBlock: {
+          HTMLAttributes: {
+            class: markdownStyles.code(),
+          },
+        },
+      }),
       ParagraphExtension,
-      History,
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
-      CodeBlock.configure({
-        HTMLAttributes: {
-          class: markdownStyles.code(),
-        },
+      BlockInsertExtension.configure({
+        suggestion: suggestionHandler,
       }),
       Placeholder.configure({
         placeholder:
@@ -94,12 +115,14 @@ export function AgentBuilderInstructionsEditor({
         limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
       }),
     ];
-  }, []);
+  }, [suggestionHandler]);
 
   const editor = useEditor(
     {
       extensions,
       content: tipTapContentFromPlainText(field.value),
+      autofocus: "end", // Focus at the end of content
+      editable: true,
       onUpdate: ({ editor }) => {
         if (!isInstructionDiffMode && !editor.isDestroyed) {
           const json = editor.getJSON();
@@ -111,7 +134,10 @@ export function AgentBuilderInstructionsEditor({
     [extensions]
   );
 
-  const { menuState, handleKeyDown } = useInsertBlockMenu(editor);
+  // Update the editor ref when the editor is created
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
 
   const currentCharacterCount =
     editor?.storage.characterCount.characters() || 0;
@@ -128,12 +154,9 @@ export function AgentBuilderInstructionsEditor({
         attributes: {
           class: editorVariants({ error: displayError }),
         },
-        handleKeyDown: (view, event) => {
-          return handleKeyDown(event);
-        },
       },
     });
-  }, [editor, displayError, handleKeyDown]);
+  }, [editor, displayError]);
 
   useEffect(() => {
     if (!editor || field.value === undefined) {
@@ -176,9 +199,26 @@ export function AgentBuilderInstructionsEditor({
 
   return (
     <div className="flex h-full flex-col gap-1">
-      <div className="relative p-px">
-        <EditorContent editor={editor} />
-        <div className="absolute bottom-2 right-2">
+      <div
+        className="relative p-px"
+        onClick={() => {
+          // Focus the editor when the container is clicked
+          if (editor && !editor.isFocused) {
+            editor.commands.focus("end");
+          }
+        }}
+      >
+        <EditorContent
+          editor={editor}
+          className="h-full min-h-[200px] cursor-text"
+        />
+        <div 
+          className="absolute bottom-2 right-2"
+          onClick={(e) => {
+            // Prevent the container's click handler from focusing the editor
+            e.stopPropagation();
+          }}
+        >
           <InstructionTipsPopover owner={owner} />
         </div>
       </div>
@@ -188,7 +228,7 @@ export function AgentBuilderInstructionsEditor({
           maxCount={INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT}
         />
       )}
-      <InsertBlockMenu {...menuState} />
+      <BlockInsertDropdown blockDropdownState={blockDropdown} />
     </div>
   );
 }
