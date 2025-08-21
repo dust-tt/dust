@@ -6,6 +6,7 @@ import { hideBin } from "yargs/helpers";
 import logger from "@app/logger/logger";
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runAgentLoopWorker } from "@app/temporal/agent_loop/worker";
+import { runAgentScheduleWorker } from "@app/temporal/agent_schedule/worker";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runLabsTranscriptsWorker } from "@app/temporal/labs/transcripts/worker";
@@ -50,6 +51,7 @@ Runtime.install({
 
 type WorkerName =
   | "agent_loop"
+  | "agent_schedule"
   | "data_retention"
   | "document_tracker"
   | "hard_delete"
@@ -69,6 +71,7 @@ type WorkerName =
 
 const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   agent_loop: runAgentLoopWorker,
+  agent_schedule: runAgentScheduleWorker,
   data_retention: runDataRetentionWorker,
   document_tracker: runTrackerWorker,
   hard_delete: runHardDeleteWorker,
