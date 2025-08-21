@@ -185,10 +185,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     if (r.find((res) => res.isErr())) {
       return new Err(
         new Error(
-          `Failed to delete some triggers: ${r
-            .filter((res) => res.isErr())
-            .map((res) => res.error.message)
-            .join(", ")}`
+          `Failed to delete ${r.filter((res) => res.isErr()).length} some triggers`
         )
       );
     }
