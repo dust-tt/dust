@@ -1,17 +1,17 @@
-import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 
 interface GenerateUniqueActionNameParams {
   baseName: string;
   existingActions: AgentBuilderAction[];
-  selectedToolsInDialog?: SelectedTool[];
+  selectedToolsInSheet?: SelectedTool[];
 }
 
 // TODO: refactor an make it reusable for mcp tools with data source selection.
 export function generateUniqueActionName({
   baseName,
   existingActions,
-  selectedToolsInDialog = [],
+  selectedToolsInSheet = [],
 }: GenerateUniqueActionNameParams): string {
   let newActionName = baseName;
   let index = 2;
@@ -19,7 +19,7 @@ export function generateUniqueActionName({
   let isNameUsedInAddedActions = existingActions.some(
     (action) => action.name === newActionName
   );
-  let isNameUsedInNonSavedActions = selectedToolsInDialog.some(
+  let isNameUsedInNonSavedActions = selectedToolsInSheet.some(
     (action) =>
       action.type === "MCP" && action.configuredAction?.name === newActionName
   );
@@ -30,7 +30,7 @@ export function generateUniqueActionName({
     isNameUsedInAddedActions = existingActions.some(
       (action) => action.name === newActionName
     );
-    isNameUsedInNonSavedActions = selectedToolsInDialog.some(
+    isNameUsedInNonSavedActions = selectedToolsInSheet.some(
       (action) =>
         action.type === "MCP" && action.configuredAction?.name === newActionName
     );
