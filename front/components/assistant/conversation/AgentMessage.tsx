@@ -566,7 +566,9 @@ export function AgentMessage({
             mcpServerId={agentMessage.error.metadata.mcp_server_id}
             provider={agentMessage.error.metadata.provider}
             scope={agentMessage.error.metadata.scope}
-            retryHandler={async () => retryHandler(agentMessage)}
+            retryHandler={async () =>
+              retryHandler(agentMessage, { blockedOnly: true })
+            }
           />
         );
       }
@@ -690,10 +692,13 @@ export function AgentMessage({
     );
   }
 
-  async function retryHandler(agentMessage: LightAgentMessageType) {
+  async function retryHandler(
+    agentMessage: LightAgentMessageType,
+    { blockedOnly }: { blockedOnly: boolean } = { blockedOnly: false }
+  ) {
     setIsRetryHandlerProcessing(true);
     await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry`,
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry?blocked_only=${blockedOnly}`,
       {
         method: "POST",
         headers: {
@@ -701,6 +706,7 @@ export function AgentMessage({
         },
       }
     );
+
     setIsRetryHandlerProcessing(false);
   }
 }

@@ -30,6 +30,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
@@ -53,6 +54,22 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     }
   ) {
     super(AgentStepContentModel, blob);
+  }
+
+  private static async baseFetch(
+    auth: Authenticator,
+    { where, limit, order }: ResourceFindOptions<AgentStepContentModel> = {}
+  ) {
+    const stepContents = await this.model.findAll({
+      where: {
+        ...where,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      limit,
+      order,
+    });
+
+    return stepContents.map((a) => new this(this.model, a.get()));
   }
 
   /**
@@ -282,6 +299,17 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           agentMCPActions: content.agentMCPActions,
         })
     );
+  }
+
+  static async fetchByIds(
+    auth: Authenticator,
+    { ids }: { ids: ModelId[] }
+  ): Promise<AgentStepContentResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        id: { [Op.in]: ids },
+      },
+    });
   }
 
   async delete(

@@ -1,9 +1,12 @@
 import assert from "assert";
-import type { Transaction } from "sequelize";
+import type { Attributes, NonAttribute, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
+import { TOOL_EXECUTION_BLOCKED_STATUSES } from "@app/lib/actions/statuses";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
+import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -24,19 +27,48 @@ export interface AgentMCPActionResource
 export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
   static model: ModelStaticWorkspaceAware<AgentMCPAction> = AgentMCPAction;
 
+  constructor(
+    model: ModelStaticWorkspaceAware<AgentMCPAction>,
+    blob: Attributes<AgentMCPAction>,
+    // TODO(DURABLE-AGENTS, 2025-08-21): consider using the resource instead of the model.
+    readonly stepContent: NonAttribute<AgentStepContentModel>
+  ) {
+    super(model, blob);
+  }
+
   private static async baseFetch(
     auth: Authenticator,
     { where, limit, order }: ResourceFindOptions<AgentMCPAction> = {}
   ) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
     const actions = await this.model.findAll({
       where: {
         ...where,
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId,
       },
       limit,
       order,
     });
-    return actions.map((a) => new this(this.model, a.get()));
+
+    const stepContents = await AgentStepContentModel.findAll({
+      where: {
+        id: {
+          [Op.in]: actions.map((a) => a.stepContentId),
+        },
+        workspaceId,
+      },
+    });
+
+    const stepContentsMap = new Map(stepContents.map((s) => [s.id, s]));
+
+    return actions.map((a) => {
+      const stepContent = stepContentsMap.get(a.stepContentId);
+
+      // Each action must have a step content.
+      assert(stepContent, "Step content not found.");
+      return new this(this.model, a.get(), stepContent);
+    });
   }
 
   static async listPendingValidationsForConversation(
@@ -120,6 +152,34 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     }
 
     return pendingValidations;
+  }
+
+  static async listBlockedActionsForAgentMessage(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: ModelId }
+  ): Promise<AgentMCPActionResource[]> {
+    const actions = await this.baseFetch(auth, {
+      where: {
+        agentMessageId,
+        status: {
+          [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
+        },
+      },
+    });
+
+    if (actions.length === 0) {
+      return [];
+    }
+
+    // Assert all blocked actions have the same step.
+    const steps = actions.map((a) => a.stepContent.step);
+    const uniqueSteps = [...new Set(steps)];
+    assert(
+      uniqueSteps.length === 1,
+      `All blocked actions must be from the same step, got ${steps.join(", ")}`
+    );
+
+    return actions;
   }
 
   async delete(

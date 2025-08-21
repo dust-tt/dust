@@ -21,6 +21,7 @@ import type {
   InternalMCPServerNameType,
   MCPServerAvailability,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -28,6 +29,12 @@ import {
   hideFileFromActionOutput,
   rewriteContentForModel,
 } from "@app/lib/actions/mcp_utils";
+import type {
+  MCPExecutionState,
+  MCPRunningState,
+  ToolExecutionStatus,
+} from "@app/lib/actions/statuses";
+import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type {
   ActionGeneratedFileType,
   AgentLoopRunContextType,
@@ -185,54 +192,6 @@ export function getMCPApprovalStateFromUserApprovalState(
     default:
       assertNever(userApprovalState);
   }
-}
-
-// TODO(2025-08-20 aubin): remove this (consolidated into a single column).
-export type MCPExecutionState =
-  | "allowed_explicitly"
-  | "allowed_implicitly"
-  | "denied"
-  | "pending";
-
-// TODO(2025-08-20 aubin): remove this (consolidated into a single column).
-export type MCPRunningState =
-  | "not_started"
-  | "running"
-  | "completed"
-  | "errored";
-
-const TOOL_EXECUTION_FINAL_STATUS = ["succeeded", "errored", "denied"] as const;
-
-type ToolExecutionFinalStatus = (typeof TOOL_EXECUTION_FINAL_STATUS)[number];
-
-const TOOL_EXECUTION_TRANSIENT_STATUS = [
-  "ready_allowed_explicitly",
-  "ready_allowed_implicitly",
-  "blocked_pending_validation",
-  "running",
-] as const;
-
-type ToolExecutionTransientStatus =
-  (typeof TOOL_EXECUTION_TRANSIENT_STATUS)[number];
-
-export type ToolExecutionStatus =
-  | ToolExecutionFinalStatus
-  | ToolExecutionTransientStatus;
-
-export function isToolExecutionStatusFinal(
-  state: ToolExecutionStatus
-): state is ToolExecutionFinalStatus {
-  return TOOL_EXECUTION_FINAL_STATUS.includes(
-    state as ToolExecutionFinalStatus
-  );
-}
-
-export function isToolExecutionStatusTransient(
-  state: ToolExecutionStatus
-): state is ToolExecutionTransientStatus {
-  return TOOL_EXECUTION_TRANSIENT_STATUS.includes(
-    state as ToolExecutionTransientStatus
-  );
 }
 
 type MCPParamsEvent = {
@@ -494,11 +453,12 @@ export async function* runToolWithStreaming(
     stepContext: StepContext;
   }
 ): AsyncGenerator<
+  | MCPApproveExecutionEvent
+  | MCPErrorEvent
   | MCPParamsEvent
   | MCPSuccessEvent
-  | MCPErrorEvent
-  | MCPApproveExecutionEvent
-  | ToolNotificationEvent,
+  | ToolNotificationEvent
+  | ToolPersonalAuthRequiredEvent,
   void
 > {
   const owner = auth.getNonNullableWorkspace();
@@ -572,9 +532,8 @@ export async function* runToolWithStreaming(
       "Error calling MCP tool on run."
     );
 
-    // If we got a personal authentication error, we emit a `tool_error` which will get turned
-    // into an `agent_error` with metadata set such that we can display an invitation to connect
-    // to the user.
+    // If we got a personal authentication error, we emit a specific event that will be
+    // deferred until after all tools complete, then converted to a tool_error.
     if (
       MCPServerPersonalAuthenticationRequiredError.is(toolCallResult?.error)
     ) {
@@ -582,23 +541,26 @@ export async function* runToolWithStreaming(
         `The tool ${actionBaseParams.functionCallName} requires personal ` +
         `authentication, please authenticate to use it.`;
 
-      yield await handleMCPActionError({
-        action,
-        actionBaseParams,
-        agentConfiguration,
-        agentMessage,
-        executionState,
-        errorMessage: authErrorMessage,
-        yieldAsError: true,
-        errorCode: "mcp_server_personal_authentication_required",
-        errorMetadata: {
-          mcp_server_id: toolCallResult.error.mcpServerId,
+      // Update action to mark it as blocked because of personal authentication error.
+      await action.update({
+        status: "blocked_required_authentication",
+      });
+
+      yield {
+        type: "tool_personal_auth_required",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        authError: {
+          mcpServerId: toolCallResult.error.mcpServerId,
           provider: toolCallResult.error.provider,
+          toolName: actionBaseParams.functionCallName ?? "unknown",
+          message: authErrorMessage,
           ...(toolCallResult.error.scope && {
             scope: toolCallResult.error.scope,
           }),
         },
-      });
+      };
 
       return;
     }
