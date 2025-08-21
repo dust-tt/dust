@@ -1,11 +1,8 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
-  BookOpenIcon,
-  ContextItem,
   MultiPageSheet,
   MultiPageSheetContent,
   ScrollArea,
-  Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
@@ -31,6 +28,7 @@ import { isValidPage } from "@app/components/agent_builder/capabilities/mcp/util
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
+import { ProcessingMethodSection } from "@app/components/agent_builder/capabilities/shared/ProcessingMethodSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import {
@@ -50,12 +48,7 @@ import {
 } from "@app/components/agent_builder/types";
 import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
-import {
-  getMCPServerNameForTemplateAction,
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
-import { getAvatar } from "@app/lib/actions/mcp_icons";
+import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
@@ -244,8 +237,7 @@ function KnowledgeConfigurationSheetContent({
   isEditing,
   presetActionData,
 }: KnowledgeConfigurationSheetContentProps) {
-  const { handleSubmit, setValue, getValues } =
-    useFormContext<CapabilityFormData>();
+  const { handleSubmit } = useFormContext<CapabilityFormData>();
 
   const { actions } = useAgentBuilderFormActions();
   const { mcpServerViews } = useMCPServerViewsContext();
@@ -264,7 +256,6 @@ function KnowledgeConfigurationSheetContent({
   });
 
   const hasSourceSelection = sources.in.length > 0;
-  const hasMCPServerSelection = mcpServerView !== null;
 
   const config = useMemo(() => {
     if (mcpServerView !== null) {
@@ -277,32 +268,14 @@ function KnowledgeConfigurationSheetContent({
     return getMCPServerRequirements(mcpServerView);
   }, [mcpServerView]);
 
-  const viewType = useMemo(() => {
-    if (requirements.requiresTableConfiguration) {
-      return "table";
-    }
-    if (requirements.requiresDataWarehouseConfiguration) {
-      return "data_warehouse";
-    }
-    if (requirements.requiresDataSourceConfiguration) {
-      return "document";
-    }
-    return "all";
-  }, [requirements]);
-
   const { owner } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
-  const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
-    useMCPServerViewsContext();
 
   const getInitialPageId = () => {
     if (isEditing) {
       return CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION;
     }
-    if (presetActionData) {
-      return CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
-    }
-    return CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION;
+    return CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
   };
 
   const [currentPageId, setCurrentPageId] =
@@ -321,55 +294,7 @@ function KnowledgeConfigurationSheetContent({
     }
   };
 
-  const handleMCPServerSelection = (mcpServerView: MCPServerViewType) => {
-    setValue("mcpServerView", mcpServerView);
-
-    const currentName = getValues("name");
-    if (!currentName || !isEditing) {
-      setValue("name", mcpServerView.name ?? mcpServerView.server.name ?? "");
-    }
-
-    setValue("configuration.mcpServerViewId", mcpServerView.sId);
-    setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
-  };
-
   const pages: MultiPageSheetPage[] = [
-    {
-      id: CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION,
-      title: "Choose your processing method",
-      description: "Select how you want to process and access your data",
-      icon: BookOpenIcon,
-      content: (
-        <div className="space-y-4">
-          {isMCPServerViewsLoading && (
-            <div className="flex h-40 w-full items-center justify-center">
-              <Spinner />
-            </div>
-          )}
-          {!isMCPServerViewsLoading && (
-            <>
-              <span className="text-sm font-semibold">
-                Available processing methods:
-              </span>
-              <ContextItem.List>
-                {mcpServerViewsWithKnowledge.map((view) => (
-                  <ContextItem
-                    key={view.id}
-                    title={getMcpServerViewDisplayName(view)}
-                    visual={getAvatar(view.server, "sm")}
-                    onClick={() => handleMCPServerSelection(view)}
-                  >
-                    <ContextItem.Description
-                      description={getMcpServerViewDescription(view)}
-                    />
-                  </ContextItem>
-                ))}
-              </ContextItem.List>
-            </>
-          )}
-        </div>
-      ),
-    },
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
       title: requirements.requiresTableConfiguration
@@ -385,7 +310,7 @@ function KnowledgeConfigurationSheetContent({
             <DataSourceBuilderSelector
               dataSourceViews={supportedDataSourceViews}
               owner={owner}
-              viewType={viewType}
+              viewType="all"
               allowedSpaces={allowedSpaces}
             />
           </ScrollArea>
@@ -408,6 +333,8 @@ function KnowledgeConfigurationSheetContent({
             placeholder="search_gdrive"
             helpText="Use lowercase letters, numbers, and underscores only. No spaces allowed."
           />
+
+          <ProcessingMethodSection />
 
           {requirements.mayRequireTimeFrameConfiguration && (
             <TimeFrameSection actionType="extract" />
@@ -440,13 +367,15 @@ function KnowledgeConfigurationSheetContent({
       size="xl"
       showHeaderNavigation={false}
       disableNext={
-        currentPageId === CONFIGURATION_SHEET_PAGE_IDS.MCP_SERVER_SELECTION
-          ? !hasMCPServerSelection
-          : currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION
-            ? !hasSourceSelection
-            : false
+        currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION
+          ? !hasSourceSelection
+          : false
       }
-      footerContent={<KnowledgeFooter />}
+      footerContent={
+        currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION ? (
+          <KnowledgeFooter />
+        ) : undefined
+      }
     />
   );
 }

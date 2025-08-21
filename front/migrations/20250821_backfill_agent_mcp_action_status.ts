@@ -1,4 +1,5 @@
 import type { Logger } from "pino";
+import type { WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
@@ -10,34 +11,49 @@ const BATCH_SIZE = 2048;
 // succeeded is the default (99.1% of actions), we backfill errored using the `isError` column
 // and denied using the `executionState` column.
 
+type TargetStatus = "errored" | "denied" | "succeeded";
+
+function getWhereClause({
+  lastId,
+  targetStatus,
+}: {
+  lastId: number;
+  targetStatus: TargetStatus;
+}): WhereOptions<AgentMCPAction> {
+  switch (targetStatus) {
+    case "errored":
+      return {
+        id: { [Op.gt]: lastId },
+        isError: true,
+      };
+    case "denied":
+      return {
+        id: { [Op.gt]: lastId },
+        executionState: "denied",
+      };
+    case "succeeded":
+      return {
+        id: { [Op.gt]: lastId },
+        status: "running",
+      };
+  }
+}
 async function getNextBatch({
   lastId,
   targetStatus,
 }: {
   lastId: number;
-  targetStatus: "errored" | "denied";
+  targetStatus: TargetStatus;
 }) {
   return AgentMCPAction.findAll({
-    where:
-      targetStatus === "errored"
-        ? {
-            id: { [Op.gt]: lastId },
-            isError: true,
-          }
-        : {
-            id: { [Op.gt]: lastId },
-            executionState: "denied",
-          },
+    where: getWhereClause({ lastId, targetStatus }),
     order: [["id", "ASC"]],
     limit: BATCH_SIZE,
   });
 }
 
 async function backfillActions(
-  {
-    targetStatus,
-    execute,
-  }: { targetStatus: "errored" | "denied"; execute: boolean },
+  { targetStatus, execute }: { targetStatus: TargetStatus; execute: boolean },
   logger: Logger
 ) {
   let lastId = 0;
@@ -77,11 +93,9 @@ async function backfillActions(
 }
 
 makeScript({}, async ({ execute }, logger) => {
-  logger.info("Starting backfill of errored actions");
-  await backfillActions({ targetStatus: "errored", execute }, logger);
-  logger.info("Completed backfill of errored actions");
-
-  logger.info("Completed backfill of denied actions");
-  await backfillActions({ targetStatus: "denied", execute }, logger);
-  logger.info("Completed backfill of denied actions");
+  for (const targetStatus of ["succeeded", "errored", "denied"] as const) {
+    logger.info(`Starting backfill of ${targetStatus} actions`);
+    await backfillActions({ targetStatus, execute }, logger);
+    logger.info(`Completed backfill of ${targetStatus} actions`);
+  }
 });

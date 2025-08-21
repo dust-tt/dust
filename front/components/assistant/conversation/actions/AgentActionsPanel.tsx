@@ -49,13 +49,35 @@ export function AgentActionsPanel({
     }
   }, [messageId, onPanelClosed]);
 
+  if (isMessageLoading) {
+    return (
+      <AgentActionsPanelHeader
+        title="Breakdown of the tools used"
+        onClose={onPanelClosed}
+      >
+        <div className="flex items-center justify-center">
+          <Spinner variant="color" />
+        </div>
+      </AgentActionsPanelHeader>
+    );
+  }
+
   if (
     !messageId ||
     !messageMetadata ||
     !fullAgentMessage ||
     fullAgentMessage.type !== "agent_message"
   ) {
-    return null;
+    return (
+      <AgentActionsPanelHeader
+        title="Breakdown of the tools used"
+        onClose={onPanelClosed}
+      >
+        <div className="flex items-center justify-center">
+          <span className="text-muted-foreground">Nothing to display.</span>
+        </div>
+      </AgentActionsPanelHeader>
+    );
   }
 
   const { actionProgress } = messageMetadata;
@@ -72,69 +94,63 @@ export function AgentActionsPanel({
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto p-4 pb-12"
       >
-        {isMessageLoading ? (
-          <div className="flex justify-center">
-            <Spinner variant="color" />
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {Object.entries(steps).map(([step, entries]) => {
-              if (!entries || entries.length === 0) {
-                return null;
-              }
-              return (
-                <div
-                  className="flex flex-col gap-4 duration-1000 animate-in fade-in"
-                  key={step}
-                >
-                  {step !== "1" && <Separator className="my-4" />}
-                  <span className="text-size w-fit self-start text-lg font-semibold">
-                    Step {step}
-                  </span>
+        <div className="flex flex-col gap-4">
+          {Object.entries(steps).map(([step, entries]) => {
+            if (!entries || entries.length === 0) {
+              return null;
+            }
+            return (
+              <div
+                className="flex flex-col gap-4 duration-1000 animate-in fade-in"
+                key={step}
+              >
+                {step !== "1" && <Separator className="my-4" />}
+                <span className="text-size w-fit self-start text-lg font-semibold">
+                  Step {step}
+                </span>
 
-                  {entries.map((entry, idx) => {
-                    if (entry.kind === "reasoning") {
-                      return (
-                        <ContentMessage
-                          key={`reasoning-${step}-${idx}`}
-                          variant="primary"
-                          size="lg"
-                        >
-                          <Markdown
-                            content={entry.content}
-                            isStreaming={false}
-                            forcedTextSize="text-sm"
-                            textColor="text-muted-foreground"
-                            isLastMessage={false}
-                          />{" "}
-                        </ContentMessage>
-                      );
-                    } else {
-                      const lastNotification =
-                        actionProgress.get(entry.action.id)?.progress ?? null;
-                      return (
-                        <div key={`action-${entry.action.id}`}>
-                          <MCPActionDetails
-                            viewType="sidebar"
-                            action={entry.action}
-                            lastNotification={lastNotification}
-                            owner={owner}
-                            messageStatus={fullAgentMessage.status}
-                          />
-                        </div>
-                      );
-                    }
-                  })}
-                </div>
-              );
-            })}
-            {isActing && (
-              <div className="flex justify-center">
-                <Spinner variant="color" />
+                {entries.map((entry, idx) => {
+                  if (entry.kind === "reasoning") {
+                    return (
+                      <ContentMessage
+                        key={`reasoning-${step}-${idx}`}
+                        variant="primary"
+                        size="lg"
+                      >
+                        <Markdown
+                          content={entry.content}
+                          isStreaming={false}
+                          forcedTextSize="text-sm"
+                          textColor="text-muted-foreground"
+                          isLastMessage={false}
+                        />{" "}
+                      </ContentMessage>
+                    );
+                  } else {
+                    const lastNotification =
+                      actionProgress.get(entry.action.id)?.progress ?? null;
+                    return (
+                      <div key={`action-${entry.action.id}`}>
+                        <MCPActionDetails
+                          viewType="sidebar"
+                          action={entry.action}
+                          lastNotification={lastNotification}
+                          owner={owner}
+                          messageStatus={fullAgentMessage.status}
+                        />
+                      </div>
+                    );
+                  }
+                })}
               </div>
-            )}
-          </div>
-        )}
+            );
+          })}
+          {isActing && (
+            <div className="flex justify-center">
+              <Spinner variant="color" />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

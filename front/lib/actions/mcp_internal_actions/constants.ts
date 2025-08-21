@@ -30,6 +30,10 @@ export const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
 export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
 export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
 
+export const SEARCH_SERVER_NAME = "search";
+export const TABLE_QUERY_SERVER_NAME = "query_tables";
+export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2";
+
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
   // Names should reflect the purpose of the server but not directly the tools it contains.
@@ -55,13 +59,13 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "notion",
   "outlook",
   "primitive_types_debugger",
-  "query_tables",
-  "query_tables_v2",
+  TABLE_QUERY_SERVER_NAME,
+  TABLE_QUERY_V2_SERVER_NAME,
   "reasoning",
   "run_agent",
   "run_dust_app",
   "salesforce",
-  "search",
+  SEARCH_SERVER_NAME,
   "think",
   "web_search_&_browse",
   "google_calendar",

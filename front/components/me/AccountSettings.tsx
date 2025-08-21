@@ -1,4 +1,4 @@
-import { Button, Input, Label, Page, Spinner } from "@dust-tt/sparkle";
+import { Button, Input, Label, Page, Spinner, Tooltip } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -27,6 +27,7 @@ export function AccountSettings({ user, isUserLoading }: AccountSettingsProps) {
     });
 
   const { patchUser } = usePatchUser();
+  const isProvisioned = user?.origin === "provisioned";
 
   useEffect(() => {
     if (user) {
@@ -49,6 +50,35 @@ export function AccountSettings({ user, isUserLoading }: AccountSettingsProps) {
     );
   }
 
+  const renderNameInput = ({
+    label,
+    fieldName,
+  }: {
+    label: string;
+    fieldName: "firstName" | "lastName";
+  }) => {
+    const input = (
+      <Input
+        label={label}
+        {...register(fieldName)}
+        placeholder={label}
+        disabled={isProvisioned}
+      />
+    );
+
+    if (isProvisioned) {
+      return (
+        <Tooltip
+          label="Your name is managed by your identity provider and cannot be edited."
+          tooltipTriggerAsChild
+          trigger={input}
+        />
+      );
+    }
+
+    return input;
+  };
+
   return (
     <>
       <Page.Horizontal>
@@ -62,22 +92,20 @@ export function AccountSettings({ user, isUserLoading }: AccountSettingsProps) {
         <Page.Vertical sizing="grow" align="stretch">
           <Page.Horizontal sizing="grow">
             <Page.Vertical sizing="grow" align="stretch">
-              <Input
-                label="First Name"
-                {...register("firstName")}
-                placeholder="First Name"
-              />
+              {renderNameInput({
+                label: "First Name",
+                fieldName: "firstName",
+              })}
             </Page.Vertical>
             <Page.Vertical sizing="grow" align="stretch">
-              <Input
-                label="Last Name"
-                {...register("lastName")}
-                placeholder="Last Name"
-              />
+              {renderNameInput({
+                label: "Last Name",
+                fieldName: "lastName",
+              })}
             </Page.Vertical>
           </Page.Horizontal>
 
-          {formState.isDirty && (
+          {formState.isDirty && !isProvisioned && (
             <Page.Horizontal align="right">
               <Button
                 label="Cancel"
