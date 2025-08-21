@@ -1,6 +1,9 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { determineUserRoleFromGroups } from "@app/lib/api/user";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import {
+  ADMIN_GROUP_NAME,
+  GroupResource,
+} from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { Err, Ok } from "@app/types";
@@ -22,6 +25,24 @@ export const applyGroupRoles = createPlugin({
 
     const provisioningGroups =
       await GroupResource.listRoleProvisioningGroupsForWorkspace(auth);
+
+    const [adminGroup] = provisioningGroups.filter(
+      (g) => g.name === ADMIN_GROUP_NAME
+    );
+    if (!adminGroup) {
+      return new Ok({
+        display: "text",
+        value: "dust-admins group not found in workspace.",
+      });
+    }
+
+    const userCountInAdminGroup = await adminGroup.getMemberCount(auth);
+    if (userCountInAdminGroup === 0) {
+      return new Ok({
+        display: "text",
+        value: "dust-admins group found but no users in it.",
+      });
+    }
 
     if (provisioningGroups.length === 0) {
       return new Ok({
