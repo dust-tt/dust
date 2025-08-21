@@ -105,7 +105,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       ],
       where: {
         workspaceId: owner.id,
-        executionState: "pending",
+        status: "blocked_pending_validation",
       },
       order: [["createdAt", "ASC"]],
     });

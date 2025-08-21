@@ -47,7 +47,7 @@ export async function getPokeConversation(
                   params: a.params,
                   output: a.output,
                   generatedFiles: a.generatedFiles,
-                  isError: a.isError,
+                  isError: a.status === "errored",
                 };
               }
             }
