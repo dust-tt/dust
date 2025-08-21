@@ -31,6 +31,8 @@ import {
   HeartbeatMCPResponseType,
   LoggerInterface,
   PatchDataSourceViewRequestType,
+  PendingValidationsResponseSchema,
+  PendingValidationsResponseType,
   PostMCPResultsResponseType,
   PublicHeartbeatMCPRequestBody,
   PublicPostContentFragmentRequestBody,
@@ -1402,6 +1404,19 @@ export class DustAPI {
   }
 
   // MCP Related.
+
+  async getPendingValidations({
+    conversationId,
+  }: {
+    conversationId: string;
+  }): Promise<Result<PendingValidationsResponseType, APIError>> {
+    const res = await this.request({
+      method: "GET",
+      path: `assistant/conversations/${conversationId}/pending-validations`,
+    });
+
+    return this._resultFromResponse(PendingValidationsResponseSchema, res);
+  }
 
   async validateAction({
     conversationId,
