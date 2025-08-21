@@ -106,15 +106,12 @@ async function handler(
       const resultTriggers: TriggerType[] = [];
       const errors: Error[] = [];
 
-      console.log(currentTriggersMap);
-      console.log(requestTriggers);
-
       for (const triggerData of requestTriggers) {
-        const bodyValidation = TriggerSchema.decode(triggerData);
+        const triggerValidation = TriggerSchema.decode(triggerData);
 
-        if (isLeft(bodyValidation)) {
+        if (isLeft(triggerValidation)) {
           const pathError = reporter.formatValidationErrors(
-            bodyValidation.left
+            triggerValidation.left
           );
           return apiError(req, res, {
             status_code: 400,
@@ -125,7 +122,7 @@ async function handler(
           });
         }
 
-        const validatedTrigger = bodyValidation.right;
+        const validatedTrigger = triggerValidation.right;
 
         if (triggerData.sId && currentTriggersMap.has(triggerData.sId)) {
           const existingTrigger = currentTriggersMap.get(triggerData.sId)!;
