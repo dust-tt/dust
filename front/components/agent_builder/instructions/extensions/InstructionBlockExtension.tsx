@@ -540,12 +540,7 @@ export const InstructionBlockExtension =
               }
               return parts.join("");
             },
-            // Paste handler removed - no automatic conversion on paste
-            // This prevents HTML/XML from being unexpectedly converted to instruction blocks
-            // Users can still create instruction blocks by typing <tagname> or <>
           },
-          // Removed appendTransaction and handlePaste - no automatic conversion of XML tags
-          // Users must explicitly trigger conversion by typing an opening tag (handled by InputRule)
         }),
       ];
     },
