@@ -25,6 +25,14 @@ export const FILESYSTEM_CAT_TOOL_NAME = "cat";
 export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
+export const DATA_WAREHOUSES_LIST_TOOL_NAME = "list";
+export const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
+export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
+export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
+
+export const SEARCH_SERVER_NAME = "search";
+export const TABLE_QUERY_SERVER_NAME = "query_tables";
+export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2";
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
@@ -51,13 +59,13 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "notion",
   "outlook",
   "primitive_types_debugger",
-  "query_tables",
-  "query_tables_v2",
+  TABLE_QUERY_SERVER_NAME,
+  TABLE_QUERY_V2_SERVER_NAME,
   "reasoning",
   "run_agent",
   "run_dust_app",
   "salesforce",
-  "search",
+  SEARCH_SERVER_NAME,
   "think",
   "web_search_&_browse",
   "google_calendar",

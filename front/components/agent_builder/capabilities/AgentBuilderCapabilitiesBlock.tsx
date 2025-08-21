@@ -22,8 +22,8 @@ import type {
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
-import type { DialogMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
-import { MCPServerViewsDialog } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
+import type { SheetMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
+import { MCPServerViewsSheet } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import { usePresetActionHandler } from "@app/components/agent_builder/capabilities/usePresetActionHandler";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
@@ -155,7 +155,7 @@ export function AgentBuilderCapabilitiesBlock({
   const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
-  const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
+  const [dialogMode, setDialogMode] = useState<SheetMode | null>(null);
   const [knowledgeAction, setKnowledgeAction] = useState<{
     action: AgentBuilderAction;
     index: number | null;
@@ -318,7 +318,7 @@ export function AgentBuilderCapabilitiesBlock({
         getAgentInstructions={getAgentInstructions}
         presetActionData={knowledgeAction?.presetData}
       />
-      <MCPServerViewsDialog
+      <MCPServerViewsSheet
         addTools={append}
         dataVisualization={dataVisualization}
         mode={dialogMode}

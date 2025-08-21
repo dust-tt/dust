@@ -163,7 +163,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       async (trigger) => {
         const r = await deleteAgentScheduleWorkflow({
           workspaceId: workspace.sId,
-          agentConfigurationId: trigger.agentConfigurationId,
           triggerId: trigger.sId,
         });
         if (r.isErr()) {
@@ -209,7 +208,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       case "schedule":
         return deleteAgentScheduleWorkflow({
           workspaceId: auth.getNonNullableWorkspace().sId,
-          agentConfigurationId: this.agentConfigurationId,
           triggerId: this.sId,
         });
       default:

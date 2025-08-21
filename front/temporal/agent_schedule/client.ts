@@ -125,7 +125,6 @@ export async function deleteAgentScheduleWorkflow({
   triggerId,
 }: {
   workspaceId: string;
-  agentConfigurationId: number;
   triggerId: string;
 }): Promise<Result<void, Error>> {
   const client = await getTemporalClientForAgentNamespace();

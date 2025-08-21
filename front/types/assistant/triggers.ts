@@ -17,7 +17,7 @@ export type TriggerType = {
   sId: string;
   name: string;
   description: string;
-  agentConfigurationId: AgentConfigurationType["id"];
+  agentConfigurationId: AgentConfigurationType["sId"];
   editor: UserType["id"];
   customPrompt: string | null;
 } & TriggerConfiguration;
