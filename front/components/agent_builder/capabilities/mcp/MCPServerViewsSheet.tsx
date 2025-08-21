@@ -469,13 +469,11 @@ export function MCPServerViewsSheet({
     resetFormValues(form);
   }, [resetFormValues, form]);
 
-  // Watch form values to make footer reactive
   const watchedConfiguration = useWatch({
     control: form.control,
     name: "configuration",
   });
 
-  // Get footer content for configuration page
   const configurationFooterContent = getConfigurationFooterContent({
     requirements,
     watchedConfiguration,
