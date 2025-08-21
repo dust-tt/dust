@@ -639,7 +639,7 @@ export async function createMCPAction(
     MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT
   ) as LightMCPToolConfigurationType;
 
-  const actionResource = await AgentMCPActionResource.makeNew(auth, {
+  const action = await AgentMCPActionResource.makeNew(auth, {
     actionBaseParams,
     augmentedInputs,
     stepContentId,
@@ -651,14 +651,14 @@ export async function createMCPAction(
   const mcpAction = new MCPActionType({
     ...actionBaseParams,
     executionState: "pending",
-    id: actionResource.id,
+    id: action.id,
     isError: false,
     output: null,
     type: "tool_action",
     runningState: "not_started",
   });
 
-  return { action: actionResource, mcpAction };
+  return { action, mcpAction };
 }
 
 type BaseErrorParams = {
