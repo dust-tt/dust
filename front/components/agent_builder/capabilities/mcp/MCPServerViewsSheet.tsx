@@ -25,6 +25,7 @@ import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
 import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
+import { getConfigurationFooterContent } from "@app/components/agent_builder/capabilities/mcp/utils/footerUtils";
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { createFormResetHandler } from "@app/components/agent_builder/capabilities/mcp/utils/formStateUtils";
 import {
@@ -38,7 +39,6 @@ import {
   handleConfigurationSave as handleConfigurationSaveUtil,
   shouldGenerateUniqueName,
 } from "@app/components/agent_builder/capabilities/mcp/utils/sheetUtils";
-import { getConfigurationFooterContent } from "@app/components/agent_builder/capabilities/mcp/utils/footerUtils";
 import { AdditionalConfigurationSection } from "@app/components/agent_builder/capabilities/shared/AdditionalConfigurationSection";
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
@@ -67,9 +67,9 @@ import { InternalActionIcons } from "@app/lib/actions/mcp_icons";
 import { isCustomServerIconType } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useModels } from "@app/lib/swr/models";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { O4_MINI_MODEL_ID } from "@app/types";
 
 export type SelectedTool =

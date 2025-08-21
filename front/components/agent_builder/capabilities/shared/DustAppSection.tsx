@@ -1,13 +1,11 @@
 import {
   CommandLineIcon,
-  ContentMessage,
   createRadioSelectionColumn,
   DataTable,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  InformationCircleIcon,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -65,24 +63,6 @@ function AppSelectionTable({
         filterColumn="name"
       />
     </div>
-  );
-}
-
-interface AppMessageProps {
-  title: string;
-  children: string;
-}
-
-function AppMessage({ title, children }: AppMessageProps) {
-  return (
-    <ContentMessage
-      title={title}
-      icon={InformationCircleIcon}
-      variant="warning"
-      size="sm"
-    >
-      {children}
-    </ContentMessage>
   );
 }
 
