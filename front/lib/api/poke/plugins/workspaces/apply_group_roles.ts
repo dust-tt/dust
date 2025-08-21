@@ -8,7 +8,7 @@ import { Err, Ok } from "@app/types";
 export const applyGroupRoles = createPlugin({
   manifest: {
     id: "apply-roles-from-groups",
-    name: "Apply roles defined by the dust-admins and dust-builders groups",
+    name: "Apply group roles",
     description:
       "Force resync roles using dust-admins and dust-builders groups",
     resourceTypes: ["workspaces"],
