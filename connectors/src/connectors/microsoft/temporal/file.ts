@@ -121,7 +121,7 @@ export async function syncOneFile({
       startSyncTs,
     })
   ) {
-    return true;
+    return false;
   }
 
   if (fileResource?.skipReason) {
@@ -531,6 +531,10 @@ export async function deleteFolder({
     internalId
   );
 
+  if (!folder) {
+    return false;
+  }
+
   logger.info(
     {
       connectorId,
@@ -577,7 +581,7 @@ export async function deleteFile({
   );
 
   if (!file) {
-    return;
+    return false;
   }
 
   logger.info({ connectorId, file }, `Deleting Microsoft file.`);
@@ -596,7 +600,7 @@ export async function deleteFile({
   } else {
     await deleteDataSourceDocument(dataSourceConfig, internalId);
   }
-  return file.delete();
+  return (await file.delete()).isOk();
 }
 
 export function isAlreadySeenItem({

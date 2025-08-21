@@ -716,10 +716,24 @@ export async function syncDeltaForRootNodesInDrive({
     });
   }
   let count = 0;
+  let skipped = 0;
+  let deleted = 0;
+  let folders = 0;
+  let files = 0;
   for (const driveItem of sortedChangedItems) {
     count++;
     if (count % 1000 === 0) {
-      logger.info({ count }, "Processing delta changes");
+      logger.info(
+        {
+          count,
+          skipped,
+          deleted,
+          folders,
+          files,
+          total: sortedChangedItems.length,
+        },
+        "Processing delta changes"
+      );
     }
 
     await heartbeat();
@@ -731,9 +745,18 @@ export async function syncDeltaForRootNodesInDrive({
 
     if (driveItem.file) {
       if (driveItem.deleted) {
-        await deleteFile({ connectorId, internalId, dataSourceConfig });
+        const isDeleted = await deleteFile({
+          connectorId,
+          internalId,
+          dataSourceConfig,
+        });
+        if (isDeleted) {
+          deleted++;
+        } else {
+          skipped++;
+        }
       } else {
-        await syncOneFile({
+        const isSynced = await syncOneFile({
           connectorId,
           dataSourceConfig,
           providerConfig,
@@ -744,6 +767,11 @@ export async function syncDeltaForRootNodesInDrive({
           startSyncTs,
           heartbeat,
         });
+        if (isSynced) {
+          files++;
+        } else {
+          skipped++;
+        }
       }
     } else if (driveItem.folder) {
       if (driveItem.deleted) {
@@ -751,12 +779,17 @@ export async function syncDeltaForRootNodesInDrive({
         // in the delta with the 'deleted' field set
         // we can delete, even if it is not a root node, because microsoft
         // tells us the client has already deleted the folder
-        await deleteFolder({
+        const isDeleted = await deleteFolder({
           connectorId,
           dataSourceConfig,
           internalId,
           deleteRootNode: true,
         });
+        if (isDeleted) {
+          deleted++;
+        } else {
+          skipped++;
+        }
       } else {
         const { item, type } = driveItem.root
           ? {
@@ -786,6 +819,7 @@ export async function syncDeltaForRootNodesInDrive({
             startSyncTs,
           })
         ) {
+          skipped++;
           continue;
         }
 
@@ -850,6 +884,7 @@ export async function syncDeltaForRootNodesInDrive({
         await resource.update({
           lastSeenTs: new Date(),
         });
+        folders++;
       }
     } else {
       throw new Error(`Unexpected: driveItem is neither file nor folder`);
