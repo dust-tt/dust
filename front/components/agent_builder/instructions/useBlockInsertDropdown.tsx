@@ -115,8 +115,16 @@ export const useBlockInsertDropdown = (
   const getSuggestionHandler = useMemo(() => {
     return {
       char: "/",
-      command: ({ editor, range, props }: any) => {
-        const suggestion = props as BlockSuggestion;
+      command: ({
+        editor,
+        range,
+        props,
+      }: {
+        editor: Editor;
+        range: { from: number; to: number };
+        props: BlockSuggestion;
+      }) => {
+        const suggestion = props;
         suggestion.command(editor, range);
       },
       items: ({ query }: { query: string }) => {
