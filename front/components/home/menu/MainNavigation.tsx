@@ -1,7 +1,6 @@
 import { ChevronRightIcon, Icon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import * as React from "react";
-import { useState } from "react";
 
 import { H4, Strong } from "@app/components/home/ContentComponents";
 import { menuConfig } from "@app/components/home/menu/config";
@@ -18,59 +17,56 @@ import { classNames } from "@app/lib/utils";
 import { appendUTMParams } from "@app/lib/utils/utm";
 
 export function MainNavigation() {
-  const [nav, setNav] = useState("");
   return (
-    <NavigationMenu className="mr-4 hidden xl:flex" onValueChange={setNav}>
+    <NavigationMenu className="mr-4 hidden xl:flex">
       <NavigationMenuList>
-        {menuConfig.mainNav.map((item, index) => (
-          <NavigationMenuItem value={item.title} key={index}>
-            {item.href ? (
-              <Link
-                href={item.isExternal ? item.href : appendUTMParams(item.href)}
-                target={item.isExternal ? "_blank" : undefined}
-                legacyBehavior
-                passHref
-              >
-                <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                  {item.title}
-                </NavigationMenuLink>
-              </Link>
-            ) : (
-              <React.Fragment key={`${index}-nav-fragment`}>
-                <NavigationMenuTrigger>{item.title}</NavigationMenuTrigger>
-                <NavigationMenuContent
-                  forceMount
-                  className={classNames(
-                    `opacity-0 data-[state=closed]:hidden`,
-                    nav === item.title && "block opacity-100"
-                  )}
+        {menuConfig.mainNav.map((item, index) => {
+          return (
+            <NavigationMenuItem key={index}>
+              {item.href ? (
+                <Link
+                  href={
+                    item.isExternal ? item.href : appendUTMParams(item.href)
+                  }
+                  target={item.isExternal ? "_blank" : undefined}
+                  legacyBehavior
+                  passHref
                 >
-                  <div className="flex flex-col gap-4 p-6 pb-8">
-                    <H4 className="text-muted-foreground" mono>
-                      {item.label}
-                    </H4>
-                    <ul
-                      className={classNames(
-                        "grid-rows-" + item.rows,
-                        "grid w-full grid-flow-col gap-x-8 gap-y-4"
-                      )}
-                    >
-                      {item.items &&
-                        item.items.map((item) => (
-                          <ListItem
-                            key={item.title}
-                            title={item.title}
-                            href={item.href}
-                            isExternal={item.isExternal}
-                          />
-                        ))}
-                    </ul>
-                  </div>
-                </NavigationMenuContent>
-              </React.Fragment>
-            )}
-          </NavigationMenuItem>
-        ))}
+                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                    {item.title}
+                  </NavigationMenuLink>
+                </Link>
+              ) : (
+                <React.Fragment key={index}>
+                  <NavigationMenuTrigger>{item.title}</NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <div className="flex flex-col gap-4 p-6 pb-8">
+                      <H4 className="text-muted-foreground" mono>
+                        {item.label}
+                      </H4>
+                      <ul
+                        className={classNames(
+                          "grid-rows-" + item.rows,
+                          "grid w-full grid-flow-col gap-x-8 gap-y-4"
+                        )}
+                      >
+                        {item.items &&
+                          item.items.map((item) => (
+                            <ListItem
+                              key={item.title}
+                              title={item.title}
+                              href={item.href}
+                              isExternal={item.isExternal}
+                            />
+                          ))}
+                      </ul>
+                    </div>
+                  </NavigationMenuContent>
+                </React.Fragment>
+              )}
+            </NavigationMenuItem>
+          );
+        })}
       </NavigationMenuList>
     </NavigationMenu>
   );
