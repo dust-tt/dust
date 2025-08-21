@@ -123,7 +123,7 @@ export function ToolsList({
       )}
       <div>
         {tools && tools.length > 0 ? (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-4">
             {tools.map(
               (tool: { name: string; description: string }, index: number) => {
                 const toolPermission = getToolPermission(tool.name);

@@ -25,19 +25,19 @@ import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
 import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
-import {
-  getFooterButtons,
-  getInitialConfigurationTool,
-  getInitialPageId,
-  handleConfigurationSave as handleConfigurationSaveUtil,
-  shouldGenerateUniqueName,
-} from "@app/components/agent_builder/capabilities/mcp/utils/dialogUtils";
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { createFormResetHandler } from "@app/components/agent_builder/capabilities/mcp/utils/formStateUtils";
 import {
   getMCPConfigurationFormSchema,
   validateMCPActionConfiguration,
 } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
+import {
+  getFooterButtons,
+  getInitialConfigurationTool,
+  getInitialPageId,
+  handleConfigurationSave as handleConfigurationSaveUtil,
+  shouldGenerateUniqueName,
+} from "@app/components/agent_builder/capabilities/mcp/utils/sheetUtils";
 import { AdditionalConfigurationSection } from "@app/components/agent_builder/capabilities/shared/AdditionalConfigurationSection";
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
@@ -52,8 +52,8 @@ import type {
   ConfigurationPagePageId,
 } from "@app/components/agent_builder/types";
 import {
-  CONFIGURATION_DIALOG_PAGE_IDS,
   getDefaultMCPAction,
+  TOOLS_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -80,7 +80,7 @@ export type SelectedTool =
 
 const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
-export type DialogMode =
+export type SheetMode =
   | { type: "add" }
   | {
       type: "configure";
@@ -107,17 +107,17 @@ function isMCPActionWithConfiguration(
   );
 }
 
-interface MCPServerViewsDialogProps {
+interface MCPServerViewsSheetProps {
   addTools: UseFieldArrayAppend<AgentBuilderFormData, "actions">;
   dataVisualization: ActionSpecification | null;
-  mode: DialogMode | null;
-  onModeChange: (mode: DialogMode | null) => void;
+  mode: SheetMode | null;
+  onModeChange: (mode: SheetMode | null) => void;
   onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
   actions: AgentBuilderAction[];
   getAgentInstructions: () => string;
 }
 
-export function MCPServerViewsDialog({
+export function MCPServerViewsSheet({
   addTools,
   dataVisualization,
   mode,
@@ -125,7 +125,7 @@ export function MCPServerViewsDialog({
   onActionUpdate,
   actions,
   getAgentInstructions,
-}: MCPServerViewsDialogProps) {
+}: MCPServerViewsSheetProps) {
   const { owner } = useAgentBuilderContext();
   const { spaces } = useSpaces({ workspaceId: owner.sId });
   const sendNotification = useSendNotification();
@@ -137,7 +137,7 @@ export function MCPServerViewsDialog({
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
 
-  const [selectedToolsInDialog, setSelectedToolsInDialog] = useState<
+  const [selectedToolsInSheet, setSelectedToolsInSheet] = useState<
     SelectedTool[]
   >([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -234,9 +234,9 @@ export function MCPServerViewsDialog({
 
   useEffect(() => {
     if (mode?.type === "edit") {
-      setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION);
+      setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
       setConfigurationTool(mode.action);
-      setSelectedToolsInDialog([]);
+      setSelectedToolsInSheet([]);
 
       const action = mode.action;
       if (
@@ -251,12 +251,12 @@ export function MCPServerViewsDialog({
         }
       }
     } else if (mode?.type === "configure") {
-      setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION);
+      setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
       setConfigurationTool(mode.action);
       setConfigurationMCPServerView(mode.mcpServerView);
     } else if (mode?.type === "info") {
-      setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.INFO);
-      setSelectedToolsInDialog([]);
+      setCurrentPageId(TOOLS_SHEET_PAGE_IDS.INFO);
+      setSelectedToolsInSheet([]);
 
       const action = mode.action;
       if (
@@ -271,7 +271,7 @@ export function MCPServerViewsDialog({
         }
       }
     } else if (mode?.type === "add") {
-      setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
+      setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);
       setConfigurationTool(null);
       setConfigurationMCPServerView(null);
       setInfoMCPServerView(null);
@@ -281,7 +281,7 @@ export function MCPServerViewsDialog({
   }, [mode, allMcpServerViews]);
 
   const toggleToolSelection = useCallback((tool: SelectedTool) => {
-    setSelectedToolsInDialog((prev) => {
+    setSelectedToolsInSheet((prev) => {
       const isAlreadySelected = prev.some((selected) => {
         if (
           tool.type === "DATA_VISUALIZATION" &&
@@ -377,7 +377,7 @@ export function MCPServerViewsDialog({
 
   const handleAddSelectedTools = useCallback(() => {
     // Validate any configured tools before adding
-    for (const tool of selectedToolsInDialog) {
+    for (const tool of selectedToolsInSheet) {
       if (tool.type === "MCP" && tool.configuredAction) {
         const validation = validateMCPActionConfiguration(
           tool.configuredAction,
@@ -397,7 +397,7 @@ export function MCPServerViewsDialog({
 
     // All validations passed, add the tools
     addTools(
-      selectedToolsInDialog.map((tool) => {
+      selectedToolsInSheet.map((tool) => {
         if (tool.type === "DATA_VISUALIZATION") {
           return {
             id: uniqueId(),
@@ -413,8 +413,8 @@ export function MCPServerViewsDialog({
       })
     );
 
-    setSelectedToolsInDialog([]);
-  }, [selectedToolsInDialog, addTools, sendNotification]);
+    setSelectedToolsInSheet([]);
+  }, [selectedToolsInSheet, addTools, sendNotification]);
 
   const mcpServerView = configurationMCPServerView;
 
@@ -461,20 +461,20 @@ export function MCPServerViewsDialog({
   }, [resetFormValues, form]);
 
   const resetToSelection = useCallback(() => {
-    setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
+    setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);
     setConfigurationTool(null);
     setConfigurationMCPServerView(null);
   }, []);
 
-  const resetDialog = useCallback(() => {
-    setSelectedToolsInDialog([]);
+  const resetSheet = useCallback(() => {
+    setSelectedToolsInSheet([]);
     setSearchTerm("");
     resetToSelection();
   }, [resetToSelection]);
 
   const pages: MultiPageSheetPage[] = [
     {
-      id: CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION,
+      id: TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION,
       title: actions.length === 0 ? "Add tools" : "Add more",
       description: "",
       icon: undefined,
@@ -498,13 +498,13 @@ export function MCPServerViewsDialog({
             onItemClick={onClickMCPServer}
             dataVisualization={showDataVisualization ? dataVisualization : null}
             onDataVisualizationClick={onClickDataVisualization}
-            selectedToolsInDialog={selectedToolsInDialog}
+            selectedToolsInSheet={selectedToolsInSheet}
           />
         </>
       ),
     },
     {
-      id: CONFIGURATION_DIALOG_PAGE_IDS.CONFIGURATION,
+      id: TOOLS_SHEET_PAGE_IDS.CONFIGURATION,
       title: mcpServerView?.name || "Configure Tool",
       description: "",
       icon: undefined,
@@ -558,7 +558,7 @@ export function MCPServerViewsDialog({
         ),
     },
     {
-      id: CONFIGURATION_DIALOG_PAGE_IDS.INFO,
+      id: TOOLS_SHEET_PAGE_IDS.INFO,
       title: infoMCPServerView
         ? getMcpServerViewDisplayName(infoMCPServerView)
         : "Tool information",
@@ -573,7 +573,7 @@ export function MCPServerViewsDialog({
         <div className="flex h-full flex-col space-y-6">
           <div className="space-y-4">
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
                 <h3 className="text-lg font-semibold text-foreground dark:text-foreground-night">
                   Available Tools
                 </h3>
@@ -620,7 +620,7 @@ export function MCPServerViewsDialog({
     setIsOpen(false);
     onModeChange(null);
     if (currentMode) {
-      resetDialog();
+      resetSheet();
     }
   };
 
@@ -645,7 +645,7 @@ export function MCPServerViewsDialog({
         ? generateUniqueActionName({
             baseName: formData.name,
             existingActions: actions,
-            selectedToolsInDialog,
+            selectedToolsInSheet,
           })
         : formData.name;
 
@@ -662,14 +662,14 @@ export function MCPServerViewsDialog({
         mcpServerView,
         onActionUpdate,
         onModeChange,
-        setSelectedToolsInDialog,
+        setSelectedToolsInSheet,
         setIsOpen,
         sendNotification,
       });
 
       // Handle legacy navigation for non-configure modes
       if (mode?.type !== "edit" && mode?.type !== "configure") {
-        setCurrentPageId(CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION);
+        setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);
         setConfigurationTool(null);
         setConfigurationMCPServerView(null);
       }
@@ -683,10 +683,10 @@ export function MCPServerViewsDialog({
     }
   };
 
-  const { leftButton, rightButton } = getFooterButtons({
+  const footerButtons = getFooterButtons({
     currentPageId,
     modeType: currentMode,
-    selectedToolsInDialog,
+    selectedToolsInSheet,
     form,
     onCancel: handleCancel,
     onModeChange,
@@ -699,28 +699,6 @@ export function MCPServerViewsDialog({
     resetToSelection,
   });
 
-  const getSheetButtonProps = () => {
-    const isInfoPage = currentPageId === CONFIGURATION_DIALOG_PAGE_IDS.INFO;
-
-    if (isInfoPage) {
-      return {
-        leftButton: undefined,
-        rightButton,
-      };
-    }
-
-    return {
-      leftButton: leftButton ?? {
-        label: "Cancel",
-        variant: "outline",
-        onClick: handleCancel,
-      },
-      rightButton,
-    };
-  };
-
-  const sheetButtonProps = getSheetButtonProps();
-
   return (
     <MultiPageSheet
       open={isOpen}
@@ -728,7 +706,7 @@ export function MCPServerViewsDialog({
         setIsOpen(open);
 
         if (!open && currentMode === "add") {
-          resetDialog();
+          resetSheet();
         }
 
         if (!open) {
@@ -743,18 +721,18 @@ export function MCPServerViewsDialog({
         pages={pages}
         currentPageId={currentPageId}
         onPageChange={(pageId) => {
-          if (pageId === CONFIGURATION_DIALOG_PAGE_IDS.TOOL_SELECTION) {
+          if (pageId === TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION) {
             resetToSelection();
           } else {
             setCurrentPageId(pageId as ConfigurationPagePageId);
           }
         }}
         addFooterSeparator
-        {...sheetButtonProps}
+        {...footerButtons}
         footerContent={
           currentMode !== "configure" ? (
             <MCPServerViewsFooter
-              selectedToolsInDialog={selectedToolsInDialog}
+              selectedToolsInSheet={selectedToolsInSheet}
               dataVisualization={dataVisualization}
               onRemoveSelectedTool={toggleToolSelection}
             />

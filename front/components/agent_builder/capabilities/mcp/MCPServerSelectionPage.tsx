@@ -11,7 +11,7 @@ import {
 import React, { useMemo } from "react";
 
 import { useAgentBuilderFormActions } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import {
   DISABLED_REASON,
   getAllowedSpaces,
@@ -162,7 +162,7 @@ interface MCPServerSelectionPageProps {
   onItemClick: (mcpServerView: MCPServerViewType) => void;
   dataVisualization?: ActionSpecification | null;
   onDataVisualizationClick?: () => void;
-  selectedToolsInDialog?: SelectedTool[];
+  selectedToolsInSheet?: SelectedTool[];
 }
 
 export function MCPServerSelectionPage({
@@ -171,18 +171,18 @@ export function MCPServerSelectionPage({
   onItemClick,
   dataVisualization,
   onDataVisualizationClick,
-  selectedToolsInDialog = [],
+  selectedToolsInSheet = [],
 }: MCPServerSelectionPageProps) {
   // Optimize selection lookup with Set-based approach
   const selectedMCPIds = useMemo(() => {
     const mcpIds = new Set<string>();
-    selectedToolsInDialog.forEach((tool) => {
+    selectedToolsInSheet.forEach((tool) => {
       if (tool.type === "MCP") {
         mcpIds.add(tool.view.sId);
       }
     });
     return mcpIds;
-  }, [selectedToolsInDialog]);
+  }, [selectedToolsInSheet]);
 
   // Already added actions.
   const { actions: alreadyAddedActions } = useAgentBuilderFormActions();
@@ -190,13 +190,13 @@ export function MCPServerSelectionPage({
   // Currently selected actions.
   const selectedActions = useMemo(() => {
     return removeNulls(
-      selectedToolsInDialog.map((tool) =>
+      selectedToolsInSheet.map((tool) =>
         tool.type === "MCP"
           ? tool.configuredAction ?? getDefaultMCPAction(tool.view)
           : null
       )
     );
-  }, [selectedToolsInDialog]);
+  }, [selectedToolsInSheet]);
 
   const { spaces } = useSpacesContext();
   const spaceIdToActions = getSpaceIdToActionsMap(
@@ -208,7 +208,7 @@ export function MCPServerSelectionPage({
     spaceIdToActions,
   });
 
-  const isDataVisualizationSelected = selectedToolsInDialog.some(
+  const isDataVisualizationSelected = selectedToolsInSheet.some(
     (tool) => tool.type === "DATA_VISUALIZATION"
   );
 
