@@ -62,12 +62,13 @@ export function RemoteMCPForm({
 
   const onSubmit = useCallback(
     async (values: MCPFormType) => {
-      const updated = await updateServer({
-        icon: values.icon,
-        sharedSecret: values.sharedSecret,
-      });
-      if (updated) {
-        form.reset(values);
+      if (values.sharedSecret) {
+        const updated = await updateServer({
+          sharedSecret: values.sharedSecret,
+        });
+        if (updated) {
+          form.reset(values);
+        }
       }
     },
     [updateServer, form]

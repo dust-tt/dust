@@ -26,6 +26,7 @@ import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { getResourcePrefix } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { CitationType, Result } from "@app/types";
 import { isGlobalAgentId } from "@app/types";
@@ -173,14 +174,29 @@ export default async function createServer(
           "The query sent to the agent. This is the question or instruction that will be " +
             "processed by the agent, which will respond with its own capabilities and knowledge."
         ),
+      toolsetsToAdd: z
+        .array(
+          z
+            .string()
+            .regex(new RegExp(`^${getResourcePrefix("mcp_server_view")}_\\w+$`))
+        )
+        .describe(
+          "The toolsets ids to add to the agent in addition to the ones already set in the agent configuration."
+        )
+        .optional()
+        .nullable(),
       childAgent:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
     },
-    async ({ query, childAgent: { uri } }, { sendNotification, _meta }) => {
+    async (
+      { query, childAgent: { uri }, toolsetsToAdd },
+      { sendNotification, _meta }
+    ) => {
       assert(
         agentLoopContext?.runContext,
         "agentLoopContext is required where the tool is called"
       );
+
       const { agentConfiguration: mainAgent, conversation: mainConversation } =
         agentLoopContext.runContext;
 
@@ -223,6 +239,7 @@ export default async function createServer(
             profilePictureUrl: mainAgent.pictureUrl,
             // `run_agent` origin will skip adding the conversation to the user history.
             origin: "run_agent",
+            selectedMCPServerViewIds: toolsetsToAdd,
           },
         },
         skipToolsValidation:

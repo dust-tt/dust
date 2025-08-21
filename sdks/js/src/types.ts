@@ -852,6 +852,7 @@ const UserMessageContextSchema = z.object({
   profilePictureUrl: z.string().optional().nullable(),
   origin: UserMessageOriginSchema,
   clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
+  selectedMCPServerViewIds: z.array(z.string()).optional().nullable(),
 });
 
 const UserMessageSchema = z.object({
