@@ -362,7 +362,8 @@ const createServer = async (
     : "unknown";
 
   // If it's enabled or disabled, we end up with only one of the two tools. Otherwise we add both,
-  // which is expected to happen before we have a Slack connection.
+  // which is expected to happen before we have a Slack connection. Note that when we actually call tools
+  // as part of conversation, we'll always have a connection, so we will never have both tools available.
   if (slackAIStatus === "disabled" || slackAIStatus === "unknown") {
     server.tool(
       "search_messages",
