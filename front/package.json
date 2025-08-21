@@ -19,7 +19,8 @@
     "initdb": "./admin/init_db.sh",
     "create-db-migration": "./create_db_migration_file.sh",
     "prepare": "cd .. && husky .husky",
-    "debug:profiler": "tsx ./scripts/debug/run_profiler.ts"
+    "debug:profiler": "tsx ./scripts/debug/run_profiler.ts",
+    "postbuild": "next-sitemap"
   },
   "dependencies": {
     "@datadog/browser-logs": "^6.13.0",
@@ -191,6 +192,7 @@
     "eslint-plugin-unused-imports": "^3.2.0",
     "husky": "^9.0.11",
     "jsdom": "^26.0.0",
+    "next-sitemap": "^4.2.3",
     "node-fetch": "^2.7.0",
     "node-mocks-http": "^1.16.2",
     "openapi-cli": "^0.0.2",
