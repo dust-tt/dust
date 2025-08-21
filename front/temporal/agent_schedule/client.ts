@@ -85,6 +85,8 @@ export async function createOrUpdateAgentScheduleWorkflow({
   const existingSchedule = getExistingSchedule(client, scheduleId);
   const scheduleOptions = getScheduleOptions(authType, trigger, scheduleId);
 
+  console.log(existingSchedule);
+
   try {
     if (existingSchedule) {
       await existingSchedule.update((previous) => {
@@ -102,16 +104,17 @@ export async function createOrUpdateAgentScheduleWorkflow({
       "Scheduled workflow successfully."
     );
   } catch {
+    const error = existingSchedule
+      ? "Failed to update existing schedule."
+      : "Failed to create new schedule.";
     childLogger.error(
       {
         scheduleId,
         trigger,
       },
-      existingSchedule
-        ? "Failed to update existing schedule."
-        : "Failed to create new schedule."
+      error
     );
-    return new Err(new Error("Failed to update existing schedule"));
+    return new Err(new Error(error));
   }
 
   return new Ok(scheduleId);
