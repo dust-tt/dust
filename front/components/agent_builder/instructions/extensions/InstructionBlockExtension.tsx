@@ -1,11 +1,8 @@
 import { Chip, cn, IconButton, XMarkIcon } from "@dust-tt/sparkle";
 import { InputRule, mergeAttributes, Node } from "@tiptap/core";
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { Slice } from "@tiptap/pm/model";
-import { Fragment } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { TextSelection } from "@tiptap/pm/state";
-import type { EditorView } from "@tiptap/pm/view";
 import type { NodeViewProps } from "@tiptap/react";
 import {
   NodeViewContent,
