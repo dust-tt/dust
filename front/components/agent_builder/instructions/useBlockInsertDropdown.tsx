@@ -38,7 +38,7 @@ const BLOCK_SUGGESTIONS: BlockSuggestion[] = [
   },
 ];
 
-interface BlockInsertDropdownState {
+export interface BlockInsertDropdownState {
   isOpen: boolean;
   query: string;
   suggestions: BlockSuggestion[];
@@ -58,7 +58,6 @@ export const useBlockInsertDropdown = (
   });
 
   const rangeRef = useRef<{ from: number; to: number } | null>(null);
-  const clientRectRef = useRef<(() => DOMRect | null) | null>(null);
 
   // Use ref to avoid stale closure in keyboard handler
   const currentStateRef = useRef(state);
@@ -114,7 +113,7 @@ export const useBlockInsertDropdown = (
   }, []);
 
   const getSuggestionHandler = useMemo(() => {
-    return () => ({
+    return {
       char: "/",
       command: ({ editor, range, props }: any) => {
         const suggestion = props as BlockSuggestion;
@@ -131,7 +130,6 @@ export const useBlockInsertDropdown = (
             }
 
             rangeRef.current = props.range;
-            clientRectRef.current = props.clientRect;
 
             const rect = props.clientRect();
             if (!rect) {
@@ -151,7 +149,6 @@ export const useBlockInsertDropdown = (
             }
 
             rangeRef.current = props.range;
-            clientRectRef.current = props.clientRect;
 
             const rect = props.clientRect();
             if (rect) {
@@ -169,6 +166,9 @@ export const useBlockInsertDropdown = (
             switch (event.key) {
               case "ArrowUp":
                 event.preventDefault();
+                if (currentState.suggestions.length === 0) {
+                  return true;
+                }
                 setState((prev) => ({
                   ...prev,
                   selectedIndex:
@@ -179,6 +179,9 @@ export const useBlockInsertDropdown = (
                 return true;
               case "ArrowDown":
                 event.preventDefault();
+                if (currentState.suggestions.length === 0) {
+                  return true;
+                }
                 setState((prev) => ({
                   ...prev,
                   selectedIndex:
@@ -207,15 +210,15 @@ export const useBlockInsertDropdown = (
           onExit: () => {
             closeDropdown();
             rangeRef.current = null;
-            clientRectRef.current = null;
           },
         };
       },
-    });
+    };
   }, [closeDropdown, filterSuggestions, selectSuggestion, updateQuery]);
 
   return {
     isOpen: state.isOpen,
+    query: state.query,
     suggestions: state.suggestions,
     selectedIndex: state.selectedIndex,
     triggerRect: state.triggerRect,

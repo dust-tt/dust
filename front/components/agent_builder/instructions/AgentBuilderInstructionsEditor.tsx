@@ -74,17 +74,8 @@ export function AgentBuilderInstructionsEditor({
   // Setup the block insert dropdown
   const blockDropdown = useBlockInsertDropdown(editorRef);
 
-  // Store the dropdown ref to access in callbacks without causing re-renders
-  const blockDropdownRef = useRef(blockDropdown);
-  blockDropdownRef.current = blockDropdown;
-
-  // Memoize the suggestion handler to prevent recreating extensions
-  const suggestionHandler = useMemo(
-    () => blockDropdown.getSuggestionHandler(),
-    // Empty dependency array - the handler itself doesn't change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
+  // Use the stable suggestion options object from the dropdown hook
+  const suggestionHandler = blockDropdown.getSuggestionHandler;
 
   const extensions = useMemo(() => {
     return [
@@ -210,10 +201,10 @@ export function AgentBuilderInstructionsEditor({
     <div className="flex h-full flex-col gap-1">
       <div
         className="relative p-px"
-        onClick={() => {
+        onClick={(e) => {
           // Focus the editor when the container is clicked
-          if (editor && !editor.isFocused) {
-            editor.commands.focus("end");
+          if (e.target === e.currentTarget && editor && !editor.isFocused) {
+            editor.commands.focus();
           }
         }}
       >

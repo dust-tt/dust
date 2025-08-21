@@ -6,16 +6,15 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-import type { BlockSuggestion } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
+import type {
+  BlockInsertDropdownState as DropdownState,
+  BlockSuggestion,
+} from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
 
 interface BlockInsertDropdownProps {
-  blockDropdownState: {
-    suggestions: BlockSuggestion[];
+  blockDropdownState: DropdownState & {
     onSelect: (suggestion: BlockSuggestion) => void;
-    isOpen: boolean;
     onOpenChange: (open: boolean) => void;
-    triggerRect?: DOMRect | null;
-    selectedIndex: number;
     onSelectedIndexChange: (index: number) => void;
   };
 }
@@ -78,11 +77,11 @@ export const BlockInsertDropdown = ({
         onCloseAutoFocus={(e) => e.preventDefault()}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-          <div className="px-3 pb-0.5 pt-1">
-            <span className="text-xs font-medium text-muted-foreground">
-              Insert
-            </span>
-          </div>
+        <div className="px-3 pb-0.5 pt-1">
+          <span className="text-xs font-medium text-muted-foreground">
+            Insert
+          </span>
+        </div>
         {suggestions.length === 0 ? (
           <div className="flex h-12 w-full items-center justify-center text-sm text-muted-foreground">
             No matching blocks
