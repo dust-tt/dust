@@ -93,8 +93,3 @@ TriggerModel.init(
 TriggerModel.belongsTo(UserModel, {
   foreignKey: { name: "editor", allowNull: false },
 });
-
-TriggerModel.belongsTo(AgentConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
-  targetKey: "sId",
-});
