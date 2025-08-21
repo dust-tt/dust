@@ -216,9 +216,9 @@ function buildSlackSearchQuery(
     const date = new Date(timestampInMs);
     query = `${query} after:${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
   }
-  // When the user selects 'all channels', we end up with a first channel being "*".
+  // When the user selects 'all channels', we end up with a channel named "*".
   // In that case, we don't want to add any channel filter.
-  if (channels && channels.length > 0 && channels[0] !== "*") {
+  if (channels && channels.length > 0 && !channels.includes("*")) {
     query = `${query} ${channels
       .map((channel) =>
         // Because we use channel IDs and not names, we need to use the <#CHANNEL_ID> format instead of #CHANNEL.
