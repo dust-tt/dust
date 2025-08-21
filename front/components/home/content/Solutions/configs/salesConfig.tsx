@@ -405,7 +405,7 @@ export const salesFAQItems = [
         <br /> Take a look at how other teams use these agents, try Dust for
         free today or{" "}
         <Link href="/home/pricing" className="underline underline-offset-4">
-          talk to our sales team{" "}
+          talk to our sales team
         </Link>{" "}
         to see how AI sales agents can improve your process.
       </>
