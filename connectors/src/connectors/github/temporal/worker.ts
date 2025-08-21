@@ -15,15 +15,16 @@ import logger from "@connectors/logger/logger";
 export async function runGithubWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
 
-  process.on("unhandledRejection", (reason) => {
+  process.on("uncaughtException", (error) => {
     if (
-      reason instanceof Error &&
-      reason.message.includes("other side closed")
+      error instanceof Error &&
+      error.message.includes("terminated: other side closed")
     ) {
-      logger.info({ error: reason }, "Undici connection cleanup (ignored)");
+      logger.warn({ error }, "Undici connection cleanup error (ignored)");
       return;
     }
-    throw reason;
+
+    throw error;
   });
 
   const worker = await Worker.create({
