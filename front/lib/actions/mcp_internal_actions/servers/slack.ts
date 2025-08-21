@@ -32,13 +32,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { TimeFrame } from "@app/types";
-import {
-  parseTimeFrame,
-  sha256,
-  stripNullBytes,
-  timeFrameFromNow,
-} from "@app/types";
-import { isDevelopment, isDustWorkspace } from "@app/types/shared/env";
+import { parseTimeFrame, stripNullBytes, timeFrameFromNow } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType & {
   authorization: AuthorizationInfo;
@@ -55,8 +49,7 @@ const serverInfo: InternalMCPServerDefinitionType & {
   instructions:
     "When posting a message on slack, you MUST use slack-flavored markdown to format the message." +
     "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
-    "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the name of the channel you want to reference.\n" +
-    "NEVER use the channel name or the user name directly in a message as it will not be parsed correctly and appear as plain text.",
+    "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
 };
 
 const getSlackClient = async (accessToken?: string) => {
@@ -116,9 +109,7 @@ const _getPublicChannels = async ({
 
 const getCachedPublicChannels = cacheWithRedis(
   _getPublicChannels,
-  ({ mcpServerId }: GetPublicChannelsArgs) => {
-    return `public-channels-${mcpServerId}`;
-  },
+  ({ mcpServerId }: GetPublicChannelsArgs) => mcpServerId,
   {
     ttlMs: 60 * 10 * 1000, // 10 minutes
   }
@@ -159,12 +150,17 @@ function makeQueryResource(
 }
 
 // Common Zod parameter schema parts shared by search tools.
-const buildCommonSearchParams = () => ({
-  channels: z
-    .string()
-    .array()
-    .optional()
-    .describe("Narrow the search to a specific channels names (optional)"),
+const buildCommonSearchParams = (
+  channelOptions?: ReadonlyArray<z.ZodType<{ value: string; label: string }>>
+) => ({
+  channels: z.object({
+    // "options" are optionals because we only need them for the UI but they won't be provided when the tool is called.
+    // Note: I don't know how to make this work without the any.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    options: z.union(channelOptions as any).optional(),
+    values: z.array(z.string()),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.LIST),
+  }),
   usersFrom: z
     .string()
     .array()
@@ -220,10 +216,13 @@ function buildSlackSearchQuery(
     const date = new Date(timestampInMs);
     query = `${query} after:${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
   }
-  if (channels && channels.length > 0) {
+  // When the user selects 'all channels', we end up with a channel named "*".
+  // In that case, we don't want to add any channel filter.
+  if (channels && channels.length > 0 && !channels.includes("*")) {
     query = `${query} ${channels
       .map((channel) =>
-        channel.charAt(0) === "#" ? `in:${channel}` : `in:#${channel}`
+        // Because we use channel IDs and not names, we need to use the <#CHANNEL_ID> format instead of #CHANNEL.
+        channel.charAt(0) === "#" ? `in:<${channel}>` : `in:<#${channel}>`
       )
       .join(" ")}`;
   }
@@ -248,14 +247,21 @@ function isSlackTokenRevoked(error: unknown): boolean {
   );
 }
 
-// Unknown is expected when we don't have a Slack connection yet
-type SlackAIStatus = "enabled" | "disabled" | "unknown";
+// 'disconnected' is expected when we don't have a Slack connection yet
+type SlackAIStatus = "enabled" | "disabled" | "disconnected";
 
 const SLACK_AI_STATUS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-const getSlackAIEnablementStatus = async (
-  accessToken: string
-): Promise<SlackAIStatus> => {
+type GetSlackAIEnablementStatusArgs = {
+  mcpServerId: string;
+  accessToken: string;
+};
+
+const _getSlackAIEnablementStatus = async ({
+  accessToken,
+}: {
+  accessToken: string;
+}): Promise<SlackAIStatus> => {
   try {
     const assistantSearchInfo = await fetch(
       "https://slack.com/api/assistant.search.info",
@@ -269,8 +275,8 @@ const getSlackAIEnablementStatus = async (
     );
 
     if (!assistantSearchInfo.ok) {
-      logger.warn("assistant.search.info returner !ok");
-      return "unknown";
+      logger.warn("assistant.search.info returned !ok");
+      return "disconnected";
     }
 
     const assistantSearchInfoJson = await assistantSearchInfo.json();
@@ -280,18 +286,15 @@ const getSlackAIEnablementStatus = async (
       : "disabled";
   } catch (e) {
     logger.warn("Error fetching Slack AI enablement status: ", e);
-    return "unknown";
+    return "disconnected";
   }
 };
 
 // Cache the result as this involves a call to the Slack API
 // We use a hash of the access token as the cache key to avoid storing sensitive information directly
-const getCachedSlackAIEnablementStatus = cacheWithRedis<
-  SlackAIStatus,
-  [accessToken: string]
->(
-  getSlackAIEnablementStatus,
-  (accessToken: string) => `slack-ai-enablement-status-${sha256(accessToken)}`,
+const getCachedSlackAIEnablementStatus = cacheWithRedis(
+  _getSlackAIEnablementStatus,
+  ({ mcpServerId }: GetSlackAIEnablementStatusArgs) => mcpServerId,
   {
     ttlMs: SLACK_AI_STATUS_CACHE_TTL_MS,
   }
@@ -309,62 +312,40 @@ const createServer = async (
     connectionType: "workspace", // Always get the admin token.
   });
 
-  if (isDustWorkspace(auth.getNonNullableWorkspace()) || isDevelopment()) {
-    if (c) {
-      // Note: this is a temporary tool to test the dynamic configuration of channels, but it's meant to be added directly to one of the tools below.
-      try {
-        const slackClient = await getSlackClient(c.access_token);
-        const channels = await getCachedPublicChannels({
-          mcpServerId,
-          slackClient,
-        });
+  let channels: ChannelWithIdAndName[] = [];
+  if (c) {
+    try {
+      const slackClient = await getSlackClient(c.access_token);
+      channels = await getCachedPublicChannels({
+        mcpServerId,
+        slackClient,
+      });
 
-        channels.unshift({
-          id: "*",
-          name: "All public channels",
-        });
-
-        const options = channels.map((c) =>
-          z.object({
-            value: z.literal(c.id),
-            label: z.literal(c.id === "*" ? c.name : `#${c.name}`),
-          })
-        );
-
-        server.tool(
-          "list_picked_channels",
-          "List all channels that the user has picked",
-          {
-            channels: z.object({
-              // "options" are optionals because we only need them for the UI but they won't be provided when the tool is called.
-              // Note: I don't know how to make this work without the any.
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              options: z.union(options as any).optional(),
-              values: z.array(z.string()),
-              mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.LIST),
-            }),
-          },
-          async ({ channels }) => {
-            return makeMCPToolJSONSuccess({
-              message: "Channels listed",
-              result: channels.values,
-            });
-          }
-        );
-      } catch (error) {
-        logger.warn("Error listing channels: ", error);
-      }
+      channels.unshift({
+        id: "*",
+        name: "All public channels",
+      });
+    } catch (error) {
+      logger.warn("Error listing channels: ", error);
     }
   }
+  const channelOptions = channels.map((c) =>
+    z.object({
+      value: z.literal(c.id),
+      label: z.literal(c.id === "*" ? c.name : `#${c.name}`),
+    })
+  );
 
-  const slackAIStatus = c
-    ? await getCachedSlackAIEnablementStatus(c.access_token)
-    : "unknown";
+  const slackAIStatus: SlackAIStatus = c
+    ? await getCachedSlackAIEnablementStatus({
+        mcpServerId,
+        accessToken: c.access_token,
+      })
+    : "disconnected";
 
-  // If it's enabled or disabled, we end up with only one of the two tools. Otherwise we add both,
-  // which is expected to happen before we have a Slack connection. Note that when we actually call tools
-  // as part of conversation, we'll always have a connection, so we will never have both tools available.
-  if (slackAIStatus === "disabled" || slackAIStatus === "unknown") {
+  // If we're not connected to Slack, we arbitrarily include the first search tool, just so there is one
+  // in the list. As soon as we're connected, it will show the correct one.
+  if (slackAIStatus === "disabled" || slackAIStatus === "disconnected") {
     server.tool(
       "search_messages",
       "Search messages accross all channels and dms for the current user",
@@ -377,7 +358,7 @@ const createServer = async (
             "Between 1 and 3 keywords to retrieve relevant messages " +
               "based on the user request and conversation context."
           ),
-        ...buildCommonSearchParams(),
+        ...buildCommonSearchParams(channelOptions),
       },
       async (
         {
@@ -414,7 +395,7 @@ const createServer = async (
             async (keyword) => {
               const query = buildSlackSearchQuery(keyword, {
                 timeFrame,
-                channels,
+                channels: channels.values,
                 usersFrom,
                 usersTo,
                 usersMentioned,
@@ -468,7 +449,7 @@ const createServer = async (
                   resource: makeQueryResource(
                     keywords,
                     timeFrame,
-                    channels,
+                    channels.values,
                     usersFrom,
                     usersTo,
                     usersMentioned
@@ -515,7 +496,7 @@ const createServer = async (
                   resource: makeQueryResource(
                     keywords,
                     timeFrame,
-                    channels,
+                    channels.values,
                     usersFrom,
                     usersTo,
                     usersMentioned
@@ -534,7 +515,7 @@ const createServer = async (
     );
   }
 
-  if (slackAIStatus === "enabled" || slackAIStatus === "unknown") {
+  if (slackAIStatus === "enabled") {
     server.tool(
       "semantic_search_messages",
       "Use semantic search to find messages across all channels and DMs for the current user",
@@ -544,7 +525,7 @@ const createServer = async (
           .describe(
             "A query to retrieve relevant messages based on the user request and conversation context. For it to be treated as semantic search, make sure it begins with a question word such as what, where, how, etc, and ends with a question mark. If the user asks to limit to certain channels, don't make them part of this query. Instead, use the `channels` parameter to limit the search to specific channels. But only do this if the user explicitly asks for it, otherwise, the search will be more effective if you don't limit it to specific channels."
           ),
-        ...buildCommonSearchParams(),
+        ...buildCommonSearchParams(channelOptions),
       },
       async (
         {
@@ -568,7 +549,7 @@ const createServer = async (
         try {
           const searchQuery = buildSlackSearchQuery(query, {
             timeFrame,
-            channels,
+            channels: channels.values,
             usersFrom,
             usersTo,
             usersMentioned,
@@ -646,7 +627,7 @@ const createServer = async (
                   resource: makeQueryResource(
                     [query],
                     timeFrame,
-                    channels,
+                    channels.values,
                     usersFrom,
                     usersTo,
                     usersMentioned
@@ -711,7 +692,7 @@ const createServer = async (
                   resource: makeQueryResource(
                     [query],
                     timeFrame,
-                    channels,
+                    channels.values,
                     usersFrom,
                     usersTo,
                     usersMentioned

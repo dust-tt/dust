@@ -216,7 +216,7 @@ function ListConfigurationSection({
       currentValue.length > 0
         ? currentValue.map((v) => listValues[v]).join(", ")
         : `Select ${formatKeyForDisplay(key)}`;
-    if (displayLabel.length > 16) {
+    if (displayLabel.length > 20) {
       displayLabel = `${currentValue.length} selected`;
     }
 
