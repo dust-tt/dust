@@ -39,7 +39,7 @@ export const applyGroupRoles = createPlugin({
     const errors: string[] = [];
 
     for (const membership of memberships) {
-      const user = await UserResource.fetchById(membership.userId.toString());
+      const user = await UserResource.fetchByModelId(membership.userId);
       if (!user) {
         errors.push(`User not found: ${membership.userId}`);
         continue;
