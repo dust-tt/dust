@@ -10,6 +10,10 @@ import {
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/deepseek";
 import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust";
+import {
+  _getDustDeepGlobalAgent,
+  _getDustTaskGlobalAgent,
+} from "@app/lib/api/assistant/global_agents/configurations/dust-deep";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import {
   _getHelperGlobalAgent,
@@ -30,7 +34,6 @@ import {
   _getO3GlobalAgent,
   _getO3MiniGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/openai";
-import { _getResearchGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/research";
 import {
   _getGithubGlobalAgent,
   _getGoogleDriveGlobalAgent,
@@ -65,6 +68,9 @@ function getGlobalAgent({
   webSearchBrowseMCPServerView,
   searchMCPServerView,
   dataSourcesFileSystemMCPServerView,
+  interactiveContentMCPServerView,
+  runAgentMCPServerView,
+  dataWarehousesMCPServerView,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -75,6 +81,9 @@ function getGlobalAgent({
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
   dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
+  runAgentMCPServerView: MCPServerViewResource | null;
+  dataWarehousesMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -256,11 +265,23 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.RESEARCH:
-      agentConfiguration = _getResearchGlobalAgent(auth, {
+      agentConfiguration = _getDustDeepGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
         webSearchBrowseMCPServerView,
         dataSourcesFileSystemMCPServerView,
+        interactiveContentMCPServerView,
+        runAgentMCPServerView,
+        dataWarehousesMCPServerView,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_TASK:
+      agentConfiguration = _getDustTaskGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        webSearchBrowseMCPServerView,
+        dataSourcesFileSystemMCPServerView,
+        dataWarehousesMCPServerView,
       });
       break;
     default:
@@ -288,6 +309,8 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.NOTION,
   GLOBAL_AGENTS_SID.O1_MINI,
   GLOBAL_AGENTS_SID.SLACK,
+  // Hidden helper sub-agent, only invoked via run_agent by dust-deep
+  GLOBAL_AGENTS_SID.DUST_TASK,
 ];
 
 export async function getGlobalAgents(
@@ -318,6 +341,9 @@ export async function getGlobalAgents(
     webSearchBrowseMCPServerView,
     searchMCPServerView,
     dataSourcesFileSystemMCPServerView,
+    interactiveContentMCPServerView,
+    runAgentMCPServerView,
+    dataWarehousesMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -348,6 +374,24 @@ export async function getGlobalAgents(
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
           "data_sources_file_system"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "interactive_content"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "run_agent"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "data_warehouses"
         )
       : null,
   ]);
@@ -383,10 +427,13 @@ export async function getGlobalAgents(
   }
 
   if (!flags.includes("research_agent")) {
+    console.log("\n\nresearch_agent flag not enabled\n\n");
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.RESEARCH
     );
   }
+
+  console.log("\n\nagentsIdsToFetch", agentsIdsToFetch, "\n\n");
 
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
@@ -401,6 +448,9 @@ export async function getGlobalAgents(
       webSearchBrowseMCPServerView,
       searchMCPServerView,
       dataSourcesFileSystemMCPServerView,
+      interactiveContentMCPServerView,
+      runAgentMCPServerView,
+      dataWarehousesMCPServerView,
     })
   );
 
