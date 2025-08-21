@@ -65,40 +65,40 @@ const AssistantDetailsPage = ({
   const { isDark } = useTheme();
   return (
     <div>
-      <div className="flex flex-row justify-between gap-4">
-        <h3 className="text-xl font-bold">
-          Agent from workspace{" "}
-          <a href={`/poke/${workspace.sId}`} className="text-highlight-500">
-            {workspace.name}
-          </a>
-        </h3>
-        <div className="flex flex-row gap-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                icon={UserGroupIcon}
-                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                  e.currentTarget.focus();
-                }}
-                label={`Editors`}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              onCloseAutoFocus={(event) => {
-                event.preventDefault();
+      <h3 className="text-xl font-bold">
+        Agent from workspace{" "}
+        <a href={`/poke/${workspace.sId}`} className="text-highlight-500">
+          {workspace.name}
+        </a>
+      </h3>
+      <div className="mt-4 flex flex-row gap-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={UserGroupIcon}
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                e.currentTarget.focus();
               }}
-            >
-              {lastVersionEditors.length === 0 && (
-                <DropdownMenuItem label="No editors found!" />
-              )}
-              {lastVersionEditors.map((editor) => (
-                <DropdownMenuItem
-                  key={editor.id}
-                  label={`${editor.fullName} (${editor.email})`}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+              label={`Editors`}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+            }}
+          >
+            {lastVersionEditors.length === 0 && (
+              <DropdownMenuItem label="No editors found!" />
+            )}
+            {lastVersionEditors.map((editor) => (
+              <DropdownMenuItem
+                key={editor.id}
+                label={`${editor.fullName} (${editor.email})`}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <div className="flex-1">
           <PluginList
             pluginResourceTarget={{
               resourceId: agentConfigurations[0].sId,
