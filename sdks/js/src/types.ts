@@ -1081,16 +1081,19 @@ export type MCPValidationMetadataPublicType = z.infer<
   typeof MCPValidationMetadataSchema
 >;
 
-const MCPApproveExecutionEventSchema = z.object({
-  type: z.literal("tool_approve_execution"),
-  created: z.number(),
-  configurationId: z.string(),
+const PendingValidationSchema = z.object({
   conversationId: z.string(),
   messageId: z.string(),
   actionId: z.string(),
   inputs: z.record(z.any()),
   stake: MCPStakeLevelSchema,
   metadata: MCPValidationMetadataSchema,
+});
+
+const MCPApproveExecutionEventSchema = PendingValidationSchema.extend({
+  type: z.literal("tool_approve_execution"),
+  created: z.number(),
+  configurationId: z.string(),
 });
 
 const ToolErrorEventSchema = z.object({
@@ -2734,7 +2737,7 @@ export type MCPValidationOutputPublicType =
   (typeof MCP_VALIDATION_OUTPUTS)[number];
 
 export const PendingValidationsResponseSchema = z.object({
-  pendingValidations: z.array(MCPApproveExecutionEventSchema),
+  pendingValidations: z.array(PendingValidationSchema),
 });
 
 export type PendingValidationsResponseType = z.infer<
