@@ -407,7 +407,7 @@ export const salesFAQItems = [
         <Link href="/home/pricing" className="underline underline-offset-4">
           talk to our sales team{" "}
         </Link>{" "}
-        to see how AI sales agents can improve your process.{" "}
+        to see how AI sales agents can improve your process.
       </>
     ),
   },
