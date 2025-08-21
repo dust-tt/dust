@@ -65,13 +65,13 @@ const AssistantDetailsPage = ({
   const { isDark } = useTheme();
   return (
     <div>
-      <h3 className="text-xl font-bold">
-        Agent from workspace{" "}
-        <a href={`/poke/${workspace.sId}`} className="text-highlight-500">
-          {workspace.name}
-        </a>
-      </h3>
-      <div className="mt-4 flex flex-row gap-4">
+      <div className="flex flex-row items-center gap-4">
+        <h3 className="text-xl font-bold">
+          Agent from workspace{" "}
+          <a href={`/poke/${workspace.sId}`} className="text-highlight-500">
+            {workspace.name}
+          </a>
+        </h3>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -98,15 +98,15 @@ const AssistantDetailsPage = ({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <div className="flex-1">
-          <PluginList
-            pluginResourceTarget={{
-              resourceId: agentConfigurations[0].sId,
-              resourceType: "agents",
-              workspace: workspace,
-            }}
-          />
-        </div>
+      </div>
+      <div className="mt-4">
+        <PluginList
+          pluginResourceTarget={{
+            resourceId: agentConfigurations[0].sId,
+            resourceType: "agents",
+            workspace: workspace,
+          }}
+        />
       </div>
 
       <Page.Vertical align="stretch">
