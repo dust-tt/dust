@@ -25,24 +25,16 @@ export function Landing() {
   return (
     <UTMPageWrapper>
       <IntroSection />
-      <div className="mt-12">
+      <div className="mt-16 flex flex-col gap-16 md:gap-20 lg:gap-24">
         <CloudConnectorsSection />
-      </div>
-      <div className="mt-12">
         <SecurityComplianceSection />
-      </div>
-      <div className="mt-12">
         <QuoteSection
           quote="Dust is the most impactful software we've adopted since building Clay. It delivers immediate value while continuously getting smarter and more valuable over time"
           name="Everett Berry"
           title="Head of GTM Engineering at Clay"
           logo="/static/landing/logos/color/clay.png"
         />
-      </div>
-      <div className="mt-12">
         <BlogSection />
-      </div>
-      <div className="mt-12">
         <ProductJustUseDustSection />
       </div>
     </UTMPageWrapper>
