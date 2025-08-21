@@ -11,7 +11,14 @@ const BATCH_SIZE = 2048;
 // succeeded is the default (99.1% of actions), we backfill errored using the `isError` column
 // and denied using the `executionState` column.
 
-type TargetStatus = "errored" | "denied" | "succeeded";
+const TARGET_STATUSES = [
+  "errored",
+  "denied",
+  "succeeded",
+  "blocked_validation_required",
+] as const;
+
+type TargetStatus = (typeof TARGET_STATUSES)[number];
 
 function getWhereClause({
   lastId,
@@ -35,6 +42,11 @@ function getWhereClause({
       return {
         id: { [Op.gt]: lastId },
         status: "running",
+      };
+    case "blocked_validation_required":
+      return {
+        id: { [Op.gt]: lastId },
+        status: "blocked_pending_validation",
       };
   }
 }
@@ -93,7 +105,7 @@ async function backfillActions(
 }
 
 makeScript({}, async ({ execute }, logger) => {
-  for (const targetStatus of ["succeeded", "errored", "denied"] as const) {
+  for (const targetStatus of TARGET_STATUSES) {
     logger.info(`Starting backfill of ${targetStatus} actions`);
     await backfillActions({ targetStatus, execute }, logger);
     logger.info(`Completed backfill of ${targetStatus} actions`);
