@@ -11,6 +11,7 @@ import {
   logAgentLoopPhaseStartActivity,
   logAgentLoopStepCompletionActivity,
 } from "@app/temporal/agent_loop/activities/instrumentation";
+import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
@@ -28,6 +29,7 @@ export async function runAgentLoopWorker() {
       logAgentLoopPhaseCompletionActivity,
       logAgentLoopPhaseStartActivity,
       logAgentLoopStepCompletionActivity,
+      publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,
     },

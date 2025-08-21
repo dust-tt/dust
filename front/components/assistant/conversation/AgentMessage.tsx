@@ -57,6 +57,7 @@ import type {
 import {
   CLEAR_CONTENT_EVENT,
   messageReducer,
+  RETRY_BLOCKED_ACTIONS_STARTED_EVENT,
 } from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type {
@@ -566,7 +567,11 @@ export function AgentMessage({
             mcpServerId={agentMessage.error.metadata.mcp_server_id}
             provider={agentMessage.error.metadata.provider}
             scope={agentMessage.error.metadata.scope}
-            retryHandler={async () => retryHandler(agentMessage)}
+            retryHandler={async () => {
+              // Dispatch retry event to reset failed state and re-enable streaming.
+              dispatch(RETRY_BLOCKED_ACTIONS_STARTED_EVENT);
+              return retryHandler(agentMessage, { blockedOnly: true });
+            }}
           />
         );
       }
@@ -690,10 +695,13 @@ export function AgentMessage({
     );
   }
 
-  async function retryHandler(agentMessage: LightAgentMessageType) {
+  async function retryHandler(
+    agentMessage: LightAgentMessageType,
+    { blockedOnly }: { blockedOnly: boolean } = { blockedOnly: false }
+  ) {
     setIsRetryHandlerProcessing(true);
     await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry`,
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry?blocked_only=${blockedOnly}`,
       {
         method: "POST",
         headers: {
@@ -701,6 +709,7 @@ export function AgentMessage({
         },
       }
     );
+
     setIsRetryHandlerProcessing(false);
   }
 }

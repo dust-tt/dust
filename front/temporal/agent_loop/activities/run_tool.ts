@@ -6,6 +6,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
+import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
@@ -23,8 +24,9 @@ export async function runToolActivity(
     runAgentArgs: RunAgentArgs;
     step: number;
   }
-): Promise<void> {
+): Promise<ToolExecutionResult> {
   const auth = await Authenticator.fromJSON(authType);
+  const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
@@ -96,6 +98,7 @@ export async function runToolActivity(
           runningState: "errored",
         });
 
+        // For tool errors, send immediately.
         await updateResourceAndPublishEvent(
           {
             type: "tool_error",
@@ -115,7 +118,21 @@ export async function runToolActivity(
           }
         );
 
-        return;
+        return { deferredEvents };
+
+      case "tool_personal_auth_required":
+        // Defer personal auth events to be sent after all tools complete.
+        deferredEvents.push({
+          event,
+          context: {
+            agentMessageRowId: agentMessageRow.id,
+            conversationId: conversation.sId,
+            step,
+          },
+          shouldPauseAgentLoop: true,
+        });
+
+        return { deferredEvents };
 
       case "tool_success":
         await action.update({
@@ -169,4 +186,6 @@ export async function runToolActivity(
         assertNever(event);
     }
   }
+
+  return { deferredEvents };
 }
