@@ -20,9 +20,12 @@ import {
   isInternalAllowedIcon,
 } from "@app/lib/actions/mcp_icons";
 import {
-  QUERY_TABLES_TOOL_NAME,
-  SEARCH_TOOL_NAME,
+  SEARCH_SERVER_NAME,
+  TABLE_QUERY_SERVER_NAME,
+  TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+
+const tablesServer = [TABLE_QUERY_SERVER_NAME, TABLE_QUERY_V2_SERVER_NAME];
 
 export function ProcessingMethodSection() {
   const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
@@ -64,7 +67,7 @@ export function ProcessingMethodSection() {
       const tableServer = mcpServerViewsWithKnowledge.find(
         (serverView) =>
           serverView.serverType === "internal" &&
-          serverView.server.name === QUERY_TABLES_TOOL_NAME
+          tablesServer.includes(serverView.server.name)
       );
       if (tableServer) {
         onChange(tableServer);
@@ -73,7 +76,7 @@ export function ProcessingMethodSection() {
       const searchServer = mcpServerViewsWithKnowledge.find(
         (serverView) =>
           serverView.serverType === "internal" &&
-          serverView.server.name === SEARCH_TOOL_NAME
+          serverView.server.name === SEARCH_SERVER_NAME
       );
       if (searchServer) {
         onChange(searchServer);
@@ -84,7 +87,9 @@ export function ProcessingMethodSection() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="mb-2 text-lg font-semibold">Processing method</h3>
+        <h3 className="mb-2 text-lg font-semibold">
+          Processing method {hasOnlyTablesSelected ? "yes" : "no"}
+        </h3>
       </div>
 
       <div className="space-y-2">
@@ -111,8 +116,8 @@ export function ProcessingMethodSection() {
             {mcpServerViewsWithKnowledge
               .filter((view) =>
                 hasOnlyTablesSelected
-                  ? view.server.name === QUERY_TABLES_TOOL_NAME
-                  : view.server.name !== QUERY_TABLES_TOOL_NAME
+                  ? tablesServer.includes(view.server.name)
+                  : !tablesServer.includes(view.server.name)
               )
               .map((view) => (
                 <DropdownMenuItem
