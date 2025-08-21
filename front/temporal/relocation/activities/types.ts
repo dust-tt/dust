@@ -1,4 +1,4 @@
-import { isPlainObject } from "lodash";
+import isPlainObject from "lodash/isPlainObject";
 
 import type { RegionType } from "@app/lib/api/regions/config";
 import type {
@@ -28,7 +28,8 @@ export interface ReadTableChunkParams {
 }
 
 export const CORE_API_CONCURRENCY_LIMIT = 48;
-export const CORE_API_LIST_NODES_BATCH_SIZE = 8;
+export const CORE_API_LIST_NODES_BATCH_SIZE = 64;
+export const CORE_API_LIST_TABLES_BATCH_SIZE = 16;
 
 // Core.
 
