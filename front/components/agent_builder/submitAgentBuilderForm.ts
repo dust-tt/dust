@@ -238,6 +238,39 @@ export async function submitAgentBuilderForm({
       }
     }
 
+    // We don't register triggers when saving a draft agent.
+    if (isDraft) {
+      return new Ok(agentConfiguration);
+    }
+
+    const triggerSyncRes = await fetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/triggers`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          triggers: formData.triggers,
+        }),
+      }
+    );
+
+    if (!triggerSyncRes.ok) {
+      try {
+        const error = await triggerSyncRes.json();
+        return new Err(
+          new Error(
+            error?.api_error?.message ||
+              error?.error?.message ||
+              "An error occurred while syncing triggers."
+          )
+        );
+      } catch {
+        return new Err(new Error("An error occurred while syncing triggers."));
+      }
+    }
+
     return new Ok(agentConfiguration);
   } catch (error) {
     return new Err(normalizeError(error));
