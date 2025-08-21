@@ -1,14 +1,27 @@
 import assert from "assert";
-import type { Attributes, NonAttribute, Transaction } from "sequelize";
+import type {
+  Attributes,
+  NonAttribute,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
 import { Op } from "sequelize";
 
 import type { BlockedActionExecution } from "@app/lib/actions/mcp";
+import type {
+  ActionBaseParams,
+  LightMCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
   isToolExecutionStatusBlocked,
   TOOL_EXECUTION_BLOCKED_STATUSES,
 } from "@app/lib/actions/statuses";
+import type { StepContext } from "@app/lib/actions/types";
+import { approvalStatusToToolExecutionStatus } from "@app/lib/actions/utils";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
@@ -26,7 +39,11 @@ import { Err, normalizeError, Ok } from "@app/types";
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentMCPActionResource
-  extends ReadonlyAttributesType<AgentMCPAction> {}
+  extends ReadonlyAttributesType<AgentMCPAction> {
+  agentMessage?: AgentMessage;
+  outputItems?: AgentMCPActionOutputItem[];
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
   static model: ModelStaticWorkspaceAware<AgentMCPAction> = AgentMCPAction;
@@ -73,6 +90,90 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       assert(stepContent, "Step content not found.");
       return new this(this.model, a.get(), stepContent);
     });
+  }
+
+  private static async fetchStepActionById(
+    auth: Authenticator,
+    stepContentId: ModelId
+  ): Promise<AgentStepContentModel> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const stepContent = await AgentStepContentModel.findOne({
+      where: {
+        id: stepContentId,
+        workspaceId,
+      },
+    });
+
+    assert(stepContent, "Step content not found.");
+    return stepContent;
+  }
+
+  static async makeNew(
+    auth: Authenticator,
+    {
+      actionBaseParams,
+      augmentedInputs,
+      stepContentId,
+      stepContext,
+      approvalStatus,
+      toolConfiguration,
+      version,
+    }: {
+      actionBaseParams: ActionBaseParams;
+      augmentedInputs: Record<string, unknown>;
+      stepContentId: ModelId;
+      stepContext: StepContext;
+      approvalStatus: "allowed_implicitly" | "pending";
+      toolConfiguration: LightMCPToolConfigurationType;
+      version?: number;
+    },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<AgentMCPActionResource> {
+    const action = await AgentMCPAction.create(
+      {
+        agentMessageId: actionBaseParams.agentMessageId,
+        augmentedInputs,
+        citationsAllocated: stepContext.citationsCount,
+        executionState: "pending",
+        isError: false,
+        mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
+        runningState: "not_started",
+        status: approvalStatusToToolExecutionStatus(approvalStatus),
+        stepContentId,
+        stepContext,
+        toolConfiguration,
+        version: version ?? 0,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      { transaction }
+    );
+
+    const stepContent = await this.fetchStepActionById(auth, stepContentId);
+    return new this(AgentMCPAction, action.get(), stepContent);
+  }
+
+  static async fetchByModelIdWithAuth(
+    auth: Authenticator,
+    id: ModelId | string,
+    transaction?: Transaction
+  ): Promise<AgentMCPActionResource | null> {
+    const parsedId = typeof id === "string" ? parseInt(id, 10) : id;
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const action = await this.model.findOne({
+      where: { id: parsedId, workspaceId },
+      transaction,
+    });
+    if (!action) {
+      return null;
+    }
+
+    const stepContent = await this.fetchStepActionById(
+      auth,
+      action.stepContentId
+    );
+    return new this(this.model, action.get(), stepContent);
   }
 
   static async listBlockedActionsForConversation(
@@ -193,6 +294,27 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     );
 
     return actions;
+  }
+
+  async updateStatus(
+    status: ToolExecutionStatus
+  ): Promise<[affectedCount: number]> {
+    return this.update({ status });
+  }
+
+  static async destroy({
+    where,
+    transaction,
+  }: {
+    where: WhereOptions<AgentMCPAction>;
+    transaction?: Transaction;
+  }): Promise<Result<undefined, Error>> {
+    try {
+      await AgentMCPAction.destroy({ where, transaction });
+      return new Ok(undefined);
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
   }
 
   async delete(

@@ -25,6 +25,7 @@ import {
   ConversationModel,
   Message,
 } from "@app/lib/models/assistant/conversation";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -49,7 +50,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   constructor(
     model: ModelStatic<AgentStepContentModel>,
     blob: Attributes<AgentStepContentModel> & {
-      agentMCPActions?: AgentMCPAction[];
+      agentMCPActions?: AgentMCPActionResource[];
     }
   ) {
     super(AgentStepContentModel, blob);
@@ -183,11 +184,12 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       transaction,
     });
 
+    let mcpActionsForContentId: Record<string, AgentMCPActionResource[]> = {};
     if (includeMCPActions) {
       const contentIds: ModelId[] = contents.map((c) => c.id);
 
       const mcpActionsByContentId = _.groupBy(
-        await AgentMCPAction.findAll({
+        await AgentMCPActionResource.findAll(auth, {
           where: {
             workspaceId: owner.id,
             stepContentId: {
@@ -247,10 +249,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         }
       }
 
-      for (const content of contents) {
-        content.agentMCPActions =
-          mcpActionsByContentId[content.id.toString()] ?? [];
-      }
+      mcpActionsForContentId = mcpActionsByContentId;
     }
 
     if (latestVersionsOnly) {
@@ -260,18 +259,15 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         "index",
       ]);
 
-      // Also filter MCP actions to latest versions
       if (includeMCPActions) {
-        contents.forEach((c) => {
-          if (!("agentMCPActions" in c)) {
-            return;
-          }
-          const maxVersionAction = _.maxBy(
-            c.agentMCPActions as AgentMCPAction[],
-            "version"
-          );
-          c.agentMCPActions = maxVersionAction ? [maxVersionAction] : [];
-        });
+        const filtered: Record<string, AgentMCPActionResource[]> = {};
+        for (const [contentId, actions] of Object.entries(
+          mcpActionsForContentId
+        )) {
+          const maxVersionAction = _.maxBy(actions, "version");
+          filtered[contentId] = maxVersionAction ? [maxVersionAction] : [];
+        }
+        mcpActionsForContentId = filtered;
       }
     }
 
@@ -279,7 +275,9 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       (content) =>
         new AgentStepContentResource(AgentStepContentModel, {
           ...content.get(),
-          agentMCPActions: content.agentMCPActions,
+          agentMCPActions: includeMCPActions
+            ? mcpActionsForContentId[content.id.toString()] ?? []
+            : undefined,
         })
     );
   }
@@ -347,6 +345,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           value.type === "function_call",
           "Unexpected: MCP actions on non-function call step content"
         );
+
         // MCP actions filtering already happened in fetch methods if latestVersionsOnly was requested
         base.mcpActions = this.agentMCPActions.map((action: AgentMCPAction) => {
           const mcpServerId = action.toolConfiguration?.toolServerId || null;

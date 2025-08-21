@@ -16,6 +16,7 @@ import {
   MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -29,7 +30,7 @@ async function destroyActionsRelatedResources(
   agentMessageIds: Array<ModelId>
 ) {
   // First, retrieve the MCP actions.
-  const mcpActions = await AgentMCPAction.findAll({
+  const mcpActions = await AgentMCPActionResource.findAll(auth, {
     attributes: ["id"],
     where: {
       agentMessageId: { [Op.in]: agentMessageIds },
@@ -44,6 +45,10 @@ async function destroyActionsRelatedResources(
 
   // Destroy the actions.
   await AgentMCPAction.destroy({
+    where: { agentMessageId: agentMessageIds },
+  });
+
+  await AgentMCPActionResource.destroy({
     where: { agentMessageId: agentMessageIds },
   });
 }

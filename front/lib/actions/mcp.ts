@@ -49,10 +49,8 @@ import type {
 } from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
-import {
-  AgentMCPAction,
-  AgentMCPActionOutputItem,
-} from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
@@ -454,7 +452,7 @@ export async function* runToolWithStreaming(
     mcpAction,
     stepContext,
   }: {
-    action: AgentMCPAction;
+    action: AgentMCPActionResource;
     actionBaseParams: ActionBaseParams;
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
@@ -534,9 +532,7 @@ export async function* runToolWithStreaming(
         `authentication, please authenticate to use it.`;
 
       // Update action to mark it as blocked because of personal authentication error.
-      await action.update({
-        status: "blocked_authentication_required",
-      });
+      await action.updateStatus("blocked_authentication_required");
 
       yield {
         type: "tool_personal_auth_required",
@@ -593,9 +589,7 @@ export async function* runToolWithStreaming(
 
   statsDClient.increment("mcp_actions_success.count", 1, tags);
 
-  await action.update({
-    status: "succeeded",
-  });
+  await action.updateStatus("succeeded");
 
   yield {
     type: "tool_success",
@@ -636,43 +630,36 @@ export async function createMCPAction(
     stepContext: StepContext;
     approvalStatus: "allowed_implicitly" | "pending";
   }
-): Promise<{ action: AgentMCPAction; mcpAction: MCPActionType }> {
+): Promise<{ action: AgentMCPActionResource; mcpAction: MCPActionType }> {
   const toolConfiguration = omit(
     actionConfiguration,
     MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT
   ) as LightMCPToolConfigurationType;
 
-  const action = await AgentMCPAction.create({
-    agentMessageId: actionBaseParams.agentMessageId,
+  const actionResource = await AgentMCPActionResource.makeNew(auth, {
+    actionBaseParams,
     augmentedInputs,
-    citationsAllocated: stepContext.citationsCount,
-    executionState: "pending",
-    isError: false,
-    mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
-    runningState: "not_started",
-    status: approvalStatusToToolExecutionStatus(approvalStatus),
     stepContentId,
     stepContext,
+    approvalStatus,
     toolConfiguration,
-    version: 0,
-    workspaceId: auth.getNonNullableWorkspace().id,
   });
 
   const mcpAction = new MCPActionType({
     ...actionBaseParams,
     executionState: "pending",
-    id: action.id,
+    id: actionResource.id,
     isError: false,
     output: null,
     type: "tool_action",
     runningState: "not_started",
   });
 
-  return { action, mcpAction };
+  return { action: actionResource, mcpAction };
 }
 
 type BaseErrorParams = {
-  action: AgentMCPAction;
+  action: AgentMCPActionResource;
   actionBaseParams: ActionBaseParams;
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
@@ -691,7 +678,6 @@ type YieldAsErrorParams = BaseErrorParams & {
 // Yields tool_success (continues conversation) - for timeouts/denials/execution errors.
 type YieldAsSuccessParams = BaseErrorParams & {
   yieldAsError: false;
-  action: AgentMCPAction;
   actionBaseParams: ActionBaseParams;
 };
 
@@ -726,11 +712,7 @@ export async function handleMCPActionError(
 
   // Yields tool_error to stop conversation.
   if (params.yieldAsError) {
-    // Update action to mark it as having an error.
-    await action.update({
-      isError: true,
-      status: "errored",
-    });
+    await action.updateStatus("errored");
 
     return {
       type: "tool_error",
@@ -778,21 +760,19 @@ export function isMCPApproveExecutionEvent(
   return event.type === "tool_approve_execution";
 }
 
-// TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent mcp action.
 export async function getMCPAction(
+  auth: Authenticator,
   actionId: string
-): Promise<AgentMCPAction | null> {
+): Promise<AgentMCPActionResource | null> {
   const id = getResourceIdFromSId(actionId);
   if (!id) {
     throw new Error(`Invalid action ID: ${actionId}`);
   }
-
-  return AgentMCPAction.findByPk(id);
+  return AgentMCPActionResource.fetchByModelIdWithAuth(auth, id);
 }
 
-// TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent mcp action.
 export async function updateMCPApprovalState(
-  action: AgentMCPAction,
+  action: AgentMCPActionResource,
   executionState: "denied" | "allowed_explicitly"
 ): Promise<boolean> {
   const status = approvalStatusToToolExecutionStatus(executionState);
@@ -800,10 +780,16 @@ export async function updateMCPApprovalState(
     return false;
   }
 
+<<<<<<< HEAD
   await action.update({
     executionState,
     status,
   });
+=======
+  await action.updateStatus(
+    approvalStatusToToolExecutionStatus(executionState)
+  );
+>>>>>>> 9ef6d4f27 (move to using AgentMCPAction only)
 
   return true;
 }

@@ -198,9 +198,9 @@ async function createActionForTool(
   }
 
   // Update the action to surface the execution state.
-  await agentMCPAction.update({
-    executionState: status,
-  });
+  await agentMCPAction.updateStatus(
+    approvalStatusToToolExecutionStatus(status)
+  );
 
   return {
     actionId: agentMCPAction.id,
