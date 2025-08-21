@@ -43,7 +43,7 @@ const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
 export const TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH = 500;
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "query_tables",
+  name: QUERY_TABLES_TOOL_NAME,
   version: "1.0.0",
   description: "Tables, Spreadsheets, Notion DBs (quantitative).",
   icon: "ActionTableIcon",

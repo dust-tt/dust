@@ -19,6 +19,10 @@ import {
   InternalActionIcons,
   isInternalAllowedIcon,
 } from "@app/lib/actions/mcp_icons";
+import {
+  QUERY_TABLES_TOOL_NAME,
+  SEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 
 export function ProcessingMethodSection() {
   const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
@@ -60,7 +64,7 @@ export function ProcessingMethodSection() {
       const tableServer = mcpServerViewsWithKnowledge.find(
         (serverView) =>
           serverView.serverType === "internal" &&
-          serverView.server.name === "query_tables"
+          serverView.server.name === QUERY_TABLES_TOOL_NAME
       );
       if (tableServer) {
         onChange(tableServer);
@@ -69,7 +73,7 @@ export function ProcessingMethodSection() {
       const searchServer = mcpServerViewsWithKnowledge.find(
         (serverView) =>
           serverView.serverType === "internal" &&
-          serverView.server.name === "search"
+          serverView.server.name === SEARCH_TOOL_NAME
       );
       if (searchServer) {
         onChange(searchServer);
@@ -107,8 +111,8 @@ export function ProcessingMethodSection() {
             {mcpServerViewsWithKnowledge
               .filter((view) =>
                 hasOnlyTablesSelected
-                  ? view.server.name === "query_tables"
-                  : view.server.name !== "query_tables"
+                  ? view.server.name === QUERY_TABLES_TOOL_NAME
+                  : view.server.name !== QUERY_TABLES_TOOL_NAME
               )
               .map((view) => (
                 <DropdownMenuItem
