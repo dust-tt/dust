@@ -165,6 +165,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       where: { id: parsedId, workspaceId },
       transaction,
     });
+
     if (!action) {
       return null;
     }

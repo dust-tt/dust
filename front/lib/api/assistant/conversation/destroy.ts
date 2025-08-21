@@ -1,5 +1,4 @@
 import chunk from "lodash/chunk";
-import { Op } from "sequelize";
 
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
@@ -30,13 +29,10 @@ async function destroyActionsRelatedResources(
   agentMessageIds: Array<ModelId>
 ) {
   // First, retrieve the MCP actions.
-  const mcpActions = await AgentMCPActionResource.findAll(auth, {
-    attributes: ["id"],
-    where: {
-      agentMessageId: { [Op.in]: agentMessageIds },
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-  });
+  const mcpActions = await AgentMCPActionResource.findByAgentMessageId(
+    auth,
+    agentMessageIds
+  );
 
   // Destroy MCP action output items.
   await AgentMCPActionOutputItem.destroy({

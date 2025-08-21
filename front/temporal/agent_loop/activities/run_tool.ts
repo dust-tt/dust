@@ -83,7 +83,7 @@ export async function runToolActivity(
   });
 
   const eventStream = runToolWithStreaming(auth, {
-    action,
+    action: actionResource,
     actionBaseParams,
     agentConfiguration,
     agentMessage,
