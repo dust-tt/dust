@@ -57,6 +57,7 @@ import type {
 import {
   CLEAR_CONTENT_EVENT,
   messageReducer,
+  RETRY_BLOCKED_ACTIONS_STARTED_EVENT,
 } from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type {
@@ -566,9 +567,11 @@ export function AgentMessage({
             mcpServerId={agentMessage.error.metadata.mcp_server_id}
             provider={agentMessage.error.metadata.provider}
             scope={agentMessage.error.metadata.scope}
-            retryHandler={async () =>
-              retryHandler(agentMessage, { blockedOnly: true })
-            }
+            retryHandler={async () => {
+              // Dispatch retry event to reset failed state and re-enable streaming.
+              dispatch(RETRY_BLOCKED_ACTIONS_STARTED_EVENT);
+              return retryHandler(agentMessage, { blockedOnly: true });
+            }}
           />
         );
       }
