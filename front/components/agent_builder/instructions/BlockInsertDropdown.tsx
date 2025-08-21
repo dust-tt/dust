@@ -7,12 +7,12 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
-  BlockInsertDropdownState as DropdownState,
+  BlockInsertDropdownView as DropdownView,
   BlockSuggestion,
 } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
 
 interface BlockInsertDropdownProps {
-  blockDropdownState: DropdownState & {
+  blockDropdownState: DropdownView & {
     onSelect: (suggestion: BlockSuggestion) => void;
     onOpenChange: (open: boolean) => void;
     onSelectedIndexChange: (index: number) => void;

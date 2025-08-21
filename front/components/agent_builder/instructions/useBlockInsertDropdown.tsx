@@ -1,16 +1,23 @@
 import { CommandLineIcon, DocumentIcon } from "@dust-tt/sparkle";
-import type { Editor } from "@tiptap/react";
+import type { Editor as CoreEditor } from "@tiptap/core";
+import type { Editor as ReactEditor } from "@tiptap/react";
 import type {
   SuggestionKeyDownProps,
+  SuggestionOptions,
   SuggestionProps,
 } from "@tiptap/suggestion";
 import { useCallback, useMemo, useRef, useState } from "react";
+
+type CompatibleEditor = CoreEditor | ReactEditor;
 
 export interface BlockSuggestion {
   id: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  command: (editor: Editor, range: { from: number; to: number }) => void;
+  command: (
+    editor: CompatibleEditor,
+    range: { from: number; to: number }
+  ) => void;
 }
 
 // Static block suggestions
@@ -46,8 +53,14 @@ export interface BlockInsertDropdownState {
   triggerRect: DOMRect | null;
 }
 
+// Narrow view model for the dropdown component (excludes internal query)
+export type BlockInsertDropdownView = Pick<
+  BlockInsertDropdownState,
+  "isOpen" | "suggestions" | "selectedIndex" | "triggerRect"
+>;
+
 export const useBlockInsertDropdown = (
-  editorRef: React.MutableRefObject<Editor | null>
+  editorRef: React.MutableRefObject<ReactEditor | null>
 ) => {
   const [state, setState] = useState<BlockInsertDropdownState>({
     isOpen: false,
@@ -112,20 +125,18 @@ export const useBlockInsertDropdown = (
     }));
   }, []);
 
-  const getSuggestionHandler = useMemo(() => {
+  const suggestionOptions: Omit<
+    SuggestionOptions<unknown, unknown>,
+    "editor"
+  > = useMemo(() => {
     return {
       char: "/",
-      command: ({
-        editor,
-        range,
-        props,
-      }: {
-        editor: Editor;
-        range: { from: number; to: number };
-        props: BlockSuggestion;
-      }) => {
-        const suggestion = props;
-        suggestion.command(editor, range);
+      command: ({ editor, range, props }) => {
+        const suggestion = props as BlockSuggestion;
+        suggestion.command(
+          editor as CompatibleEditor,
+          range as { from: number; to: number }
+        );
       },
       items: ({ query }: { query: string }) => {
         return filterSuggestions(query);
@@ -226,15 +237,18 @@ export const useBlockInsertDropdown = (
 
   return {
     isOpen: state.isOpen,
-    query: state.query,
     suggestions: state.suggestions,
     selectedIndex: state.selectedIndex,
     triggerRect: state.triggerRect,
     onSelect: selectSuggestion,
-    onOpenChange: closeDropdown,
+    onOpenChange: (open: boolean) => {
+      if (!open) {
+        closeDropdown();
+      }
+    },
     onSelectedIndexChange: (index: number) => {
       setState((prev) => ({ ...prev, selectedIndex: index }));
     },
-    getSuggestionHandler,
+    suggestionOptions,
   };
 };

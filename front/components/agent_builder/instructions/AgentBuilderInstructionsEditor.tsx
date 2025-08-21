@@ -75,7 +75,7 @@ export function AgentBuilderInstructionsEditor({
   const blockDropdown = useBlockInsertDropdown(editorRef);
 
   // Use the stable suggestion options object from the dropdown hook
-  const suggestionHandler = blockDropdown.getSuggestionHandler;
+  const suggestionHandler = blockDropdown.suggestionOptions;
 
   const extensions = useMemo(() => {
     return [
