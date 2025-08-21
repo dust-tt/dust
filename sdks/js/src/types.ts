@@ -619,7 +619,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_synced_queries"
   | "salesforce_tool"
   | "show_debug_tools"
-  | "slack_semantic_search"
   | "usage_data_api"
   | "xai_feature"
   | "agent_management_tool"
