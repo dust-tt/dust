@@ -109,8 +109,7 @@ export function messageReducer(
           status: "created",
           error: null,
         },
-        // Keep the existing agentState - don't reset to "thinking"
-        // The agent might have already performed actions before failing
+        // Reset the agent state to "acting" to allow for streaming to continue.
         agentState: "acting",
       };
 

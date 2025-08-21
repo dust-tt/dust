@@ -56,22 +56,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     super(AgentStepContentModel, blob);
   }
 
-  private static async baseFetch(
-    auth: Authenticator,
-    { where, limit, order }: ResourceFindOptions<AgentStepContentModel> = {}
-  ) {
-    const stepContents = await this.model.findAll({
-      where: {
-        ...where,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      limit,
-      order,
-    });
-
-    return stepContents.map((a) => new this(this.model, a.get()));
-  }
-
   /**
    * Helper function to check if the user can read the agent message
    * and fetch the agent configuration.
@@ -299,17 +283,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           agentMCPActions: content.agentMCPActions,
         })
     );
-  }
-
-  static async fetchByIds(
-    auth: Authenticator,
-    { ids }: { ids: ModelId[] }
-  ): Promise<AgentStepContentResource[]> {
-    return this.baseFetch(auth, {
-      where: {
-        id: { [Op.in]: ids },
-      },
-    });
   }
 
   async delete(

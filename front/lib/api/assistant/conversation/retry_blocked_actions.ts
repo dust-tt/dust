@@ -53,7 +53,6 @@ async function findUserMessageForRetry(
     return new Err(new Error("User message not found"));
   }
 
-  // Ensure that there is blocked action at step `stepIndex`.
   const blockedActions =
     await AgentMCPActionResource.listBlockedActionsForAgentMessage(auth, {
       agentMessageId: agentMessage.agentMessageId,
