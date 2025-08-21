@@ -70,6 +70,16 @@ function TriggerCard({ trigger, onRemove, onEdit }: TriggerCardProps) {
   );
 }
 
+type DialogMode =
+  | {
+      type: "add";
+    }
+  | {
+      type: "edit";
+      trigger: AgentBuilderTriggerType;
+      index: number;
+    };
+
 interface AgentBuilderTriggersBlockProps {
   isTriggersLoading?: boolean;
 }
@@ -87,31 +97,28 @@ export function AgentBuilderTriggersBlock({
   });
 
   const sendNotification = useSendNotification();
-  const [editingTrigger, setEditingTrigger] = useState<{
-    trigger: AgentBuilderTriggerType;
-    index: number;
-  } | null>(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
 
   const handleCreateTrigger = () => {
-    setIsCreateModalOpen(true);
+    setDialogMode({
+      type: "add",
+    });
   };
 
   const handleTriggerEdit = (
     trigger: AgentBuilderTriggerType,
     index: number
   ) => {
-    setEditingTrigger({ trigger, index });
+    setDialogMode({ type: "edit", trigger, index });
   };
 
   const handleCloseModal = () => {
-    setEditingTrigger(null);
-    setIsCreateModalOpen(false);
+    setDialogMode(null);
   };
 
   const handleTriggerSave = (trigger: AgentBuilderTriggerType) => {
-    if (editingTrigger) {
-      update(editingTrigger.index, trigger);
+    if (dialogMode?.type === "edit") {
+      update(dialogMode.index, trigger);
     } else {
       append(trigger);
     }
@@ -140,6 +147,7 @@ export function AgentBuilderTriggersBlock({
           variant="primary"
           icon={ClockIcon}
           onClick={handleCreateTrigger}
+          type="button"
         />
       }
     >
@@ -164,8 +172,8 @@ export function AgentBuilderTriggersBlock({
 
       {/* Create/Edit Schedule Modal */}
       <ScheduleEditionModal
-        trigger={editingTrigger?.trigger}
-        isOpen={editingTrigger !== null || isCreateModalOpen}
+        trigger={dialogMode?.type === "edit" ? dialogMode.trigger : undefined}
+        isOpen={dialogMode !== null}
         onClose={handleCloseModal}
         onSave={handleTriggerSave}
       />

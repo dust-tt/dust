@@ -10,7 +10,10 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import type { TriggerType } from "@app/types/assistant/triggers";
+import type {
+  TriggerConfiguration,
+  TriggerType,
+} from "@app/types/assistant/triggers";
 import { TriggerSchema } from "@app/types/assistant/triggers";
 
 export interface GetTriggersResponseBody {
@@ -18,13 +21,13 @@ export interface GetTriggersResponseBody {
 }
 
 export interface PatchTriggersRequestBody {
-  triggers: Array<{
-    name: string;
-    description: string;
-    kind: string;
-    config: any;
-    sId?: string;
-  }>;
+  triggers: Array<
+    {
+      sId?: string;
+      name: string;
+      description: string;
+    } & TriggerConfiguration
+  >;
 }
 
 async function handler(

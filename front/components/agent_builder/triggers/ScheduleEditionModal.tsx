@@ -1,12 +1,12 @@
 import {
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Input,
   Label,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   TextArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,23 +15,12 @@ import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import {
+  AgentBuilderTriggerType,
+  ScheduleFormData,
+  scheduleFormSchema,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
-
-const scheduleFormSchema = z.object({
-  name: z.string().min(1, "Name is required").max(255, "Name is too long"),
-  description: z.string().max(1000, "Description is too long"),
-  cron: z
-    .string()
-    .min(1, "Cron expression is required")
-    .regex(
-      /^(\*|([0-5]?\d)) (\*|([01]?\d|2[0-3])) (\*|([01]?\d|2[0-9]|3[01])) (\*|(1[0-2]|0?[1-9])) (\*|([0-6]))$/,
-      "Invalid cron expression (expected 5 fields: min hour day month weekday)"
-    ),
-  timezone: z.string().min(1, "Timezone is required"),
-});
-
-type ScheduleFormData = z.infer<typeof scheduleFormSchema>;
 
 interface ScheduleEditionModalProps {
   trigger?: AgentBuilderTriggerType;
@@ -50,7 +39,7 @@ export function ScheduleEditionModal({
     name: "Schedule",
     description: "",
     cron: "",
-    timezone: "UTC",
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   };
 
   const form = useForm<ScheduleFormData>({
@@ -77,12 +66,10 @@ export function ScheduleEditionModal({
 
   const handleCancel = () => {
     onClose();
+    form.reset(defaultValues);
   };
 
   const onSubmit = (data: ScheduleFormData) => {
-    console.log("submitting", data);
-    console.log("form getValues at submit", form.getValues());
-
     const triggerData: AgentBuilderTriggerType = {
       sId: trigger?.sId ?? uniqueId(),
       name: data.name.trim(),
@@ -94,22 +81,21 @@ export function ScheduleEditionModal({
       },
     };
 
-    console.log("final triggerData", triggerData);
     onSave(triggerData);
     onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent size="md">
+    <Sheet open={isOpen} onOpenChange={(open) => !open && handleCancel()}>
+      <SheetContent size="xl">
         <FormProvider form={form} onSubmit={onSubmit}>
-          <DialogHeader>
-            <DialogTitle>
+          <SheetHeader>
+            <SheetTitle>
               {trigger ? "Edit Schedule" : "Create Schedule"}
-            </DialogTitle>
-          </DialogHeader>
+            </SheetTitle>
+          </SheetHeader>
 
-          <DialogContainer>
+          <SheetContainer>
             <div className="space-y-4">
               <div>
                 <Label htmlFor="trigger-name">Trigger Name</Label>
@@ -164,9 +150,9 @@ export function ScheduleEditionModal({
                 />
               </div>
             </div>
-          </DialogContainer>
+          </SheetContainer>
 
-          <DialogFooter
+          <SheetFooter
             leftButtonProps={{
               label: "Cancel",
               variant: "outline",
@@ -176,11 +162,11 @@ export function ScheduleEditionModal({
               label: trigger ? "Update Trigger" : "Add Trigger",
               variant: "primary",
               onClick: form.handleSubmit(onSubmit),
-              disabled: form.formState.isSubmitting || !form.formState.isValid,
+              disabled: form.formState.isSubmitting,
             }}
           />
         </FormProvider>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
