@@ -251,6 +251,7 @@ async function streamAgentAnswerToSlack(
           )
         );
       }
+
       case "tool_error": {
         if (isMCPServerPersonalAuthRequiredError(event.error)) {
           const conversationUrl = makeConversationUrl(
