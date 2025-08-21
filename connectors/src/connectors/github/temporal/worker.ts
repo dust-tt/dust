@@ -14,6 +14,18 @@ import logger from "@connectors/logger/logger";
 
 export async function runGithubWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
+
+  process.on("unhandledRejection", (reason) => {
+    if (
+      reason instanceof Error &&
+      reason.message.includes("other side closed")
+    ) {
+      logger.info({ error: reason }, "Undici connection cleanup (ignored)");
+      return;
+    }
+    throw reason;
+  });
+
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities: {
