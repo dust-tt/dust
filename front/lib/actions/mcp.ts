@@ -638,6 +638,10 @@ export async function* runToolWithStreaming(
 
   statsDClient.increment("mcp_actions_success.count", 1, tags);
 
+  await action.update({
+    status: "succeeded",
+  });
+
   yield {
     type: "tool_success",
     created: Date.now(),
