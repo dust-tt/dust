@@ -6,7 +6,7 @@ module.exports = {
     "/w*",
     "/poke*",
     "/oauth*",
-    "/sso-enforce",
+    "/sso-enforced",
     "/no-workspace",
     "/maintenance",
     "/login-error",
