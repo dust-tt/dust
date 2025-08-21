@@ -11,11 +11,11 @@ export async function runScheduledAgentsActivity(
   authType: AuthenticatorType,
   trigger: TriggerType
 ) {
-  if (!authType || !authType.workspaceId || !authType.userId) {
+  const auth = await Authenticator.fromJSON(authType);
+
+  if (!auth.workspace() || !auth.user()) {
     throw new Error("Invalid authentication. Missing workspaceId or userId.");
   }
-
-  const auth = await Authenticator.fromJSON(authType);
 
   const agentConfiguration = await AgentConfiguration.findOne({
     where: {
@@ -31,7 +31,7 @@ export async function runScheduledAgentsActivity(
   }
 
   const newConversation = await createConversation(auth, {
-    title: "Scheduled agent call",
+    title: `@${agentConfiguration.name} scheduled call - ${new Date().toLocaleDateString()}`,
     visibility: "unlisted",
   });
 
@@ -59,7 +59,6 @@ export async function runScheduledAgentsActivity(
         conversationId: newConversation.sId,
         error: messageRes.error,
         trigger,
-        timestamp: new Date().toISOString(),
       },
       "scheduledAgentCallActivity: Error sending message."
     );

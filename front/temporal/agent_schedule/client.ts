@@ -49,6 +49,10 @@ function getScheduleOptions(
   };
 }
 
+function makeScheduleId(workspaceId: string, triggerId: string): string {
+  return `agent-schedule-${workspaceId}-${triggerId}`;
+}
+
 export async function createOrUpdateAgentScheduleWorkflow({
   authType,
   trigger,
@@ -57,7 +61,11 @@ export async function createOrUpdateAgentScheduleWorkflow({
   trigger: TriggerType;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClientForAgentNamespace();
-  const scheduleId = `agent-schedule-${authType.workspaceId}-${trigger.agentConfigurationId}-${trigger.sId}`;
+  if (!authType.workspaceId) {
+    return new Err(new Error("Workspace ID is required"));
+  }
+
+  const scheduleId = makeScheduleId(authType.workspaceId, trigger.sId);
 
   const childLogger = logger.child({
     workspaceId: authType.workspaceId,
@@ -99,7 +107,9 @@ export async function createOrUpdateAgentScheduleWorkflow({
         scheduleId,
         trigger,
       },
-      "Failed to update existing schedule."
+      existingSchedule
+        ? "Failed to update existing schedule."
+        : "Failed to create new schedule."
     );
     return new Err(new Error("Failed to update existing schedule"));
   }
@@ -108,19 +118,18 @@ export async function createOrUpdateAgentScheduleWorkflow({
 }
 
 export async function deleteAgentScheduleWorkflow({
-  authType,
-  agentConfigurationId,
+  workspaceId,
   triggerId,
 }: {
-  authType: AuthenticatorType;
+  workspaceId: string;
   agentConfigurationId: number;
   triggerId: string;
 }): Promise<Result<void, Error>> {
   const client = await getTemporalClientForAgentNamespace();
-  const scheduleId = `agent-schedule-${authType.workspaceId}-${agentConfigurationId}-${triggerId}`;
+  const scheduleId = makeScheduleId(workspaceId, triggerId);
 
   const childLogger = logger.child({
-    workspaceId: authType.workspaceId,
+    workspaceId,
   });
 
   try {

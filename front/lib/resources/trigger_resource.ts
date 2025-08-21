@@ -8,7 +8,7 @@ import type {
   Transaction,
 } from "sequelize";
 
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { TriggerModel } from "@app/lib/models/assistant/triggers";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -17,8 +17,9 @@ import {
   createOrUpdateAgentScheduleWorkflow,
   deleteAgentScheduleWorkflow,
 } from "@app/temporal/agent_schedule/client";
-import { normalizeError } from "@app/types";
+import { normalizeError, WorkspaceType } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -30,9 +31,9 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
   constructor(
     model: ModelStatic<TriggerModel>,
-    bloc: Attributes<TriggerModel>
+    blob: Attributes<TriggerModel>
   ) {
-    super(TriggerModel, bloc);
+    super(TriggerModel, blob);
   }
 
   static async makeNew(
@@ -143,6 +144,56 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
   }
 
+  static async deleteAllForWorkspace(
+    workspace: WorkspaceType
+  ): Promise<Result<undefined, Error>> {
+    const triggers = await TriggerModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+      },
+    });
+
+    if (triggers.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const r = await concurrentExecutor(
+      triggers,
+      async (trigger) => {
+        const r = await deleteAgentScheduleWorkflow({
+          workspaceId: workspace.sId,
+          agentConfigurationId: trigger.agentConfigurationId,
+          triggerId: trigger.sId,
+        });
+        if (r.isErr()) {
+          return r;
+        }
+
+        try {
+          trigger.destroy();
+          return new Ok(undefined);
+        } catch (error) {
+          return new Err(normalizeError(error));
+        }
+      },
+      {
+        concurrency: 10,
+      }
+    );
+
+    if (r.find((res) => res.isErr())) {
+      return new Err(
+        new Error(
+          `Failed to delete some triggers: ${r
+            .filter((res) => res.isErr())
+            .map((res) => res.error.message)
+            .join(", ")}`
+        )
+      );
+    }
+    return new Ok(undefined);
+  }
+
   async postRegistration(auth: Authenticator) {
     switch (this.kind) {
       case "schedule":
@@ -159,7 +210,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     switch (this.kind) {
       case "schedule":
         return deleteAgentScheduleWorkflow({
-          authType: auth.toJSON(),
+          workspaceId: auth.getNonNullableWorkspace().sId,
           agentConfigurationId: this.agentConfigurationId,
           triggerId: this.sId,
         });

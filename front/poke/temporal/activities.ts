@@ -55,6 +55,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -568,6 +569,7 @@ export async function deleteWorkspaceActivity({
       workspaceId: workspace.id,
     },
   });
+  await TriggerResource.deleteAllForWorkspace(workspace);
   await FileResource.deleteAllForWorkspace(workspace);
   await RunResource.deleteAllForWorkspace(workspace);
   await MembershipResource.deleteAllForWorkspace(workspace);
