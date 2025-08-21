@@ -18,6 +18,7 @@ import { ConversationsNavigationProvider } from "@app/components/assistant/conve
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -126,17 +127,16 @@ export default function AgentMCPActions({
     }
   };
 
-  const getExecutionStateColor = (state: string) => {
+  const getExecutionStateColor = (state: ToolExecutionStatus) => {
     switch (state) {
-      case "allowed_explicitly":
-      case "allowed_implicitly":
+      case "succeeded":
         return "success";
       case "denied":
+      case "errored":
         return "warning";
-      case "pending":
+      case "blocked_authentication_required":
+      case "blocked_pending_validation":
         return "info";
-      case "timeout":
-        return "warning";
       default:
         return "primary";
     }
@@ -227,17 +227,15 @@ export default function AgentMCPActions({
                             <div className="flex items-center gap-2">
                               <Chip
                                 color={
-                                  action.isError
+                                  action.status === "errored"
                                     ? "warning"
-                                    : getExecutionStateColor(
-                                        action.executionState
-                                      )
+                                    : getExecutionStateColor(action.status)
                                 }
                                 size="xs"
                               >
-                                {action.isError
+                                {action.status === "errored"
                                   ? "Error"
-                                  : action.executionState.replace("_", " ")}
+                                  : action.status.replace("_", " ")}
                               </Chip>
                               {action.conversationId && (
                                 <Button
