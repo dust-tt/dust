@@ -8,18 +8,19 @@ import type {
   Transaction,
 } from "sequelize";
 
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { TriggerModel } from "@app/lib/models/assistant/triggers";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   createOrUpdateAgentScheduleWorkflow,
   deleteAgentScheduleWorkflow,
 } from "@app/temporal/agent_schedule/client";
-import { normalizeError, WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types";
+import { normalizeError } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -170,7 +171,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         }
 
         try {
-          trigger.destroy();
+          await trigger.destroy();
           return new Ok(undefined);
         } catch (error) {
           return new Err(normalizeError(error));
