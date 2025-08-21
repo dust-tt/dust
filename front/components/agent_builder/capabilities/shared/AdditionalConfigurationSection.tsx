@@ -324,7 +324,9 @@ function GroupedConfigurationSection({
   const hasConfiguration =
     Object.keys(requiredStrings).length > 0 ||
     Object.keys(requiredNumbers).length > 0 ||
-    Object.keys(requiredBooleans).length > 0;
+    Object.keys(requiredBooleans).length > 0 ||
+    Object.keys(requiredEnums).length > 0 ||
+    Object.keys(requiredLists).length > 0;
 
   if (!hasConfiguration) {
     return null;
