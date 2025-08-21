@@ -73,7 +73,7 @@ export function AgentBuilderInstructionsEditor({
 
   // Setup the block insert dropdown
   const blockDropdown = useBlockInsertDropdown(editorRef);
-  
+
   // Store the dropdown ref to access in callbacks without causing re-renders
   const blockDropdownRef = useRef(blockDropdown);
   blockDropdownRef.current = blockDropdown;
@@ -90,6 +90,15 @@ export function AgentBuilderInstructionsEditor({
     return [
       StarterKit.configure({
         paragraph: false, // We use custom ParagraphExtension
+        heading: false,
+        bulletList: false,
+        orderedList: false,
+        listItem: false,
+        blockquote: false,
+        horizontalRule: false,
+        bold: false,
+        italic: false,
+        strike: false,
         history: {
           depth: 100,
         },
@@ -212,7 +221,7 @@ export function AgentBuilderInstructionsEditor({
           editor={editor}
           className="h-full min-h-[200px] cursor-text"
         />
-        <div 
+        <div
           className="absolute bottom-2 right-2"
           onClick={(e) => {
             // Prevent the container's click handler from focusing the editor
