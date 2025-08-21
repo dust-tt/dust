@@ -16,7 +16,7 @@ export function ConfigurationSectionContainer({
   error,
 }: ConfigurationSectionContainerProps) {
   return (
-    <div className={cn("flex flex-col gap-4", className)}>
+    <div className={cn("flex h-full flex-col gap-4", className)}>
       <div className={cn(description && "flex flex-col gap-2")}>
         <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
           {title}
@@ -28,7 +28,7 @@ export function ConfigurationSectionContainer({
         )}
       </div>
 
-      <div>{children}</div>
+      <div className="min-h-0 flex-1">{children}</div>
       {error && <div className="text-sm text-red-500">{error}</div>}
     </div>
   );

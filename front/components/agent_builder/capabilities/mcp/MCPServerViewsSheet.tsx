@@ -12,7 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { UseFieldArrayAppend } from "react-hook-form";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -25,6 +25,7 @@ import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
 import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
+import { getConfigurationFooterContent } from "@app/components/agent_builder/capabilities/mcp/utils/footerUtils";
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { createFormResetHandler } from "@app/components/agent_builder/capabilities/mcp/utils/formStateUtils";
 import {
@@ -66,6 +67,7 @@ import { InternalActionIcons } from "@app/lib/actions/mcp_icons";
 import { isCustomServerIconType } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useModels } from "@app/lib/swr/models";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { O4_MINI_MODEL_ID } from "@app/types";
@@ -136,6 +138,13 @@ export function MCPServerViewsSheet({
     nonDefaultMCPServerViews,
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
+
+  // For getting all agents to find selected Child Agent
+  const { agentConfigurations: allAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "list",
+    });
 
   const [selectedToolsInSheet, setSelectedToolsInSheet] = useState<
     SelectedTool[]
@@ -460,6 +469,17 @@ export function MCPServerViewsSheet({
     resetFormValues(form);
   }, [resetFormValues, form]);
 
+  const watchedConfiguration = useWatch({
+    control: form.control,
+    name: "configuration",
+  });
+
+  const configurationFooterContent = getConfigurationFooterContent({
+    requirements,
+    watchedConfiguration,
+    allAgentConfigurations,
+  });
+
   const resetToSelection = useCallback(() => {
     setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);
     setConfigurationTool(null);
@@ -502,6 +522,14 @@ export function MCPServerViewsSheet({
           />
         </>
       ),
+      footerContent:
+        selectedToolsInSheet.length > 0 ? (
+          <MCPServerViewsFooter
+            selectedToolsInSheet={selectedToolsInSheet}
+            dataVisualization={dataVisualization}
+            onRemoveSelectedTool={toggleToolSelection}
+          />
+        ) : undefined,
     },
     {
       id: TOOLS_SHEET_PAGE_IDS.CONFIGURATION,
@@ -510,9 +538,9 @@ export function MCPServerViewsSheet({
       icon: undefined,
       content:
         configurationTool && mcpServerView && requirements && formSchema ? (
-          <FormProvider form={form}>
-            <div>
-              <div className="space-y-6">
+          <FormProvider form={form} className="h-full">
+            <div className="h-full">
+              <div className="h-full space-y-6">
                 <MCPActionHeader
                   action={configurationTool}
                   mcpServerView={mcpServerView}
@@ -556,6 +584,7 @@ export function MCPServerViewsSheet({
             <Spinner />
           </div>
         ),
+      footerContent: configurationFooterContent,
     },
     {
       id: TOOLS_SHEET_PAGE_IDS.INFO,
@@ -715,6 +744,7 @@ export function MCPServerViewsSheet({
       }}
     >
       <MultiPageSheetContent
+        className="h-full"
         showNavigation={false}
         showHeaderNavigation={false}
         size="lg"
@@ -729,15 +759,6 @@ export function MCPServerViewsSheet({
         }}
         addFooterSeparator
         {...footerButtons}
-        footerContent={
-          currentMode !== "configure" ? (
-            <MCPServerViewsFooter
-              selectedToolsInSheet={selectedToolsInSheet}
-              dataVisualization={dataVisualization}
-              onRemoveSelectedTool={toggleToolSelection}
-            />
-          ) : undefined
-        }
       />
     </MultiPageSheet>
   );
