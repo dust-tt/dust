@@ -543,7 +543,7 @@ export async function* runToolWithStreaming(
 
       // Update action to mark it as blocked because of personal authentication error.
       await action.update({
-        status: "blocked_required_authentication",
+        status: "blocked_authentication_required",
       });
 
       yield {

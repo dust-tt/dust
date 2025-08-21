@@ -21,7 +21,7 @@ const TOOL_EXECUTION_FINAL_STATUSES = [
 type ToolExecutionFinalStatus = (typeof TOOL_EXECUTION_FINAL_STATUSES)[number];
 
 export const TOOL_EXECUTION_BLOCKED_STATUSES = [
-  "blocked_required_authentication",
+  "blocked_authentication_required",
 ] as const;
 
 type ToolExecutionBlockedStatus =
@@ -39,7 +39,6 @@ type ToolExecutionTransientStatus =
   (typeof TOOL_EXECUTION_TRANSIENT_STATUSES)[number];
 
 export type ToolExecutionStatus =
-  | ToolExecutionBlockedStatus
   | ToolExecutionFinalStatus
   | ToolExecutionTransientStatus;
 
