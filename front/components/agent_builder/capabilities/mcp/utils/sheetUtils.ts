@@ -14,6 +14,13 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { pluralize } from "@app/types";
 
+export function isValidPage<T extends Record<string, string>>(
+  pageId: string,
+  pageIds: T
+): pageId is T[keyof T] {
+  return Object.values(pageIds).includes(pageId);
+}
+
 export function getInitialPageId(
   mode: SheetMode | null
 ): ConfigurationPagePageId {
