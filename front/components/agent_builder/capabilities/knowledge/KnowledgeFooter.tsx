@@ -66,9 +66,10 @@ function KnowledgeFooterItem({
       visual={<ContextItem.Visual visual={VisualComponent} />}
       action={
         <Button
+          size="mini"
+          variant="ghost"
           icon={XMarkIcon}
           onClick={() => removeNodeWithPath(item)}
-          variant="ghost"
         />
       }
       subElement={
