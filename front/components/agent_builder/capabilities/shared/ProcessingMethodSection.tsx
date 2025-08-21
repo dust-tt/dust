@@ -112,7 +112,7 @@ export function ProcessingMethodSection() {
             />
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent>
+          <DropdownMenuContent align="start">
             {mcpServerViewsWithKnowledge
               .filter((view) =>
                 hasOnlyTablesSelected
