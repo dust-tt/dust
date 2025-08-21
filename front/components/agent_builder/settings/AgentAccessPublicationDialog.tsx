@@ -1,98 +1,260 @@
 import {
+  Avatar,
   Button,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  Separator,
-  SliderToggle,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
+  DataTable,
+  Icon,
+  SearchInput,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  Spinner,
   UserGroupIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import type {
+  CellContext,
+  ColumnDef,
+  PaginationState,
+} from "@tanstack/react-table";
+import React, { useEffect, useMemo, useState } from "react";
+import { useCallback } from "react";
 import { useController } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { EditorsTab } from "@app/components/agent_builder/settings/EditorsTab";
-import { SlackTab } from "@app/components/agent_builder/settings/SlackTab";
+import { useSearchMembers } from "@app/lib/swr/memberships";
+import type { UserType } from "@app/types";
+
+const DEFAULT_PAGE_SIZE = 25;
+
+type RowData = {
+  sId: string;
+  fullName: string;
+  email: string;
+  image: string;
+  isEditor: boolean;
+  onToggleEditor: () => void;
+  onClick?: () => void;
+};
 
 export function AgentAccessPublicationDialog() {
+  const { owner } = useAgentBuilderContext();
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [localEditors, setLocalEditors] = useState<UserType[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
-  const { field } = useController<AgentBuilderFormData, "agentSettings.scope">({
-    name: "agentSettings.scope",
+  const {
+    field: { onChange, value: editors },
+  } = useController<AgentBuilderFormData, "agentSettings.editors">({
+    name: "agentSettings.editors",
   });
 
+  useEffect(() => {
+    if (isOpen) {
+      setLocalEditors([...(editors || [])]);
+    }
+  }, [editors, isOpen]);
+
+  const { members: workspaceMembers, isLoading: isWorkspaceMembersLoading } =
+    useSearchMembers({
+      workspaceId: owner.sId,
+      searchTerm,
+      pageIndex: 0,
+      pageSize: 100,
+    });
+
+  const onRemoveEditor = useCallback((user: UserType) => {
+    setLocalEditors((prev) => prev.filter((u) => u.sId !== user.sId));
+  }, []);
+
+  const onAddEditor = useCallback((user: UserType) => {
+    setLocalEditors((prev) => [...prev, user]);
+  }, []);
+
+  const onSave = () => {
+    onChange(localEditors);
+    setIsOpen(false);
+  };
+
+  const hasUnsavedChanges = useMemo(() => {
+    const currentEditorIds = new Set((editors || []).map((e) => e.sId));
+    const localEditorIds = new Set(localEditors.map((e) => e.sId));
+
+    if (currentEditorIds.size !== localEditorIds.size) {
+      return true;
+    }
+
+    return Array.from(currentEditorIds).some((id) => !localEditorIds.has(id));
+  }, [editors, localEditors]);
+
+  const tableData = useMemo(() => {
+    const localEditorsSet = new Set(localEditors.map((e) => e.sId));
+    const allMembers = workspaceMembers || [];
+
+    const memberMap = new Map<string, RowData>();
+
+    localEditors.forEach((editor) => {
+      memberMap.set(editor.sId, {
+        sId: editor.sId,
+        fullName: editor.fullName,
+        email: editor.email,
+        image: editor.image || "",
+        isEditor: true,
+        onToggleEditor: () => onRemoveEditor(editor),
+      });
+    });
+
+    allMembers.forEach((member) => {
+      if (!memberMap.has(member.sId)) {
+        memberMap.set(member.sId, {
+          sId: member.sId,
+          fullName: member.fullName,
+          email: member.email,
+          image: member.image || "",
+          isEditor: localEditorsSet.has(member.sId),
+          onToggleEditor: localEditorsSet.has(member.sId)
+            ? () => onRemoveEditor(member)
+            : () => onAddEditor(member),
+        });
+      }
+    });
+
+    return Array.from(memberMap.values());
+  }, [workspaceMembers, localEditors, onRemoveEditor, onAddEditor]);
+
+  const columns: ColumnDef<RowData>[] = useMemo(
+    () => [
+      {
+        id: "name",
+        header: "Name",
+        accessorKey: "fullName",
+        cell: (info: CellContext<RowData, any>) => (
+          <DataTable.CellContent>
+            <div className="flex items-center gap-2">
+              <Avatar size="xs" visual={info.row.original.image} />
+              {info.row.original.fullName}
+            </div>
+          </DataTable.CellContent>
+        ),
+        enableSorting: false,
+        meta: {
+          sizeRatio: 20,
+        },
+      },
+      {
+        id: "email",
+        accessorKey: "email",
+        header: "Email",
+        cell: (info: CellContext<RowData, any>) => (
+          <DataTable.CellContent>
+            {info.row.original.email}
+          </DataTable.CellContent>
+        ),
+        meta: {
+          sizeRatio: 70,
+        },
+      },
+      {
+        id: "action",
+        header: "",
+        cell: (info: CellContext<RowData, any>) => (
+          <DataTable.CellContent className="flex justify-end pr-1">
+            {info.row.original.isEditor ? (
+              <Button
+                size="xs"
+                variant="ghost"
+                icon={XMarkIcon}
+                tooltip="Remove from editors list"
+                onClick={info.row.original.onToggleEditor}
+              />
+            ) : (
+              <Button
+                size="xs"
+                variant="outline"
+                label="Add"
+                tooltip="Add to editors list"
+                onClick={info.row.original.onToggleEditor}
+              />
+            )}
+          </DataTable.CellContent>
+        ),
+        meta: {
+          sizeRatio: 10,
+        },
+      },
+    ],
+    []
+  );
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetTrigger asChild>
         <Button
           variant="outline"
           size="sm"
           icon={UserGroupIcon}
-          label="Access"
-          tooltip="Access & Publication Settings"
+          label="Editors"
         />
-      </DialogTrigger>
-      <DialogContent size="xl" height="xl">
-        <DialogHeader>
-          <DialogTitle>Access & Publication Settings</DialogTitle>
-        </DialogHeader>
-
-        <Tabs
-          defaultValue="editors"
-          className="flex flex-grow flex-col overflow-hidden"
-        >
-          <div className="flex-shrink-0 px-4">
-            <TabsList className="inline-flex w-auto">
-              <TabsTrigger value="editors" label="Editors" />
-              <TabsTrigger value="slack" label="Slack Access" />
-            </TabsList>
-          </div>
-
-          <DialogContainer>
-            <TabsContent value="editors">
-              <EditorsTab />
-            </TabsContent>
-
-            <TabsContent value="slack">
-              <SlackTab />
-            </TabsContent>
-          </DialogContainer>
-        </Tabs>
-
-        <DialogFooter className="flex-shrink-0">
-          <div className="flex w-full flex-col gap-2 px-2 pb-2">
-            <Separator />
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <div className="flex flex-col justify-start">
-                <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                  Publish your agent
-                </span>
-                <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                  Make your agent visible and usable by all members of the
-                  workspace.
-                </span>
-              </div>
-              <SliderToggle
-                size="xs"
-                selected={field.value === "visible"}
-                onClick={() =>
-                  field.onChange(
-                    field.value === "visible" ? "hidden" : "visible"
-                  )
-                }
-              />
+      </SheetTrigger>
+      <SheetContent size="lg">
+        <SheetHeader>
+          <SheetTitle>
+            <div className="flex items-center gap-2">
+              <Icon visual={UserGroupIcon} />
+              <span>Editors</span>
             </div>
+          </SheetTitle>
+          <SheetDescription>
+            People who can use and edit the agent.
+          </SheetDescription>
+        </SheetHeader>
+
+        <SheetContainer>
+          <div className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              name="search-editors"
+              placeholder="Search members to add as editors..."
+              isLoading={isWorkspaceMembersLoading}
+            />
+
+            {isWorkspaceMembersLoading ? (
+              <div className="flex justify-center py-8">
+                <Spinner size="sm" />
+              </div>
+            ) : (
+              <DataTable
+                data={tableData}
+                columns={columns}
+                pagination={pagination}
+                setPagination={setPagination}
+              />
+            )}
           </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Close",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Save",
+            variant: "primary",
+            onClick: onSave,
+            disabled: !hasUnsavedChanges,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }
