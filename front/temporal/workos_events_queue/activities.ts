@@ -10,6 +10,7 @@ import type {
 import assert from "assert";
 
 import { createAndLogMembership } from "@app/lib/api/signup";
+import { determineUserRoleFromGroups } from "@app/lib/api/user";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import {
   fetchOrCreateWorkOSUserWithEmail,
@@ -33,11 +34,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import mainLogger from "@app/logger/logger";
-import type {
-  LightWorkspaceType,
-  MembershipRoleType,
-  Result,
-} from "@app/types";
+import type { LightWorkspaceType, Result } from "@app/types";
 
 const logger = mainLogger.child(
   {},
@@ -117,7 +114,7 @@ async function handleRoleAssignmentForGroup({
   }
 
   if (action === "add") {
-    const newRole = await getRoleFromGroupMemberships(workspace, user);
+    const newRole = await determineUserRoleFromGroups(workspace, user);
 
     if (newRole !== currentMembership.role) {
       const updateResult = await MembershipResource.updateMembershipRole({
@@ -154,7 +151,7 @@ async function handleRoleAssignmentForGroup({
       });
     }
   } else if (action === "remove") {
-    const newRole = await getRoleFromGroupMemberships(workspace, user);
+    const newRole = await determineUserRoleFromGroups(workspace, user);
 
     if (newRole !== currentMembership.role) {
       const updateResult = await MembershipResource.updateMembershipRole({
@@ -191,38 +188,6 @@ async function handleRoleAssignmentForGroup({
       });
     }
   }
-}
-
-/**
- * Check if the user should be downgraded when removed from a role-granting group.
- */
-async function getRoleFromGroupMemberships(
-  workspace: LightWorkspaceType,
-  user: UserResource
-): Promise<MembershipRoleType> {
-  // Get all groups the user is a member of.
-  const userGroups = await GroupResource.listUserGroupsInWorkspace({
-    user,
-    workspace,
-  });
-
-  let atLeastBuilder = false;
-
-  for (const group of userGroups) {
-    if (group.name === ADMIN_GROUP_NAME) {
-      return "admin";
-    }
-    if (group.name === BUILDER_GROUP_NAME) {
-      atLeastBuilder = true;
-    }
-  }
-  // If we're here, the user is not in the admin group.
-  if (atLeastBuilder) {
-    return "builder";
-  }
-
-  // Did not find any group granting a role, so the user should be a regular user.
-  return "user";
 }
 
 // WorkOS webhooks do not guarantee event ordering. Events can arrive out of sequence.
