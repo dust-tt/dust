@@ -235,7 +235,7 @@ function ListConfigurationInput({
     currentValue.length > 0
       ? currentValue.map((v) => listValues[v]).join(", ")
       : `Select ${formatKeyForDisplay(configKey)}`;
-  if (displayLabel.length > 16) {
+  if (displayLabel.length > 20) {
     displayLabel = `${currentValue.length} selected`;
   }
 
