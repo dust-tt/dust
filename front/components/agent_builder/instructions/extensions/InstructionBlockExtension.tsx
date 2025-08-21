@@ -14,13 +14,7 @@ import {
 } from "@tiptap/react";
 import React, { useEffect, useRef, useState } from "react";
 
-import {
-  createProseMirrorInstructionBlock,
-  INSTRUCTION_BLOCK_REGEX,
-  OPENING_TAG_REGEX,
-  parseInstructionBlockMatches,
-  splitTextAroundBlocks,
-} from "@app/lib/client/agent_builder/instructionBlockUtils";
+import { OPENING_TAG_REGEX } from "@app/lib/client/agent_builder/instructionBlockUtils";
 
 export interface InstructionBlockAttributes {
   type: string;
@@ -227,7 +221,9 @@ export const InstructionBlockExtension =
         new InputRule({
           find: OPENING_TAG_REGEX,
           handler: ({ range, match, commands }) => {
-            const type = match[1].toLowerCase();
+            // Use the tag name if provided, otherwise default to empty string
+            // The user can edit it after creation
+            const type = match[1] ? match[1].toLowerCase() : "";
 
             if (this.editor.isActive(this.name)) {
               return;
@@ -237,7 +233,7 @@ export const InstructionBlockExtension =
               { from: range.from, to: range.to },
               {
                 type: this.name,
-                attrs: { type },
+                attrs: { type: type || "info" }, // Default to "info" if empty
                 content: [{ type: "paragraph" }],
               }
             );
@@ -547,102 +543,12 @@ export const InstructionBlockExtension =
               }
               return parts.join("");
             },
-            handlePaste: (
-              view: EditorView,
-              event: ClipboardEvent,
-              slice: Slice
-            ) => {
-              const { state } = view;
-              const { schema, tr } = state;
-
-              // Get the text content from the slice
-              const textContent = slice.content.textBetween(
-                0,
-                slice.content.size,
-                "\n",
-                "\n"
-              );
-
-              // Check if there are any XML tags
-              if (!INSTRUCTION_BLOCK_REGEX.test(textContent)) {
-                return false; // Let default paste behavior handle it
-              }
-
-              // Parse the content and create nodes
-              const nodes: ProseMirrorNode[] = [];
-              const segments = splitTextAroundBlocks(textContent);
-
-              segments.forEach((segment) => {
-                if (segment.type === "text") {
-                  // Add text as paragraphs
-                  const lines = segment.content
-                    .split("\n")
-                    .filter((line) => line.trim());
-                  lines.forEach((line) => {
-                    nodes.push(
-                      schema.nodes.paragraph.create({}, [schema.text(line)])
-                    );
-                  });
-                } else if (segment.type === "block" && segment.blockType) {
-                  // Add instruction block
-                  const instructionBlock = createProseMirrorInstructionBlock(
-                    segment.blockType,
-                    segment.content,
-                    this.type,
-                    schema
-                  );
-                  nodes.push(instructionBlock);
-                }
-              });
-
-              // Insert all nodes at once to preserve order
-              const { from } = state.selection;
-              const fragment = Fragment.fromArray(nodes);
-              tr.insert(from, fragment);
-
-              view.dispatch(tr);
-              return true; // We handled the paste
-            },
+            // Paste handler removed - no automatic conversion on paste
+            // This prevents HTML/XML from being unexpectedly converted to instruction blocks
+            // Users can still create instruction blocks by typing <tagname> or <>
           },
-          appendTransaction: (transactions, oldState, newState) => {
-            if (!transactions.some((tr) => tr.docChanged)) {
-              return null;
-            }
-
-            const { doc, tr, schema } = newState;
-            let modified = false;
-
-            doc.descendants((node, pos) => {
-              if (node.type.name !== "text" || !node.text) {
-                return;
-              }
-
-              const matches = parseInstructionBlockMatches(node.text);
-
-              matches.forEach((match) => {
-                const matchStart = pos + match.start;
-                const matchEnd = pos + match.end;
-
-                const instructionBlock = createProseMirrorInstructionBlock(
-                  match.type,
-                  match.content,
-                  this.type,
-                  schema
-                );
-
-                tr.replaceWith(matchStart, matchEnd, instructionBlock);
-
-                // Position cursor in the block
-                const blockPos = matchStart + 1;
-                const paragraphPos = blockPos + 1;
-                tr.setSelection(TextSelection.create(tr.doc, paragraphPos));
-
-                modified = true;
-              });
-            });
-
-            return modified ? tr : null;
-          },
+          // Removed appendTransaction and handlePaste - no automatic conversion of XML tags
+          // Users must explicitly trigger conversion by typing an opening tag (handled by InputRule)
         }),
       ];
     },

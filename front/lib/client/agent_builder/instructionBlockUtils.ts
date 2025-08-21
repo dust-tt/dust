@@ -8,9 +8,9 @@ import type { JSONContent } from "@tiptap/react";
 export const INSTRUCTION_BLOCK_REGEX = /<(\w+)>([\s\S]*?)<\/\1>/g;
 
 /**
- * Regex pattern for matching opening XML tags
+ * Regex pattern for matching opening XML tags (including empty <>)
  */
-export const OPENING_TAG_REGEX = /<(\w+)>$/;
+export const OPENING_TAG_REGEX = /<(\w*)>$/;
 
 /**
  * Interface for parsed instruction block match
