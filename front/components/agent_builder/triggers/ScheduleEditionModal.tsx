@@ -10,7 +10,7 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { uniqueId } from "lodash";
+import uniqueId from "lodash/uniqueId";
 import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";

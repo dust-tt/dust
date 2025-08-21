@@ -4,7 +4,6 @@ import {
   CardActionButton,
   CardGrid,
   ClockIcon,
-  EmptyCTA,
   Spinner,
   TimeIcon,
   XMarkIcon,

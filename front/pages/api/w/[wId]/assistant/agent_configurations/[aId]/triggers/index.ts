@@ -7,11 +7,11 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import { TriggerSchema } from "@app/types/assistant/triggers";
-import logger from "@app/logger/logger";
 
 export interface GetTriggersResponseBody {
   triggers: TriggerType[];
@@ -32,7 +32,17 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetTriggersResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const agentConfigurationId = req.query.aId as string;
+  const agentConfigurationId = req.query.aId;
+
+  if (typeof agentConfigurationId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid agent configuration ID.",
+      },
+    });
+  }
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: agentConfigurationId,

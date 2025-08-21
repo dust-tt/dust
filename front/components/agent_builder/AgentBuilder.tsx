@@ -139,6 +139,7 @@ export default function AgentBuilder({
     processedActions,
     slackProvider,
     editors,
+    triggers,
   ]);
 
   const form = useForm<AgentBuilderFormData>({

@@ -26,8 +26,21 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const agentConfigurationId = req.query.aId as string;
-  const triggerId = req.query.triggerId as string;
+  const agentConfigurationId = req.query.aId;
+  const triggerId = req.query.triggerId;
+
+  if (
+    typeof agentConfigurationId !== "string" ||
+    typeof triggerId !== "string"
+  ) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid agent configuration ID or trigger ID.",
+      },
+    });
+  }
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: agentConfigurationId,
