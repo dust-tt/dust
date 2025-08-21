@@ -87,6 +87,10 @@ export async function* executeMCPTool({
   > | null,
   unknown
 > {
+  await action.update({
+    status: "running",
+  });
+
   let toolCallResult: Result<
     CallToolResult["content"],
     Error | McpError | MCPServerPersonalAuthenticationRequiredError

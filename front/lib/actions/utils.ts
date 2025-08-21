@@ -8,7 +8,11 @@ import {
 
 import type { ActionSpecification } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type {
+  MCPExecutionState,
+  MCPToolConfigurationType,
+  ToolExecutionStatus,
+} from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
 import {
   isMCPInternalDataSourceFileSystem,
@@ -236,6 +240,25 @@ export function getMCPApprovalKey({
   actionId: number;
 }): string {
   return `conversation:${conversationId}:message:${messageId}:action:${actionId}`;
+}
+
+// TODO(durable-agents): remove this translation once status is backfilled, have
+//  getExecutionStatusFromConfig return a ToolExecutionStatus directly.
+export function approvalStatusToToolExecutionStatus(
+  approvalStatus: MCPExecutionState
+): ToolExecutionStatus {
+  switch (approvalStatus) {
+    case "allowed_explicitly":
+      return "ready_allowed_explicitly";
+    case "allowed_implicitly":
+      return "ready_allowed_implicitly";
+    case "denied":
+      return "denied";
+    case "pending":
+      return "blocked_pending_validation";
+    default:
+      assertNever(approvalStatus);
+  }
 }
 
 export async function getExecutionStatusFromConfig(

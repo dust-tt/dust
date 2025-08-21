@@ -6,6 +6,7 @@ import { DataTypes } from "sequelize";
 import type {
   LightMCPToolConfigurationType,
   MCPExecutionState,
+  ToolExecutionStatus,
 } from "@app/lib/actions/mcp";
 import type { MCPRunningState } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
@@ -191,29 +192,22 @@ AgentMCPServerConfiguration.belongsTo(MCPServerViewModel, {
 
 export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare createdAt: CreationOptional<Date>;
-
   declare updatedAt: CreationOptional<Date>;
 
   declare mcpServerConfigurationId: string;
-
   declare version: number;
-
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
-
   declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
 
   declare isError: boolean;
-
   declare executionState: MCPExecutionState;
-
   declare runningState: MCPRunningState;
 
+  declare status: ToolExecutionStatus;
+
   declare citationsAllocated: number;
-
   declare augmentedInputs: Record<string, unknown>;
-
   declare toolConfiguration: LightMCPToolConfigurationType;
-
   declare stepContext: StepContext;
 
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
@@ -264,6 +258,11 @@ AgentMCPAction.init(
         isIn: [["not_started", "running", "completed", "errored"]],
       },
     },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: "succeeded",
+    },
     isError: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -311,6 +310,11 @@ AgentMCPAction.init(
       {
         fields: ["workspaceId", "agentMessageId", "executionState"],
         name: "agent_mcp_action_workspace_agent_message_execution_state",
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "agentMessageId", "status"],
+        name: "agent_mcp_action_workspace_agent_message_status",
         concurrently: true,
       },
     ],

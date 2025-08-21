@@ -34,6 +34,7 @@ import type {
 } from "@app/lib/actions/types";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { approvalStatusToToolExecutionStatus } from "@app/lib/actions/utils";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
@@ -172,7 +173,7 @@ export type MCPApproveExecutionEvent = {
 
 export function getMCPApprovalStateFromUserApprovalState(
   userApprovalState: ActionApprovalStateType
-): MCPExecutionState {
+) {
   switch (userApprovalState) {
     case "always_approved":
     case "approved":
@@ -186,18 +187,53 @@ export function getMCPApprovalStateFromUserApprovalState(
   }
 }
 
+// TODO(2025-08-20 aubin): remove this (consolidated into a single column).
 export type MCPExecutionState =
   | "allowed_explicitly"
   | "allowed_implicitly"
   | "denied"
-  | "pending"
-  | "timeout";
+  | "pending";
 
+// TODO(2025-08-20 aubin): remove this (consolidated into a single column).
 export type MCPRunningState =
   | "not_started"
   | "running"
   | "completed"
   | "errored";
+
+const TOOL_EXECUTION_FINAL_STATUS = ["succeeded", "errored", "denied"] as const;
+
+type ToolExecutionFinalStatus = (typeof TOOL_EXECUTION_FINAL_STATUS)[number];
+
+const TOOL_EXECUTION_TRANSIENT_STATUS = [
+  "ready_allowed_explicitly",
+  "ready_allowed_implicitly",
+  "blocked_pending_validation",
+  "running",
+] as const;
+
+type ToolExecutionTransientStatus =
+  (typeof TOOL_EXECUTION_TRANSIENT_STATUS)[number];
+
+export type ToolExecutionStatus =
+  | ToolExecutionFinalStatus
+  | ToolExecutionTransientStatus;
+
+export function isToolExecutionStatusFinal(
+  state: ToolExecutionStatus
+): state is ToolExecutionFinalStatus {
+  return TOOL_EXECUTION_FINAL_STATUS.includes(
+    state as ToolExecutionFinalStatus
+  );
+}
+
+export function isToolExecutionStatusTransient(
+  state: ToolExecutionStatus
+): state is ToolExecutionTransientStatus {
+  return TOOL_EXECUTION_TRANSIENT_STATUS.includes(
+    state as ToolExecutionTransientStatus
+  );
+}
 
 type MCPParamsEvent = {
   type: "tool_params";
@@ -277,6 +313,7 @@ export class MCPActionType {
   readonly citationsAllocated: number = 0;
   // TODO(2025-07-24 aubin): remove the type here.
   readonly type = "tool_action" as const;
+  readonly status: ToolExecutionStatus;
 
   readonly runningState: MCPRunningState;
 
@@ -298,6 +335,7 @@ export class MCPActionType {
     this.step = blob.step;
     this.citationsAllocated = blob.citationsAllocated;
     this.runningState = blob.runningState;
+    this.status = blob.status;
   }
 
   getGeneratedFiles(): ActionGeneratedFileType[] {
@@ -351,6 +389,17 @@ export class MCPActionType {
           "The tool returned too much content. The response cannot be processed.",
       };
     }
+
+    // TODO(durable-agents): uncomment the following once the `status` has been filled.
+    // if (this.status === "denied") {
+    //   return {
+    //     role: "function" as const,
+    //     name: this.functionCallName,
+    //     function_call_id: this.functionCallId,
+    //     content:
+    //       "The user rejected this specific action execution. Using this action is hence forbidden for this message.",
+    //   };
+    // }
 
     const outputItems = removeNulls(
       this.output?.map(rewriteContentForModel) ?? []
@@ -472,6 +521,7 @@ export async function* runToolWithStreaming(
 
   const { executionState } = mcpAction;
 
+  // TODO(durable-agents): remove this part once `status` has been filled (unreachable code path).
   if (executionState === "denied") {
     statsDClient.increment("mcp_actions_denied.count", 1, tags);
     localLogger.info("Action execution rejected by user");
@@ -617,12 +667,14 @@ export async function createMCPAction(
     augmentedInputs,
     stepContentId,
     stepContext,
+    approvalStatus,
   }: {
     actionBaseParams: ActionBaseParams;
     actionConfiguration: MCPToolConfigurationType;
     augmentedInputs: Record<string, unknown>;
     stepContentId: ModelId;
     stepContext: StepContext;
+    approvalStatus: "allowed_implicitly" | "pending";
   }
 ): Promise<{ action: AgentMCPAction; mcpAction: MCPActionType }> {
   const toolConfiguration = omit(
@@ -638,6 +690,7 @@ export async function createMCPAction(
     isError: false,
     mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
     runningState: "not_started",
+    status: approvalStatusToToolExecutionStatus(approvalStatus),
     stepContentId,
     stepContext,
     toolConfiguration,
@@ -710,6 +763,7 @@ export async function handleMCPActionError(
     // Update action to mark it as having an error.
     await action.update({
       isError: true,
+      status: "errored",
     });
 
     return {
@@ -723,6 +777,17 @@ export async function handleMCPActionError(
         metadata: params.errorMetadata ?? null,
       },
     };
+  }
+
+  // If the tool is not already in a final state, we set it to errored (could be denied).
+  if (
+    !isToolExecutionStatusFinal(
+      approvalStatusToToolExecutionStatus(executionState)
+    )
+  ) {
+    await action.update({
+      status: "errored",
+    });
   }
 
   // Yields tool_success to continue conversation.
@@ -765,7 +830,7 @@ export async function getMCPAction(
 // TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent mcp action.
 export async function updateMCPApprovalState(
   action: AgentMCPAction,
-  executionState: MCPExecutionState
+  executionState: "denied" | "allowed_explicitly"
 ): Promise<boolean> {
   if (action.executionState === executionState) {
     return false;
@@ -773,6 +838,7 @@ export async function updateMCPApprovalState(
 
   await action.update({
     executionState,
+    status: approvalStatusToToolExecutionStatus(executionState),
   });
 
   return true;

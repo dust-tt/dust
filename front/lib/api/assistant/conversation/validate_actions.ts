@@ -125,6 +125,7 @@ export async function validateAction(
         mcpServerId: action.toolConfiguration.toolServerId,
         step: agentStepContent.step,
         stepContentId: action.stepContentId,
+        status: action.status,
       });
       const toolName = actionBaseParams.functionCallName;
 
