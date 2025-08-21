@@ -163,9 +163,9 @@ export const InstructionBlockExtension =
     addAttributes() {
       return {
         type: {
-          default: "info",
+          default: "instructions",
           parseHTML: (element) =>
-            element.getAttribute("data-instruction-type") || "info",
+            element.getAttribute("data-instruction-type") || "instructions",
           renderHTML: (attributes) => ({
             "data-instruction-type": attributes.type,
           }),
@@ -230,7 +230,7 @@ export const InstructionBlockExtension =
               { from: range.from, to: range.to },
               {
                 type: this.name,
-                attrs: { type: type || "info" }, // Default to "info" if empty
+                attrs: { type: type || "instructions" }, // Default to "instructions" if empty
                 content: [{ type: "paragraph" }],
               }
             );
