@@ -23,6 +23,15 @@ export function setupGlobalErrorHandler(logger: LoggerInterface) {
   });
 
   process.on("uncaughtException", (error) => {
+    if (
+      error instanceof Error &&
+      (error.message.includes("other side closed") ||
+        error.message.includes("ECONNRESET"))
+    ) {
+      logger.warn({ error }, "Undici connection cleanup error (ignored)");
+      return;
+    }
+
     logger.error({ error, panic: true }, "Uncaught Exception");
   });
 }
