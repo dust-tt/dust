@@ -458,8 +458,8 @@ async function postSlackMessageUpdate(
     );
   }
 
-  // Always update state when we make an API call (regardless of success or adhereToRateLimit)
-  // This ensures we track all updates for accurate rate limiting
+  // Always update state when we make an API call (regardless of success or adhereToRateLimit).
+  // This ensures we track all updates for accurate rate limiting.
   updateCount++;
   lastUpdateTime = Date.now();
 
