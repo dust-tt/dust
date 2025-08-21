@@ -30,7 +30,7 @@ type ToolExecutionBlockedStatus =
 const TOOL_EXECUTION_TRANSIENT_STATUSES = [
   "ready_allowed_explicitly",
   "ready_allowed_implicitly",
-  "blocked_pending_validation",
+  "blocked_validation_required",
   ...TOOL_EXECUTION_BLOCKED_STATUSES,
   "running",
 ] as const;

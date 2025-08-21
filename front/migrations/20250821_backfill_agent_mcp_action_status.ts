@@ -11,7 +11,11 @@ const BATCH_SIZE = 2048;
 // succeeded is the default (99.1% of actions), we backfill errored using the `isError` column
 // and denied using the `executionState` column.
 
-type TargetStatus = "errored" | "denied" | "succeeded";
+type TargetStatus =
+  | "errored"
+  | "denied"
+  | "succeeded"
+  | "blocked_validation_required";
 
 function getWhereClause({
   lastId,
@@ -35,6 +39,11 @@ function getWhereClause({
       return {
         id: { [Op.gt]: lastId },
         status: "running",
+      };
+    case "blocked_validation_required":
+      return {
+        id: { [Op.gt]: lastId },
+        status: "blocked_pending_validation",
       };
   }
 }
