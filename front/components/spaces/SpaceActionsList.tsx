@@ -19,6 +19,7 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
+import { isDevelopment } from "@app/types";
 
 import { RequestActionsModal } from "./mcp/RequestActionsModal";
 import SpaceManagedActionsViewsModel from "./SpaceManagedActionsViewsModal";
@@ -82,6 +83,11 @@ export const SpaceActionsList = ({
             <div className="flex flex-row items-center gap-2 py-3">
               <div>{info.row.original.avatar}</div>
               <div className="flex-grow truncate">{info.getValue()}</div>
+              {isDevelopment() && (
+                <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                  {info.row.original.id}
+                </div>
+              )}
             </div>
           </DataTable.CellContent>
         ),
