@@ -158,6 +158,87 @@ function makeQueryResource(
   };
 }
 
+// Common Zod parameter schema parts shared by search tools.
+const buildCommonSearchParams = () => ({
+  channels: z
+    .string()
+    .array()
+    .optional()
+    .describe("Narrow the search to a specific channels names (optional)"),
+  usersFrom: z
+    .string()
+    .array()
+    .optional()
+    .describe(
+      "Narrow the search to messages wrote by specific users ids (optional)"
+    ),
+  usersTo: z
+    .string()
+    .array()
+    .optional()
+    .describe(
+      "Narrow the search to direct messages sent to specific user IDs (optional)"
+    ),
+  usersMentioned: z
+    .string()
+    .array()
+    .optional()
+    .describe(
+      "Narrow the search to messages mentioning specific users ids (optional)"
+    ),
+  relativeTimeFrame: z
+    .string()
+    .regex(/^(all|\d+[hdwmy])$/)
+    .describe(
+      "The time frame (relative to LOCAL_TIME) to restrict the search based" +
+        " on the user request and past conversation context." +
+        " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
+        " where {k} is a number. Be strict, do not invent invalid values." +
+        " Also, do not pass this unless the user explicitly asks for some timeframe."
+    ),
+});
+
+function buildSlackSearchQuery(
+  initial: string,
+  {
+    timeFrame,
+    channels,
+    usersFrom,
+    usersTo,
+    usersMentioned,
+  }: {
+    timeFrame: TimeFrame | null;
+    channels?: string[];
+    usersFrom?: string[];
+    usersTo?: string[];
+    usersMentioned?: string[];
+  }
+): string {
+  let query = initial;
+  if (timeFrame) {
+    const timestampInMs = timeFrameFromNow(timeFrame);
+    const date = new Date(timestampInMs);
+    query = `${query} after:${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+  }
+  if (channels && channels.length > 0) {
+    query = `${query} ${channels
+      .map((channel) =>
+        channel.charAt(0) === "#" ? `in:${channel}` : `in:#${channel}`
+      )
+      .join(" ")}`;
+  }
+  if (usersFrom && usersFrom.length > 0) {
+    query = `${query} ${usersFrom.map((user) => `from:${user}`).join(" ")}`;
+  }
+  if (usersTo && usersTo.length > 0) {
+    query = `${query} ${usersTo.map((user) => `to:${user}`).join(" ")}`;
+  }
+  if (usersMentioned && usersMentioned.length > 0) {
+    query = `${query} ${usersMentioned.map((user) => `${user}`).join(" ")}`;
+  }
+  return query;
+}
+
 function isSlackTokenRevoked(error: unknown): boolean {
   return (
     typeof error === "object" &&
@@ -295,43 +376,7 @@ const createServer = async (
             "Between 1 and 3 keywords to retrieve relevant messages " +
               "based on the user request and conversation context."
           ),
-        channels: z
-          .string()
-          .array()
-          .optional()
-          .describe(
-            "Narrow the search to a specific channels names (optional)"
-          ),
-        usersFrom: z
-          .string()
-          .array()
-          .optional()
-          .describe(
-            "Narrow the search to messages wrote by specific users ids (optional)"
-          ),
-        usersTo: z
-          .string()
-          .array()
-          .optional()
-          .describe(
-            "Narrow the search to direct messages sent to specific users ids (optional)"
-          ),
-        usersMentioned: z
-          .string()
-          .array()
-          .optional()
-          .describe(
-            "Narrow the search to messages mentioning specific users ids (optional)"
-          ),
-        relativeTimeFrame: z
-          .string()
-          .regex(/^(all|\d+[hdwmy])$/)
-          .describe(
-            "The time frame (relative to LOCAL_TIME) to restrict the search based" +
-              " on the user request and past conversation context." +
-              " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
-              " where {k} is a number. Be strict, do not invent invalid values."
-          ),
+        ...buildCommonSearchParams(),
       },
       async (
         {
@@ -366,35 +411,13 @@ const createServer = async (
           const results: Match[][] = await concurrentExecutor(
             keywords,
             async (keyword) => {
-              let query = keyword;
-
-              if (timeFrame) {
-                const timestampInMs = timeFrameFromNow(timeFrame);
-                const date = new Date(timestampInMs);
-                query = `${query} after:${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-              }
-
-              if (channels && channels.length > 0) {
-                query = `${query} ${channels
-                  .map((channel) =>
-                    channel.charAt(0) === "#"
-                      ? `in:${channel}`
-                      : `in:#${channel}`
-                  )
-                  .join(" ")}`;
-              }
-
-              if (usersFrom && usersFrom.length > 0) {
-                query = `${query} ${usersFrom.map((user) => `from:${user}`).join(" ")}`;
-              }
-
-              if (usersTo && usersTo.length > 0) {
-                query = `${query} ${usersTo.map((user) => `to:${user}`).join(" ")}`;
-              }
-
-              if (usersMentioned && usersMentioned.length > 0) {
-                query = `${query} ${usersMentioned.map((user) => `${user}`).join(" ")}`;
-              }
+              const query = buildSlackSearchQuery(keyword, {
+                timeFrame,
+                channels,
+                usersFrom,
+                usersTo,
+                usersMentioned,
+              });
 
               const messages = await slackClient.search.messages({
                 query,
@@ -520,44 +543,7 @@ const createServer = async (
           .describe(
             "A query to retrieve relevant messages based on the user request and conversation context. For it to be treated as semantic search, make sure it begins with a question word such as what, where, how, etc, and ends with a question mark. If the user asks to limit to certain channels, don't make them part of this query. Instead, use the `channels` parameter to limit the search to specific channels. But only do this if the user explicitly asks for it, otherwise, the search will be more effective if you don't limit it to specific channels."
           ),
-        channels: z
-          .string()
-          .array()
-          .optional()
-          .describe(
-            "Narrow the search to a specific channels names (optional)"
-          ),
-        usersFrom: z
-          .string()
-          .array()
-          .optional()
-          .describe(
-            "Narrow the search to messages wrote by specific users ids (optional)"
-          ),
-        usersTo: z
-          .string()
-          .array()
-          .optional()
-          .describe(
-            "Narrow the search to direct messages sent to specific user IDs (optional)"
-          ),
-        usersMentioned: z
-          .string()
-          .array()
-          .optional()
-          .describe(
-            "Narrow the search to messages mentioning specific users ids (optional)"
-          ),
-        relativeTimeFrame: z
-          .string()
-          .regex(/^(all|\d+[hdwmy])$/)
-          .describe(
-            "The time frame (relative to LOCAL_TIME) to restrict the search based" +
-              " on the user request and past conversation context." +
-              " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
-              " where {k} is a number. Be strict, do not invent invalid values." +
-              " Also, do not pass this unless the user explicitly asks for some timeframe."
-          ),
+        ...buildCommonSearchParams(),
       },
       async (
         {
@@ -579,33 +565,13 @@ const createServer = async (
         const timeFrame = parseTimeFrame(relativeTimeFrame);
 
         try {
-          let searchQuery = query;
-
-          if (timeFrame) {
-            const timestampInMs = timeFrameFromNow(timeFrame);
-            const date = new Date(timestampInMs);
-            searchQuery = `${searchQuery} after:${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-          }
-
-          if (channels && channels.length > 0) {
-            searchQuery = `${searchQuery} ${channels
-              .map((channel) =>
-                channel.charAt(0) === "#" ? `in:${channel}` : `in:#${channel}`
-              )
-              .join(" ")}`;
-          }
-
-          if (usersFrom && usersFrom.length > 0) {
-            searchQuery = `${searchQuery} ${usersFrom.map((user) => `from:${user}`).join(" ")}`;
-          }
-
-          if (usersTo && usersTo.length > 0) {
-            searchQuery = `${searchQuery} ${usersTo.map((user) => `to:${user}`).join(" ")}`;
-          }
-
-          if (usersMentioned && usersMentioned.length > 0) {
-            searchQuery = `${searchQuery} ${usersMentioned.map((user) => `${user}`).join(" ")}`;
-          }
+          const searchQuery = buildSlackSearchQuery(query, {
+            timeFrame,
+            channels,
+            usersFrom,
+            usersTo,
+            usersMentioned,
+          });
 
           // The slack client library does not support the assistant.search.context endpoint,
           // so we use the raw fetch API to call it (GET with query params).
