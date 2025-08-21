@@ -1,4 +1,4 @@
-import { Button, Spinner } from "@dust-tt/sparkle";
+import { ArrowPathIcon, Button, Spinner } from "@dust-tt/sparkle";
 import { useContext } from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -104,7 +104,7 @@ function PreviewContent({
   return (
     <>
       <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
-        <div className="flex-1 overflow-y-auto px-4">
+        <div className="flex-1 overflow-y-auto">
           {conversation && user && (
             <ConversationViewer
               owner={owner}
@@ -120,12 +120,13 @@ function PreviewContent({
           <div className="flex justify-center px-4">
             <Button
               variant="outline"
+              icon={ArrowPathIcon}
               onClick={resetConversation}
               label="Clear conversation"
             />
           </div>
         )}
-        <div className="flex-shrink-0 p-4">
+        <div className="flex-shrink-0 py-4">
           <AssistantInputBar
             disable={isSavingDraftAgent}
             owner={owner}
