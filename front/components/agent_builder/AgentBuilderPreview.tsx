@@ -68,7 +68,7 @@ function LoadingState({ message }: LoadingStateProps) {
 
 interface PreviewContentProps {
   conversation: ConversationWithoutContentType | null;
-  user: UserType;
+  user: UserType | null;
   owner: WorkspaceType;
   currentPanel: ConversationSidePanelType;
   resetConversation: () => void;
@@ -105,7 +105,7 @@ function PreviewContent({
     <>
       <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
         <div className="flex-1 overflow-y-auto px-4">
-          {conversation && (
+          {conversation && user && (
             <ConversationViewer
               owner={owner}
               user={user}
@@ -206,7 +206,7 @@ export function AgentBuilderPreview() {
     return (
       <PreviewContent
         conversation={conversation}
-        user={user!}
+        user={user}
         owner={owner}
         currentPanel={currentPanel}
         resetConversation={resetConversation}
