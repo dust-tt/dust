@@ -433,8 +433,6 @@ export async function getGlobalAgents(
     );
   }
 
-  console.log("\n\nagentsIdsToFetch", agentsIdsToFetch, "\n\n");
-
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
   const agentCandidates = agentsIdsToFetch.map((sId) =>

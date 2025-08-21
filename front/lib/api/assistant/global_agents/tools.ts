@@ -18,7 +18,7 @@ export type PrefetchedDataSourcesType = {
   workspaceId: string;
 };
 
-export async function getDataSourcesAndWorkspaceIdForGlobalAgents(
+export async function getDataSourceAndWorkspaceIdForGlobalAgents(
   auth: Authenticator
 ): Promise<PrefetchedDataSourcesType> {
   const owner = auth.getNonNullableWorkspace();

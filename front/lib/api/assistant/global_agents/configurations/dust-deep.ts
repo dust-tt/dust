@@ -199,34 +199,32 @@ function getCompanyDataWarehousesAction(
   const globalWarehouses = preFetchedDataSources.dataSourceViews.filter(
     (dsView) => dsView.isInGlobalSpace && isRemoteDatabase(dsView.dataSource)
   );
+
   if (globalWarehouses.length === 0 || !dataWarehousesMCPServerView) {
     return null;
   }
 
-  if (globalWarehouses.length > 0) {
-    return {
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.RESEARCH + "-data-warehouses-action",
-      type: "mcp_server_configuration",
-      name: "data_warehouses",
-      description: "The user's data warehouses.",
-      mcpServerViewId: dataWarehousesMCPServerView.sId,
-      internalMCPServerId: dataWarehousesMCPServerView.internalMCPServerId,
-      dataSources: globalWarehouses.map((dsView) => ({
-        dataSourceViewId: dsView.sId,
-        workspaceId: preFetchedDataSources.workspaceId,
-        filter: { parents: null, tags: null },
-      })),
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-    };
-  }
-  return null;
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.RESEARCH + "-data-warehouses-action",
+    type: "mcp_server_configuration",
+    name: "data_warehouses",
+    description: "The user's data warehouses.",
+    mcpServerViewId: dataWarehousesMCPServerView.sId,
+    internalMCPServerId: dataWarehousesMCPServerView.internalMCPServerId,
+    dataSources: globalWarehouses.map((dsView) => ({
+      dataSourceViewId: dsView.sId,
+      workspaceId: preFetchedDataSources.workspaceId,
+      filter: { parents: null, tags: null },
+    })),
+    tables: null,
+    childAgentId: null,
+    reasoningModel: null,
+    additionalConfiguration: {},
+    timeFrame: null,
+    dustAppConfiguration: null,
+    jsonSchema: null,
+  };
 }
 
 export function _getDustDeepGlobalAgent(
