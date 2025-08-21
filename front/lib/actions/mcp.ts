@@ -48,7 +48,10 @@ import type {
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
-import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
+import type {
+  AdditionalConfigurationType,
+  AgentMCPAction,
+} from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -487,7 +490,7 @@ export async function* runToolWithStreaming(
     `workspace_name:${owner.name}`,
   ];
 
-  const { executionState, status } = mcpAction;
+  const { executionState } = mcpAction;
 
   // Use the augmented inputs that were computed and stored during action creation
   const inputs = action.augmentedInputs;
@@ -572,7 +575,7 @@ export async function* runToolWithStreaming(
       agentMessage,
       actionBaseParams,
       executionState,
-      status,
+      status: "errored",
       errorMessage,
       yieldAsError: false,
     });
@@ -729,9 +732,7 @@ export async function handleMCPActionError(
 
   // If the tool is not already in a final state, we set it to errored (could be denied).
   if (!isToolExecutionStatusFinal(status)) {
-    await action.update({
-      status: "errored",
-    });
+    await action.updateStatus("errored");
   }
 
   // Yields tool_success to continue conversation.
@@ -772,7 +773,7 @@ export async function getMCPAction(
 }
 
 export async function updateMCPApprovalState(
-  action: AgentMCPActionResource,
+  action: AgentMCPAction,
   executionState: "denied" | "allowed_explicitly"
 ): Promise<boolean> {
   const status = approvalStatusToToolExecutionStatus(executionState);
@@ -780,16 +781,10 @@ export async function updateMCPApprovalState(
     return false;
   }
 
-<<<<<<< HEAD
   await action.update({
     executionState,
     status,
   });
-=======
-  await action.updateStatus(
-    approvalStatusToToolExecutionStatus(executionState)
-  );
->>>>>>> 9ef6d4f27 (move to using AgentMCPAction only)
 
   return true;
 }

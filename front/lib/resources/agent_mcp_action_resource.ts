@@ -296,6 +296,24 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     return actions;
   }
 
+  toJSON() {
+    return {
+      agentMessageId: this.agentMessageId,
+      augmentedInputs: this.augmentedInputs,
+      citationsAllocated: this.citationsAllocated,
+      executionState: this.executionState,
+      isError: this.isError,
+      mcpServerConfigurationId: this.mcpServerConfigurationId,
+      runningState: this.runningState,
+      status: this.status,
+      stepContentId: this.stepContentId,
+      stepContext: this.stepContext,
+      toolConfiguration: this.toolConfiguration,
+      version: this.version,
+      workspaceId: this.workspaceId,
+    };
+  }
+
   async updateStatus(
     status: ToolExecutionStatus
   ): Promise<[affectedCount: number]> {
