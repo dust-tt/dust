@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -87,9 +88,7 @@ export function ProcessingMethodSection() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="mb-2 text-lg font-semibold">
-          Processing method {hasOnlyTablesSelected ? "yes" : "no"}
-        </h3>
+        <h3 className="mb-2 text-lg font-semibold">Processing method</h3>
       </div>
 
       <div className="space-y-2">
@@ -132,9 +131,7 @@ export function ProcessingMethodSection() {
         </DropdownMenu>
 
         {!hasOnlyTablesSelected && hasSomeTablesSelected && (
-          <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-            Your tables will be ignored
-          </div>
+          <Chip color="info" size="sm" label=" Your tables will be ignored " />
         )}
       </div>
     </div>
