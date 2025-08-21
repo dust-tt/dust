@@ -349,16 +349,15 @@ export class MCPActionType {
       };
     }
 
-    // TODO(durable-agents): uncomment the following once the `status` has been filled.
-    // if (this.status === "denied") {
-    //   return {
-    //     role: "function" as const,
-    //     name: this.functionCallName,
-    //     function_call_id: this.functionCallId,
-    //     content:
-    //       "The user rejected this specific action execution. Using this action is hence forbidden for this message.",
-    //   };
-    // }
+    if (this.status === "denied") {
+      return {
+        role: "function" as const,
+        name: this.functionCallName,
+        function_call_id: this.functionCallId,
+        content:
+          "The user rejected this specific action execution. Using this action is hence forbidden for this message.",
+      };
+    }
 
     const outputItems = removeNulls(
       this.output?.map(rewriteContentForModel) ?? []
@@ -479,25 +478,7 @@ export async function* runToolWithStreaming(
     `workspace_name:${owner.name}`,
   ];
 
-  const { executionState } = mcpAction;
-
-  // TODO(durable-agents): remove this part once `status` has been filled (unreachable code path).
-  if (executionState === "denied") {
-    statsDClient.increment("mcp_actions_denied.count", 1, tags);
-    localLogger.info("Action execution rejected by user");
-
-    yield await handleMCPActionError({
-      action,
-      agentConfiguration,
-      agentMessage,
-      actionBaseParams,
-      executionState,
-      errorMessage:
-        "The user rejected this specific action execution. Using this action is hence forbidden for this message.",
-      yieldAsError: false,
-    });
-    return;
-  }
+  const { executionState, status } = mcpAction;
 
   // Use the augmented inputs that were computed and stored during action creation
   const inputs = action.augmentedInputs;
@@ -584,6 +565,7 @@ export async function* runToolWithStreaming(
       agentMessage,
       actionBaseParams,
       executionState,
+      status,
       errorMessage,
       yieldAsError: false,
     });
@@ -613,6 +595,7 @@ export async function* runToolWithStreaming(
       ...actionBaseParams,
       generatedFiles,
       executionState,
+      status: "succeeded",
       id: action.id,
       isError: false,
       output: removeNulls(outputItems.map(hideFileFromActionOutput)),
@@ -684,6 +667,7 @@ type BaseErrorParams = {
   agentMessage: AgentMessageType;
   errorMessage: string;
   executionState: MCPExecutionState;
+  status: ToolExecutionStatus;
 };
 
 // Yields tool_error (stops conversation) - for auth/validation failures.
@@ -708,8 +692,13 @@ type HandleErrorParams = YieldAsErrorParams | YieldAsSuccessParams;
 export async function handleMCPActionError(
   params: HandleErrorParams
 ): Promise<MCPErrorEvent | MCPSuccessEvent> {
-  const { agentConfiguration, agentMessage, errorMessage, executionState } =
-    params;
+  const {
+    agentConfiguration,
+    agentMessage,
+    errorMessage,
+    executionState,
+    status,
+  } = params;
 
   const outputContent: CallToolResult["content"][number] = {
     type: "text",
@@ -746,11 +735,7 @@ export async function handleMCPActionError(
   }
 
   // If the tool is not already in a final state, we set it to errored (could be denied).
-  if (
-    !isToolExecutionStatusFinal(
-      approvalStatusToToolExecutionStatus(executionState)
-    )
-  ) {
+  if (!isToolExecutionStatusFinal(status)) {
     await action.update({
       status: "errored",
     });
@@ -766,6 +751,7 @@ export async function handleMCPActionError(
       ...actionBaseParams,
       generatedFiles: [],
       executionState,
+      status,
       id: action.id,
       isError: false,
       output: [outputContent],
@@ -798,13 +784,14 @@ export async function updateMCPApprovalState(
   action: AgentMCPAction,
   executionState: "denied" | "allowed_explicitly"
 ): Promise<boolean> {
-  if (action.executionState === executionState) {
+  const status = approvalStatusToToolExecutionStatus(executionState);
+  if (action.status === status) {
     return false;
   }
 
   await action.update({
     executionState,
-    status: approvalStatusToToolExecutionStatus(executionState),
+    status,
   });
 
   return true;
