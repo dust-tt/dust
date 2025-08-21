@@ -46,7 +46,7 @@ function AppSelectionTable({
 }: AppSelectionTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-2">
       <SearchInput
         name="search"
         placeholder="Search"
@@ -173,7 +173,6 @@ export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
     {
       id: "name",
       accessorKey: "name",
-      header: () => null,
       cell: ({ row }) => (
         <DataTable.CellContent icon={CommandLineIcon}>
           <div className="flex flex-col gap-1">
@@ -195,7 +194,7 @@ export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
       title="Select a Dust App"
       error={fieldState.error?.message}
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex h-full flex-col gap-3">
         <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           The agent will execute a{" "}
           <a
@@ -249,23 +248,16 @@ export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
             handleRowSelectionChange={handleRowSelectionChange}
           />
         ) : (
-          <AppMessage
-            title={
-              allowedSpaces.length === 0
-                ? "No spaces available"
-                : !selectedSpace
-                  ? "Select a space"
-                  : "No Dust apps available"
-            }
-          >
-            {allowedSpaces.length === 0
-              ? "You need access to at least one space to select Dust apps."
-              : !selectedSpace
-                ? "Please select a space to view available Dust apps."
-                : apps.length > 0
-                  ? "Dust apps without a description are not selectable. To make a Dust App selectable, edit it and add a description."
-                  : "No Dust apps found in this space. Create a Dust app first."}
-          </AppMessage>
+          <div className="flex flex-1 items-center justify-center">
+            <div className="px-4 text-center">
+              <div className="mb-2 text-lg font-medium text-foreground">
+                No Dust Apps available for this space
+              </div>
+              <div className="max-w-sm text-muted-foreground">
+                Create one or ask your admin to install apps from other spaces.
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </ConfigurationSectionContainer>
