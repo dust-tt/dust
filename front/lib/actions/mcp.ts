@@ -202,8 +202,7 @@ export type MCPRunningState =
 
 const TOOL_EXECUTION_FINAL_STATUS = ["succeeded", "errored", "denied"] as const;
 
-export type ToolExecutionFinalStatus =
-  (typeof TOOL_EXECUTION_FINAL_STATUS)[number];
+type ToolExecutionFinalStatus = (typeof TOOL_EXECUTION_FINAL_STATUS)[number];
 
 const TOOL_EXECUTION_TRANSIENT_STATUS = [
   "allowed_explicitly",
@@ -212,7 +211,7 @@ const TOOL_EXECUTION_TRANSIENT_STATUS = [
   "running",
 ] as const;
 
-export type ToolExecutionTransientStatus =
+type ToolExecutionTransientStatus =
   (typeof TOOL_EXECUTION_TRANSIENT_STATUS)[number];
 
 export type ToolExecutionStatus =
