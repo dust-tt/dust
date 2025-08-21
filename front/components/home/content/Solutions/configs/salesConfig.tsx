@@ -237,8 +237,8 @@ export const salesFAQItems = [
         <br />
         <h3>They connect all your tools</h3>
         While Salesforce AI only knows Salesforce data and HubSpot's AI stays
-        within HubSpot's walls, AI sales agents break down these silos entirely.
-        They connect across your entire sales ecosystem:
+        within HubSpot's walls, Dust AI sales agents break down these silos
+        entirely. They connect across your entire sales ecosystem:
         <ul>
           <li>CRM records</li>
           <li>Support tickets</li>
@@ -401,16 +401,13 @@ export const salesFAQItems = [
         their sales process.
         <br />
         <br />
-        <strong>Want to try it out?</strong> Take a look at how other teams use
-        these agents,{" "}
+        <strong>Want to try it out?</strong>
+        <br /> Take a look at how other teams use these agents, try Dust for
+        free today or{" "}
         <Link href="/home/pricing" className="underline underline-offset-4">
-          build your first one now
-        </Link>
-        , or{" "}
-        <Link href="/home/contact" className="underline underline-offset-4">
-          talk to our sales team
+          talk to our sales team{" "}
         </Link>{" "}
-        to see how AI sales agents can improve your process.
+        to see how AI sales agents can improve your process.{" "}
       </>
     ),
   },
