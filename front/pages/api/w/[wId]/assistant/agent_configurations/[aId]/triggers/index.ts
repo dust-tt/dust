@@ -106,6 +106,9 @@ async function handler(
       const resultTriggers: TriggerType[] = [];
       const errors: Error[] = [];
 
+      console.log(currentTriggersMap);
+      console.log(requestTriggers);
+
       for (const triggerData of requestTriggers) {
         const bodyValidation = TriggerSchema.decode(triggerData);
 
@@ -152,7 +155,7 @@ async function handler(
             name: validatedTrigger.name,
             description: validatedTrigger.description,
             kind: validatedTrigger.kind,
-            configuration: validatedTrigger.config,
+            configuration: validatedTrigger.configuration,
             editor: auth.getNonNullableUser().id,
           });
 

@@ -10,7 +10,10 @@ export type ScheduleConfig = {
 
 export type TriggerConfigurationType = ScheduleConfig;
 
-export type TriggerConfiguration = { kind: "schedule"; config: ScheduleConfig };
+export type TriggerConfiguration = {
+  kind: "schedule";
+  configuration: ScheduleConfig;
+};
 
 export type TriggerType = {
   id: ModelId;
@@ -37,5 +40,5 @@ export const TriggerSchema = t.type({
   name: t.string,
   description: t.string,
   kind: t.literal("schedule"),
-  config: ScheduleConfigSchema,
+  configuration: ScheduleConfigSchema,
 });

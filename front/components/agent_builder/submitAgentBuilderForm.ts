@@ -251,13 +251,7 @@ export async function submitAgentBuilderForm({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          triggers: formData.triggers.map((trigger) => ({
-            name: trigger.name,
-            description: trigger.description,
-            kind: trigger.kind,
-            config: trigger.config,
-            sId: trigger.sId || undefined,
-          })),
+          triggers: formData.triggers,
         }),
       }
     );

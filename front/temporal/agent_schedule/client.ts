@@ -33,8 +33,8 @@ function getScheduleOptions(
       overlap: ScheduleOverlapPolicy.SKIP,
     },
     spec: {
-      cronExpressions: [trigger.config.cron],
-      timezone: trigger.config.timezone,
+      cronExpressions: [trigger.configuration.cron],
+      timezone: trigger.configuration.timezone,
     },
   };
 }
@@ -63,7 +63,7 @@ export async function createOrUpdateAgentScheduleWorkflow({
 
   if (trigger.kind !== "schedule") {
     childLogger.error(
-      { triggerConfig: trigger.config },
+      { triggerConfig: trigger.configuration },
       "Trigger is not a schedule."
     );
     return new Err(new Error("Trigger is not a schedule"));

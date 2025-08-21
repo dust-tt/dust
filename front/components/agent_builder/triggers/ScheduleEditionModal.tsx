@@ -13,13 +13,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
 import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
-import {
+import type {
   AgentBuilderTriggerType,
   ScheduleFormData,
-  scheduleFormSchema,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { scheduleFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 
 interface ScheduleEditionModalProps {
@@ -52,8 +51,8 @@ export function ScheduleEditionModal({
     reset({
       name: trigger?.name ?? defaultValues.name,
       description: trigger?.description ?? defaultValues.description,
-      cron: trigger?.config?.cron ?? defaultValues.cron,
-      timezone: trigger?.config?.timezone ?? defaultValues.timezone,
+      cron: trigger?.configuration?.cron ?? defaultValues.cron,
+      timezone: trigger?.configuration?.timezone ?? defaultValues.timezone,
     });
   }, [
     reset,
@@ -75,7 +74,7 @@ export function ScheduleEditionModal({
       name: data.name.trim(),
       description: data.description.trim(),
       kind: "schedule",
-      config: {
+      configuration: {
         cron: data.cron.trim(),
         timezone: data.timezone.trim(),
       },
