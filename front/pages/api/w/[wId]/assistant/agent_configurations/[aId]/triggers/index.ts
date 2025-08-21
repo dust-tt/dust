@@ -51,7 +51,7 @@ async function handler(
 
   const triggers = await TriggerResource.listByAgentConfigurationId(
     auth,
-    agentConfiguration.id
+    agentConfigurationId
   );
 
   switch (req.method) {
@@ -116,7 +116,7 @@ async function handler(
           const updatedTrigger = await TriggerResource.update(
             auth,
             existingTrigger.sId,
-            { ...validatedTrigger, agentConfigurationId: agentConfiguration.id }
+            validatedTrigger
           );
           if (updatedTrigger.isErr()) {
             return apiError(req, res, {
@@ -135,7 +135,7 @@ async function handler(
           const newTrigger = await TriggerResource.makeNew(auth, {
             sId,
             workspaceId: workspace.id,
-            agentConfigurationId: agentConfiguration.id,
+            agentConfigurationId,
             name: validatedTrigger.name,
             description: validatedTrigger.description,
             kind: validatedTrigger.kind,
