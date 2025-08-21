@@ -25,6 +25,10 @@ export const FILESYSTEM_CAT_TOOL_NAME = "cat";
 export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
+export const DATA_WAREHOUSES_LIST_TOOL_NAME = "list";
+export const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
+export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
+export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
