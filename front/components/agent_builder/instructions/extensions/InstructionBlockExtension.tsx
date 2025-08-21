@@ -218,8 +218,6 @@ export const InstructionBlockExtension =
         new InputRule({
           find: OPENING_TAG_REGEX,
           handler: ({ range, match, commands }) => {
-            // Use the tag name if provided, otherwise default to empty string
-            // The user can edit it after creation
             const type = match[1] ? match[1].toLowerCase() : "";
 
             if (this.editor.isActive(this.name)) {
@@ -230,7 +228,7 @@ export const InstructionBlockExtension =
               { from: range.from, to: range.to },
               {
                 type: this.name,
-                attrs: { type: type || "instructions" }, // Default to "instructions" if empty
+                attrs: { type: type || "instructions" },
                 content: [{ type: "paragraph" }],
               }
             );
