@@ -34,6 +34,7 @@ import type {
 } from "@app/lib/actions/types";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { approvalStatusToToolExecutionStatus } from "@app/lib/actions/utils";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
@@ -205,9 +206,9 @@ const TOOL_EXECUTION_FINAL_STATUS = ["succeeded", "errored", "denied"] as const;
 type ToolExecutionFinalStatus = (typeof TOOL_EXECUTION_FINAL_STATUS)[number];
 
 const TOOL_EXECUTION_TRANSIENT_STATUS = [
-  "allowed_explicitly",
-  "allowed_implicitly",
-  "pending",
+  "ready_allowed_explicitly",
+  "ready_allowed_implicitly",
+  "blocked_pending_validation",
   "running",
 ] as const;
 
@@ -689,7 +690,7 @@ export async function createMCPAction(
     isError: false,
     mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
     runningState: "not_started",
-    status: approvalStatus,
+    status: approvalStatusToToolExecutionStatus(approvalStatus),
     stepContentId,
     stepContext,
     toolConfiguration,
@@ -779,7 +780,11 @@ export async function handleMCPActionError(
   }
 
   // If the tool is not already in a final state, we set it to errored (could be denied).
-  if (!isToolExecutionStatusFinal(executionState)) {
+  if (
+    !isToolExecutionStatusFinal(
+      approvalStatusToToolExecutionStatus(executionState)
+    )
+  ) {
     await action.update({
       status: "errored",
     });
@@ -833,7 +838,7 @@ export async function updateMCPApprovalState(
 
   await action.update({
     executionState,
-    status: executionState,
+    status: approvalStatusToToolExecutionStatus(executionState),
   });
 
   return true;

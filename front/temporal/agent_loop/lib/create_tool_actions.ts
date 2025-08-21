@@ -3,7 +3,10 @@ import { createMCPAction } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { StepContext } from "@app/lib/actions/types";
-import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
+import {
+  approvalStatusToToolExecutionStatus,
+  getExecutionStatusFromConfig,
+} from "@app/lib/actions/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
@@ -109,7 +112,7 @@ async function createActionForTool(
     mcpServerConfigurationId: actionConfiguration.id.toString(),
     step,
     stepContentId,
-    status,
+    status: approvalStatusToToolExecutionStatus(status),
   });
 
   const validateToolInputsResult = validateToolInputs(actionBaseParams.params);
