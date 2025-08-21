@@ -28,6 +28,7 @@ import { DustError } from "@app/lib/error";
 import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
+import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
@@ -251,6 +252,13 @@ export class InternalMCPServerInMemoryResource {
     });
 
     await MCPServerConnection.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        internalMCPServerId: this.id,
+      },
+    });
+
+    await RemoteMCPServerToolMetadataModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         internalMCPServerId: this.id,
