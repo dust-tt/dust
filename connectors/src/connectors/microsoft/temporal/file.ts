@@ -600,7 +600,10 @@ export async function deleteFile({
   } else {
     await deleteDataSourceDocument(dataSourceConfig, internalId);
   }
-  return (await file.delete()).isOk();
+
+  const deletedRes = await file.delete();
+
+  return deletedRes.isOk();
 }
 
 export function isAlreadySeenItem({
