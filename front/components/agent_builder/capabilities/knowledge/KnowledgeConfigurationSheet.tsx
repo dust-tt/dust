@@ -7,12 +7,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
 import { useEffect, useMemo, useState } from "react";
-import {
-  FormProvider,
-  useForm,
-  useFormContext,
-  useWatch,
-} from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useAgentBuilderFormActions } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -48,13 +43,11 @@ import {
 } from "@app/components/agent_builder/types";
 import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
+import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type {
-  DataSourceViewSelectionConfigurations,
-  TemplateActionPreset,
-} from "@app/types";
+import type { TemplateActionPreset } from "@app/types";
 
 interface KnowledgeConfigurationSheetProps {
   onSave: (action: AgentBuilderAction) => void;
@@ -79,13 +72,17 @@ export function KnowledgeConfigurationSheet({
 }: KnowledgeConfigurationSheetProps) {
   const open = action !== null;
   const { spaces } = useSpacesContext();
+  const { supportedDataSourceViews } = useDataSourceViewsContext();
 
-  const handleSave = (
-    formData: CapabilityFormData,
-    dataSourceConfigurations: DataSourceViewSelectionConfigurations
-  ) => {
+  const handleSave = (formData: CapabilityFormData) => {
     const { description, configuration, mcpServerView } = formData;
     const requirements = getMCPServerRequirements(mcpServerView);
+
+    // Transform the tree structure to selection configurations
+    const dataSourceConfigurations = transformTreeToSelectionConfigurations(
+      formData.sources,
+      supportedDataSourceViews
+    );
 
     const datasource =
       requirements.requiresDataSourceConfiguration ||
@@ -183,30 +180,31 @@ export function KnowledgeConfigurationSheet({
     };
   }, [action, mcpServerViews, isEditing, presetActionData]);
 
-  const formMethods = useForm<CapabilityFormData>({
+  const form = useForm<CapabilityFormData>({
     resolver: zodResolver(capabilityFormSchema),
     defaultValues,
   });
+  const { reset } = form;
 
   // Reset form when defaultValues change (e.g., when editing different actions)
   useEffect(() => {
-    formMethods.reset(defaultValues);
-  }, [defaultValues, formMethods]);
+    reset(defaultValues);
+  }, [defaultValues, reset]);
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       onClose();
-      formMethods.reset(defaultValues);
+      form.reset(defaultValues);
     }
   };
 
   return (
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
-      <FormProvider {...formMethods}>
+      <FormProvider form={form}>
         {debouncedOpen && (
           <DataSourceBuilderProvider spaces={spaces}>
             <KnowledgeConfigurationSheetContent
-              onSave={handleSave}
+              onSave={form.handleSubmit(handleSave)}
               open={open}
               getAgentInstructions={getAgentInstructions}
               isEditing={isEditing}
@@ -220,10 +218,7 @@ export function KnowledgeConfigurationSheet({
 }
 
 interface KnowledgeConfigurationSheetContentProps {
-  onSave: (
-    formData: CapabilityFormData,
-    dataSourceConfigurations: DataSourceViewSelectionConfigurations
-  ) => void;
+  onSave: () => void;
   open: boolean;
   getAgentInstructions: () => string;
   isEditing: boolean;
@@ -237,8 +232,6 @@ function KnowledgeConfigurationSheetContent({
   isEditing,
   presetActionData,
 }: KnowledgeConfigurationSheetContentProps) {
-  const { handleSubmit } = useFormContext<CapabilityFormData>();
-
   const { actions } = useAgentBuilderFormActions();
   const { mcpServerViews } = useMCPServerViewsContext();
   const { spaces } = useSpacesContext();
@@ -355,15 +348,7 @@ function KnowledgeConfigurationSheetContent({
       pages={pages}
       currentPageId={currentPageId}
       onPageChange={handlePageChange}
-      onSave={handleSubmit((formData) => {
-        // Transform the tree structure to selection configurations
-        const dataSourceConfigurations = transformTreeToSelectionConfigurations(
-          formData.sources,
-          supportedDataSourceViews
-        );
-
-        onSave(formData, dataSourceConfigurations);
-      })}
+      onSave={onSave}
       size="xl"
       showHeaderNavigation={false}
       disableNext={

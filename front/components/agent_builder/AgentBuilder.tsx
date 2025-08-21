@@ -174,6 +174,7 @@ export default function AgentBuilder({
 
       if (!agentConfiguration && createdAgent.sId) {
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
+        // willingly using window to not trigger next navigation events
         window.history.replaceState(null, "", newUrl);
       }
     } catch (error) {
