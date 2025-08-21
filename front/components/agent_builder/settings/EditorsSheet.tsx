@@ -42,7 +42,7 @@ type RowData = {
   onClick?: () => void;
 };
 
-export function AgentAccessPublicationDialog() {
+export function EditorsSheet() {
   const { owner } = useAgentBuilderContext();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
