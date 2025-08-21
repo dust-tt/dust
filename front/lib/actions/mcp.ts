@@ -646,6 +646,13 @@ export async function createMCPAction(
     stepContext,
     approvalStatus,
     toolConfiguration,
+    version: 0,
+    isError: false, // TODO(durable-agents): remove this once `status` has been filled
+    executionState: "pending", // TODO(durable-agents): remove this once `status` has been filled
+    runningState: "not_started", // TODO(durable-agents): remove this once `status` has been filled
+    status: approvalStatusToToolExecutionStatus(approvalStatus),
+    citationsAllocated: stepContext.citationsCount,
+    mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
   });
 
   const mcpAction = new MCPActionType({

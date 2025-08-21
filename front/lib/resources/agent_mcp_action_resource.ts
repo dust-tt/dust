@@ -1,23 +1,19 @@
 import assert from "assert";
 import type {
   Attributes,
+  CreationAttributes,
   NonAttribute,
   Transaction,
-  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
 
 import type { BlockedActionExecution } from "@app/lib/actions/mcp";
-import type {
-  ActionBaseParams,
-  LightMCPToolConfigurationType,
-} from "@app/lib/actions/mcp";
+import type { ActionBaseParams } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
   isToolExecutionStatusBlocked,
   TOOL_EXECUTION_BLOCKED_STATUSES,
 } from "@app/lib/actions/statuses";
-import type { StepContext } from "@app/lib/actions/types";
 import { approvalStatusToToolExecutionStatus } from "@app/lib/actions/utils";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
@@ -119,14 +115,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       approvalStatus,
       toolConfiguration,
       version,
-    }: {
+    }: CreationAttributes<AgentMCPAction> & {
       actionBaseParams: ActionBaseParams;
-      augmentedInputs: Record<string, unknown>;
-      stepContentId: ModelId;
-      stepContext: StepContext;
       approvalStatus: "allowed_implicitly" | "pending";
-      toolConfiguration: LightMCPToolConfigurationType;
-      version?: number;
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<AgentMCPActionResource> {
@@ -143,13 +134,17 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
         stepContentId,
         stepContext,
         toolConfiguration,
-        version: version ?? 0,
+        version: version,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       { transaction }
     );
 
-    const stepContent = await this.fetchStepActionById(auth, stepContentId);
+    const stepContent = await this.fetchStepActionById(
+      auth,
+      action.stepContentId
+    );
+    assert(stepContent, "Step content not found.");
     return new this(AgentMCPAction, action.get(), stepContent);
   }
 
@@ -321,15 +316,20 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     return this.update({ status });
   }
 
-  static async destroy({
-    where,
+  static async deleteByAgentMessageId({
+    agentMessageIds,
     transaction,
   }: {
-    where: WhereOptions<AgentMCPAction>;
+    agentMessageIds: Array<ModelId>;
     transaction?: Transaction;
   }): Promise<Result<undefined, Error>> {
     try {
-      await AgentMCPAction.destroy({ where, transaction });
+      await AgentMCPAction.destroy({
+        where: {
+          agentMessageId: { [Op.in]: agentMessageIds },
+        },
+        transaction,
+      });
       return new Ok(undefined);
     } catch (err) {
       return new Err(normalizeError(err));

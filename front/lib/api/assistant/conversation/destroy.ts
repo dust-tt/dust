@@ -29,7 +29,7 @@ async function destroyActionsRelatedResources(
   agentMessageIds: Array<ModelId>
 ) {
   // First, retrieve the MCP actions.
-  const mcpActions = await AgentMCPActionResource.findByAgentMessageId(
+  const mcpActions = await AgentMCPActionResource.listByAgentMessageIds(
     auth,
     agentMessageIds
   );
@@ -44,9 +44,7 @@ async function destroyActionsRelatedResources(
     where: { agentMessageId: agentMessageIds },
   });
 
-  await AgentMCPActionResource.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
+  await AgentMCPActionResource.deleteByAgentMessageId({ agentMessageIds });
 }
 
 async function destroyMessageRelatedResources(messageIds: Array<ModelId>) {
