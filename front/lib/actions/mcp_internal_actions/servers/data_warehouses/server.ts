@@ -3,6 +3,12 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
+  DATA_WAREHOUSES_FIND_TOOL_NAME,
+  DATA_WAREHOUSES_LIST_TOOL_NAME,
+  DATA_WAREHOUSES_QUERY_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   getAvailableWarehouses,
@@ -50,7 +56,7 @@ const createServer = (
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "list",
+    DATA_WAREHOUSES_LIST_TOOL_NAME,
     "List the direct contents of a warehouse, database, or schema. Can be used to see what is inside a " +
       "specific location in the tables hierarchy, like 'ls' in Unix. If no nodeId is provided, lists " +
       "all available data warehouses at the root level. Hierarchy supports: warehouse → database → schema → " +
@@ -144,7 +150,7 @@ const createServer = (
   );
 
   server.tool(
-    "find",
+    DATA_WAREHOUSES_FIND_TOOL_NAME,
     "Find tables, schemas and databases based on their name starting from a specific node in the tables hierarchy. " +
       "Can be used to search for tables by name across warehouses, databases, and schemas. " +
       "The query supports partial matching - for example, searching for 'sales' will find " +
@@ -241,7 +247,7 @@ const createServer = (
   );
 
   server.tool(
-    "describe_tables",
+    DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
     "Get detailed schema information for one or more tables. Provides DBML schema definitions, " +
       "SQL dialect-specific query guidelines, and example rows. All tables must be from the same " +
       "warehouse - cross-warehouse schema requests are not supported. Use this to understand table " +
@@ -293,7 +299,7 @@ const createServer = (
 
         const { validatedNodes, dataSourceId } = validationResult.value;
 
-        const dataSource = await DataSourceResource.fetchByDustAPIDataSourceId(
+        const dataSource = await DataSourceResource.fetchById(
           auth,
           dataSourceId
         );
@@ -329,10 +335,10 @@ const createServer = (
   );
 
   server.tool(
-    "query",
+    DATA_WAREHOUSES_QUERY_TOOL_NAME,
     "Execute SQL queries on tables from the same warehouse. You MUST call describe_tables at least once " +
       "before attempting to query tables to understand their structure. The query must respect the SQL dialect " +
-      "and guidelines provided by describe_tables. All tables in a single query must be from the same warehouse.",
+      `and guidelines provided by ${DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME}. All tables in a single query must be from the same warehouse.`,
     {
       dataSources:
         ConfigurableToolInputSchemas[
@@ -396,7 +402,7 @@ const createServer = (
 
         const { validatedNodes, dataSourceId } = validationResult.value;
 
-        const dataSource = await DataSourceResource.fetchByDustAPIDataSourceId(
+        const dataSource = await DataSourceResource.fetchById(
           auth,
           dataSourceId
         );

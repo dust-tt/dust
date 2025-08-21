@@ -197,7 +197,6 @@ function renderNode(
   return {
     nodeId,
     title: node.title,
-    path: node.parents.join("/"),
     parentTitle: node.parent_title,
     mimeType,
     hasChildren: node.children_count > 0,
