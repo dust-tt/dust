@@ -96,10 +96,7 @@ function PreviewContent({
   isSavingDraftAgent,
 }: PreviewContentProps) {
   const generationContext = useContext(GenerationContext);
-  const isGenerating =
-    generationContext?.generatingMessages.some(
-      (m) => m.conversationId === conversation?.sId
-    ) ?? false;
+  const isGenerating = !!generationContext?.generatingMessages.length;
 
   return (
     <>
