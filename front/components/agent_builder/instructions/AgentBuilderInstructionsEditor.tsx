@@ -1,5 +1,6 @@
-import { cn } from "@dust-tt/sparkle";
+import { cn, markdownStyles } from "@dust-tt/sparkle";
 import { CharacterCount } from "@tiptap/extension-character-count";
+import { CodeBlock } from "@tiptap/extension-code-block";
 import Document from "@tiptap/extension-document";
 import { History } from "@tiptap/extension-history";
 import { ListItem } from "@tiptap/extension-list-item";
@@ -14,7 +15,9 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentInstructionDiffExtension } from "@app/components/agent_builder/instructions/extensions/AgentInstructionDiffExtension";
 import { InstructionBlockExtension } from "@app/components/agent_builder/instructions/extensions/InstructionBlockExtension";
+import { InsertBlockMenu } from "@app/components/agent_builder/instructions/InsertBlockMenu";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
+import { useInsertBlockMenu } from "@app/components/agent_builder/instructions/useInsertBlockMenu";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import {
   plainTextFromTipTapContent,
@@ -76,6 +79,11 @@ export function AgentBuilderInstructionsEditor({
       History,
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
+      CodeBlock.configure({
+        HTMLAttributes: {
+          class: markdownStyles.code(),
+        },
+      }),
       Placeholder.configure({
         placeholder:
           "What does this agent do? How should it behave? What should it avoid doing?",
@@ -93,7 +101,7 @@ export function AgentBuilderInstructionsEditor({
       extensions,
       content: tipTapContentFromPlainText(field.value),
       onUpdate: ({ editor }) => {
-        if (!isInstructionDiffMode) {
+        if (!isInstructionDiffMode && !editor.isDestroyed) {
           const json = editor.getJSON();
           const plainText = plainTextFromTipTapContent(json);
           field.onChange(plainText);
@@ -102,6 +110,8 @@ export function AgentBuilderInstructionsEditor({
     },
     [extensions]
   );
+
+  const { menuState, handleKeyDown } = useInsertBlockMenu(editor);
 
   const currentCharacterCount =
     editor?.storage.characterCount.characters() || 0;
@@ -118,12 +128,20 @@ export function AgentBuilderInstructionsEditor({
         attributes: {
           class: editorVariants({ error: displayError }),
         },
+        handleKeyDown: (view, event) => {
+          return handleKeyDown(event);
+        },
       },
     });
-  }, [editor, displayError]);
+  }, [editor, displayError, handleKeyDown]);
 
   useEffect(() => {
     if (!editor || field.value === undefined) {
+      return;
+    }
+
+    // Don't update if editor is focused (user is typing/editing)
+    if (editor.isFocused) {
       return;
     }
 
@@ -170,6 +188,7 @@ export function AgentBuilderInstructionsEditor({
           maxCount={INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT}
         />
       )}
+      <InsertBlockMenu {...menuState} />
     </div>
   );
 }
