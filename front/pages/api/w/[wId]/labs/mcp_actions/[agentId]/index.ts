@@ -4,6 +4,7 @@ import * as reporter from "io-ts-reporters";
 import { NumberFromString, withFallback } from "io-ts-types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -18,8 +19,7 @@ export type GetMCPActionsResult = {
     createdAt: string;
     functionCallName: string | null;
     params: Record<string, unknown>;
-    executionState: string;
-    isError: boolean;
+    status: ToolExecutionStatus;
     conversationId: string;
     messageId: string;
   }[];

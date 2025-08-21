@@ -357,7 +357,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
             output: removeNulls(
               action.outputItems.map(hideFileFromActionOutput)
             ),
-            runningState: action.runningState,
             functionCallId: value.value.id,
             functionCallName: value.value.name,
             mcpServerId,
@@ -365,8 +364,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
             agentMessageId: action.agentMessageId,
             step: this.step,
             mcpServerConfigurationId: action.mcpServerConfigurationId,
-            executionState: action.executionState,
-            isError: action.isError,
             type: "tool_action",
             status: action.status,
             citationsAllocated: action.citationsAllocated,
@@ -544,8 +541,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           createdAt: action.createdAt.toISOString(),
           functionCallName: stepContent.value.value.name,
           params: JSON.parse(stepContent.value.value.arguments),
-          executionState: action.executionState,
-          isError: action.isError,
+          status: action.status,
           conversationId: stepContent.agentMessage.message.conversation.sId,
           messageId: stepContent.agentMessage.message.sId,
         };

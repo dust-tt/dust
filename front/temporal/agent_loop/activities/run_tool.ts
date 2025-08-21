@@ -56,10 +56,6 @@ export async function runToolActivity(
   const action = await AgentMCPAction.findByPk(actionId);
   assert(action, "Action not found");
 
-  await action.update({
-    runningState: "running",
-  });
-
   const mcpServerId = action.toolConfiguration.toolServerId;
 
   const actionBaseParams = await buildActionBaseParams({
@@ -75,8 +71,6 @@ export async function runToolActivity(
   const mcpAction = new MCPActionType({
     ...actionBaseParams,
     id: action.id,
-    isError: action.isError,
-    executionState: action.executionState,
     type: "tool_action",
     output: null,
   });
@@ -94,10 +88,6 @@ export async function runToolActivity(
   for await (const event of eventStream) {
     switch (event.type) {
       case "tool_error":
-        await action.update({
-          runningState: "errored",
-        });
-
         // For tool errors, send immediately.
         await updateResourceAndPublishEvent(
           {
@@ -135,10 +125,6 @@ export async function runToolActivity(
         return { deferredEvents };
 
       case "tool_success":
-        await action.update({
-          runningState: "completed",
-        });
-
         await updateResourceAndPublishEvent(
           {
             type: "agent_action_success",
