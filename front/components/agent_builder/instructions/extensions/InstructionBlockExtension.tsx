@@ -475,31 +475,25 @@ export const InstructionBlockExtension =
           }
 
           const posBeforeBlock = $from.before(blockDepth);
+
+          // Ensure a paragraph exists before the block
           const $before = doc.resolve(posBeforeBlock);
           const prevNode = $before.nodeBefore;
-
           if (!prevNode || prevNode.type.name !== "paragraph") {
-            // Create a paragraph before the block if none exists
             this.editor.commands.insertContentAt(posBeforeBlock, {
               type: "paragraph",
             });
           }
 
-          // Place the cursor at the end of the paragraph before the block
-          // Find the new position after possible insertion
-          const $beforeAfterInsert = doc.resolve(posBeforeBlock);
+          // Resolve positions from the updated document after potential insertion
+          const updatedDoc = this.editor.state.doc;
+          const $beforeAfterInsert = updatedDoc.resolve(posBeforeBlock);
           const prevNodeAfterInsert = $beforeAfterInsert.nodeBefore;
-          let cursorPos;
-          if (
-            prevNodeAfterInsert &&
-            prevNodeAfterInsert.type.name === "paragraph"
-          ) {
-            // Place cursor at end of previous paragraph
-            cursorPos = posBeforeBlock - 1;
-          } else {
-            // Fallback: place at start of doc
-            cursorPos = 1;
-          }
+          const cursorPos =
+            prevNodeAfterInsert && prevNodeAfterInsert.type.name === "paragraph"
+              ? posBeforeBlock - 1
+              : 1;
+
           this.editor.commands.setTextSelection(cursorPos);
           this.editor.commands.focus();
           return true;
