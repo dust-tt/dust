@@ -205,6 +205,7 @@ export function KnowledgeConfigurationSheet({
           <DataSourceBuilderProvider spaces={spaces}>
             <KnowledgeConfigurationSheetContent
               onSave={form.handleSubmit(handleSave)}
+              onClose={onClose}
               open={open}
               getAgentInstructions={getAgentInstructions}
               isEditing={isEditing}
@@ -219,6 +220,7 @@ export function KnowledgeConfigurationSheet({
 
 interface KnowledgeConfigurationSheetContentProps {
   onSave: () => void;
+  onClose: () => void;
   open: boolean;
   getAgentInstructions: () => string;
   isEditing: boolean;
@@ -227,6 +229,7 @@ interface KnowledgeConfigurationSheetContentProps {
 
 function KnowledgeConfigurationSheetContent({
   onSave,
+  onClose,
   open,
   getAgentInstructions,
   isEditing,
@@ -287,6 +290,39 @@ function KnowledgeConfigurationSheetContent({
     }
   };
 
+  const getFooterButtons = () => {
+    const isDataSourcePage =
+      currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
+
+    return {
+      leftButton: {
+        label: isDataSourcePage ? "Cancel" : "Back",
+        variant: "outline",
+        onClick: () => {
+          if (isDataSourcePage) {
+            onClose();
+          } else {
+            setCurrentPageId(
+              CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION
+            );
+          }
+        },
+      },
+      rightButton: {
+        label: isDataSourcePage ? "Next" : "Save",
+        variant: "primary",
+        disabled: isDataSourcePage ? !hasSourceSelection : false,
+        onClick: () => {
+          if (isDataSourcePage) {
+            setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION);
+          } else {
+            onSave();
+          }
+        },
+      },
+    };
+  };
+
   const pages: MultiPageSheetPage[] = [
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
@@ -309,6 +345,7 @@ function KnowledgeConfigurationSheetContent({
           </ScrollArea>
         </div>
       ),
+      footerContent: <KnowledgeFooter />,
     },
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION,
@@ -351,16 +388,8 @@ function KnowledgeConfigurationSheetContent({
       onSave={onSave}
       size="xl"
       showHeaderNavigation={false}
-      disableNext={
-        currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION
-          ? !hasSourceSelection
-          : false
-      }
-      footerContent={
-        currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION ? (
-          <KnowledgeFooter />
-        ) : undefined
-      }
+      addFooterSeparator
+      {...getFooterButtons()}
     />
   );
 }
