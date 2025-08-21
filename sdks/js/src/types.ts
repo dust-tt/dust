@@ -2733,6 +2733,14 @@ const MCP_VALIDATION_OUTPUTS = [
 export type MCPValidationOutputPublicType =
   (typeof MCP_VALIDATION_OUTPUTS)[number];
 
+export const PendingValidationsResponseSchema = z.object({
+  pendingValidations: z.array(MCPApproveExecutionEventSchema),
+});
+
+export type PendingValidationsResponseType = z.infer<
+  typeof PendingValidationsResponseSchema
+>;
+
 const MCPViewsRequestAvailabilitySchema = z.enum(["manual", "auto"]);
 export type MCPViewsRequestAvailabilityType = z.infer<
   typeof MCPViewsRequestAvailabilitySchema
