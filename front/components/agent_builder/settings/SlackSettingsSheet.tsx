@@ -157,6 +157,12 @@ export function SlackSettingsSheet({
     setLocalSlackChannels([...(slackChannels || [])]);
   }, [slackChannels]);
 
+  useEffect(() => {
+    if (isOpen) {
+      setLocalSlackChannels([...(slackChannels || [])]);
+    }
+  }, [isOpen, slackChannels]);
+
   const handleSelectionChange = (channels: SlackChannel[]) => {
     setLocalSlackChannels(channels);
   };
