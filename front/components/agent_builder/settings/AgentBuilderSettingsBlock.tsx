@@ -27,6 +27,7 @@ import {
   getDescriptionSuggestion,
   getNameSuggestions,
 } from "@app/components/agent_builder/settings/utils";
+import { VisibilitySection } from "@app/components/agent_builder/settings/VisibilitySection";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import {
   buildSelectedEmojiType,
@@ -391,6 +392,7 @@ export function AgentBuilderSettingsBlock({
           <AgentPictureInput />
         </div>
         <AgentDescriptionInput />
+        <VisibilitySection />
         <TagsSection />
       </div>
     </AgentBuilderSectionContainer>

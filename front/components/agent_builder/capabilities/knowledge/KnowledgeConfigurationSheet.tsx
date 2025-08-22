@@ -345,7 +345,7 @@ function KnowledgeConfigurationSheetContent({
           </ScrollArea>
         </div>
       ),
-      footerContent: <KnowledgeFooter />,
+      footerContent: hasSourceSelection ? <KnowledgeFooter /> : undefined,
     },
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION,

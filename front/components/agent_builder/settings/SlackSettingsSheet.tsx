@@ -1,5 +1,9 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { useController, useWatch } from "react-hook-form";
+import { SheetContainer } from "@dust-tt/sparkle";
+import { Sheet } from "@dust-tt/sparkle";
+import { SheetContent } from "@dust-tt/sparkle";
+import { SheetFooter } from "@dust-tt/sparkle";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -115,36 +119,67 @@ function SlackIntegration({
   );
 }
 
-export function SlackTab() {
+interface SlackSettingsSheetProps {
+  isOpen: boolean;
+  onOpenChange: () => void;
+}
+
+export function SlackSettingsSheet({
+  isOpen,
+  onOpenChange,
+}: SlackSettingsSheetProps) {
   const { owner } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
-
-  const slackChannels = useWatch<
-    AgentBuilderFormData,
-    "agentSettings.slackChannels"
-  >({
-    name: "agentSettings.slackChannels",
-  });
-
-  const slackProvider = useWatch<
-    AgentBuilderFormData,
-    "agentSettings.slackProvider"
-  >({
-    name: "agentSettings.slackProvider",
-  });
+  const [localSlackChannels, setLocalSlackChannels] = useState<SlackChannel[]>(
+    []
+  );
 
   const {
-    field: { onChange },
+    field: { onChange, value: slackChannels },
   } = useController<AgentBuilderFormData, "agentSettings.slackChannels">({
     name: "agentSettings.slackChannels",
   });
 
-  const handleSelectionChange = useCallback(
-    (slackChannels: SlackChannel[]) => {
-      onChange(slackChannels);
-    },
-    [onChange]
-  );
+  const {
+    field: { value: slackProvider },
+  } = useController<AgentBuilderFormData, "agentSettings.slackProvider">({
+    name: "agentSettings.slackProvider",
+  });
+
+  useEffect(() => {
+    if (isOpen) {
+      setLocalSlackChannels([...(slackChannels || [])]);
+    }
+  }, [slackChannels, isOpen]);
+
+  const handleSelectionChange = (channels: SlackChannel[]) => {
+    setLocalSlackChannels(channels);
+  };
+
+  const onSave = () => {
+    onChange(localSlackChannels);
+    onOpenChange();
+  };
+
+  const handleClose = () => {
+    setLocalSlackChannels([...(slackChannels || [])]);
+    onOpenChange();
+  };
+
+  const hasUnsavedChanges = useMemo(() => {
+    const currentChannelIds = new Set(
+      (slackChannels || []).map((c) => c.slackChannelId)
+    );
+    const localChannelIds = new Set(
+      localSlackChannels.map((c) => c.slackChannelId)
+    );
+
+    if (currentChannelIds.size !== localChannelIds.size) {
+      return true;
+    }
+
+    return Array.from(currentChannelIds).some((id) => !localChannelIds.has(id));
+  }, [slackChannels, localSlackChannels]);
 
   if (!slackProvider) {
     return (
@@ -171,22 +206,41 @@ export function SlackTab() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="mb-4 flex flex-col gap-2">
-        <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-          Slack Channel Settings
-        </span>
-        <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-          Select channels in which this agent replies by default.
-        </span>
-      </div>
+    <Sheet open={isOpen} onOpenChange={handleClose}>
+      <SheetContent>
+        <SheetContainer>
+          <div className="space-y-4">
+            <div className="mb-4 flex flex-col gap-2">
+              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                Slack Channel Settings
+              </span>
+              <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                Select channels in which this agent replies by default.
+              </span>
+            </div>
 
-      <SlackIntegration
-        existingSelection={slackChannels}
-        onSelectionChange={handleSelectionChange}
-        owner={owner}
-        slackDataSource={slackDataSource}
-      />
-    </div>
+            <SlackIntegration
+              existingSelection={localSlackChannels}
+              onSelectionChange={handleSelectionChange}
+              owner={owner}
+              slackDataSource={slackDataSource}
+            />
+          </div>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Close",
+            variant: "outline",
+            onClick: handleClose,
+          }}
+          rightButtonProps={{
+            label: "Save",
+            variant: "primary",
+            onClick: onSave,
+            disabled: !hasUnsavedChanges,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }
