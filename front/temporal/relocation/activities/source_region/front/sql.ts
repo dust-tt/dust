@@ -233,7 +233,7 @@ export async function readFrontTableChunk({
           limit,
           newLimit,
         },
-        "[SQL Table] Table chunk is too large to be processed, trying with smaler chunk"
+        "[SQL Table] Table chunk is too large to be processed, trying with smaller chunk"
       );
       return readFrontTableChunk({
         destRegion,
