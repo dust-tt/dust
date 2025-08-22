@@ -10,6 +10,7 @@ import {
   AgentMessageSuccessEvent,
   APIError,
   AppsCheckRequestType,
+  BlockedActionsResponseType,
   CancelMessageGenerationRequestType,
   ConversationPublicType,
   CreateConversationResponseType,
@@ -50,6 +51,7 @@ import {
 import {
   APIErrorSchema,
   AppsCheckResponseSchema,
+  BlockedActionsResponseSchema,
   CancelMessageGenerationResponseSchema,
   CreateConversationResponseSchema,
   CreateGenericAgentConfigurationResponseSchema,
@@ -1421,6 +1423,19 @@ export class DustAPI {
   }
 
   // MCP Related.
+
+  async getBlockedActions({
+    conversationId,
+  }: {
+    conversationId: string;
+  }): Promise<Result<BlockedActionsResponseType, APIError>> {
+    const res = await this.request({
+      method: "GET",
+      path: `assistant/conversations/${conversationId}/actions/blocked`,
+    });
+
+    return this._resultFromResponse(BlockedActionsResponseSchema, res);
+  }
 
   async validateAction({
     conversationId,
