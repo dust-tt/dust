@@ -136,7 +136,6 @@ export function AgentBuilderInstructionsEditor({
     {
       extensions,
       content: tipTapContentFromPlainText(field.value),
-      autofocus: "end", // Focus at the end of content
       onUpdate: ({ editor, transaction }) => {
         // Skip selection-only changes
         if (transaction.docChanged) {
@@ -225,15 +224,7 @@ export function AgentBuilderInstructionsEditor({
 
   return (
     <div className="flex h-full flex-col gap-1">
-      <div
-        className="relative p-px"
-        onClick={(e) => {
-          // Focus the editor when the container is clicked
-          if (e.target === e.currentTarget && editor && !editor.isFocused) {
-            editor.commands.focus();
-          }
-        }}
-      >
+      <div className="relative p-px">
         <EditorContent
           editor={editor}
           className="h-full min-h-[200px] cursor-text"
