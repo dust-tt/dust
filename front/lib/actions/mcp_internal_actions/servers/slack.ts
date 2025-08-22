@@ -157,7 +157,7 @@ const _getPublicChannels = async ({
     // We can't handle a huge list of channels, and even if we could, it would be unusable
     // in the UI. So we arbitrarily cap it to 500 channels.
     if (channels.length >= 500) {
-      logger.warn("Channel list truncated to 500 channels.");
+      logger.warn("Channel list truncated after reaching over 500 channels.");
       break;
     }
   } while (cursor);
@@ -350,7 +350,7 @@ const _getSlackAIEnablementStatus = async ({
       ? "enabled"
       : "disabled";
   } catch (e) {
-    logger.warn(`Error fetching Slack AI enablement status: ${e}`);
+    logger.warn({ error: e }, "Error fetching Slack AI enablement status");
     return "disconnected";
   }
 };
@@ -391,7 +391,7 @@ const createServer = async (
         name: "All public channels",
       });
     } catch (error) {
-      logger.warn(`Error listing channels for ${mcpServerId}: ${error}`);
+      logger.warn({ error, mcpServerId }, "Error listing Slack channels");
     }
   }
   const channelOptions = channels.map((c) =>
