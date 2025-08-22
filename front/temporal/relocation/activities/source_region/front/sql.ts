@@ -167,6 +167,11 @@ export async function readFrontTableChunk({
 
   localLogger.info("[SQL Table] Reading table chunk");
 
+  let realLimit = limit;
+  if (tableName === "agent_mcp_action_output_items" && limit > 100) {
+    realLimit = 100;
+  }
+
   const workspace = await getWorkspaceInfos(workspaceId);
   assert(workspace, "Workspace not found");
 
@@ -179,7 +184,7 @@ export async function readFrontTableChunk({
      ORDER BY id
      LIMIT :limit`,
       {
-        replacements: { workspaceId: workspace.id, limit },
+        replacements: { workspaceId: workspace.id, limit: realLimit },
         type: QueryTypes.SELECT,
         raw: true,
       }
@@ -209,12 +214,12 @@ export async function readFrontTableChunk({
 
     return {
       dataPath,
-      hasMore: rows.length === limit,
+      hasMore: rows.length === realLimit,
       lastId: rows[rows.length - 1]?.id ?? lastId,
     };
   } catch (err) {
     if (isStringTooLongError(err) || isJSONStringifyRangeError(err)) {
-      const newLimit = Math.floor(limit / 2);
+      const newLimit = Math.floor(realLimit / 2);
 
       if (newLimit === 0) {
         localLogger.error(
@@ -230,7 +235,7 @@ export async function readFrontTableChunk({
       localLogger.info(
         {
           error: err,
-          limit,
+          limit: realLimit,
           newLimit,
         },
         "[SQL Table] Table chunk is too large to be processed, trying with smaller chunk"
