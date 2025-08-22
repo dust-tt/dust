@@ -212,7 +212,7 @@ export const scheduleFormSchema = z.object({
     .string()
     .min(1, "Cron expression is required")
     .regex(
-      /^(\*|([0-5]?\d)) (\*|([01]?\d|2[0-3])) (\*|([01]?\d|2[0-9]|3[01])) (\*|(1[0-2]|0?[1-9])) (\*|([0-6]))$/,
+      /^((((\d+,)+\d+|(\d+(\/|-|#)\d+)|\d+L?|\*(\/\d+)?|L(-\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})|(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)$/,
       "Invalid cron expression (expected 5 fields: min hour day month weekday)"
     ),
   timezone: z.string().min(1, "Timezone is required"),

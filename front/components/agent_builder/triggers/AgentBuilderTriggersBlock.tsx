@@ -19,6 +19,7 @@ import type {
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { ScheduleEditionModal } from "@app/components/agent_builder/triggers/ScheduleEditionModal";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { LightWorkspaceType } from "@app/types";
 import type { TriggerKind } from "@app/types/assistant/triggers";
 
 function getIcon(kind: TriggerKind) {
@@ -76,10 +77,12 @@ type DialogMode =
     };
 
 interface AgentBuilderTriggersBlockProps {
+  owner: LightWorkspaceType;
   isTriggersLoading?: boolean;
 }
 
 export function AgentBuilderTriggersBlock({
+  owner,
   isTriggersLoading,
 }: AgentBuilderTriggersBlockProps) {
   const {
@@ -181,6 +184,7 @@ export function AgentBuilderTriggersBlock({
 
       {/* Create/Edit Schedule Modal */}
       <ScheduleEditionModal
+        owner={owner}
         trigger={dialogMode?.type === "edit" ? dialogMode.trigger : undefined}
         isOpen={dialogMode !== null}
         onClose={handleCloseModal}
