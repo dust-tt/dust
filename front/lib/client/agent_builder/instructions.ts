@@ -8,13 +8,9 @@ import {
 
 function serializeNodeToText(node: JSONContent): string {
   if (node.type === "instructionBlock") {
-    const type = node.attrs?.type as string;
-    const tagName = type?.toUpperCase() || "INFO";
-
-    // Serialize content inside the block
+    // Just serialize the content as-is since tags are now part of the content
     const content = node.content?.map(serializeNodeToText).join("") || "";
-
-    return `<${tagName}>\n${content}</${tagName}>\n`;
+    return content;
   }
 
   if (node.type === "paragraph") {

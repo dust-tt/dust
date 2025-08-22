@@ -132,11 +132,26 @@ export const useBlockInsertDropdown = (
     return {
       char: "/",
       allow: ({ state, range }) => {
-        // Don't allow suggestions inside code blocks or instruction blocks
-        const $from = state.doc.resolve(range.from);
-        const parentType = $from.parent.type.name;
+        // Only allow suggestions for empty selections (not when text is selected)
+        if (!state.selection.empty) {
+          return false;
+        }
         
-        return parentType !== "codeBlock" && parentType !== "instructionBlock";
+        const $from = state.doc.resolve(range.from);
+        
+        // Check if we're inside a code block (immediate parent)
+        if ($from.parent.type.name === "codeBlock") {
+          return false;
+        }
+        
+        // Check all ancestors for instruction blocks
+        for (let d = $from.depth; d >= 0; d--) {
+          if ($from.node(d).type.name === "instructionBlock") {
+            return false;
+          }
+        }
+        
+        return true;
       },
       command: ({ editor, range, props }) => {
         const suggestion = props as BlockSuggestion;
