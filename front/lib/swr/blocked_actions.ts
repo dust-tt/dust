@@ -10,8 +10,7 @@ export function useBlockedActions({
   conversationId: string | null;
   workspaceId: string;
 }) {
-  const blockedActionsFetcher: Fetcher<GetBlockedActionsResponseType> =
-    fetcher;
+  const blockedActionsFetcher: Fetcher<GetBlockedActionsResponseType> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     conversationId

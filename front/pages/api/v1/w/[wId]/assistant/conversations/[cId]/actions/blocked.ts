@@ -40,10 +40,7 @@ async function handler(
   }
 
   const blockedActions =
-    await AgentMCPActionResource.listBlockedActionsForConversation(
-      auth,
-      cId
-    );
+    await AgentMCPActionResource.listBlockedActionsForConversation(auth, cId);
 
   res.status(200).json({ blockedActions });
 }
