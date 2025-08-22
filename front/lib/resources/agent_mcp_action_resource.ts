@@ -56,7 +56,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
   private static async baseFetch(
     auth: Authenticator,
     { where, limit, order }: ResourceFindOptions<AgentMCPAction> = {}
-  ) {
+  ): Promise<AgentMCPActionResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const actions = await this.model.findAll({
@@ -262,6 +262,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     }
 
     return blockedActionsList;
+  }
+
+  static async listByAgentMessageIds(
+    auth: Authenticator,
+    agentMessageIds: Array<ModelId>
+  ): Promise<AgentMCPActionResource[]> {
+    return this.baseFetch(auth, {
+      where: { agentMessageId: { [Op.in]: agentMessageIds } },
+    });
   }
 
   static async listBlockedActionsForAgentMessage(

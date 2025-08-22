@@ -2,10 +2,7 @@ import chunk from "lodash/chunk";
 
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentMCPAction,
-  AgentMCPActionOutputItem,
-} from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -40,10 +37,6 @@ async function destroyActionsRelatedResources(
   });
 
   // Destroy the actions.
-  await AgentMCPAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-
   await AgentMCPActionResource.deleteByAgentMessageId({ agentMessageIds });
 }
 
