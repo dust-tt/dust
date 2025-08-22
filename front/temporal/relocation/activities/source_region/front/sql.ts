@@ -238,7 +238,7 @@ export async function readFrontTableChunk({
       return readFrontTableChunk({
         destRegion,
         lastId,
-        limit: newLimit
+        limit: newLimit,
         sourceRegion,
         tableName,
         workspaceId,
