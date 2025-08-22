@@ -80,5 +80,6 @@ export async function updateResourceAndPublishEvent(
 
   await publishConversationRelatedEvent(event, {
     conversationId,
+    step,
   });
 }

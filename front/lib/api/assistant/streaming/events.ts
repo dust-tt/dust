@@ -36,14 +36,21 @@ async function publishConversationEvent(
   );
 }
 
-async function publishMessageEvent(event: AgentMessageEvents) {
+async function publishMessageEvent(
+  event: AgentMessageEvents,
+  {
+    step,
+  }: {
+    step: number;
+  }
+) {
   const redisHybridManager = getRedisHybridManager();
 
   const messageChannel = getEventMessageChannelId(event);
 
   await redisHybridManager.publish(
     messageChannel,
-    JSON.stringify(event),
+    JSON.stringify({ ...event, step }),
     "user_message_events"
   );
 
@@ -60,8 +67,10 @@ export async function publishConversationRelatedEvent(
   event: AgentMessageEvents | ConversationEvents,
   {
     conversationId,
+    step,
   }: {
     conversationId: string;
+    step?: number;
   }
 ) {
   switch (event.type) {
@@ -78,7 +87,7 @@ export async function publishConversationRelatedEvent(
     case "tool_approve_execution":
     case "tool_notification":
     case "tool_params":
-      return publishMessageEvent(event);
+      return publishMessageEvent(event, { step: step ?? -1 });
 
     default:
       assertNever(event);
