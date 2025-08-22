@@ -98,14 +98,6 @@ const MCP_SERVER_AVAILABILITY = [
 ] as const;
 export type MCPServerAvailability = (typeof MCP_SERVER_AVAILABILITY)[number];
 
-export const isMCPServerAvailability = (
-  availability: string
-): availability is MCPServerAvailability => {
-  return MCP_SERVER_AVAILABILITY.includes(
-    availability as MCPServerAvailability
-  );
-};
-
 export const INTERNAL_MCP_SERVERS = {
   // Note:
   // ids should be stable, do not change them when moving internal servers to production as it would break existing agents.
@@ -135,6 +127,7 @@ export const INTERNAL_MCP_SERVERS = {
       },
       icon: "GithubLogo",
       documentationUrl: null,
+      instructions: null,
     },
   },
   image_generation: {
@@ -152,6 +145,7 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "ActionImageIcon",
       authorization: null,
       documentationUrl: null,
+      instructions: null,
     },
   },
   file_generation: {
@@ -169,6 +163,7 @@ export const INTERNAL_MCP_SERVERS = {
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
+      instructions: null,
     },
   },
   [TABLE_QUERY_SERVER_NAME]: {
@@ -186,6 +181,7 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "ActionTableIcon",
       authorization: null,
       documentationUrl: null,
+      instructions: null,
     },
   },
   [DEFAULT_WEBSEARCH_ACTION_NAME]: {
@@ -203,6 +199,7 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "ActionGlobeAltIcon",
       authorization: null,
       documentationUrl: null,
+      instructions: null,
     },
   },
   think: {
@@ -222,6 +219,7 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "ActionBrainIcon",
       authorization: null,
       documentationUrl: null,
+      instructions: null,
     },
   },
   hubspot: {
@@ -284,6 +282,7 @@ export const INTERNAL_MCP_SERVERS = {
       },
       icon: "HubspotLogo",
       documentationUrl: null,
+      instructions: null,
     },
   },
   [DEFAULT_AGENT_ROUTER_ACTION_NAME]: {
@@ -321,6 +320,7 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ActionTimeIcon",
       authorization: null,
       documentationUrl: null,
+      instructions: null,
     },
   },
   run_dust_app: {
@@ -338,6 +338,7 @@ The directive should be used to display a clickable version of the agent name in
       icon: "CommandLineIcon",
       authorization: null,
       documentationUrl: null,
+      instructions: null,
     },
   },
   notion: {
@@ -379,6 +380,7 @@ The directive should be used to display a clickable version of the agent name in
       },
       icon: "NotionLogo",
       documentationUrl: null,
+      instructions: null,
     },
   },
   extract_data: {
@@ -396,6 +398,7 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ActionScanIcon",
       authorization: null,
       documentationUrl: null,
+      instructions: null,
     },
   },
   missing_action_catcher: {
@@ -413,6 +416,7 @@ The directive should be used to display a clickable version of the agent name in
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
+      instructions: null,
     },
   },
   salesforce: {
@@ -470,6 +474,7 @@ The directive should be used to display a clickable version of the agent name in
       },
       icon: "GmailLogo",
       documentationUrl: "https://docs.dust.tt/docs/gmail-tool-setup",
+      instructions: null,
     },
   },
   google_calendar: {
@@ -500,6 +505,7 @@ The directive should be used to display a clickable version of the agent name in
       },
       icon: "GcalLogo",
       documentationUrl: "https://docs.dust.tt/docs/google-calendar",
+      instructions: null,
     },
   },
   conversation_files: {
@@ -517,6 +523,7 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ActionDocumentTextIcon",
       authorization: null,
       documentationUrl: null,
+      instructions: null,
     },
   },
   slack: {
@@ -584,6 +591,7 @@ The directive should be used to display a clickable version of the agent name in
       },
       icon: "GoogleSpreadsheetLogo",
       documentationUrl: "https://docs.dust.tt/docs/google-sheets",
+      instructions: null,
     },
   },
   monday: {
@@ -637,6 +645,7 @@ The directive should be used to display a clickable version of the agent name in
       icon: "MondayLogo",
       documentationUrl:
         "https://developer.monday.com/api-reference/docs/introduction-to-graphql",
+      instructions: null,
     },
   },
   agent_memory: {
@@ -654,6 +663,7 @@ The directive should be used to display a clickable version of the agent name in
       authorization: null,
       icon: "ActionLightbulbIcon",
       documentationUrl: null,
+      instructions: null,
     },
   },
   jira: {
@@ -719,6 +729,7 @@ The directive should be used to display a clickable version of the agent name in
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
+      instructions: null,
     },
   },
   outlook: {
@@ -751,6 +762,7 @@ The directive should be used to display a clickable version of the agent name in
       },
       icon: "OutlookLogo",
       documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
+      instructions: null,
     },
   },
   outlook_calendar: {
@@ -781,6 +793,7 @@ The directive should be used to display a clickable version of the agent name in
       },
       icon: "OutlookLogo",
       documentationUrl: "https://docs.dust.tt/docs/outlook-calendar-tool-setup",
+      instructions: null,
     },
   },
   freshservice: {
@@ -845,6 +858,7 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ActionMagnifyingGlassIcon",
       authorization: null,
       documentationUrl: null,
+      instructions: null,
     },
   },
   run_agent: {
@@ -862,6 +876,7 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ActionRobotIcon",
       authorization: null,
       documentationUrl: null,
+      instructions: null,
     },
   },
   primitive_types_debugger: {
@@ -882,6 +897,7 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ActionEmotionLaughIcon",
       authorization: null,
       documentationUrl: null,
+      instructions: null,
     },
   },
   reasoning: {
@@ -900,6 +916,7 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ActionLightbulbIcon",
       authorization: null,
       documentationUrl: null,
+      instructions: null,
     },
   },
   query_tables_v2: {
@@ -921,6 +938,7 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ActionTableIcon",
       authorization: null,
       documentationUrl: null,
+      instructions: null,
     },
   },
   data_sources_file_system: {
@@ -945,6 +963,7 @@ The directive should be used to display a clickable version of the agent name in
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
+      instructions: null,
     },
   },
   agent_management: {
@@ -966,6 +985,7 @@ The directive should be used to display a clickable version of the agent name in
       authorization: null,
       icon: "ActionRobotIcon",
       documentationUrl: null,
+      instructions: null,
     },
   },
   data_warehouses: {
@@ -988,6 +1008,7 @@ The directive should be used to display a clickable version of the agent name in
       authorization: null,
       icon: "ActionTableIcon",
       documentationUrl: null,
+      instructions: null,
     },
   },
   toolsets: {
@@ -1009,6 +1030,7 @@ The directive should be used to display a clickable version of the agent name in
       authorization: null,
       icon: "ActionLightbulbIcon",
       documentationUrl: null,
+      instructions: null,
     },
   },
   // Using satisfies here instead of : type to avoid typescript widening the type and breaking the type inference for AutoInternalMCPServerNameType.

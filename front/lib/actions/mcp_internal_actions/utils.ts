@@ -12,7 +12,7 @@ export function makeInternalMCPServer(
 ): McpServer {
   const { serverMetadata } = INTERNAL_MCP_SERVERS[serverName];
   return new McpServer(serverMetadata, {
-    instructions: serverMetadata.instructions,
+    instructions: serverMetadata.instructions ?? undefined,
   });
 }
 
