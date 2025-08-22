@@ -99,8 +99,7 @@ export const INTERNAL_MCP_SERVERS = {
   github: {
     id: 1,
     availability: "manual",
-    // Github only allows one instance of the same app per user.
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -163,7 +162,7 @@ export const INTERNAL_MCP_SERVERS = {
   hubspot: {
     id: 7,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -238,7 +237,7 @@ export const INTERNAL_MCP_SERVERS = {
   notion: {
     id: 11,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -286,7 +285,7 @@ export const INTERNAL_MCP_SERVERS = {
   salesforce: {
     id: 14,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags, plan }) => {
       const isInPlan = plan.limits.connections.isSalesforceAllowed;
       const hasFeatureFlag = featureFlags.includes("salesforce_tool");
@@ -304,7 +303,7 @@ export const INTERNAL_MCP_SERVERS = {
   gmail: {
     id: 15,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -318,7 +317,7 @@ export const INTERNAL_MCP_SERVERS = {
   google_calendar: {
     id: 16,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -344,7 +343,7 @@ export const INTERNAL_MCP_SERVERS = {
   slack: {
     id: 18,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -361,7 +360,7 @@ export const INTERNAL_MCP_SERVERS = {
   google_sheets: {
     id: 19,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("google_sheets_tool");
     },
@@ -383,7 +382,7 @@ export const INTERNAL_MCP_SERVERS = {
   monday: {
     id: 20,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("monday_tool");
     },
@@ -432,7 +431,7 @@ export const INTERNAL_MCP_SERVERS = {
   jira: {
     id: 22,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("jira_tool");
     },
@@ -475,7 +474,7 @@ export const INTERNAL_MCP_SERVERS = {
   outlook: {
     id: 24,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -493,7 +492,7 @@ export const INTERNAL_MCP_SERVERS = {
   outlook_calendar: {
     id: 25,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -510,7 +509,7 @@ export const INTERNAL_MCP_SERVERS = {
   freshservice: {
     id: 26,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("freshservice_tool");
     },
