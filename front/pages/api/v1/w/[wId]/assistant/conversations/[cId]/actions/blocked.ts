@@ -1,4 +1,4 @@
-import type { PendingValidationsResponseType } from "@dust-tt/client";
+import type { BlockedActionsResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -14,7 +14,7 @@ import { isString } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PendingValidationsResponseType>>,
+  res: NextApiResponse<WithAPIErrorResponse<BlockedActionsResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   if (req.method !== "GET") {
@@ -39,13 +39,10 @@ async function handler(
     });
   }
 
-  const pendingValidations =
-    await AgentMCPActionResource.listPendingValidationsForConversation(
-      auth,
-      cId
-    );
+  const blockedActions =
+    await AgentMCPActionResource.listBlockedActionsForConversation(auth, cId);
 
-  res.status(200).json({ pendingValidations });
+  res.status(200).json({ blockedActions });
 }
 
 export default withPublicAPIAuthentication(handler, {

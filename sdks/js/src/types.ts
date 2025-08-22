@@ -1082,19 +1082,36 @@ export type MCPValidationMetadataPublicType = z.infer<
   typeof MCPValidationMetadataSchema
 >;
 
-const PendingValidationSchema = z.object({
-  conversationId: z.string(),
-  messageId: z.string(),
+const ToolExecutionBlockedStatusSchema = z.enum([
+  "blocked_authentication_required",
+  "blocked_validation_required",
+]);
+
+export type ToolExecutionBlockedStatusType = z.infer<
+  typeof ToolExecutionBlockedStatusSchema
+>;
+
+const ToolExecutionMetadataSchema = z.object({
   actionId: z.string(),
   inputs: z.record(z.any()),
   stake: MCPStakeLevelSchema,
   metadata: MCPValidationMetadataSchema,
 });
 
-const MCPApproveExecutionEventSchema = PendingValidationSchema.extend({
+const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
+  messageId: z.string(),
+  conversationId: z.string(),
+  status: ToolExecutionBlockedStatusSchema,
+});
+
+export type BlockedActionExecutionType = z.infer<typeof BlockedActionExecutionSchema>;
+
+const MCPApproveExecutionEventSchema = ToolExecutionMetadataSchema.extend({
   type: z.literal("tool_approve_execution"),
   created: z.number(),
   configurationId: z.string(),
+  messageId: z.string(),
+  conversationId: z.string(),
 });
 
 const ToolErrorEventSchema = z.object({
@@ -2993,12 +3010,12 @@ const MCP_VALIDATION_OUTPUTS = [
 export type MCPValidationOutputPublicType =
   (typeof MCP_VALIDATION_OUTPUTS)[number];
 
-export const PendingValidationsResponseSchema = z.object({
-  pendingValidations: z.array(PendingValidationSchema),
+export const BlockedActionsResponseSchema = z.object({
+  blockedActions: z.array(BlockedActionExecutionSchema),
 });
 
-export type PendingValidationsResponseType = z.infer<
-  typeof PendingValidationsResponseSchema
+export type BlockedActionsResponseType = z.infer<
+  typeof BlockedActionsResponseSchema
 >;
 
 const MCPViewsRequestAvailabilitySchema = z.enum(["manual", "auto"]);
