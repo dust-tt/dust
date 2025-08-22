@@ -92,3 +92,11 @@ export function isStringTooLongError(
     err.code === "ERR_STRING_TOO_LONG"
   );
 }
+
+
+export function isJSONStringifyRangeError(err: unknown): err is RangeError {
+  return (
+    err instanceof RangeError && err.message.includes("Invalid string length")
+  );
+}
+

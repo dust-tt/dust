@@ -17,7 +17,10 @@ import type {
   ReadTableChunkParams,
   RelocationBlob,
 } from "@app/temporal/relocation/activities/types";
-import { isStringTooLongError } from "@app/temporal/relocation/activities/types";
+import {
+  isJSONStringifyRangeError,
+  isStringTooLongError,
+} from "@app/temporal/relocation/activities/types";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
@@ -210,7 +213,7 @@ export async function readFrontTableChunk({
       lastId: rows[rows.length - 1]?.id ?? lastId,
     };
   } catch (err) {
-    if (isStringTooLongError(err) || err instanceof RangeError) {
+    if (isStringTooLongError(err) || isJSONStringifyRangeError(err)) {
       const newLimit = Math.floor(limit / 2);
 
       if (newLimit === 0) {
