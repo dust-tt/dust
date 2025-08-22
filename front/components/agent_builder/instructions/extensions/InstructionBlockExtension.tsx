@@ -1,4 +1,4 @@
-import { Chip, cn, IconButton, XMarkIcon } from "@dust-tt/sparkle";
+import { Chip, cn } from "@dust-tt/sparkle";
 import { InputRule, mergeAttributes, Node } from "@tiptap/core";
 import type { Slice } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
@@ -111,7 +111,6 @@ const InstructionBlockTypeButton: React.FC<InstructionBlockTypeButtonProps> = ({
 const InstructionBlockComponent: React.FC<NodeViewProps> = ({
   node,
   updateAttributes,
-  deleteNode,
 }) => {
   const { type } = node.attrs as InstructionBlockAttributes;
   const [isEditingType, setIsEditingType] = useState(false);
@@ -119,7 +118,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
   return (
     <NodeViewWrapper className="my-2">
       <div className="rounded-lg border border-border bg-gray-100 p-2 dark:bg-gray-800">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center">
           {isEditingType ? (
             <InstructionBlockTypeInput
               currentType={type}
@@ -136,13 +135,6 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
               onClick={() => setIsEditingType(true)}
             />
           )}
-          <IconButton
-            icon={XMarkIcon}
-            variant="plain"
-            size="mini"
-            onClick={() => deleteNode?.()}
-            aria-label="Remove instruction block"
-          />
         </div>
         <NodeViewContent className="prose prose-sm pt-2" />
       </div>
