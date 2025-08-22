@@ -383,15 +383,22 @@ export const InstructionBlockExtension =
             return false;
           }
 
-          // Check if current paragraph is empty
+          // Check if current paragraph is the closing tag or empty
           const paragraphNode = $from.node(blockDepth + 1);
           const isParagraphEmpty =
             paragraphNode &&
             paragraphNode.type.name === "paragraph" &&
             paragraphNode.textContent.trim().length === 0;
+          
+          // Check if cursor is at the end of closing tag
+          const isAtEndOfClosingTag = 
+            paragraphNode &&
+            paragraphNode.type.name === "paragraph" &&
+            paragraphNode.textContent.match(/^<\/\w+>$/) &&
+            $from.parentOffset === paragraphNode.content.size;
 
-          if (!isParagraphEmpty) {
-            // Let default behavior handle non-empty lines
+          if (!isParagraphEmpty && !isAtEndOfClosingTag) {
+            // Let default behavior handle other cases
             return false;
           }
 
