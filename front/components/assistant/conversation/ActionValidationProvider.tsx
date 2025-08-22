@@ -27,7 +27,7 @@ import {
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
-import { usePendingValidations } from "@app/lib/swr/pending_validations";
+import { useBlockedActions } from "@app/lib/swr/blocked_actions";
 import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
@@ -150,10 +150,18 @@ export function ActionValidationProvider({
   conversation,
   children,
 }: ActionValidationProviderProps) {
-  const { pendingValidations } = usePendingValidations({
+  const { blockedActions } = useBlockedActions({
     conversationId: conversation?.sId || null,
     workspaceId: owner.sId,
   });
+
+  // Filter blocked actions to only get validation required ones.
+  // TODO(durable-agents): also display blocked_authentication_required.
+  const pendingValidations = useMemo(() => {
+    return blockedActions.filter(
+      (action) => action.status === "blocked_validation_required"
+    );
+  }, [blockedActions]);
 
   const {
     validationQueueLength,
