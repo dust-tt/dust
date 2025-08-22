@@ -249,5 +249,43 @@ export async function submitAssistantBuilderForm({
     }
   }
 
+  if (isDraft) {
+    return new Ok(newAgentConfiguration.agentConfiguration);
+  }
+
+  const triggerSyncRes = await fetch(
+    `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        triggers: builderState.triggers.map((trigger) => ({
+          name: trigger.name,
+          description: trigger.description,
+          kind: trigger.kind,
+          configuration: trigger.configuration,
+          sId: trigger.sId,
+        })),
+      }),
+    }
+  );
+
+  if (!triggerSyncRes.ok) {
+    try {
+      const error = await triggerSyncRes.json();
+      return new Err(
+        new Error(
+          error?.api_error?.message ||
+            error?.error?.message ||
+            "An error occurred while syncing triggers."
+        )
+      );
+    } catch {
+      return new Err(new Error("An error occurred while syncing triggers."));
+    }
+  }
+
   return new Ok(newAgentConfiguration.agentConfiguration);
 }
