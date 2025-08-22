@@ -872,7 +872,6 @@ function TriggerCard({ trigger, onRemove, onEdit }: any) {
           <ClockIcon />
           <span className="truncate">{trigger.name}</span>
         </div>
-
       </div>
     </Card>
   );

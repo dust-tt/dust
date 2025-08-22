@@ -103,7 +103,6 @@ export function ScheduleEditionModal({
                 />
               </div>
 
-
               <div>
                 <Label htmlFor="trigger-cron">Cron Expression</Label>
                 <Input

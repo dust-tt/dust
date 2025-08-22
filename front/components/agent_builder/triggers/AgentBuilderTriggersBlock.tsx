@@ -60,7 +60,6 @@ function TriggerCard({ trigger, onRemove, onEdit }: TriggerCardProps) {
           {getIcon(trigger.kind)}
           <span className="truncate">{trigger.name}</span>
         </div>
-
       </div>
     </Card>
   );
