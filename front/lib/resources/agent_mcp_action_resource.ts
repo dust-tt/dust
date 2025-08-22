@@ -158,14 +158,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
 
   static async fetchByModelIdWithAuth(
     auth: Authenticator,
-    id: ModelId | string,
+    id: ModelId,
     transaction?: Transaction
   ): Promise<AgentMCPActionResource | null> {
-    const parsedId = typeof id === "string" ? parseInt(id, 10) : id;
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const action = await this.model.findOne({
-      where: { id: parsedId, workspaceId },
+      where: { id, workspaceId },
       transaction,
     });
 
@@ -342,19 +341,21 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     return this.update({ executionState });
   }
 
-  static async deleteByAgentMessageId({
-    agentMessageIds,
-    transaction,
-  }: {
-    agentMessageIds: Array<ModelId>;
-    transaction?: Transaction;
-  }): Promise<Result<undefined, Error>> {
+  static async deleteByAgentMessageId(
+    auth: Authenticator,
+    params: {
+      agentMessageIds: Array<ModelId>;
+      transaction?: Transaction;
+    }
+  ): Promise<Result<undefined, Error>> {
     try {
+      const workspaceId = auth.getNonNullableWorkspace().id;
       await AgentMCPAction.destroy({
         where: {
-          agentMessageId: { [Op.in]: agentMessageIds },
+          agentMessageId: { [Op.in]: params.agentMessageIds },
+          workspaceId,
         },
-        transaction,
+        transaction: params.transaction,
       });
       return new Ok(undefined);
     } catch (err) {
@@ -377,6 +378,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     } catch (err) {
       return new Err(normalizeError(err));
     }
+  }
+
+  toJSON(): AgentMCPAction {
+    return AgentMCPAction.build(this);
   }
 
   get sId(): string {

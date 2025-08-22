@@ -37,7 +37,9 @@ async function destroyActionsRelatedResources(
   });
 
   // Destroy the actions.
-  await AgentMCPActionResource.deleteByAgentMessageId({ agentMessageIds });
+  await AgentMCPActionResource.deleteByAgentMessageId(auth, {
+    agentMessageIds,
+  });
 }
 
 async function destroyMessageRelatedResources(messageIds: Array<ModelId>) {

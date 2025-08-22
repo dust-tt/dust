@@ -48,10 +48,7 @@ import type {
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
-import type {
-  AdditionalConfigurationType,
-  AgentMCPAction,
-} from "@app/lib/models/assistant/actions/mcp";
+import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
