@@ -60,13 +60,36 @@ function positionCursorInMiddleParagraph(editor: Editor, blockPos: number): bool
 const InstructionBlockComponent: React.FC<NodeViewProps> = ({
   node,
 }) => {
-  const { type } = node.attrs as InstructionBlockAttributes;
+  // Derive display type directly from content without syncing attributes
+  // This avoids side effects in render and undo stack pollution
+  let displayType = '';
+  
+  // Only check the first paragraph for the tag
+  if (node.childCount > 0) {
+    const firstChild = node.child(0);
+    if (firstChild.type.name === 'paragraph') {
+      const text = firstChild.textContent.trim();
+      // Match opening tag pattern: <tagname> or empty <>
+      const match = text.match(/^<(\w*)>$/);
+      if (match) {
+        displayType = match[1] || '';
+      }
+    }
+  }
+  
+  // Fallback to stored type if no tag found in content
+  if (!displayType) {
+    const { type } = node.attrs as InstructionBlockAttributes;
+    displayType = type;
+  }
 
   return (
     <NodeViewWrapper className="my-2">
       <div className="rounded-lg border border-border bg-gray-100 p-2 dark:bg-gray-800">
         <div className="mb-2">
-          <Chip size="mini">{type.toUpperCase()}</Chip>
+          <Chip size="mini">
+            {displayType.toUpperCase()}
+          </Chip>
         </div>
         <NodeViewContent 
           className="prose prose-sm" 
