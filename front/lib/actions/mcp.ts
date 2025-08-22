@@ -32,6 +32,7 @@ import {
 import type {
   MCPExecutionState,
   MCPRunningState,
+  ToolExecutionBlockedStatus,
   ToolExecutionStatus,
 } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
@@ -166,16 +167,26 @@ export type LightMCPToolConfigurationType =
   | LightServerSideMCPToolConfigurationType
   | LightClientSideMCPToolConfigurationType;
 
-export type MCPApproveExecutionEvent = {
+export type ToolExecutionMetadata = {
+  actionId: string;
+  inputs: Record<string, unknown>;
+  stake?: MCPToolStakeLevelType;
+  metadata: MCPValidationMetadataType;
+};
+
+export type BlockedActionExecution = ToolExecutionMetadata & {
+  messageId: string;
+  conversationId: string;
+  status: ToolExecutionBlockedStatus;
+};
+
+// TODO(durable-agents): cleanup the types of the events.
+export type MCPApproveExecutionEvent = ToolExecutionMetadata & {
   type: "tool_approve_execution";
   created: number;
   configurationId: string;
   messageId: string;
   conversationId: string;
-  actionId: string;
-  inputs: Record<string, unknown>;
-  stake?: MCPToolStakeLevelType;
-  metadata: MCPValidationMetadataType;
 };
 
 export function getMCPApprovalStateFromUserApprovalState(
