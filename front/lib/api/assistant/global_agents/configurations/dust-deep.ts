@@ -323,6 +323,7 @@ export function _getDustDeepGlobalAgent(
     dataWarehousesMCPServerView
   );
   if (dataWarehousesAction) {
+    console.log("\n\nDUST DEEP dataWarehousesAction", dataWarehousesAction);
     actions.push(dataWarehousesAction);
   }
 

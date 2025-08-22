@@ -89,6 +89,20 @@ function getGlobalAgent({
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
 
   let agentConfiguration: AgentConfigurationType | null = null;
+
+  // We use only default selected global datasources for all global agents except `@dust-deep` and
+  // `@dust-task`
+  // We use all global datasources for `@dust-deep` and `@dust-task`
+  const defaultSelectedPrefetchedDataSources: PrefetchedDataSourcesType | null =
+    !preFetchedDataSources
+      ? null
+      : {
+          dataSourceViews: preFetchedDataSources.dataSourceViews.filter(
+            (dsv) => dsv.dataSource.assistantDefaultSelected
+          ),
+          workspaceId: preFetchedDataSources.workspaceId,
+        };
+
   switch (sId) {
     case GLOBAL_AGENTS_SID.HELPER:
       agentConfiguration = _getHelperGlobalAgent({
@@ -223,42 +237,42 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.SLACK:
       agentConfiguration = _getSlackGlobalAgent(auth, {
         settings,
-        preFetchedDataSources,
+        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
         searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GOOGLE_DRIVE:
       agentConfiguration = _getGoogleDriveGlobalAgent(auth, {
         settings,
-        preFetchedDataSources,
+        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
         searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.NOTION:
       agentConfiguration = _getNotionGlobalAgent(auth, {
         settings,
-        preFetchedDataSources,
+        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
         searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GITHUB:
       agentConfiguration = _getGithubGlobalAgent(auth, {
         settings,
-        preFetchedDataSources,
+        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
         searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.INTERCOM:
       agentConfiguration = _getIntercomGlobalAgent(auth, {
         settings,
-        preFetchedDataSources,
+        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
         searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST:
       agentConfiguration = _getDustGlobalAgent(auth, {
         settings,
-        preFetchedDataSources,
+        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
         agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
         searchMCPServerView,

@@ -18,11 +18,11 @@ export type PrefetchedDataSourcesType = {
   workspaceId: string;
 };
 
-export async function getDataSourceAndWorkspaceIdForGlobalAgents(
+export async function getDataSourcesAndWorkspaceIdForGlobalAgents(
   auth: Authenticator
 ): Promise<PrefetchedDataSourcesType> {
   const owner = auth.getNonNullableWorkspace();
-  const dsvs = await DataSourceViewResource.listAssistantDefaultSelected(auth);
+  const dsvs = await DataSourceViewResource.listAllInGlobalGroup(auth);
 
   return {
     dataSourceViews: dsvs.map((dsv) => {
