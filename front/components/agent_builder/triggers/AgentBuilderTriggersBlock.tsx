@@ -4,6 +4,7 @@ import {
   CardActionButton,
   CardGrid,
   ClockIcon,
+  EmptyCTA,
   Spinner,
   TimeIcon,
   XMarkIcon,
@@ -142,13 +143,15 @@ export function AgentBuilderTriggersBlock({
       title="Triggers"
       description="Triggers agent execution based on events."
       headerActions={
-        <Button
-          label="Add Schedule"
-          variant="primary"
-          icon={ClockIcon}
-          onClick={handleCreateTrigger}
-          type="button"
-        />
+        triggers.length > 0 && (
+          <Button
+            label="Add Schedule"
+            variant="primary"
+            icon={ClockIcon}
+            onClick={handleCreateTrigger}
+            type="button"
+          />
+        )
       }
     >
       <div className="flex-1">
@@ -156,6 +159,18 @@ export function AgentBuilderTriggersBlock({
           <div className="flex h-40 w-full items-center justify-center">
             <Spinner />
           </div>
+        ) : triggers.length === 0 ? (
+          <EmptyCTA
+            action={
+              <Button
+                label="Add Schedule"
+                variant="primary"
+                icon={ClockIcon}
+                onClick={handleCreateTrigger}
+              />
+            }
+            className="py-4"
+          />
         ) : (
           <CardGrid>
             {triggers.map((trigger, index) => (
