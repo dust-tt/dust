@@ -1,10 +1,12 @@
 import { cn, markdownStyles } from "@dust-tt/sparkle";
+import type { Editor as CoreEditor } from "@tiptap/core";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import Placeholder from "@tiptap/extension-placeholder";
-import type { Editor } from "@tiptap/react";
+import type { Editor as ReactEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
+import debounce from "lodash/debounce";
 import React, { useEffect, useMemo, useRef } from "react";
 import { useController } from "react-hook-form";
 
@@ -69,7 +71,7 @@ export function AgentBuilderInstructionsEditor({
   });
 
   // Create a ref to hold the editor instance
-  const editorRef = useRef<Editor | null>(null);
+  const editorRef = useRef<ReactEditor | null>(null);
 
   // Setup the block insert dropdown
   const blockDropdown = useBlockInsertDropdown(editorRef);
@@ -117,17 +119,28 @@ export function AgentBuilderInstructionsEditor({
     ];
   }, [suggestionHandler]);
 
+  // Create a debounced update function to prevent performance issues with large documents
+  const debouncedUpdate = useMemo(
+    () =>
+      debounce((editor: CoreEditor | ReactEditor) => {
+        if (!isInstructionDiffMode && !editor.isDestroyed) {
+          const json = editor.getJSON();
+          const plainText = plainTextFromTipTapContent(json);
+          field.onChange(plainText);
+        }
+      }, 250),
+    [field, isInstructionDiffMode]
+  );
+
   const editor = useEditor(
     {
       extensions,
       content: tipTapContentFromPlainText(field.value),
       autofocus: "end", // Focus at the end of content
-      editable: true,
-      onUpdate: ({ editor }) => {
-        if (!isInstructionDiffMode && !editor.isDestroyed) {
-          const json = editor.getJSON();
-          const plainText = plainTextFromTipTapContent(json);
-          field.onChange(plainText);
+      onUpdate: ({ editor, transaction }) => {
+        // Only update if the document content actually changed (not just selection)
+        if (transaction.docChanged) {
+          debouncedUpdate(editor);
         }
       },
     },
@@ -138,6 +151,13 @@ export function AgentBuilderInstructionsEditor({
   useEffect(() => {
     editorRef.current = editor;
   }, [editor]);
+
+  // Cleanup debounced function on unmount
+  useEffect(() => {
+    return () => {
+      debouncedUpdate.cancel();
+    };
+  }, [debouncedUpdate]);
 
   const currentCharacterCount =
     editor?.storage.characterCount.characters() || 0;
