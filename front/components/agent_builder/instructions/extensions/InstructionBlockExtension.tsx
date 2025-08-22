@@ -538,6 +538,123 @@ export const InstructionBlockExtension =
     addProseMirrorPlugins() {
       return [
         new Plugin({
+          key: new PluginKey("instructionBlockTagSync"),
+          appendTransaction: (transactions, oldState, newState) => {
+            // Only process if there were doc changes
+            const hasDocChanged = transactions.some(tr => tr.docChanged);
+            if (!hasDocChanged) {
+              return null;
+            }
+
+            let tr = null;
+            const { doc } = newState;
+            const { selection } = newState;
+            const $from = selection.$from;
+
+            // Check if we're in an instruction block
+            let blockDepth: number | null = null;
+            let blockPos = -1;
+            for (let d = $from.depth; d >= 0; d--) {
+              if ($from.node(d).type.name === this.name) {
+                blockDepth = d;
+                blockPos = $from.before(d);
+                break;
+              }
+            }
+
+            if (blockDepth === null || blockPos === -1) {
+              return null;
+            }
+
+            // Check if we're editing the first paragraph (opening tag)
+            const childIndex = $from.index(blockDepth);
+            if (childIndex !== 0) {
+              return null;
+            }
+
+            const blockNode = $from.node(blockDepth);
+            if (blockNode.childCount < 2) {
+              // Need at least opening and closing tags
+              return null;
+            }
+
+            // Get the opening and closing tag paragraphs
+            const firstPara = blockNode.child(0);
+            const lastPara = blockNode.child(blockNode.childCount - 1);
+
+            // Extract tag names
+            const openingText = firstPara.textContent.trim();
+            const closingText = lastPara.textContent.trim();
+
+            // Parse opening tag
+            const openingMatch = openingText.match(/^<(\w*)>$/);
+            if (!openingMatch) {
+              return null; // Not a valid opening tag
+            }
+            const newTagName = openingMatch[1] || "";
+
+            // Parse closing tag
+            const closingMatch = closingText.match(/^<\/(\w*)>$/);
+            if (!closingMatch) {
+              return null; // Not a valid closing tag
+            }
+            const oldClosingTagName = closingMatch[1] || "";
+
+            // Check if we need to sync (only if they were different)
+            // We need to check the old state to see if they matched before
+            const oldDoc = oldState.doc;
+            const oldBlockNode = oldDoc.nodeAt(blockPos);
+            
+            if (oldBlockNode && oldBlockNode.childCount >= 2) {
+              const oldFirstPara = oldBlockNode.child(0);
+              const oldLastPara = oldBlockNode.child(oldBlockNode.childCount - 1);
+              
+              const oldOpeningText = oldFirstPara.textContent.trim();
+              const oldClosingText = oldLastPara.textContent.trim();
+              
+              const oldOpeningMatch = oldOpeningText.match(/^<(\w*)>$/);
+              const oldClosingMatch = oldClosingText.match(/^<\/(\w*)>$/);
+              
+              if (oldOpeningMatch && oldClosingMatch) {
+                const oldOpeningTag = oldOpeningMatch[1] || "";
+                const oldClosingTag = oldClosingMatch[1] || "";
+                
+                // Only sync if:
+                // 1. The old opening and closing tags matched
+                // 2. The new opening tag is different from the old one
+                // 3. The closing tag hasn't been manually changed
+                if (oldOpeningTag === oldClosingTag && 
+                    newTagName !== oldOpeningTag &&
+                    oldClosingTagName === oldClosingTag) {
+                  
+                  // Create transaction to update closing tag
+                  if (!tr) {
+                    tr = newState.tr;
+                  }
+                  
+                  // Calculate position of last paragraph
+                  let lastParaPos = blockPos + 1; // Start inside block
+                  for (let i = 0; i < blockNode.childCount - 1; i++) {
+                    lastParaPos += blockNode.child(i).nodeSize;
+                  }
+                  
+                  // Replace the closing tag text
+                  const newClosingTag = newTagName ? `</${newTagName}>` : "</>"; 
+                  tr.replaceWith(
+                    lastParaPos + 1, // +1 to get inside the paragraph
+                    lastParaPos + lastPara.nodeSize - 1, // -1 to stay inside
+                    newState.schema.text(newClosingTag)
+                  );
+                  
+                  return tr;
+                }
+              }
+            }
+
+            return null;
+          },
+        }),
+        new Plugin({
           key: new PluginKey("instructionBlockAutoConvert"),
           props: {
             clipboardTextSerializer: (slice: Slice) => {
