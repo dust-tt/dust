@@ -253,7 +253,6 @@ export async function submitAssistantBuilderForm({
     return new Ok(newAgentConfiguration.agentConfiguration);
   }
 
-  /** 
   const triggerSyncRes = await fetch(
     `/api/w/${owner.sId}/assistant/agent_configurations/${newAgentConfigurationId}/triggers`,
     {
@@ -266,7 +265,7 @@ export async function submitAssistantBuilderForm({
           name: trigger.name,
           kind: trigger.kind,
           configuration: trigger.configuration,
-          sId: trigger.sId ?? undefined,
+          sId: trigger.sId,
         })),
       }),
     }
@@ -287,6 +286,5 @@ export async function submitAssistantBuilderForm({
     }
   }
 
-  */
   return new Ok(newAgentConfiguration.agentConfiguration);
 }
