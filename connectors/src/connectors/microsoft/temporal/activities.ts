@@ -1,5 +1,6 @@
 import type { LoggerInterface } from "@dust-tt/client";
 import { removeNulls } from "@dust-tt/client";
+import { Storage } from "@google-cloud/storage";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import * as _ from "lodash";
@@ -41,6 +42,7 @@ import {
   updateDescendantsParentsInCore,
 } from "@connectors/connectors/microsoft/temporal/file";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
+import { connectorsConfig } from "@connectors/connectors/shared/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
@@ -55,6 +57,7 @@ import {
 } from "@connectors/resources/microsoft_resource";
 import type { ModelId } from "@connectors/types";
 import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
+import { isDevelopment } from "@connectors/types";
 
 const FILES_SYNC_CONCURRENCY = 10;
 const DELETE_CONCURRENCY = 5;
@@ -1451,4 +1454,521 @@ async function scrubRemovedFolders({
       });
     }
   }
+}
+
+export async function cleanupDeltaGCSFile({
+  connectorId,
+  driveId,
+  gcsFilePath,
+}: {
+  connectorId: ModelId;
+  driveId: string;
+  gcsFilePath: string;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const logger = getActivityLogger(connector);
+
+  try {
+    const storage = new Storage({
+      keyFilename: isDevelopment()
+        ? connectorsConfig.getServiceAccount()
+        : undefined,
+    });
+    const bucket = storage.bucket(connectorsConfig.getDustTmpSyncBucketName());
+    const file = bucket.file(gcsFilePath);
+
+    await file.delete();
+    logger.info(
+      { connectorId, driveId, gcsFilePath },
+      "Successfully cleaned up delta GCS file"
+    );
+  } catch (error) {
+    logger.error(
+      {
+        connectorId,
+        driveId,
+        gcsFilePath,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      "Failed to cleanup delta GCS file"
+    );
+    // Don't throw error as this is cleanup and shouldn't fail the workflow
+  }
+}
+
+export async function processDeltaChangesFromGCS({
+  connectorId,
+  driveId,
+  gcsFilePath,
+  startSyncTs,
+  cursor = 0,
+}: {
+  connectorId: ModelId;
+  driveId: string;
+  gcsFilePath: string;
+  startSyncTs: number;
+  cursor?: number;
+}): Promise<{ nextCursor: number | null; processedCount: number }> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const providerConfig =
+    await MicrosoftConfigurationResource.fetchByConnectorId(connectorId);
+
+  if (!providerConfig) {
+    throw new Error(`Configuration for connector ${connectorId} not found`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const logger = getActivityLogger(connector);
+
+  // Read the GCS file to get the list of changed items
+  const storage = new Storage({
+    keyFilename: isDevelopment()
+      ? connectorsConfig.getServiceAccount()
+      : undefined,
+  });
+  const bucket = storage.bucket(connectorsConfig.getDustTmpSyncBucketName());
+  const file = bucket.file(gcsFilePath);
+
+  const [content] = await file.download();
+  const changedItemsData = JSON.parse(content.toString()) as {
+    results: DriveItem[];
+    deltaLink: string;
+    rootNodeIds: string[];
+  };
+
+  const { results, deltaLink, rootNodeIds } = changedItemsData;
+  const uniqueChangedItems = removeAllButLastOccurences(results);
+
+  const sortedChangedItems: DriveItem[] = [];
+  const containsWholeDrive = rootNodeIds.some(
+    (nodeId) => typeAndPathFromInternalId(nodeId).nodeType === "drive"
+  );
+
+  logger.info(
+    {
+      uniqueChangedItems: uniqueChangedItems.length,
+      containsWholeDrive,
+      cursor,
+    },
+    "Processing changes from GCS"
+  );
+
+  if (containsWholeDrive) {
+    sortedChangedItems.push(...sortForIncrementalUpdate(uniqueChangedItems));
+  } else {
+    const client = await getClient(connector.connectionId);
+    const microsoftNodes = await concurrentExecutor(
+      rootNodeIds,
+      async (rootNodeId) => {
+        try {
+          return (await getItem(
+            logger,
+            client,
+            typeAndPathFromInternalId(rootNodeId).itemAPIPath + "?$select=id"
+          )) as { id: string };
+        } catch (error) {
+          if (isItemNotFoundError(error)) {
+            // Resource not found will be garbage collected later and is not blocking the workflow
+            logger.info(
+              { rootNodeId, error: error.message },
+              "Root node not found, skipping"
+            );
+            return null;
+          }
+          throw error;
+        }
+      },
+      { concurrency: 5 }
+    );
+    const validMicrosoftNodes = microsoftNodes.filter(
+      (node): node is { id: string } => node !== null
+    );
+    validMicrosoftNodes.forEach((rootNode) => {
+      sortedChangedItems.push(
+        ...sortForIncrementalUpdate(uniqueChangedItems, rootNode.id)
+      );
+    });
+
+    // if only parts of the drive are selected, look for folders that may
+    // have been removed from selection and scrub them
+    await scrubRemovedFolders({
+      connector,
+      uniqueChangedItems,
+      sortedChangedItems,
+    });
+  }
+
+  // Process changes in batches of 1000
+  const BATCH_SIZE = 1000;
+  const startIndex = cursor;
+  const endIndex = Math.min(startIndex + BATCH_SIZE, sortedChangedItems.length);
+  const currentBatch = sortedChangedItems.slice(startIndex, endIndex);
+
+  // If no items to process, return early
+  if (currentBatch.length === 0) {
+    logger.info(
+      {
+        connectorId,
+        driveId,
+        rootNodeIds,
+        cursor,
+        totalItems: sortedChangedItems.length,
+      },
+      "No items to process in current batch"
+    );
+    return {
+      nextCursor: null,
+      processedCount: 0,
+    };
+  }
+
+  logger.info(
+    {
+      totalItems: sortedChangedItems.length,
+      startIndex,
+      endIndex,
+      batchSize: currentBatch.length,
+      cursor,
+    },
+    "Processing batch of changes"
+  );
+
+  let count = 0;
+  let skipped = 0;
+  let deleted = 0;
+  let folders = 0;
+  let files = 0;
+
+  for (const driveItem of currentBatch) {
+    count++;
+    if (count % 100 === 0) {
+      logger.info(
+        {
+          count,
+          skipped,
+          deleted,
+          folders,
+          files,
+          total: currentBatch.length,
+          batchProgress: `${startIndex + count}/${sortedChangedItems.length}`,
+        },
+        "Processing delta changes batch"
+      );
+    }
+
+    await heartbeat();
+    if (!driveItem.parentReference) {
+      throw new Error(`Unexpected: parent reference missing: ${driveItem}`);
+    }
+
+    const internalId = getDriveItemInternalId(driveItem);
+
+    if (driveItem.file) {
+      if (driveItem.deleted) {
+        const isDeleted = await deleteFile({
+          connectorId,
+          internalId,
+          dataSourceConfig,
+        });
+        if (isDeleted) {
+          deleted++;
+        } else {
+          skipped++;
+        }
+      } else {
+        const isSynced = await syncOneFile({
+          connectorId,
+          dataSourceConfig,
+          providerConfig,
+          file: driveItem,
+          parentInternalId: getParentReferenceInternalId(
+            driveItem.parentReference
+          ),
+          startSyncTs,
+          heartbeat,
+        });
+        if (isSynced) {
+          files++;
+        } else {
+          skipped++;
+        }
+      }
+    } else if (driveItem.folder) {
+      if (driveItem.deleted) {
+        // no need to delete children here since they will all be listed
+        // in the delta with the 'deleted' field set
+        // we can delete, even if it is not a root node, because microsoft
+        // tells us the client has already deleted the folder
+        const isDeleted = await deleteFolder({
+          connectorId,
+          dataSourceConfig,
+          internalId,
+          deleteRootNode: true,
+        });
+        if (isDeleted) {
+          deleted++;
+        } else {
+          skipped++;
+        }
+      } else {
+        const client = await getClient(connector.connectionId);
+        const { item, type } = driveItem.root
+          ? {
+              item: await getItem(
+                logger,
+                client,
+                `/drives/${driveItem.parentReference.driveId}`
+              ),
+              type: "drive" as const,
+            }
+          : { item: driveItem, type: "folder" as const };
+
+        const blob = itemToMicrosoftNode(type, item);
+
+        if (rootNodeIds.includes(blob.internalId)) {
+          blob.name = blob.name + ` (${extractPath(item)})`;
+        }
+
+        const existingResource = await MicrosoftNodeResource.fetchByInternalId(
+          connectorId,
+          blob.internalId
+        );
+        if (
+          existingResource &&
+          isAlreadySeenItem({
+            driveItemResource: existingResource,
+            startSyncTs,
+          })
+        ) {
+          skipped++;
+          continue;
+        }
+
+        const isMoved = await isFolderMovedInSameRoot({
+          connectorId,
+          folder: driveItem,
+          internalId,
+        });
+
+        const resource = await MicrosoftNodeResource.updateOrCreate(
+          connectorId,
+          blob
+        );
+
+        // add parent information to new node resource. for the toplevel folder,
+        // parent is null
+        const parentInternalId = getParentReferenceInternalId(
+          driveItem.parentReference
+        );
+
+        const isTopLevel =
+          resource.internalId === driveId ||
+          (rootNodeIds.indexOf(resource.internalId) !== -1 &&
+            !(await MicrosoftNodeResource.fetchByInternalId(
+              connectorId,
+              parentInternalId
+            )));
+
+        await resource.update({
+          parentInternalId: isTopLevel ? null : parentInternalId,
+        });
+
+        const parents = await getParents({
+          connectorId,
+          internalId: blob.internalId,
+          startSyncTs,
+        });
+
+        logger.info(
+          { parents, title: blob.name, internalId: blob.internalId },
+          "Upserting folder"
+        );
+
+        await upsertDataSourceFolder({
+          dataSourceConfig,
+          folderId: blob.internalId,
+          parents,
+          parentId: parents[1] || null,
+          title: blob.name ?? "Untitled Folder",
+          mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
+          sourceUrl: blob.webUrl ?? undefined,
+        });
+
+        if (isMoved) {
+          await updateDescendantsParentsInCore({
+            dataSourceConfig,
+            folder: resource,
+            startSyncTs,
+          });
+        }
+
+        await resource.update({
+          lastSeenTs: new Date(),
+        });
+        folders++;
+      }
+    } else {
+      throw new Error(`Unexpected: driveItem is neither file nor folder`);
+    }
+  }
+
+  // Update the delta link for all nodes
+  const nodes = await MicrosoftNodeResource.fetchByInternalIds(
+    connectorId,
+    rootNodeIds
+  );
+  await concurrentExecutor(
+    nodes,
+    (node) => node && node.update({ deltaLink }),
+    { concurrency: 5 }
+  );
+
+  logger.info(
+    {
+      connectorId,
+      driveId,
+      rootNodeIds,
+      processedCount: currentBatch.length,
+      totalProcessed: startIndex + currentBatch.length,
+      totalItems: sortedChangedItems.length,
+      hasMore: endIndex < sortedChangedItems.length,
+    },
+    "Delta changes batch processing complete"
+  );
+
+  // Return cursor for next batch or null if all items processed
+  const nextCursor = endIndex < sortedChangedItems.length ? endIndex : null;
+
+  return {
+    nextCursor,
+    processedCount: currentBatch.length,
+  };
+}
+
+export async function fetchDeltaForRootNodesInDrive({
+  connectorId,
+  driveId,
+  rootNodeIds,
+}: {
+  connectorId: ModelId;
+  driveId: string;
+  rootNodeIds: string[];
+}): Promise<{ gcsFilePath: string }> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const nodeTypes = rootNodeIds.map(
+    (nodeId) => typeAndPathFromInternalId(nodeId).nodeType
+  );
+
+  if (
+    nodeTypes.some((nodeType) => nodeType !== "drive" && nodeType !== "folder")
+  ) {
+    throw new Error(`Some of ${rootNodeIds} are not a drive or folder`);
+  }
+
+  const nodes = await MicrosoftNodeResource.fetchByInternalIds(
+    connectorId,
+    rootNodeIds
+  );
+
+  let node = nodes[0];
+
+  if (nodes.length !== rootNodeIds.length || !node) {
+    const logger = getActivityLogger(connector);
+    logger.error(
+      {
+        connectorId,
+        rootNodeIds,
+        foundNodes: nodes.length,
+        expectedNodes: rootNodeIds.length,
+      },
+      "Some root nodes not found in database, skipping delta sync for this drive"
+    );
+    throw new Error("Some root nodes not found in database");
+  }
+
+  const client = await getClient(connector.connectionId);
+
+  const logger = getActivityLogger(connector);
+  logger.info({ connectorId, rootNodeIds }, "Fetching delta for node");
+
+  // Goes through pagination to return all delta results. This is because delta
+  // list can include same item more than once and api recommendation is to
+  // ignore all but the last one.
+
+  if (!node.deltaLink) {
+    const logger = getActivityLogger(connector);
+    logger.info(
+      { connectorId, internalId: node.internalId },
+      "No delta link for root node, populating delta"
+    );
+    const internalId = node.internalId;
+    await populateDeltas(connectorId, [internalId]);
+    node =
+      (await MicrosoftNodeResource.fetchByInternalId(
+        connectorId,
+        node.internalId
+      )) ?? undefined;
+    if (!node) {
+      throw new Error(
+        `Unreachable: Node ${internalId} (connectorId: ${connectorId}) not found after populateDeltas, skipping delta sync`
+      );
+    }
+  }
+
+  const { results, deltaLink } = await getDeltaData({
+    logger,
+    client,
+    node,
+    heartbeat,
+  });
+
+  // Generate a unique GCS file path for this delta sync
+  const timestamp = Date.now();
+  const gcsFilePath = `microsoft-delta-sync/${connectorId}/${driveId}/${timestamp}_delta.json`;
+
+  // Upload the delta data to GCS
+  const storage = new Storage({
+    keyFilename: isDevelopment()
+      ? connectorsConfig.getServiceAccount()
+      : undefined,
+  });
+  const bucket = storage.bucket(connectorsConfig.getDustTmpSyncBucketName());
+  const file = bucket.file(gcsFilePath);
+
+  const deltaData = {
+    results,
+    deltaLink,
+    rootNodeIds,
+  };
+
+  await file.save(JSON.stringify(deltaData), {
+    metadata: {
+      contentType: "application/json",
+      metadata: {
+        connectorId: connectorId.toString(),
+        driveId,
+        timestamp: timestamp.toString(),
+        type: "microsoft-delta-sync",
+      },
+    },
+  });
+
+  logger.info(
+    { connectorId, driveId, gcsFilePath, resultsCount: results.length },
+    "Delta data fetched and uploaded to GCS"
+  );
+
+  return { gcsFilePath };
 }
