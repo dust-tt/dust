@@ -93,9 +93,8 @@ function AssistantDetailsInfo({
   agentConfiguration: AgentConfigurationType;
   owner: WorkspaceType;
 }) {
-  const isConfigurable =
-    agentConfiguration.sId === GLOBAL_AGENTS_SID.RESEARCH ||
-    agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
+  const isConfigurable = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
+
   return (
     <>
       {agentConfiguration.tags.length > 0 && (
