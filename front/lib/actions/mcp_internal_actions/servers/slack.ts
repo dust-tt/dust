@@ -2,7 +2,6 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebClient } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
-import type { Match } from "@slack/web-api/dist/response/SearchMessagesResponse";
 import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
 import uniqBy from "lodash/uniqBy";
 import slackifyMarkdown from "slackify-markdown";
@@ -33,6 +32,65 @@ import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { TimeFrame } from "@app/types";
 import { parseTimeFrame, stripNullBytes, timeFrameFromNow } from "@app/types";
+
+export type SlackSearchMatch = {
+  author_name?: string;
+  channel_name?: string;
+  message_ts?: string;
+  content?: string;
+  permalink?: string;
+};
+
+export const slackSearch = async (
+  query: string,
+  accessToken: string
+): Promise<SlackSearchMatch[]> => {
+  // The slack client library does not support the assistant.search.context endpoint,
+  // so we use the raw fetch API to call it (GET with query params).
+  const params = new URLSearchParams({
+    query,
+    sort: "score",
+    sort_dir: "desc",
+    limit: SLACK_SEARCH_ACTION_NUM_RESULTS.toString(),
+  });
+
+  const resp = await fetch(
+    `https://slack.com/api/assistant.search.context?${params.toString()}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!resp.ok) {
+    throw new Error(`HTTP ${resp.status}`);
+  }
+
+  type SlackSearchResponse = {
+    ok: boolean;
+    error?: string;
+    results: {
+      messages: SlackSearchMatch[];
+    };
+  };
+
+  const data: SlackSearchResponse = (await resp.json()) as SlackSearchResponse;
+  if (!data.ok) {
+    throw new Error(data.error || "unknown_error");
+  }
+
+  const rawMatches: SlackSearchMatch[] = data.results.messages;
+
+  // Filter out matches that don't have a text.
+  const matchesWithText = rawMatches.filter((match) => !!match.content);
+
+  // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
+  const matches = matchesWithText.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
+
+  return matches;
+};
 
 const serverInfo: InternalMCPServerDefinitionType & {
   authorization: AuthorizationInfo;
@@ -382,15 +440,17 @@ const createServer = async (
         }
 
         const accessToken = authInfo?.token;
-        const slackClient = await getSlackClient(accessToken);
+        if (!accessToken) {
+          throw new Error("Unreachable: missing access token.");
+        }
 
         const timeFrame = parseTimeFrame(relativeTimeFrame);
 
         try {
-          // Search in slack only support AND queries which can easily return 0 hits.
+          // Keyword search in slack only support AND queries which can easily return 0 hits.
           // To avoid this, we'll simulate an OR query by searching for each keyword separately.
           // Then we will aggregate the results.
-          const results: Match[][] = await concurrentExecutor(
+          const results: SlackSearchMatch[][] = await concurrentExecutor(
             keywords,
             async (keyword) => {
               const query = buildSlackSearchQuery(keyword, {
@@ -401,34 +461,16 @@ const createServer = async (
                 usersMentioned,
               });
 
-              const messages = await slackClient.search.messages({
-                query,
-                sort: "score",
-                sort_dir: "desc",
-                highlight: false,
-                count: SLACK_SEARCH_ACTION_NUM_RESULTS,
-                page: 1,
-              });
-
-              if (!messages.ok) {
-                throw new Error(messages.error);
-              }
-
-              return messages.messages?.matches ?? [];
+              return slackSearch(query, accessToken);
             },
             { concurrency: 3 }
           );
 
-          // Flatten the results, order by score descending.
-          const rawMatches = results
-            .flat()
-            .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+          // Flatten the results.
+          const rawMatches = results.flat();
 
-          // Filter out matches that don't have a text.
-          const matchesWithText = rawMatches.filter((match) => !!match.text);
-
-          // Deduplicate matches by their iid.
-          const deduplicatedMatches = uniqBy(matchesWithText, "iid");
+          // Deduplicate matches by their permalink across keywords.
+          const deduplicatedMatches = uniqBy(rawMatches, "permalink");
 
           // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
           const matches = deduplicatedMatches.slice(
@@ -471,15 +513,15 @@ const createServer = async (
                   mimeType:
                     INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
                   uri: match.permalink ?? "",
-                  text: `#${match.channel?.name ?? "Unknown"}, ${match.text ?? ""}`,
+                  text: `#${match.channel_name ?? "Unknown"}, ${match.content ?? ""}`,
 
-                  id: match.ts ?? "",
+                  id: match.message_ts ?? "",
                   source: {
                     provider: "slack",
                   },
                   tags: [],
                   ref: refs.shift() as string,
-                  chunks: [stripNullBytes(match.text ?? "")],
+                  chunks: [stripNullBytes(match.content ?? "")],
                 };
               }
             );
@@ -543,6 +585,9 @@ const createServer = async (
         }
 
         const accessToken = authInfo?.token;
+        if (!accessToken) {
+          throw new Error("Unreachable: missing access token.");
+        }
 
         const timeFrame = parseTimeFrame(relativeTimeFrame);
 
@@ -555,73 +600,13 @@ const createServer = async (
             usersMentioned,
           });
 
-          // The slack client library does not support the assistant.search.context endpoint,
-          // so we use the raw fetch API to call it (GET with query params).
-          const params = new URLSearchParams({
-            query: searchQuery,
-            sort: "score",
-            sort_dir: "desc",
-            limit: SLACK_SEARCH_ACTION_NUM_RESULTS.toString(),
-          });
-
-          const resp = await fetch(
-            `https://slack.com/api/assistant.search.context?${params.toString()}`,
-            {
-              method: "GET",
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-              },
-            }
-          );
-
-          if (!resp.ok) {
-            throw new Error(`HTTP ${resp.status}`);
-          }
-
-          type SlackSemanticSearchMessage = {
-            author_name?: string;
-            channel_name?: string;
-            message_ts?: string;
-            content?: string;
-            permalink?: string;
-          };
-
-          type SlackSemanticSearchResponse = {
-            ok: boolean;
-            error?: string;
-            results: {
-              messages: SlackSemanticSearchMessage[];
-            };
-          };
-
-          const data: SlackSemanticSearchResponse = await resp.json();
-          if (!data.ok) {
-            throw new Error(data.error || "unknown_error");
-          }
-
-          const rawMatches: SlackSemanticSearchMessage[] =
-            data.results.messages;
-
-          // Filter out matches that don't have a text.
-          const matchesWithText = rawMatches.filter((match) => !!match.content);
-
-          // Deduplicate matches by their permalink.
-          const deduplicatedMatches = uniqBy(matchesWithText, "permalink");
-
-          // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
-          const matches = deduplicatedMatches.slice(
-            0,
-            SLACK_SEARCH_ACTION_NUM_RESULTS
-          );
+          const matches = await slackSearch(searchQuery, accessToken);
 
           if (matches.length === 0) {
             return {
               isError: false,
               content: [
-                {
-                  type: "text" as const,
-                  text: `No messages found.`,
-                },
+                { type: "text" as const, text: `No messages found.` },
                 {
                   type: "resource" as const,
                   resource: makeQueryResource(
@@ -643,7 +628,7 @@ const createServer = async (
               citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
             );
 
-            const getTextFromMatch = (match: SlackSemanticSearchMessage) => {
+            const getTextFromMatch = (match: SlackSearchMatch) => {
               const author = match.author_name || "Unknown";
               const channel = match.channel_name || "Unknown";
               let content = match.content || "";
@@ -670,9 +655,7 @@ const createServer = async (
                   uri: match.permalink ?? "",
                   text: getTextFromMatch(match),
                   id: match.message_ts ?? "",
-                  source: {
-                    provider: "slack",
-                  },
+                  source: { provider: "slack" },
                   tags: [],
                   ref: refs.shift() as string,
                   chunks: [stripNullBytes(match.content ?? "")],
