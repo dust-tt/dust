@@ -18,7 +18,6 @@ export const QUERY_TABLES_TOOL_NAME = "query_tables";
 export const GET_DATABASE_SCHEMA_TOOL_NAME = "get_database_schema";
 export const EXECUTE_DATABASE_QUERY_TOOL_NAME = "execute_database_query";
 export const PROCESS_TOOL_NAME = "extract_information_from_documents";
-export const RUN_AGENT_TOOL_NAME = "run_agent";
 export const CREATE_AGENT_TOOL_NAME = "create_agent";
 export const FIND_TAGS_TOOL_NAME = "find_tags";
 export const FILESYSTEM_CAT_TOOL_NAME = "cat";
@@ -40,39 +39,40 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
   "agent_management",
+  "agent_memory",
   "agent_router",
   "conversation_files",
   "data_sources_file_system",
+  "data_warehouses",
   "extract_data",
   "file_generation",
   "freshservice",
-  "interactive_content",
   "github",
   "gmail",
+  "google_calendar",
   "google_sheets",
   "hubspot",
   "image_generation",
   "include_data",
+  "interactive_content",
   "jira",
   "missing_action_catcher",
   "monday",
   "notion",
+  "outlook_calendar",
   "outlook",
   "primitive_types_debugger",
-  TABLE_QUERY_SERVER_NAME,
-  TABLE_QUERY_V2_SERVER_NAME,
   "reasoning",
   "run_agent",
   "run_dust_app",
   "salesforce",
-  SEARCH_SERVER_NAME,
-  "think",
-  "web_search_&_browse",
-  "google_calendar",
-  "outlook_calendar",
   "slack",
-  "agent_memory",
-  "data_warehouses",
+  "think",
+  "toolsets",
+  "web_search_&_browse",
+  SEARCH_SERVER_NAME,
+  TABLE_QUERY_SERVER_NAME,
+  TABLE_QUERY_V2_SERVER_NAME,
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -620,6 +620,17 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("data_warehouses_tool");
+    },
+    tools_stakes: undefined,
+    timeoutMs: undefined,
+  },
+  toolsets: {
+    id: 1013,
+    availability: "auto",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("toolsets_tool");
     },
     tools_stakes: undefined,
     timeoutMs: undefined,

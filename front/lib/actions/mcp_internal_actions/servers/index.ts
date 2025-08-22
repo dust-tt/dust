@@ -35,6 +35,7 @@ import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/se
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
+import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
@@ -150,6 +151,8 @@ export async function getInternalMCPServer(
       return freshserviceServer();
     case "data_warehouses":
       return dataWarehousesServer(auth, agentLoopContext);
+    case "toolsets":
+      return toolsetsServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

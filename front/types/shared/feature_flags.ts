@@ -160,6 +160,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Human Out Of The Loop (aka Triggers)",
     stage: "dust_only",
   },
+  toolsets_tool: {
+    description: "Toolsets MCP tool",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
