@@ -25,7 +25,7 @@ import {
   JsonValueType,
   PrettyJsonViewer,
 } from "@sparkle/components/markdown/PrettyJsonViewer";
-import { CommandLineIcon, SparklesIcon } from "@sparkle/icons/app";
+import { CommandLineIcon, EyeIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 const PRETTY_JSON_PREFERENCE_KEY = "pretty-json-preference";
@@ -389,7 +389,7 @@ export function CodeBlockWithExtendedSupport({
             size="xs"
             variant={"outline"}
             label={showMermaid ? "Markdown" : "Mermaid"}
-            icon={showMermaid ? CommandLineIcon : SparklesIcon}
+            icon={showMermaid ? CommandLineIcon : EyeIcon}
             onClick={() => setShowMermaid(!showMermaid)}
             tooltip={showMermaid ? "Switch to Markdown" : "Switch to Mermaid"}
           />
@@ -417,7 +417,7 @@ export function CodeBlockWithExtendedSupport({
             size="xs"
             variant={"outline"}
             label={showPrettyJson ? "Raw JSON" : "Pretty JSON"}
-            icon={showPrettyJson ? CommandLineIcon : SparklesIcon}
+            icon={showPrettyJson ? CommandLineIcon : EyeIcon}
             onClick={() => {
               const newValue = !showPrettyJson;
               setShowPrettyJson(newValue);
