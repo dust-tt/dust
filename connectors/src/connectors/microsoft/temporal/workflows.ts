@@ -195,37 +195,26 @@ export async function incrementalSyncWorkflow({
       rootNodeIds: groupedItems[nodeId] as string[],
     });
 
+    // Skip processing if no delta data was fetched
+    if (!gcsFilePath) {
+      console.log(`No delta data to process for drive ${nodeId}, skipping`);
+      continue;
+    }
+
     // Step 2: Process the changes from GCS in batches
     let cursor: number | null = 0;
-    let totalProcessed = 0;
-    let batchCount = 0;
 
     try {
       while (cursor !== null) {
-        batchCount++;
-        const { nextCursor, processedCount } = await processDeltaChangesFromGCS(
-          {
-            connectorId,
-            driveId: nodeId,
-            gcsFilePath,
-            startSyncTs,
-            cursor,
-          }
-        );
+        const { nextCursor } = await processDeltaChangesFromGCS({
+          connectorId,
+          driveId: nodeId,
+          gcsFilePath,
+          startSyncTs,
+          cursor,
+        });
 
-        totalProcessed += processedCount;
         cursor = nextCursor;
-
-        // Log progress
-        if (cursor !== null) {
-          console.log(
-            `Drive ${nodeId}: Processed ${totalProcessed} items in ${batchCount} batches, continuing with cursor ${cursor}`
-          );
-        } else {
-          console.log(
-            `Drive ${nodeId}: Completed processing ${totalProcessed} items in ${batchCount} batches`
-          );
-        }
 
         // Add a small delay between batches to prevent overwhelming the system
         if (cursor !== null) {
