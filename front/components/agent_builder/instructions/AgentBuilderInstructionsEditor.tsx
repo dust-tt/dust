@@ -119,7 +119,7 @@ export function AgentBuilderInstructionsEditor({
     ];
   }, [suggestionHandler]);
 
-  // Create a debounced update function to prevent performance issues with large documents
+  // Debounce serialization to prevent performance issues
   const debouncedUpdate = useMemo(
     () =>
       debounce((editor: CoreEditor | ReactEditor) => {
@@ -138,7 +138,7 @@ export function AgentBuilderInstructionsEditor({
       content: tipTapContentFromPlainText(field.value),
       autofocus: "end", // Focus at the end of content
       onUpdate: ({ editor, transaction }) => {
-        // Only update if the document content actually changed (not just selection)
+        // Skip selection-only changes
         if (transaction.docChanged) {
           debouncedUpdate(editor);
         }
@@ -190,9 +190,15 @@ export function AgentBuilderInstructionsEditor({
 
     const currentContent = plainTextFromTipTapContent(editor.getJSON());
     if (currentContent !== field.value) {
-      editor.commands.setContent(tipTapContentFromPlainText(field.value));
+      debouncedUpdate.flush(); // Save pending changes
+      
+      // Sync without affecting history or triggering updates
+      editor.commands.setContent(
+        tipTapContentFromPlainText(field.value),
+        false
+      );
     }
-  }, [editor, field.value]);
+  }, [editor, field.value, debouncedUpdate]);
 
   useEffect(() => {
     if (!editor) {
