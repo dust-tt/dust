@@ -176,7 +176,7 @@ const getCachedPublicChannels = cacheWithRedis(
   _getPublicChannels,
   ({ mcpServerId }: GetPublicChannelsArgs) => mcpServerId,
   {
-    ttlMs: 1000, // 1 second
+    ttlMs: 60 * 10 * 1000, // 10 minutes
   }
 );
 
