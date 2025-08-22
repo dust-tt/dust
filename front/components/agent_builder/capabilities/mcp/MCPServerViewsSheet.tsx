@@ -1,20 +1,16 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
-  Chip,
-  ContentMessage,
   MultiPageSheet,
   MultiPageSheetContent,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import { ActionIcons } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { UseFieldArrayAppend } from "react-hook-form";
 import { useForm, useWatch } from "react-hook-form";
 
-import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderFormData,
@@ -22,6 +18,7 @@ import type {
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
+import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
 import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
@@ -32,6 +29,11 @@ import {
   getMCPConfigurationFormSchema,
   validateMCPActionConfiguration,
 } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
+import {
+  getInfoPageDescription,
+  getInfoPageIcon,
+  getInfoPageTitle,
+} from "@app/components/agent_builder/capabilities/mcp/utils/infoPageUtils";
 import {
   getFooterButtons,
   getInitialConfigurationTool,
@@ -62,9 +64,6 @@ import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { InternalActionIcons } from "@app/lib/actions/mcp_icons";
-import { isCustomServerIconType } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -278,6 +277,8 @@ export function MCPServerViewsSheet({
         if (mcpServerView) {
           setInfoMCPServerView(mcpServerView);
         }
+      } else {
+        setInfoMCPServerView(null);
       }
     } else if (mode?.type === "add") {
       setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);
@@ -588,58 +589,31 @@ export function MCPServerViewsSheet({
     },
     {
       id: TOOLS_SHEET_PAGE_IDS.INFO,
-      title: infoMCPServerView
-        ? getMcpServerViewDisplayName(infoMCPServerView)
-        : "Tool information",
-      description:
-        infoMCPServerView?.server.description ?? "No description available",
-      icon: infoMCPServerView
-        ? isCustomServerIconType(infoMCPServerView.server.icon)
-          ? ActionIcons[infoMCPServerView.server.icon]
-          : InternalActionIcons[infoMCPServerView.server.icon]
-        : undefined,
-      content: infoMCPServerView ? (
-        <div className="flex h-full flex-col space-y-6">
-          <div className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <h3 className="text-lg font-semibold text-foreground dark:text-foreground-night">
-                  Available Tools
-                </h3>
-                <Chip
-                  size="xs"
-                  color="info"
-                  label={`${infoMCPServerView.server.tools?.length || 0} tools`}
-                />
-              </div>
-
-              {infoMCPServerView.server.tools &&
-              infoMCPServerView.server.tools.length > 0 ? (
-                <div className="flex flex-col gap-4">
-                  <span className="text-md text-muted-foreground dark:text-muted-foreground-night">
-                    These tools will be available to your agent during
-                    conversations and can be configured with different
-                    permission levels:
-                  </span>
-                  <ToolsList
-                    owner={owner}
-                    mcpServerView={infoMCPServerView}
-                    disableUpdates
-                  />
-                </div>
-              ) : (
-                <ContentMessage variant="primary" size="sm">
-                  No tools are currently available for this server.
-                </ContentMessage>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="flex h-40 w-full items-center justify-center">
-          <Spinner />
-        </div>
+      title: getInfoPageTitle(
+        infoMCPServerView,
+        mode?.type === "info" ? mode.action : null
       ),
+      description: getInfoPageDescription(
+        infoMCPServerView,
+        mode?.type === "info" ? mode.action : null
+      ),
+      icon: getInfoPageIcon(
+        infoMCPServerView,
+        mode?.type === "info" ? mode.action : null
+      ),
+      content:
+        infoMCPServerView ||
+        (mode?.type === "info" &&
+          mode.action?.type === "DATA_VISUALIZATION") ? (
+          <MCPServerInfoPage
+            infoMCPServerView={infoMCPServerView}
+            infoAction={mode?.type === "info" ? mode.action : null}
+          />
+        ) : (
+          <div className="flex h-40 w-full items-center justify-center">
+            <Spinner />
+          </div>
+        ),
     },
   ];
 
