@@ -17,6 +17,7 @@ import type {
   ReadTableChunkParams,
   RelocationBlob,
 } from "@app/temporal/relocation/activities/types";
+import { isStringTooLongError } from "@app/temporal/relocation/activities/types";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
@@ -168,43 +169,79 @@ export async function readFrontTableChunk({
 
   const idClause = lastId ? `AND id > ${lastId}` : "";
 
-  const rows = await frontSequelize.query<{ id: ModelId }>(
-    `SELECT * FROM "${tableName}"
+  try {
+    const rows = await frontSequelize.query<{ id: ModelId }>(
+      `SELECT * FROM "${tableName}"
      WHERE "workspaceId" = :workspaceId ${idClause}
      ORDER BY id
      LIMIT :limit`,
-    {
-      replacements: { workspaceId: workspace.id, limit },
-      type: QueryTypes.SELECT,
-      raw: true,
-    }
-  );
+      {
+        replacements: { workspaceId: workspace.id, limit },
+        type: QueryTypes.SELECT,
+        raw: true,
+      }
+    );
 
-  const blob: RelocationBlob = {
-    statements: {
-      [tableName]: generateParameterizedInsertStatements(tableName, rows, {
-        onConflict: "ignore",
-      }),
-    },
-  };
+    const blob: RelocationBlob = {
+      statements: {
+        [tableName]: generateParameterizedInsertStatements(tableName, rows, {
+          onConflict: "ignore",
+        }),
+      },
+    };
 
-  const dataPath = await writeToRelocationStorage(blob, {
-    workspaceId,
-    type: "front",
-    operation: `read_table_chunk_${tableName}`,
-    fileName,
-  });
+    const dataPath = await writeToRelocationStorage(blob, {
+      workspaceId,
+      type: "front",
+      operation: `read_table_chunk_${tableName}`,
+      fileName,
+    });
 
-  localLogger.info(
-    {
+    localLogger.info(
+      {
+        dataPath,
+      },
+      "[SQL Table] Table chunk read successfully"
+    );
+
+    return {
       dataPath,
-    },
-    "[SQL Table] Table chunk read successfully"
-  );
+      hasMore: rows.length === limit,
+      lastId: rows[rows.length - 1]?.id ?? lastId,
+    };
+  } catch (err) {
+    if (isStringTooLongError(err)) {
+      const newLimit = Math.floor(limit / 2);
 
-  return {
-    dataPath,
-    hasMore: rows.length === limit,
-    lastId: rows[rows.length - 1]?.id ?? lastId,
-  };
+      if (newLimit === 0) {
+        localLogger.error(
+          {
+            fileName,
+            error: err,
+          },
+          "[SQL Table] Failed to write to relocation storage."
+        );
+        throw err;
+      }
+
+      localLogger.info(
+        {
+          error: err,
+          limit,
+          newLimit,
+        },
+        "[SQL Table] Table chunk is too large to be processed, trying with smaler chunk"
+      );
+      return readFrontTableChunk({
+        destRegion,
+        lastId,
+        limit: Math.floor(limit / 2),
+        sourceRegion,
+        tableName,
+        workspaceId,
+        fileName,
+      });
+    }
+    throw err;
+  }
 }
