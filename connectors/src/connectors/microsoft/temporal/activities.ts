@@ -1920,6 +1920,14 @@ export async function fetchDeltaForRootNodesInDrive({
     });
   }
 
+  if (sortedChangedItems.length === 0) {
+    logger.info(
+      { connectorId, driveId, rootNodeIds },
+      "No changes found, skipping delta sync"
+    );
+    return { gcsFilePath: null };
+  }
+
   const deltaData: DeltaDataInGCS = {
     results,
     deltaLink,
