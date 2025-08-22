@@ -172,7 +172,7 @@ async function getExistingActionsAndBlobs(
       if (!isToolExecutionStatusFinal(mcpAction.status)) {
         actionBlobs.push({
           actionId: mcpAction.id,
-          needsApproval: mcpAction.status === "blocked_pending_validation",
+          needsApproval: mcpAction.status === "blocked_validation_required",
         });
       }
     }

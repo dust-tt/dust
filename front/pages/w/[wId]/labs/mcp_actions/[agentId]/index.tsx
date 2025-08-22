@@ -135,7 +135,7 @@ export default function AgentMCPActions({
       case "errored":
         return "warning";
       case "blocked_authentication_required":
-      case "blocked_pending_validation":
+      case "blocked_validation_required":
         return "info";
       default:
         return "primary";
