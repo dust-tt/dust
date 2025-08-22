@@ -487,7 +487,7 @@ export async function* runToolWithStreaming(
     `workspace_name:${owner.name}`,
   ];
 
-  const { executionState } = mcpAction;
+  const { executionState, status } = mcpAction;
 
   // Use the augmented inputs that were computed and stored during action creation
   const inputs = action.augmentedInputs;
@@ -572,7 +572,7 @@ export async function* runToolWithStreaming(
       agentMessage,
       actionBaseParams,
       executionState,
-      status: "errored",
+      status,
       errorMessage,
       yieldAsError: false,
     });
