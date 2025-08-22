@@ -78,8 +78,5 @@ export async function updateResourceAndPublishEvent(
   // Process database operations BEFORE publishing to Redis.
   await processEventForDatabase(event, agentMessageRow, step);
 
-  await publishConversationRelatedEvent(event, {
-    conversationId,
-    step,
-  });
+  await publishConversationRelatedEvent({ conversationId, event, step });
 }
