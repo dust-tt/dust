@@ -210,7 +210,7 @@ export async function readFrontTableChunk({
       lastId: rows[rows.length - 1]?.id ?? lastId,
     };
   } catch (err) {
-    if (isStringTooLongError(err)) {
+    if (isStringTooLongError(err) || err instanceof RangeError) {
       const newLimit = Math.floor(limit / 2);
 
       if (newLimit === 0) {
