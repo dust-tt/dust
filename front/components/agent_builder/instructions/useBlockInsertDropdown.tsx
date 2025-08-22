@@ -104,7 +104,7 @@ export const useBlockInsertDropdown = (
     (suggestion: BlockSuggestion) => {
       const editor = editorRef.current;
 
-      if (editor && rangeRef.current) {
+      if (editor && !editor.isDestroyed && rangeRef.current) {
         suggestion.command(editor, rangeRef.current);
       }
 
