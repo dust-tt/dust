@@ -1,8 +1,13 @@
 import {
   Avatar,
   Button,
+  Card,
+  CardActionButton,
+  CardGrid,
+  ClockIcon,
   Collapsible,
   CollapsibleContent,
+  EmptyCTA,
   Icon,
   Input,
   Page,
@@ -12,6 +17,7 @@ import {
   SliderToggle,
   SparklesIcon,
   Spinner,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
 import React, {
@@ -23,6 +29,7 @@ import React, {
   useState,
 } from "react";
 
+import { ScheduleEditionModal } from "@app/components/agent_builder/triggers/ScheduleEditionModal";
 import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
 import {
   buildSelectedEmojiType,
@@ -36,11 +43,13 @@ import {
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
 import { TagsSelector } from "@app/components/assistant_builder/TagsSelector";
+import type { AssistantBuilderTriggerType } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MembersList } from "@app/components/members/MembersList";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useTags } from "@app/lib/swr/tags";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { debounce } from "@app/lib/utils/debounce";
 import type {
   APIError,
@@ -157,6 +166,7 @@ type SettingsScreenProps = {
   slackDataSource: DataSourceType | undefined;
   setSelectedSlackChannels: (channels: SlackChannel[]) => void;
   currentUser: UserType | null;
+  isTriggersLoading: boolean;
 };
 
 export default function SettingsScreen({
@@ -168,6 +178,7 @@ export default function SettingsScreen({
   slackDataSource,
   setSelectedSlackChannels,
   currentUser,
+  isTriggersLoading,
 }: SettingsScreenProps) {
   const {
     nonGlobalSpacesUsedInActions,
@@ -175,6 +186,8 @@ export default function SettingsScreen({
     setBuilderState,
     setEdited,
   } = useAssistantBuilderContext();
+
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
@@ -520,6 +533,9 @@ export default function SettingsScreen({
         </div>
         <TagsSection owner={owner} />
 
+        {hasFeature("hootl") && (
+          <TriggersSection isTriggersLoading={isTriggersLoading} />
+        )}
         <div className="flex flex-row gap-4">
           <div className="flex flex-[1_0_0] flex-col gap-2">
             <Page.SectionHeader title="Access" />
@@ -829,6 +845,160 @@ function EditorsMembersList({
         showColumns={["name", "email", "remove"]}
         pagination={pagination}
         setPagination={setPagination}
+      />
+    </div>
+  );
+}
+
+function TriggerCard({ trigger, onRemove, onEdit }: any) {
+  return (
+    <Card
+      variant="primary"
+      className="h-28"
+      onClick={onEdit}
+      action={
+        <CardActionButton
+          size="mini"
+          icon={XMarkIcon}
+          onClick={(e: Event) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+        />
+      }
+    >
+      <div className="flex w-full flex-col gap-2 text-sm">
+        <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
+          <ClockIcon />
+          <span className="truncate">{trigger.name}</span>
+        </div>
+
+        <div className="text-muted-foreground dark:text-muted-foreground-night">
+          <span className="line-clamp-2 break-words">
+            {trigger.description}
+          </span>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function TriggersSection({
+  isTriggersLoading,
+}: {
+  isTriggersLoading: boolean;
+}) {
+  const { builderState, setBuilderState, setEdited } =
+    useAssistantBuilderContext();
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [triggers, setTriggers] = useState(builderState.triggers || []);
+
+  const [editedTrigger, setEditedTrigger] = useState<{
+    trigger: AssistantBuilderTriggerType;
+    index: number;
+  } | null>(null);
+
+  const handleCreateTrigger = () => {
+    setEditedTrigger(null);
+    setIsOpen(true);
+  };
+
+  const handleTriggerEdit = (
+    trigger: AssistantBuilderTriggerType,
+    index: number
+  ) => {
+    setEditedTrigger({ trigger, index });
+    setIsOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setEditedTrigger(null);
+    setIsOpen(false);
+  };
+
+  const handleTriggerSave = (trigger: AssistantBuilderTriggerType) => {
+    if (editedTrigger) {
+      const updatedTriggers = [...triggers];
+      updatedTriggers[editedTrigger.index] = trigger;
+      setTriggers(updatedTriggers);
+    } else {
+      setTriggers([...triggers, trigger]);
+    }
+    setEdited(true);
+    handleCloseModal();
+  };
+
+  const handleTriggerRemove = (index: number) => {
+    const updatedTriggers = [...triggers];
+    updatedTriggers.splice(index, 1);
+    setTriggers(updatedTriggers);
+    setEdited(true);
+  };
+
+  useEffect(() => {
+    setEdited(true);
+    setBuilderState((state) => ({
+      ...state,
+      triggers,
+    }));
+  }, [triggers, setBuilderState, setEdited]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      {isTriggersLoading ? (
+        <Spinner />
+      ) : (
+        <>
+          <Page.SectionHeader
+            title="Triggers"
+            description="Triggers are used to automate actions based on events."
+            action={
+              triggers.length > 0
+                ? {
+                    label: "Add Schedule",
+                    icon: ClockIcon,
+                    onClick: handleCreateTrigger,
+                    variant: "primary",
+                  }
+                : undefined
+            }
+          />
+          <div className="flex-1">
+            {triggers.length === 0 ? (
+              <EmptyCTA
+                action={
+                  <Button
+                    label="Add Schedule"
+                    variant="primary"
+                    icon={ClockIcon}
+                    onClick={handleCreateTrigger}
+                  />
+                }
+                className="py-4"
+              />
+            ) : (
+              <CardGrid>
+                {triggers.map((trigger, index) => (
+                  <TriggerCard
+                    key={trigger.sId || index}
+                    trigger={trigger}
+                    onRemove={() => handleTriggerRemove(index)}
+                    onEdit={() => handleTriggerEdit(trigger, index)}
+                  />
+                ))}
+              </CardGrid>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Create/Edit Schedule Modal */}
+      <ScheduleEditionModal
+        trigger={editedTrigger?.trigger}
+        isOpen={editedTrigger !== null || isOpen}
+        onClose={handleCloseModal}
+        onSave={handleTriggerSave}
       />
     </div>
   );

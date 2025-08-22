@@ -86,15 +86,15 @@ export function ScheduleEditionModal({
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleCancel()}>
-      <SheetContent size="xl">
-        <FormProvider form={form} onSubmit={onSubmit}>
-          <SheetHeader>
-            <SheetTitle>
-              {trigger ? "Edit Schedule" : "Create Schedule"}
-            </SheetTitle>
-          </SheetHeader>
+      <SheetContent size="lg">
+        <SheetHeader>
+          <SheetTitle>
+            {trigger ? "Edit Schedule" : "Create Schedule"}
+          </SheetTitle>
+        </SheetHeader>
 
-          <SheetContainer>
+        <SheetContainer>
+          <FormProvider form={form} onSubmit={onSubmit}>
             <div className="space-y-4">
               <div>
                 <Label htmlFor="trigger-name">Trigger Name</Label>
@@ -149,22 +149,22 @@ export function ScheduleEditionModal({
                 />
               </div>
             </div>
-          </SheetContainer>
+          </FormProvider>
+        </SheetContainer>
 
-          <SheetFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              onClick: handleCancel,
-            }}
-            rightButtonProps={{
-              label: trigger ? "Update Trigger" : "Add Trigger",
-              variant: "primary",
-              onClick: form.handleSubmit(onSubmit),
-              disabled: form.formState.isSubmitting,
-            }}
-          />
-        </FormProvider>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: handleCancel,
+          }}
+          rightButtonProps={{
+            label: trigger ? "Update Trigger" : "Add Trigger",
+            variant: "primary",
+            onClick: form.handleSubmit(onSubmit),
+            disabled: form.formState.isSubmitting,
+          }}
+        />
       </SheetContent>
     </Sheet>
   );
