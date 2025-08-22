@@ -65,8 +65,6 @@ import { isDevelopment } from "@connectors/types";
  * in batches without re-fetching or re-processing the data
  */
 interface DeltaDataInGCS {
-  /** Raw delta results from Microsoft Graph API */
-  results: DriveItem[];
   /** Delta link for the next sync operation */
   deltaLink: string;
   /** Array of root node IDs that are being synced */
@@ -1929,7 +1927,6 @@ export async function fetchDeltaForRootNodesInDrive({
   }
 
   const deltaData: DeltaDataInGCS = {
-    results,
     deltaLink,
     rootNodeIds,
     sortedChangedItems,
