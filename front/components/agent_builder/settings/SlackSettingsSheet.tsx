@@ -154,10 +154,14 @@ export function SlackSettingsSheet({
   });
 
   useEffect(() => {
+    setLocalSlackChannels([...(slackChannels || [])]);
+  }, [slackChannels]);
+
+  useEffect(() => {
     if (isOpen) {
       setLocalSlackChannels([...(slackChannels || [])]);
     }
-  }, [slackChannels, isOpen]);
+  }, [isOpen, slackChannels]);
 
   const handleSelectionChange = (channels: SlackChannel[]) => {
     setLocalSlackChannels(channels);
@@ -228,9 +232,12 @@ export function SlackSettingsSheet({
         </SheetHeader>
         <SheetContainer>
           <div className="flex flex-col gap-2">
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Slack channels available:
-            </span>
+            <div className="text-sm font-normal text-foreground dark:text-foreground-night">
+              Set this agent as the default agent on one or several of your
+              Slack channels. It will answer by default when the{" "}
+              <span className="font-bold">@Dust</span> Slack bot is mentionned
+              in these channels.
+            </div>
             <SlackIntegration
               existingSelection={localSlackChannels}
               onSelectionChange={handleSelectionChange}
