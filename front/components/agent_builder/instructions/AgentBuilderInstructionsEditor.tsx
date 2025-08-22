@@ -191,7 +191,7 @@ export function AgentBuilderInstructionsEditor({
     const currentContent = plainTextFromTipTapContent(editor.getJSON());
     if (currentContent !== field.value) {
       debouncedUpdate.flush(); // Save pending changes
-      
+
       // Sync without affecting history or triggering updates
       editor.commands.setContent(
         tipTapContentFromPlainText(field.value),

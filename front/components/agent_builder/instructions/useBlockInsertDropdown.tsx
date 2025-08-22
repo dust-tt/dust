@@ -131,6 +131,13 @@ export const useBlockInsertDropdown = (
   > = useMemo(() => {
     return {
       char: "/",
+      allow: ({ state, range }) => {
+        // Don't allow suggestions inside code blocks or instruction blocks
+        const $from = state.doc.resolve(range.from);
+        const parentType = $from.parent.type.name;
+        
+        return parentType !== "codeBlock" && parentType !== "instructionBlock";
+      },
       command: ({ editor, range, props }) => {
         const suggestion = props as BlockSuggestion;
         suggestion.command(
@@ -221,7 +228,8 @@ export const useBlockInsertDropdown = (
               case "Escape":
                 event.preventDefault();
                 closeDropdown();
-                return true;
+                // Let the suggestion plugin handle the escape to properly exit
+                return false;
               default:
                 return false;
             }
@@ -244,6 +252,8 @@ export const useBlockInsertDropdown = (
     onOpenChange: (open: boolean) => {
       if (!open) {
         closeDropdown();
+        // When dropdown is closed externally, we need to cancel the suggestion
+        // This is handled by the Escape key press simulation or natural exit
       }
     },
     onSelectedIndexChange: (index: number) => {
