@@ -76,7 +76,7 @@ export async function updateResourceAndPublishEvent(
   }
 ): Promise<void> {
   // Process database operations BEFORE publishing to Redis.
-  await processEventForDatabase(event, aggentMessageRow, step);
+  await processEventForDatabase(event, agentMessageRow, step);
 
   await publishConversationRelatedEvent({ conversationId, event, step });
 }
