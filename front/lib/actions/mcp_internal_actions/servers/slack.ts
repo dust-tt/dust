@@ -149,7 +149,7 @@ const _getPublicChannels = async ({
       types: "public_channel",
     });
     if (!response.ok) {
-      throw new Error(`Error listing channels: ${response.error}`);
+      throw new Error(response.error);
     }
     channels.push(...(response.channels ?? []));
     cursor = response.response_metadata?.next_cursor;
@@ -176,7 +176,7 @@ const getCachedPublicChannels = cacheWithRedis(
   _getPublicChannels,
   ({ mcpServerId }: GetPublicChannelsArgs) => mcpServerId,
   {
-    ttlMs: 60 * 10 * 1000, // 10 minutes
+    ttlMs: 1000, // 1 second
   }
 );
 
@@ -350,7 +350,7 @@ const _getSlackAIEnablementStatus = async ({
       ? "enabled"
       : "disabled";
   } catch (e) {
-    logger.warn("Error fetching Slack AI enablement status: ", e);
+    logger.warn(`Error fetching Slack AI enablement status: ${e}`);
     return "disconnected";
   }
 };
@@ -391,7 +391,7 @@ const createServer = async (
         name: "All public channels",
       });
     } catch (error) {
-      logger.warn("Error listing channels: ", error);
+      logger.warn(`Error listing channels for ${mcpServerId}: ${error}`);
     }
   }
   const channelOptions = channels.map((c) =>
