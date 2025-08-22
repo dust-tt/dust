@@ -220,7 +220,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       id: this.id,
       sId: this.sId,
       name: this.name,
-      description: this.description,
       agentConfigurationId: this.agentConfigurationId,
       editor: this.editor,
       customPrompt: this.customPrompt,

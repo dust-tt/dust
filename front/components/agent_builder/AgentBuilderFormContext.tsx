@@ -190,7 +190,6 @@ const scheduleConfigSchema = z.object({
 const triggerSchema = z.object({
   sId: z.string().optional(),
   name: z.string(),
-  description: z.string(),
   kind: z.enum(["schedule"]),
   configuration: z.union([scheduleConfigSchema, z.null()]),
 });
@@ -209,10 +208,6 @@ export const agentBuilderFormSchema = z.object({
 
 export const scheduleFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),
-  description: z
-    .string()
-    .min(20, "Description is too short.")
-    .max(1000, "Description is too long"),
   cron: z
     .string()
     .min(1, "Cron expression is required")

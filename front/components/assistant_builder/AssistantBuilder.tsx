@@ -152,7 +152,6 @@ export default function AssistantBuilder({
         sId: uniqueId(),
         kind: trigger.kind,
         name: trigger.name,
-        description: trigger.description,
         configuration: trigger.configuration,
       })),
     }));

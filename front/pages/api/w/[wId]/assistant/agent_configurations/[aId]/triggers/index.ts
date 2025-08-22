@@ -25,7 +25,6 @@ export interface PatchTriggersRequestBody {
     {
       sId?: string;
       name: string;
-      description: string;
     } & TriggerConfiguration
   >;
 }
@@ -150,7 +149,6 @@ async function handler(
             workspaceId: workspace.id,
             agentConfigurationId,
             name: validatedTrigger.name,
-            description: validatedTrigger.description,
             kind: validatedTrigger.kind,
             configuration: validatedTrigger.configuration,
             editor: auth.getNonNullableUser().id,

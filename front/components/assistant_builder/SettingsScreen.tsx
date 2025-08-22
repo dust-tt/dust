@@ -873,11 +873,6 @@ function TriggerCard({ trigger, onRemove, onEdit }: any) {
           <span className="truncate">{trigger.name}</span>
         </div>
 
-        <div className="text-muted-foreground dark:text-muted-foreground-night">
-          <span className="line-clamp-2 break-words">
-            {trigger.description}
-          </span>
-        </div>
       </div>
     </Card>
   );
