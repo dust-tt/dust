@@ -1,7 +1,14 @@
-import { SheetContainer } from "@dust-tt/sparkle";
-import { Sheet } from "@dust-tt/sparkle";
-import { SheetContent } from "@dust-tt/sparkle";
-import { SheetFooter } from "@dust-tt/sparkle";
+import {
+  Icon,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SlackLogo,
+} from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
@@ -208,17 +215,22 @@ export function SlackSettingsSheet({
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
       <SheetContent>
-        <SheetContainer>
-          <div className="space-y-4">
-            <div className="mb-4 flex flex-col gap-2">
-              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                Slack Channel Settings
-              </span>
-              <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                Select channels in which this agent replies by default.
-              </span>
+        <SheetHeader>
+          <SheetTitle>
+            <div className="flex items-center gap-2">
+              <Icon visual={SlackLogo} />
+              <span>Slack Channel Settings</span>
             </div>
-
+          </SheetTitle>
+          <SheetDescription>
+            Select channels in which this agent replies by default.
+          </SheetDescription>
+        </SheetHeader>
+        <SheetContainer>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Slack channels available:
+            </span>
             <SlackIntegration
               existingSelection={localSlackChannels}
               onSelectionChange={handleSelectionChange}
