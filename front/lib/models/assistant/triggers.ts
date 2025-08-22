@@ -1,11 +1,14 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { TriggerKind } from "@app/types/assistant/triggers";
+import type {
+  TriggerConfigurationType,
+  TriggerKind,
+} from "@app/types/assistant/triggers";
 import { isValidTriggerKind } from "@app/types/assistant/triggers";
 
 export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
@@ -14,14 +17,17 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
 
   declare sId: string;
   declare name: string;
-  declare description: string;
   declare kind: TriggerKind;
   declare customPrompt: string | null;
 
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+  /**
+   * We use the sId, because it's static between an agent versions,
+   * whereas the id is dynamic and changes with each new agent version.
+   */
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]>;
   declare editor: ForeignKey<UserModel["id"]>;
 
-  declare configuration: Record<string, unknown>;
+  declare configuration: TriggerConfigurationType;
 }
 
 TriggerModel.init(
@@ -40,11 +46,11 @@ TriggerModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    name: {
+    agentConfigurationId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    description: {
+    name: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -79,9 +85,6 @@ TriggerModel.init(
   }
 );
 
-TriggerModel.belongsTo(AgentConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
-});
 TriggerModel.belongsTo(UserModel, {
   foreignKey: { name: "editor", allowNull: false },
 });

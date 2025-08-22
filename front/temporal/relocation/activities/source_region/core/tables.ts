@@ -8,7 +8,7 @@ import type {
 } from "@app/temporal/relocation/activities/types";
 import {
   CORE_API_CONCURRENCY_LIMIT,
-  CORE_API_LIST_NODES_BATCH_SIZE,
+  CORE_API_LIST_TABLES_BATCH_SIZE,
   isStringTooLongError,
 } from "@app/temporal/relocation/activities/types";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
@@ -54,7 +54,7 @@ export async function getDataSourceTables({
   };
 
   const options: CoreAPISearchCursorRequest = {
-    limit: CORE_API_LIST_NODES_BATCH_SIZE,
+    limit: CORE_API_LIST_TABLES_BATCH_SIZE,
   };
 
   if (pageCursor) {

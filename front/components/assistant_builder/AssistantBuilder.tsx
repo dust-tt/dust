@@ -53,6 +53,7 @@ import {
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAssistantConfigurationActions } from "@app/lib/swr/actions";
+import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
 import { useUser } from "@app/lib/swr/user";
@@ -120,6 +121,11 @@ export default function AssistantBuilder({
     duplicateAgentId ?? agentConfiguration?.sId ?? null
   );
 
+  const { triggers, isTriggersLoading } = useAgentTriggers({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
+  });
+
   useEffect(() => {
     if (error) {
       sendNotification({
@@ -142,8 +148,14 @@ export default function AssistantBuilder({
           ? [getDataVisualizationActionConfiguration()]
           : []),
       ],
+      triggers: triggers.map((trigger) => ({
+        sId: uniqueId(),
+        kind: trigger.kind,
+        name: trigger.name,
+        configuration: trigger.configuration,
+      })),
     }));
-  }, [actions, error, sendNotification, setBuilderState]);
+  }, [actions, triggers, error, sendNotification, setBuilderState]);
 
   const {
     template,
@@ -461,6 +473,7 @@ export default function AssistantBuilder({
                                   setSelectedSlackChannels
                                 }
                                 currentUser={user}
+                                isTriggersLoading={isTriggersLoading}
                               />
                             );
                           default:

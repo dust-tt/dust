@@ -7,6 +7,7 @@ import { z } from "zod";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   FIND_TAGS_TOOL_NAME,
+  SEARCH_SERVER_NAME,
   SEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -45,7 +46,7 @@ import {
 } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "search",
+  name: SEARCH_SERVER_NAME,
   version: "1.0.0",
   description: "Search through selected Data sources",
   icon: "ActionMagnifyingGlassIcon",

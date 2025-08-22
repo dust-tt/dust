@@ -1,5 +1,6 @@
 import assert from "assert";
 
+import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction as AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
@@ -167,10 +168,13 @@ async function getExistingActionsAndBlobs(
         "Unexpected: step content is not a function call"
       );
 
-      actionBlobs.push({
-        actionId: mcpAction.id,
-        needsApproval: mcpAction.executionState === "pending",
-      });
+      // If the tool is not already in a final state we must add it to the list of actions to run.
+      if (!isToolExecutionStatusFinal(mcpAction.status)) {
+        actionBlobs.push({
+          actionId: mcpAction.id,
+          needsApproval: mcpAction.status === "blocked_validation_required",
+        });
+      }
     }
   }
 

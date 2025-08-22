@@ -78,12 +78,20 @@ function updateProgress(
 }
 
 export const CLEAR_CONTENT_EVENT = { type: "clear_content" as const };
+export const RETRY_BLOCKED_ACTIONS_STARTED_EVENT = {
+  type: "retry_blocked_actions_started" as const,
+};
 
 export type ClearContentEvent = typeof CLEAR_CONTENT_EVENT;
+export type RetryBlockedActionsStartedEvent =
+  typeof RETRY_BLOCKED_ACTIONS_STARTED_EVENT;
 
 export function messageReducer(
   state: MessageTemporaryState,
-  event: AgentMessageStateEventWithoutToolApproveExecution | ClearContentEvent
+  event:
+    | AgentMessageStateEventWithoutToolApproveExecution
+    | ClearContentEvent
+    | RetryBlockedActionsStartedEvent
 ): MessageTemporaryState {
   switch (event.type) {
     case "clear_content":
@@ -95,6 +103,19 @@ export function messageReducer(
           chainOfThought: null,
         },
       };
+
+    case "retry_blocked_actions_started":
+      return {
+        ...state,
+        message: {
+          ...state.message,
+          status: "created",
+          error: null,
+        },
+        // Reset the agent state to "acting" to allow for streaming to continue.
+        agentState: "acting",
+      };
+
     case "agent_action_success":
       return {
         ...state,

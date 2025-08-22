@@ -5,10 +5,14 @@ import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { AdditionalConfigurationInBuilderType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AgentBuilderFormContext } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  AdditionalConfigurationInBuilderType,
+  AgentBuilderFormData,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
+import {
+  AgentBuilderFormContext,
+  agentBuilderFormSchema,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
@@ -28,6 +32,8 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
+import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
+import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useEditors } from "@app/lib/swr/editors";
 import { emptyArray } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
@@ -82,10 +88,21 @@ export default function AgentBuilder({
     agentConfiguration?.sId ?? null
   );
 
+  const { triggers, isTriggersLoading } = useAgentTriggers({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
+  });
+
   const { editors } = useEditors({
     owner,
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
+
+  const { slackChannels: slackChannelsLinkedWithAgent } =
+    useSlackChannelsLinkedWithAgent({
+      workspaceId: owner.sId,
+      disabled: !agentConfiguration,
+    });
 
   const slackProvider = useMemo(() => {
     const slackBotProvider = supportedDataSourceViews.find(
@@ -105,6 +122,21 @@ export default function AgentBuilder({
     return processActionsFromStorage(actions ?? emptyArray());
   }, [actions]);
 
+  const agentSlackChannels = useMemo(() => {
+    if (!agentConfiguration || !slackChannelsLinkedWithAgent.length) {
+      return [];
+    }
+
+    return slackChannelsLinkedWithAgent
+      .filter(
+        (channel) => channel.agentConfigurationId === agentConfiguration.sId
+      )
+      .map((channel) => ({
+        slackChannelId: channel.slackChannelId,
+        slackChannelName: channel.slackChannelName,
+      }));
+  }, [agentConfiguration, slackChannelsLinkedWithAgent]);
+
   const formValues = useMemo((): AgentBuilderFormData => {
     let baseValues: AgentBuilderFormData;
 
@@ -119,10 +151,12 @@ export default function AgentBuilder({
     return {
       ...baseValues,
       actions: processedActions,
+      triggers: triggers ?? emptyArray(),
       agentSettings: {
         ...baseValues.agentSettings,
         slackProvider,
         editors: editors ?? emptyArray(),
+        slackChannels: agentSlackChannels,
       },
     };
   }, [
@@ -132,6 +166,8 @@ export default function AgentBuilder({
     processedActions,
     slackProvider,
     editors,
+    triggers,
+    agentSlackChannels,
   ]);
 
   const form = useForm<AgentBuilderFormData>({
@@ -174,6 +210,7 @@ export default function AgentBuilder({
 
       if (!agentConfiguration && createdAgent.sId) {
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
+        // willingly using window to not trigger next navigation events
         window.history.replaceState(null, "", newUrl);
       }
     } catch (error) {
@@ -193,7 +230,8 @@ export default function AgentBuilder({
 
   useNavigationLock(isDirty);
 
-  const isSaveDisabled = !isDirty || isSubmitting || isActionsLoading;
+  const isSaveDisabled =
+    !isDirty || isSubmitting || isActionsLoading || isTriggersLoading;
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 
@@ -218,6 +256,7 @@ export default function AgentBuilder({
               }}
               agentConfigurationId={agentConfiguration?.sId || null}
               isActionsLoading={isActionsLoading}
+              isTriggersLoading={isTriggersLoading}
             />
           }
           rightPanel={

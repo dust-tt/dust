@@ -368,6 +368,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
             executionState: action.executionState,
             isError: action.isError,
             type: "tool_action",
+            status: action.status,
             citationsAllocated: action.citationsAllocated,
             generatedFiles: removeNulls(
               action.outputItems.map((o) => {
@@ -543,8 +544,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           createdAt: action.createdAt.toISOString(),
           functionCallName: stepContent.value.value.name,
           params: JSON.parse(stepContent.value.value.arguments),
-          executionState: action.executionState,
-          isError: action.isError,
+          status: action.status,
           conversationId: stepContent.agentMessage.message.conversation.sId,
           messageId: stepContent.agentMessage.message.sId,
         };

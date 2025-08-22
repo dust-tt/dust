@@ -477,15 +477,14 @@ export function AgentActionsPanel({
 
   if (isMessageLoading) {
     return (
-      <div className="flex h-full flex-col">
-        <AgentActionsPanelHeader
-          title="Breakdown of the tools used"
-          onClose={onPanelClosed}
-        />
-        <div className="flex flex-1 items-center justify-center">
+      <AgentActionsPanelHeader
+        title="Breakdown of the tools used"
+        onClose={onPanelClosed}
+      >
+        <div className="flex items-center justify-center">
           <Spinner variant="color" />
         </div>
-      </div>
+      </AgentActionsPanelHeader>
     );
   }
 
@@ -494,7 +493,16 @@ export function AgentActionsPanel({
     !fullAgentMessage ||
     fullAgentMessage.type !== "agent_message"
   ) {
-    return null;
+    return (
+      <AgentActionsPanelHeader
+        title="Breakdown of the tools used"
+        onClose={onPanelClosed}
+      >
+        <div className="flex items-center justify-center">
+          <span className="text-muted-foreground">Nothing to display.</span>
+        </div>
+      </AgentActionsPanelHeader>
+    );
   }
 
   // Use key to force remount when message changes for proper state reset

@@ -57,6 +57,10 @@ type ResourceNameType = keyof typeof RESOURCES_PREFIX;
 
 const sIdCache = new Map<string, string>();
 
+export function getResourcePrefix(resourceName: ResourceNameType): string {
+  return RESOURCES_PREFIX[resourceName];
+}
+
 export function dangerouslyMakeSIdWithCustomFirstPrefix(
   resourceName: "internal_mcp_server",
   {

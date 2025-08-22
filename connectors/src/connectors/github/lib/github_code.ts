@@ -50,7 +50,7 @@ export async function getRepoInfo(
 
 export function isRepoTooLarge(repoInfo: RepositoryInfo): boolean {
   // `data.size` is the whole repo size in KB, we use it to filter repos > 10GB download size. There
-  // is further filtering by file type + for "extracted size" per file to 1MB.
+  // is further filtering by file type + for "extracted size" per file to 3MB.
   if (repoInfo.size > REPO_SIZE_LIMIT) {
     // For now we throw a panic log, so we are able to report the issue to the
     // user, and continue with the rest of the sync. See runbook for future

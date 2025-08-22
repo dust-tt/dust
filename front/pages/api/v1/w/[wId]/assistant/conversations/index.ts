@@ -23,6 +23,7 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { hasReachedPublicAPILimits } from "@app/lib/api/public_api_limits";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -355,6 +356,29 @@ async function handler(
           timezone: message.context.timezone,
           username: message.context.username,
         };
+
+        // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
+        if (message.context.selectedMCPServerViewIds) {
+          const mcpServerViews = await MCPServerViewResource.fetchByIds(
+            auth,
+            message.context.selectedMCPServerViewIds
+          );
+
+          const r = await ConversationResource.upsertMCPServerViews(auth, {
+            conversation,
+            mcpServerViews,
+            enabled: true,
+          });
+          if (r.isErr()) {
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: "Failed to add MCP server views to conversation",
+              },
+            });
+          }
+        }
 
         // If a message was provided we do await for the message to be created before returning the
         // conversation along with the message. `postUserMessage` returns as soon as the user message

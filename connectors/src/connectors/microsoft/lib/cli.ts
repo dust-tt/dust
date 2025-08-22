@@ -17,7 +17,14 @@ import {
 } from "@connectors/connectors/microsoft/lib/utils";
 import { syncFiles } from "@connectors/connectors/microsoft/temporal/activities";
 import { launchMicrosoftIncrementalSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
+import { getParents } from "@connectors/connectors/microsoft/temporal/file";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { throwOnError } from "@connectors/lib/cli";
+import {
+  updateDataSourceDocumentParents,
+  updateDataSourceTableParents,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import { terminateWorkflow } from "@connectors/lib/temporal";
 import logger, { getActivityLogger } from "@connectors/logger/logger";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
@@ -27,7 +34,50 @@ import type {
   CheckFileGenericResponseType,
   MicrosoftCommandType,
 } from "@connectors/types";
-import { microsoftIncrementalSyncWorkflowId } from "@connectors/types";
+import {
+  INTERNAL_MIME_TYPES,
+  microsoftIncrementalSyncWorkflowId,
+} from "@connectors/types";
+
+/**
+ * Parse internal IDs from either a JSON file or a single internal ID argument
+ * @param idsFile - Path to JSON file containing array of string IDs
+ * @param internalId - Single internal ID string
+ * @returns Array of internal ID strings
+ */
+function parseInternalIds(idsFile?: string, internalId?: string): string[] {
+  if (idsFile) {
+    // Read ids from JSON file
+    if (!fs.existsSync(idsFile)) {
+      throw new Error(`Ids file not found: ${idsFile}`);
+    }
+
+    try {
+      const fileContent = fs.readFileSync(idsFile, "utf8");
+      const parsedIds = JSON.parse(fileContent);
+
+      // Validate using io-ts schema
+      const validation = t.array(t.string).decode(parsedIds);
+
+      if (isLeft(validation)) {
+        const pathError = reporter.formatValidationErrors(validation.left);
+        throw new Error(`Invalid permissions file format: ${pathError}`);
+      }
+
+      return validation.right;
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        throw new Error(`Invalid JSON in permissions file: ${error.message}`);
+      }
+      throw error;
+    }
+  } else {
+    if (!internalId) {
+      throw new Error("Missing --internalId argument");
+    }
+    return [internalId];
+  }
+}
 
 const getConnector = async (args: { [key: string]: string | undefined }) => {
   if (args.wId) {
@@ -199,41 +249,7 @@ export const microsoft = async ({
       const connector = await getConnector(args);
       const { internalId, idsFile } = args;
 
-      let internalIds: string[];
-
-      if (idsFile) {
-        // Read ids from JSON file
-        if (!fs.existsSync(idsFile)) {
-          throw new Error(`Ids file not found: ${idsFile}`);
-        }
-
-        try {
-          const fileContent = fs.readFileSync(idsFile, "utf8");
-          const parsedIds = JSON.parse(fileContent);
-
-          // Validate using io-ts schema
-          const validation = t.array(t.string).decode(parsedIds);
-
-          if (isLeft(validation)) {
-            const pathError = reporter.formatValidationErrors(validation.left);
-            throw new Error(`Invalid permissions file format: ${pathError}`);
-          }
-
-          internalIds = validation.right;
-        } catch (error) {
-          if (error instanceof SyntaxError) {
-            throw new Error(
-              `Invalid JSON in permissions file: ${error.message}`
-            );
-          }
-          throw error;
-        }
-      } else {
-        if (!internalId) {
-          throw new Error("Missing --internalId argument");
-        }
-        internalIds = [internalId];
-      }
+      const internalIds = parseInternalIds(idsFile, internalId);
 
       // Get node from MS Graph API.
       const client = await getClient(connector.connectionId);
@@ -290,6 +306,57 @@ export const microsoft = async ({
           logger.info({ driveItem }, "Node not found, nothing to update");
         }
       }
+      return { success: true };
+    }
+
+    case "update-core-parents": {
+      const connector = await getConnector(args);
+      const { internalId, idsFile } = args;
+      const internalIds = parseInternalIds(idsFile, internalId);
+      const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+      const cacheKey = Date.now();
+      for (const internalId of internalIds) {
+        const node = await MicrosoftNodeResource.fetchByInternalId(
+          connector.id,
+          internalId
+        );
+        if (!node) {
+          logger.error(`Could not find node for internalId ${internalId}`);
+        } else {
+          const localParents = await getParents({
+            connectorId: connector.id,
+            internalId,
+            startSyncTs: cacheKey,
+          });
+          if (node.nodeType === "file") {
+            await updateDataSourceDocumentParents({
+              dataSourceConfig,
+              documentId: node.internalId,
+              parents: localParents,
+              parentId: localParents[1] ?? null,
+            });
+          } else if (node.nodeType === "worksheet") {
+            await updateDataSourceTableParents({
+              dataSourceConfig,
+              tableId: node.internalId,
+              parents: localParents,
+              parentId: localParents[1] ?? null,
+            });
+          } else {
+            await upsertDataSourceFolder({
+              dataSourceConfig,
+              folderId: node.internalId,
+              parents: localParents,
+              parentId: localParents[1] ?? null,
+              title: node.name ?? "Untitled Folder",
+              mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
+              sourceUrl: node.webUrl ?? undefined,
+            });
+          }
+        }
+      }
+
       return { success: true };
     }
 

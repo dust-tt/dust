@@ -18,13 +18,20 @@ export const QUERY_TABLES_TOOL_NAME = "query_tables";
 export const GET_DATABASE_SCHEMA_TOOL_NAME = "get_database_schema";
 export const EXECUTE_DATABASE_QUERY_TOOL_NAME = "execute_database_query";
 export const PROCESS_TOOL_NAME = "extract_information_from_documents";
-export const RUN_AGENT_TOOL_NAME = "run_agent";
 export const CREATE_AGENT_TOOL_NAME = "create_agent";
 export const FIND_TAGS_TOOL_NAME = "find_tags";
 export const FILESYSTEM_CAT_TOOL_NAME = "cat";
 export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
+export const DATA_WAREHOUSES_LIST_TOOL_NAME = "list";
+export const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
+export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
+export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
+
+export const SEARCH_SERVER_NAME = "search";
+export const TABLE_QUERY_SERVER_NAME = "query_tables";
+export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2";
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
@@ -32,39 +39,40 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
   "agent_management",
+  "agent_memory",
   "agent_router",
   "conversation_files",
   "data_sources_file_system",
+  "data_warehouses",
   "extract_data",
   "file_generation",
   "freshservice",
-  "interactive_content",
   "github",
   "gmail",
+  "google_calendar",
   "google_sheets",
   "hubspot",
   "image_generation",
   "include_data",
+  "interactive_content",
   "jira",
   "missing_action_catcher",
   "monday",
   "notion",
+  "outlook_calendar",
   "outlook",
   "primitive_types_debugger",
-  "query_tables",
-  "query_tables_v2",
   "reasoning",
   "run_agent",
   "run_dust_app",
   "salesforce",
-  "search",
-  "think",
-  "web_search_&_browse",
-  "google_calendar",
-  "outlook_calendar",
   "slack",
-  "agent_memory",
-  "data_warehouses",
+  "think",
+  "toolsets",
+  "web_search_&_browse",
+  SEARCH_SERVER_NAME,
+  TABLE_QUERY_SERVER_NAME,
+  TABLE_QUERY_V2_SERVER_NAME,
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -91,8 +99,7 @@ export const INTERNAL_MCP_SERVERS = {
   github: {
     id: 1,
     availability: "manual",
-    // Github only allows one instance of the same app per user.
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -155,7 +162,7 @@ export const INTERNAL_MCP_SERVERS = {
   hubspot: {
     id: 7,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -230,7 +237,7 @@ export const INTERNAL_MCP_SERVERS = {
   notion: {
     id: 11,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -278,7 +285,7 @@ export const INTERNAL_MCP_SERVERS = {
   salesforce: {
     id: 14,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags, plan }) => {
       const isInPlan = plan.limits.connections.isSalesforceAllowed;
       const hasFeatureFlag = featureFlags.includes("salesforce_tool");
@@ -296,7 +303,7 @@ export const INTERNAL_MCP_SERVERS = {
   gmail: {
     id: 15,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -310,7 +317,7 @@ export const INTERNAL_MCP_SERVERS = {
   google_calendar: {
     id: 16,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -336,7 +343,7 @@ export const INTERNAL_MCP_SERVERS = {
   slack: {
     id: 18,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -353,7 +360,7 @@ export const INTERNAL_MCP_SERVERS = {
   google_sheets: {
     id: 19,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("google_sheets_tool");
     },
@@ -375,7 +382,7 @@ export const INTERNAL_MCP_SERVERS = {
   monday: {
     id: 20,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("monday_tool");
     },
@@ -424,7 +431,7 @@ export const INTERNAL_MCP_SERVERS = {
   jira: {
     id: 22,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("jira_tool");
     },
@@ -467,7 +474,7 @@ export const INTERNAL_MCP_SERVERS = {
   outlook: {
     id: 24,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -485,7 +492,7 @@ export const INTERNAL_MCP_SERVERS = {
   outlook_calendar: {
     id: 25,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -502,7 +509,7 @@ export const INTERNAL_MCP_SERVERS = {
   freshservice: {
     id: 26,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("freshservice_tool");
     },
@@ -612,6 +619,17 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("data_warehouses_tool");
+    },
+    tools_stakes: undefined,
+    timeoutMs: undefined,
+  },
+  toolsets: {
+    id: 1013,
+    availability: "auto",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("toolsets_tool");
     },
     tools_stakes: undefined,
     timeoutMs: undefined,

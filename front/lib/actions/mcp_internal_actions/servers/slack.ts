@@ -2,7 +2,6 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebClient } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
-import type { Match } from "@slack/web-api/dist/response/SearchMessagesResponse";
 import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
 import uniqBy from "lodash/uniqBy";
 import slackifyMarkdown from "slackify-markdown";
@@ -27,14 +26,71 @@ import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { removeDiacritics } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { TimeFrame } from "@app/types";
 import { parseTimeFrame, stripNullBytes, timeFrameFromNow } from "@app/types";
-import { isDevelopment, isDustWorkspace } from "@app/types/shared/env";
+
+export type SlackSearchMatch = {
+  author_name?: string;
+  channel_name?: string;
+  message_ts?: string;
+  content?: string;
+  permalink?: string;
+};
+
+export const slackSearch = async (
+  query: string,
+  accessToken: string
+): Promise<SlackSearchMatch[]> => {
+  // The slack client library does not support the assistant.search.context endpoint,
+  // so we use the raw fetch API to call it (GET with query params).
+  const params = new URLSearchParams({
+    query,
+    sort: "score",
+    sort_dir: "desc",
+    limit: SLACK_SEARCH_ACTION_NUM_RESULTS.toString(),
+  });
+
+  const resp = await fetch(
+    `https://slack.com/api/assistant.search.context?${params.toString()}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!resp.ok) {
+    throw new Error(`HTTP ${resp.status}`);
+  }
+
+  type SlackSearchResponse = {
+    ok: boolean;
+    error?: string;
+    results: {
+      messages: SlackSearchMatch[];
+    };
+  };
+
+  const data: SlackSearchResponse = (await resp.json()) as SlackSearchResponse;
+  if (!data.ok) {
+    throw new Error(data.error || "unknown_error");
+  }
+
+  const rawMatches: SlackSearchMatch[] = data.results.messages;
+
+  // Filter out matches that don't have a text.
+  const matchesWithText = rawMatches.filter((match) => !!match.content);
+
+  // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
+  const matches = matchesWithText.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
+
+  return matches;
+};
 
 const serverInfo: InternalMCPServerDefinitionType & {
   authorization: AuthorizationInfo;
@@ -51,8 +107,7 @@ const serverInfo: InternalMCPServerDefinitionType & {
   instructions:
     "When posting a message on slack, you MUST use slack-flavored markdown to format the message." +
     "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
-    "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the name of the channel you want to reference.\n" +
-    "NEVER use the channel name or the user name directly in a message as it will not be parsed correctly and appear as plain text.",
+    "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
 };
 
 const getSlackClient = async (accessToken?: string) => {
@@ -98,6 +153,13 @@ const _getPublicChannels = async ({
     }
     channels.push(...(response.channels ?? []));
     cursor = response.response_metadata?.next_cursor;
+
+    // We can't handle a huge list of channels, and even if we could, it would be unusable
+    // in the UI. So we arbitrarily cap it to 500 channels.
+    if (channels.length >= 500) {
+      logger.warn("Channel list truncated to 500 channels.");
+      break;
+    }
   } while (cursor);
 
   return channels
@@ -112,9 +174,7 @@ const _getPublicChannels = async ({
 
 const getCachedPublicChannels = cacheWithRedis(
   _getPublicChannels,
-  ({ mcpServerId }: GetPublicChannelsArgs) => {
-    return `public-channels-${mcpServerId}`;
-  },
+  ({ mcpServerId }: GetPublicChannelsArgs) => mcpServerId,
   {
     ttlMs: 60 * 10 * 1000, // 10 minutes
   }
@@ -154,6 +214,95 @@ function makeQueryResource(
   };
 }
 
+// Common Zod parameter schema parts shared by search tools.
+const buildCommonSearchParams = (
+  channelOptions?: ReadonlyArray<z.ZodType<{ value: string; label: string }>>
+) => ({
+  channels: z.object({
+    // "options" are optionals because we only need them for the UI but they won't be provided when the tool is called.
+    // Note: I don't know how to make this work without the any.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    options: z.union(channelOptions as any).optional(),
+    values: z.array(z.string()),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.LIST),
+  }),
+  usersFrom: z
+    .string()
+    .array()
+    .optional()
+    .describe(
+      "Narrow the search to messages wrote by specific users ids (optional)"
+    ),
+  usersTo: z
+    .string()
+    .array()
+    .optional()
+    .describe(
+      "Narrow the search to direct messages sent to specific user IDs (optional)"
+    ),
+  usersMentioned: z
+    .string()
+    .array()
+    .optional()
+    .describe(
+      "Narrow the search to messages mentioning specific users ids (optional)"
+    ),
+  relativeTimeFrame: z
+    .string()
+    .regex(/^(all|\d+[hdwmy])$/)
+    .describe(
+      "The time frame (relative to LOCAL_TIME) to restrict the search based" +
+        " on the user request and past conversation context." +
+        " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
+        " where {k} is a number. Be strict, do not invent invalid values." +
+        " Also, do not pass this unless the user explicitly asks for some timeframe."
+    ),
+});
+
+function buildSlackSearchQuery(
+  initial: string,
+  {
+    timeFrame,
+    channels,
+    usersFrom,
+    usersTo,
+    usersMentioned,
+  }: {
+    timeFrame: TimeFrame | null;
+    channels?: string[];
+    usersFrom?: string[];
+    usersTo?: string[];
+    usersMentioned?: string[];
+  }
+): string {
+  let query = initial;
+  if (timeFrame) {
+    const timestampInMs = timeFrameFromNow(timeFrame);
+    const date = new Date(timestampInMs);
+    query = `${query} after:${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+  }
+  // When the user selects 'all channels', we end up with a channel named "*".
+  // In that case, we don't want to add any channel filter.
+  if (channels && channels.length > 0 && !channels.includes("*")) {
+    query = `${query} ${channels
+      .map((channel) =>
+        // Because we use channel IDs and not names, we need to use the <#CHANNEL_ID> format instead of #CHANNEL.
+        channel.charAt(0) === "#" ? `in:<${channel}>` : `in:<#${channel}>`
+      )
+      .join(" ")}`;
+  }
+  if (usersFrom && usersFrom.length > 0) {
+    query = `${query} ${usersFrom.map((user) => `from:${user}`).join(" ")}`;
+  }
+  if (usersTo && usersTo.length > 0) {
+    query = `${query} ${usersTo.map((user) => `to:${user}`).join(" ")}`;
+  }
+  if (usersMentioned && usersMentioned.length > 0) {
+    query = `${query} ${usersMentioned.map((user) => `${user}`).join(" ")}`;
+  }
+  return query;
+}
+
 function isSlackTokenRevoked(error: unknown): boolean {
   return (
     typeof error === "object" &&
@@ -163,6 +312,59 @@ function isSlackTokenRevoked(error: unknown): boolean {
   );
 }
 
+// 'disconnected' is expected when we don't have a Slack connection yet
+type SlackAIStatus = "enabled" | "disabled" | "disconnected";
+
+const SLACK_AI_STATUS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+type GetSlackAIEnablementStatusArgs = {
+  mcpServerId: string;
+  accessToken: string;
+};
+
+const _getSlackAIEnablementStatus = async ({
+  accessToken,
+}: {
+  accessToken: string;
+}): Promise<SlackAIStatus> => {
+  try {
+    const assistantSearchInfo = await fetch(
+      "https://slack.com/api/assistant.search.info",
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!assistantSearchInfo.ok) {
+      logger.warn("assistant.search.info returned !ok");
+      return "disconnected";
+    }
+
+    const assistantSearchInfoJson = await assistantSearchInfo.json();
+
+    return assistantSearchInfoJson.is_ai_search_enabled
+      ? "enabled"
+      : "disabled";
+  } catch (e) {
+    logger.warn("Error fetching Slack AI enablement status: ", e);
+    return "disconnected";
+  }
+};
+
+// Cache the result as this involves a call to the Slack API
+// We use a hash of the access token as the cache key to avoid storing sensitive information directly
+const getCachedSlackAIEnablementStatus = cacheWithRedis(
+  _getSlackAIEnablementStatus,
+  ({ mcpServerId }: GetSlackAIEnablementStatusArgs) => mcpServerId,
+  {
+    ttlMs: SLACK_AI_STATUS_CACHE_TTL_MS,
+  }
+);
+
 const createServer = async (
   auth: Authenticator,
   mcpServerId: string,
@@ -170,67 +372,45 @@ const createServer = async (
 ): Promise<McpServer> => {
   const server = makeInternalMCPServer(serverInfo);
 
-  if (isDustWorkspace(auth.getNonNullableWorkspace()) || isDevelopment()) {
-    const c = await getConnectionForMCPServer(auth, {
-      mcpServerId,
-      connectionType: "workspace", // Always get the admin token.
-    });
+  const c = await getConnectionForMCPServer(auth, {
+    mcpServerId,
+    connectionType: "workspace", // Always get the admin token.
+  });
 
-    if (!c) {
-      logger.warn("No connection found for slack");
-    }
-    // Note: this is a temporary tool to test the dynamic configuration of channels, but it's meant to be added directly to one of the tools below.
-    else {
-      try {
-        const slackClient = await getSlackClient(c.access_token);
-        const channels = await getCachedPublicChannels({
-          mcpServerId,
-          slackClient,
-        });
+  let channels: ChannelWithIdAndName[] = [];
+  if (c) {
+    try {
+      const slackClient = await getSlackClient(c.access_token);
+      channels = await getCachedPublicChannels({
+        mcpServerId,
+        slackClient,
+      });
 
-        channels.unshift({
-          id: "*",
-          name: "All public channels",
-        });
-
-        const options = channels.map((c) =>
-          z.object({
-            value: z.literal(c.id),
-            label: z.literal(c.id === "*" ? c.name : `#${c.name}`),
-          })
-        );
-
-        server.tool(
-          "list_picked_channels",
-          "List all channels that the user has picked",
-          {
-            channels: z.object({
-              // "options" are optionals because we only need them for the UI but they won't be provided when the tool is called.
-              // Note: I don't know how to make this work without the any.
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              options: z.union(options as any).optional(),
-              values: z.array(z.string()),
-              mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.LIST),
-            }),
-          },
-          async ({ channels }) => {
-            return makeMCPToolJSONSuccess({
-              message: "Channels listed",
-              result: channels.values,
-            });
-          }
-        );
-      } catch (error) {
-        logger.warn("Error listing channels: ", error);
-      }
+      channels.unshift({
+        id: "*",
+        name: "All public channels",
+      });
+    } catch (error) {
+      logger.warn("Error listing channels: ", error);
     }
   }
+  const channelOptions = channels.map((c) =>
+    z.object({
+      value: z.literal(c.id),
+      label: z.literal(c.id === "*" ? c.name : `#${c.name}`),
+    })
+  );
 
-  if (
-    !(await getFeatureFlags(auth.getNonNullableWorkspace())).includes(
-      "slack_semantic_search"
-    )
-  ) {
+  const slackAIStatus: SlackAIStatus = c
+    ? await getCachedSlackAIEnablementStatus({
+        mcpServerId,
+        accessToken: c.access_token,
+      })
+    : "disconnected";
+
+  // If we're not connected to Slack, we arbitrarily include the first search tool, just so there is one
+  // in the list. As soon as we're connected, it will show the correct one.
+  if (slackAIStatus === "disabled" || slackAIStatus === "disconnected") {
     server.tool(
       "search_messages",
       "Search messages accross all channels and dms for the current user",
@@ -243,43 +423,7 @@ const createServer = async (
             "Between 1 and 3 keywords to retrieve relevant messages " +
               "based on the user request and conversation context."
           ),
-        channels: z
-          .string()
-          .array()
-          .optional()
-          .describe(
-            "Narrow the search to a specific channels names (optional)"
-          ),
-        usersFrom: z
-          .string()
-          .array()
-          .optional()
-          .describe(
-            "Narrow the search to messages wrote by specific users ids (optional)"
-          ),
-        usersTo: z
-          .string()
-          .array()
-          .optional()
-          .describe(
-            "Narrow the search to direct messages sent to specific users ids (optional)"
-          ),
-        usersMentioned: z
-          .string()
-          .array()
-          .optional()
-          .describe(
-            "Narrow the search to messages mentioning specific users ids (optional)"
-          ),
-        relativeTimeFrame: z
-          .string()
-          .regex(/^(all|\d+[hdwmy])$/)
-          .describe(
-            "The time frame (relative to LOCAL_TIME) to restrict the search based" +
-              " on the user request and past conversation context." +
-              " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
-              " where {k} is a number. Be strict, do not invent invalid values."
-          ),
+        ...buildCommonSearchParams(channelOptions),
       },
       async (
         {
@@ -303,75 +447,37 @@ const createServer = async (
         }
 
         const accessToken = authInfo?.token;
-        const slackClient = await getSlackClient(accessToken);
+        if (!accessToken) {
+          throw new Error("Unreachable: missing access token.");
+        }
 
         const timeFrame = parseTimeFrame(relativeTimeFrame);
 
         try {
-          // Search in slack only support AND queries which can easily return 0 hits.
+          // Keyword search in slack only support AND queries which can easily return 0 hits.
           // To avoid this, we'll simulate an OR query by searching for each keyword separately.
           // Then we will aggregate the results.
-          const results: Match[][] = await concurrentExecutor(
+          const results: SlackSearchMatch[][] = await concurrentExecutor(
             keywords,
             async (keyword) => {
-              let query = keyword;
-
-              if (timeFrame) {
-                const timestampInMs = timeFrameFromNow(timeFrame);
-                const date = new Date(timestampInMs);
-                query = `${query} after:${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-              }
-
-              if (channels && channels.length > 0) {
-                query = `${query} ${channels
-                  .map((channel) =>
-                    channel.charAt(0) === "#"
-                      ? `in:${channel}`
-                      : `in:#${channel}`
-                  )
-                  .join(" ")}`;
-              }
-
-              if (usersFrom && usersFrom.length > 0) {
-                query = `${query} ${usersFrom.map((user) => `from:${user}`).join(" ")}`;
-              }
-
-              if (usersTo && usersTo.length > 0) {
-                query = `${query} ${usersTo.map((user) => `to:${user}`).join(" ")}`;
-              }
-
-              if (usersMentioned && usersMentioned.length > 0) {
-                query = `${query} ${usersMentioned.map((user) => `${user}`).join(" ")}`;
-              }
-
-              const messages = await slackClient.search.messages({
-                query,
-                sort: "score",
-                sort_dir: "desc",
-                highlight: false,
-                count: SLACK_SEARCH_ACTION_NUM_RESULTS,
-                page: 1,
+              const query = buildSlackSearchQuery(keyword, {
+                timeFrame,
+                channels: channels.values,
+                usersFrom,
+                usersTo,
+                usersMentioned,
               });
 
-              if (!messages.ok) {
-                throw new Error(messages.error);
-              }
-
-              return messages.messages?.matches ?? [];
+              return slackSearch(query, accessToken);
             },
             { concurrency: 3 }
           );
 
-          // Flatten the results, order by score descending.
-          const rawMatches = results
-            .flat()
-            .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+          // Flatten the results.
+          const rawMatches = results.flat();
 
-          // Filter out matches that don't have a text.
-          const matchesWithText = rawMatches.filter((match) => !!match.text);
-
-          // Deduplicate matches by their iid.
-          const deduplicatedMatches = uniqBy(matchesWithText, "iid");
+          // Deduplicate matches by their permalink across keywords.
+          const deduplicatedMatches = uniqBy(rawMatches, "permalink");
 
           // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
           const matches = deduplicatedMatches.slice(
@@ -392,7 +498,7 @@ const createServer = async (
                   resource: makeQueryResource(
                     keywords,
                     timeFrame,
-                    channels,
+                    channels.values,
                     usersFrom,
                     usersTo,
                     usersMentioned
@@ -414,15 +520,15 @@ const createServer = async (
                   mimeType:
                     INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
                   uri: match.permalink ?? "",
-                  text: `#${match.channel?.name ?? "Unknown"}, ${match.text ?? ""}`,
+                  text: `#${match.channel_name ?? "Unknown"}, ${match.content ?? ""}`,
 
-                  id: match.ts ?? "",
+                  id: match.message_ts ?? "",
                   source: {
                     provider: "slack",
                   },
                   tags: [],
                   ref: refs.shift() as string,
-                  chunks: [stripNullBytes(match.text ?? "")],
+                  chunks: [stripNullBytes(match.content ?? "")],
                 };
               }
             );
@@ -439,7 +545,7 @@ const createServer = async (
                   resource: makeQueryResource(
                     keywords,
                     timeFrame,
-                    channels,
+                    channels.values,
                     usersFrom,
                     usersTo,
                     usersMentioned
@@ -456,7 +562,9 @@ const createServer = async (
         }
       }
     );
-  } else {
+  }
+
+  if (slackAIStatus === "enabled") {
     server.tool(
       "semantic_search_messages",
       "Use semantic search to find messages across all channels and DMs for the current user",
@@ -466,44 +574,7 @@ const createServer = async (
           .describe(
             "A query to retrieve relevant messages based on the user request and conversation context. For it to be treated as semantic search, make sure it begins with a question word such as what, where, how, etc, and ends with a question mark. If the user asks to limit to certain channels, don't make them part of this query. Instead, use the `channels` parameter to limit the search to specific channels. But only do this if the user explicitly asks for it, otherwise, the search will be more effective if you don't limit it to specific channels."
           ),
-        channels: z
-          .string()
-          .array()
-          .optional()
-          .describe(
-            "Narrow the search to a specific channels names (optional)"
-          ),
-        usersFrom: z
-          .string()
-          .array()
-          .optional()
-          .describe(
-            "Narrow the search to messages wrote by specific users ids (optional)"
-          ),
-        usersTo: z
-          .string()
-          .array()
-          .optional()
-          .describe(
-            "Narrow the search to direct messages sent to specific user IDs (optional)"
-          ),
-        usersMentioned: z
-          .string()
-          .array()
-          .optional()
-          .describe(
-            "Narrow the search to messages mentioning specific users ids (optional)"
-          ),
-        relativeTimeFrame: z
-          .string()
-          .regex(/^(all|\d+[hdwmy])$/)
-          .describe(
-            "The time frame (relative to LOCAL_TIME) to restrict the search based" +
-              " on the user request and past conversation context." +
-              " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
-              " where {k} is a number. Be strict, do not invent invalid values." +
-              " Also, do not pass this unless the user explicitly asks for some timeframe."
-          ),
+        ...buildCommonSearchParams(channelOptions),
       },
       async (
         {
@@ -521,111 +592,34 @@ const createServer = async (
         }
 
         const accessToken = authInfo?.token;
+        if (!accessToken) {
+          throw new Error("Unreachable: missing access token.");
+        }
 
         const timeFrame = parseTimeFrame(relativeTimeFrame);
 
         try {
-          let searchQuery = query;
-
-          if (timeFrame) {
-            const timestampInMs = timeFrameFromNow(timeFrame);
-            const date = new Date(timestampInMs);
-            searchQuery = `${searchQuery} after:${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-          }
-
-          if (channels && channels.length > 0) {
-            searchQuery = `${searchQuery} ${channels
-              .map((channel) =>
-                channel.charAt(0) === "#" ? `in:${channel}` : `in:#${channel}`
-              )
-              .join(" ")}`;
-          }
-
-          if (usersFrom && usersFrom.length > 0) {
-            searchQuery = `${searchQuery} ${usersFrom.map((user) => `from:${user}`).join(" ")}`;
-          }
-
-          if (usersTo && usersTo.length > 0) {
-            searchQuery = `${searchQuery} ${usersTo.map((user) => `to:${user}`).join(" ")}`;
-          }
-
-          if (usersMentioned && usersMentioned.length > 0) {
-            searchQuery = `${searchQuery} ${usersMentioned.map((user) => `${user}`).join(" ")}`;
-          }
-
-          // The slack client library does not support the assistant.search.context endpoint,
-          // so we use the raw fetch API to call it (GET with query params).
-          const params = new URLSearchParams({
-            query: searchQuery,
-            sort: "score",
-            sort_dir: "desc",
-            limit: SLACK_SEARCH_ACTION_NUM_RESULTS.toString(),
+          const searchQuery = buildSlackSearchQuery(query, {
+            timeFrame,
+            channels: channels.values,
+            usersFrom,
+            usersTo,
+            usersMentioned,
           });
 
-          const resp = await fetch(
-            `https://slack.com/api/assistant.search.context?${params.toString()}`,
-            {
-              method: "GET",
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-              },
-            }
-          );
-
-          if (!resp.ok) {
-            throw new Error(`HTTP ${resp.status}`);
-          }
-
-          type SlackSemanticSearchMessage = {
-            author_name?: string;
-            channel_name?: string;
-            message_ts?: string;
-            content?: string;
-            permalink?: string;
-          };
-
-          type SlackSemanticSearchResponse = {
-            ok: boolean;
-            error?: string;
-            results: {
-              messages: SlackSemanticSearchMessage[];
-            };
-          };
-
-          const data: SlackSemanticSearchResponse = await resp.json();
-          if (!data.ok) {
-            throw new Error(data.error || "unknown_error");
-          }
-
-          const rawMatches: SlackSemanticSearchMessage[] =
-            data.results.messages;
-
-          // Filter out matches that don't have a text.
-          const matchesWithText = rawMatches.filter((match) => !!match.content);
-
-          // Deduplicate matches by their permalink.
-          const deduplicatedMatches = uniqBy(matchesWithText, "permalink");
-
-          // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
-          const matches = deduplicatedMatches.slice(
-            0,
-            SLACK_SEARCH_ACTION_NUM_RESULTS
-          );
+          const matches = await slackSearch(searchQuery, accessToken);
 
           if (matches.length === 0) {
             return {
               isError: false,
               content: [
-                {
-                  type: "text" as const,
-                  text: `No messages found.`,
-                },
+                { type: "text" as const, text: `No messages found.` },
                 {
                   type: "resource" as const,
                   resource: makeQueryResource(
                     [query],
                     timeFrame,
-                    channels,
+                    channels.values,
                     usersFrom,
                     usersTo,
                     usersMentioned
@@ -641,7 +635,7 @@ const createServer = async (
               citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
             );
 
-            const getTextFromMatch = (match: SlackSemanticSearchMessage) => {
+            const getTextFromMatch = (match: SlackSearchMatch) => {
               const author = match.author_name || "Unknown";
               const channel = match.channel_name || "Unknown";
               let content = match.content || "";
@@ -668,9 +662,7 @@ const createServer = async (
                   uri: match.permalink ?? "",
                   text: getTextFromMatch(match),
                   id: match.message_ts ?? "",
-                  source: {
-                    provider: "slack",
-                  },
+                  source: { provider: "slack" },
                   tags: [],
                   ref: refs.shift() as string,
                   chunks: [stripNullBytes(match.content ?? "")],
@@ -690,7 +682,7 @@ const createServer = async (
                   resource: makeQueryResource(
                     [query],
                     timeFrame,
-                    channels,
+                    channels.values,
                     usersFrom,
                     usersTo,
                     usersMentioned

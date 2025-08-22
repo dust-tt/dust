@@ -10,6 +10,7 @@ import type {
 import assert from "assert";
 
 import { createAndLogMembership } from "@app/lib/api/signup";
+import { determineUserRoleFromGroups } from "@app/lib/api/user";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import {
   fetchOrCreateWorkOSUserWithEmail,
@@ -33,11 +34,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import mainLogger from "@app/logger/logger";
-import type {
-  LightWorkspaceType,
-  MembershipRoleType,
-  Result,
-} from "@app/types";
+import type { LightWorkspaceType, Result } from "@app/types";
 
 const logger = mainLogger.child(
   {},
@@ -98,15 +95,7 @@ async function handleRoleAssignmentForGroup({
   group: GroupResource;
   action: "add" | "remove";
 }) {
-  let targetRole: MembershipRoleType | null = null;
-
-  if (group.name === ADMIN_GROUP_NAME) {
-    targetRole = "admin";
-  } else if (group.name === BUILDER_GROUP_NAME) {
-    targetRole = "builder";
-  }
-
-  if (!targetRole) {
+  if (group.name !== ADMIN_GROUP_NAME && group.name !== BUILDER_GROUP_NAME) {
     // Not a special group, no role assignment needed.
     return;
   }
@@ -125,25 +114,22 @@ async function handleRoleAssignmentForGroup({
   }
 
   if (action === "add") {
-    // Assign the target role if user doesn't already have it or a higher role.
-    const shouldAssignRole =
-      (targetRole === "admin" && currentMembership.role !== "admin") ||
-      (targetRole === "builder" && currentMembership.role === "user");
+    const newRole = await determineUserRoleFromGroups(workspace, user);
 
-    if (shouldAssignRole) {
+    if (newRole !== currentMembership.role) {
       const updateResult = await MembershipResource.updateMembershipRole({
         user,
         workspace,
-        newRole: targetRole,
+        newRole,
       });
 
       if (updateResult.isErr()) {
         logger.error(
-          { error: updateResult.error, userId: user.sId, role: targetRole },
-          `Failed to assign ${targetRole} role to user`
+          { error: updateResult.error, userId: user.sId, role: newRole },
+          `Failed to assign ${newRole} role to user`
         );
         throw new Error(
-          `Failed to assign ${targetRole} role to user ${user.sId}: ${updateResult.error.type}`
+          `Failed to assign ${newRole} role to user ${user.sId}: ${updateResult.error.type}`
         );
       }
 
@@ -151,31 +137,23 @@ async function handleRoleAssignmentForGroup({
         {
           userId: user.sId,
           oldRole: currentMembership.role,
-          newRole: targetRole,
+          newRole,
           groupName: group.name,
         },
-        `Assigned ${targetRole} role to user based on group membership`
+        `Assigned ${newRole} role to user based on group membership`
       );
 
       void ServerSideTracking.trackUpdateMembershipRole({
         user: user.toJSON(),
         workspace,
         previousRole: currentMembership.role,
-        role: targetRole,
+        role: newRole,
       });
     }
   } else if (action === "remove") {
-    // Check if the user should lose their role when removed from the group.
-    // We need to check if they're still in other groups that grant the same or higher role.
-    const shouldDowngradeRole = await shouldDowngradeUserRole(
-      workspace,
-      user,
-      targetRole
-    );
+    const newRole = await determineUserRoleFromGroups(workspace, user);
 
-    if (shouldDowngradeRole) {
-      const newRole = targetRole === "admin" ? "builder" : "user";
-
+    if (newRole !== currentMembership.role) {
       const updateResult = await MembershipResource.updateMembershipRole({
         user,
         workspace,
@@ -210,36 +188,6 @@ async function handleRoleAssignmentForGroup({
       });
     }
   }
-}
-
-/**
- * Check if the user should be downgraded when removed from a role-granting group.
- */
-async function shouldDowngradeUserRole(
-  workspace: LightWorkspaceType,
-  user: UserResource,
-  roleBeingRemoved: MembershipRoleType
-): Promise<boolean> {
-  // Get all groups the user is a member of.
-  const userGroups = await GroupResource.listUserGroupsInWorkspace({
-    user,
-    workspace,
-  });
-
-  // Check if user is still in any groups that grant the same or higher role.
-  for (const group of userGroups) {
-    if (
-      (group.name === ADMIN_GROUP_NAME &&
-        (roleBeingRemoved === "admin" || roleBeingRemoved === "builder")) ||
-      (group.name === BUILDER_GROUP_NAME && roleBeingRemoved === "builder")
-    ) {
-      // User is still in a group that grants this role or higher.
-      return false;
-    }
-  }
-
-  // User is not in any other groups that grant this role.
-  return true;
 }
 
 // WorkOS webhooks do not guarantee event ordering. Events can arrive out of sequence.

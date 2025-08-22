@@ -2,8 +2,18 @@ import {
   Avatar,
   Button,
   DataTable,
+  Icon,
   SearchInput,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
   Spinner,
+  UserGroupIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -11,8 +21,9 @@ import type {
   ColumnDef,
   PaginationState,
 } from "@tanstack/react-table";
-import React, { useCallback, useMemo, useState } from "react";
-import { useController, useWatch } from "react-hook-form";
+import React, { useEffect, useMemo, useState } from "react";
+import { useCallback } from "react";
+import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -31,23 +42,27 @@ type RowData = {
   onClick?: () => void;
 };
 
-export function EditorsTab() {
+export function EditorsSheet() {
   const { owner } = useAgentBuilderContext();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
   const [searchTerm, setSearchTerm] = useState("");
+  const [localEditors, setLocalEditors] = useState<UserType[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
 
   const {
-    field: { onChange },
+    field: { onChange, value: editors },
   } = useController<AgentBuilderFormData, "agentSettings.editors">({
     name: "agentSettings.editors",
   });
 
-  const editors = useWatch<AgentBuilderFormData, "agentSettings.editors">({
-    name: "agentSettings.editors",
-  });
+  useEffect(() => {
+    if (isOpen) {
+      setLocalEditors([...(editors || [])]);
+    }
+  }, [editors, isOpen]);
 
   const { members: workspaceMembers, isLoading: isWorkspaceMembersLoading } =
     useSearchMembers({
@@ -57,27 +72,37 @@ export function EditorsTab() {
       pageSize: 100,
     });
 
-  const onRemoveEditor = useCallback(
-    (user: UserType) => {
-      onChange((editors || []).filter((u) => u.sId !== user.sId));
-    },
-    [onChange, editors]
-  );
+  const onRemoveEditor = useCallback((user: UserType) => {
+    setLocalEditors((prev) => prev.filter((u) => u.sId !== user.sId));
+  }, []);
 
-  const onAddEditor = useCallback(
-    (user: UserType) => {
-      onChange([...(editors || []), user]);
-    },
-    [onChange, editors]
-  );
+  const onAddEditor = useCallback((user: UserType) => {
+    setLocalEditors((prev) => [...prev, user]);
+  }, []);
+
+  const onSave = () => {
+    onChange(localEditors);
+    setIsOpen(false);
+  };
+
+  const hasUnsavedChanges = useMemo(() => {
+    const currentEditorIds = new Set((editors || []).map((e) => e.sId));
+    const localEditorIds = new Set(localEditors.map((e) => e.sId));
+
+    if (currentEditorIds.size !== localEditorIds.size) {
+      return true;
+    }
+
+    return Array.from(currentEditorIds).some((id) => !localEditorIds.has(id));
+  }, [editors, localEditors]);
 
   const tableData = useMemo(() => {
-    const editorsSet = new Set((editors || []).map((e) => e.sId));
+    const localEditorsSet = new Set(localEditors.map((e) => e.sId));
     const allMembers = workspaceMembers || [];
 
     const memberMap = new Map<string, RowData>();
 
-    (editors || []).forEach((editor) => {
+    localEditors.forEach((editor) => {
       memberMap.set(editor.sId, {
         sId: editor.sId,
         fullName: editor.fullName,
@@ -95,8 +120,8 @@ export function EditorsTab() {
           fullName: member.fullName,
           email: member.email,
           image: member.image || "",
-          isEditor: editorsSet.has(member.sId),
-          onToggleEditor: editorsSet.has(member.sId)
+          isEditor: localEditorsSet.has(member.sId),
+          onToggleEditor: localEditorsSet.has(member.sId)
             ? () => onRemoveEditor(member)
             : () => onAddEditor(member),
         });
@@ -104,7 +129,7 @@ export function EditorsTab() {
     });
 
     return Array.from(memberMap.values());
-  }, [workspaceMembers, editors, onRemoveEditor, onAddEditor]);
+  }, [workspaceMembers, localEditors, onRemoveEditor, onAddEditor]);
 
   const columns: ColumnDef<RowData>[] = useMemo(
     () => [
@@ -171,27 +196,65 @@ export function EditorsTab() {
   );
 
   return (
-    <div className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
-      <SearchInput
-        value={searchTerm}
-        onChange={setSearchTerm}
-        name="search-editors"
-        placeholder="Search members to add as editors..."
-        isLoading={isWorkspaceMembersLoading}
-      />
-
-      {isWorkspaceMembersLoading ? (
-        <div className="flex justify-center py-8">
-          <Spinner size="sm" />
-        </div>
-      ) : (
-        <DataTable
-          data={tableData}
-          columns={columns}
-          pagination={pagination}
-          setPagination={setPagination}
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          icon={UserGroupIcon}
+          label="Editors"
         />
-      )}
-    </div>
+      </SheetTrigger>
+      <SheetContent size="lg">
+        <SheetHeader>
+          <SheetTitle>
+            <div className="flex items-center gap-2">
+              <Icon visual={UserGroupIcon} />
+              <span>Editors</span>
+            </div>
+          </SheetTitle>
+          <SheetDescription>
+            People who can use and edit the agent.
+          </SheetDescription>
+        </SheetHeader>
+
+        <SheetContainer>
+          <div className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              name="search-editors"
+              placeholder="Search members to add as editors..."
+              isLoading={isWorkspaceMembersLoading}
+            />
+
+            {isWorkspaceMembersLoading ? (
+              <div className="flex justify-center py-8">
+                <Spinner size="sm" />
+              </div>
+            ) : (
+              <DataTable
+                data={tableData}
+                columns={columns}
+                pagination={pagination}
+                setPagination={setPagination}
+              />
+            )}
+          </div>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Close",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Save",
+            variant: "primary",
+            onClick: onSave,
+            disabled: !hasUnsavedChanges,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }

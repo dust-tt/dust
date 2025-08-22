@@ -1,5 +1,4 @@
 import assert from "assert";
-import { default as cls } from "cls-hooked";
 import { Sequelize } from "sequelize";
 
 import { dbConfig } from "@connectors/resources/storage/config";
@@ -32,12 +31,6 @@ types.setTypeParser(types.builtins.INT8, function (val: unknown) {
   );
   return Number(val);
 });
-
-if (process.env.NODE_ENV === "test") {
-  const namespace = cls.createNamespace("test-namespace");
-
-  Sequelize.useCLS(namespace);
-}
 
 const statsDClient = getStatsDClient();
 const CONNECTION_ACQUISITION_THRESHOLD_MS = 100;

@@ -14,6 +14,7 @@ import logger from "@connectors/logger/logger";
 
 export async function runGithubWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
+
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities: {

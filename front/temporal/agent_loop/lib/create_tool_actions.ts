@@ -3,7 +3,10 @@ import { createMCPAction } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { StepContext } from "@app/lib/actions/types";
-import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
+import {
+  approvalStatusToToolExecutionStatus,
+  getExecutionStatusFromConfig,
+} from "@app/lib/actions/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
@@ -96,6 +99,12 @@ async function createActionForTool(
     step: number;
   }
 ): Promise<ActionBlob | void> {
+  const { status } = await getExecutionStatusFromConfig(
+    auth,
+    actionConfiguration,
+    agentMessage
+  );
+
   const actionBaseParams = await buildActionBaseParams({
     agentMessageId: agentMessage.agentMessageId,
     citationsAllocated: stepContext.citationsCount,
@@ -103,6 +112,7 @@ async function createActionForTool(
     mcpServerConfigurationId: actionConfiguration.id.toString(),
     step,
     stepContentId,
+    status: approvalStatusToToolExecutionStatus(status),
   });
 
   const validateToolInputsResult = validateToolInputs(actionBaseParams.params);
@@ -142,6 +152,7 @@ async function createActionForTool(
     augmentedInputs,
     stepContentId,
     stepContext,
+    approvalStatus: status,
   });
 
   // Publish the tool params event.
@@ -158,13 +169,6 @@ async function createActionForTool(
       conversationId,
       step,
     }
-  );
-
-  // Handle tool approval.
-  const { status } = await getExecutionStatusFromConfig(
-    auth,
-    actionConfiguration,
-    agentMessage
   );
 
   if (status === "pending") {

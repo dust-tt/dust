@@ -7,7 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  SparklesIcon,
+  EyeIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import React from "react";
@@ -120,7 +120,7 @@ export function ClientExecutableRenderer({
         onClose={closePanel}
       >
         <Button
-          icon={showCode ? SparklesIcon : CommandLineIcon}
+          icon={showCode ? EyeIcon : CommandLineIcon}
           onClick={() => setShowCode(!showCode)}
           size="xs"
           tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}

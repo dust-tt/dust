@@ -10,6 +10,7 @@ import {
   AgentMessageSuccessEvent,
   APIError,
   AppsCheckRequestType,
+  BlockedActionsResponseType,
   CancelMessageGenerationRequestType,
   ConversationPublicType,
   CreateConversationResponseType,
@@ -28,6 +29,7 @@ import {
   DustAppRunTokensEvent,
   FileUploadUrlRequestType,
   GenerationTokensEvent,
+  GetMCPServerViewsResponseSchema,
   HeartbeatMCPResponseType,
   LoggerInterface,
   PatchDataSourceViewRequestType,
@@ -49,6 +51,7 @@ import {
 import {
   APIErrorSchema,
   AppsCheckResponseSchema,
+  BlockedActionsResponseSchema,
   CancelMessageGenerationResponseSchema,
   CreateConversationResponseSchema,
   CreateGenericAgentConfigurationResponseSchema,
@@ -1329,6 +1332,24 @@ export class DustAPI {
     return new Ok(r.value.spaces);
   }
 
+  async getMCPServerViews(spaceId: string, includeAuto = false) {
+    const res = await this.request({
+      method: "GET",
+      path: `spaces/${spaceId}/mcp_server_views`,
+      query: new URLSearchParams({ includeAuto: includeAuto.toString() }),
+    });
+
+    const r = await this._resultFromResponse(
+      GetMCPServerViewsResponseSchema,
+      res
+    );
+
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.serverViews);
+  }
+
   async searchNodes(searchParams: SearchRequestBodyType) {
     const res = await this.request({
       method: "POST",
@@ -1402,6 +1423,19 @@ export class DustAPI {
   }
 
   // MCP Related.
+
+  async getBlockedActions({
+    conversationId,
+  }: {
+    conversationId: string;
+  }): Promise<Result<BlockedActionsResponseType, APIError>> {
+    const res = await this.request({
+      method: "GET",
+      path: `assistant/conversations/${conversationId}/actions/blocked`,
+    });
+
+    return this._resultFromResponse(BlockedActionsResponseSchema, res);
+  }
 
   async validateAction({
     conversationId,

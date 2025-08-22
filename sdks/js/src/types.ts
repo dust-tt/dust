@@ -589,16 +589,19 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_search"
   | "agent_builder_instructions_autocomplete"
   | "agent_builder_v2"
+  | "agent_management_tool"
   | "agent_to_yaml"
   | "anthropic_vertex_fallback"
   | "claude_4_opus_feature"
   | "co_edition"
+  | "data_warehouses_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "exploded_tables_query"
+  | "freshservice_tool"
   | "google_ai_studio_experimental_models_feature"
   | "google_sheets_tool"
   | "hootl"
@@ -614,16 +617,14 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
-  | "freshservice_tool"
   | "research_agent"
   | "salesforce_synced_queries"
   | "salesforce_tool"
   | "show_debug_tools"
   | "slack_semantic_search"
+  | "toolsets_tool"
   | "usage_data_api"
   | "xai_feature"
-  | "agent_management_tool"
-  | "data_warehouses_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -853,6 +854,7 @@ const UserMessageContextSchema = z.object({
   profilePictureUrl: z.string().optional().nullable(),
   origin: UserMessageOriginSchema,
   clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
+  selectedMCPServerViewIds: z.array(z.string()).optional().nullable(),
 });
 
 const UserMessageSchema = z.object({
@@ -1080,16 +1082,36 @@ export type MCPValidationMetadataPublicType = z.infer<
   typeof MCPValidationMetadataSchema
 >;
 
-const MCPApproveExecutionEventSchema = z.object({
-  type: z.literal("tool_approve_execution"),
-  created: z.number(),
-  configurationId: z.string(),
-  conversationId: z.string(),
-  messageId: z.string(),
+const ToolExecutionBlockedStatusSchema = z.enum([
+  "blocked_authentication_required",
+  "blocked_validation_required",
+]);
+
+export type ToolExecutionBlockedStatusType = z.infer<
+  typeof ToolExecutionBlockedStatusSchema
+>;
+
+const ToolExecutionMetadataSchema = z.object({
   actionId: z.string(),
   inputs: z.record(z.any()),
   stake: MCPStakeLevelSchema,
   metadata: MCPValidationMetadataSchema,
+});
+
+const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
+  messageId: z.string(),
+  conversationId: z.string(),
+  status: ToolExecutionBlockedStatusSchema,
+});
+
+export type BlockedActionExecutionType = z.infer<typeof BlockedActionExecutionSchema>;
+
+const MCPApproveExecutionEventSchema = ToolExecutionMetadataSchema.extend({
+  type: z.literal("tool_approve_execution"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  conversationId: z.string(),
 });
 
 const ToolErrorEventSchema = z.object({
@@ -2534,6 +2556,261 @@ export const GetSpacesResponseSchema = z.object({
 
 export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
 
+const OAuthProviderSchema = FlexibleEnumSchema<
+  | "confluence"
+  | "freshservice"
+  | "github"
+  | "google_drive"
+  | "gmail"
+  | "intercom"
+  | "jira"
+  | "monday"
+  | "notion"
+  | "slack"
+  | "gong"
+  | "microsoft"
+  | "microsoft_tools"
+  | "zendesk"
+  | "salesforce"
+  | "hubspot"
+  | "mcp"
+  | "mcp_static"
+>();
+
+const InternalAllowedIconSchema = FlexibleEnumSchema<
+  | "ActionBrainIcon"
+  | "ActionCloudArrowLeftRightIcon"
+  | "ActionDocumentTextIcon"
+  | "ActionEmotionLaughIcon"
+  | "ActionGitBranchIcon"
+  | "ActionGlobeAltIcon"
+  | "ActionImageIcon"
+  | "ActionLightbulbIcon"
+  | "ActionLockIcon"
+  | "ActionMagnifyingGlassIcon"
+  | "ActionRobotIcon"
+  | "ActionScanIcon"
+  | "ActionTableIcon"
+  | "ActionTimeIcon"
+  | "CommandLineIcon"
+  | "GcalLogo"
+  | "GithubLogo"
+  | "GmailLogo"
+  | "GoogleSpreadsheetLogo"
+  | "FreshserviceLogo"
+  | "HubspotLogo"
+  | "OutlookLogo"
+  | "JiraLogo"
+  | "LinearLogo"
+  | "MondayLogo"
+  | "NotionLogo"
+  | "SalesforceLogo"
+  | "SlackLogo"
+  | "StripeLogo"
+>();
+
+const CustomServerIconSchema = FlexibleEnumSchema<
+  | "ActionArmchairIcon"
+  | "ActionArrowDownOnSquareIcon"
+  | "ActionArrowUpOnSquareIcon"
+  | "ActionAttachmentIcon"
+  | "ActionBankIcon"
+  | "ActionBarcodeIcon"
+  | "ActionBeerIcon"
+  | "ActionBookOpenIcon"
+  | "ActionBracesIcon"
+  | "ActionBrainIcon"
+  | "ActionBriefcaseIcon"
+  | "ActionBuildingIcon"
+  | "ActionCalculatorIcon"
+  | "ActionCalendarIcon"
+  | "ActionCalendarCheckIcon"
+  | "ActionCameraIcon"
+  | "ActionCarIcon"
+  | "ActionCardIcon"
+  | "ActionCheckCircleIcon"
+  | "ActionClipboardIcon"
+  | "ActionCloudArrowDownIcon"
+  | "ActionCloudArrowLeftRightIcon"
+  | "ActionCloudArrowUpIcon"
+  | "ActionCodeBlockIcon"
+  | "ActionCodeBoxIcon"
+  | "ActionCommandIcon"
+  | "ActionCommand1Icon"
+  | "ActionCommunityIcon"
+  | "ActionCompanyIcon"
+  | "ActionCubeIcon"
+  | "ActionCupIcon"
+  | "ActionCustomerServiceIcon"
+  | "ActionDashboardIcon"
+  | "ActionDatabaseIcon"
+  | "ActionDocumentIcon"
+  | "ActionDocumentPileIcon"
+  | "ActionDocumentPlusIcon"
+  | "ActionDocumentTextIcon"
+  | "ActionDoubleQuotesIcon"
+  | "ActionEmotionLaughIcon"
+  | "ActionExternalLinkIcon"
+  | "ActionEyeIcon"
+  | "ActionEyeSlashIcon"
+  | "ActionFilmIcon"
+  | "ActionFilterIcon"
+  | "ActionFingerprintIcon"
+  | "ActionFireIcon"
+  | "ActionFlagIcon"
+  | "ActionFlightLandIcon"
+  | "ActionFlightTakeoffIcon"
+  | "ActionFolderIcon"
+  | "ActionFolderAddIcon"
+  | "ActionFolderOpenIcon"
+  | "ActionFullscreenIcon"
+  | "ActionFullscreenExitIcon"
+  | "ActionGamepadIcon"
+  | "ActionGitBranchIcon"
+  | "ActionGitForkIcon"
+  | "ActionGlobeIcon"
+  | "ActionGlobeAltIcon"
+  | "ActionGraduationCapIcon"
+  | "ActionHandHeartIcon"
+  | "ActionHandThumbDownIcon"
+  | "ActionHandThumbUpIcon"
+  | "ActionHeartIcon"
+  | "ActionHomeIcon"
+  | "ActionHospitalIcon"
+  | "ActionImageIcon"
+  | "ActionInboxIcon"
+  | "ActionIncludeIcon"
+  | "ActionLayoutIcon"
+  | "ActionLightbulbIcon"
+  | "ActionListIcon"
+  | "ActionListCheckIcon"
+  | "ActionLockIcon"
+  | "ActionLogoutIcon"
+  | "ActionMagicIcon"
+  | "ActionMagnifyingGlassIcon"
+  | "ActionMailIcon"
+  | "ActionMailAiIcon"
+  | "ActionMailCloseIcon"
+  | "ActionMapIcon"
+  | "ActionMapPinIcon"
+  | "ActionMarkPenIcon"
+  | "ActionMedalIcon"
+  | "ActionMegaphoneIcon"
+  | "ActionMenuIcon"
+  | "ActionMicIcon"
+  | "ActionMoonIcon"
+  | "ActionMovieIcon"
+  | "ActionNumbersIcon"
+  | "ActionPaintIcon"
+  | "ActionPencilSquareIcon"
+  | "ActionPieChartIcon"
+  | "ActionPinDistanceIcon"
+  | "ActionPingPongIcon"
+  | "ActionPlanetIcon"
+  | "ActionPlusIcon"
+  | "ActionPlusCircleIcon"
+  | "ActionPrinterIcon"
+  | "ActionPushpinIcon"
+  | "ActionRainbowIcon"
+  | "ActionRobotIcon"
+  | "ActionRocketIcon"
+  | "ActionSafeIcon"
+  | "ActionSaveIcon"
+  | "ActionScalesIcon"
+  | "ActionScanIcon"
+  | "ActionSeedlingIcon"
+  | "ActionServerIcon"
+  | "ActionShakeHandsIcon"
+  | "ActionShipIcon"
+  | "ActionShirtIcon"
+  | "ActionShoppingBasketIcon"
+  | "ActionSlideshowIcon"
+  | "ActionSparklesIcon"
+  | "ActionSquare3Stack3DIcon"
+  | "ActionStopSignIcon"
+  | "ActionStoreIcon"
+  | "ActionSunIcon"
+  | "ActionSwordIcon"
+  | "ActionTableIcon"
+  | "ActionTagIcon"
+  | "ActionTestTubeIcon"
+  | "ActionTimeIcon"
+  | "ActionTrainIcon"
+  | "ActionTranslateIcon"
+  | "ActionTrashIcon"
+  | "ActionTrophyIcon"
+  | "ActionTShirtIcon"
+  | "ActionUmbrellaIcon"
+  | "ActionUserIcon"
+  | "ActionUserGroupIcon"
+  | "ActionVidiconIcon"
+  | "ActionVolumeUpIcon"
+  | "ActionXCircleIcon"
+>();
+
+const MCPServerTypeSchema = z.object({
+  sId: z.string(),
+  name: z.string(),
+  version: z.string(),
+  description: z.string(),
+  icon: z.union([InternalAllowedIconSchema, CustomServerIconSchema]),
+  authorization: z
+    .object({
+      provider: OAuthProviderSchema,
+      supported_use_cases: z.array(
+        z.enum(["personal_actions", "platform_actions"])
+      ),
+      scope: z.string().optional(),
+    })
+    .nullable(),
+  tools: z.array(
+    z.object({
+      name: z.string(),
+      description: z.string(),
+      inputSchema: z.any().optional(),
+    })
+  ),
+  availability: z.enum(["manual", "auto", "auto_hidden_builder"]),
+  allowMultipleInstances: z.boolean(),
+  documentationUrl: z.string().nullable(),
+});
+
+const MCPServerViewTypeSchema = z.object({
+  id: z.number(),
+  sId: z.string(),
+  name: z.string().nullable(),
+  description: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  spaceId: z.string(),
+  serverType: z.enum(["remote", "internal"]),
+  server: MCPServerTypeSchema,
+  oAuthUseCase: z.enum(["personal_actions", "platform_actions"]).nullable(),
+  editedByUser: EditedByUserSchema.nullable(),
+});
+
+export type MCPServerViewType = z.infer<typeof MCPServerViewTypeSchema>;
+
+export const GetMCPServerViewsResponseSchema = z.object({
+  success: z.literal(true),
+  serverViews: z.array(MCPServerViewTypeSchema),
+});
+
+export type GetMCPServerViewsResponseType = z.infer<
+  typeof GetMCPServerViewsResponseSchema
+>;
+
+export const GetMCPServerViewsQuerySchema = z.object({
+  includeAuto: z
+    .enum(["true", "false"])
+    .transform((val) => val === "true")
+    .optional(),
+});
+
+export type GetMCPServerViewsQueryType = z.infer<
+  typeof GetMCPServerViewsQuerySchema
+>;
+
 export const BaseSearchBodySchema = z.object({
   viewType: ContentNodesViewTypeSchema,
   spaceIds: z.array(z.string()),
@@ -2729,8 +3006,17 @@ const MCP_VALIDATION_OUTPUTS = [
   "rejected",
   "always_approved",
 ] as const;
+
 export type MCPValidationOutputPublicType =
   (typeof MCP_VALIDATION_OUTPUTS)[number];
+
+export const BlockedActionsResponseSchema = z.object({
+  blockedActions: z.array(BlockedActionExecutionSchema),
+});
+
+export type BlockedActionsResponseType = z.infer<
+  typeof BlockedActionsResponseSchema
+>;
 
 const MCPViewsRequestAvailabilitySchema = z.enum(["manual", "auto"]);
 export type MCPViewsRequestAvailabilityType = z.infer<

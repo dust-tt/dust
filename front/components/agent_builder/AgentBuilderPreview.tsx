@@ -1,5 +1,5 @@
 import { ArrowPathIcon, Button, Spinner } from "@dust-tt/sparkle";
-import React from "react";
+import { useContext } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -11,10 +11,25 @@ import { ActionValidationProvider } from "@app/components/assistant/conversation
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
-import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
+import {
+  GenerationContext,
+  GenerationContextProvider,
+} from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
+import type { DustError } from "@app/lib/error";
 import { useUser } from "@app/lib/swr/user";
+import type {
+  AgentMention,
+  ContentFragmentsType,
+  ConversationWithoutContentType,
+  LightAgentConfigurationType,
+  MentionType,
+  Result,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 
 import type { AgentBuilderFormData } from "./AgentBuilderFormContext";
 
@@ -48,6 +63,87 @@ function LoadingState({ message }: LoadingStateProps) {
         <span className="text-muted-foreground">{message}</span>
       </div>
     </div>
+  );
+}
+
+interface PreviewContentProps {
+  conversation: ConversationWithoutContentType | null;
+  user: UserType | null;
+  owner: WorkspaceType;
+  currentPanel: ConversationSidePanelType;
+  resetConversation: () => void;
+  handleSubmit: (
+    input: string,
+    mentions: MentionType[],
+    contentFragments: ContentFragmentsType
+  ) => Promise<Result<undefined, DustError>>;
+  setStickyMentions: (mentions: AgentMention[]) => void;
+  stickyMentions: AgentMention[];
+  draftAgent: LightAgentConfigurationType | null;
+  isSavingDraftAgent: boolean;
+}
+
+function PreviewContent({
+  conversation,
+  user,
+  owner,
+  currentPanel,
+  resetConversation,
+  handleSubmit,
+  setStickyMentions,
+  stickyMentions,
+  draftAgent,
+  isSavingDraftAgent,
+}: PreviewContentProps) {
+  const generationContext = useContext(GenerationContext);
+  const isGenerating = !!generationContext?.generatingMessages.length;
+
+  return (
+    <>
+      <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
+        <div className="flex-1 overflow-y-auto">
+          {conversation && user && (
+            <ConversationViewer
+              owner={owner}
+              user={user}
+              conversationId={conversation.sId}
+              onStickyMentionsChange={setStickyMentions}
+              isInModal
+              key={conversation.sId}
+            />
+          )}
+        </div>
+        {conversation && !isGenerating && (
+          <div className="flex justify-center px-4">
+            <Button
+              variant="outline"
+              icon={ArrowPathIcon}
+              onClick={resetConversation}
+              label="Clear conversation"
+            />
+          </div>
+        )}
+        <div className="flex-shrink-0 py-4">
+          <AssistantInputBar
+            disable={isSavingDraftAgent}
+            owner={owner}
+            onSubmit={handleSubmit}
+            stickyMentions={stickyMentions}
+            conversationId={conversation?.sId ?? null}
+            additionalAgentConfiguration={draftAgent ?? undefined}
+            actions={["attachment"]}
+            disableAutoFocus
+            isFloating={false}
+          />
+        </div>
+      </div>
+
+      <ConversationSidePanelContent
+        conversation={conversation}
+        owner={owner}
+        currentPanel={currentPanel}
+      />
+    </>
   );
 }
 
@@ -106,57 +202,18 @@ export function AgentBuilderPreview() {
     }
 
     return (
-      <>
-        <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
-          {conversation && (
-            <div className="flex items-center justify-between px-6 py-3">
-              <h2 className="font-semibold text-foreground dark:text-foreground-night">
-                {conversation.title}
-              </h2>
-              <Button
-                variant="outline"
-                size="sm"
-                icon={ArrowPathIcon}
-                onClick={resetConversation}
-                label="Reset conversation"
-              />
-            </div>
-          )}
-          <div className="flex-1 overflow-y-auto px-4">
-            {conversation && user && (
-              <div className={currentPanel ? "hidden" : "block"}>
-                <ConversationViewer
-                  owner={owner}
-                  user={user}
-                  conversationId={conversation.sId}
-                  onStickyMentionsChange={setStickyMentions}
-                  isInModal
-                  key={conversation.sId}
-                />
-              </div>
-            )}
-          </div>
-          <div className="flex-shrink-0 p-4">
-            <AssistantInputBar
-              disable={isSavingDraftAgent}
-              owner={owner}
-              onSubmit={handleSubmit}
-              stickyMentions={stickyMentions}
-              conversationId={conversation?.sId || null}
-              additionalAgentConfiguration={draftAgent ?? undefined}
-              actions={["attachment"]}
-              disableAutoFocus
-              isFloating={false}
-            />
-          </div>
-        </div>
-
-        <ConversationSidePanelContent
-          conversation={conversation}
-          owner={owner}
-          currentPanel={currentPanel}
-        />
-      </>
+      <PreviewContent
+        conversation={conversation}
+        user={user}
+        owner={owner}
+        currentPanel={currentPanel}
+        resetConversation={resetConversation}
+        handleSubmit={handleSubmit}
+        setStickyMentions={setStickyMentions}
+        stickyMentions={stickyMentions}
+        draftAgent={draftAgent}
+        isSavingDraftAgent={isSavingDraftAgent}
+      />
     );
   };
 

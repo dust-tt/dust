@@ -182,19 +182,46 @@ const agentSettingsSchema = z.object({
   tags: z.array(tagSchema),
 });
 
+const scheduleConfigSchema = z.object({
+  cron: z.string(),
+  timezone: z.string(),
+});
+
+const triggerSchema = z.object({
+  sId: z.string().optional(),
+  name: z.string(),
+  kind: z.enum(["schedule"]),
+  configuration: z.union([scheduleConfigSchema, z.null()]),
+});
+
 export const agentBuilderFormSchema = z.object({
   agentSettings: agentSettingsSchema,
   instructions: z.string().min(1, "Instructions are required"),
   generationSettings: generationSettingsSchema,
   actions: z.array(actionSchema),
+  triggers: z.array(triggerSchema),
   maxStepsPerRun: z
     .number()
     .min(1, "Max steps per run must be at least 1")
     .default(8),
 });
 
+export const scheduleFormSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255, "Name is too long"),
+  cron: z
+    .string()
+    .min(1, "Cron expression is required")
+    .regex(
+      /^(\*|([0-5]?\d)) (\*|([01]?\d|2[0-3])) (\*|([01]?\d|2[0-9]|3[01])) (\*|(1[0-2]|0?[1-9])) (\*|([0-6]))$/,
+      "Invalid cron expression (expected 5 fields: min hour day month weekday)"
+    ),
+  timezone: z.string().min(1, "Timezone is required"),
+});
+export type ScheduleFormData = z.infer<typeof scheduleFormSchema>;
+
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
+export type AgentBuilderTriggerType = z.infer<typeof triggerSchema>;
 export type AgentBuilderAction = z.infer<typeof actionSchema>;
 export type AgentBuilderDataVizAction = z.infer<
   typeof dataVisualizationActionSchema

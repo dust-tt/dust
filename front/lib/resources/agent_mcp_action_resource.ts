@@ -1,9 +1,16 @@
 import assert from "assert";
-import type { Transaction } from "sequelize";
+import type { Attributes, NonAttribute, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
+import type { BlockedActionExecution } from "@app/lib/actions/mcp";
+import {
+  isToolExecutionStatusBlocked,
+  TOOL_EXECUTION_BLOCKED_STATUSES,
+} from "@app/lib/actions/statuses";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
+import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -11,7 +18,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { MCPActionValidationRequest, ModelId, Result } from "@app/types";
+import type { ModelId, Result } from "@app/types";
 import { removeNulls } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
@@ -24,25 +31,54 @@ export interface AgentMCPActionResource
 export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
   static model: ModelStaticWorkspaceAware<AgentMCPAction> = AgentMCPAction;
 
+  constructor(
+    model: ModelStaticWorkspaceAware<AgentMCPAction>,
+    blob: Attributes<AgentMCPAction>,
+    // TODO(DURABLE-AGENTS, 2025-08-21): consider using the resource instead of the model.
+    readonly stepContent: NonAttribute<AgentStepContentModel>
+  ) {
+    super(model, blob);
+  }
+
   private static async baseFetch(
     auth: Authenticator,
     { where, limit, order }: ResourceFindOptions<AgentMCPAction> = {}
   ) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
     const actions = await this.model.findAll({
       where: {
         ...where,
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId,
       },
       limit,
       order,
     });
-    return actions.map((a) => new this(this.model, a.get()));
+
+    const stepContents = await AgentStepContentModel.findAll({
+      where: {
+        id: {
+          [Op.in]: actions.map((a) => a.stepContentId),
+        },
+        workspaceId,
+      },
+    });
+
+    const stepContentsMap = new Map(stepContents.map((s) => [s.id, s]));
+
+    return actions.map((a) => {
+      const stepContent = stepContentsMap.get(a.stepContentId);
+
+      // Each action must have a step content.
+      assert(stepContent, "Step content not found.");
+      return new this(this.model, a.get(), stepContent);
+    });
   }
 
-  static async listPendingValidationsForConversation(
+  static async listBlockedActionsForConversation(
     auth: Authenticator,
     conversationId: string
-  ): Promise<MCPActionValidationRequest[]> {
+  ): Promise<BlockedActionExecution[]> {
     const owner = auth.getNonNullableWorkspace();
 
     const conversation = await ConversationResource.fetchById(
@@ -53,7 +89,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       return [];
     }
 
-    const pendingActions = await AgentMCPAction.findAll({
+    const blockedActions = await AgentMCPAction.findAll({
       include: [
         {
           model: AgentMessage,
@@ -73,12 +109,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       ],
       where: {
         workspaceId: owner.id,
-        executionState: "pending",
+        status: {
+          [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
+        },
       },
       order: [["createdAt", "ASC"]],
     });
 
-    const pendingValidations: MCPActionValidationRequest[] = [];
+    const blockedActionsList: BlockedActionExecution[] = [];
 
     // We get the latest version here, it may show a different name than the one used when the
     // action was created, taking this shortcut for the sake of simplicity.
@@ -86,14 +124,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       agentIds: [
         ...new Set(
           removeNulls(
-            pendingActions.map((a) => a.agentMessage?.agentConfigurationId)
+            blockedActions.map((a) => a.agentMessage?.agentConfigurationId)
           )
         ),
       ],
       variant: "extra_light",
     });
 
-    for (const action of pendingActions) {
+    for (const action of blockedActions) {
       const agentMessage = action.agentMessage;
       assert(agentMessage?.message, "No message for agent message.");
       const agentConfiguration = agentConfigurations.find(
@@ -101,7 +139,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       );
       assert(agentConfiguration, "Agent not found.");
 
-      pendingValidations.push({
+      // We just fetched on the status being blocked, we just don't get it typed properly.
+      assert(
+        isToolExecutionStatusBlocked(action.status),
+        "Action is not blocked."
+      );
+
+      blockedActionsList.push({
         messageId: agentMessage.message.sId,
         conversationId,
         actionId: this.modelIdToSId({
@@ -116,10 +160,39 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
           agentName: agentConfiguration.name,
           icon: action.toolConfiguration.icon,
         },
+        status: action.status,
       });
     }
 
-    return pendingValidations;
+    return blockedActionsList;
+  }
+
+  static async listBlockedActionsForAgentMessage(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: ModelId }
+  ): Promise<AgentMCPActionResource[]> {
+    const actions = await this.baseFetch(auth, {
+      where: {
+        agentMessageId,
+        status: {
+          [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
+        },
+      },
+    });
+
+    if (actions.length === 0) {
+      return [];
+    }
+
+    // Assert all blocked actions have the same step.
+    const steps = actions.map((a) => a.stepContent.step);
+    const uniqueSteps = [...new Set(steps)];
+    assert(
+      uniqueSteps.length === 1,
+      `All blocked actions must be from the same step, got ${steps.join(", ")}`
+    );
+
+    return actions;
   }
 
   async delete(

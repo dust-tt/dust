@@ -130,6 +130,7 @@ export default function EditAssistant({
       responseFormat: agentConfiguration.model.responseFormat,
     },
     actions: [], // Actions will be populated later from the client
+    triggers: [], // Triggers will be populated later from the client
     visualizationEnabled: agentConfiguration.visualizationEnabled,
     templateId: agentConfiguration.templateId,
     tags: agentConfiguration.tags,

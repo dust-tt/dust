@@ -63,21 +63,26 @@ async function publishMessageEvent(
   }
 }
 
-export async function publishConversationRelatedEvent(
-  event: AgentMessageEvents | ConversationEvents,
-  {
-    conversationId,
-    step,
-  }: {
-    conversationId: string;
-    step: number;
-  }
-) {
-  switch (event.type) {
-    case "user_message_new":
-    case "agent_message_new":
-      return publishConversationEvent(event, { conversationId });
+interface ConversationEventParams {
+  conversationId: string;
+  event: ConversationEvents;
+}
 
+interface MessageEventParams {
+  conversationId: string;
+  event: AgentMessageEvents;
+  step: number;
+}
+
+type ConversationRelatedEventParams =
+  | ConversationEventParams
+  | MessageEventParams;
+
+function isMessageEventParams(
+  params: ConversationRelatedEventParams,
+  eventType: AgentMessageEvents["type"] | ConversationEvents["type"]
+): params is MessageEventParams {
+  switch (eventType) {
     case "agent_action_success":
     case "agent_error":
     case "tool_error":
@@ -87,10 +92,24 @@ export async function publishConversationRelatedEvent(
     case "tool_approve_execution":
     case "tool_notification":
     case "tool_params":
-      return publishMessageEvent(event, { step });
-
+      return true;
+    case "user_message_new":
+    case "agent_message_new":
+      return false;
     default:
-      assertNever(event);
+      assertNever(eventType);
+  }
+}
+
+export async function publishConversationRelatedEvent(
+  a: ConversationRelatedEventParams
+) {
+  if (isMessageEventParams(a, a.event.type)) {
+    return publishMessageEvent(a.event, { step: a.step });
+  } else {
+    return publishConversationEvent(a.event, {
+      conversationId: a.conversationId,
+    });
   }
 }
 
@@ -119,12 +138,14 @@ export async function publishMessageEventsOnMessagePostOrEdit(
   );
 
   return Promise.all([
-    publishConversationRelatedEvent(userMessageEvent, {
+    publishConversationRelatedEvent({
+      event: userMessageEvent,
       conversationId: conversation.sId,
       step: -1,
     }),
     ...agentMessageEvents.map((event) =>
-      publishConversationRelatedEvent(event, {
+      publishConversationRelatedEvent({
+        event,
         conversationId: conversation.sId,
         step: -1,
       })
@@ -144,7 +165,8 @@ export async function publishAgentMessageEventOnMessageRetry(
     message: agentMessage,
   };
 
-  return publishConversationRelatedEvent(agentMessageEvent, {
+  return publishConversationRelatedEvent({
+    event: agentMessageEvent,
     conversationId: conversation.sId,
     step: -1,
   });

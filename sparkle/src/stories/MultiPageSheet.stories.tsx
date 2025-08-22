@@ -437,6 +437,11 @@ export const WithConditionalNavigation: Story = {
             </div>
           </div>
         ),
+        footerContent: (
+          <div className="s-w-full s-border s-border-border-dark">
+            This is a footer content
+          </div>
+        ),
       },
     ];
 
@@ -456,11 +461,6 @@ export const WithConditionalNavigation: Story = {
             currentPageId === "data-selection" && selectedItems.length === 0
           }
           disableSave={!description.trim()}
-          footerContent={
-            <div className="s-w-full s-border s-border-border-dark">
-              This is a footer content
-            </div>
-          }
         />
       </MultiPageSheet>
     );

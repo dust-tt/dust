@@ -110,6 +110,8 @@ const API_ERROR_TYPES = [
   "plugin_execution_failed",
   // Trackers:
   "tracker_not_found",
+  // Triggers:
+  "trigger_not_found",
   // MCP Server Connections:
   "mcp_server_connection_not_found",
   "mcp_server_view_not_found",

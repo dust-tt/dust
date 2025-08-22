@@ -18,7 +18,6 @@ import {
 import { BaseResource } from "@connectors/resources/base_resource";
 import type {} from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { sequelizeConnection } from "@connectors/resources/storage";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 import type { CrawlingFrequency } from "@connectors/types";
 import type { WebCrawlerConfigurationType } from "@connectors/types";
@@ -29,6 +28,7 @@ import {
   WEBCRAWLER_MAX_PAGES,
   WebCrawlerHeaderRedactedValue,
 } from "@connectors/types";
+import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -213,7 +213,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
         return new Err(new Error(`Invalid header name ${key}`));
       }
     }
-    await sequelizeConnection.transaction(async (transaction) => {
+    await withTransaction(async (transaction) => {
       const headersList = Object.entries(headers);
       // delete all headers before inserting new ones
       await WebCrawlerConfigurationHeader.destroy({

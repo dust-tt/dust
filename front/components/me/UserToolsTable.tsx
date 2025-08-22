@@ -27,7 +27,7 @@ interface UserTableRow {
   description: string;
   serverView: MCPServerViewType;
   connection: MCPServerConnectionType | undefined;
-  visual: React.ReactNode;
+  visual: React.JSX.Element;
   onClick?: () => void;
   moreMenuItems?: any[];
 }
