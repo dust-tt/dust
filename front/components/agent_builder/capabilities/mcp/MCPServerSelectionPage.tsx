@@ -8,6 +8,7 @@ import {
   Icon,
   PlusIcon,
 } from "@dust-tt/sparkle";
+import { CardGrid } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
 import { useAgentBuilderFormActions } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -56,7 +57,7 @@ function BaseToolCard({
       variant={isSelected ? "secondary" : "primary"}
       onClick={canAdd ? onClick : undefined}
       disabled={!canAdd}
-      className="h-20 p-3"
+      className="h-24 p-3"
     >
       <div className="flex h-full w-full items-center justify-between gap-3">
         <div className="flex-1">
@@ -219,39 +220,43 @@ export function MCPServerSelectionPage({
           defaultMcpServerViews) && (
           <span className="text-lg font-semibold">Top tools</span>
         )}
-        {dataVisualization && onDataVisualizationClick && (
-          <DataVisualizationCard
-            key="data-visualization"
-            specification={dataVisualization}
-            isSelected={isDataVisualizationSelected}
-            onClick={onDataVisualizationClick}
-          />
-        )}
-        {defaultMcpServerViews.map((view) => (
-          <MCPServerCard
-            key={view.id}
-            view={view}
-            isSelected={selectedMCPIds.has(view.sId)}
-            isSpaceAllowed={
-              !!allowedSpaces.find((space) => space.sId === view.spaceId)
-            }
-            onClick={() => onItemClick(view)}
-          />
-        ))}
+        <CardGrid>
+          {dataVisualization && onDataVisualizationClick && (
+            <DataVisualizationCard
+              key="data-visualization"
+              specification={dataVisualization}
+              isSelected={isDataVisualizationSelected}
+              onClick={onDataVisualizationClick}
+            />
+          )}
+          {defaultMcpServerViews.map((view) => (
+            <MCPServerCard
+              key={view.id}
+              view={view}
+              isSelected={selectedMCPIds.has(view.sId)}
+              isSpaceAllowed={
+                !!allowedSpaces.find((space) => space.sId === view.spaceId)
+              }
+              onClick={() => onItemClick(view)}
+            />
+          ))}
+        </CardGrid>
         {nonDefaultMcpServerViews.length && (
           <span className="text-lg font-semibold">Other tools</span>
         )}
-        {nonDefaultMcpServerViews.map((view) => (
-          <MCPServerCard
-            key={view.id}
-            view={view}
-            isSelected={selectedMCPIds.has(view.sId)}
-            isSpaceAllowed={
-              !!allowedSpaces.find((space) => space.sId === view.spaceId)
-            }
-            onClick={() => onItemClick(view)}
-          />
-        ))}
+        <CardGrid>
+          {nonDefaultMcpServerViews.map((view) => (
+            <MCPServerCard
+              key={view.id}
+              view={view}
+              isSelected={selectedMCPIds.has(view.sId)}
+              isSpaceAllowed={
+                !!allowedSpaces.find((space) => space.sId === view.spaceId)
+              }
+              onClick={() => onItemClick(view)}
+            />
+          ))}
+        </CardGrid>
       </div>
     </>
   );
