@@ -9,20 +9,14 @@ import { Op } from "sequelize";
 
 import type { BlockedActionExecution } from "@app/lib/actions/mcp";
 import type { ActionBaseParams } from "@app/lib/actions/mcp";
-<<<<<<< HEAD
-import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import {
-  isToolExecutionStatusBlocked,
-  TOOL_EXECUTION_BLOCKED_STATUSES,
-} from "@app/lib/actions/statuses";
-=======
 import type {
   MCPExecutionState,
   ToolExecutionStatus,
 } from "@app/lib/actions/statuses";
-import { TOOL_EXECUTION_BLOCKED_STATUSES } from "@app/lib/actions/statuses";
->>>>>>> 764ff1efb (udpate updateExecutionState)
-import { approvalStatusToToolExecutionStatus } from "@app/lib/actions/utils";
+import {
+  isToolExecutionStatusBlocked,
+  TOOL_EXECUTION_BLOCKED_STATUSES,
+} from "@app/lib/actions/statuses";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
@@ -115,35 +109,17 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
 
   static async makeNew(
     auth: Authenticator,
-    {
-      actionBaseParams,
-      augmentedInputs,
-      stepContentId,
-      stepContext,
-      approvalStatus,
-      toolConfiguration,
-      version,
-    }: CreationAttributes<AgentMCPAction> & {
+    blob: Omit<CreationAttributes<AgentMCPAction>, "workspaceId"> & {
       actionBaseParams: ActionBaseParams;
       approvalStatus: "allowed_implicitly" | "pending";
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<AgentMCPActionResource> {
+    const workspace = auth.getNonNullableWorkspace();
     const action = await AgentMCPAction.create(
       {
-        agentMessageId: actionBaseParams.agentMessageId,
-        augmentedInputs,
-        citationsAllocated: stepContext.citationsCount,
-        executionState: "pending",
-        isError: false,
-        mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
-        runningState: "not_started",
-        status: approvalStatusToToolExecutionStatus(approvalStatus),
-        stepContentId,
-        stepContext,
-        toolConfiguration,
-        version: version,
-        workspaceId: auth.getNonNullableWorkspace().id,
+        ...blob,
+        workspaceId: workspace.id,
       },
       { transaction }
     );
@@ -152,8 +128,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       auth,
       action.stepContentId
     );
-    assert(stepContent, "Step content not found.");
-    return new this(AgentMCPAction, action.get(), stepContent);
+
+    return new AgentMCPActionResource(
+      AgentMCPActionResource.model,
+      action.get(),
+      stepContent
+    );
   }
 
   static async fetchByModelIdWithAuth(
@@ -378,10 +358,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     } catch (err) {
       return new Err(normalizeError(err));
     }
-  }
-
-  toJSON(): AgentMCPAction {
-    return AgentMCPAction.build(this);
   }
 
   get sId(): string {
