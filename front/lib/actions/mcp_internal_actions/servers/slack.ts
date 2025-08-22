@@ -153,6 +153,13 @@ const _getPublicChannels = async ({
     }
     channels.push(...(response.channels ?? []));
     cursor = response.response_metadata?.next_cursor;
+
+    // We can't handle a huge list of channels, and even if we could, it would be unusable
+    // in the UI. So we arbitrarily cap it to 500 channels.
+    if (channels.length >= 500) {
+      logger.warn("Channel list truncated to 500 channels.");
+      break;
+    }
   } while (cursor);
 
   return channels
