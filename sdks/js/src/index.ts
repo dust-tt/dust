@@ -28,6 +28,7 @@ import {
   DustAppRunTokensEvent,
   FileUploadUrlRequestType,
   GenerationTokensEvent,
+  GetMCPServerViewsResponseSchema,
   HeartbeatMCPResponseType,
   LoggerInterface,
   PatchDataSourceViewRequestType,
@@ -1327,6 +1328,24 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.spaces);
+  }
+
+  async getMCPServerViews(spaceId: string, includeAuto = false) {
+    const res = await this.request({
+      method: "GET",
+      path: `spaces/${spaceId}/mcp_server_views`,
+      query: new URLSearchParams({ includeAuto: includeAuto.toString() }),
+    });
+
+    const r = await this._resultFromResponse(
+      GetMCPServerViewsResponseSchema,
+      res
+    );
+
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.serverViews);
   }
 
   async searchNodes(searchParams: SearchRequestBodyType) {

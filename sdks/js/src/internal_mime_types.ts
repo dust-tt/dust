@@ -272,6 +272,8 @@ const TOOL_MIME_TYPES = {
       "RUN_AGENT_QUERY",
       "WARNING",
       "AGENT_CREATION_RESULT",
+      "TOOLSET_LIST_RESULT",
+      "TOOLSET_DESCRIBE_RESULT",
       // Legacy, kept for backwards compatibility.
       "GET_DATABASE_SCHEMA_MARKER",
       "EXECUTE_TABLES_QUERY_MARKER",

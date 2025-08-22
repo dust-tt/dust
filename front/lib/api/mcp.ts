@@ -15,7 +15,7 @@ import type { EditedByUser, MCPOAuthUseCase, ModelId } from "@app/types";
 export type MCPToolType = {
   name: string;
   description: string;
-  inputSchema: JSONSchema | undefined;
+  inputSchema?: JSONSchema;
 };
 
 export type MCPToolWithAvailabilityType = MCPToolType & {

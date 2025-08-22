@@ -94,6 +94,7 @@ export type UserMessageContext = {
   profilePictureUrl: string | null;
   origin?: UserMessageOrigin | null;
   clientSideMCPServerIds?: string[];
+  selectedMCPServerViewIds?: string[];
 };
 
 export type UserMessageType = {
