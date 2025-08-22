@@ -26,7 +26,7 @@ async function findUserMessageForRetry(
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   // Query 1: Get the message and its parentId.
-  const agentMessage = await Message.findOne({
+  const agentMessages = await Message.findAll({
     where: {
       conversationId: conversation.id,
       sId: messageId,
@@ -35,14 +35,24 @@ async function findUserMessageForRetry(
     attributes: ["agentMessageId", "parentId", "version", "sId"],
   });
 
-  if (!agentMessage || !agentMessage.parentId || !agentMessage.agentMessageId) {
+  // Only use the latest version of the agent message.
+  const agentMessageWithLatestVersion = agentMessages.reduce(
+    (acc, m) => (m.version > acc.version ? m : acc),
+    agentMessages[0]
+  );
+
+  if (
+    !agentMessageWithLatestVersion ||
+    !agentMessageWithLatestVersion.parentId ||
+    !agentMessageWithLatestVersion.agentMessageId
+  ) {
     return new Err(new Error("Agent message not found"));
   }
 
   // Query 2: Get the parent message's sId (which is the user message).
   const parentMessage = await Message.findOne({
     where: {
-      id: agentMessage.parentId,
+      id: agentMessageWithLatestVersion.parentId,
       conversationId: conversation.id,
       workspaceId: auth.getNonNullableWorkspace().id,
     },
@@ -55,7 +65,7 @@ async function findUserMessageForRetry(
 
   const blockedActions =
     await AgentMCPActionResource.listBlockedActionsForAgentMessage(auth, {
-      agentMessageId: agentMessage.agentMessageId,
+      agentMessageId: agentMessageWithLatestVersion.agentMessageId,
     });
 
   if (blockedActions.length === 0) {
@@ -63,8 +73,8 @@ async function findUserMessageForRetry(
   }
 
   return new Ok({
-    agentMessageId: agentMessage.sId,
-    agentMessageVersion: agentMessage.version,
+    agentMessageId: agentMessageWithLatestVersion.sId,
+    agentMessageVersion: agentMessageWithLatestVersion.version,
     lastStep: blockedActions[blockedActions.length - 1].stepContent.step,
     userMessageId: parentMessage.sId,
     userMessageVersion: parentMessage.version,

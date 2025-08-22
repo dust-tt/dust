@@ -29,7 +29,7 @@ async function getUserMessageIdFromMessageId(
   userMessageVersion: number;
 }> {
   // Query 1: Get the message and its parentId.
-  const agentMessage = await Message.findOne({
+  const agentMessages = await Message.findAll({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
       sId: messageId,
@@ -37,15 +37,21 @@ async function getUserMessageIdFromMessageId(
     attributes: ["parentId", "version", "sId"],
   });
 
+  // Only use the latest version of the agent message.
+  const agentMessageWithLatestVersion = agentMessages.reduce(
+    (acc, m) => (m.version > acc.version ? m : acc),
+    agentMessages[0]
+  );
+
   assert(
-    agentMessage?.parentId,
+    agentMessageWithLatestVersion?.parentId,
     "Agent message is expected to have a parentId"
   );
 
   // Query 2: Get the parent message's sId (which is the user message).
   const parentMessage = await Message.findOne({
     where: {
-      id: agentMessage.parentId,
+      id: agentMessageWithLatestVersion.parentId,
       workspaceId: auth.getNonNullableWorkspace().id,
     },
     attributes: ["sId", "version"],
@@ -54,8 +60,8 @@ async function getUserMessageIdFromMessageId(
   assert(parentMessage, "A user message is expected for the agent message");
 
   return {
-    agentMessageId: agentMessage.sId,
-    agentMessageVersion: agentMessage.version,
+    agentMessageId: agentMessageWithLatestVersion.sId,
+    agentMessageVersion: agentMessageWithLatestVersion.version,
     userMessageId: parentMessage.sId,
     userMessageVersion: parentMessage.version,
   };
