@@ -263,7 +263,6 @@ export async function submitAssistantBuilderForm({
       body: JSON.stringify({
         triggers: builderState.triggers.map((trigger) => ({
           name: trigger.name,
-          description: trigger.description,
           kind: trigger.kind,
           configuration: trigger.configuration,
           sId: trigger.sId,

@@ -7,7 +7,6 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  TextArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
@@ -36,7 +35,6 @@ export function ScheduleEditionModal({
 }: ScheduleEditionModalProps) {
   const defaultValues: ScheduleFormData = {
     name: "Schedule",
-    description: "",
     cron: "",
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   };
@@ -50,14 +48,12 @@ export function ScheduleEditionModal({
   useEffect(() => {
     reset({
       name: trigger?.name ?? defaultValues.name,
-      description: trigger?.description ?? defaultValues.description,
       cron: trigger?.configuration?.cron ?? defaultValues.cron,
       timezone: trigger?.configuration?.timezone ?? defaultValues.timezone,
     });
   }, [
     reset,
     defaultValues.name,
-    defaultValues.description,
     defaultValues.cron,
     defaultValues.timezone,
     trigger,
@@ -72,7 +68,6 @@ export function ScheduleEditionModal({
     const triggerData: AgentBuilderTriggerType = {
       sId: trigger?.sId ?? uniqueId(),
       name: data.name.trim(),
-      description: data.description.trim(),
       kind: "schedule",
       configuration: {
         cron: data.cron.trim(),
@@ -106,21 +101,6 @@ export function ScheduleEditionModal({
                   message={form.formState.errors.name?.message}
                   messageStatus="error"
                 />
-              </div>
-
-              <div>
-                <Label htmlFor="trigger-description">Description</Label>
-                <TextArea
-                  id="trigger-description"
-                  {...form.register("description")}
-                  placeholder="Enter trigger description"
-                  rows={2}
-                />
-                {form.formState.errors.description && (
-                  <p className="mt-1 text-xs text-red-500">
-                    {form.formState.errors.description.message}
-                  </p>
-                )}
               </div>
 
               <div>

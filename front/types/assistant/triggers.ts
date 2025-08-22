@@ -19,7 +19,6 @@ export type TriggerType = {
   id: ModelId;
   sId: string;
   name: string;
-  description: string;
   agentConfigurationId: AgentConfigurationType["sId"];
   editor: UserType["id"];
   customPrompt: string | null;
@@ -38,7 +37,6 @@ const ScheduleConfigSchema = t.type({
 
 export const TriggerSchema = t.type({
   name: t.string,
-  description: t.string,
   kind: t.literal("schedule"),
   configuration: ScheduleConfigSchema,
 });

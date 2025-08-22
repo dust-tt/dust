@@ -17,7 +17,6 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
 
   declare sId: string;
   declare name: string;
-  declare description: string;
   declare kind: TriggerKind;
   declare customPrompt: string | null;
 
@@ -52,10 +51,6 @@ TriggerModel.init(
       allowNull: false,
     },
     name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    description: {
       type: DataTypes.STRING,
       allowNull: false,
     },
