@@ -22,15 +22,15 @@ type ToolExecutionFinalStatus = (typeof TOOL_EXECUTION_FINAL_STATUSES)[number];
 
 export const TOOL_EXECUTION_BLOCKED_STATUSES = [
   "blocked_authentication_required",
+  "blocked_validation_required",
 ] as const;
 
-type ToolExecutionBlockedStatus =
+export type ToolExecutionBlockedStatus =
   (typeof TOOL_EXECUTION_BLOCKED_STATUSES)[number];
 
 const TOOL_EXECUTION_TRANSIENT_STATUSES = [
   "ready_allowed_explicitly",
   "ready_allowed_implicitly",
-  "blocked_validation_required",
   ...TOOL_EXECUTION_BLOCKED_STATUSES,
   "running",
 ] as const;
