@@ -150,7 +150,7 @@ export async function executeAgentLoop(
     currentStep = i;
 
     // Check if we should switch to async mode due to timeout (only in sync mode).
-    if (runAgentArgs.sync && runAgentArgs.syncToAsyncTimeoutMs) {
+    if (runAgentArgs.sync /* && runAgentArgs.syncToAsyncTimeoutMs */) {
       const elapsedMs = Date.now() - syncStartTime;
       // if (elapsedMs > runAgentArgs.syncToAsyncTimeoutMs) {
       // TODO(DURABLE_AGENT 2025-08-22): Remove this once we made a decision on sync vs async.
