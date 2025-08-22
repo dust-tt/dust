@@ -1,3 +1,4 @@
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
   postUserMessage,
@@ -17,11 +18,9 @@ export async function runScheduledAgentsActivity(
     throw new Error("Invalid authentication. Missing workspaceId or userId.");
   }
 
-  const agentConfiguration = await AgentConfiguration.findOne({
-    where: {
-      id: trigger.agentConfigurationId,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: trigger.agentConfigurationId,
+    variant: "light",
   });
 
   if (!agentConfiguration) {

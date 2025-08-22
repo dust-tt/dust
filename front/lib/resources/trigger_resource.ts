@@ -225,7 +225,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       editor: this.editor,
       customPrompt: this.customPrompt,
       kind: this.kind,
-      config: this.configuration,
+      configuration: this.configuration,
     };
   }
 }

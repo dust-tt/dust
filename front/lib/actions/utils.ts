@@ -255,7 +255,7 @@ export function approvalStatusToToolExecutionStatus(
     case "denied":
       return "denied";
     case "pending":
-      return "blocked_pending_validation";
+      return "blocked_validation_required";
     default:
       assertNever(approvalStatus);
   }

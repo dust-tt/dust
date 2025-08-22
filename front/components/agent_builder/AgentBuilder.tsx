@@ -28,6 +28,7 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
+import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useEditors } from "@app/lib/swr/editors";
 import { emptyArray } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
@@ -82,6 +83,11 @@ export default function AgentBuilder({
     agentConfiguration?.sId ?? null
   );
 
+  const { triggers, isTriggersLoading } = useAgentTriggers({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
+  });
+
   const { editors } = useEditors({
     owner,
     agentConfigurationId: agentConfiguration?.sId ?? null,
@@ -119,6 +125,7 @@ export default function AgentBuilder({
     return {
       ...baseValues,
       actions: processedActions,
+      triggers: triggers ?? emptyArray(),
       agentSettings: {
         ...baseValues.agentSettings,
         slackProvider,
@@ -132,6 +139,7 @@ export default function AgentBuilder({
     processedActions,
     slackProvider,
     editors,
+    triggers,
   ]);
 
   const form = useForm<AgentBuilderFormData>({
@@ -194,7 +202,8 @@ export default function AgentBuilder({
 
   useNavigationLock(isDirty);
 
-  const isSaveDisabled = !isDirty || isSubmitting || isActionsLoading;
+  const isSaveDisabled =
+    !isDirty || isSubmitting || isActionsLoading || isTriggersLoading;
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 
@@ -219,6 +228,7 @@ export default function AgentBuilder({
               }}
               agentConfigurationId={agentConfiguration?.sId || null}
               isActionsLoading={isActionsLoading}
+              isTriggersLoading={isTriggersLoading}
             />
           }
           rightPanel={

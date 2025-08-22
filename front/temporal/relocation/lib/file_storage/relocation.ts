@@ -1,4 +1,5 @@
 import { getBucketInstance } from "@app/lib/file_storage";
+import logger from "@app/logger/logger";
 import config from "@app/temporal/relocation/activities/config";
 import { isDevelopment } from "@app/types";
 
@@ -25,11 +26,25 @@ export async function writeToRelocationStorage(
     useServiceAccount: isDevelopment(),
   });
 
-  await relocationBucket.uploadRawContentToBucket({
-    content: JSON.stringify(data),
-    contentType: "application/json",
-    filePath: path,
-  });
+  try {
+    await relocationBucket.uploadRawContentToBucket({
+      content: JSON.stringify(data),
+      contentType: "application/json",
+      filePath: path,
+    });
+  } catch (err) {
+    logger.info(
+      {
+        workspaceId,
+        type,
+        operation,
+        fileName,
+        error: err,
+      },
+      "[Relocation storage] Failed to write to relocation storage"
+    );
+    throw err;
+  }
 
   return path;
 }
