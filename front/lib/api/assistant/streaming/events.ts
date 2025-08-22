@@ -141,13 +141,11 @@ export async function publishMessageEventsOnMessagePostOrEdit(
     publishConversationRelatedEvent({
       event: userMessageEvent,
       conversationId: conversation.sId,
-      step: -1,
     }),
     ...agentMessageEvents.map((event) =>
       publishConversationRelatedEvent({
         event,
         conversationId: conversation.sId,
-        step: -1,
       })
     ),
   ]);
@@ -168,6 +166,5 @@ export async function publishAgentMessageEventOnMessageRetry(
   return publishConversationRelatedEvent({
     event: agentMessageEvent,
     conversationId: conversation.sId,
-    step: -1,
   });
 }
