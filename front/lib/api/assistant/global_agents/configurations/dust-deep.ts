@@ -15,6 +15,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import {
+  assertNever,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   getLargeWhitelistedModel,
   GLOBAL_AGENTS_SID,
@@ -111,29 +112,54 @@ Output length should not be artificially long.
 const dustDeepInstructions = `${dustDeepPrimaryGoal}\n${requestComplexityPrompt}\n${toolsPrompt}\n${outputPrompt}`;
 const subAgentInstructions = `${subAgentPrimaryGoal}\n${toolsPrompt}`;
 
-function getModelConfig(owner: WorkspaceType): {
+function getModelConfig(
+  owner: WorkspaceType,
+  prefer: "anthropic" | "openai"
+): {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: AgentReasoningEffort;
 } | null {
-  // if openai is whitelisted, we use gpt-5 in medium
-  if (isProviderWhitelisted(owner, "openai")) {
+  const preferredModel: {
+    model: ModelConfigurationType;
+    reasoningEffort: AgentReasoningEffort;
+  } =
+    prefer === "anthropic"
+      ? {
+          model: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+          reasoningEffort: "medium",
+        }
+      : prefer === "openai"
+        ? {
+            model: GPT_5_MODEL_CONFIG,
+            reasoningEffort: "medium",
+          }
+        : assertNever(prefer);
+
+  const secondPreferredModel: {
+    model: ModelConfigurationType;
+    reasoningEffort: AgentReasoningEffort;
+  } =
+    prefer === "anthropic"
+      ? {
+          model: GPT_5_MODEL_CONFIG,
+          reasoningEffort: "medium",
+        }
+      : {
+          model: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+          reasoningEffort: "medium",
+        };
+
+  if (isProviderWhitelisted(owner, preferredModel.model.providerId)) {
     return {
-      modelConfiguration: GPT_5_MODEL_CONFIG,
-      reasoningEffort: "medium",
-    } as {
-      modelConfiguration: ModelConfigurationType;
-      reasoningEffort: AgentReasoningEffort;
+      modelConfiguration: preferredModel.model,
+      reasoningEffort: preferredModel.reasoningEffort,
     };
   }
 
-  // if anthropic is whitelisted, we use claude 4 sonnet in medium
-  if (isProviderWhitelisted(owner, "anthropic")) {
+  if (isProviderWhitelisted(owner, secondPreferredModel.model.providerId)) {
     return {
-      modelConfiguration: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
-      reasoningEffort: "medium",
-    } as {
-      modelConfiguration: ModelConfigurationType;
-      reasoningEffort: AgentReasoningEffort;
+      modelConfiguration: secondPreferredModel.model,
+      reasoningEffort: secondPreferredModel.reasoningEffort,
     };
   }
 
@@ -256,7 +282,7 @@ export function _getDustDeepGlobalAgent(
   const pictureUrl =
     "https://dust.tt/static/systemavatar/research_avatar_full.png";
 
-  const modelConfig = getModelConfig(owner);
+  const modelConfig = getModelConfig(owner, "anthropic");
 
   const deepAgent: Omit<
     AgentConfigurationType,
@@ -323,7 +349,6 @@ export function _getDustDeepGlobalAgent(
     dataWarehousesMCPServerView
   );
   if (dataWarehousesAction) {
-    console.log("\n\nDUST DEEP dataWarehousesAction", dataWarehousesAction);
     actions.push(dataWarehousesAction);
   }
 
@@ -431,7 +456,7 @@ export function _getDustTaskGlobalAgent(
     canEdit: false,
   };
 
-  const modelConfig = getModelConfig(owner);
+  const modelConfig = getModelConfig(owner, "openai");
 
   if (!modelConfig || settings?.status === "disabled_by_admin") {
     return {

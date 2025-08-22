@@ -441,7 +441,6 @@ export async function getGlobalAgents(
   }
 
   if (!flags.includes("research_agent")) {
-    console.log("\n\nresearch_agent flag not enabled\n\n");
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.RESEARCH
     );
