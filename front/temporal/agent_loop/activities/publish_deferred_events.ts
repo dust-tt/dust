@@ -56,8 +56,10 @@ export async function publishDeferredEventsActivity(
         assertNever(event.type);
     }
 
-    await publishConversationRelatedEvent(eventToPublish, {
+    await publishConversationRelatedEvent({
       conversationId: context.conversationId,
+      event: eventToPublish,
+      step: context.step,
     });
 
     // Check if this event should pause the workflow.
