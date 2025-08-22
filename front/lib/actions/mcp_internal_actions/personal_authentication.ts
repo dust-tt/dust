@@ -1,13 +1,17 @@
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
+import assert from "assert";
+
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 
 export function makePersonalAuthenticationError({
-  serverInfo,
+  serverMetadata,
 }: {
-  serverInfo: InternalMCPServerDefinitionType & {
-    authorization: AuthorizationInfo;
-  };
+  serverMetadata: InternalMCPServerDefinitionType;
 }) {
+  assert(
+    serverMetadata.authorization?.provider,
+    "MCP server does not require a personal authentication."
+  );
+
   return {
     isError: true,
     content: [
@@ -15,7 +19,7 @@ export function makePersonalAuthenticationError({
         type: "text" as const,
         text: JSON.stringify({
           __dust_auth_required: {
-            provider: serverInfo.authorization.provider,
+            provider: serverMetadata.authorization.provider,
           },
         }),
       },

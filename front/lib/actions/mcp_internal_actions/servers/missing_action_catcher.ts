@@ -5,23 +5,13 @@ import {
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "missing_action_catcher",
-  version: "1.0.0",
-  description: "To be used to catch errors and avoid erroring.",
-  authorization: null,
-  icon: "ActionDocumentTextIcon",
-  documentationUrl: null,
-};
 
 const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer("missing_action_catcher");
   if (agentLoopContext) {
     const actionName = agentLoopContext.runContext
       ? agentLoopContext.runContext.toolConfiguration.name

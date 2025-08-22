@@ -8,6 +8,7 @@ import slackifyMarkdown from "slackify-markdown";
 import { z } from "zod";
 
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
+import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   SearchQueryResourceType,
   SearchResultResourceType,
@@ -19,12 +20,10 @@ import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { removeDiacritics } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -90,24 +89,6 @@ export const slackSearch = async (
   const matches = matchesWithText.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
 
   return matches;
-};
-
-const serverInfo: InternalMCPServerDefinitionType & {
-  authorization: AuthorizationInfo;
-} = {
-  name: "slack",
-  version: "1.0.0",
-  description: "Slack tools for searching and posting messages.",
-  authorization: {
-    provider: "slack" as const,
-    supported_use_cases: ["personal_actions"] as const,
-  },
-  icon: "SlackLogo",
-  documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
-  instructions:
-    "When posting a message on slack, you MUST use slack-flavored markdown to format the message." +
-    "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
-    "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
 };
 
 const getSlackClient = async (accessToken?: string) => {
@@ -370,7 +351,7 @@ const createServer = async (
   mcpServerId: string,
   agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> => {
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer("slack");
 
   const c = await getConnectionForMCPServer(auth, {
     mcpServerId,
@@ -556,7 +537,9 @@ const createServer = async (
           }
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
-            return makePersonalAuthenticationError({ serverInfo });
+            return makePersonalAuthenticationError(
+              INTERNAL_MCP_SERVERS["slack"]
+            );
           }
           return makeMCPToolTextError(`Error searching messages: ${error}`);
         }
@@ -693,7 +676,9 @@ const createServer = async (
           }
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
-            return makePersonalAuthenticationError({ serverInfo });
+            return makePersonalAuthenticationError(
+              INTERNAL_MCP_SERVERS["slack"]
+            );
           }
           return makeMCPToolTextError(`Error searching messages: ${error}`);
         }
@@ -824,7 +809,7 @@ const createServer = async (
         }
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
-          return makePersonalAuthenticationError({ serverInfo });
+          return makePersonalAuthenticationError(INTERNAL_MCP_SERVERS["slack"]);
         }
         return makeMCPToolTextError(`Error listing threads: ${error}`);
       }
@@ -886,7 +871,7 @@ const createServer = async (
         });
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
-          return makePersonalAuthenticationError({ serverInfo });
+          return makePersonalAuthenticationError(INTERNAL_MCP_SERVERS["slack"]);
         }
         return makeMCPToolTextError(`Error posting message: ${error}`);
       }
@@ -962,7 +947,7 @@ const createServer = async (
         });
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
-          return makePersonalAuthenticationError({ serverInfo });
+          return makePersonalAuthenticationError(INTERNAL_MCP_SERVERS["slack"]);
         }
         return makeMCPToolTextError(`Error listing users: ${error}`);
       }
@@ -996,7 +981,7 @@ const createServer = async (
         });
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
-          return makePersonalAuthenticationError({ serverInfo });
+          return makePersonalAuthenticationError(INTERNAL_MCP_SERVERS["slack"]);
         }
         return makeMCPToolTextError(`Error retrieving user info: ${error}`);
       }
@@ -1057,7 +1042,7 @@ const createServer = async (
         });
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
-          return makePersonalAuthenticationError({ serverInfo });
+          return makePersonalAuthenticationError(INTERNAL_MCP_SERVERS["slack"]);
         }
         return makeMCPToolTextError(`Error listing channels: ${error}`);
       }

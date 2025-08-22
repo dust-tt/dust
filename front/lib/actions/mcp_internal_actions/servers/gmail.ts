@@ -56,22 +56,8 @@ interface MessageDetail {
   error?: string;
 }
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "gmail",
-  version: "1.0.0",
-  description: "Gmail tools for reading emails and managing email drafts.",
-  authorization: {
-    provider: "google_drive" as const,
-    supported_use_cases: ["personal_actions"] as const,
-    scope:
-      "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose" as const,
-  },
-  icon: "GmailLogo",
-  documentationUrl: "https://docs.dust.tt/docs/gmail-tool-setup",
-};
-
 const createServer = (): McpServer => {
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer("gmail");
 
   server.tool(
     "get_drafts",
