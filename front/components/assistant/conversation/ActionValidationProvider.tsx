@@ -70,7 +70,10 @@ function useValidationQueue({
   const handleValidationRequest = useCallback(
     (validationRequest: MCPActionValidationRequest) => {
       setCurrentValidation((current) => {
-        if (current === null) {
+        if (
+          current === null ||
+          current.actionId === validationRequest.actionId
+        ) {
           return validationRequest;
         }
 
@@ -170,6 +173,7 @@ export function ActionValidationProvider({
     handleValidationRequest,
     takeNextFromQueue,
   } = useValidationQueue({ pendingValidations });
+  console.log({ validationQueueLength, currentValidation, pendingValidations });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
