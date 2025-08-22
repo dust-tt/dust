@@ -1,22 +1,20 @@
+import type { BlockedActionsResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  MCPActionValidationRequest,
-  WithAPIErrorResponse,
-} from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
 
-export type GetPendingValidationsResponseType = {
-  pendingValidations: MCPActionValidationRequest[];
-};
+/**
+ * @ignoreswagger
+ */
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetPendingValidationsResponseType>>,
+  res: NextApiResponse<WithAPIErrorResponse<BlockedActionsResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   if (req.method !== "GET") {
@@ -41,13 +39,15 @@ async function handler(
     });
   }
 
-  const pendingValidations =
-    await AgentMCPActionResource.listPendingValidationsForConversation(
+  const blockedActions =
+    await AgentMCPActionResource.listBlockedActionsForConversation(
       auth,
       cId
     );
 
-  res.status(200).json({ pendingValidations });
+  res.status(200).json({ blockedActions });
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withPublicAPIAuthentication(handler, {
+  requiredScopes: { GET: "read:conversation" },
+});
