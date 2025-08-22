@@ -9,11 +9,19 @@ import { Op } from "sequelize";
 
 import type { BlockedActionExecution } from "@app/lib/actions/mcp";
 import type { ActionBaseParams } from "@app/lib/actions/mcp";
+<<<<<<< HEAD
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
   isToolExecutionStatusBlocked,
   TOOL_EXECUTION_BLOCKED_STATUSES,
 } from "@app/lib/actions/statuses";
+=======
+import type {
+  MCPExecutionState,
+  ToolExecutionStatus,
+} from "@app/lib/actions/statuses";
+import { TOOL_EXECUTION_BLOCKED_STATUSES } from "@app/lib/actions/statuses";
+>>>>>>> 764ff1efb (udpate updateExecutionState)
 import { approvalStatusToToolExecutionStatus } from "@app/lib/actions/utils";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
@@ -322,7 +330,16 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
   async updateStatus(
     status: ToolExecutionStatus
   ): Promise<[affectedCount: number]> {
-    return this.update({ status });
+    return this.update({
+      status,
+      isError: status === "errored",
+    });
+  }
+
+  async updateExecutionState(
+    executionState: MCPExecutionState
+  ): Promise<[affectedCount: number]> {
+    return this.update({ executionState });
   }
 
   static async deleteByAgentMessageId({

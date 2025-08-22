@@ -780,7 +780,7 @@ export async function getMCPAction(
 }
 
 export async function updateMCPApprovalState(
-  action: AgentMCPAction,
+  action: AgentMCPActionResource,
   executionState: "denied" | "allowed_explicitly"
 ): Promise<boolean> {
   const status = approvalStatusToToolExecutionStatus(executionState);
@@ -788,10 +788,9 @@ export async function updateMCPApprovalState(
     return false;
   }
 
-  await action.update({
-    executionState,
-    status,
-  });
+  await action.updateStatus(
+    approvalStatusToToolExecutionStatus(executionState)
+  );
 
   return true;
 }
