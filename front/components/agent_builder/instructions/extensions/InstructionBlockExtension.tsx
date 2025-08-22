@@ -1,4 +1,4 @@
-import { Chip } from "@dust-tt/sparkle";
+import { Chip, ChevronDownIcon, ChevronRightIcon } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/core";
 import { InputRule, mergeAttributes, Node } from "@tiptap/core";
 import type { Slice } from "@tiptap/pm/model";
@@ -10,7 +10,7 @@ import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
-import React from "react";
+import React, { useState } from "react";
 
 import { OPENING_TAG_REGEX } from "@app/lib/client/agent_builder/instructionBlockUtils";
 
@@ -60,6 +60,8 @@ function positionCursorInMiddleParagraph(editor: Editor, blockPos: number): bool
 const InstructionBlockComponent: React.FC<NodeViewProps> = ({
   node,
 }) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+  
   // Derive display type directly from content without syncing attributes
   // This avoids side effects in render and undo stack pollution
   let displayType = '';
@@ -85,16 +87,38 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
 
   return (
     <NodeViewWrapper className="my-2">
-      <div className="rounded-lg border border-border bg-gray-100 p-2 dark:bg-gray-800">
-        <div className="mb-2">
-          <Chip size="mini">
-            {displayType.toUpperCase()}
-          </Chip>
+      <div className="relative">
+        <div className="flex items-start gap-1">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="mt-1 p-0.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors"
+            contentEditable={false}
+          >
+            {isExpanded ? (
+              <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+            ) : (
+              <ChevronRightIcon className="h-4 w-4 text-gray-400" />
+            )}
+          </button>
+          <div className="flex-1">
+            {displayType && (
+              <div className="mb-1">
+                <span 
+                  className="inline-block px-2 py-0.5 text-xs font-medium rounded"
+                  style={{ backgroundColor: 'rgba(238, 238, 239, 1)', color: 'rgba(42, 50, 65, 1)' }}
+                >
+                  {displayType.toUpperCase()}
+                </span>
+              </div>
+            )}
+            {isExpanded && (
+              <NodeViewContent 
+                className="prose prose-sm" 
+                as="div"
+              />
+            )}
+          </div>
         </div>
-        <NodeViewContent 
-          className="prose prose-sm" 
-          as="div"
-        />
       </div>
     </NodeViewWrapper>
   );
