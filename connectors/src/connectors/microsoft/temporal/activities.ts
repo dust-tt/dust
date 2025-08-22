@@ -1481,12 +1481,14 @@ export async function processDeltaChangesFromGCS({
   gcsFilePath,
   startSyncTs,
   cursor = 0,
+  batchSize = 1000,
 }: {
   connectorId: ModelId;
   driveId: string;
   gcsFilePath: string;
   startSyncTs: number;
   cursor?: number;
+  batchSize?: number;
 }): Promise<{ nextCursor: number | null; processedCount: number }> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -1515,23 +1517,21 @@ export async function processDeltaChangesFromGCS({
   const [content] = await file.download();
   const changedItemsData = JSON.parse(content.toString()) as DeltaDataInGCS;
 
-  const BATCH_SIZE = 1000;
-
   const { deltaLink, rootNodeIds, sortedChangedItems, totalItems } =
     changedItemsData;
 
   logger.info(
     {
       totalItems,
-      batchSize: BATCH_SIZE,
+      batchSize,
       cursor,
     },
-    "Processing changes from GCS"
+    "Processing delta changes"
   );
 
   // Process changes in batches
   const startIndex = cursor;
-  const endIndex = Math.min(startIndex + BATCH_SIZE, sortedChangedItems.length);
+  const endIndex = Math.min(startIndex + batchSize, sortedChangedItems.length);
   const currentBatch = sortedChangedItems.slice(startIndex, endIndex);
 
   // If no items to process, return early
