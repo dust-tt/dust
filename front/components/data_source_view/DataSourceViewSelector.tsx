@@ -753,12 +753,6 @@ export function DataSourceViewSelector({
     pagination: { limit: MAX_ROOT_NODES_LIMIT, cursor: null },
   });
 
-  if (totalNodesCount > MAX_ROOT_NODES_LIMIT) {
-    return (
-      <div>Total nodes count is too high. Please contact support@dust.tt.</div>
-    );
-  }
-
   const hasActiveSelection =
     selectionConfiguration.selectedResources.length > 0 ||
     selectionConfiguration.isSelectAll;
@@ -906,6 +900,12 @@ export function DataSourceViewSelector({
         : undefined,
     [searchResult, isExpanded]
   );
+
+  if (totalNodesCount > MAX_ROOT_NODES_LIMIT) {
+    return (
+      <div>Total nodes count is too high. Please contact support@dust.tt.</div>
+    );
+  }
 
   return (
     <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.sId}`}>
