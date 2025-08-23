@@ -202,7 +202,7 @@ export async function getContentNodesForDataSourceView(
       options: {
         // We limit the results to the remaining number of nodes
         // we still need to make sure we get a correct nextPageCursor at the end of this loop.
-        limit: limit - resultNodes.length,
+        limit: Math.min(limit - resultNodes.length, CORE_MAX_PAGE_SIZE),
         cursor: nextPageCursor ?? undefined,
         sort: coreAPISorting,
       },
