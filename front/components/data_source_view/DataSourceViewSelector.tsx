@@ -65,7 +65,7 @@ import {
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 const ITEMS_PER_PAGE = 50;
-const MAX_ROOT_NODES_LIMIT = 10000; // Upper limit for fetching all root nodes at once
+const MAX_ROOT_NODES_LIMIT = 2000;
 
 const getUseResourceHook =
   (
@@ -746,12 +746,18 @@ export function DataSourceViewSelector({
     [dataSourceView]
   );
 
-  const { nodes: rootNodes } = useContentNodes({
+  const { nodes: rootNodes, totalNodesCount } = useContentNodes({
     owner,
     dataSourceView,
     viewType,
     pagination: { limit: MAX_ROOT_NODES_LIMIT, cursor: null },
   });
+
+  if (totalNodesCount > MAX_ROOT_NODES_LIMIT) {
+    return (
+      <div>Total nodes count is too high. Please contact support@dust.tt.</div>
+    );
+  }
 
   const hasActiveSelection =
     selectionConfiguration.selectedResources.length > 0 ||
