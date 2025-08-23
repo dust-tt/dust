@@ -23,6 +23,7 @@ import type {
 import { assertNever, CoreAPI, Err, Ok } from "@app/types";
 
 const DEFAULT_PAGINATION_LIMIT = 1000;
+const CORE_MAX_PAGE_SIZE = 1000;
 
 // If `internalIds` is not provided, it means that the request is for all the content nodes in the view.
 interface GetContentNodesForDataSourceViewParams {
