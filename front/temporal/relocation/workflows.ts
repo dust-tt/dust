@@ -733,7 +733,7 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
     getCoreDestinationRegionActivities(destRegion);
 
   let pageCursor: string | null = initialPageCursor;
-
+  let limit: number | null = null;
   do {
     if (workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH) {
       await continueAsNew<typeof workspaceRelocateDataSourceTablesWorkflow>({
@@ -746,27 +746,30 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
       });
     }
 
-    const { dataPath, nextPageCursor } =
+    const { dataPath, nextPageCursor, nextLimit } =
       await sourceRegionActivities.getDataSourceTables({
         pageCursor,
         dataSourceCoreIds,
         sourceRegion,
         workspaceId,
+        limit: limit || undefined,
       });
+    if (dataPath) {
+      const sourceRegionDustFacingUrl =
+        await sourceRegionActivities.getRegionDustFacingUrl();
 
-    const sourceRegionDustFacingUrl =
-      await sourceRegionActivities.getRegionDustFacingUrl();
-
-    await destinationRegionActivities.processDataSourceTables({
-      destIds,
-      dataPath,
-      destRegion,
-      sourceRegion,
-      sourceRegionDustFacingUrl,
-      workspaceId,
-    });
+      await destinationRegionActivities.processDataSourceTables({
+        destIds,
+        dataPath,
+        destRegion,
+        sourceRegion,
+        sourceRegionDustFacingUrl,
+        workspaceId,
+      });
+    }
 
     pageCursor = nextPageCursor;
+    limit = nextLimit;
   } while (pageCursor);
 }
 
