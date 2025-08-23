@@ -175,7 +175,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     });
 
     const currentRegion = multiRegionsConfig.getCurrentRegion();
-    let targetRegion: RegionType | null = "us-central1";
+    let targetRegion: RegionType = "us-central1";
 
     // If user has a region, redirect to the region page.
     const userSessionRegion = sessionCookie.region;
@@ -199,7 +199,6 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     if (invite) {
       // User has an invite on the current region - we want to keep the user here.
       targetRegion = currentRegion;
-      await setRegionForUser(user, targetRegion);
     } else if (userSessionRegion) {
       targetRegion = userSessionRegion;
     } else {
@@ -219,19 +218,6 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
         targetRegion = multiRegionsConfig.getCurrentRegion();
       }
 
-      await setRegionForUser(user, targetRegion);
-    }
-
-    // Safety check for target region
-    if (targetRegion && !SUPPORTED_REGIONS.includes(targetRegion)) {
-      logger.error(
-        {
-          targetRegion,
-          currentRegion,
-        },
-        "Invalid target region during WorkOS callback"
-      );
-      targetRegion = multiRegionsConfig.getCurrentRegion();
       await setRegionForUser(user, targetRegion);
     }
 
