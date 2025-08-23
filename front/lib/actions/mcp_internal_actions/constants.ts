@@ -1034,9 +1034,8 @@ The directive should be used to display a clickable version of the agent name in
     },
   },
   // Using satisfies here instead of : type to avoid typescript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
-} satisfies Record<
-  InternalMCPServerNameType,
-  {
+} satisfies {
+  [K in InternalMCPServerNameType]: {
     id: number;
     availability: MCPServerAvailability;
     allowMultipleInstances: boolean;
@@ -1049,9 +1048,9 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: boolean;
     tools_stakes: Record<string, MCPToolStakeLevelType> | undefined;
     timeoutMs: number | undefined;
-    serverInfo: InternalMCPServerDefinitionType;
-  }
->;
+    serverInfo: InternalMCPServerDefinitionType & { name: K };
+  };
+};
 
 export type InternalMCPServerNameType =
   (typeof AVAILABLE_INTERNAL_MCP_SERVER_NAMES)[number];
