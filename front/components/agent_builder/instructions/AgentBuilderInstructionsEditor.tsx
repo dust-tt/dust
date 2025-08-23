@@ -119,11 +119,11 @@ export function AgentBuilderInstructionsEditor({
     name: "instructions",
   });
   const [internalViewMode] = useState<"visual" | "text">("visual");
-  const [, setInternalHasBlocks] = useState(false);
+  const [internalHasBlocks, setInternalHasBlocks] = useState(false);
 
   // Use external state if provided, otherwise use internal
   const viewMode = externalViewMode ?? internalViewMode;
-  const hasBlocks = externalHasBlocks ?? false;
+  const hasBlocks = externalHasBlocks ?? internalHasBlocks;
   const setHasBlocks = externalSetHasBlocks ?? setInternalHasBlocks;
 
   // Create a ref to hold the editor instance
@@ -188,6 +188,35 @@ export function AgentBuilderInstructionsEditor({
     [field, isInstructionDiffMode]
   );
 
+  // Debounce block detection to prevent performance issues on large documents
+  const debouncedBlockDetection = useMemo(
+    () =>
+      debounce((editor: CoreEditor | ReactEditor) => {
+        if (!editor.isDestroyed) {
+          const foundBlocks = detectRichBlocks(editor.state.doc);
+          setHasBlocks(foundBlocks);
+        }
+      }, 500),
+    [setHasBlocks]
+  );
+
+  // Debounce background resync from text mode to prevent performance issues
+  const debouncedTextModeSync = useMemo(
+    () =>
+      debounce((editor: CoreEditor | ReactEditor, value: string) => {
+        if (!editor.isDestroyed) {
+          const currentContent = plainTextFromTipTapContent(editor.getJSON());
+          if (currentContent !== value) {
+            editor.commands.setContent(
+              tipTapContentFromPlainText(value),
+              false
+            );
+          }
+        }
+      }, 300),
+    []
+  );
+
   const editor = useEditor(
     {
       extensions,
@@ -197,9 +226,8 @@ export function AgentBuilderInstructionsEditor({
         if (transaction.docChanged) {
           debouncedUpdate(editor);
 
-          // Check if we have code blocks or instruction blocks
-          const foundBlocks = detectRichBlocks(editor.state.doc);
-          setHasBlocks(foundBlocks);
+          // Debounced check for blocks to improve performance on large documents
+          debouncedBlockDetection(editor);
         }
       },
     },
@@ -211,12 +239,14 @@ export function AgentBuilderInstructionsEditor({
     editorRef.current = editor;
   }, [editor]);
 
-  // Cleanup debounced function on unmount
+  // Cleanup debounced functions on unmount
   useEffect(() => {
     return () => {
       debouncedUpdate.cancel();
+      debouncedBlockDetection.cancel();
+      debouncedTextModeSync.cancel();
     };
-  }, [debouncedUpdate]);
+  }, [debouncedUpdate, debouncedBlockDetection, debouncedTextModeSync]);
 
   const currentCharacterCount =
     editor?.storage.characterCount.characters() || 0;
@@ -247,22 +277,25 @@ export function AgentBuilderInstructionsEditor({
     }
 
     // Don't update if editor is focused AND in visual mode (user is typing/editing)
-    // But always update when in text mode (to sync changes when switching back to visual)
     if (editor.isFocused && viewMode === "visual") {
       return;
     }
 
-    const currentContent = plainTextFromTipTapContent(editor.getJSON());
-    if (currentContent !== field.value) {
-      debouncedUpdate.flush(); // Save pending changes
-
-      // Sync without affecting history or triggering updates
-      editor.commands.setContent(
-        tipTapContentFromPlainText(field.value),
-        false
-      );
+    // In text mode, debounce the background sync for performance
+    if (viewMode === "text") {
+      debouncedTextModeSync(editor, field.value);
+    } else {
+      // When switching from text back to visual, do immediate sync
+      const currentContent = plainTextFromTipTapContent(editor.getJSON());
+      if (currentContent !== field.value) {
+        debouncedUpdate.flush(); // Save pending changes
+        editor.commands.setContent(
+          tipTapContentFromPlainText(field.value),
+          false
+        );
+      }
     }
-  }, [editor, field.value, debouncedUpdate, viewMode]);
+  }, [editor, field.value, debouncedUpdate, viewMode, debouncedTextModeSync]);
 
   useEffect(() => {
     if (!editor) {
@@ -328,7 +361,9 @@ export function AgentBuilderInstructionsEditor({
           maxCount={INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT}
         />
       )}
-      <BlockInsertDropdown blockDropdownState={blockDropdown} />
+      {viewMode === "visual" && (
+        <BlockInsertDropdown blockDropdownState={blockDropdown} />
+      )}
     </div>
   );
 }
