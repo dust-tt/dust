@@ -87,6 +87,8 @@ export function AgentBuilderInstructionsBlock({
           onSelect={(config) => {
             setCompareVersion(config);
             setIsInstructionDiffMode(true);
+            // Auto-switch to visual mode for diff view
+            setViewMode("visual");
           }}
           owner={owner}
           agentConfigurationId={agentConfigurationId}
