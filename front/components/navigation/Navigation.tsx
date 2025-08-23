@@ -51,8 +51,9 @@ export function Navigation({
   return (
     <div
       className={cn(
-        "flex shrink-0 overflow-x-hidden border-r",
-        "border-border-dark dark:border-border-dark-night"
+        "flex shrink-0 overflow-x-hidden",
+        "rounded-xl",
+        "shadow-lg"
       )}
     >
       {/* Mobile sidebar */}
@@ -100,20 +101,6 @@ export function Navigation({
             {navChildren && navChildren}
           </NavigationSidebar>
         </div>
-      </div>
-
-      <div
-        className={classNames(
-          "fixed z-40 hidden lg:top-1/2 lg:flex",
-          isNavigationBarOpen ? "lg:ml-80" : ""
-        )}
-      >
-        <ToggleNavigationSidebarButton
-          isNavigationBarOpened={isNavigationBarOpen}
-          toggleNavigationBarVisibility={(navigationBar) => {
-            setNavigationBarOpen(navigationBar);
-          }}
-        />
       </div>
     </div>
   );

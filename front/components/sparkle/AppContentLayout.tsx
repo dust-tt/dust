@@ -1,4 +1,4 @@
-import { cn } from "@dust-tt/sparkle";
+import { cn, ResizablePanelGroup } from "@dust-tt/sparkle";
 import Head from "next/head";
 import type { NextRouter } from "next/router";
 import React from "react";
@@ -7,7 +7,16 @@ import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
+import type {
+  ConversationWithoutContentType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  ConversationSidePanelProvider,
+  useConversationSidePanelContext,
+} from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import ConversationSidePanelContainer from "@app/components/assistant/conversation/ConversationSidePanelContainer";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
 // fallback to the landing if we linked directly to that modal.
@@ -50,6 +59,7 @@ export interface AppContentLayoutProps {
   pageTitle?: string;
   subNavigation?: SidebarNavigation[] | null;
   subscription: SubscriptionType;
+  conversation: ConversationWithoutContentType | null;
 }
 
 // TODO(2025-04-11 yuka) We need to refactor AppLayout to avoid re-mounting on every page navigation.
@@ -64,9 +74,12 @@ export default function AppContentLayout({
   pageTitle,
   subNavigation,
   subscription,
+  conversation,
 }: AppContentLayoutProps) {
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useAppKeyboardShortcuts(owner);
+
+  const { currentPanel } = useConversationSidePanelContext();
 
   const [loaded, setLoaded] = React.useState(false);
 
@@ -79,31 +92,41 @@ export default function AppContentLayout({
       <Head>
         <title>{pageTitle || `Dust - ${owner.name}`}</title>
       </Head>
-      <Navigation
-        hideSidebar={hideSidebar}
-        isNavigationBarOpen={isNavigationBarOpen}
-        setNavigationBarOpen={setIsNavigationBarOpen}
-        owner={owner}
-        subscription={subscription}
-        navChildren={navChildren}
-        subNavigation={subNavigation}
-      />
-      <div
-        className={cn(
-          "relative h-full w-full flex-1 overflow-hidden",
-          "bg-background text-foreground",
-          "dark:bg-background-night dark:text-foreground-night"
+      <div className="flex h-full w-full flex-row gap-4 bg-muted p-4">
+        <Navigation
+          hideSidebar={hideSidebar}
+          isNavigationBarOpen={isNavigationBarOpen && !currentPanel}
+          setNavigationBarOpen={setIsNavigationBarOpen}
+          owner={owner}
+          subscription={subscription}
+          navChildren={navChildren}
+          subNavigation={subNavigation}
+        />
+        <div
+          className={cn(
+            "relative h-full w-full flex-1 overflow-hidden",
+            "bg-background text-foreground",
+            "dark:bg-background-night dark:text-foreground-night",
+            "rounded-xl shadow-lg"
+          )}
+        >
+          {/* Temporary measure to preserve title existence on smaller screens.
+           * Page has no title, prepend empty AppLayoutTitle. */}
+          {loaded && !hasTitle && (
+            <>
+              <AppLayoutTitle />
+              {children}
+            </>
+          )}
+          {loaded && hasTitle && children}
+        </div>
+
+        {conversation && (
+          <ConversationSidePanelContainer
+            owner={owner}
+            conversation={conversation}
+          />
         )}
-      >
-        {/* Temporary measure to preserve title existence on smaller screens.
-         * Page has no title, prepend empty AppLayoutTitle. */}
-        {loaded && !hasTitle && (
-          <>
-            <AppLayoutTitle />
-            {children}
-          </>
-        )}
-        {loaded && hasTitle && children}
       </div>
     </div>
   );

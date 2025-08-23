@@ -18,8 +18,7 @@ export default function ConversationSidePanelContainer({
   conversation,
   owner,
 }: ConversationSidePanelContainerProps) {
-  const { currentPanel, setPanelRef, onPanelClosed } =
-    useConversationSidePanelContext();
+  const { currentPanel, setPanelRef } = useConversationSidePanelContext();
   const panelRef = useRef<ImperativePanelHandle | null>(null);
 
   useEffect(() => {
@@ -30,40 +29,19 @@ export default function ConversationSidePanelContainer({
     if (!currentPanel || !panelRef.current) {
       return;
     }
-
-    panelRef.current?.expand(40);
   }, [currentPanel]);
 
   return (
     <>
       {/* Resizable Handle for Panels */}
-      {currentPanel && (
-        <ResizableHandle
-          className={cn(
-            "hidden transition-all duration-300 ease-out md:block",
-            !currentPanel && "translate-x-full opacity-0"
-          )}
-        />
-      )}
       {/* Panel Container - either Interactive Content or Actions */}
-      <ResizablePanel
-        ref={panelRef}
-        minSize={20}
-        defaultSize={0}
-        onTransitionEnd={() => {
-          if (panelRef.current?.isCollapsed()) {
-            onPanelClosed();
-          }
-        }}
-        collapsible
-        collapsedSize={0}
+      <div
         className={cn(
           // Smooth transition animation similar to sidebar
-          "flex-0 overflow-hidden transition-all duration-300 ease-out",
+          "flex-0 overflow-hidden rounded-xl bg-background shadow-lg transition-all duration-300 ease-out",
           !currentPanel && "hidden w-0 md:block",
-          // On mobile: overlay full screen with absolute positioning.
-          "md:relative",
-          currentPanel && "absolute inset-0 md:relative md:inset-auto"
+          currentPanel && "w-100",
+          "md:relative"
         )}
       >
         {currentPanel && (
@@ -73,7 +51,7 @@ export default function ConversationSidePanelContainer({
             currentPanel={currentPanel}
           />
         )}
-      </ResizablePanel>
+      </div>
     </>
   );
 }

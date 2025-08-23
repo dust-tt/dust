@@ -130,28 +130,29 @@ const ConversationLayoutContent = ({
   return (
     <ActionValidationProvider owner={owner} conversation={conversation}>
       <InputBarProvider>
-        <AppContentLayout
-          hasTitle={!!activeConversationId}
-          subscription={subscription}
-          owner={owner}
-          pageTitle={
-            conversation?.title
-              ? `Dust - ${conversation?.title}`
-              : `Dust - New Conversation`
-          }
-          navChildren={<AssistantSidebarMenu owner={owner} />}
-        >
-          <AssistantDetails
+        <ConversationSidePanelProvider>
+          <AppContentLayout
+            hasTitle={!!activeConversationId}
+            subscription={subscription}
             owner={owner}
-            user={user}
-            assistantId={assistantSId}
-            onClose={() => onOpenChangeAssistantModal(false)}
-          />
-          <CoEditionProvider
-            owner={owner}
-            hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
+            conversation={conversation}
+            pageTitle={
+              conversation?.title
+                ? `Dust - ${conversation?.title}`
+                : `Dust - New Conversation`
+            }
+            navChildren={<AssistantSidebarMenu owner={owner} />}
           >
-            <ConversationSidePanelProvider>
+            <AssistantDetails
+              owner={owner}
+              user={user}
+              assistantId={assistantSId}
+              onClose={() => onOpenChangeAssistantModal(false)}
+            />
+            <CoEditionProvider
+              owner={owner}
+              hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
+            >
               <ConversationInnerLayout
                 activeConversationId={activeConversationId}
                 baseUrl={baseUrl}
@@ -161,20 +162,20 @@ const ConversationLayoutContent = ({
               >
                 {children}
               </ConversationInnerLayout>
-            </ConversationSidePanelProvider>
-          </CoEditionProvider>
-          {shouldDisplayWelcomeTourGuide && (
-            <WelcomeTourGuide
-              owner={owner}
-              user={user}
-              isAdmin={isAdmin}
-              startConversationRef={startConversationRef}
-              spaceMenuButtonRef={spaceMenuButtonRef}
-              createAgentButtonRef={createAgentButtonRef}
-              onTourGuideEnd={onTourGuideEnd}
-            />
-          )}
-        </AppContentLayout>
+            </CoEditionProvider>
+            {shouldDisplayWelcomeTourGuide && (
+              <WelcomeTourGuide
+                owner={owner}
+                user={user}
+                isAdmin={isAdmin}
+                startConversationRef={startConversationRef}
+                spaceMenuButtonRef={spaceMenuButtonRef}
+                createAgentButtonRef={createAgentButtonRef}
+                onTourGuideEnd={onTourGuideEnd}
+              />
+            )}
+          </AppContentLayout>
+        </ConversationSidePanelProvider>
       </InputBarProvider>
     </ActionValidationProvider>
   );
@@ -197,45 +198,27 @@ function ConversationInnerLayout({
   conversationError,
   activeConversationId,
 }: ConversationInnerLayoutProps) {
-  const { currentPanel } = useConversationSidePanelContext();
-
   return (
-    <div className="flex h-full w-full flex-col">
-      <ResizablePanelGroup
-        direction="horizontal"
-        className="flex h-full w-full flex-1"
-      >
-        <ResizablePanel defaultSize={100}>
-          <div className="flex h-full flex-col">
-            {activeConversationId && (
-              <ConversationTitle owner={owner} baseUrl={baseUrl} />
-            )}
-            {conversationError ? (
-              <ConversationErrorDisplay error={conversationError} />
-            ) : (
-              <FileDropProvider>
-                <GenerationContextProvider>
-                  <div
-                    id={CONVERSATION_VIEW_SCROLL_LAYOUT}
-                    className={cn(
-                      "dd-privacy-mask h-full overflow-y-auto scroll-smooth px-4",
-                      // Hide conversation on mobile when any panel is opened.
-                      currentPanel && "hidden md:block"
-                    )}
-                  >
-                    {children}
-                  </div>
-                </GenerationContextProvider>
-              </FileDropProvider>
-            )}
-          </div>
-        </ResizablePanel>
-
-        <ConversationSidePanelContainer
-          owner={owner}
-          conversation={conversation}
-        />
-      </ResizablePanelGroup>
+    <div className="flex h-full flex-col">
+      {activeConversationId && (
+        <ConversationTitle owner={owner} baseUrl={baseUrl} />
+      )}
+      {conversationError ? (
+        <ConversationErrorDisplay error={conversationError} />
+      ) : (
+        <FileDropProvider>
+          <GenerationContextProvider>
+            <div
+              id={CONVERSATION_VIEW_SCROLL_LAYOUT}
+              className={cn(
+                "dd-privacy-mask h-full overflow-y-auto scroll-smooth px-4"
+              )}
+            >
+              {children}
+            </div>
+          </GenerationContextProvider>
+        </FileDropProvider>
+      )}
     </div>
   );
 }
