@@ -7,7 +7,6 @@ import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
 interface GmailHeader {
