@@ -264,7 +264,7 @@ async function withNotionClient<T>(
   try {
     const accessToken = authInfo?.token;
     if (!accessToken) {
-      return makePersonalAuthenticationError(INTERNAL_MCP_SERVERS["notion"]);
+      return makePersonalAuthenticationError("notion");
     }
     const notion = new Client({ auth: accessToken });
 
@@ -309,7 +309,7 @@ const createServer = (
 
       const accessToken = authInfo?.token;
       if (!accessToken) {
-        return makePersonalAuthenticationError(INTERNAL_MCP_SERVERS["notion"]);
+        return makePersonalAuthenticationError("notion");
       }
       const notion = new Client({ auth: accessToken });
 
