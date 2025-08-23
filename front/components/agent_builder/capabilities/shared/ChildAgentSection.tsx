@@ -1,12 +1,15 @@
 import {
+  Button,
   ContentMessage,
-  createRadioSelectionColumn,
   DataTable,
   InformationCircleIcon,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
+import { Avatar } from "@dust-tt/sparkle";
+import { Card } from "@dust-tt/sparkle";
+import { PencilIcon } from "@heroicons/react/20/solid";
+import type { ColumnDef } from "@tanstack/react-table";
 import React, { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
@@ -17,7 +20,7 @@ import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import type { LightAgentConfigurationType } from "@app/types";
 
 interface AgentTableData extends LightAgentConfigurationType {
-  onClick?: () => void;
+  onClick: () => void;
 }
 
 interface AgentSelectionTableProps {
@@ -25,8 +28,6 @@ interface AgentSelectionTableProps {
   columns: ColumnDef<AgentTableData>[];
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  rowSelection: RowSelectionState;
-  handleRowSelectionChange: (newSelection: RowSelectionState) => void;
 }
 
 function AgentSelectionTable({
@@ -34,8 +35,6 @@ function AgentSelectionTable({
   columns,
   searchQuery,
   setSearchQuery,
-  rowSelection,
-  handleRowSelectionChange,
 }: AgentSelectionTableProps) {
   return (
     <>
@@ -48,11 +47,6 @@ function AgentSelectionTable({
       <DataTable
         data={tableData}
         columns={columns}
-        enableRowSelection
-        enableMultiRowSelection={false}
-        rowSelection={rowSelection}
-        setRowSelection={handleRowSelectionChange}
-        getRowId={(row, index) => index.toString()}
         filter={searchQuery}
         filterColumn="name"
       />
@@ -97,31 +91,20 @@ export function ChildAgentSection() {
   });
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [isEditMode, setIsEditMode] = useState(!field.value);
 
-  const selectedIndex = field.value
-    ? agentConfigurations.findIndex((agent) => agent.sId === field.value)
-    : null;
-
-  const rowSelection =
-    selectedIndex !== null && selectedIndex >= 0
-      ? { [selectedIndex]: true }
-      : {};
-
-  const handleRowSelectionChange = (newSelection: RowSelectionState) => {
-    const selectedIndex = Object.keys(newSelection)[0];
-    const selectedAgent = agentConfigurations[parseInt(selectedIndex, 10)];
-    if (selectedAgent) {
-      field.onChange(selectedAgent.sId);
-    }
+  const handleRowClick = (agent: LightAgentConfigurationType) => {
+    field.onChange(agent.sId);
+    setIsEditMode(false);
   };
 
   const tableData: AgentTableData[] = agentConfigurations.map((agent) => ({
     ...agent,
+    onClick: () => handleRowClick(agent),
   }));
 
   const columns: ColumnDef<AgentTableData>[] = useMemo(
     () => [
-      createRadioSelectionColumn<AgentTableData>(),
       {
         id: "name",
         accessorKey: "name",
@@ -150,7 +133,8 @@ export function ChildAgentSection() {
   const shouldShowTable =
     !isAgentConfigurationsError &&
     agentConfigurations.length > 0 &&
-    (!field.value || selectedAgent);
+    (!field.value || selectedAgent) &&
+    isEditMode;
 
   let messageProps: { title: string; children: string };
   if (isAgentConfigurationsError) {
@@ -188,12 +172,44 @@ export function ChildAgentSection() {
           columns={columns}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
-          rowSelection={rowSelection}
-          handleRowSelectionChange={handleRowSelectionChange}
         />
       )}
 
-      {!isAgentConfigurationsLoading && !shouldShowTable && (
+      {!isAgentConfigurationsLoading &&
+        !shouldShowTable &&
+        !isEditMode &&
+        selectedAgent && (
+          <Card size="sm" className="w-full">
+            <div className="flex w-full p-3">
+              <div className="flex w-full flex-grow flex-col gap-2 overflow-hidden">
+                <div className="flex items-center gap-2">
+                  <Avatar
+                    size="sm"
+                    name={selectedAgent.name}
+                    visual={selectedAgent.pictureUrl}
+                  />
+                  <div className="text-md font-medium">
+                    {selectedAgent.name}
+                  </div>
+                </div>
+                <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  {selectedAgent.description || "No description available"}
+                </div>
+              </div>
+              <div className="ml-4 self-start">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={PencilIcon}
+                  label="Edit agent"
+                  onClick={() => setIsEditMode(true)}
+                />
+              </div>
+            </div>
+          </Card>
+        )}
+
+      {!isAgentConfigurationsLoading && !shouldShowTable && isEditMode && (
         <AgentMessage {...messageProps} />
       )}
     </ConfigurationSectionContainer>
