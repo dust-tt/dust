@@ -10,9 +10,9 @@ import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/cons
 export function makeInternalMCPServer(
   serverName: InternalMCPServerNameType
 ): McpServer {
-  const { serverMetadata } = INTERNAL_MCP_SERVERS[serverName];
-  return new McpServer(serverMetadata, {
-    instructions: serverMetadata.instructions ?? undefined,
+  const { serverInfo } = INTERNAL_MCP_SERVERS[serverName];
+  return new McpServer(serverInfo, {
+    instructions: serverInfo.instructions ?? undefined,
   });
 }
 

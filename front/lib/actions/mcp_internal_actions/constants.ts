@@ -117,7 +117,7 @@ export const INTERNAL_MCP_SERVERS = {
       get_issue: "never_ask",
     },
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "github",
       version: "1.0.0",
       description: "GitHub tools to manage issues and pull requests.",
@@ -138,7 +138,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "image_generation",
       version: "1.0.0",
       description: "Agent can generate images (GPT Image 1).",
@@ -156,7 +156,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "file_generation",
       version: "1.0.0",
       description: "Agent can generate and convert files.",
@@ -174,7 +174,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: TABLE_QUERY_SERVER_NAME,
       version: "1.0.0",
       description: "Tables, Spreadsheets, Notion DBs (quantitative).",
@@ -192,7 +192,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: DEFAULT_WEBSEARCH_ACTION_NAME,
       version: "1.0.0",
       description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
@@ -212,7 +212,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: true,
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "think",
       version: "1.0.0",
       description: "Expand thinking and reasoning capabilities.",
@@ -269,7 +269,7 @@ export const INTERNAL_MCP_SERVERS = {
       remove_association: "high",
     },
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "hubspot",
       version: "1.0.0",
       description:
@@ -293,7 +293,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: DEFAULT_AGENT_ROUTER_ACTION_NAME,
       version: "1.0.0",
       description: DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
@@ -313,7 +313,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "include_data",
       version: "1.0.0",
       description: "Include data exhaustively",
@@ -331,7 +331,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "run_dust_app",
       version: "1.0.0",
       description: "Run Dust Apps with specified parameters",
@@ -370,7 +370,7 @@ The directive should be used to display a clickable version of the agent name in
       update_schema_database: "low",
     },
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "notion",
       version: "1.0.0",
       description: "Notion tools to manage pages and databases.",
@@ -391,7 +391,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "extract_data",
       version: "1.0.0",
       description: "Structured extraction",
@@ -409,7 +409,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "missing_action_catcher",
       version: "1.0.0",
       description: "To be used to catch errors and avoid erroring.",
@@ -436,7 +436,7 @@ The directive should be used to display a clickable version of the agent name in
       describe_object: "never_ask",
     },
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "salesforce",
       version: "1.0.0",
       description: "Salesforce tools.",
@@ -462,7 +462,7 @@ The directive should be used to display a clickable version of the agent name in
       create_reply_draft: "low",
     },
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "gmail",
       version: "1.0.0",
       description: "Gmail tools for reading emails and managing email drafts.",
@@ -493,7 +493,7 @@ The directive should be used to display a clickable version of the agent name in
       check_availability: "never_ask",
     },
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "google_calendar",
       version: "1.0.0",
       description: "Tools for managing Google calendars and events.",
@@ -516,7 +516,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "conversation_files",
       version: "1.0.0",
       description: "Include files from conversation attachments",
@@ -542,7 +542,7 @@ The directive should be used to display a clickable version of the agent name in
       get_user: "never_ask",
     },
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "slack",
       version: "1.0.0",
       description: "Slack tools for searching and posting messages.",
@@ -579,7 +579,7 @@ The directive should be used to display a clickable version of the agent name in
       format_cells: "low",
     },
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "google_sheets",
       version: "1.0.0",
       description: "Tools for managing Google Sheets spreadsheets and data.",
@@ -633,7 +633,7 @@ The directive should be used to display a clickable version of the agent name in
       delete_group: "high",
     },
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "monday",
       version: "1.0.0",
       description:
@@ -656,7 +656,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "agent_memory",
       version: "1.0.0",
       description: "User-scoped long-term memory tools for agents.",
@@ -697,7 +697,7 @@ The directive should be used to display a clickable version of the agent name in
       delete_issue_link: "low",
     },
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "jira",
       version: "1.0.0",
       description:
@@ -721,7 +721,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: true,
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "interactive_content",
       version: "1.0.0",
       description:
@@ -749,7 +749,7 @@ The directive should be used to display a clickable version of the agent name in
       update_contact: "high",
     },
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "outlook",
       version: "1.0.0",
       description:
@@ -781,7 +781,7 @@ The directive should be used to display a clickable version of the agent name in
       check_availability: "never_ask",
     },
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "outlook_calendar",
       version: "1.0.0",
       description: "Tools for managing Outlook calendars and events.",
@@ -827,7 +827,7 @@ The directive should be used to display a clickable version of the agent name in
       create_solution_article: "high",
     },
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "freshservice",
       icon: "FreshserviceLogo",
       version: "1.0.0",
@@ -851,7 +851,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: SEARCH_SERVER_NAME,
       version: "1.0.0",
       description: "Search through selected Data sources",
@@ -869,7 +869,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: 10 * 60 * 1000, // 10 minutes
-    serverMetadata: {
+    serverInfo: {
       name: "run_agent",
       version: "1.0.0",
       description: "Run a child agent (agent as tool).",
@@ -889,7 +889,7 @@ The directive should be used to display a clickable version of the agent name in
     },
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "primitive_types_debugger",
       version: "1.0.0",
       description:
@@ -908,7 +908,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "reasoning",
       version: "1.0.0",
       description:
@@ -930,7 +930,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: true,
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "query_tables_v2",
       version: "1.0.0",
       description:
@@ -951,7 +951,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "data_sources_file_system",
       version: "1.0.0",
       description:
@@ -978,7 +978,7 @@ The directive should be used to display a clickable version of the agent name in
       create_agent: "high",
     },
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "agent_management",
       version: "1.0.0",
       description: "Tools for managing agent configurations",
@@ -998,7 +998,7 @@ The directive should be used to display a clickable version of the agent name in
     },
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "data_warehouses",
       version: "1.0.0",
       description:
@@ -1021,7 +1021,7 @@ The directive should be used to display a clickable version of the agent name in
     },
     tools_stakes: undefined,
     timeoutMs: undefined,
-    serverMetadata: {
+    serverInfo: {
       name: "toolsets",
       version: "1.0.0",
       description:
@@ -1049,7 +1049,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: boolean;
     tools_stakes: Record<string, MCPToolStakeLevelType> | undefined;
     timeoutMs: number | undefined;
-    serverMetadata: InternalMCPServerDefinitionType;
+    serverInfo: InternalMCPServerDefinitionType;
   }
 >;
 
