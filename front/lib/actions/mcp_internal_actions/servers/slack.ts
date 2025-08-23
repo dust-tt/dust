@@ -385,15 +385,18 @@ const createServer = async (
         mcpServerId,
         slackClient,
       });
-
-      channels.unshift({
-        id: "*",
-        name: "All public channels",
-      });
     } catch (error) {
       logger.warn({ error, mcpServerId }, "Error listing Slack channels");
     }
   }
+
+  // We all ways add the "all channels" option, even if we failed to list channels.
+  // This prevents the UI from being completely broken in that case.
+  channels.unshift({
+    id: "*",
+    name: "All public channels",
+  });
+
   const channelOptions = channels.map((c) =>
     z.object({
       value: z.literal(c.id),
