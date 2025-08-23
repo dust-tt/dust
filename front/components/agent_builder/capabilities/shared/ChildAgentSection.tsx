@@ -91,11 +91,13 @@ export function ChildAgentSection() {
   });
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [isEditMode, setIsEditMode] = useState(!field.value);
 
   const handleRowClick = (agent: LightAgentConfigurationType) => {
     field.onChange(agent.sId);
-    setIsEditMode(false);
+  };
+
+  const handleEditClick = () => {
+    field.onChange(null);
   };
 
   const tableData: AgentTableData[] = agentConfigurations.map((agent) => ({
@@ -133,8 +135,7 @@ export function ChildAgentSection() {
   const shouldShowTable =
     !isAgentConfigurationsError &&
     agentConfigurations.length > 0 &&
-    (!field.value || selectedAgent) &&
-    isEditMode;
+    !field.value;
 
   let messageProps: { title: string; children: string };
   if (isAgentConfigurationsError) {
@@ -175,41 +176,36 @@ export function ChildAgentSection() {
         />
       )}
 
-      {!isAgentConfigurationsLoading &&
-        !shouldShowTable &&
-        !isEditMode &&
-        selectedAgent && (
-          <Card size="sm" className="w-full">
-            <div className="flex w-full p-3">
-              <div className="flex w-full flex-grow flex-col gap-2 overflow-hidden">
-                <div className="flex items-center gap-2">
-                  <Avatar
-                    size="sm"
-                    name={selectedAgent.name}
-                    visual={selectedAgent.pictureUrl}
-                  />
-                  <div className="text-md font-medium">
-                    {selectedAgent.name}
-                  </div>
-                </div>
-                <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  {selectedAgent.description || "No description available"}
-                </div>
-              </div>
-              <div className="ml-4 self-start">
-                <Button
-                  variant="outline"
+      {!isAgentConfigurationsLoading && !shouldShowTable && selectedAgent && (
+        <Card size="sm" className="w-full">
+          <div className="flex w-full p-3">
+            <div className="flex w-full flex-grow flex-col gap-2 overflow-hidden">
+              <div className="flex items-center gap-2">
+                <Avatar
                   size="sm"
-                  icon={PencilIcon}
-                  label="Edit agent"
-                  onClick={() => setIsEditMode(true)}
+                  name={selectedAgent.name}
+                  visual={selectedAgent.pictureUrl}
                 />
+                <div className="text-md font-medium">{selectedAgent.name}</div>
+              </div>
+              <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
+                {selectedAgent.description || "No description available"}
               </div>
             </div>
-          </Card>
-        )}
+            <div className="ml-4 self-start">
+              <Button
+                variant="outline"
+                size="sm"
+                icon={PencilIcon}
+                label="Edit agent"
+                onClick={handleEditClick}
+              />
+            </div>
+          </div>
+        </Card>
+      )}
 
-      {!isAgentConfigurationsLoading && !shouldShowTable && isEditMode && (
+      {!isAgentConfigurationsLoading && !shouldShowTable && !selectedAgent && (
         <AgentMessage {...messageProps} />
       )}
     </ConfigurationSectionContainer>
