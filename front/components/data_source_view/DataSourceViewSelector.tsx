@@ -750,7 +750,7 @@ export function DataSourceViewSelector({
     owner,
     dataSourceView,
     viewType,
-    pagination: { limit: MAX_ROOT_NODES_LIMIT },
+    pagination: { limit: MAX_ROOT_NODES_LIMIT, cursor: null },
   });
 
   const hasActiveSelection =
