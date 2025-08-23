@@ -1,7 +1,7 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type {
   ConversationError,
   ModelId,
@@ -45,15 +45,8 @@ export async function getPokeConversation(
           if (m.actions.length > 0) {
             // Fetch timestamps for actions
             const actionIds: ModelId[] = m.actions.map((a) => a.id);
-            const actionsWithTimestamps = await AgentMCPAction.findAll({
-              where: {
-                id: actionIds,
-                workspaceId: owner.id,
-              },
-              attributes: ["id", "createdAt"],
-              raw: true,
-            });
-
+            const actionsWithTimestamps =
+              await AgentMCPActionResource.fetchByModelIds(actionIds);
             const timestampMap = new Map(
               actionsWithTimestamps.map((action) => [
                 action.id,
