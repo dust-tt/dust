@@ -1,8 +1,10 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import type {
   ConversationError,
+  ModelId,
   PokeConversationType,
   Result,
 } from "@app/types";
@@ -25,7 +27,7 @@ export async function getPokeConversation(
   // and I still wanted to use the existing getConversation code for rendering.
   if (conversation.isOk()) {
     const pokeConversation = conversation.value as PokeConversationType;
-    // Cycle through the message and actions and enrich them with the runId(s)
+    // Cycle through the message and actions and enrich them with the runId(s) and timestamps
     for (const messages of pokeConversation.content) {
       for (const m of messages) {
         if (m.type === "agent_message") {
@@ -41,14 +43,35 @@ export async function getPokeConversation(
           )?.runIds;
 
           if (m.actions.length > 0) {
-            {
-              for (const a of m.actions) {
-                a.mcpIO = {
-                  params: a.params,
-                  output: a.output,
-                  generatedFiles: a.generatedFiles,
-                  isError: a.status === "errored",
-                };
+            // Fetch timestamps for actions
+            const actionIds: ModelId[] = m.actions.map((a) => a.id);
+            const actionsWithTimestamps = await AgentMCPAction.findAll({
+              where: {
+                id: actionIds,
+                workspaceId: owner.id,
+              },
+              attributes: ["id", "createdAt"],
+              raw: true,
+            });
+
+            const timestampMap = new Map(
+              actionsWithTimestamps.map((action) => [
+                action.id,
+                action.createdAt.getTime(),
+              ])
+            );
+
+            for (const a of m.actions) {
+              a.mcpIO = {
+                params: a.params,
+                output: a.output,
+                generatedFiles: a.generatedFiles,
+                isError: a.status === "errored",
+              };
+              // Add timestamp if available
+              const timestamp = timestampMap.get(a.id);
+              if (timestamp) {
+                a.created = timestamp;
               }
             }
           }

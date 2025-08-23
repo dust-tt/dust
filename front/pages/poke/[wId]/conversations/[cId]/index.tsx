@@ -208,6 +208,7 @@ const AgentMessageView = ({
                   }
                 />
               )}
+              {a.created && <>{new Date(a.created).toLocaleTimeString()}: </>}
               action: step={a.step}{" "}
               <b className="px-1">{a.functionCallName}()</b>{" "}
               <i>
