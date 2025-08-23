@@ -753,7 +753,7 @@ export function DataSourceViewSelector({
     nodes: rootNodes,
     hasNextPage,
     loadMore,
-    isNodesLoading,
+    isLoadingMore,
   } = useInfiniteDataSourceViewContentNodes({
     owner,
     dataSourceView,
@@ -762,10 +762,10 @@ export function DataSourceViewSelector({
 
   // Load all pages of root nodes
   useEffect(() => {
-    if (hasNextPage && !isNodesLoading) {
+    if (hasNextPage && !isLoadingMore) {
       void loadMore();
     }
-  }, [hasNextPage, loadMore, isNodesLoading]);
+  }, [hasNextPage, loadMore, isLoadingMore]);
 
   const hasActiveSelection =
     selectionConfiguration.selectedResources.length > 0 ||
