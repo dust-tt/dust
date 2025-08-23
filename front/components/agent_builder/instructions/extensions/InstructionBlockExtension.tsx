@@ -333,138 +333,201 @@ export const InstructionBlockExtension =
          * Skip collapsed instruction blocks when navigating with arrow keys
          */
         "ArrowDown": () => {
+          // Handle navigation FROM inside collapsed instruction blocks
+          if (this.editor.isActive(this.name)) {
+            const { state } = this.editor;
+            const { doc, selection } = state;
+            const $from = selection.$from;
+
+            // Find the depth of the surrounding instruction block
+            let blockDepth: number | null = null;
+            for (let d = $from.depth; d >= 0; d -= 1) {
+              if ($from.node(d).type.name === this.name) {
+                blockDepth = d;
+                break;
+              }
+            }
+
+            if (blockDepth === null) {
+              return false;
+            }
+
+            const blockNode = $from.node(blockDepth);
+            
+            // Only trigger for collapsed blocks
+            if (!blockNode.attrs.isCollapsed) {
+              return false;
+            }
+
+            const childIndex = $from.index(blockDepth);
+
+            // Only trigger when at the end of the last paragraph in the block
+            const isAtEndOfTextBlock =
+              selection.empty && $from.parentOffset === $from.parent.content.size;
+            const isInLastChild = childIndex === blockNode.childCount - 1;
+
+            if (!isAtEndOfTextBlock || !isInLastChild) {
+              return false;
+            }
+
+            const posBeforeBlock = $from.before(blockDepth);
+            const posAfterBlock = posBeforeBlock + blockNode.nodeSize;
+            const $after = doc.resolve(posAfterBlock);
+            const nextNode = $after.nodeAfter;
+
+            // If next node is another collapsed instruction block, insert paragraph between them
+            if (nextNode && nextNode.type.name === this.name && nextNode.attrs.isCollapsed) {
+              this.editor.commands.insertContentAt(posAfterBlock, {
+                type: "paragraph",
+              });
+              this.editor.commands.setTextSelection(posAfterBlock + 1);
+              return true;
+            }
+
+            // If next node is an expanded instruction block, navigate to it normally
+            if (nextNode && nextNode.type.name === this.name && !nextNode.attrs.isCollapsed) {
+              // Let default navigation handle expanded blocks
+              return false;
+            }
+
+            // Otherwise, create paragraph after block (whether there's no next node or next node is not a paragraph)
+            if (!nextNode || nextNode.type.name !== "paragraph") {
+              this.editor.commands.insertContentAt(posAfterBlock, {
+                type: "paragraph",
+              });
+            }
+
+            this.editor.commands.setTextSelection(posAfterBlock + 1);
+            return true;
+          }
+
+          // Handle navigation TO collapsed instruction blocks from paragraphs
           const { state } = this.editor;
           const { selection } = state;
           const { $from } = selection;
           
-          // Check if we're between nodes and there's a collapsed instruction block after
-          const nodeAfter = $from.nodeAfter;
-          if (nodeAfter && 
-              nodeAfter.type.name === this.name && 
-              nodeAfter.attrs.isCollapsed) {
-            // We're before a collapsed block - skip over it to the position after it
-            // The target position should be at the same document level (doc level)
-            const pos = $from.pos;
-            const afterBlockPos = pos + nodeAfter.nodeSize;
+          // Check if we're at the end of a paragraph and there are collapsed blocks ahead
+          if ($from.parent.type.name === "paragraph" && $from.parentOffset === $from.parent.content.size) {
+            const docPos = $from.after($from.depth);
+            const $docPos = state.doc.resolve(docPos);
             
-            console.log("=== ARROW DOWN NAVIGATION ===");
-            console.log("Current position:", pos);
-            console.log("Collapsed block size:", nodeAfter.nodeSize);
-            console.log("Target position:", afterBlockPos);
-            
-            // Check what's at the target position
-            const $target = state.doc.resolve(afterBlockPos);
-            console.log("Target resolved successfully");
-            console.log("Target parent:", $target.parent.type.name);
-            console.log("Node after target:", $target.nodeAfter?.type.name);
-            
-            // If we're at doc level and there's a paragraph after, position at paragraph start
-            if ($target.parent.type.name === "doc" && $target.nodeAfter?.type.name === "paragraph") {
-              const paragraphStart = afterBlockPos + 1;
-              console.log("Positioning at start of paragraph:", paragraphStart);
-              this.editor.commands.setTextSelection(paragraphStart);
-              console.log("=== END ARROW DOWN SUCCESS ===");
-              return true;
-            }
-            
-            // If there's another instruction block after, position horizontally between them
-            if ($target.parent.type.name === "doc" && $target.nodeAfter?.type.name === this.name) {
-              console.log("Another instruction block found, trying horizontal positioning at:", afterBlockPos);
+            // Check if the next node is a collapsed instruction block
+            if ($docPos.nodeAfter && 
+                $docPos.nodeAfter.type.name === this.name && 
+                $docPos.nodeAfter.attrs.isCollapsed) {
               
-              // Try different selection methods to create the horizontal cursor
-              // The fundamental issue: there might not be a valid cursor position between collapsed blocks
-              // Let's try to find the equivalent of the click position pattern
-              // Clicking at 824 created selection at 13038, so maybe we need similar logic
+              // Look ahead to see if there's another instruction block after this one
+              const afterFirstBlock = docPos + $docPos.nodeAfter.nodeSize;
+              const $afterFirst = state.doc.resolve(afterFirstBlock);
               
-              // Approach 1: Try to create horizontal cursor directly (preferred)
-              console.log("Trying to create horizontal cursor at position:", afterBlockPos);
-              
-              try {
-                // The trick might be to use the exact position without any adjustment
-                // and handle the doc-level selection manually
-                const tr = state.tr;
-                
-                // Create a special selection that allows doc-level positioning
-                // This might be what ProseMirror does internally for clicking
-                const $pos = tr.doc.resolve(afterBlockPos);
-                
-                // Try to create a selection at the exact boundary position
-                // Use Selection.atStart or Selection.atEnd for doc-level positions
-                let selection;
-                if ($pos.nodeBefore && $pos.nodeAfter && 
-                    $pos.nodeBefore.type.name === this.name && 
-                    $pos.nodeAfter.type.name === this.name) {
-                  // We're between two instruction blocks - try to create a gap selection
-                  selection = new TextSelection($pos, $pos);
-                  console.log("Created gap selection");
-                } else {
-                  selection = Selection.near($pos);
-                  console.log("Used Selection.near fallback");
-                }
-                
-                tr.setSelection(selection);
-                this.editor.view.dispatch(tr);
-                
-                console.log("=== END ARROW DOWN SUCCESS (HORIZONTAL CURSOR) ===");
+              if ($afterFirst.nodeAfter && 
+                  $afterFirst.nodeAfter.type.name === this.name && 
+                  $afterFirst.nodeAfter.attrs.isCollapsed) {
+                // There are consecutive collapsed blocks - insert paragraph between them
+                this.editor.commands.insertContentAt(afterFirstBlock, {
+                  type: "paragraph",
+                });
+                this.editor.commands.setTextSelection(afterFirstBlock + 1);
                 return true;
-              } catch (e) {
-                console.log("Horizontal cursor failed:", e);
-                
-                // Approach 2: Fallback to inserting an empty paragraph between blocks
-                console.log("Falling back to paragraph insertion at position:", afterBlockPos);
-                
-                try {
-                  const tr = state.tr.insert(afterBlockPos, state.schema.nodes.paragraph.create());
-                  this.editor.view.dispatch(tr);
-                  
-                  // Position the cursor in the new paragraph
-                  const newParagraphPos = afterBlockPos + 1;
-                  this.editor.commands.setTextSelection(newParagraphPos);
-                  
-                  console.log("=== END ARROW DOWN SUCCESS (INSERTED PARAGRAPH) ===");
-                  return true;
-                } catch (e2) {
-                  console.log("Paragraph insertion also failed:", e2);
-                  return false;
-                }
               }
             }
-            
-            // Try the original position
-            console.log("Trying original position:", afterBlockPos);
-            this.editor.commands.setTextSelection(afterBlockPos);
-            console.log("=== END ARROW DOWN SUCCESS ===");
-            return true;
           }
           
           return false;
         },
         
         "ArrowUp": () => {
+          // Handle navigation FROM inside collapsed instruction blocks
+          if (this.editor.isActive(this.name)) {
+            const { state } = this.editor;
+            const { doc, selection } = state;
+            const $from = selection.$from;
+
+            // Find the depth of the surrounding instruction block
+            let blockDepth: number | null = null;
+            for (let d = $from.depth; d >= 0; d -= 1) {
+              if ($from.node(d).type.name === this.name) {
+                blockDepth = d;
+                break;
+              }
+            }
+
+            if (blockDepth === null) {
+              return false;
+            }
+
+            const blockNode = $from.node(blockDepth);
+            
+            // Only trigger for collapsed blocks
+            if (!blockNode.attrs.isCollapsed) {
+              return false;
+            }
+
+            // Only trigger when at the start of the first paragraph in the block
+            const childIndex = $from.index(blockDepth);
+            const isAtStartOfTextBlock = selection.empty && $from.parentOffset === 0;
+            const isInFirstChild = childIndex === 0;
+
+            if (!isAtStartOfTextBlock || !isInFirstChild) {
+              return false;
+            }
+
+            const posBeforeBlock = $from.before(blockDepth);
+            const $before = doc.resolve(posBeforeBlock);
+            const prevNode = $before.nodeBefore;
+
+            // If prev node is another collapsed instruction block, insert paragraph between them
+            if (prevNode && prevNode.type.name === this.name && prevNode.attrs.isCollapsed) {
+              this.editor.commands.insertContentAt(posBeforeBlock, {
+                type: "paragraph",
+              });
+              // Position in the newly inserted paragraph (adjust for insertion)
+              this.editor.commands.setTextSelection(posBeforeBlock + 1);
+              return true;
+            }
+
+            // Otherwise, ensure a paragraph exists before the block
+            if (!prevNode || prevNode.type.name !== "paragraph") {
+              this.editor.commands.insertContentAt(posBeforeBlock, {
+                type: "paragraph",
+              });
+            }
+
+            // Navigate to the paragraph before the block
+            const cursorPos = posBeforeBlock - 1;
+            this.editor.commands.setTextSelection(cursorPos > 0 ? cursorPos : 1);
+            return true;
+          }
+
+          // Handle navigation TO collapsed instruction blocks from paragraphs
           const { state } = this.editor;
           const { selection } = state;
           const { $from } = selection;
           
-          // Check if we're at the start of a node after a collapsed instruction block
-          if ($from.parentOffset === 0) {
-            const nodeBefore = $from.nodeBefore;
+          // Check if we're at the start of a paragraph and there are collapsed blocks before
+          if ($from.parent.type.name === "paragraph" && $from.parentOffset === 0) {
+            const docPos = $from.before($from.depth);
+            const $docPos = state.doc.resolve(docPos);
             
-            if (nodeBefore && 
-                nodeBefore.type.name === this.name && 
-                nodeBefore.attrs.isCollapsed) {
-              // We're right after a collapsed block
-              const beforeBlockPos = $from.pos - nodeBefore.nodeSize;
+            // Check if the previous node is a collapsed instruction block
+            if ($docPos.nodeBefore && 
+                $docPos.nodeBefore.type.name === this.name && 
+                $docPos.nodeBefore.attrs.isCollapsed) {
               
-              // Always place cursor at the boundary before the collapsed block
-              // This creates a horizontal cursor position between blocks  
-              console.log("=== ARROW UP NAVIGATION ===");
-              console.log("Setting cursor to position:", beforeBlockPos);
-              console.log("Collapsed block size:", nodeBefore.nodeSize);
-              console.log("Original position:", $from.pos);
-              console.log("=== END ARROW UP ===");
+              // Look back to see if there's another instruction block before this one
+              const beforeLastBlock = docPos - $docPos.nodeBefore.nodeSize;
+              const $beforeLast = state.doc.resolve(beforeLastBlock);
               
-              this.editor.commands.setTextSelection(beforeBlockPos);
-              return true;
+              if ($beforeLast.nodeBefore && 
+                  $beforeLast.nodeBefore.type.name === this.name && 
+                  $beforeLast.nodeBefore.attrs.isCollapsed) {
+                // There are consecutive collapsed blocks - insert paragraph between them
+                this.editor.commands.insertContentAt(beforeLastBlock, {
+                  type: "paragraph",
+                });
+                this.editor.commands.setTextSelection(beforeLastBlock + 1);
+                return true;
+              }
             }
           }
           
@@ -640,37 +703,6 @@ export const InstructionBlockExtension =
 
     addProseMirrorPlugins() {
       return [
-        // Plugin for logging cursor positions when clicking
-        new Plugin({
-          key: new PluginKey("instructionBlockCursorLogger"),
-          props: {
-            handleClick(view, pos, event) {
-              // Log cursor position when clicking
-              const { state } = view;
-              const $pos = state.doc.resolve(pos);
-              
-              console.log("=== CURSOR POSITION LOG ===");
-              console.log("Click position:", pos);
-              console.log("Document size:", state.doc.content.size);
-              console.log("Parent node type:", $pos.parent.type.name);
-              console.log("Parent offset:", $pos.parentOffset);
-              console.log("Node before:", $pos.nodeBefore?.type.name, $pos.nodeBefore?.attrs);
-              console.log("Node after:", $pos.nodeAfter?.type.name, $pos.nodeAfter?.attrs);
-              console.log("Depth:", $pos.depth);
-              console.log("Selection type:", state.selection.constructor.name);
-              console.log("Selection from/to:", state.selection.from, state.selection.to);
-              
-              // Check for instruction blocks in context
-              for (let d = 0; d <= $pos.depth; d++) {
-                const node = $pos.node(d);
-                console.log(`Depth ${d}:`, node.type.name, node.attrs);
-              }
-              
-              console.log("=== END LOG ===");
-              return false; // Don't prevent default click handling
-            }
-          }
-        }),
         // Plugin for syncing tags
         new Plugin({
           key: new PluginKey("instructionBlockTagSync"),
