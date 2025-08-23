@@ -8,7 +8,6 @@ import type {
 import { Op } from "sequelize";
 
 import type { BlockedActionExecution } from "@app/lib/actions/mcp";
-import type { ActionBaseParams } from "@app/lib/actions/mcp";
 import type {
   MCPExecutionState,
   ToolExecutionStatus,
@@ -110,7 +109,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
   static async makeNew(
     auth: Authenticator,
     blob: Omit<CreationAttributes<AgentMCPAction>, "workspaceId"> & {
-      actionBaseParams: ActionBaseParams;
       approvalStatus: "allowed_implicitly" | "pending";
     },
     { transaction }: { transaction?: Transaction } = {}
