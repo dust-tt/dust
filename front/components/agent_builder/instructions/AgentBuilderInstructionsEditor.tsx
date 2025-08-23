@@ -1,5 +1,6 @@
 import { cn, markdownStyles } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor } from "@tiptap/core";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import Placeholder from "@tiptap/extension-placeholder";
 import type { Editor as ReactEditor } from "@tiptap/react";
@@ -7,7 +8,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -26,6 +27,21 @@ import {
 import type { LightAgentConfigurationType } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
+
+// Utility function to detect if document has code blocks or instruction blocks
+function detectRichBlocks(doc: ProseMirrorNode): boolean {
+  let foundBlocks = false;
+  doc.descendants((node) => {
+    if (
+      node.type.name === "codeBlock" ||
+      node.type.name === "instructionBlock"
+    ) {
+      foundBlocks = true;
+      return false; // Stop searching
+    }
+  });
+  return foundBlocks;
+}
 
 const editorVariants = cva(
   [
@@ -56,19 +72,59 @@ const editorVariants = cva(
   }
 );
 
+const textareaVariants = cva(
+  [
+    "overflow-auto border rounded-xl p-2 resize-y min-h-60 h-100",
+    "transition-all duration-200",
+    "bg-muted-background dark:bg-muted-background-night",
+  ],
+  {
+    variants: {
+      error: {
+        true: [
+          "border-warning-500 dark:border-warning-500-night",
+          "focus:border-warning-500 dark:focus:border-warning-500-night",
+        ],
+        false: [
+          "border-border dark:border-border-night",
+          "focus:border-highlight-300 dark:focus:border-highlight-300-night",
+        ],
+      },
+    },
+    defaultVariants: {
+      error: false,
+    },
+  }
+);
+
 interface AgentBuilderInstructionsEditorProps {
   compareVersion?: LightAgentConfigurationType | null;
   isInstructionDiffMode?: boolean;
+  viewMode?: "visual" | "text";
+  setViewMode?: (mode: "visual" | "text") => void;
+  hasBlocks?: boolean;
+  setHasBlocks?: (hasBlocks: boolean) => void;
 }
 
 export function AgentBuilderInstructionsEditor({
   compareVersion,
   isInstructionDiffMode = false,
+  viewMode: externalViewMode,
+  setViewMode: externalSetViewMode,
+  hasBlocks: externalHasBlocks,
+  setHasBlocks: externalSetHasBlocks,
 }: AgentBuilderInstructionsEditorProps = {}) {
   const { owner } = useAgentBuilderContext();
   const { field } = useController<AgentBuilderFormData, "instructions">({
     name: "instructions",
   });
+  const [internalViewMode] = useState<"visual" | "text">("visual");
+  const [, setInternalHasBlocks] = useState(false);
+
+  // Use external state if provided, otherwise use internal
+  const viewMode = externalViewMode ?? internalViewMode;
+  const hasBlocks = externalHasBlocks ?? false;
+  const setHasBlocks = externalSetHasBlocks ?? setInternalHasBlocks;
 
   // Create a ref to hold the editor instance
   const editorRef = useRef<ReactEditor | null>(null);
@@ -140,6 +196,10 @@ export function AgentBuilderInstructionsEditor({
         // Skip selection-only changes
         if (transaction.docChanged) {
           debouncedUpdate(editor);
+
+          // Check if we have code blocks or instruction blocks
+          const foundBlocks = detectRichBlocks(editor.state.doc);
+          setHasBlocks(foundBlocks);
         }
       },
     },
@@ -175,15 +235,20 @@ export function AgentBuilderInstructionsEditor({
         },
       },
     });
-  }, [editor, displayError]);
+
+    // Initial check for blocks
+    const foundBlocks = detectRichBlocks(editor.state.doc);
+    setHasBlocks(foundBlocks);
+  }, [editor, displayError, setHasBlocks]);
 
   useEffect(() => {
     if (!editor || field.value === undefined) {
       return;
     }
 
-    // Don't update if editor is focused (user is typing/editing)
-    if (editor.isFocused) {
+    // Don't update if editor is focused AND in visual mode (user is typing/editing)
+    // But always update when in text mode (to sync changes when switching back to visual)
+    if (editor.isFocused && viewMode === "visual") {
       return;
     }
 
@@ -197,7 +262,7 @@ export function AgentBuilderInstructionsEditor({
         false
       );
     }
-  }, [editor, field.value, debouncedUpdate]);
+  }, [editor, field.value, debouncedUpdate, viewMode]);
 
   useEffect(() => {
     if (!editor) {
@@ -224,24 +289,42 @@ export function AgentBuilderInstructionsEditor({
 
   return (
     <div className="flex h-full flex-col gap-1">
-      <div className="relative p-px">
-        <EditorContent
-          editor={editor}
-          className="h-full min-h-[200px] cursor-text"
-        />
+      <div className="relative">
+        {viewMode === "visual" ? (
+          <EditorContent editor={editor} className="h-full cursor-text" />
+        ) : (
+          <textarea
+            value={field.value}
+            onChange={(e) => field.onChange(e.target.value)}
+            className={cn(
+              "w-full focus:outline-none focus:ring-0",
+              textareaVariants({ error: displayError })
+            )}
+            style={{
+              fontFamily: "inherit",
+              fontSize: "inherit",
+              lineHeight: "inherit",
+            }}
+          />
+        )}
         <div
-          className="absolute bottom-2 right-2"
+          className="absolute bottom-4 right-4"
           onClick={(e) => {
-            // Prevent the container's click handler from focusing the editor
             e.stopPropagation();
           }}
         >
           <InstructionTipsPopover owner={owner} />
         </div>
       </div>
-      {editor && (
+      {editor && viewMode === "visual" && (
         <CharacterCountDisplay
           count={currentCharacterCount}
+          maxCount={INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT}
+        />
+      )}
+      {viewMode === "text" && (
+        <CharacterCountDisplay
+          count={field.value.length}
           maxCount={INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT}
         />
       )}

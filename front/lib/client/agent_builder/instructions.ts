@@ -31,6 +31,13 @@ function serializeNodeToText(node: JSONContent): string {
     return node.text || "";
   }
 
+  if (node.type === "codeBlock") {
+    // Convert code blocks to markdown format with triple backticks
+    const language = node.attrs?.language || "";
+    const code = node.content?.map(serializeNodeToText).join("") || "";
+    return `\`\`\`${language}\n${code}\`\`\`\n`;
+  }
+
   // Handle other node types by recursing into their content
   if (node.content) {
     return node.content.map(serializeNodeToText).join("");
@@ -53,9 +60,37 @@ function parseInstructionBlocks(text: string): JSONContent[] {
 
   segments.forEach((segment) => {
     if (segment.type === "text") {
-      // Add text as paragraphs
-      const paragraphs = textToParagraphNodes(segment.content);
-      content.push(...paragraphs);
+      // Parse code blocks from the text
+      const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
+      let lastIndex = 0;
+      let match;
+      
+      while ((match = codeBlockRegex.exec(segment.content)) !== null) {
+        // Add text before code block as paragraphs
+        if (match.index > lastIndex) {
+          const textBefore = segment.content.slice(lastIndex, match.index);
+          const paragraphs = textToParagraphNodes(textBefore);
+          content.push(...paragraphs);
+        }
+        
+        // Add code block
+        const language = match[1] || "";
+        const code = match[2];
+        content.push({
+          type: "codeBlock",
+          attrs: { language },
+          content: code ? [{ type: "text", text: code }] : []
+        });
+        
+        lastIndex = match.index + match[0].length;
+      }
+      
+      // Add remaining text after last code block
+      if (lastIndex < segment.content.length) {
+        const remainingText = segment.content.slice(lastIndex);
+        const paragraphs = textToParagraphNodes(remainingText);
+        content.push(...paragraphs);
+      }
     } else if (segment.type === "block" && segment.blockType) {
       // Add instruction block
       const blockNode = createInstructionBlockNode(
