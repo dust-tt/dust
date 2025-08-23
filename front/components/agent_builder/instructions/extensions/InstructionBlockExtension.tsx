@@ -95,7 +95,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({ node }) => {
             {displayType.toUpperCase() || " "}
           </Chip>
         </div>
-        <NodeViewContent className="prose prose-sm" as="div" />
+        <NodeViewContent className="prose prose-sm font-mono" as="div" />
       </div>
     </NodeViewWrapper>
   );
