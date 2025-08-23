@@ -89,23 +89,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     });
   }
 
-  private static async fetchStepActionById(
-    auth: Authenticator,
-    stepContentId: ModelId
-  ): Promise<AgentStepContentModel> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
-
-    const stepContent = await AgentStepContentModel.findOne({
-      where: {
-        id: stepContentId,
-        workspaceId,
-      },
-    });
-
-    assert(stepContent, "Step content not found.");
-    return stepContent;
-  }
-
   static async makeNew(
     auth: Authenticator,
     blob: Omit<CreationAttributes<AgentMCPAction>, "workspaceId"> & {
@@ -122,10 +105,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       { transaction }
     );
 
-    const stepContent = await this.fetchStepActionById(
-      auth,
-      action.stepContentId
-    );
+    const stepContent = await AgentStepContentModel.findOne({
+      where: {
+        id: action.stepContentId,
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
+    assert(stepContent, "Step content not found.");
 
     return new AgentMCPActionResource(
       AgentMCPActionResource.model,
@@ -150,10 +137,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       return null;
     }
 
-    const stepContent = await this.fetchStepActionById(
-      auth,
-      action.stepContentId
-    );
+    const stepContent = await AgentStepContentModel.findOne({
+      where: {
+        id: action.stepContentId,
+        workspaceId,
+      },
+      transaction,
+    });
+    assert(stepContent, "Step content not found.");
+
     return new this(this.model, action.get(), stepContent);
   }
 
