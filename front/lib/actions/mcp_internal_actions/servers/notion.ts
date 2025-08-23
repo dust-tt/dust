@@ -12,7 +12,6 @@ import type {
 import { parseISO } from "date-fns";
 import { z } from "zod";
 
-import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   SearchQueryResourceType,
   SearchResultResourceType,

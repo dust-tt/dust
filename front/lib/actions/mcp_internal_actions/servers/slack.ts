@@ -8,7 +8,6 @@ import slackifyMarkdown from "slackify-markdown";
 import { z } from "zod";
 
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
-import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   SearchQueryResourceType,
   SearchResultResourceType,
