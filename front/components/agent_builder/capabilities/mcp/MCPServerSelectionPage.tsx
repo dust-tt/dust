@@ -8,7 +8,6 @@ import {
   Icon,
   PlusIcon,
 } from "@dust-tt/sparkle";
-import { CardGrid } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
 import { useAgentBuilderFormActions } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -220,7 +219,7 @@ export function MCPServerSelectionPage({
           defaultMcpServerViews) && (
           <span className="text-lg font-semibold">Top tools</span>
         )}
-        <CardGrid>
+        <div className="grid grid-cols-2 gap-3">
           {dataVisualization && onDataVisualizationClick && (
             <DataVisualizationCard
               key="data-visualization"
@@ -240,11 +239,11 @@ export function MCPServerSelectionPage({
               onClick={() => onItemClick(view)}
             />
           ))}
-        </CardGrid>
+        </div>
         {nonDefaultMcpServerViews.length && (
           <span className="text-lg font-semibold">Other tools</span>
         )}
-        <CardGrid>
+        <div className="grid grid-cols-2 gap-3">
           {nonDefaultMcpServerViews.map((view) => (
             <MCPServerCard
               key={view.id}
@@ -256,7 +255,7 @@ export function MCPServerSelectionPage({
               onClick={() => onItemClick(view)}
             />
           ))}
-        </CardGrid>
+        </div>
       </div>
     </>
   );
