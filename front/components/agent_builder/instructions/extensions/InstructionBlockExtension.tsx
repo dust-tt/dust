@@ -1,16 +1,16 @@
-import { Chip } from "@dust-tt/sparkle";
+import { Chip, ChevronDownIcon, ChevronRightIcon } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/core";
 import { InputRule, mergeAttributes, Node } from "@tiptap/core";
 import type { Slice } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
-import { TextSelection } from "@tiptap/pm/state";
+import { TextSelection, Selection } from "@tiptap/pm/state";
 import type { NodeViewProps } from "@tiptap/react";
 import {
   NodeViewContent,
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
-import React from "react";
+import React, { useState } from "react";
 
 import { OPENING_TAG_REGEX } from "@app/lib/client/agent_builder/instructionBlockUtils";
 
@@ -66,7 +66,9 @@ function positionCursorInMiddleParagraph(
   return true;
 }
 
-const InstructionBlockComponent: React.FC<NodeViewProps> = ({ node }) => {
+const InstructionBlockComponent: React.FC<NodeViewProps> = ({ node, editor, getPos, selected, updateAttributes }) => {
+  const [isCollapsed, setIsCollapsed] = useState(node.attrs.isCollapsed || false);
+  
   // Derive display type directly from content
   // Empty tags should show as truly empty (no chip)
   let displayType = "";
@@ -87,18 +89,68 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({ node }) => {
   // No fallback - if tag is empty, keep display empty
   // This gives users clear feedback that the tag is empty
 
+  const handleToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const newCollapsed = !isCollapsed;
+    setIsCollapsed(newCollapsed);
+    
+    // Update the node attribute so ProseMirror knows about the state
+    updateAttributes({ isCollapsed: newCollapsed });
+    
+    // Just maintain editor focus if it was already focused
+    // Don't change selection or cursor position
+    if (editor.isFocused) {
+      editor.commands.focus();
+    }
+  };
+
+  const ChevronIcon = isCollapsed ? ChevronRightIcon : ChevronDownIcon;
+
+  // Handle click on collapsed block to select it
+  const handleBlockClick = (e: React.MouseEvent) => {
+    if (isCollapsed) {
+      e.preventDefault();
+      const pos = getPos();
+      if (typeof pos === "number") {
+        // Select the entire node
+        editor.commands.setNodeSelection(pos);
+      }
+    }
+  };
+
+  // Show selection ring when collapsed and selected
+  const containerClasses = `rounded-lg border bg-gray-100 p-2 dark:bg-gray-800 transition-all ${
+    selected && isCollapsed 
+      ? "ring-2 ring-highlight-300 dark:ring-highlight-300-night border-highlight-300 dark:border-highlight-300-night" 
+      : "border-border"
+  }`;
+
   return (
     <NodeViewWrapper className="my-2">
-      <div className="rounded-lg border border-border bg-gray-100 p-2 dark:bg-gray-800">
+      <div 
+        className={containerClasses}
+        onClick={handleBlockClick}
+      >
         <div 
-          className="mb-2 select-none"
+          className="select-none flex items-center gap-1"
           contentEditable={false}
         >
+          <button
+            onClick={handleToggle}
+            className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+            type="button"
+          >
+            <ChevronIcon className="h-4 w-4" />
+          </button>
           <Chip size="mini">
             {displayType.toUpperCase() || " "}
           </Chip>
         </div>
-        <NodeViewContent className="prose prose-sm font-mono" as="div" />
+        {!isCollapsed && (
+          <NodeViewContent className="prose prose-sm font-mono mt-2" as="div" />
+        )}
       </div>
     </NodeViewWrapper>
   );
@@ -113,6 +165,7 @@ export const InstructionBlockExtension =
     defining: true,
     /** Prevents auto-merging two blocks when they're not separated by a paragraph */
     isolating: true,
+    selectable: true,
 
     addAttributes() {
       return {
@@ -122,6 +175,14 @@ export const InstructionBlockExtension =
             element.getAttribute("data-instruction-type") || "instructions",
           renderHTML: (attributes) => ({
             "data-instruction-type": attributes.type,
+          }),
+        },
+        isCollapsed: {
+          default: false,
+          parseHTML: (element) =>
+            element.getAttribute("data-collapsed") === "true",
+          renderHTML: (attributes) => ({
+            "data-collapsed": attributes.isCollapsed,
           }),
         },
       };
@@ -268,6 +329,148 @@ export const InstructionBlockExtension =
 
     addKeyboardShortcuts() {
       return {
+        /**
+         * Skip collapsed instruction blocks when navigating with arrow keys
+         */
+        "ArrowDown": () => {
+          const { state } = this.editor;
+          const { selection } = state;
+          const { $from } = selection;
+          
+          // Check if we're between nodes and there's a collapsed instruction block after
+          const nodeAfter = $from.nodeAfter;
+          if (nodeAfter && 
+              nodeAfter.type.name === this.name && 
+              nodeAfter.attrs.isCollapsed) {
+            // We're before a collapsed block - skip over it to the position after it
+            // The target position should be at the same document level (doc level)
+            const pos = $from.pos;
+            const afterBlockPos = pos + nodeAfter.nodeSize;
+            
+            console.log("=== ARROW DOWN NAVIGATION ===");
+            console.log("Current position:", pos);
+            console.log("Collapsed block size:", nodeAfter.nodeSize);
+            console.log("Target position:", afterBlockPos);
+            
+            // Check what's at the target position
+            const $target = state.doc.resolve(afterBlockPos);
+            console.log("Target resolved successfully");
+            console.log("Target parent:", $target.parent.type.name);
+            console.log("Node after target:", $target.nodeAfter?.type.name);
+            
+            // If we're at doc level and there's a paragraph after, position at paragraph start
+            if ($target.parent.type.name === "doc" && $target.nodeAfter?.type.name === "paragraph") {
+              const paragraphStart = afterBlockPos + 1;
+              console.log("Positioning at start of paragraph:", paragraphStart);
+              this.editor.commands.setTextSelection(paragraphStart);
+              console.log("=== END ARROW DOWN SUCCESS ===");
+              return true;
+            }
+            
+            // If there's another instruction block after, position horizontally between them
+            if ($target.parent.type.name === "doc" && $target.nodeAfter?.type.name === this.name) {
+              console.log("Another instruction block found, trying horizontal positioning at:", afterBlockPos);
+              
+              // Try different selection methods to create the horizontal cursor
+              // The fundamental issue: there might not be a valid cursor position between collapsed blocks
+              // Let's try to find the equivalent of the click position pattern
+              // Clicking at 824 created selection at 13038, so maybe we need similar logic
+              
+              // Approach 1: Try to create horizontal cursor directly (preferred)
+              console.log("Trying to create horizontal cursor at position:", afterBlockPos);
+              
+              try {
+                // The trick might be to use the exact position without any adjustment
+                // and handle the doc-level selection manually
+                const tr = state.tr;
+                
+                // Create a special selection that allows doc-level positioning
+                // This might be what ProseMirror does internally for clicking
+                const $pos = tr.doc.resolve(afterBlockPos);
+                
+                // Try to create a selection at the exact boundary position
+                // Use Selection.atStart or Selection.atEnd for doc-level positions
+                let selection;
+                if ($pos.nodeBefore && $pos.nodeAfter && 
+                    $pos.nodeBefore.type.name === this.name && 
+                    $pos.nodeAfter.type.name === this.name) {
+                  // We're between two instruction blocks - try to create a gap selection
+                  selection = new TextSelection($pos, $pos);
+                  console.log("Created gap selection");
+                } else {
+                  selection = Selection.near($pos);
+                  console.log("Used Selection.near fallback");
+                }
+                
+                tr.setSelection(selection);
+                this.editor.view.dispatch(tr);
+                
+                console.log("=== END ARROW DOWN SUCCESS (HORIZONTAL CURSOR) ===");
+                return true;
+              } catch (e) {
+                console.log("Horizontal cursor failed:", e);
+                
+                // Approach 2: Fallback to inserting an empty paragraph between blocks
+                console.log("Falling back to paragraph insertion at position:", afterBlockPos);
+                
+                try {
+                  const tr = state.tr.insert(afterBlockPos, state.schema.nodes.paragraph.create());
+                  this.editor.view.dispatch(tr);
+                  
+                  // Position the cursor in the new paragraph
+                  const newParagraphPos = afterBlockPos + 1;
+                  this.editor.commands.setTextSelection(newParagraphPos);
+                  
+                  console.log("=== END ARROW DOWN SUCCESS (INSERTED PARAGRAPH) ===");
+                  return true;
+                } catch (e2) {
+                  console.log("Paragraph insertion also failed:", e2);
+                  return false;
+                }
+              }
+            }
+            
+            // Try the original position
+            console.log("Trying original position:", afterBlockPos);
+            this.editor.commands.setTextSelection(afterBlockPos);
+            console.log("=== END ARROW DOWN SUCCESS ===");
+            return true;
+          }
+          
+          return false;
+        },
+        
+        "ArrowUp": () => {
+          const { state } = this.editor;
+          const { selection } = state;
+          const { $from } = selection;
+          
+          // Check if we're at the start of a node after a collapsed instruction block
+          if ($from.parentOffset === 0) {
+            const nodeBefore = $from.nodeBefore;
+            
+            if (nodeBefore && 
+                nodeBefore.type.name === this.name && 
+                nodeBefore.attrs.isCollapsed) {
+              // We're right after a collapsed block
+              const beforeBlockPos = $from.pos - nodeBefore.nodeSize;
+              
+              // Always place cursor at the boundary before the collapsed block
+              // This creates a horizontal cursor position between blocks  
+              console.log("=== ARROW UP NAVIGATION ===");
+              console.log("Setting cursor to position:", beforeBlockPos);
+              console.log("Collapsed block size:", nodeBefore.nodeSize);
+              console.log("Original position:", $from.pos);
+              console.log("=== END ARROW UP ===");
+              
+              this.editor.commands.setTextSelection(beforeBlockPos);
+              return true;
+            }
+          }
+          
+          return false;
+        },
+        
         /**
          * Handles Shift+Enter to split the block without creating a new paragraph.
          * This allows users to create a new line within the instruction block.
@@ -437,6 +640,37 @@ export const InstructionBlockExtension =
 
     addProseMirrorPlugins() {
       return [
+        // Plugin for logging cursor positions when clicking
+        new Plugin({
+          key: new PluginKey("instructionBlockCursorLogger"),
+          props: {
+            handleClick(view, pos, event) {
+              // Log cursor position when clicking
+              const { state } = view;
+              const $pos = state.doc.resolve(pos);
+              
+              console.log("=== CURSOR POSITION LOG ===");
+              console.log("Click position:", pos);
+              console.log("Document size:", state.doc.content.size);
+              console.log("Parent node type:", $pos.parent.type.name);
+              console.log("Parent offset:", $pos.parentOffset);
+              console.log("Node before:", $pos.nodeBefore?.type.name, $pos.nodeBefore?.attrs);
+              console.log("Node after:", $pos.nodeAfter?.type.name, $pos.nodeAfter?.attrs);
+              console.log("Depth:", $pos.depth);
+              console.log("Selection type:", state.selection.constructor.name);
+              console.log("Selection from/to:", state.selection.from, state.selection.to);
+              
+              // Check for instruction blocks in context
+              for (let d = 0; d <= $pos.depth; d++) {
+                const node = $pos.node(d);
+                console.log(`Depth ${d}:`, node.type.name, node.attrs);
+              }
+              
+              console.log("=== END LOG ===");
+              return false; // Don't prevent default click handling
+            }
+          }
+        }),
         // Plugin for syncing tags
         new Plugin({
           key: new PluginKey("instructionBlockTagSync"),
