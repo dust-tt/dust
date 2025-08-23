@@ -90,7 +90,10 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({ node }) => {
   return (
     <NodeViewWrapper className="my-2">
       <div className="rounded-lg border border-border bg-gray-100 p-2 dark:bg-gray-800">
-        <div className="mb-2">
+        <div 
+          className="mb-2 select-none"
+          contentEditable={false}
+        >
           <Chip size="mini">
             {displayType.toUpperCase() || " "}
           </Chip>
@@ -426,120 +429,6 @@ export const InstructionBlockExtension =
           tr.setSelection(TextSelection.create(tr.doc, posAfterBlock + 1));
 
           this.editor.view.dispatch(tr);
-          this.editor.commands.focus();
-          return true;
-        },
-        /**
-         * Handles ArrowDown key to navigate to the next paragraph after the instruction block.
-         */
-        ArrowDown: () => {
-          if (!this.editor.isActive(this.name)) {
-            return false;
-          }
-
-          const { state } = this.editor;
-          const { doc, selection } = state;
-          const $from = selection.$from;
-
-          // Find the depth of the surrounding instruction block
-          let blockDepth: number | null = null;
-          for (let d = $from.depth; d >= 0; d -= 1) {
-            if ($from.node(d).type.name === this.name) {
-              blockDepth = d;
-              break;
-            }
-          }
-
-          if (blockDepth === null) {
-            return false;
-          }
-
-          const blockNode = $from.node(blockDepth);
-          const childIndex = $from.index(blockDepth);
-
-          // Only trigger when at the end of the last paragraph in the block
-          const isAtEndOfTextBlock =
-            selection.empty && $from.parentOffset === $from.parent.content.size;
-          const isInLastChild = childIndex === blockNode.childCount - 1;
-
-          if (!isAtEndOfTextBlock || !isInLastChild) {
-            return false;
-          }
-
-          const posBeforeBlock = $from.before(blockDepth);
-          const posAfterBlock = posBeforeBlock + blockNode.nodeSize;
-          const $after = doc.resolve(posAfterBlock);
-          const nextNode = $after.nodeAfter;
-
-          if (!nextNode || nextNode.type.name !== "paragraph") {
-            // Create a paragraph after the block if none exists
-            this.editor.commands.insertContentAt(posAfterBlock, {
-              type: "paragraph",
-            });
-          }
-
-          // Place the cursor at the start of the paragraph after the block
-          this.editor.commands.setTextSelection(posAfterBlock + 1);
-          this.editor.commands.focus();
-          return true;
-        },
-        /**
-         * Handles ArrowUp key to navigate to the previous paragraph before the instruction block.
-         */
-        ArrowUp: () => {
-          if (!this.editor.isActive(this.name)) {
-            return false;
-          }
-
-          const { state } = this.editor;
-          const { doc, selection } = state;
-          const $from = selection.$from;
-
-          // Find the depth of the surrounding instruction block
-          let blockDepth: number | null = null;
-          for (let d = $from.depth; d >= 0; d -= 1) {
-            if ($from.node(d).type.name === this.name) {
-              blockDepth = d;
-              break;
-            }
-          }
-
-          if (blockDepth === null) {
-            return false;
-          }
-
-          // Only trigger when at the start of the first paragraph in the block
-          const childIndex = $from.index(blockDepth);
-
-          const isAtStartOfTextBlock =
-            selection.empty && $from.parentOffset === 0;
-          const isInFirstChild = childIndex === 0;
-
-          if (!isAtStartOfTextBlock || !isInFirstChild) {
-            return false;
-          }
-
-          const posBeforeBlock = $from.before(blockDepth);
-
-          // Ensure a paragraph exists before the block
-          const $before = doc.resolve(posBeforeBlock);
-          const prevNode = $before.nodeBefore;
-          if (!prevNode || prevNode.type.name !== "paragraph") {
-            this.editor.commands.insertContentAt(posBeforeBlock, {
-              type: "paragraph",
-            });
-          }
-
-          // Resolve positions from the updated document after potential insertion
-          const updatedDoc = this.editor.state.doc;
-          const $beforeAfterInsert = updatedDoc.resolve(posBeforeBlock);
-          const prevNodeAfterInsert = $beforeAfterInsert.nodeBefore;
-          const cursorPos =
-            prevNodeAfterInsert && prevNodeAfterInsert.type.name === "paragraph"
-              ? posBeforeBlock - 1
-              : 1;
-
-          this.editor.commands.setTextSelection(cursorPos);
           this.editor.commands.focus();
           return true;
         },
