@@ -390,7 +390,7 @@ const createServer = async (
     }
   }
 
-  // We all ways add the "all channels" option, even if we failed to list channels.
+  // We always add the "all channels" option, even if we failed to list channels.
   // This prevents the UI from being completely broken in that case.
   channels.unshift({
     id: "*",
