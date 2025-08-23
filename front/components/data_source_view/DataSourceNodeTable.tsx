@@ -10,7 +10,7 @@ import {
 import type { DataSourceRowData } from "@app/components/data_source_view/hooks/useDataSourceColumns";
 import { useDataSourceColumns } from "@app/components/data_source_view/hooks/useDataSourceColumns";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
-import { useInfinitDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import { useInfiniteDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import type { ContentNodesViewType } from "@app/types";
 
 const PAGE_SIZE = 25;
@@ -33,7 +33,7 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
     hasNextPage,
     loadMore,
     isLoadingMore,
-  } = useInfinitDataSourceViewContentNodes({
+  } = useInfiniteDataSourceViewContentNodes({
     owner,
     dataSourceView:
       traversedNode?.dataSourceView ?? dataSourceView ?? undefined,

@@ -43,7 +43,10 @@ import {
   isRemoteDatabase,
   isWebsite,
 } from "@app/lib/data_sources";
-import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import {
+  useDataSourceViewContentNodes,
+  useInfiniteDataSourceViewContentNodes,
+} from "@app/lib/swr/data_source_views";
 import { useSpacesSearch } from "@app/lib/swr/spaces";
 import type {
   ContentNode,
@@ -745,11 +748,24 @@ export function DataSourceViewSelector({
     [dataSourceView]
   );
 
-  const { nodes: rootNodes } = useContentNodes({
+  // Use infinite scroll to fetch all root nodes for Select All functionality
+  const {
+    nodes: rootNodes,
+    hasNextPage,
+    loadMore,
+    isNodesLoading,
+  } = useInfiniteDataSourceViewContentNodes({
     owner,
     dataSourceView,
     viewType,
   });
+
+  // Load all pages of root nodes
+  useEffect(() => {
+    if (hasNextPage && !isNodesLoading) {
+      void loadMore();
+    }
+  }, [hasNextPage, loadMore, isNodesLoading]);
 
   const hasActiveSelection =
     selectionConfiguration.selectedResources.length > 0 ||

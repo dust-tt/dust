@@ -299,7 +299,7 @@ export function useDataSourceViewContentNodes({
   };
 }
 
-export function useInfinitDataSourceViewContentNodes({
+export function useInfiniteDataSourceViewContentNodes({
   owner,
   dataSourceView,
   pagination,
