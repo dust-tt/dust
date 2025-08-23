@@ -285,7 +285,8 @@ export function AgentBuilderInstructionsEditor({
     if (viewMode === "text") {
       debouncedTextModeSync(editor, field.value);
     } else {
-      // When switching from text back to visual, do immediate sync
+      // When switching from text back to visual, flush pending sync and do immediate sync
+      debouncedTextModeSync.flush();
       const currentContent = plainTextFromTipTapContent(editor.getJSON());
       if (currentContent !== field.value) {
         debouncedUpdate.flush(); // Save pending changes

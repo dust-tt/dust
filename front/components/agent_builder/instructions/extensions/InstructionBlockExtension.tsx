@@ -169,6 +169,9 @@ export const InstructionBlockExtension =
 
             if (success) {
               requestAnimationFrame(() => {
+                // Safety check: ensure editor is still valid
+                if (editor.isDestroyed || !editor.view) return;
+                
                 const { selection } = editor.state;
                 const $from = selection.$from;
                 
@@ -230,6 +233,9 @@ export const InstructionBlockExtension =
             );
             
             requestAnimationFrame(() => {
+              // Safety check: ensure editor is still valid
+              if (this.editor.isDestroyed || !this.editor.view) return;
+              
               const { selection } = this.editor.state;
               const $from = selection.$from;
               
