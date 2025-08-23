@@ -65,6 +65,7 @@ import {
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 const ITEMS_PER_PAGE = 50;
+const MAX_ROOT_NODES_LIMIT = 10000; // Upper limit for fetching all root nodes at once
 
 const getUseResourceHook =
   (
@@ -749,6 +750,7 @@ export function DataSourceViewSelector({
     owner,
     dataSourceView,
     viewType,
+    pagination: { limit: MAX_ROOT_NODES_LIMIT },
   });
 
   const hasActiveSelection =
