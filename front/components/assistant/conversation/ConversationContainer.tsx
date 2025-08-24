@@ -348,7 +348,7 @@ export function ConversationContainer({
         </div>
       )}
 
-      {hasPendingValidations && (
+      {activeConversationId && hasPendingValidations && (
         <ContentMessageInline
           icon={InformationCircleIcon}
           variant="primary"
