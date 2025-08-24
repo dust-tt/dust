@@ -3,10 +3,7 @@ import { createMCPAction } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { StepContext } from "@app/lib/actions/types";
-import {
-  approvalStatusToToolExecutionStatus,
-  getExecutionStatusFromConfig,
-} from "@app/lib/actions/utils";
+import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
@@ -112,7 +109,7 @@ async function createActionForTool(
     mcpServerConfigurationId: actionConfiguration.id.toString(),
     step,
     stepContentId,
-    status: approvalStatusToToolExecutionStatus(status),
+    status,
   });
 
   const validateToolInputsResult = validateToolInputs(actionBaseParams.params);
@@ -152,7 +149,6 @@ async function createActionForTool(
     augmentedInputs,
     stepContentId,
     stepContext,
-    approvalStatus: status,
   });
 
   // Publish the tool params event.
@@ -171,7 +167,7 @@ async function createActionForTool(
     }
   );
 
-  if (status === "pending") {
+  if (status === "blocked_validation_required") {
     await updateResourceAndPublishEvent(
       {
         type: "tool_approve_execution",
@@ -199,6 +195,6 @@ async function createActionForTool(
 
   return {
     actionId: agentMCPAction.id,
-    needsApproval: status === "pending",
+    needsApproval: status === "blocked_validation_required",
   };
 }
