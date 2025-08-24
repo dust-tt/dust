@@ -40,6 +40,7 @@ import type {
 } from "@app/lib/actions/types";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { approvalStatusToToolExecutionStatus } from "@app/lib/actions/utils";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
@@ -190,7 +191,7 @@ export function getMCPApprovalStateFromUserApprovalState(
   switch (userApprovalState) {
     case "always_approved":
     case "approved":
-      return "ready_allowed_explicitly";
+      return "allowed_explicitly";
 
     case "rejected":
       return "denied";
@@ -605,12 +606,14 @@ export async function createMCPAction(
     augmentedInputs,
     stepContentId,
     stepContext,
+    approvalStatus,
   }: {
     actionBaseParams: ActionBaseParams;
     actionConfiguration: MCPToolConfigurationType;
     augmentedInputs: Record<string, unknown>;
     stepContentId: ModelId;
     stepContext: StepContext;
+    approvalStatus: "allowed_implicitly" | "pending";
   }
 ): Promise<{ action: AgentMCPActionResource; mcpAction: MCPActionType }> {
   const toolConfiguration = omit(
@@ -623,7 +626,7 @@ export async function createMCPAction(
     augmentedInputs,
     citationsAllocated: stepContext.citationsCount,
     mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
-    status: actionBaseParams.status,
+    status: approvalStatusToToolExecutionStatus(approvalStatus),
     stepContentId,
     stepContext,
     toolConfiguration,
@@ -746,9 +749,10 @@ export async function getMCPAction(
 // TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent mcp action.
 export async function updateMCPApprovalState(
   action: AgentMCPActionResource,
-  approvalState: "denied" | "ready_allowed_explicitly"
+  executionState: "denied" | "allowed_explicitly"
 ): Promise<boolean> {
-  if (action.status === approvalState) {
+  const status = approvalStatusToToolExecutionStatus(executionState);
+  if (action.status === status) {
     return false;
   }
 
