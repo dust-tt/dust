@@ -1,9 +1,9 @@
-import { Chip, ChevronDownIcon, ChevronRightIcon } from "@dust-tt/sparkle";
+import { ChevronDownIcon, ChevronRightIcon, Chip } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/core";
 import { InputRule, mergeAttributes, Node } from "@tiptap/core";
 import type { Slice } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
-import { TextSelection, Selection } from "@tiptap/pm/state";
+import { TextSelection } from "@tiptap/pm/state";
 import type { NodeViewProps } from "@tiptap/react";
 import {
   NodeViewContent,
@@ -66,9 +66,17 @@ function positionCursorInMiddleParagraph(
   return true;
 }
 
-const InstructionBlockComponent: React.FC<NodeViewProps> = ({ node, editor, getPos, selected, updateAttributes }) => {
-  const [isCollapsed, setIsCollapsed] = useState(node.attrs.isCollapsed || false);
-  
+const InstructionBlockComponent: React.FC<NodeViewProps> = ({
+  node,
+  editor,
+  getPos,
+  selected,
+  updateAttributes,
+}) => {
+  const [isCollapsed, setIsCollapsed] = useState(
+    node.attrs.isCollapsed || false
+  );
+
   // Derive display type directly from content
   // Empty tags should show as truly empty (no chip)
   let displayType = "";
@@ -92,13 +100,13 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({ node, editor, getP
   const handleToggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const newCollapsed = !isCollapsed;
     setIsCollapsed(newCollapsed);
-    
+
     // Update the node attribute so ProseMirror knows about the state
     updateAttributes({ isCollapsed: newCollapsed });
-    
+
     // Just maintain editor focus if it was already focused
     // Don't change selection or cursor position
     if (editor.isFocused) {
@@ -122,34 +130,29 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({ node, editor, getP
 
   // Show selection ring when collapsed and selected
   const containerClasses = `rounded-lg border bg-gray-100 p-2 dark:bg-gray-800 transition-all ${
-    selected && isCollapsed 
-      ? "ring-2 ring-highlight-300 dark:ring-highlight-300-night border-highlight-300 dark:border-highlight-300-night" 
+    selected && isCollapsed
+      ? "ring-2 ring-highlight-300 dark:ring-highlight-300-night border-highlight-300 dark:border-highlight-300-night"
       : "border-border"
   }`;
 
   return (
     <NodeViewWrapper className="my-2">
-      <div 
-        className={containerClasses}
-        onClick={handleBlockClick}
-      >
-        <div 
-          className="select-none flex items-center gap-1"
+      <div className={containerClasses} onClick={handleBlockClick}>
+        <div
+          className="flex select-none items-center gap-1"
           contentEditable={false}
         >
           <button
             onClick={handleToggle}
-            className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+            className="rounded p-0.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
             type="button"
           >
             <ChevronIcon className="h-4 w-4" />
           </button>
-          <Chip size="mini">
-            {displayType.toUpperCase() || " "}
-          </Chip>
+          <Chip size="mini">{displayType.toUpperCase() || " "}</Chip>
         </div>
         {!isCollapsed && (
-          <NodeViewContent className="prose prose-sm font-mono mt-2" as="div" />
+          <NodeViewContent className="prose prose-sm mt-2 font-mono" as="div" />
         )}
       </div>
     </NodeViewWrapper>
@@ -330,211 +333,6 @@ export const InstructionBlockExtension =
     addKeyboardShortcuts() {
       return {
         /**
-         * Skip collapsed instruction blocks when navigating with arrow keys
-         */
-        "ArrowDown": () => {
-          // Handle navigation FROM inside collapsed instruction blocks
-          if (this.editor.isActive(this.name)) {
-            const { state } = this.editor;
-            const { doc, selection } = state;
-            const $from = selection.$from;
-
-            // Find the depth of the surrounding instruction block
-            let blockDepth: number | null = null;
-            for (let d = $from.depth; d >= 0; d -= 1) {
-              if ($from.node(d).type.name === this.name) {
-                blockDepth = d;
-                break;
-              }
-            }
-
-            if (blockDepth === null) {
-              return false;
-            }
-
-            const blockNode = $from.node(blockDepth);
-            
-            // Only trigger for collapsed blocks
-            if (!blockNode.attrs.isCollapsed) {
-              return false;
-            }
-
-            const childIndex = $from.index(blockDepth);
-
-            // Only trigger when at the end of the last paragraph in the block
-            const isAtEndOfTextBlock =
-              selection.empty && $from.parentOffset === $from.parent.content.size;
-            const isInLastChild = childIndex === blockNode.childCount - 1;
-
-            if (!isAtEndOfTextBlock || !isInLastChild) {
-              return false;
-            }
-
-            const posBeforeBlock = $from.before(blockDepth);
-            const posAfterBlock = posBeforeBlock + blockNode.nodeSize;
-            const $after = doc.resolve(posAfterBlock);
-            const nextNode = $after.nodeAfter;
-
-            // If next node is another collapsed instruction block, insert paragraph between them
-            if (nextNode && nextNode.type.name === this.name && nextNode.attrs.isCollapsed) {
-              this.editor.commands.insertContentAt(posAfterBlock, {
-                type: "paragraph",
-              });
-              this.editor.commands.setTextSelection(posAfterBlock + 1);
-              return true;
-            }
-
-            // If next node is an expanded instruction block, navigate to it normally
-            if (nextNode && nextNode.type.name === this.name && !nextNode.attrs.isCollapsed) {
-              // Let default navigation handle expanded blocks
-              return false;
-            }
-
-            // Otherwise, create paragraph after block (whether there's no next node or next node is not a paragraph)
-            if (!nextNode || nextNode.type.name !== "paragraph") {
-              this.editor.commands.insertContentAt(posAfterBlock, {
-                type: "paragraph",
-              });
-            }
-
-            this.editor.commands.setTextSelection(posAfterBlock + 1);
-            return true;
-          }
-
-          // Handle navigation TO collapsed instruction blocks from paragraphs
-          const { state } = this.editor;
-          const { selection } = state;
-          const { $from } = selection;
-          
-          // Check if we're at the end of a paragraph and there are collapsed blocks ahead
-          if ($from.parent.type.name === "paragraph" && $from.parentOffset === $from.parent.content.size) {
-            const docPos = $from.after($from.depth);
-            const $docPos = state.doc.resolve(docPos);
-            
-            // Check if the next node is a collapsed instruction block
-            if ($docPos.nodeAfter && 
-                $docPos.nodeAfter.type.name === this.name && 
-                $docPos.nodeAfter.attrs.isCollapsed) {
-              
-              // Look ahead to see if there's another instruction block after this one
-              const afterFirstBlock = docPos + $docPos.nodeAfter.nodeSize;
-              const $afterFirst = state.doc.resolve(afterFirstBlock);
-              
-              if ($afterFirst.nodeAfter && 
-                  $afterFirst.nodeAfter.type.name === this.name && 
-                  $afterFirst.nodeAfter.attrs.isCollapsed) {
-                // There are consecutive collapsed blocks - insert paragraph between them
-                this.editor.commands.insertContentAt(afterFirstBlock, {
-                  type: "paragraph",
-                });
-                this.editor.commands.setTextSelection(afterFirstBlock + 1);
-                return true;
-              }
-            }
-          }
-          
-          return false;
-        },
-        
-        "ArrowUp": () => {
-          // Handle navigation FROM inside collapsed instruction blocks
-          if (this.editor.isActive(this.name)) {
-            const { state } = this.editor;
-            const { doc, selection } = state;
-            const $from = selection.$from;
-
-            // Find the depth of the surrounding instruction block
-            let blockDepth: number | null = null;
-            for (let d = $from.depth; d >= 0; d -= 1) {
-              if ($from.node(d).type.name === this.name) {
-                blockDepth = d;
-                break;
-              }
-            }
-
-            if (blockDepth === null) {
-              return false;
-            }
-
-            const blockNode = $from.node(blockDepth);
-            
-            // Only trigger for collapsed blocks
-            if (!blockNode.attrs.isCollapsed) {
-              return false;
-            }
-
-            // Only trigger when at the start of the first paragraph in the block
-            const childIndex = $from.index(blockDepth);
-            const isAtStartOfTextBlock = selection.empty && $from.parentOffset === 0;
-            const isInFirstChild = childIndex === 0;
-
-            if (!isAtStartOfTextBlock || !isInFirstChild) {
-              return false;
-            }
-
-            const posBeforeBlock = $from.before(blockDepth);
-            const $before = doc.resolve(posBeforeBlock);
-            const prevNode = $before.nodeBefore;
-
-            // If prev node is another collapsed instruction block, insert paragraph between them
-            if (prevNode && prevNode.type.name === this.name && prevNode.attrs.isCollapsed) {
-              this.editor.commands.insertContentAt(posBeforeBlock, {
-                type: "paragraph",
-              });
-              // Position in the newly inserted paragraph (adjust for insertion)
-              this.editor.commands.setTextSelection(posBeforeBlock + 1);
-              return true;
-            }
-
-            // Otherwise, ensure a paragraph exists before the block
-            if (!prevNode || prevNode.type.name !== "paragraph") {
-              this.editor.commands.insertContentAt(posBeforeBlock, {
-                type: "paragraph",
-              });
-            }
-
-            // Navigate to the paragraph before the block
-            const cursorPos = posBeforeBlock - 1;
-            this.editor.commands.setTextSelection(cursorPos > 0 ? cursorPos : 1);
-            return true;
-          }
-
-          // Handle navigation TO collapsed instruction blocks from paragraphs
-          const { state } = this.editor;
-          const { selection } = state;
-          const { $from } = selection;
-          
-          // Check if we're at the start of a paragraph and there are collapsed blocks before
-          if ($from.parent.type.name === "paragraph" && $from.parentOffset === 0) {
-            const docPos = $from.before($from.depth);
-            const $docPos = state.doc.resolve(docPos);
-            
-            // Check if the previous node is a collapsed instruction block
-            if ($docPos.nodeBefore && 
-                $docPos.nodeBefore.type.name === this.name && 
-                $docPos.nodeBefore.attrs.isCollapsed) {
-              
-              // Look back to see if there's another instruction block before this one
-              const beforeLastBlock = docPos - $docPos.nodeBefore.nodeSize;
-              const $beforeLast = state.doc.resolve(beforeLastBlock);
-              
-              if ($beforeLast.nodeBefore && 
-                  $beforeLast.nodeBefore.type.name === this.name && 
-                  $beforeLast.nodeBefore.attrs.isCollapsed) {
-                // There are consecutive collapsed blocks - insert paragraph between them
-                this.editor.commands.insertContentAt(beforeLastBlock, {
-                  type: "paragraph",
-                });
-                this.editor.commands.setTextSelection(beforeLastBlock + 1);
-                return true;
-              }
-            }
-          }
-          
-          return false;
-        },
-        
-        /**
          * Handles Shift+Enter to split the block without creating a new paragraph.
          * This allows users to create a new line within the instruction block.
          */
@@ -708,10 +506,12 @@ export const InstructionBlockExtension =
           key: new PluginKey("instructionBlockTagSync"),
           appendTransaction: (transactions, oldState, newState) => {
             // Skip if this is already a sync transaction (prevent recursion)
-            if (transactions.some(tr => tr.getMeta('instructionBlockTagSync'))) {
+            if (
+              transactions.some((tr) => tr.getMeta("instructionBlockTagSync"))
+            ) {
               return null;
             }
-            
+
             // Only process if there were doc changes
             const hasDocChanged = transactions.some((tr) => tr.docChanged);
             if (!hasDocChanged) {
@@ -775,6 +575,12 @@ export const InstructionBlockExtension =
             // Check if we need to sync (only if they were different)
             // We need to check the old state to see if they matched before
             const oldDoc = oldState.doc;
+            
+            // Safety check: ensure blockPos is within the old document bounds
+            if (blockPos < 0 || blockPos >= oldDoc.content.size) {
+              return null; // Skip syncing if position is invalid in old document
+            }
+            
             const oldBlockNode = oldDoc.nodeAt(blockPos);
 
             if (oldBlockNode && oldBlockNode.childCount >= 2) {
@@ -802,9 +608,9 @@ export const InstructionBlockExtension =
                 ) {
                   if (!tr) {
                     tr = newState.tr;
-                    tr.setMeta('instructionBlockTagSync', true);
+                    tr.setMeta("instructionBlockTagSync", true);
                     // Keep undo history clean
-                    tr.setMeta('addToHistory', false);
+                    tr.setMeta("addToHistory", false);
                   }
 
                   // Calculate position of last paragraph
@@ -835,9 +641,9 @@ export const InstructionBlockExtension =
                 ) {
                   if (!tr) {
                     tr = newState.tr;
-                    tr.setMeta('instructionBlockTagSync', true);
+                    tr.setMeta("instructionBlockTagSync", true);
                     // Keep undo history clean
-                    tr.setMeta('addToHistory', false);
+                    tr.setMeta("addToHistory", false);
                   }
 
                   // Update opening tag (fix: correct range inside paragraph)
