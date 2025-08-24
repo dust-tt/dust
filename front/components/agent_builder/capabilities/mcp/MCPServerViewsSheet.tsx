@@ -747,7 +747,7 @@ export function MCPServerViewsSheet({
         className="h-full"
         showNavigation={false}
         showHeaderNavigation={false}
-        size="lg"
+        size="xl"
         pages={pages}
         currentPageId={currentPageId}
         onPageChange={(pageId) => {
