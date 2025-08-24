@@ -154,7 +154,11 @@ export const useBlockInsertDropdown = (
         return true;
       },
       command: ({ editor, range, props }) => {
-        const suggestion = props as BlockSuggestion;
+        const suggestion = props as Partial<BlockSuggestion>;
+        // Ensure all required parameters exist and command is callable
+        if (!editor || !range || !suggestion || typeof suggestion.command !== "function") {
+          return;
+        }
         suggestion.command(
           editor as CompatibleEditor,
           range as { from: number; to: number }
