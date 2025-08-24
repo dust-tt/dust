@@ -31,7 +31,6 @@ import {
 } from "@app/lib/actions/mcp_utils";
 import type {
   MCPExecutionState,
-  MCPRunningState,
   ToolExecutionBlockedStatus,
   ToolExecutionStatus,
 } from "@app/lib/actions/statuses";
@@ -283,8 +282,6 @@ export class MCPActionType {
   readonly type = "tool_action" as const;
   readonly status: ToolExecutionStatus;
 
-  readonly runningState: MCPRunningState;
-
   constructor(blob: MCPActionBlob) {
     this.id = blob.id;
     this.type = blob.type;
@@ -302,7 +299,6 @@ export class MCPActionType {
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
     this.citationsAllocated = blob.citationsAllocated;
-    this.runningState = blob.runningState;
     this.status = blob.status;
   }
 
@@ -605,7 +601,6 @@ export async function* runToolWithStreaming(
       isError: false,
       output: removeNulls(outputItems.map(hideFileFromActionOutput)),
       type: "tool_action",
-      runningState: "completed",
     }),
   };
 }
@@ -643,7 +638,6 @@ export async function createMCPAction(
     executionState: "pending",
     isError: false,
     mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
-    runningState: "not_started",
     status: approvalStatusToToolExecutionStatus(approvalStatus),
     stepContentId,
     stepContext,
@@ -658,7 +652,6 @@ export async function createMCPAction(
     isError: false,
     output: null,
     type: "tool_action",
-    runningState: "not_started",
   });
 
   return { action, mcpAction };
@@ -753,7 +746,6 @@ export async function handleMCPActionError(
       isError: false,
       output: [outputContent],
       type: "tool_action",
-      runningState: "errored",
     }),
   };
 }

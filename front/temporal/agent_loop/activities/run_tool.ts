@@ -59,8 +59,6 @@ export async function runToolActivity(
   );
   assert(action, "Action not found");
 
-  await action.updateStatus("running");
-
   const mcpServerId = action.toolConfiguration.toolServerId;
 
   const actionBaseParams = await buildActionBaseParams({
@@ -95,8 +93,6 @@ export async function runToolActivity(
   for await (const event of eventStream) {
     switch (event.type) {
       case "tool_error":
-        await action.updateStatus("errored");
-
         // For tool errors, send immediately.
         await updateResourceAndPublishEvent(
           {
@@ -134,8 +130,6 @@ export async function runToolActivity(
         return { deferredEvents };
 
       case "tool_success":
-        await action.updateStatus("succeeded");
-
         await updateResourceAndPublishEvent(
           {
             type: "agent_action_success",

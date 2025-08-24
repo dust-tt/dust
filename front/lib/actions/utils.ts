@@ -9,10 +9,7 @@ import {
 import type { ActionSpecification } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type {
-  MCPExecutionState,
-  ToolExecutionStatus,
-} from "@app/lib/actions/statuses";
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import {
   isMCPInternalDataSourceFileSystem,
