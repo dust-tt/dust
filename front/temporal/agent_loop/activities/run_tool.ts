@@ -74,8 +74,6 @@ export async function runToolActivity(
   const mcpAction = new MCPActionType({
     ...actionBaseParams,
     id: action.id,
-    isError: action.isError,
-    executionState: action.executionState,
     type: "tool_action",
     output: null,
   });
@@ -158,7 +156,7 @@ export async function runToolActivity(
           // Replace existing action with updated one.
           agentMessage.actions[existingActionIndex] = event.action;
         } else {
-          // Add new action if it doesn't exist.
+          // Add the new action if it doesn't exist.
           agentMessage.actions.push(event.action);
         }
 
