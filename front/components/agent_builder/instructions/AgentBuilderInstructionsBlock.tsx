@@ -138,7 +138,6 @@ export function AgentBuilderInstructionsBlock({
         isInstructionDiffMode={isInstructionDiffMode}
         viewMode={viewMode}
         setViewMode={setViewMode}
-        hasBlocks={hasBlocks}
         setHasBlocks={setHasBlocks}
       />
     </AgentBuilderSectionContainer>

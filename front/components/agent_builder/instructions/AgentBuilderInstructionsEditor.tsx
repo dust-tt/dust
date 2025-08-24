@@ -1,8 +1,8 @@
 import { cn, markdownStyles } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor } from "@tiptap/core";
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import Placeholder from "@tiptap/extension-placeholder";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { Editor as ReactEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
@@ -102,7 +102,6 @@ interface AgentBuilderInstructionsEditorProps {
   isInstructionDiffMode?: boolean;
   viewMode?: "visual" | "text";
   setViewMode?: (mode: "visual" | "text") => void;
-  hasBlocks?: boolean;
   setHasBlocks?: (hasBlocks: boolean) => void;
 }
 
@@ -110,8 +109,6 @@ export function AgentBuilderInstructionsEditor({
   compareVersion,
   isInstructionDiffMode = false,
   viewMode: externalViewMode,
-  setViewMode: externalSetViewMode,
-  hasBlocks: externalHasBlocks,
   setHasBlocks: externalSetHasBlocks,
 }: AgentBuilderInstructionsEditorProps = {}) {
   const { owner } = useAgentBuilderContext();
@@ -119,12 +116,14 @@ export function AgentBuilderInstructionsEditor({
     name: "instructions",
   });
   const [internalViewMode] = useState<"visual" | "text">("visual");
-  const [internalHasBlocks, setInternalHasBlocks] = useState(false);
 
   // Use external state if provided, otherwise use internal
   const viewMode = externalViewMode ?? internalViewMode;
-  const hasBlocks = externalHasBlocks ?? internalHasBlocks;
-  const setHasBlocks = externalSetHasBlocks ?? setInternalHasBlocks;
+  // Use external setter if provided, otherwise use a no-op
+  const setHasBlocks = useMemo(
+    () => externalSetHasBlocks ?? (() => {}),
+    [externalSetHasBlocks]
+  );
 
   // Create a ref to hold the editor instance
   const editorRef = useRef<ReactEditor | null>(null);
@@ -285,11 +284,14 @@ export function AgentBuilderInstructionsEditor({
     if (viewMode === "text") {
       debouncedTextModeSync(editor, field.value);
     } else {
-      // When switching from text back to visual, flush pending sync and do immediate sync
-      debouncedTextModeSync.flush();
+      // Visual mode - cancel any pending text-mode updates to prevent race conditions
+      debouncedTextModeSync.cancel();
+      // Also cancel any pending serialization to avoid extra churn
+      debouncedUpdate.cancel();
+      
+      // Sync the editor with the current field value if needed
       const currentContent = plainTextFromTipTapContent(editor.getJSON());
       if (currentContent !== field.value) {
-        debouncedUpdate.flush(); // Save pending changes
         editor.commands.setContent(
           tipTapContentFromPlainText(field.value),
           false
