@@ -17,8 +17,9 @@ export async function publishDeferredEventsActivity(
 ): Promise<boolean> {
   let shouldPauseWorkflow = false;
 
-  for (const deferredEvent of deferredEvents) {
+  for (const [index, deferredEvent] of deferredEvents.entries()) {
     const { event, context } = deferredEvent;
+    const isLastEvent = index === deferredEvents.length - 1;
 
     const agentMessageRow = await AgentMessage.findByPk(
       context.agentMessageRowId
@@ -49,6 +50,7 @@ export async function publishDeferredEventsActivity(
               }),
             },
           },
+          isLastBlockingEventForStep: isLastEvent,
         };
         break;
 
