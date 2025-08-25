@@ -50,6 +50,9 @@ export async function publishDeferredEventsActivity(
               }),
             },
           },
+          metadata: {
+            pubsubMessageId: deferredEvent.context.agentMessageId,
+          },
           isLastBlockingEventForStep: isLastEvent,
         };
         break;

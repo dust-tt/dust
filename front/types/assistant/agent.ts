@@ -242,6 +242,10 @@ export type ToolErrorEvent = {
   messageId: string;
   error: ErrorContent;
   isLastBlockingEventForStep: boolean;
+  // TODO(DURABLE-AGENTS 2025-08-25): Move to a deferred event base interface.
+  metadata?: {
+    pubsubMessageId?: string;
+  };
 };
 
 export type AgentDisabledErrorEvent = {
