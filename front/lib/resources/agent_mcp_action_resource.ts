@@ -29,6 +29,7 @@ import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_cont
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -229,39 +230,26 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       variant: "extra_light",
     });
 
-    // Collect all unique MCP server view IDs for remote servers
     const mcpServerViewIds = [
       ...new Set(
-        blockedActions.map((a) => {
-          if (isLightServerSideMCPToolConfiguration(a.toolConfiguration)) {
-            return parseInt(a.toolConfiguration.mcpServerViewId);
-          }
-          throw new Error(" Unexpected: Malformed MCP tool configuration.");
-        })
+        removeNulls(
+          blockedActions.map(({ toolConfiguration }) => {
+            if (isLightServerSideMCPToolConfiguration(toolConfiguration)) {
+              return toolConfiguration.mcpServerViewId;
+            }
+            return null;
+          })
+        )
       ),
     ];
 
-    // Fetch MCP server views with remote servers
-    const mcpServerViews =
-      mcpServerViewIds.length > 0
-        ? await MCPServerViewModel.findAll({
-            where: {
-              id: mcpServerViewIds,
-              workspaceId: owner.id,
-            },
-            include: [
-              {
-                model: RemoteMCPServerModel,
-                as: "remoteMCPServer",
-                required: false,
-              },
-            ],
-          })
-        : [];
+    const mcpServerViews = await MCPServerViewResource.fetchByIds(
+      auth,
+      mcpServerViewIds
+    );
 
-    // Create a map for quick lookup
     const mcpServerViewMap = new Map(
-      mcpServerViews.map((view) => [view.id, view])
+      mcpServerViews.map((view) => [view.sId, view])
     );
 
     for (const action of blockedActions) {
@@ -277,30 +265,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         isToolExecutionStatusBlocked(action.status),
         "Action is not blocked."
       );
-
-      // Get authorization info based on server type
-      let authorizationInfo: AuthorizationInfo | null = null;
-
-      assert(
-        isLightServerSideMCPToolConfiguration(action.toolConfiguration),
-        " Unexpected: Malformed MCP tool configuration."
-      );
-
-      const mcpServerViewId = action.toolConfiguration.mcpServerViewId;
-      const mcpServerView = mcpServerViewMap.get(parseInt(mcpServerViewId, 10));
-
-      if (mcpServerView?.remoteMCPServer) {
-        // For remote MCP servers, get authorization from the remote server model
-        authorizationInfo = mcpServerView.remoteMCPServer.authorization;
-      } else {
-        assert(
-          isInternalMCPServerName(action.toolConfiguration.mcpServerName),
-          " Unexpected: MCP server name is not an internal MCP server name."
-        );
-        authorizationInfo =
-          INTERNAL_MCP_SERVERS[action.toolConfiguration.mcpServerName]
-            .serverInfo.authorization;
-      }
 
       blockedActionsList.push({
         messageId: agentMessage.message.sId,
@@ -318,7 +282,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           icon: action.toolConfiguration.icon,
         },
         status: action.status,
-        authorizationInfo,
+        authorizationInfo: isLightServerSideMCPToolConfiguration(
+          action.toolConfiguration
+        )
+          ? mcpServerViewMap
+              .get(action.toolConfiguration.mcpServerViewId)
+              ?.toJSON().server.authorization ?? null
+          : null,
       });
     }
 
