@@ -81,6 +81,7 @@ export function ActionValidationProvider({
   });
 
   // Filter blocked actions to only get validation required ones
+  // TODO(durable-agents): also display blocked_authentication_required.
   const validationRequirements = useMemo(() => {
     return blockedActions
       .filter((action) => action.status === "blocked_validation_required")
@@ -194,10 +195,9 @@ export function ActionValidationProvider({
       const success = await sendValidation(requirement, approved);
 
       if (!success) {
-        return; // Don't proceed if validation failed
+        return;
       }
 
-      // Find the next uncompleted validation in order
       const remainingValidations = validationRequirements.filter(
         (req) => !completedValidations.has(req.id) && req.id !== requirement.id
       );
@@ -232,14 +232,12 @@ export function ActionValidationProvider({
   const hasPendingValidations = validationRequirements.length > 0;
   const totalPendingValidations = validationRequirements.length;
 
-  // Create dialog pages
   const dialogPages: MultiPageDialogPage[] = useMemo(() => {
     if (validationRequirements.length === 0) {
       return [];
     }
 
     const pages: MultiPageDialogPage[] = [
-      // Overview page
       {
         id: "overview",
         title: "Tool Validation Required",
@@ -283,7 +281,6 @@ export function ActionValidationProvider({
       },
     ];
 
-    // Add individual validation pages in the same order as blockedActions
     validationRequirements.forEach((req) => {
       pages.push({
         id: `validation-${req.id}`,
@@ -346,7 +343,6 @@ export function ActionValidationProvider({
     return pages;
   }, [validationRequirements, errorMessage, neverAskAgain]);
 
-  // Get current page to determine which buttons to show
   const isOverviewPage = currentPageId === "overview";
   const currentValidationRequirement = isOverviewPage
     ? null
@@ -354,8 +350,7 @@ export function ActionValidationProvider({
         (req) => currentPageId === `validation-${req.id}`
       );
 
-  // Configure buttons based on current page
-  const getDialogButtons = () => {
+  function getDialogButtons() {
     if (isOverviewPage) {
       return {
         leftButton: {
@@ -409,7 +404,7 @@ export function ActionValidationProvider({
     }
 
     return {};
-  };
+  }
 
   const dialogButtons = getDialogButtons();
 
