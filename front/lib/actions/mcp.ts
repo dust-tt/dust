@@ -25,6 +25,7 @@ import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_interna
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import {
   hideFileFromActionOutput,
   rewriteContentForModel,
@@ -173,6 +174,7 @@ export type BlockedActionExecution = ToolExecutionMetadata & {
   messageId: string;
   conversationId: string;
   status: ToolExecutionBlockedStatus;
+  authorizationInfo: AuthorizationInfo | null;
 };
 
 // TODO(durable-agents): cleanup the types of the events.

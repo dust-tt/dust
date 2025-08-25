@@ -149,12 +149,8 @@ export function MCPRunAgentActionDetails({
     if (resultResource) {
       return resultResource.resource.uri;
     }
-    const output = lastNotification?.data.output;
-    if (isRunAgentProgressOutput(output)) {
-      return `/w/${owner.sId}/assistant/${output.conversationId}`;
-    }
     return null;
-  }, [resultResource, lastNotification, owner.sId]);
+  }, [resultResource]);
 
   const references = useMemo(() => {
     if (!resultResource?.resource.refs) {
