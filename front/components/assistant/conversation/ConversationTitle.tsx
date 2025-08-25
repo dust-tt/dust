@@ -15,6 +15,7 @@ import type { MouseEvent } from "react";
 import React, { useCallback, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
+import { ConversationFilesPopover } from "@app/components/assistant/conversation/ConversationFilesPopover";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -187,6 +188,10 @@ export function ConversationTitle({
             )}
           </div>
           <div className="flex items-center gap-2">
+            <ConversationFilesPopover
+              conversationId={activeConversationId}
+              owner={owner}
+            />
             <Button
               size="sm"
               variant="ghost"
