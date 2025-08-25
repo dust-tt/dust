@@ -639,16 +639,16 @@ export async function createMCPAction(
   const action = await AgentMCPActionResource.makeNew(auth, {
     agentMessageId: actionBaseParams.agentMessageId,
     augmentedInputs,
+    citationsAllocated: stepContext.citationsCount,
+    executionState: "pending",
+    isError: false,
+    mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
+    runningState: "not_started",
+    status: approvalStatusToToolExecutionStatus(approvalStatus),
     stepContentId,
     stepContext,
     toolConfiguration,
     version: 0,
-    isError: false, // TODO(durable-agents): remove this once `status` has been filled
-    executionState: "pending", // TODO(durable-agents): remove this once `status` has been filled
-    runningState: "not_started", // TODO(durable-agents): remove this once `status` has been filled
-    status: approvalStatusToToolExecutionStatus(approvalStatus),
-    citationsAllocated: stepContext.citationsCount,
-    mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
   });
 
   const mcpAction = new MCPActionType({
