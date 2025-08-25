@@ -434,6 +434,7 @@ export function getSectionColumnsPrefix(
     case "intercom":
     case "notion":
     case "slack_bot":
+    case "slack_labs":
     case "slack":
     case "microsoft":
     case "webcrawler":

@@ -263,6 +263,7 @@ export function getTableIdForContentNode(
     case "intercom":
     case "slack":
     case "slack_bot":
+    case "slack_labs":
     case "webcrawler":
     case "zendesk":
       throw new Error(

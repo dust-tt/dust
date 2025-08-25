@@ -179,6 +179,85 @@ export async function botAnswerMessage(
   }
 }
 
+export async function botAnswerMessageWithAgent(
+  message: string,
+  params: BotAnswerParams,
+  agentConfigurationId?: string,
+  options?: {
+    enableStructuredOutput?: boolean;
+    enableMessageSplitting?: boolean;
+  }
+): Promise<Result<undefined, Error>> {
+  const { slackChannel, slackMessageTs, slackTeamId } = params;
+  const connectorRes = await getSlackConnector(params);
+  if (connectorRes.isErr()) {
+    return connectorRes;
+  }
+  const { slackConfig, connector } = connectorRes.value;
+
+  try {
+    const res = await answerMessage(
+      message,
+      agentConfigurationId,
+      params,
+      connector,
+      slackConfig,
+      options
+    );
+
+    await processErrorResult(res, params, connector);
+
+    return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      {
+        error: e,
+        connectorId: connector.id,
+        slackTeamId,
+        agentConfigurationId,
+      },
+      "Unexpected exception answering to Slack Chat Bot message with agent"
+    );
+    if (isSlackWebAPIPlatformError(e) && e.data.error === "message_not_found") {
+      // This means that the message has been deleted, so we don't need to send an error message.
+      return new Ok(undefined);
+    }
+    const slackClient = await getSlackClient(connector.id);
+    try {
+      reportSlackUsage({
+        connectorId: connector.id,
+        method: "chat.postMessage",
+        channelId: slackChannel,
+        useCase: "bot",
+      });
+      if (e instanceof ProviderRateLimitError || isWebAPIRateLimitedError(e)) {
+        await slackClient.chat.postMessage({
+          channel: slackChannel,
+          blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MESSAGE),
+          thread_ts: slackMessageTs,
+        });
+      } else {
+        await slackClient.chat.postMessage({
+          channel: slackChannel,
+          text: "An unexpected error occurred. Our team has been notified",
+          thread_ts: slackMessageTs,
+        });
+      }
+    } catch (e) {
+      logger.error(
+        {
+          slackChannel,
+          slackMessageTs,
+          slackTeamId,
+          error: e,
+        },
+        "Failed to post error message to Slack"
+      );
+    }
+    return new Err(new Error("An unexpected error occurred"));
+  }
+}
+
 export async function botReplaceMention(
   messageId: number,
   mentionOverride: string,
@@ -448,7 +527,11 @@ async function answerMessage(
     slackThreadTs,
   }: BotAnswerParams,
   connector: ConnectorResource,
-  slackConfig: SlackConfigurationResource
+  slackConfig: SlackConfigurationResource,
+  options?: {
+    enableStructuredOutput?: boolean;
+    enableMessageSplitting?: boolean;
+  }
 ): Promise<Result<AgentMessageSuccessEvent | undefined, Error>> {
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
   if (slackThreadTs) {
@@ -968,6 +1051,16 @@ async function answerMessage(
     userMessage,
     slackChatBotMessage,
     agentConfigurations: mostPopularAgentConfigurations,
+    enableMessageSplitting: options?.enableMessageSplitting ?? false,
+    structuredOutputConfig: options?.enableStructuredOutput
+      ? {
+          enabled: true,
+          reactionTarget: {
+            channelId: slackChannel,
+            timestamp: slackMessageTs,
+          },
+        }
+      : undefined,
   });
 
   if (streamRes.isErr()) {

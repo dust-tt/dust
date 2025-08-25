@@ -53,6 +53,16 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
       "Monitor and track MCP (Model Context Protocol) actions executed by your agents.",
     onlyAdminCanManage: true,
   },
+  {
+    id: "slack_channel_agent",
+    label: "Automatic Slack Channel Response",
+    featureFlag: "labs_slack_channel_agent",
+    visibleWithoutAccess: false,
+    icon: TestTubeIcon,
+    description:
+      "Invoke an agent automatically for each new message posted in a specified Slack channel.",
+    onlyAdminCanManage: true,
+  },
 ];
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{

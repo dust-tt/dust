@@ -16,11 +16,13 @@ import { NotionConnectorManager } from "@connectors/connectors/notion";
 import { SalesforceConnectorManager } from "@connectors/connectors/salesforce";
 import { SlackConnectorManager } from "@connectors/connectors/slack";
 import { SlackBotConnectorManager } from "@connectors/connectors/slack_bot";
+import { SlackLabsConnectorManager } from "@connectors/connectors/slack_labs";
 import { SnowflakeConnectorManager } from "@connectors/connectors/snowflake";
 import { WebcrawlerConnectorManager } from "@connectors/connectors/webcrawler";
 import { ZendeskConnectorManager } from "@connectors/connectors/zendesk";
 import type {
   SlackConfigurationType,
+  SlackLabsConfigurationType,
   WebCrawlerConfiguration,
 } from "@connectors/types";
 import type { ModelId } from "@connectors/types";
@@ -32,6 +34,8 @@ type ConnectorManager =
   | WebcrawlerConnectorManager
   | MicrosoftConnectorManager
   | SlackConnectorManager
+  | SlackBotConnectorManager
+  | SlackLabsConnectorManager
   | IntercomConnectorManager
   | GithubConnectorManager
   | GoogleDriveConnectorManager
@@ -61,6 +65,8 @@ export function getConnectorManager({
       return new SlackConnectorManager(connectorId);
     case "slack_bot":
       return new SlackBotConnectorManager(connectorId);
+    case "slack_labs":
+      return new SlackLabsConnectorManager(connectorId);
     case "webcrawler":
       return new WebcrawlerConnectorManager(connectorId);
     case "snowflake":
@@ -85,7 +91,7 @@ export function createConnector({
   | {
       connectorProvider: Exclude<
         ConnectorProvider,
-        "webcrawler" | "slack" | "slack_bot"
+        "webcrawler" | "slack" | "slack_bot" | "slack_labs"
       >;
       params: {
         dataSourceConfig: DataSourceConfig;
@@ -108,6 +114,14 @@ export function createConnector({
         connectionId: string;
         configuration: SlackConfigurationType;
       };
+    }
+  | {
+      connectorProvider: "slack_labs";
+      params: {
+        dataSourceConfig: DataSourceConfig;
+        connectionId: string;
+        configuration: SlackLabsConfigurationType;
+      };
     }): Promise<
   Result<string, ConnectorManagerError<CreateConnectorErrorCode>>
 > {
@@ -128,6 +142,8 @@ export function createConnector({
       return SlackConnectorManager.create(params);
     case "slack_bot":
       return SlackBotConnectorManager.create(params);
+    case "slack_labs":
+      return SlackLabsConnectorManager.create(params);
     case "webcrawler":
       return WebcrawlerConnectorManager.create(params);
     case "snowflake":

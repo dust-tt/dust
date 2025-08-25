@@ -23,6 +23,12 @@ lazy_static! {
         env::var("OAUTH_SLACK_BOT_CLIENT_ID").expect("OAUTH_SLACK_BOT_CLIENT_ID must be set");
     static ref OAUTH_SLACK_BOT_CLIENT_SECRET: String = env::var("OAUTH_SLACK_BOT_CLIENT_SECRET")
         .expect("OAUTH_SLACK_BOT_CLIENT_SECRET must be set");
+    static ref OAUTH_SLACK_LABS_CHANNEL_AGENT_BOT_CLIENT_ID: String =
+        env::var("OAUTH_SLACK_LABS_CHANNEL_AGENT_BOT_CLIENT_ID")
+            .expect("OAUTH_SLACK_LABS_CHANNEL_AGENT_BOT_CLIENT_ID must be set");
+    static ref OAUTH_SLACK_LABS_CHANNEL_AGENT_BOT_CLIENT_SECRET: String =
+        env::var("OAUTH_SLACK_LABS_CHANNEL_AGENT_BOT_CLIENT_SECRET")
+            .expect("OAUTH_SLACK_LABS_CHANNEL_AGENT_BOT_CLIENT_SECRET must be set");
     static ref OAUTH_SLACK_TOOLS_CLIENT_ID: String =
         env::var("OAUTH_SLACK_TOOLS_CLIENT_ID").expect("OAUTH_SLACK_TOOLS_CLIENT_ID must be set");
     static ref OAUTH_SLACK_TOOLS_CLIENT_SECRET: String =
@@ -37,8 +43,9 @@ lazy_static! {
 pub enum SlackUseCase {
     Connection,
     Bot,
-    PersonalActions, // (personal tools setup)
-    PlatformActions, // (admin setup)
+    LabsSlackChannelAgentBot, // Dust labs Slack feature
+    PersonalActions,          // (personal tools setup)
+    PlatformActions,          // (admin setup)
 }
 
 pub struct SlackConnectionProvider {}
@@ -57,6 +64,11 @@ impl SlackConnectionProvider {
             SlackUseCase::Bot => general_purpose::STANDARD.encode(&format!(
                 "{}:{}",
                 *OAUTH_SLACK_BOT_CLIENT_ID, *OAUTH_SLACK_BOT_CLIENT_SECRET
+            )),
+            SlackUseCase::LabsSlackChannelAgentBot => general_purpose::STANDARD.encode(&format!(
+                "{}:{}",
+                *OAUTH_SLACK_LABS_CHANNEL_AGENT_BOT_CLIENT_ID,
+                *OAUTH_SLACK_LABS_CHANNEL_AGENT_BOT_CLIENT_SECRET
             )),
             SlackUseCase::PlatformActions | SlackUseCase::PersonalActions => {
                 general_purpose::STANDARD.encode(&format!(
@@ -85,6 +97,7 @@ impl Provider for SlackConnectionProvider {
             Some(use_case) => match use_case {
                 "connection" => SlackUseCase::Connection,
                 "bot" => SlackUseCase::Bot,
+                "labs_slack_channel_agent_bot" => SlackUseCase::LabsSlackChannelAgentBot,
                 "platform_actions" => SlackUseCase::PlatformActions,
                 "personal_actions" => SlackUseCase::PersonalActions,
                 _ => Err(anyhow!("Slack use_case format invalid"))?,
@@ -130,11 +143,13 @@ impl Provider for SlackConnectionProvider {
             }
         };
 
-        // For Bot and Connection we receive a bot token (acces_token). For platform_actions (admin
+        // For Bot and Connection we receive a bot token (access_token). For platform_actions (admin
         // setting up the MCP server) and personal_actions (personal tools setup) we receive a user
         // token (authed_user.access_token).
         let access_token = match app_type {
-            SlackUseCase::Connection | SlackUseCase::Bot => raw_json["access_token"]
+            SlackUseCase::Connection
+            | SlackUseCase::Bot
+            | SlackUseCase::LabsSlackChannelAgentBot => raw_json["access_token"]
                 .as_str()
                 .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?,
             SlackUseCase::PersonalActions | SlackUseCase::PlatformActions => raw_json

@@ -19,6 +19,7 @@ import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 import {
   ioTsParsePayload,
   SlackConfigurationTypeSchema,
+  SlackLabsConfigurationTypeSchema,
   WebCrawlerConfigurationTypeSchema,
 } from "@connectors/types";
 import { ConnectorConfigurationTypeSchema } from "@connectors/types";
@@ -110,6 +111,35 @@ const _createConnectorAPIHandler = async (
         const configurationRes = ioTsParsePayload(
           configuration,
           SlackConfigurationTypeSchema
+        );
+        if (configurationRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid request body: ${configurationRes.error}`,
+            },
+          });
+        }
+        connectorRes = await createConnector({
+          connectorProvider: req.params.connector_provider,
+          params: {
+            configuration: configurationRes.value,
+            dataSourceConfig: {
+              workspaceId,
+              workspaceAPIKey,
+              dataSourceId,
+            },
+            connectionId,
+          },
+        });
+        break;
+      }
+
+      case "slack_labs": {
+        const configurationRes = ioTsParsePayload(
+          configuration,
+          SlackLabsConfigurationTypeSchema
         );
         if (configurationRes.isErr()) {
           return apiError(req, res, {

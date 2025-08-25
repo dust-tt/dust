@@ -60,6 +60,7 @@ export function getContentNodeInternalIdFromTableId(
     case "github":
     case "slack":
     case "slack_bot":
+    case "slack_labs":
     case "zendesk":
     case "webcrawler":
     case "gong":
