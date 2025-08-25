@@ -299,7 +299,6 @@ function getGlobalAgent({
         webSearchBrowseMCPServerView,
         dataSourcesFileSystemMCPServerView,
         dataWarehousesMCPServerView,
-        toolsetsMCPServerView,
       });
       break;
     default:

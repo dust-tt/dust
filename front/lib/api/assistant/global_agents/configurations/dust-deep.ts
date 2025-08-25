@@ -431,14 +431,12 @@ export function _getDustTaskGlobalAgent(
     webSearchBrowseMCPServerView,
     dataSourcesFileSystemMCPServerView,
     dataWarehousesMCPServerView,
-    toolsetsMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
     dataWarehousesMCPServerView: MCPServerViewResource | null;
-    toolsetsMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -508,10 +506,6 @@ export function _getDustTaskGlobalAgent(
     ..._getDefaultWebActionsForGlobalAgent({
       agentId: GLOBAL_AGENTS_SID.DUST_TASK,
       webSearchBrowseMCPServerView,
-    }),
-    ..._getToolsetsToolsConfiguration({
-      agentId: GLOBAL_AGENTS_SID.DUST_TASK,
-      toolsetsMcpServerView: toolsetsMCPServerView,
     })
   );
 
