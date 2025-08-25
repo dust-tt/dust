@@ -48,6 +48,8 @@ export async function publishDeferredEventsActivity(
               ...(event.authError.scope && {
                 scope: event.authError.scope,
               }),
+              // TODO(DURABLE-AGENTS 2025-08-25): Find a proper place to pass conversationId.
+              conversationId: context.conversationId,
             },
           },
           metadata: {

@@ -40,19 +40,6 @@ export class BlockedAwaitingInputError extends Error {
     super("Tool requires restart after blocking events");
     this.name = BlockedAwaitingInputErrorName;
   }
-
-  // This method is used to check if an error resulting from a Temporal activity is a
-  // BlockedAwaitingInputError.
-  static isBlockedAwaitingInputError(
-    error: unknown
-  ): error is BlockedAwaitingInputError {
-    return (
-      error instanceof Error &&
-      error.name === BlockedAwaitingInputErrorName &&
-      "blockingEvents" in error &&
-      "restartState" in error
-    );
-  }
 }
 
 export type RunAgentBlockingEvent =
