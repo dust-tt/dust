@@ -22,7 +22,7 @@ import assert from "assert";
 import { useContext, useEffect, useRef, useState } from "react";
 
 import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
-import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { ValidationRequirementsProvider } from "@app/components/assistant/conversation/ValidationRequirementsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
@@ -213,7 +213,7 @@ export default function AssistantBuilderRightPanel({
               </div>
             ) : (
               <ConversationsNavigationProvider>
-                <ActionValidationProvider
+                <ValidationRequirementsProvider
                   owner={owner}
                   conversation={conversation}
                 >
@@ -273,7 +273,7 @@ export default function AssistantBuilderRightPanel({
                       currentPanel={currentPanel}
                     />
                   </GenerationContextProvider>
-                </ActionValidationProvider>
+                </ValidationRequirementsProvider>
               </ConversationsNavigationProvider>
             )}
           </div>

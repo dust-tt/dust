@@ -3,7 +3,6 @@ import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
@@ -19,6 +18,7 @@ import { FileDropProvider } from "@app/components/assistant/conversation/FileUpl
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { ValidationRequirementsProvider } from "@app/components/assistant/conversation/ValidationRequirementsProvider";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
@@ -128,7 +128,7 @@ const ConversationLayoutContent = ({
   };
 
   return (
-    <ActionValidationProvider owner={owner} conversation={conversation}>
+    <ValidationRequirementsProvider owner={owner} conversation={conversation}>
       <InputBarProvider>
         <AppContentLayout
           hasTitle={!!activeConversationId}
@@ -176,7 +176,7 @@ const ConversationLayoutContent = ({
           )}
         </AppContentLayout>
       </InputBarProvider>
-    </ActionValidationProvider>
+    </ValidationRequirementsProvider>
   );
 };
 

@@ -8,7 +8,7 @@ import {
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
-import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { ValidationRequirementsProvider } from "@app/components/assistant/conversation/ValidationRequirementsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
@@ -219,9 +219,9 @@ export function AgentBuilderPreview() {
 
   return (
     <div className="flex h-full w-full flex-col" aria-label="Agent preview">
-      <ActionValidationProvider owner={owner} conversation={conversation}>
+      <ValidationRequirementsProvider owner={owner} conversation={conversation}>
         <GenerationContextProvider>{renderContent()}</GenerationContextProvider>
-      </ActionValidationProvider>
+      </ValidationRequirementsProvider>
     </div>
   );
 }
