@@ -637,6 +637,7 @@ export async function createMCPAction(
   ) as LightMCPToolConfigurationType;
 
   const action = await AgentMCPActionResource.makeNew(auth, {
+    agentMessageId: actionBaseParams.agentMessageId,
     augmentedInputs,
     stepContentId,
     stepContext,
