@@ -160,7 +160,17 @@ export function ScheduleEditionModal({
               </div>
 
               <div>
-                <Label htmlFor="trigger-description">Frequency</Label>
+                <div className="pb-2">
+                  <Label htmlFor="trigger-description">Scheduler</Label>
+                  {true && (
+                    <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      The trigger will run in the{" "}
+                      {trigger?.configuration?.timezone ||
+                        Intl.DateTimeFormat().resolvedOptions().timeZone}{" "}
+                      timezone.
+                    </p>
+                  )}
+                </div>
 
                 <TextArea
                   id="schedule-description"
@@ -217,16 +227,14 @@ export function ScheduleEditionModal({
                 className="hidden" // Field is hidden, but we need to keep it for form validation
               />
 
-              <div>
-                <Label htmlFor="trigger-timezone">Timezone</Label>
-                <Input
-                  id="trigger-timezone"
-                  {...form.register("timezone")}
-                  placeholder="e.g., America/New_York, Europe/Paris"
-                  message={form.formState.errors.timezone?.message}
-                  messageStatus="error"
-                />
-              </div>
+              <Input
+                id="trigger-timezone"
+                {...form.register("timezone")}
+                placeholder="e.g., America/New_York, Europe/Paris"
+                message={form.formState.errors.timezone?.message}
+                messageStatus="error"
+                className="hidden" // Field is hidden, but we need to keep it for form validation
+              />
             </div>
           </FormProvider>
         </SheetContainer>
