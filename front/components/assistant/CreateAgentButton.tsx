@@ -56,7 +56,7 @@ export const CreateAgentButton = ({
           disabled={isLoading}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent align="start">
         <DropdownMenuItem
           label="agent from scratch"
           icon={DocumentIcon}

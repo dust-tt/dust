@@ -62,7 +62,7 @@ export function transformTreeToSelectionConfigurations(
         selectedResources: [],
         excludedResources: [],
         isSelectAll: isFullDataSource,
-        tagsFilter: null,
+        tagsFilter: item.tagsFilter,
       };
     }
 
@@ -139,6 +139,7 @@ export function transformSelectionConfigurationsToTree(
         name: dataSourceView.dataSource.name,
         type: "data_source",
         dataSourceView,
+        tagsFilter: config.tagsFilter,
       });
       continue;
     }
@@ -159,6 +160,7 @@ export function transformSelectionConfigurationsToTree(
             name: node.title,
             type: "node",
             node,
+            tagsFilter: config.tagsFilter,
           });
         } else {
           const pathParts = [baseParts, node.internalId];
@@ -167,6 +169,7 @@ export function transformSelectionConfigurationsToTree(
             name: node.title,
             type: "data_source",
             dataSourceView: node.dataSourceView,
+            tagsFilter: config.tagsFilter,
           });
         }
       }
@@ -190,6 +193,7 @@ export function transformSelectionConfigurationsToTree(
             name: node.title,
             type: "node",
             node,
+            tagsFilter: null,
           });
         } else {
           const pathParts = [baseParts, node.internalId];
@@ -198,6 +202,7 @@ export function transformSelectionConfigurationsToTree(
             name: node.title,
             type: "data_source",
             dataSourceView: node.dataSourceView,
+            tagsFilter: null,
           });
         }
       }

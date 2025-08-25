@@ -6,6 +6,8 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import type { DataSourceTag } from "@app/types";
 
 export interface TagSearchProps {
@@ -18,6 +20,7 @@ export interface TagSearchProps {
   tagChipColor?: "primary" | "warning";
   isLoading: boolean;
   disabled?: boolean;
+  showChipIcons?: boolean;
 }
 
 export const TagSearchInput = ({
@@ -30,7 +33,9 @@ export const TagSearchInput = ({
   tagChipColor = "primary",
   isLoading,
   disabled = false,
+  showChipIcons = false,
 }: TagSearchProps) => {
+  const { isDark } = useTheme();
   return (
     <div className="flex flex-col gap-3">
       <SearchDropdownMenu
@@ -54,6 +59,14 @@ export const TagSearchInput = ({
                     onTagAdd(tag);
                     setSearchInputValue("");
                   }}
+                  icon={
+                    showChipIcons
+                      ? getConnectorProviderLogoWithFallback({
+                          provider: tag.connectorProvider,
+                          isDark,
+                        })
+                      : undefined
+                  }
                 />
               </div>
             ))}
@@ -74,6 +87,14 @@ export const TagSearchInput = ({
             onRemove={() => onTagRemove(tag)}
             color={tagChipColor}
             size="xs"
+            icon={
+              showChipIcons
+                ? getConnectorProviderLogoWithFallback({
+                    provider: tag.connectorProvider,
+                    isDark,
+                  })
+                : undefined
+            }
           />
         ))}
       </div>

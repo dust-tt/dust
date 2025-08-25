@@ -7,7 +7,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
 import { useEffect, useMemo, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { FormProvider, useForm, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useAgentBuilderFormActions } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -25,6 +25,7 @@ import { DescriptionSection } from "@app/components/agent_builder/capabilities/s
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { ProcessingMethodSection } from "@app/components/agent_builder/capabilities/shared/ProcessingMethodSection";
+import { SelectDataSourcesFilters } from "@app/components/agent_builder/capabilities/shared/SelectDataSourcesFilters";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import {
@@ -33,17 +34,16 @@ import {
 } from "@app/components/agent_builder/get_allowed_spaces";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
-import type {
-  CapabilityFormData,
-  ConfigurationSheetPageId,
-} from "@app/components/agent_builder/types";
+import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
   capabilityFormSchema,
   CONFIGURATION_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
-import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
-import { FormProvider } from "@app/components/sparkle/FormProvider";
+import {
+  DataSourceBuilderProvider,
+  useDataSourceBuilderContext,
+} from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -198,18 +198,25 @@ export function KnowledgeConfigurationSheet({
     }
   };
 
+  const getInitialPageId = () => {
+    if (isEditing) {
+      return CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION;
+    }
+    return CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
+  };
+
   return (
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
-      <FormProvider form={form}>
+      <FormProvider {...form}>
         {debouncedOpen && (
-          <DataSourceBuilderProvider spaces={spaces}>
+          <DataSourceBuilderProvider
+            spaces={spaces}
+            initialPageId={getInitialPageId()}
+          >
             <KnowledgeConfigurationSheetContent
               onSave={form.handleSubmit(handleSave)}
               onClose={onClose}
-              open={open}
               getAgentInstructions={getAgentInstructions}
-              isEditing={isEditing}
-              presetActionData={presetActionData}
             />
           </DataSourceBuilderProvider>
         )}
@@ -221,19 +228,13 @@ export function KnowledgeConfigurationSheet({
 interface KnowledgeConfigurationSheetContentProps {
   onSave: () => void;
   onClose: () => void;
-  open: boolean;
   getAgentInstructions: () => string;
-  isEditing: boolean;
-  presetActionData?: TemplateActionPreset;
 }
 
 function KnowledgeConfigurationSheetContent({
   onSave,
   onClose,
-  open,
   getAgentInstructions,
-  isEditing,
-  presetActionData,
 }: KnowledgeConfigurationSheetContentProps) {
   const { actions } = useAgentBuilderFormActions();
   const { mcpServerViews } = useMCPServerViewsContext();
@@ -243,6 +244,7 @@ function KnowledgeConfigurationSheetContent({
     spaces,
     spaceIdToActions,
   });
+  const { currentPageId, setSheetPageId } = useDataSourceBuilderContext();
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
@@ -267,26 +269,9 @@ function KnowledgeConfigurationSheetContent({
   const { owner } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
 
-  const getInitialPageId = () => {
-    if (isEditing) {
-      return CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION;
-    }
-    return CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
-  };
-
-  const [currentPageId, setCurrentPageId] =
-    useState<ConfigurationSheetPageId>(getInitialPageId());
-
-  useEffect(() => {
-    if (open) {
-      setCurrentPageId(getInitialPageId());
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isEditing, presetActionData]);
-
   const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
-      setCurrentPageId(pageId);
+      setSheetPageId(pageId);
     }
   };
 
@@ -302,9 +287,7 @@ function KnowledgeConfigurationSheetContent({
           if (isDataSourcePage) {
             onClose();
           } else {
-            setCurrentPageId(
-              CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION
-            );
+            setSheetPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
           }
         },
       },
@@ -314,7 +297,7 @@ function KnowledgeConfigurationSheetContent({
         disabled: isDataSourcePage ? !hasSourceSelection : false,
         onClick: () => {
           if (isDataSourcePage) {
-            setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION);
+            setSheetPageId(CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION);
           } else {
             onSave();
           }
@@ -356,6 +339,8 @@ function KnowledgeConfigurationSheetContent({
       icon: config?.icon,
       content: (
         <div className="space-y-6">
+          <SelectDataSourcesFilters />
+
           <NameSection
             title="Tool Name"
             description="Customize the name of this knowledge tool to reference it in your instructions."

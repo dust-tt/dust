@@ -15,7 +15,7 @@ import {
 } from "@app/lib/actions/statuses";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -27,20 +27,22 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result } from "@app/types";
 import { removeNulls } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+import type { AgentMCPActionType } from "@app/types/actions";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentMCPActionResource
-  extends ReadonlyAttributesType<AgentMCPAction> {}
+  extends ReadonlyAttributesType<AgentMCPActionModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
-  static model: ModelStaticWorkspaceAware<AgentMCPAction> = AgentMCPAction;
+export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
+  static model: ModelStaticWorkspaceAware<AgentMCPActionModel> =
+    AgentMCPActionModel;
 
   constructor(
-    model: ModelStaticWorkspaceAware<AgentMCPAction>,
-    blob: Attributes<AgentMCPAction>,
+    model: ModelStaticWorkspaceAware<AgentMCPActionModel>,
+    blob: Attributes<AgentMCPActionModel>,
     // TODO(DURABLE-AGENTS, 2025-08-21): consider using the resource instead of the model.
     readonly stepContent: NonAttribute<AgentStepContentModel>
   ) {
@@ -49,7 +51,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
 
   private static async baseFetch(
     auth: Authenticator,
-    { where, limit, order }: ResourceFindOptions<AgentMCPAction> = {}
+    { where, limit, order }: ResourceFindOptions<AgentMCPActionModel> = {}
   ): Promise<AgentMCPActionResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
@@ -84,11 +86,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<AgentMCPAction>, "workspaceId">,
+    blob: Omit<CreationAttributes<AgentMCPActionModel>, "workspaceId">,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<AgentMCPActionResource> {
     const workspace = auth.getNonNullableWorkspace();
-    const action = await AgentMCPAction.create(
+    const action = await AgentMCPActionModel.create(
       {
         ...blob,
         workspaceId: workspace.id,
@@ -149,6 +151,19 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     );
   }
 
+  static async fetchByModelIds(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<AgentMCPActionResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: ids,
+        },
+      },
+    });
+  }
+
   static async listBlockedActionsForConversation(
     auth: Authenticator,
     conversationId: string
@@ -163,7 +178,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       return [];
     }
 
-    const blockedActions = await AgentMCPAction.findAll({
+    const blockedActions = await AgentMCPActionModel.findAll({
       include: [
         {
           model: AgentMessage,
@@ -278,7 +293,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     return actions;
   }
 
-  toJSON() {
+  toJSON(): AgentMCPActionType {
     return {
       agentMessageId: this.agentMessageId,
       augmentedInputs: this.augmentedInputs,
@@ -310,7 +325,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
   ): Promise<Result<undefined, Error>> {
     try {
       const workspaceId = auth.getNonNullableWorkspace().id;
-      await AgentMCPAction.destroy({
+      await AgentMCPActionModel.destroy({
         where: {
           agentMessageId: { [Op.in]: params.agentMessageIds },
           workspaceId,
@@ -328,7 +343,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
-      await AgentMCPAction.destroy({
+      await AgentMCPActionModel.destroy({
         where: {
           id: this.id,
         },

@@ -73,6 +73,7 @@ export function DataSourceViewTable({
         entry: {
           type: "data_source",
           dataSourceView: dsv,
+          tagsFilter: null,
         },
       } satisfies DataSourceRowData;
     })

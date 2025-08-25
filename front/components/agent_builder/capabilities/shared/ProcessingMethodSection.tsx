@@ -111,7 +111,7 @@ export function ProcessingMethodSection() {
             />
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="start">
+          <DropdownMenuContent align="start" className="max-w-100">
             {mcpServerViewsWithKnowledge
               .filter((view) =>
                 hasOnlyTablesSelected
@@ -129,11 +129,10 @@ export function ProcessingMethodSection() {
               ))}
           </DropdownMenuContent>
         </DropdownMenu>
-
-        {!hasOnlyTablesSelected && hasSomeTablesSelected && (
-          <Chip color="info" size="sm" label=" Your tables will be ignored " />
-        )}
       </div>
+      {!hasOnlyTablesSelected && hasSomeTablesSelected && (
+        <Chip color="info" size="sm" label=" Your tables will be ignored " />
+      )}
     </div>
   );
 }

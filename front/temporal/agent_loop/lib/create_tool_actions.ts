@@ -1,4 +1,7 @@
-import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type {
+  MCPApproveExecutionEvent,
+  MCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
 import { createMCPAction } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
@@ -46,6 +49,9 @@ export async function createToolActionsActivity(
   const conversationId = conversation.sId;
 
   const actionBlobs: ActionBlob[] = [];
+  const approvalEvents: Array<
+    Omit<MCPApproveExecutionEvent, "isLastBlockingEventForStep">
+  > = [];
 
   for (const [
     index,
@@ -65,8 +71,28 @@ export async function createToolActionsActivity(
     });
 
     if (result) {
-      actionBlobs.push(result);
+      actionBlobs.push(result.actionBlob);
+      if (result.approvalEventData) {
+        approvalEvents.push(result.approvalEventData);
+      }
     }
+  }
+
+  // Publish all approval events with the isLastBlockingEventForStep flag
+  for (const [idx, eventData] of approvalEvents.entries()) {
+    const isLastApproval = idx === approvalEvents.length - 1;
+
+    await updateResourceAndPublishEvent(
+      {
+        ...eventData,
+        isLastBlockingEventForStep: isLastApproval,
+      },
+      agentMessageRow,
+      {
+        conversationId,
+        step,
+      }
+    );
   }
 
   return {
@@ -95,7 +121,13 @@ async function createActionForTool(
     stepContext: StepContext;
     step: number;
   }
-): Promise<ActionBlob | void> {
+): Promise<{
+  actionBlob: ActionBlob;
+  approvalEventData?: Omit<
+    MCPApproveExecutionEvent,
+    "isLastBlockingEventForStep"
+  >;
+} | void> {
   const { status } = await getExecutionStatusFromConfig(
     auth,
     actionConfiguration,
@@ -125,6 +157,9 @@ async function createActionForTool(
           message: validateToolInputsResult.error.message,
           metadata: null,
         },
+        // This is not exactly correct, but it's not relevant here as we only care about the
+        // blocking nature of the event, which is not the case here.
+        isLastBlockingEventForStep: false,
       },
       agentMessageRow,
       {
@@ -167,34 +202,29 @@ async function createActionForTool(
     }
   );
 
-  if (status === "blocked_validation_required") {
-    await updateResourceAndPublishEvent(
-      {
-        type: "tool_approve_execution",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        conversationId,
-        actionId: mcpAction.getSId(auth.getNonNullableWorkspace()),
-        inputs: mcpAction.params,
-        stake: actionConfiguration.permission,
-        metadata: {
-          toolName: actionConfiguration.originalName,
-          mcpServerName: actionConfiguration.mcpServerName,
-          agentName: agentConfiguration.name,
-          icon: actionConfiguration.icon,
-        },
-      },
-      agentMessageRow,
-      {
-        conversationId,
-        step,
-      }
-    );
-  }
-
   return {
-    actionId: agentMCPAction.id,
-    needsApproval: status === "blocked_validation_required",
+    actionBlob: {
+      actionId: agentMCPAction.id,
+      needsApproval: status === "blocked_validation_required",
+    },
+    approvalEventData:
+      status === "blocked_validation_required"
+        ? {
+            type: "tool_approve_execution",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            conversationId,
+            actionId: mcpAction.getSId(auth.getNonNullableWorkspace()),
+            inputs: mcpAction.params,
+            stake: actionConfiguration.permission,
+            metadata: {
+              toolName: actionConfiguration.originalName,
+              mcpServerName: actionConfiguration.mcpServerName,
+              agentName: agentConfiguration.name,
+              icon: actionConfiguration.icon,
+            },
+          }
+        : undefined,
   };
 }

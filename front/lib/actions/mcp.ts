@@ -182,6 +182,7 @@ export type MCPApproveExecutionEvent = ToolExecutionMetadata & {
   configurationId: string;
   messageId: string;
   conversationId: string;
+  isLastBlockingEventForStep?: boolean;
 };
 
 export function getMCPApprovalStateFromUserApprovalState(

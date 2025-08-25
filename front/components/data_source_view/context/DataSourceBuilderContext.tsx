@@ -38,6 +38,7 @@ import {
   useReducer,
 } from "react";
 
+import type { ConfigurationPagePageId } from "@app/components/agent_builder/types";
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import type {
   DataSourceBuilderTreeItemType,
@@ -58,6 +59,7 @@ import type {
   DataSourceViewContentNode,
   DataSourceViewType,
   SpaceType,
+  TagsFilter,
 } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -67,6 +69,7 @@ type StateType = {
    * so in this case we can use index to update specific values
    */
   navigationHistory: NavigationHistoryEntryType[];
+  currentPageId: ConfigurationPagePageId;
 };
 
 type DataSourceBuilderState = StateType & {
@@ -144,6 +147,15 @@ type DataSourceBuilderState = StateType & {
    * Navigate to a specific node
    */
   navigateTo: (index: number) => void;
+
+  /**
+   * Update the `tagsFilter` of the given `sources` index
+   */
+  updateSourcesTags: (index: number, tagsFilter: TagsFilter) => void;
+
+  toggleTagsMode: (dataSourceView: DataSourceViewType) => void;
+
+  setSheetPageId: (pageId: ConfigurationPagePageId) => void;
 };
 
 type ActionType =
@@ -166,6 +178,10 @@ type ActionType =
   | {
       type: "NAVIGATION_NAVIGATE_TO";
       payload: { index: number };
+    }
+  | {
+      type: "SET_SHEET_CURRENT_PAGE";
+      payload: { pageId: ConfigurationPagePageId };
     };
 
 const DataSourceBuilderContext = createContext<
@@ -200,7 +216,7 @@ function dataSourceBuilderReducer(
         ...state,
         navigationHistory: [
           ...state.navigationHistory,
-          { type: "node", node: payload.node },
+          { type: "node", node: payload.node, tagsFilter: null },
         ],
       };
     }
@@ -215,8 +231,18 @@ function dataSourceBuilderReducer(
         ...state,
         navigationHistory: [
           ...state.navigationHistory.slice(0, 3),
-          { type: "data_source", dataSourceView: payload.dataSourceView },
+          {
+            type: "data_source",
+            dataSourceView: payload.dataSourceView,
+            tagsFilter: null,
+          },
         ],
+      };
+    }
+    case "SET_SHEET_CURRENT_PAGE": {
+      return {
+        ...state,
+        currentPageId: payload.pageId,
       };
     }
     default:
@@ -226,14 +252,17 @@ function dataSourceBuilderReducer(
 
 export function DataSourceBuilderProvider({
   spaces,
+  initialPageId,
   children,
 }: {
   spaces: SpaceType[];
+  initialPageId: ConfigurationPagePageId;
   children: React.ReactNode;
 }) {
   const { field } = useSourcesFormController();
   const [state, dispatch] = useReducer(dataSourceBuilderReducer, {
     navigationHistory: [{ type: "root" }],
+    currentPageId: initialPageId,
   });
 
   const selectNode: DataSourceBuilderState["selectNode"] = useCallback(
@@ -391,6 +420,73 @@ export function DataSourceBuilderProvider({
     []
   );
 
+  const updateSourcesTags: DataSourceBuilderState["updateSourcesTags"] =
+    useCallback(
+      (index, tagsFilter) => {
+        field.onChange({
+          ...field.value,
+          in: field.value.in.map((source, i) => {
+            if (i === index) {
+              return {
+                ...source,
+                tagsFilter,
+              };
+            }
+
+            return source;
+          }),
+        });
+      },
+      [field]
+    );
+
+  const toggleTagsMode: DataSourceBuilderState["toggleTagsMode"] = useCallback(
+    (dataSourceView) => {
+      field.onChange({
+        ...field.value,
+        in: field.value.in.map((source) => {
+          // Check if this source matches the given dataSourceView
+          const isMatchingSource =
+            (source.type === "data_source" &&
+              source.dataSourceView.sId === dataSourceView.sId) ||
+            (source.type === "node" &&
+              source.node.dataSourceView.sId === dataSourceView.sId);
+
+          if (isMatchingSource && "tagsFilter" in source) {
+            // Initialize tagsFilter if null
+            const currentTagsFilter = source.tagsFilter || {
+              in: [],
+              not: [],
+              mode: "custom" as const,
+            };
+
+            // Toggle between "auto" and "custom" modes
+            const newMode =
+              currentTagsFilter.mode === "auto" ? "custom" : "auto";
+
+            return {
+              ...source,
+              tagsFilter: {
+                ...currentTagsFilter,
+                mode: newMode,
+              },
+            };
+          }
+
+          return source;
+        }),
+      });
+    },
+    [field]
+  );
+
+  const setSheetPageId: DataSourceBuilderState["setSheetPageId"] = useCallback(
+    (pageId) => {
+      dispatch({ type: "SET_SHEET_CURRENT_PAGE", payload: { pageId } });
+    },
+    []
+  );
+
   const value = useMemo(
     () => ({
       ...state,
@@ -407,6 +503,9 @@ export function DataSourceBuilderProvider({
       setDataSourceViewEntry,
       addNodeEntry,
       navigateTo,
+      updateSourcesTags,
+      toggleTagsMode,
+      setSheetPageId,
     }),
     [
       state,
@@ -423,6 +522,9 @@ export function DataSourceBuilderProvider({
       setCategoryEntry,
       setSpaceEntry,
       setDataSourceViewEntry,
+      updateSourcesTags,
+      toggleTagsMode,
+      setSheetPageId,
     ]
   );
 
