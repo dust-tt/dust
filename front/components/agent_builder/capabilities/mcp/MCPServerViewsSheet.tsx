@@ -66,7 +66,6 @@ import { InternalActionIcons } from "@app/lib/actions/mcp_icons";
 import { isCustomServerIconType } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useModels } from "@app/lib/swr/models";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { O4_MINI_MODEL_ID } from "@app/types";
@@ -137,13 +136,6 @@ export function MCPServerViewsSheet({
     nonDefaultMCPServerViews,
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
-
-  // For getting all agents to find selected Child Agent
-  const { agentConfigurations: allAgentConfigurations } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "list",
-    });
 
   const [selectedToolsInSheet, setSelectedToolsInSheet] = useState<
     SelectedTool[]
