@@ -50,6 +50,14 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
 
+// Convert stored name back to user-friendly format for display
+function nameToDisplayFormat(name: string): string {
+  return name
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 interface KnowledgeConfigurationSheetProps {
   onSave: (action: AgentBuilderAction) => void;
   onClose: () => void;
@@ -161,12 +169,15 @@ export function KnowledgeConfigurationSheet({
       return mcpServerViews.find((view) => view.server.name === "search");
     })();
 
-    const defaultName =
+    const storedName =
       action?.name ??
       presetActionData?.name ??
       selectedMCPServerView?.name ??
       selectedMCPServerView?.server.name ??
       "";
+
+    // Convert stored name to user-friendly format for display
+    const defaultName = storedName ? nameToDisplayFormat(storedName) : "";
 
     const defaultDescription =
       action?.description ?? presetActionData?.description ?? "";
@@ -342,13 +353,7 @@ function KnowledgeConfigurationSheetContent({
         <div className="space-y-6">
           <SelectDataSourcesFilters />
 
-          <NameSection
-            title="Tool Name"
-            description="Customize the name of this knowledge tool to reference it in your instructions."
-            label="Name"
-            placeholder="search_gdrive"
-            helpText="Use lowercase letters, numbers, and underscores only. No spaces allowed."
-          />
+          <NameSection title="Name" placeholder="Search Google Drive" />
 
           <ProcessingMethodSection />
 
