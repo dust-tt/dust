@@ -3,7 +3,6 @@ import {
   DataTable,
   ScrollableDataTable,
   Spinner,
-  Tooltip,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import React, { useContext, useMemo } from "react";
@@ -74,39 +73,29 @@ export function DataSourceCategoryBrowser({
         enableHiding: false,
         cell: ({ row }) => {
           const selectionState = isRowSelected(row.original.id);
-
+          if (selectionState !== "partial") {
+            return undefined;
+          }
           return (
-            <div className="flex h-full items-center">
-              <Tooltip
-                trigger={
-                  <Checkbox
-                    size="xs"
-                    checked={selectionState}
-                    disabled={selectionState !== "partial"}
-                    onClick={(event) => event.stopPropagation()}
-                    onCheckedChange={async () => {
-                      if (selectionState === "partial") {
-                        const confirmed = await confirm({
-                          title: "Are you sure?",
-                          message: `Do you want to unselect all of "${row.original.title}"`,
-                          validateLabel: "Unselect all",
-                          validateVariant: "warning",
-                        });
-                        if (confirmed) {
-                          removeNode({
-                            type: "category",
-                            category: row.original.id,
-                          });
-                        }
-                      }
-                    }}
-                  />
-                }
-                label={
-                  selectionState === "partial"
-                    ? `Unselect all of "${row.original.title}"`
-                    : "You cannot select a whole category"
-                }
+            <div className="flex h-full w-full items-center">
+              <Checkbox
+                size="xs"
+                checked={selectionState}
+                onClick={(event) => event.stopPropagation()}
+                onCheckedChange={async () => {
+                  const confirmed = await confirm({
+                    title: "Are you sure?",
+                    message: `Do you want to unselect all of "${row.original.title}"?`,
+                    validateLabel: "Unselect all",
+                    validateVariant: "warning",
+                  });
+                  if (confirmed) {
+                    removeNode({
+                      type: "category",
+                      category: row.original.id,
+                    });
+                  }
+                }}
               />
             </div>
           );

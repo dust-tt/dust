@@ -11,6 +11,7 @@ import { useForm, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useAgentBuilderFormActions } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { KnowledgeFooter } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeFooter";
 import {
   transformSelectionConfigurationsToTree,
@@ -42,7 +43,6 @@ import {
   CONFIGURATION_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
 import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
-import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -388,6 +388,7 @@ function KnowledgeConfigurationSheetContent({
       onSave={onSave}
       size="xl"
       showHeaderNavigation={false}
+      showNavigation={false}
       addFooterSeparator
       {...getFooterButtons()}
     />

@@ -43,6 +43,7 @@ import {
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
 
@@ -76,6 +77,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     workspaceId: owner.sId,
   });
 
+  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&
     !isBuilder(owner);
@@ -302,14 +304,24 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                       <>
                         <DropdownMenuLabel>Agent</DropdownMenuLabel>
                         <DropdownMenuItem
-                          href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
+                          href={getAgentBuilderRoute(
+                            owner.sId,
+                            "new",
+                            hasAgentBuilderV2,
+                            "flow=personal_assistants"
+                          )}
                           icon={DocumentIcon}
                           label="New agent from scratch"
                           data-gtm-label="assistantCreationButton"
                           data-gtm-location="sidebarMenu"
                         />
                         <DropdownMenuItem
-                          href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
+                          href={getAgentBuilderRoute(
+                            owner.sId,
+                            "create",
+                            hasAgentBuilderV2,
+                            "flow=personal_assistants"
+                          )}
                           icon={MagicIcon}
                           label="New agent from template"
                           data-gtm-label="assistantCreationButton"
@@ -339,7 +351,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                     )}
                     {isBuilder(owner) && (
                       <DropdownMenuItem
-                        href={`/w/${owner.sId}/builder/assistants`}
+                        href={getAgentBuilderRoute(
+                          owner.sId,
+                          "manage",
+                          hasAgentBuilderV2
+                        )}
                         icon={RobotIcon}
                         label="Manage agents"
                         data-gtm-label="assistantManagementButton"
@@ -476,7 +492,7 @@ const RenderConversation = ({
           icon={
             conversation.actionRequired
               ? ActionRequiredIcon
-              : conversation.unread
+              : conversation.visibility === "triggered"
                 ? ClockIcon
                 : undefined
           }

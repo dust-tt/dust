@@ -183,6 +183,7 @@ export const InternalPostConversationsRequestBodySchema = t.type({
   title: t.union([t.string, t.null]),
   visibility: t.union([
     t.literal("unlisted"),
+    t.literal("triggered"),
     t.literal("deleted"),
     t.literal("test"),
   ]),

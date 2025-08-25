@@ -1,41 +1,17 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import {
+  makeInternalMCPServer,
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 
 import type { FreshserviceTicket } from "./freshservice_api_helper";
 import { FreshserviceTicketSchema } from "./freshservice_api_helper";
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "freshservice",
-  icon: "FreshserviceLogo",
-  version: "1.0.0",
-  description:
-    "Freshservice integration supporting ticket management, service catalog, solutions, departments, " +
-    "on-call schedules, and more. Provides comprehensive access to Freshservice resources with " +
-    "OAuth authentication and secure API access.",
-  authorization: {
-    provider: "freshservice" as const,
-    supported_use_cases: ["platform_actions", "personal_actions"] as const,
-  },
-  documentationUrl: null,
-};
-
 const createServer = (): McpServer => {
-  const server = new McpServer(serverInfo, {
-    instructions: `
-     **Best Practices:**
-      - Use specific filters when listing tickets to narrow down results
-      - By default, \`list_tickets\` returns minimal fields (id, subject, status) for performance
-      - By default, \`get_ticket\` returns essential fields for detailed information
-      - Use \`get_ticket_read_fields\` only if you need additional custom fields
-      - Use \`include\` parameter with \`get_ticket\` to get related data like conversations, requester info, etc.
-    `,
-  });
+  const server = makeInternalMCPServer("freshservice");
 
   // Helper function to make authenticated API calls
   const withAuth = async <T>({
@@ -923,4 +899,3 @@ const createServer = (): McpServer => {
 };
 
 export default createServer;
-export { serverInfo };

@@ -31,3 +31,14 @@ export const parseQueryString = (url: string) => {
 
   return params;
 };
+
+export const getAgentBuilderRoute = (
+  workspaceId: string,
+  route: string,
+  hasAgentBuilderV2: boolean,
+  queryParams?: string
+): string => {
+  const basePath = hasAgentBuilderV2 ? "agents" : "assistants";
+  const fullPath = `/w/${workspaceId}/builder/${basePath}${route === "manage" ? "" : `/${route}`}`;
+  return queryParams ? `${fullPath}?${queryParams}` : fullPath;
+};

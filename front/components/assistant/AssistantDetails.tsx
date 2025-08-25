@@ -39,6 +39,8 @@ import { MembersList } from "@app/components/members/MembersList";
 import { isMCPConfigurationForAgentMemory } from "@app/lib/actions/types/guards";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useEditors, useUpdateEditors } from "@app/lib/swr/editors";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -93,8 +95,12 @@ function AssistantDetailsInfo({
   agentConfiguration: AgentConfigurationType;
   owner: WorkspaceType;
 }) {
-  const isConfigurable = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
 
+  const isConfigurable = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
   return (
     <>
       {agentConfiguration.tags.length > 0 && (
@@ -117,7 +123,11 @@ function AssistantDetailsInfo({
             <Button
               label={`Manage ${agentConfiguration.name} configuration`}
               icon={Cog6ToothIcon}
-              href={`/w/${owner.sId}/builder/assistants/${agentConfiguration.sId}`}
+              href={getAgentBuilderRoute(
+                owner.sId,
+                agentConfiguration.sId,
+                hasAgentBuilderV2
+              )}
             />
           ) : (
             <Chip
