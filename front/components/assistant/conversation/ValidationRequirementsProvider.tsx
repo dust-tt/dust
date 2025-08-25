@@ -110,9 +110,36 @@ export function ValidationRequirementsProvider({
 
   useNavigationLock(isDialogOpen);
 
+  // Poll for blocked actions every 2 seconds when conversation is active
+  useEffect(() => {
+    if (!conversation?.sId) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      void mutateBlockedActions();
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [conversation?.sId, mutateBlockedActions]);
+
   // Automatically open dialog when validation requirements become available
   useEffect(() => {
+    console.log(
+      "ValidationRequirementsProvider: validationRequirements changed",
+      {
+        length: validationRequirements.length,
+        isDialogOpen,
+        requirements: validationRequirements,
+      }
+    );
+
     if (validationRequirements.length > 0 && !isDialogOpen) {
+      console.log(
+        "ValidationRequirementsProvider: Opening dialog for",
+        validationRequirements.length,
+        "validations"
+      );
       // Skip overview page if there's only one validation
       if (validationRequirements.length === 1) {
         setCurrentPageId(`validation-${validationRequirements[0].id}`);
@@ -123,7 +150,7 @@ export function ValidationRequirementsProvider({
       setCompletedValidations(new Set());
       setErrorMessage(null);
     }
-  }, [validationRequirements, isDialogOpen]);
+  }, [validationRequirements]);
 
   const sendValidation = useCallback(
     async (
