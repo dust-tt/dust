@@ -51,7 +51,7 @@ export const CreateAgentButton = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         <DropdownMenuItem
-          label="Agent from scratch"
+          label="agent from scratch"
           icon={DocumentIcon}
           onClick={() => {
             setIsLoading(true);
@@ -61,7 +61,7 @@ export const CreateAgentButton = ({
           }}
         />
         <DropdownMenuItem
-          label="Agent from template"
+          label="agent from template"
           icon={MagicIcon}
           onClick={() => {
             setIsLoading(true);
