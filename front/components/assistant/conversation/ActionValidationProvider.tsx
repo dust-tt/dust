@@ -24,6 +24,7 @@ import {
   useState,
 } from "react";
 
+import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
@@ -319,9 +320,17 @@ export function ActionValidationProvider({
                 ))
               }
             >
-              {isAuthenticationRequired
-                ? "Personal Authentication Required"
-                : "Tool Validation Required"}
+              {isAuthenticationRequired ? (
+                <div className="flex flex-col">
+                  <span>Personal Authentication Required</span>
+                  <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                    The agent took an action that requires personal
+                    authentication
+                  </span>
+                </div>
+              ) : (
+                "Tool Validation Required"
+              )}
             </DialogTitle>
           </DialogHeader>
           <DialogContainer>
@@ -409,18 +418,22 @@ export function ActionValidationProvider({
             )}</>)
             {/* TODO: move this to an actual component, TBD on work on triggers.. */}
             {isAuthenticationRequired ? (
-              <div className="flex flex-col gap-4">
-                <span>
-                  The agent took an action that requires personal authentication
-                </span>
-                {actionsBlockedOnAuthentication.map((action) => (
-                  // TODO
-                  <div key={action.actionId}>
-                    <b>@{action.metadata.agentName}</b> is trying to use the
-                    tool <b>{asDisplayName(action.metadata.toolName)}</b> from{" "}
-                    <b>{asDisplayName(action.metadata.mcpServerName)}</b>
-                  </div>
-                ))}
+              <div className="flex flex-col gap-2">
+                {actionsBlockedOnAuthentication.map(
+                  (action) =>
+                    action.mcpServerId &&
+                    action.authorizationInfo && (
+                      <MCPServerPersonalAuthenticationRequired
+                        key={`personal-auth-required-${action.actionId}`}
+                        owner={owner}
+                        mcpServerId={action.mcpServerId}
+                        provider={action.authorizationInfo.provider}
+                        scope={action.authorizationInfo.scope}
+                        // We only retry when clicking on Done.
+                        retryHandler={() => {}}
+                      />
+                    )
+                )}
               </div>
             ) : (
               <>

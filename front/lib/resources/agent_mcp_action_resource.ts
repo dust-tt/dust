@@ -257,6 +257,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         isToolExecutionStatusBlocked(action.status),
         "Action is not blocked."
       );
+      const mcpServerView = isLightServerSideMCPToolConfiguration(
+        action.toolConfiguration
+      )
+        ? mcpServerViewMap.get(action.toolConfiguration.mcpServerViewId)
+        : null;
 
       blockedActionsList.push({
         messageId: agentMessage.message.sId,
@@ -273,14 +278,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           agentName: agentConfiguration.name,
           icon: action.toolConfiguration.icon,
         },
+        mcpServerId: mcpServerView?.mcpServerId,
         status: action.status,
-        authorizationInfo: isLightServerSideMCPToolConfiguration(
-          action.toolConfiguration
-        )
-          ? mcpServerViewMap
-              .get(action.toolConfiguration.mcpServerViewId)
-              ?.toJSON().server.authorization ?? null
-          : null,
+        authorizationInfo: mcpServerView?.toJSON().server.authorization ?? null,
       });
     }
 

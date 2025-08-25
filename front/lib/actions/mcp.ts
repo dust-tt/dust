@@ -168,6 +168,7 @@ export type ToolExecutionMetadata = {
   actionId: string;
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
+  mcpServerId?: string;
   metadata: MCPValidationMetadataType;
 };
 
