@@ -1,12 +1,9 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import {
-  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
-  DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/actions/constants";
+import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/actions/constants";
 import {
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
@@ -15,10 +12,12 @@ import type {
   BrowseResultResourceType,
   WebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeInternalMCPServer,
+  makeMCPToolTextError,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import {
   browseUrls,
@@ -26,19 +25,10 @@ import {
 } from "@app/lib/utils/webbrowse";
 import { webSearch } from "@app/lib/utils/websearch";
 
-export const serverInfo: InternalMCPServerDefinitionType = {
-  name: DEFAULT_WEBSEARCH_ACTION_NAME,
-  version: "1.0.0",
-  description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
-  icon: "ActionGlobeAltIcon",
-  authorization: null,
-  documentationUrl: null,
-};
-
 const BROWSE_MAX_TOKENS_LIMIT = 32_000;
 
 const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer(DEFAULT_WEBSEARCH_ACTION_NAME);
 
   server.tool(
     WEBSEARCH_TOOL_NAME,
