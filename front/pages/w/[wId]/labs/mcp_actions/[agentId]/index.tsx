@@ -1,3 +1,4 @@
+import type { ToolExecutionStatus } from "@dust-tt/client";
 import {
   ActionCodeBoxIcon,
   Avatar,
@@ -18,7 +19,6 @@ import { ConversationsNavigationProvider } from "@app/components/assistant/conve
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";

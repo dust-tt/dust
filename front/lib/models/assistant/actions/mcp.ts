@@ -1,10 +1,10 @@
+import type { ToolExecutionStatus } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";

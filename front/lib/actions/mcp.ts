@@ -1,4 +1,9 @@
 import type { ActionApprovalStateType } from "@dust-tt/client";
+import type {
+  ToolExecutionBlockedStatus,
+  ToolExecutionStatus,
+} from "@dust-tt/client";
+import { isToolExecutionStatusFinal } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -29,11 +34,6 @@ import {
   hideFileFromActionOutput,
   rewriteContentForModel,
 } from "@app/lib/actions/mcp_utils";
-import type {
-  ToolExecutionBlockedStatus,
-  ToolExecutionStatus,
-} from "@app/lib/actions/statuses";
-import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type {
   ActionGeneratedFileType,
   AgentLoopRunContextType,

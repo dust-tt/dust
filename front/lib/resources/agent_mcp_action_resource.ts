@@ -1,3 +1,8 @@
+import type { ToolExecutionStatus } from "@dust-tt/client";
+import {
+  isToolExecutionStatusBlocked,
+  TOOL_EXECUTION_BLOCKED_STATUSES,
+} from "@dust-tt/client";
 import assert from "assert";
 import type {
   Attributes,
@@ -8,11 +13,6 @@ import type {
 import { Op } from "sequelize";
 
 import type { BlockedActionExecution } from "@app/lib/actions/mcp";
-import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import {
-  isToolExecutionStatusBlocked,
-  TOOL_EXECUTION_BLOCKED_STATUSES,
-} from "@app/lib/actions/statuses";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";

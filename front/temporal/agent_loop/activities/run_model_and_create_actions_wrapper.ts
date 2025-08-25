@@ -1,6 +1,6 @@
+import { isToolExecutionStatusFinal } from "@dust-tt/client";
 import assert from "assert";
 
-import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction as AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
