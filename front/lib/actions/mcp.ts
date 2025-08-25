@@ -739,9 +739,42 @@ export async function handleMCPActionError(
 }
 
 export function isMCPApproveExecutionEvent(
-  event: AgentActionRunningEvents
+  event: unknown
 ): event is MCPApproveExecutionEvent {
-  return event.type === "tool_approve_execution";
+  return (
+    typeof event === "object" &&
+    event !== null &&
+    "type" in event &&
+    event.type === "tool_approve_execution"
+  );
+}
+
+function isToolPersonalAuthRequiredEvent(
+  event: unknown
+): event is ToolPersonalAuthRequiredEvent {
+  return (
+    typeof event === "object" &&
+    event !== null &&
+    "type" in event &&
+    event.type === "tool_error" &&
+    "error" in event &&
+    typeof event.error === "object" &&
+    event.error !== null &&
+    "code" in event.error &&
+    event.error.code === "mcp_server_personal_authentication_required"
+  );
+}
+
+export function isBlockedActionEvent(
+  event: unknown
+): event is MCPApproveExecutionEvent | ToolPersonalAuthRequiredEvent {
+  return (
+    typeof event === "object" &&
+    event !== null &&
+    "type" in event &&
+    (isMCPApproveExecutionEvent(event) ||
+      isToolPersonalAuthRequiredEvent(event))
+  );
 }
 
 // TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent mcp action.
