@@ -3,10 +3,10 @@ import {
   createConversation,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
-import { Authenticator, AuthenticatorType } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import type { AuthenticatorType } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { TriggerType } from "@app/types/assistant/triggers";
+import type { TriggerType } from "@app/types/assistant/triggers";
 
 export async function runScheduledAgentsActivity(
   authType: AuthenticatorType,
