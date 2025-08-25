@@ -234,10 +234,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       ...new Set(
         removeNulls(
           blockedActions.map(({ toolConfiguration }) => {
-            if (isLightServerSideMCPToolConfiguration(toolConfiguration)) {
-              return toolConfiguration.mcpServerViewId;
-            }
-            return null;
+            return isLightServerSideMCPToolConfiguration(toolConfiguration)
+              ? toolConfiguration.mcpServerViewId
+              : null;
           })
         )
       ),
