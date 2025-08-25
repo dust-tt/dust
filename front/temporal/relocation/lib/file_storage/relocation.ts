@@ -79,7 +79,7 @@ export async function withJSONSerializationRetry<
 >(
   operation: () => Promise<T>,
   options: {
-    result: Omit<T, "nextLimit">;
+    fallbackResult: Omit<T, "nextLimit">;
     limit: number;
     localLogger: Logger;
   }
@@ -88,17 +88,17 @@ export async function withJSONSerializationRetry<
     return await operation();
   } catch (err) {
     if (isStringTooLongError(err) || isJSONStringifyRangeError(err)) {
-      const { result, limit, localLogger } = options;
-      const nextLimit = Math.floor(limit / 2);
+      const { fallbackResult, limit, localLogger } = options;
+      const nextLimit: number | null = Math.floor(limit / 2);
       if (nextLimit === 0) {
         localLogger.error(
-          { error: err, result },
+          { error: err, fallbackResult },
           "[Relocation storage] Failed to serialize data, string too long."
         );
         throw err;
       } else {
         const r = {
-          ...result,
+          ...fallbackResult,
           nextLimit,
         };
         logger.error(
@@ -106,7 +106,7 @@ export async function withJSONSerializationRetry<
           "[Relocation storage] Failed to serialize data, string too long - retrying with smaller limit."
         );
         // Keep the same page cursor, but try to reduce the limit.
-        return r;
+        return r as T;
       }
     }
     throw err;

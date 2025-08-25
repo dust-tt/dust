@@ -174,7 +174,7 @@ export async function getDataSourceTables({
       };
     },
     {
-      result: {
+      fallbackResult: {
         dataPath: null,
         nextPageCursor: pageCursor,
       },

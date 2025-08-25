@@ -225,7 +225,7 @@ export async function readFrontTableChunk({
       };
     },
     {
-      result: {
+      fallbackResult: {
         dataPath: null,
         hasMore: true,
         lastId,

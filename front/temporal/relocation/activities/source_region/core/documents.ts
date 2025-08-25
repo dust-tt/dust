@@ -160,7 +160,7 @@ export async function getDataSourceDocuments({
       };
     },
     {
-      result: {
+      fallbackResult: {
         dataPath: null,
         nextPageCursor: pageCursor,
       },
