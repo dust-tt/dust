@@ -240,6 +240,7 @@ export type ToolErrorEvent = {
   created: number;
   configurationId: string;
   messageId: string;
+  conversationId: string;
   error: ErrorContent;
   isLastBlockingEventForStep: boolean;
   // TODO(DURABLE-AGENTS 2025-08-25): Move to a deferred event base interface.

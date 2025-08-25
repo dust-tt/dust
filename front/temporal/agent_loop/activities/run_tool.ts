@@ -97,6 +97,7 @@ export async function runToolActivity(
             created: event.created,
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
+            conversationId: conversation.sId,
             error: {
               code: event.error.code,
               message: event.error.message,

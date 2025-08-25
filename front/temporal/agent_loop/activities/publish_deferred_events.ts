@@ -39,6 +39,7 @@ export async function publishDeferredEventsActivity(
           created: event.created,
           configurationId: event.configurationId,
           messageId: event.messageId,
+          conversationId: event.conversationId,
           error: {
             code: "mcp_server_personal_authentication_required",
             message: event.authError.message,

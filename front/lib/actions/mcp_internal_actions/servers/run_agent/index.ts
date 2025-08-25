@@ -399,6 +399,7 @@ export default async function createServer(
                 created: event.created,
                 configurationId: event.configurationId,
                 messageId: event.messageId,
+                conversationId: conversation.sId,
                 authError: {
                   mcpServerId: metadata.mcp_server_id,
                   provider: metadata.provider,

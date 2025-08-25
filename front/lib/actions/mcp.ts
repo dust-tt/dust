@@ -527,6 +527,7 @@ export async function* runToolWithStreaming(
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
+        conversationId: conversation.sId,
         authError: {
           mcpServerId: toolErr.mcpServerId,
           provider: toolErr.provider,
