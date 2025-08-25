@@ -124,7 +124,6 @@ export const INTERNAL_MCP_SERVERS = {
       authorization: {
         provider: "github" as const,
         supported_use_cases: ["platform_actions"] as const,
-        scope: undefined,
       },
       icon: "GithubLogo",
       documentationUrl: null,
@@ -280,7 +279,6 @@ export const INTERNAL_MCP_SERVERS = {
       authorization: {
         provider: "hubspot" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
-        scope: undefined,
       },
       icon: "HubspotLogo",
       documentationUrl: null,
@@ -379,7 +377,6 @@ The directive should be used to display a clickable version of the agent name in
       authorization: {
         provider: "notion" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
-        scope: undefined,
       },
       icon: "NotionLogo",
       documentationUrl: null,
@@ -446,7 +443,6 @@ The directive should be used to display a clickable version of the agent name in
       authorization: {
         provider: "salesforce" as const,
         supported_use_cases: ["personal_actions", "platform_actions"] as const,
-        scope: undefined,
       },
       icon: "SalesforceLogo",
       documentationUrl: "https://docs.dust.tt/docs/salesforce",
@@ -553,7 +549,6 @@ The directive should be used to display a clickable version of the agent name in
       authorization: {
         provider: "slack" as const,
         supported_use_cases: ["personal_actions"] as const,
-        scope: undefined,
       },
       icon: "SlackLogo",
       documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
@@ -646,7 +641,6 @@ The directive should be used to display a clickable version of the agent name in
       authorization: {
         provider: "monday" as const,
         supported_use_cases: ["personal_actions", "platform_actions"] as const,
-        scope: undefined,
       },
       icon: "MondayLogo",
       documentationUrl:
@@ -711,7 +705,6 @@ The directive should be used to display a clickable version of the agent name in
       authorization: {
         provider: "jira" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
-        scope: undefined,
       },
       icon: "JiraLogo",
       documentationUrl: null,
@@ -845,7 +838,6 @@ The directive should be used to display a clickable version of the agent name in
       authorization: {
         provider: "freshservice" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
-        scope: undefined,
       },
       documentationUrl: null,
       instructions: FRESHSERVICE_SERVER_INSTRUCTIONS,
