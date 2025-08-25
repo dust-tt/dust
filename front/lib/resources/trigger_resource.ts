@@ -234,9 +234,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Err(new Error(`Failed to enable trigger ${this.sId}`));
     }
 
-    // Update the local instance
-    (this as any).enabled = true;
-
     // Re-register the temporal workflow
     const r = await this.postRegistration(auth);
     if (r.isErr()) {
@@ -264,9 +261,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     if (updateResult[0] === 0) {
       return new Err(new Error(`Failed to disable trigger ${this.sId}`));
     }
-
-    // Update the local instance
-    (this as any).enabled = false;
 
     // Remove the temporal workflow
     const r = await this.preDeletion(auth);
