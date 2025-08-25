@@ -8,10 +8,7 @@ import type {
 import { Op } from "sequelize";
 
 import type { BlockedActionExecution } from "@app/lib/actions/mcp";
-import type {
-  MCPExecutionState,
-  ToolExecutionStatus,
-} from "@app/lib/actions/statuses";
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
   isToolExecutionStatusBlocked,
   TOOL_EXECUTION_BLOCKED_STATUSES,
@@ -131,7 +128,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     });
     assert(stepContent, "Step content not found.");
 
-    // Create a new resource instance with the updated stepContent
     return new this(
       this.model,
       {
@@ -140,10 +136,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
         agentMessageId: action.agentMessageId,
         augmentedInputs: action.augmentedInputs,
         citationsAllocated: action.citationsAllocated,
-        executionState: action.executionState,
-        isError: action.isError,
         mcpServerConfigurationId: action.mcpServerConfigurationId,
-        runningState: action.runningState,
         status: action.status,
         stepContentId: action.stepContentId,
         stepContext: action.stepContext,
@@ -290,10 +283,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       agentMessageId: this.agentMessageId,
       augmentedInputs: this.augmentedInputs,
       citationsAllocated: this.citationsAllocated,
-      executionState: this.executionState,
-      isError: this.isError,
       mcpServerConfigurationId: this.mcpServerConfigurationId,
-      runningState: this.runningState,
       status: this.status,
       stepContentId: this.stepContentId,
       stepContext: this.stepContext,
@@ -308,14 +298,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
   ): Promise<[affectedCount: number]> {
     return this.update({
       status,
-      isError: status === "errored",
     });
-  }
-
-  async updateExecutionState(
-    executionState: MCPExecutionState
-  ): Promise<[affectedCount: number]> {
-    return this.update({ executionState });
   }
 
   static async deleteByAgentMessageId(
