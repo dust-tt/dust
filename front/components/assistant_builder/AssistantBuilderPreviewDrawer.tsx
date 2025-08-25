@@ -22,13 +22,13 @@ import assert from "assert";
 import { useContext, useEffect, useRef, useState } from "react";
 
 import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
-import { ValidationRequirementsProvider } from "@app/components/assistant/conversation/ValidationRequirementsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { ValidationRequirementsProvider } from "@app/components/assistant/conversation/ValidationRequirementsProvider";
 import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import {
   usePreviewAssistant,
