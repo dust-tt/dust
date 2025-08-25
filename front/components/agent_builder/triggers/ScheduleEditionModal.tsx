@@ -162,14 +162,12 @@ export function ScheduleEditionModal({
               <div>
                 <div className="pb-2">
                   <Label htmlFor="trigger-description">Scheduler</Label>
-                  {true && (
-                    <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                      The trigger will run in the{" "}
-                      {trigger?.configuration?.timezone ||
-                        Intl.DateTimeFormat().resolvedOptions().timeZone}{" "}
-                      timezone.
-                    </p>
-                  )}
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    The trigger will run in the{" "}
+                    {trigger?.configuration?.timezone ||
+                      Intl.DateTimeFormat().resolvedOptions().timeZone}{" "}
+                    timezone.
+                  </p>
                 </div>
 
                 <TextArea
