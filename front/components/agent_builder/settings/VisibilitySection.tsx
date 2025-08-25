@@ -42,7 +42,7 @@ export function VisibilitySection() {
               type="button"
             />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="start">
             <DropdownMenuItem
               label="Published"
               description="Visible & usable by all members of the workspace."
