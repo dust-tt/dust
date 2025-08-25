@@ -48,13 +48,13 @@ function useValidationQueue({
     Record<string, MCPActionValidationRequest>
   >({});
 
-  const [currentValidation, setCurrentValidation] =
+  const [currentItem, setCurrentItem] =
     useState<MCPActionValidationRequest | null>(null);
 
   useEffect(() => {
     const nextValidation = pendingValidations[0];
     if (nextValidation) {
-      setCurrentValidation(nextValidation);
+      setCurrentItem(nextValidation);
     }
     if (pendingValidations.length > 1) {
       setValidationQueue(
@@ -69,7 +69,7 @@ function useValidationQueue({
 
   const enqueueValidation = useCallback(
     (validationRequest: MCPActionValidationRequest) => {
-      setCurrentValidation((current) => {
+      setCurrentItem((current) => {
         if (
           current === null ||
           current.actionId === validationRequest.actionId
@@ -100,6 +100,7 @@ function useValidationQueue({
         delete newRecord[nextValidationActionId];
         return newRecord;
       });
+      setCurrentItem(nextValidation);
       return nextValidation;
     }
 
@@ -170,7 +171,7 @@ export function ActionValidationProvider({
   const {
     validationQueueLength,
     currentValidation,
-    setCurrentValidation,
+    setCurrentItem,
     enqueueValidation,
     shiftValidationQueue,
   } = useValidationQueue({ pendingValidations });
@@ -184,7 +185,7 @@ export function ActionValidationProvider({
   useNavigationLock(isDialogOpen);
 
   const submitValidation = async (status: MCPValidationOutputType) => {
-    if (!currentValidation) {
+    if (!currentItem) {
       return;
     }
 
@@ -224,10 +225,8 @@ export function ActionValidationProvider({
     void submitValidation(approved);
 
     const nextValidationRequest = shiftValidationQueue();
-    if (nextValidationRequest) {
-      setCurrentValidation(nextValidationRequest);
-    } else {
-      // To avoid content flickering, we will clear out the current validation in onDialogAnimationEnd.
+    // We will clear out the current validation in onDialogAnimationEnd to avoid content flickering.
+    if (!nextValidationRequest) {
       setIsDialogOpen(false);
     }
   };
@@ -236,7 +235,7 @@ export function ActionValidationProvider({
   const onDialogAnimationEnd = () => {
     // This is safe to check because the dialog closing animation is triggered after isDialogOpen is set to false.
     if (!isDialogOpen) {
-      setCurrentValidation(null);
+      setCurrentItem(null);
       setErrorMessage(null);
     }
   };
@@ -249,9 +248,9 @@ export function ActionValidationProvider({
   }, [isDialogOpen]);
 
   const hasPendingValidations =
-    currentValidation !== null || validationQueueLength > 0;
-  const totalPendingValidations =
-    (currentValidation ? 1 : 0) + validationQueueLength;
+    currentItem !== null || validationQueueLength > 0;
+  const totalPendingValidations = (currentItem ? 1 : 0) + validationQueueLength;
+
 
   return (
     <ActionValidationContext.Provider
