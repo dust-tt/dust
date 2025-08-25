@@ -46,7 +46,7 @@ export async function getPokeConversation(
             // Fetch timestamps for actions
             const actionIds: ModelId[] = m.actions.map((a) => a.id);
             const actionsWithTimestamps =
-              await AgentMCPActionResource.fetchByModelIds(actionIds);
+              await AgentMCPActionResource.fetchByModelIds(auth, actionIds);
             const timestampMap = new Map(
               actionsWithTimestamps.map((action) => [
                 action.id,
