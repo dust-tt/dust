@@ -197,11 +197,6 @@ async function createActionForTool(
     );
   }
 
-  // Update the action to surface the execution state.
-  await agentMCPAction.updateStatus(
-    approvalStatusToToolExecutionStatus(status)
-  );
-
   return {
     actionId: agentMCPAction.id,
     needsApproval: status === "pending",

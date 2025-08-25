@@ -59,8 +59,6 @@ export async function runToolActivity(
   );
   assert(action, "Action not found");
 
-  await action.updateStatus("running");
-
   const mcpServerId = action.toolConfiguration.toolServerId;
 
   const actionBaseParams = await buildActionBaseParams({
@@ -76,8 +74,6 @@ export async function runToolActivity(
   const mcpAction = new MCPActionType({
     ...actionBaseParams,
     id: action.id,
-    isError: action.isError,
-    executionState: action.executionState,
     type: "tool_action",
     output: null,
   });
@@ -95,8 +91,6 @@ export async function runToolActivity(
   for await (const event of eventStream) {
     switch (event.type) {
       case "tool_error":
-        await action.updateStatus("errored");
-
         // For tool errors, send immediately.
         await updateResourceAndPublishEvent(
           {
@@ -134,8 +128,6 @@ export async function runToolActivity(
         return { deferredEvents };
 
       case "tool_success":
-        await action.updateStatus("succeeded");
-
         await updateResourceAndPublishEvent(
           {
             type: "agent_action_success",
@@ -164,7 +156,7 @@ export async function runToolActivity(
           // Replace existing action with updated one.
           agentMessage.actions[existingActionIndex] = event.action;
         } else {
-          // Add new action if it doesn't exist.
+          // Add the new action if it doesn't exist.
           agentMessage.actions.push(event.action);
         }
 

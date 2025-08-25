@@ -4,11 +4,7 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type {
-  MCPExecutionState,
-  MCPRunningState,
-  ToolExecutionStatus,
-} from "@app/lib/actions/statuses";
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -199,10 +195,6 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
 
-  declare isError: boolean;
-  declare executionState: MCPExecutionState;
-  declare runningState: MCPRunningState;
-
   declare status: ToolExecutionStatus;
 
   declare citationsAllocated: number;
@@ -236,37 +228,10 @@ AgentMCPAction.init(
       allowNull: false,
       defaultValue: 0,
     },
-    executionState: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        isIn: [
-          [
-            "pending",
-            "timeout",
-            "allowed_explicitly",
-            "allowed_implicitly",
-            "denied",
-          ],
-        ],
-      },
-    },
-    runningState: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        isIn: [["not_started", "running", "completed", "errored"]],
-      },
-    },
     status: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: "succeeded",
-    },
-    isError: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
     },
     citationsAllocated: {
       type: DataTypes.INTEGER,
@@ -305,11 +270,6 @@ AgentMCPAction.init(
         fields: ["workspaceId", "agentMessageId", "stepContentId", "version"],
         name: "agent_mcp_action_workspace_agent_message_step_content_version",
         unique: true,
-        concurrently: true,
-      },
-      {
-        fields: ["workspaceId", "agentMessageId", "executionState"],
-        name: "agent_mcp_action_workspace_agent_message_execution_state",
         concurrently: true,
       },
       {

@@ -30,8 +30,6 @@ import {
   rewriteContentForModel,
 } from "@app/lib/actions/mcp_utils";
 import type {
-  MCPExecutionState,
-  MCPRunningState,
   ToolExecutionBlockedStatus,
   ToolExecutionStatus,
 } from "@app/lib/actions/statuses";
@@ -241,10 +239,7 @@ export type ToolNotificationEvent = {
   notification: ProgressNotificationContentType;
 };
 
-export type ActionBaseParams = Omit<
-  MCPActionBlob,
-  "id" | "type" | "executionState" | "output" | "isError"
->;
+export type ActionBaseParams = Omit<MCPActionBlob, "id" | "type" | "output">;
 
 export type AgentActionRunningEvents =
   | MCPParamsEvent
@@ -266,24 +261,21 @@ export class MCPActionType {
   readonly id: ModelId;
   readonly generatedFiles: ActionGeneratedFileType[];
   readonly agentMessageId: ModelId;
-  readonly executionState: MCPExecutionState = "pending";
 
   readonly mcpServerConfigurationId: string;
   readonly mcpServerId: string | null;
   readonly internalMCPServerName: InternalMCPServerNameType | null;
   readonly params: Record<string, unknown>; // Hold the inputs for the action.
   readonly output: CallToolResult["content"] | null;
-  // TODO(durable-agents): drop this column.
+
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number = -1;
-  readonly isError: boolean = false;
+
   readonly citationsAllocated: number = 0;
-  // TODO(2025-07-24 aubin): remove the type here.
+
   readonly type = "tool_action" as const;
   readonly status: ToolExecutionStatus;
-
-  readonly runningState: MCPRunningState;
 
   constructor(blob: MCPActionBlob) {
     this.id = blob.id;
@@ -294,15 +286,12 @@ export class MCPActionType {
     this.mcpServerConfigurationId = blob.mcpServerConfigurationId;
     this.mcpServerId = blob.mcpServerId;
     this.internalMCPServerName = blob.internalMCPServerName;
-    this.executionState = blob.executionState;
-    this.isError = blob.isError;
     this.params = blob.params;
     this.output = blob.output;
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
     this.citationsAllocated = blob.citationsAllocated;
-    this.runningState = blob.runningState;
     this.status = blob.status;
   }
 
@@ -487,7 +476,7 @@ export async function* runToolWithStreaming(
     `workspace_name:${owner.name}`,
   ];
 
-  const { executionState, status } = mcpAction;
+  const { status } = mcpAction;
 
   // Use the augmented inputs that were computed and stored during action creation
   const inputs = action.augmentedInputs;
@@ -531,7 +520,7 @@ export async function* runToolWithStreaming(
         `The tool ${actionBaseParams.functionCallName} requires personal ` +
         `authentication, please authenticate to use it.`;
 
-      // Update action to mark it as blocked because of personal authentication error.
+      // Update the action to mark it as blocked because of a personal authentication error.
       await action.updateStatus("blocked_authentication_required");
 
       yield {
@@ -571,7 +560,6 @@ export async function* runToolWithStreaming(
       agentConfiguration,
       agentMessage,
       actionBaseParams,
-      executionState,
       status,
       errorMessage,
       yieldAsError: false,
@@ -599,19 +587,16 @@ export async function* runToolWithStreaming(
     action: new MCPActionType({
       ...actionBaseParams,
       generatedFiles,
-      executionState,
       status: "succeeded",
       id: action.id,
-      isError: false,
       output: removeNulls(outputItems.map(hideFileFromActionOutput)),
       type: "tool_action",
-      runningState: "completed",
     }),
   };
 }
 
 /**
- * Creates MCP action in database and returns both the DB record and the type object.
+ * Creates an MCP action in the database and returns both the DB record and the type object.
  */
 export async function createMCPAction(
   auth: Authenticator,
@@ -640,10 +625,7 @@ export async function createMCPAction(
     agentMessageId: actionBaseParams.agentMessageId,
     augmentedInputs,
     citationsAllocated: stepContext.citationsCount,
-    executionState: "pending",
-    isError: false,
     mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
-    runningState: "not_started",
     status: approvalStatusToToolExecutionStatus(approvalStatus),
     stepContentId,
     stepContext,
@@ -653,12 +635,9 @@ export async function createMCPAction(
 
   const mcpAction = new MCPActionType({
     ...actionBaseParams,
-    executionState: "pending",
     id: action.id,
-    isError: false,
     output: null,
     type: "tool_action",
-    runningState: "not_started",
   });
 
   return { action, mcpAction };
@@ -670,7 +649,6 @@ type BaseErrorParams = {
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
   errorMessage: string;
-  executionState: MCPExecutionState;
   status: ToolExecutionStatus;
 };
 
@@ -695,13 +673,7 @@ type HandleErrorParams = YieldAsErrorParams | YieldAsSuccessParams;
 export async function handleMCPActionError(
   params: HandleErrorParams
 ): Promise<MCPErrorEvent | MCPSuccessEvent> {
-  const {
-    agentConfiguration,
-    agentMessage,
-    errorMessage,
-    executionState,
-    status,
-  } = params;
+  const { agentConfiguration, agentMessage, errorMessage, status } = params;
 
   const outputContent: CallToolResult["content"][number] = {
     type: "text",
@@ -718,6 +690,7 @@ export async function handleMCPActionError(
 
   // Yields tool_error to stop conversation.
   if (params.yieldAsError) {
+    // Update the action to mark it as having an error.
     await action.updateStatus("errored");
 
     return {
@@ -738,7 +711,7 @@ export async function handleMCPActionError(
     await action.updateStatus("errored");
   }
 
-  // Yields tool_success to continue conversation.
+  // Yields tool_success to continue the conversation.
   return {
     type: "tool_success",
     created: Date.now(),
@@ -747,13 +720,10 @@ export async function handleMCPActionError(
     action: new MCPActionType({
       ...actionBaseParams,
       generatedFiles: [],
-      executionState,
       status,
       id: action.id,
-      isError: false,
       output: [outputContent],
       type: "tool_action",
-      runningState: "errored",
     }),
   };
 }
@@ -786,9 +756,7 @@ export async function updateMCPApprovalState(
     return false;
   }
 
-  await action.updateStatus(
-    approvalStatusToToolExecutionStatus(executionState)
-  );
+  await action.updateStatus(status);
 
   return true;
 }

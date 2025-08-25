@@ -5,13 +5,6 @@ export type MCPExecutionState =
   | "denied"
   | "pending";
 
-// TODO(2025-08-20 aubin): remove this (consolidated into a single column).
-export type MCPRunningState =
-  | "not_started"
-  | "running"
-  | "completed"
-  | "errored";
-
 const TOOL_EXECUTION_FINAL_STATUSES = [
   "succeeded",
   "errored",
