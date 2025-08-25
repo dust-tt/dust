@@ -210,10 +210,11 @@ export const useBlockInsertDropdown = (
 
             switch (event.key) {
               case "ArrowUp":
-                event.preventDefault();
+                // If there are no suggestions, let the editor handle it.
                 if (currentState.suggestions.length === 0) {
-                  return true;
+                  return false;
                 }
+                event.preventDefault();
                 setState((prev) => ({
                   ...prev,
                   selectedIndex:
@@ -223,10 +224,11 @@ export const useBlockInsertDropdown = (
                 }));
                 return true;
               case "ArrowDown":
-                event.preventDefault();
+                // If there are no suggestions, let the editor handle it.
                 if (currentState.suggestions.length === 0) {
-                  return true;
+                  return false;
                 }
+                event.preventDefault();
                 setState((prev) => ({
                   ...prev,
                   selectedIndex:
@@ -235,7 +237,19 @@ export const useBlockInsertDropdown = (
                       : 0,
                 }));
                 return true;
-              case "Enter":
+              case "Enter": {
+                // If there are no suggestions, allow normal Enter behavior.
+                if (currentState.suggestions.length === 0) {
+                  return false;
+                }
+                event.preventDefault();
+                if (currentState.suggestions[currentState.selectedIndex]) {
+                  selectSuggestion(
+                    currentState.suggestions[currentState.selectedIndex]
+                  );
+                }
+                return true;
+              }
               case "Tab":
                 event.preventDefault();
                 if (currentState.suggestions[currentState.selectedIndex]) {
