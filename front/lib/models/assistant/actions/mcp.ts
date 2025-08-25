@@ -186,7 +186,7 @@ AgentMCPServerConfiguration.belongsTo(MCPServerViewModel, {
   as: "mcpServerView",
 });
 
-export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
+export class AgentMCPActionModel extends WorkspaceAwareModel<AgentMCPActionModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -207,7 +207,7 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare agentMessage?: NonAttribute<AgentMessage>;
 }
 
-AgentMCPAction.init(
+AgentMCPActionModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -281,22 +281,22 @@ AgentMCPAction.init(
   }
 );
 
-AgentMCPAction.belongsTo(AgentMessage, {
+AgentMCPActionModel.belongsTo(AgentMessage, {
   foreignKey: { name: "agentMessageId", allowNull: false },
   as: "agentMessage",
 });
 
-AgentMessage.hasMany(AgentMCPAction, {
+AgentMessage.hasMany(AgentMCPActionModel, {
   foreignKey: { name: "agentMessageId", allowNull: false },
 });
 
-AgentMCPAction.belongsTo(AgentStepContentModel, {
+AgentMCPActionModel.belongsTo(AgentStepContentModel, {
   foreignKey: { name: "stepContentId", allowNull: false },
   as: "stepContent",
   onDelete: "RESTRICT",
 });
 
-AgentStepContentModel.hasMany(AgentMCPAction, {
+AgentStepContentModel.hasMany(AgentMCPActionModel, {
   foreignKey: { name: "stepContentId", allowNull: false },
   as: "agentMCPActions",
 });
@@ -305,7 +305,7 @@ export class AgentMCPActionOutputItem extends WorkspaceAwareModel<AgentMCPAction
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare agentMCPActionId: ForeignKey<AgentMCPAction["id"]>;
+  declare agentMCPActionId: ForeignKey<AgentMCPActionModel["id"]>;
   declare content: CallToolResult["content"][number];
   declare fileId: ForeignKey<FileModel["id"]> | null;
 
@@ -360,13 +360,13 @@ AgentMCPActionOutputItem.init(
   }
 );
 
-AgentMCPAction.hasMany(AgentMCPActionOutputItem, {
+AgentMCPActionModel.hasMany(AgentMCPActionOutputItem, {
   foreignKey: { name: "agentMCPActionId", allowNull: false },
   as: "outputItems",
   onDelete: "CASCADE",
 });
 
-AgentMCPActionOutputItem.belongsTo(AgentMCPAction, {
+AgentMCPActionOutputItem.belongsTo(AgentMCPActionModel, {
   foreignKey: { name: "agentMCPActionId", allowNull: false },
 });
 

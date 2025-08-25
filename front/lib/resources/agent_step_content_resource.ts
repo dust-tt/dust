@@ -16,7 +16,7 @@ import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  AgentMCPAction,
+  AgentMCPActionModel,
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
@@ -49,7 +49,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   constructor(
     model: ModelStatic<AgentStepContentModel>,
     blob: Attributes<AgentStepContentModel> & {
-      agentMCPActions?: AgentMCPAction[];
+      agentMCPActions?: AgentMCPActionModel[];
     }
   ) {
     super(AgentStepContentModel, blob);
@@ -187,7 +187,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       const contentIds: ModelId[] = contents.map((c) => c.id);
 
       const mcpActionsByContentId = _.groupBy(
-        await AgentMCPAction.findAll({
+        await AgentMCPActionModel.findAll({
           where: {
             workspaceId: owner.id,
             stepContentId: {
@@ -267,7 +267,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
             return;
           }
           const maxVersionAction = _.maxBy(
-            c.agentMCPActions as AgentMCPAction[],
+            c.agentMCPActions as AgentMCPActionModel[],
             "version"
           );
           c.agentMCPActions = maxVersionAction ? [maxVersionAction] : [];
@@ -493,7 +493,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         ],
       },
       {
-        model: AgentMCPAction,
+        model: AgentMCPActionModel,
         as: "agentMCPActions",
         required: true,
       },
