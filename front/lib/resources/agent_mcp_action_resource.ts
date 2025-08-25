@@ -27,7 +27,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result } from "@app/types";
 import { removeNulls } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
-import { AgentMCPActionType } from "@app/types/actions";
+import type { AgentMCPActionType } from "@app/types/actions";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
