@@ -1,4 +1,6 @@
 import { Card, CardActionButton, TimeIcon, XMarkIcon } from "@dust-tt/sparkle";
+import cronstrue from "cronstrue";
+import { useMemo } from "react";
 
 import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useUser } from "@app/lib/swr/user";
@@ -27,6 +29,16 @@ export const TriggerCard = ({
 }: TriggerCardProps) => {
   const { user } = useUser();
   const isEditor = trigger.editor === user?.id;
+  const cronDescription = useMemo(() => {
+    try {
+      if (trigger.configuration?.cron) {
+        return `Runs ${cronstrue.toString(trigger.configuration?.cron)}.`;
+      }
+    } catch (error) {
+      // Ignore.
+    }
+    return "";
+  }, [trigger.configuration?.cron]);
 
   return (
     <Card
@@ -52,7 +64,7 @@ export const TriggerCard = ({
           <span className="truncate">{trigger.name}</span>
         </div>
         <span className="text-muted-foreground dark:text-muted-foreground-night">
-          {isEditor ? "Created by you" : "Created by someone else"}
+          {trigger.kind === "schedule" && <span>{cronDescription}</span>}
         </span>
       </div>
     </Card>
