@@ -92,7 +92,6 @@ const InputBarContainer = ({
   selectedMCPServerViewIds,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
@@ -122,7 +121,6 @@ const InputBarContainer = ({
   const { editor, editorService } = useCustomEditor({
     suggestions,
     onEnterKeyDown,
-    resetEditorContainerSize,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
     suggestionHandler: mentionDropdown.getSuggestionHandler(),
@@ -245,16 +243,6 @@ const InputBarContainer = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function handleExpansionToggle() {
-    setIsExpanded((currentExpanded) => !currentExpanded);
-    // Focus at the end of the document when toggling expansion.
-    editorService.focusEnd();
-  }
-
-  function resetEditorContainerSize() {
-    setIsExpanded(false);
-  }
-
   const contentEditableClasses = classNames(
     "inline-block w-full",
     "border-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
@@ -282,99 +270,82 @@ const InputBarContainer = ({
             "scrollbar-hide",
             "overflow-y-auto",
             disableTextInput && "cursor-not-allowed",
-            isExpanded
-              ? "h-[60vh] max-h-[60vh] lg:h-[80vh] lg:max-h-[80vh]"
-              : "max-h-[40vh] min-h-14 min-h-24 sm:min-h-16"
+            "max-h-[40vh] min-h-14 sm:min-h-16"
           )}
         />
-        <div className="flex items-center px-1 pb-1.5 sm:px-2 sm:pb-3">
-          {actions.includes("attachment") && (
-            <>
-              <input
-                accept={getSupportedFileExtensions().join(",")}
-                onChange={async (e) => {
-                  await fileUploaderService.handleFileChange(e);
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = "";
-                  }
-                  editorService.focusEnd();
-                }}
-                ref={fileInputRef}
-                style={{ display: "none" }}
-                type="file"
-                multiple={true}
-              />
-              <InputBarAttachmentsPicker
-                fileUploaderService={fileUploaderService}
+        <div className="flex items-center justify-between px-1 pb-1.5 pr-2 pt-1.5 sm:pb-3 sm:pl-2 sm:pr-3">
+          <div className="flex items-center">
+            {actions.includes("attachment") && (
+              <>
+                <input
+                  accept={getSupportedFileExtensions().join(",")}
+                  onChange={async (e) => {
+                    await fileUploaderService.handleFileChange(e);
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = "";
+                    }
+                    editorService.focusEnd();
+                  }}
+                  ref={fileInputRef}
+                  style={{ display: "none" }}
+                  type="file"
+                  multiple={true}
+                />
+                <InputBarAttachmentsPicker
+                  fileUploaderService={fileUploaderService}
+                  owner={owner}
+                  isLoading={false}
+                  onNodeSelect={onNodeSelect}
+                  onNodeUnselect={onNodeUnselect}
+                  attachedNodes={attachedNodes}
+                  disabled={disableTextInput}
+                />
+              </>
+            )}
+            {actions.includes("tools") && (
+              <ToolsPicker
                 owner={owner}
-                isLoading={false}
-                onNodeSelect={onNodeSelect}
-                onNodeUnselect={onNodeUnselect}
-                attachedNodes={attachedNodes}
+                selectedMCPServerViewIds={selectedMCPServerViewIds}
+                onSelect={onMCPServerViewSelect}
+                onDeselect={onMCPServerViewDeselect}
                 disabled={disableTextInput}
               />
-            </>
-          )}
-          {actions.includes("tools") && (
-            <ToolsPicker
-              owner={owner}
-              selectedMCPServerViewIds={selectedMCPServerViewIds}
-              onSelect={onMCPServerViewSelect}
-              onDeselect={onMCPServerViewDeselect}
-              disabled={disableTextInput}
-            />
-          )}
-          {(actions.includes("assistants-list") ||
-            actions.includes("assistants-list-with-actions")) && (
-            <AssistantPicker
-              owner={owner}
-              size="xs"
-              onItemClick={(c) => {
-                editorService.insertMention({ id: c.sId, label: c.name });
-              }}
-              assistants={allAssistants}
-              showDropdownArrow={false}
-              showFooterButtons={actions.includes(
-                "assistants-list-with-actions"
-              )}
-              disabled={disableTextInput}
-            />
-          )}
-        </div>
-      </div>
-
-      <div className="flex flex-col items-end justify-between gap-2 self-stretch pb-3 pr-3 pt-3 sm:border-0">
-        <div className="flex items-center">
-          {actions.includes("fullscreen") && (
-            <div className="hidden sm:flex">
-              <Button
-                disabled={disableTextInput}
-                variant="ghost-secondary"
-                icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+            )}
+            {(actions.includes("assistants-list") ||
+              actions.includes("assistants-list-with-actions")) && (
+              <AssistantPicker
+                owner={owner}
                 size="xs"
-                onClick={handleExpansionToggle}
+                onItemClick={(c) => {
+                  editorService.insertMention({ id: c.sId, label: c.name });
+                }}
+                assistants={allAssistants}
+                showDropdownArrow={false}
+                showFooterButtons={actions.includes(
+                  "assistants-list-with-actions"
+                )}
+                disabled={disableTextInput}
               />
-            </div>
-          )}
+            )}
+          </div>
+          <Button
+            size="xs"
+            isLoading={disableSendButton}
+            icon={ArrowUpIcon}
+            variant="highlight"
+            disabled={editorService.isEmpty() || disableSendButton}
+            onClick={async () => {
+              onEnterKeyDown(
+                editorService.isEmpty(),
+                editorService.getMarkdownAndMentions(),
+                () => {
+                  editorService.clearEditor();
+                },
+                editorService.setLoading
+              );
+            }}
+          />
         </div>
-        <Button
-          size="xs"
-          isLoading={disableSendButton}
-          icon={ArrowUpIcon}
-          variant="highlight"
-          disabled={editorService.isEmpty() || disableSendButton}
-          onClick={async () => {
-            onEnterKeyDown(
-              editorService.isEmpty(),
-              editorService.getMarkdownAndMentions(),
-              () => {
-                editorService.clearEditor();
-                resetEditorContainerSize();
-              },
-              editorService.setLoading
-            );
-          }}
-        />
       </div>
 
       <MentionDropdown mentionDropdownState={mentionDropdown} />
