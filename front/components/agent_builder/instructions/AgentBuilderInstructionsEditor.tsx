@@ -129,7 +129,10 @@ export function AgentBuilderInstructionsEditor({
 
     const currentContent = plainTextFromTipTapContent(editor.getJSON());
     if (currentContent !== field.value) {
-      editor.commands.setContent(tipTapContentFromPlainText(field.value));
+      // Use setTimeout to ensure this runs after any diff mode changes
+      setTimeout(() => {
+        editor.commands.setContent(tipTapContentFromPlainText(field.value));
+      }, 0);
     }
   }, [editor, field.value]);
 
