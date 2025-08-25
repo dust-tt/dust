@@ -71,13 +71,19 @@ function useValidationQueue({
   }, [pendingValidations]);
 
   const handleValidationRequest = useCallback(
-    (validationRequest: MCPActionValidationRequest) => {
+    ({
+      message,
+      validationRequest,
+    }: {
+      message: LightAgentMessageType;
+      validationRequest: MCPActionValidationRequest;
+    }) => {
       setCurrentValidation((current) => {
         if (
           current === null ||
           current.validationRequest.actionId === validationRequest.actionId
         ) {
-          return { validationRequest };
+          return { message, validationRequest };
         }
 
         setValidationQueue((prevRecord) => ({
@@ -274,8 +280,8 @@ export function ActionValidationProvider({
       }
 
       // If we have a new validation request, queue it.
-      if (params?.validationRequest) {
-        handleValidationRequest(params?.validationRequest);
+      if (params) {
+        handleValidationRequest(params);
       }
     },
     [handleValidationRequest, isDialogOpen]
