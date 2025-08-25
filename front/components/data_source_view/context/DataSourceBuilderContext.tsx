@@ -58,6 +58,7 @@ import type {
   DataSourceViewContentNode,
   DataSourceViewType,
   SpaceType,
+  TagsFilter,
 } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -144,6 +145,11 @@ type DataSourceBuilderState = StateType & {
    * Navigate to a specific node
    */
   navigateTo: (index: number) => void;
+
+  /**
+   * Update the `tagsFilter` of the given `sources` index
+   */
+  updateSourcesTags: (index: number, tagsFilter: TagsFilter) => void;
 };
 
 type ActionType =
@@ -395,6 +401,26 @@ export function DataSourceBuilderProvider({
     []
   );
 
+  const updateSourcesTags: DataSourceBuilderState["updateSourcesTags"] =
+    useCallback(
+      (index, tagsFilter) => {
+        field.onChange({
+          ...field.value,
+          in: field.value.in.map((source, i) => {
+            if (i === index) {
+              return {
+                ...source,
+                tagsFilter,
+              };
+            }
+
+            return source;
+          }),
+        });
+      },
+      [field]
+    );
+
   const value = useMemo(
     () => ({
       ...state,
@@ -411,6 +437,7 @@ export function DataSourceBuilderProvider({
       setDataSourceViewEntry,
       addNodeEntry,
       navigateTo,
+      updateSourcesTags,
     }),
     [
       state,
@@ -427,6 +454,7 @@ export function DataSourceBuilderProvider({
       setCategoryEntry,
       setSpaceEntry,
       setDataSourceViewEntry,
+      updateSourcesTags,
     ]
   );
 
