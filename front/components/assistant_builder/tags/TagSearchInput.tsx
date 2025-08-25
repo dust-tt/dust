@@ -59,6 +59,14 @@ export const TagSearchInput = ({
                     onTagAdd(tag);
                     setSearchInputValue("");
                   }}
+                  icon={
+                    showChipIcons
+                      ? getConnectorProviderLogoWithFallback({
+                          provider: tag.connectorProvider,
+                          isDark,
+                        })
+                      : undefined
+                  }
                 />
               </div>
             ))}

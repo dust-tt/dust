@@ -60,17 +60,23 @@ export function TagSearchSection({
           );
 
         if (!isTagUsed) {
+          // Find the corresponding dataSourceView to get the connectorProvider
+          const dataSourceView = dataSourceViews.find(
+            (dsv) => dsv.dataSource.dustAPIDataSourceId === dataSourceId
+          );
+
           formattedTags.push({
             tag: tag.tag,
             dustAPIDataSourceId: dataSourceId,
-            connectorProvider: null,
+            connectorProvider:
+              dataSourceView?.dataSource.connectorProvider || null,
           });
         }
       }
     }
 
     setAvailableTags(formattedTags);
-  }, [rawTags, selectedTagsIn, selectedTagsNot]);
+  }, [dataSourceViews, rawTags, selectedTagsIn, selectedTagsNot]);
 
   // Debounce the search input.
   useEffect(() => {

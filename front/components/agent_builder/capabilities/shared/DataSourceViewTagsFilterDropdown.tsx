@@ -164,12 +164,12 @@ export function DataSourceViewTagsFilterDropdown() {
   return (
     <PopoverRoot>
       <PopoverTrigger asChild>
-        <Button label="Filters" isSelect />
+        <Button label="Filters" variant="outline" isSelect />
       </PopoverTrigger>
 
       <PopoverContent
         align="end"
-        className="max-h-[var(--radix-popper-available-height)] w-[600px] max-w-[600px] overflow-scroll"
+        className="max-h-[var(--radix-popper-available-height)] w-150 max-w-150 overflow-scroll"
         collisionPadding={20}
       >
         <div className="flex flex-col gap-8 p-2">
