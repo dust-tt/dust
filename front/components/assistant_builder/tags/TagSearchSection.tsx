@@ -18,6 +18,7 @@ interface TagSearchSectionProps {
   owner: LightWorkspaceType;
   selectedTagsIn: DataSourceTag[];
   selectedTagsNot: DataSourceTag[];
+  showChipIcons?: boolean;
 }
 
 export function TagSearchSection({
@@ -29,6 +30,7 @@ export function TagSearchSection({
   owner,
   selectedTagsIn,
   selectedTagsNot,
+  showChipIcons,
 }: TagSearchSectionProps) {
   const [searchInputValue, setSearchInputValue] = useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
@@ -107,6 +109,7 @@ export function TagSearchSection({
         onTagRemove={onTagRemove}
         tagChipColor={tagChipColor}
         isLoading={isLoading}
+        showChipIcons={showChipIcons}
       />
     </div>
   );

@@ -185,6 +185,7 @@ export function DataSourceViewTagsFilterDropdown() {
             onTagAdd={handleTagsOperation("in", "add")}
             onTagRemove={handleTagsOperation("in", "remove")}
             operation="in"
+            showChipIcons
           />
 
           <TagSearchSection
@@ -196,6 +197,7 @@ export function DataSourceViewTagsFilterDropdown() {
             onTagAdd={handleTagsOperation("not", "add")}
             onTagRemove={handleTagsOperation("not", "remove")}
             operation="not"
+            showChipIcons
           />
         </div>
       </PopoverContent>
