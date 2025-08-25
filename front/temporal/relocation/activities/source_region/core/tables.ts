@@ -8,7 +8,6 @@ import type {
 } from "@app/temporal/relocation/activities/types";
 import {
   CORE_API_CONCURRENCY_LIMIT,
-  CORE_API_LIST_TABLES_BATCH_SIZE,
   isJSONStringifyRangeError,
   isStringTooLongError,
 } from "@app/temporal/relocation/activities/types";
@@ -26,13 +25,13 @@ export async function getDataSourceTables({
   pageCursor,
   sourceRegion,
   workspaceId,
-  limit = CORE_API_LIST_TABLES_BATCH_SIZE,
+  limit,
 }: {
   dataSourceCoreIds: DataSourceCoreIds;
   pageCursor: string | null;
   sourceRegion: RegionType;
   workspaceId: string;
-  limit?: number;
+  limit: number;
 }) {
   const localLogger = logger.child({
     dataSourceCoreIds,
@@ -57,7 +56,7 @@ export async function getDataSourceTables({
   };
 
   const options: CoreAPISearchCursorRequest = {
-    limit: CORE_API_LIST_TABLES_BATCH_SIZE,
+    limit,
   };
 
   if (pageCursor) {
@@ -167,29 +166,32 @@ export async function getDataSourceTables({
       nextLimit: null,
     };
   } catch (err) {
-    const nextLimit = Math.floor(limit / 2);
-    if (nextLimit === 0) {
-      localLogger.error(
-        { error: err, pageCursor, limit, nextLimit },
-        "[Core] Failed to write tables blobs to file storage, string too long - skipping"
-      );
-      return {
-        dataPath: null,
-        nextPageCursor,
-        nextLimit: null,
-      };
-    } else {
-      if (isJSONStringifyRangeError(err)) {
+    if (isJSONStringifyRangeError(err)) {
+      const nextLimit = Math.floor(limit / 2);
+      if (nextLimit === 0) {
+        localLogger.error(
+          { error: err, pageCursor, limit, nextLimit },
+          "[Core] Failed to write tables blobs to file storage, string too long - skipping"
+        );
+        // Go to next page, reset limit.
+        return {
+          dataPath: null,
+          nextPageCursor,
+          nextLimit: null,
+        };
+      } else {
         localLogger.error(
           { error: err, pageCursor, limit, nextLimit },
           "[Core] Failed to write tables blobs to file storage, string too long - retrying with smaller limit"
         );
       }
+      // Keep the same page cursor, but try to reduce the limit.
       return {
         dataPath: null,
         nextPageCursor: pageCursor,
         nextLimit,
       };
     }
+    throw err;
   }
 }

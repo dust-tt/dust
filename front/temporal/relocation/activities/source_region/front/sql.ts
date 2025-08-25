@@ -216,39 +216,36 @@ export async function readFrontTableChunk({
       dataPath,
       hasMore: rows.length === realLimit,
       lastId: rows[rows.length - 1]?.id ?? lastId,
+      nextLimit: null,
     };
   } catch (err) {
     if (isStringTooLongError(err) || isJSONStringifyRangeError(err)) {
-      const newLimit = Math.floor(realLimit / 2);
-
-      if (newLimit === 0) {
+      const nextLimit = Math.floor(limit / 2);
+      if (nextLimit === 0) {
         localLogger.error(
-          {
-            fileName,
-            error: err,
-          },
-          "[SQL Table] Failed to write to relocation storage."
+          { error: err, lastId, limit, nextLimit },
+          "[Core] Failed to write tables blobs to file storage, string too long - skipping"
         );
-        throw err;
+        // Go to next page, reset limit.
+        return {
+          dataPath: null,
+          hasMore: true,
+          nextLimit: null,
+          lastId: (lastId ?? 1) + 1,
+        };
+      } else {
+        localLogger.error(
+          { error: err, lastId, limit, nextLimit },
+          "[Core] Failed to write tables blobs to file storage, string too long - retrying with smaller limit"
+        );
+        // Keep the same page cursor, but try to reduce the limit.
+        return {
+          dataPath: null,
+          hasMore: true,
+          nextLimit,
+          lastId: lastId,
+        };
       }
-
-      localLogger.info(
-        {
-          error: err,
-          limit: realLimit,
-          newLimit,
-        },
-        "[SQL Table] Table chunk is too large to be processed, trying with smaller chunk"
-      );
-      return readFrontTableChunk({
-        destRegion,
-        lastId,
-        limit: newLimit,
-        sourceRegion,
-        tableName,
-        workspaceId,
-        fileName,
-      });
     }
     throw err;
   }
