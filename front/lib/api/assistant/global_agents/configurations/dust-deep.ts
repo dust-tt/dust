@@ -1,7 +1,10 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
-import { _getDefaultWebActionsForGlobalAgent } from "@app/lib/api/assistant/global_agents/tools";
+import {
+  _getDefaultWebActionsForGlobalAgent,
+  _getToolsetsToolsConfiguration,
+} from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
@@ -62,19 +65,22 @@ If the request requires some internal company data, use the semantic search tool
 
 If the request requires general information that is likely more recent than your knowledge cutoff, use the web tools (search and browse) to answer the request.
 
-Do not use sub-agents for simple requests.
+Do not use sub-agents for simple requests, unless you need to use a tool that is only available for sub agents.
 </simple_request_guidelines>
 
 <complex_request_guidelines>
 For complex requests, you must must act as a "research coordinator", focusing on planning. Heavily bias towards delegating sub tasks to the sub-agent. Ask the sub-agent to find specific documents node IDs on your behalf.
 You can also use parallel tool calls to spawn several sub tasks concurrently in order to speed-up the overall process.
+</complex_request_guidelines>
 
+<sub_agent_guidelines>
 The sub-agents you spawn are each independent, they do not have any prior context on the request your are trying to solve and they do not have any memory of previous interactions you had with sub agents.
 Queries that you provide to sub agents must be comprehensive, clear and fully self-contained. The sub agents you spawn have access to the web tools (search / browse), the company data file system and the data warehouses (if any).
+It can also have access to any tool that you may find useful for the task, using the toolsetsToAdd parameter. You can get the list of available tools using the toolsets tool priori to call the sub agent.
 Tasks that you give to sub-agents must be small and granular. Bias towards breaking down a large task into several smaller tasks.
 
 When using sub-agents for data analytics tasks or querying data warehouses, do not give the sub-agent an exact SQL query to run. Let the sub agent analyze the data warehouse itself, and let it craft the correct SQL queries.
-</complex_request_guidelines>
+</sub_agent_guidelines>
 `;
 
 const toolsPrompt = `<company_data_guidelines>
@@ -100,6 +106,10 @@ You can use the Data Warehouses tools to:
 
 In order to properly use the data warehouses, it is useful to also search through company data in case there is some documentation available about the tables, some additional semantic layer, or some code that may define how the tables are built in the first place.
 </data_warehouses_guidelines>
+
+<additional_tools>
+If you need a capability that is not available in the tools you have access to, you can call the toolsets tool to get the list of all available tools of the platform, and then call a sub-agent with the tool you need.
+</additional_tools>
 `;
 
 const outputPrompt = `<output_guidelines>
@@ -263,6 +273,7 @@ export function _getDustDeepGlobalAgent(
     interactiveContentMCPServerView,
     runAgentMCPServerView,
     dataWarehousesMCPServerView,
+    toolsetsMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
@@ -271,6 +282,7 @@ export function _getDustDeepGlobalAgent(
     interactiveContentMCPServerView: MCPServerViewResource | null;
     runAgentMCPServerView: MCPServerViewResource | null;
     dataWarehousesMCPServerView: MCPServerViewResource | null;
+    toolsetsMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -340,6 +352,10 @@ export function _getDustDeepGlobalAgent(
     ..._getDefaultWebActionsForGlobalAgent({
       agentId: GLOBAL_AGENTS_SID.RESEARCH,
       webSearchBrowseMCPServerView,
+    }),
+    ..._getToolsetsToolsConfiguration({
+      agentId: GLOBAL_AGENTS_SID.DUST_TASK,
+      toolsetsMcpServerView: toolsetsMCPServerView,
     })
   );
 

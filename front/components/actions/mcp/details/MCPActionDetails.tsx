@@ -19,6 +19,7 @@ import {
 import { MCPDataWarehousesBrowseDetails } from "@app/components/actions/mcp/details/MCPDataWarehousesBrowseDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
+import { MCPListToolsActionDetails } from "@app/components/actions/mcp/details/MCPListToolsActionDetails";
 import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
@@ -190,6 +191,10 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
 
   if (internalMCPServerName === "run_agent") {
     return <MCPRunAgentActionDetails {...props} />;
+  }
+
+  if (internalMCPServerName === "toolsets") {
+    return <MCPListToolsActionDetails {...props} />;
   }
 
   if (internalMCPServerName === "agent_management") {

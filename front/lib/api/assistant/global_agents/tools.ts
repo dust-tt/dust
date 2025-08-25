@@ -69,6 +69,39 @@ export function _getDefaultWebActionsForGlobalAgent({
   ];
 }
 
+export function _getToolsetsToolsConfiguration({
+  agentId,
+  toolsetsMcpServerView,
+}: {
+  agentId: GLOBAL_AGENTS_SID;
+  toolsetsMcpServerView: MCPServerViewResource | null;
+}): ServerSideMCPServerConfigurationType[] {
+  if (!toolsetsMcpServerView) {
+    return [];
+  }
+
+  return [
+    {
+      id: -1,
+      sId: agentId + "-toolsets",
+      type: "mcp_server_configuration",
+      name: "toolsets",
+      description:
+        "List the available tools with their names and descriptions.",
+      mcpServerViewId: toolsetsMcpServerView.sId,
+      internalMCPServerId: toolsetsMcpServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+    },
+  ];
+}
+
 export function _getAgentRouterToolsConfiguration(
   agentId: GLOBAL_AGENTS_SID,
   mcpServerView: MCPServerViewResource | null,
