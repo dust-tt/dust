@@ -49,15 +49,14 @@ export function DataSourceViewTagsFilterDropdown() {
           return acc;
         }, [] as number[]);
 
-        if (sourceIndexes.length < 0) {
-          console.error("No source found");
+        if (sourceIndexes.length <= 0) {
           return;
         }
 
         for (const sourceIdx of sourceIndexes) {
           const source = sources.in[sourceIdx];
           if (source.type !== "data_source" && source.type !== "node") {
-            console.error("Source type does not support tags filter");
+            // Source type does not support tags filter);
             continue;
           }
 
@@ -84,8 +83,6 @@ export function DataSourceViewTagsFilterDropdown() {
               ),
             };
           }
-
-          console.log({ newTagsFilter });
 
           // If all tags are removed and mode is not auto, set tagsFilter to null
           if (
