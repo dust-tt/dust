@@ -173,7 +173,6 @@ export function ActionValidationProvider({
     handleValidationRequest,
     takeNextFromQueue,
   } = useValidationQueue({ pendingValidations });
-  console.log({ validationQueueLength, currentValidation, pendingValidations });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);

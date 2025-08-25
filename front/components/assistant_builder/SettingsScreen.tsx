@@ -56,6 +56,7 @@ import type {
   BuilderEmojiSuggestionsType,
   BuilderSuggestionsType,
   DataSourceType,
+  LightWorkspaceType,
   Result,
   UserType,
   WorkspaceType,
@@ -534,7 +535,10 @@ export default function SettingsScreen({
         <TagsSection owner={owner} />
 
         {hasFeature("hootl") && (
-          <TriggersSection isTriggersLoading={isTriggersLoading} />
+          <TriggersSection
+            owner={owner}
+            isTriggersLoading={isTriggersLoading}
+          />
         )}
         <div className="flex flex-row gap-4">
           <div className="flex flex-[1_0_0] flex-col gap-2">
@@ -878,8 +882,10 @@ function TriggerCard({ trigger, onRemove, onEdit }: any) {
 }
 
 function TriggersSection({
+  owner,
   isTriggersLoading,
 }: {
+  owner: LightWorkspaceType;
   isTriggersLoading: boolean;
 }) {
   const { builderState, setBuilderState, setEdited } =
@@ -989,6 +995,7 @@ function TriggersSection({
 
       {/* Create/Edit Schedule Modal */}
       <ScheduleEditionModal
+        owner={owner}
         trigger={editedTrigger?.trigger}
         isOpen={editedTrigger !== null || isOpen}
         onClose={handleCloseModal}
