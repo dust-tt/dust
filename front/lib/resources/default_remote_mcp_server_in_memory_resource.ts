@@ -64,6 +64,7 @@ export class DefaultRemoteMCPServerInMemoryResource {
           ? {
               provider: "mcp",
               supported_use_cases: this.config.supportedOAuthUseCases || [],
+              scope: null,
             }
           : null,
       tools: [], // There are no predefined tools for default remote servers
