@@ -209,7 +209,6 @@ function AgentActionsPanelContent({
                 showSeparator={currentStreamingStep > 1}
               />
             )}
-          g
         </div>
       </div>
     </div>
