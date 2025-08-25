@@ -5,6 +5,7 @@ import { DataSourceViewTagsFilterDropdown } from "@app/components/agent_builder/
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import type { DataSourceViewType } from "@app/types";
 
 export function SelectDataSourcesFilters() {
@@ -39,7 +40,7 @@ export function SelectDataSourcesFilters() {
             {Object.values(dataSourceViews).map((dsv) => (
               <ContextItem
                 key={dsv.id}
-                title={dsv.dataSource.name}
+                title={getDisplayNameForDataSource(dsv.dataSource)}
                 visual={
                   <ContextItem.Visual
                     visual={getConnectorProviderLogoWithFallback({
