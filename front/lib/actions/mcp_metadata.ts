@@ -55,7 +55,7 @@ import {
 export type AuthorizationInfo = {
   provider: OAuthProvider;
   supported_use_cases: MCPOAuthUseCase[];
-  scope: string | null;
+  scope?: string | null;
 };
 
 export function isAuthorizationInfo(a: unknown): a is AuthorizationInfo {
