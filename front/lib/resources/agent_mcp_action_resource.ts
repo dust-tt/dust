@@ -108,11 +108,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     });
     assert(stepContent, "Step content not found.");
 
-    return new AgentMCPActionResource(
-      AgentMCPActionResource.model,
-      action.get(),
-      stepContent
-    );
+    return new this(this.model, action.get(), stepContent);
   }
 
   static async fetchByModelIdWithAuth(
@@ -136,7 +132,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     assert(stepContent, "Step content not found.");
 
     // Create a new resource instance with the updated stepContent
-    return new AgentMCPActionResource(
+    return new this(
       this.model,
       {
         id: action.id,
