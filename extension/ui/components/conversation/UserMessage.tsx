@@ -48,31 +48,35 @@ export function UserMessage({
   );
 
   return (
-    <ConversationMessage
-      pictureUrl={message.user?.image || message.context.profilePictureUrl}
-      name={message.context.fullName ?? undefined}
-      renderName={(name) => name}
-      type="user"
-      citations={citations}
-    >
-      <div className="flex flex-col gap-4">
-        <div>
-          <Markdown
-            content={message.content}
-            isStreaming={false}
-            isLastMessage={isLastMessage}
-            additionalMarkdownComponents={additionalMarkdownComponents}
-            additionalMarkdownPlugins={additionalMarkdownPlugins}
-          />
-        </div>
-        {message.mentions.length === 0 && isLastMessage && (
-          <AgentSuggestion
-            conversationId={conversationId}
-            owner={owner}
-            userMessage={message}
-          />
-        )}
+    <div className="flex flex-grow flex-col">
+      <div className="self-end max-w-[85%]">
+        <ConversationMessage
+          pictureUrl={message.user?.image || message.context.profilePictureUrl}
+          name={message.context.fullName ?? undefined}
+          renderName={(name) => name}
+          type="user"
+          citations={citations}
+        >
+          <div className="flex flex-col gap-4">
+            <div>
+              <Markdown
+                content={message.content}
+                isStreaming={false}
+                isLastMessage={isLastMessage}
+                additionalMarkdownComponents={additionalMarkdownComponents}
+                additionalMarkdownPlugins={additionalMarkdownPlugins}
+              />
+            </div>
+            {message.mentions.length === 0 && isLastMessage && (
+              <AgentSuggestion
+                conversationId={conversationId}
+                owner={owner}
+                userMessage={message}
+              />
+            )}
+          </div>
+        </ConversationMessage>
       </div>
-    </ConversationMessage>
+    </div>
   );
 }
