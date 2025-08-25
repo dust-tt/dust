@@ -40,83 +40,54 @@ function useValidationQueue({
 }: {
   pendingValidations: MCPActionValidationRequest[];
 }) {
-  // We store two states: the current validation and a queue.
-  // The current validation is the one displayed in the dialog that can be validated.
-  // The queue does not store the current validation.
   const [validationQueue, setValidationQueue] = useState<
-    // Store validations by `actionId` to prevent duplicate entries.
-    Record<string, MCPActionValidationRequest>
-  >({});
-
-  const [currentValidation, setCurrentValidation] =
-    useState<MCPActionValidationRequest | null>(null);
+    MCPActionValidationRequest[]
+  >([]);
 
   useEffect(() => {
-    const nextValidation = pendingValidations[0];
-    if (nextValidation) {
-      setCurrentValidation(nextValidation);
-    }
-    if (pendingValidations.length > 1) {
-      setValidationQueue(
-        Object.fromEntries(
-          pendingValidations
-            .slice(1)
-            .map((validation) => [validation.actionId, validation])
-        )
-      );
-    }
+    setValidationQueue(pendingValidations);
   }, [pendingValidations]);
 
   const handleValidationRequest = useCallback(
     (validationRequest: MCPActionValidationRequest) => {
-      setCurrentValidation((current) => {
-        if (
-          current === null ||
-          current.actionId === validationRequest.actionId
-        ) {
-          return validationRequest;
-        }
+      setValidationQueue((prevQueue) => {
+        const existingIndex = prevQueue.findIndex(
+          (v) => v.actionId === validationRequest.actionId
+        );
 
-        setValidationQueue((prevRecord) => ({
-          ...prevRecord,
-          [validationRequest.actionId]: validationRequest,
-        }));
-        return current;
+        if (existingIndex >= 0) {
+          const newQueue = [...prevQueue];
+          newQueue[existingIndex] = validationRequest;
+          return newQueue;
+        } else {
+          return [...prevQueue, validationRequest];
+        }
       });
     },
     []
   );
 
-  // We don't update the current validation here to avoid content flickering.
   const takeNextFromQueue = useCallback(() => {
-    const enqueuedActionIds = Object.keys(validationQueue);
+    setValidationQueue((prevQueue) => {
+      if (prevQueue.length > 0) {
+        return prevQueue.slice(1);
+      }
+      return prevQueue;
+    });
+  }, []);
 
-    if (enqueuedActionIds.length > 0) {
-      const nextValidationActionId = enqueuedActionIds[0];
-      const nextValidation = validationQueue[nextValidationActionId];
-
-      setValidationQueue((prevRecord) => {
-        const newRecord = { ...prevRecord };
-        delete newRecord[nextValidationActionId];
-        return newRecord;
-      });
-      return nextValidation;
-    }
-
-    return null;
-  }, [validationQueue]);
-
+  // validationQueue[0] is the current validation.
+  // validationQueue[1:] is the queue.
   const validationQueueLength = useMemo(
-    () => Object.keys(validationQueue).length,
+    () => Math.max(0, validationQueue.length - 1),
     [validationQueue]
   );
 
   return {
     validationQueueLength,
-    currentValidation,
+    currentValidation: validationQueue[0] || null,
     handleValidationRequest,
     takeNextFromQueue,
-    setCurrentValidation,
   };
 }
 
@@ -169,7 +140,6 @@ export function ActionValidationProvider({
   const {
     validationQueueLength,
     currentValidation,
-    setCurrentValidation,
     handleValidationRequest,
     takeNextFromQueue,
   } = useValidationQueue({ pendingValidations });
@@ -219,26 +189,26 @@ export function ActionValidationProvider({
     setNeverAskAgain(false);
   };
 
-  const handleSubmit = (approved: MCPValidationOutputType) => {
+  function handleSubmit(approved: MCPValidationOutputType) {
     void sendCurrentValidation(approved);
 
-    const foundItem = takeNextFromQueue();
-    if (foundItem) {
-      setCurrentValidation(foundItem);
-    } else {
+    // Remove the current validation from the queue
+    takeNextFromQueue();
+
+    // If there are no more validations, close the dialog
+    if (validationQueueLength === 0) {
       // To avoid content flickering, we will clear out the current validation in onDialogAnimationEnd.
       setIsDialogOpen(false);
     }
-  };
+  }
 
   // To avoid content flickering, we will clear out the current validation when closing animation ends.
-  const onDialogAnimationEnd = () => {
+  function onDialogAnimationEnd() {
     // This is safe to check because the dialog closing animation is triggered after isDialogOpen is set to false.
     if (!isDialogOpen) {
-      setCurrentValidation(null);
       setErrorMessage(null);
     }
-  };
+  }
 
   // This will be used as a dependency of the hook down the line so we need to use useCallback.
   const showValidationDialog = useCallback(
