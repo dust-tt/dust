@@ -163,7 +163,7 @@ export function DataSourceViewTagsFilterDropdown() {
 
   return (
     <PopoverRoot>
-      <PopoverTrigger>
+      <PopoverTrigger asChild>
         <Button label="Filters" isSelect />
       </PopoverTrigger>
 
