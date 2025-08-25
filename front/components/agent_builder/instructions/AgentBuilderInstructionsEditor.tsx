@@ -223,14 +223,9 @@ export function AgentBuilderInstructionsEditor({
 
   return (
     <div className="flex h-full flex-col gap-1">
-      <div className="relative">
-        <EditorContent editor={editor} className="h-full cursor-text" />
-        <div
-          className="absolute bottom-4 right-4"
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
-        >
+      <div className="relative p-px">
+        <EditorContent editor={editor} />
+        <div className="absolute bottom-2 right-2">
           <InstructionTipsPopover owner={owner} />
         </div>
       </div>
