@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
   LargeAssistantCard,
 } from "@sparkle/components";
-import { BookOpenIcon, CommandLineIcon } from "@sparkle/icons/app";
+// ToolCard has its own story now; keep AssistantCard story focused
 
 const meta: Meta<typeof AssistantCard> = {
   title: "Modules/AssistantCard",
@@ -97,39 +97,4 @@ export const AssistantCardExample = () => (
   </div>
 );
 
-export const ToolCardVariant = () => (
-  <div className="s-flex s-flex-col s-gap-4">
-    <h2>Tool Card Variant</h2>
-    <div className="s-grid s-grid-cols-2 s-gap-3">
-      {/* Not added state (shows Add button) */}
-      <AssistantCard
-        title=""
-        description=""
-        pictureUrl=""
-        toolVariant={{
-          icon: BookOpenIcon,
-          label: "Image Generation",
-          description: "Agent can generate images (GPT Image 1).",
-          isSelected: false,
-          canAdd: true,
-        }}
-        onClick={() => logger.info("Add Image Generation")}
-      />
-
-      {/* Added state (shows ADDED chip, no button) */}
-      <AssistantCard
-        title=""
-        description=""
-        pictureUrl=""
-        toolVariant={{
-          icon: CommandLineIcon,
-          label: "Reasoning",
-          description:
-            "Agent can decide to trigger a reasoning model for complex tasks.",
-          isSelected: true,
-          canAdd: false,
-        }}
-      />
-    </div>
-  </div>
-);
+// ToolCard variant examples were moved to ToolCard.stories.

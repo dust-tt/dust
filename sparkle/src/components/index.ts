@@ -107,6 +107,7 @@ export { LoadingBlock } from "./LoadingBlock";
 export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";
 export { MessageCard } from "./MessageCard";
+export { ToolCard } from "./ToolCard";
 export type {
   MultiPageDialogFooterProps,
   MultiPageDialogPage,
