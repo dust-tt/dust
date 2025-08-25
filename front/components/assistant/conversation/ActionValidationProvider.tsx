@@ -30,6 +30,7 @@ import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
 import type {
   ConversationWithoutContentType,
+  LightAgentMessageType,
   LightWorkspaceType,
   MCPActionValidationRequest,
 } from "@app/types";
@@ -48,13 +49,15 @@ function useValidationQueue({
     Record<string, MCPActionValidationRequest>
   >({});
 
-  const [currentValidation, setCurrentValidation] =
-    useState<MCPActionValidationRequest | null>(null);
+  const [currentValidation, setCurrentValidation] = useState<{
+    message?: LightAgentMessageType;
+    validationRequest: MCPActionValidationRequest;
+  } | null>(null);
 
   useEffect(() => {
     const nextValidation = pendingValidations[0];
     if (nextValidation) {
-      setCurrentValidation(nextValidation);
+      setCurrentValidation({ validationRequest: nextValidation });
     }
     if (pendingValidations.length > 1) {
       setValidationQueue(
@@ -68,13 +71,19 @@ function useValidationQueue({
   }, [pendingValidations]);
 
   const enqueueValidation = useCallback(
-    (validationRequest: MCPActionValidationRequest) => {
+    ({
+      message,
+      validationRequest,
+    }: {
+      message: LightAgentMessageType;
+      validationRequest: MCPActionValidationRequest;
+    }) => {
       setCurrentValidation((current) => {
         if (
           current === null ||
-          current.actionId === validationRequest.actionId
+          current.validationRequest.actionId === validationRequest.actionId
         ) {
-          return validationRequest;
+          return { message, validationRequest };
         }
 
         setValidationQueue((prevRecord) => ({
@@ -126,7 +135,10 @@ function useValidationQueue({
 }
 
 type ActionValidationContextType = {
-  enqueueValidation: (validationRequest: MCPActionValidationRequest) => void;
+  enqueueValidation: (params?: {
+    message: LightAgentMessageType;
+    validationRequest: MCPActionValidationRequest;
+  }) => void;
   showValidationDialog: () => void;
   hasPendingValidations: boolean;
   totalPendingValidations: number;
@@ -199,19 +211,38 @@ export function ActionValidationProvider({
     setErrorMessage(null);
     setIsProcessing(true);
 
+    const { validationRequest, message } = currentValidation;
+
     const response = await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${currentValidation.conversationId}/messages/${currentValidation.messageId}/validate-action`,
+      `/api/w/${owner.sId}/assistant/conversations/${validationRequest.conversationId}/messages/${validationRequest.messageId}/validate-action`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          actionId: currentValidation.actionId,
+          actionId: validationRequest.actionId,
           approved,
         }),
       }
     );
+
+    // Retry on blocked tools on the main conversation if there is one that is != from the event's.
+    if (
+      conversation?.sId &&
+      message &&
+      conversation.sId !== validationRequest.conversationId
+    ) {
+      await fetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${message.sId}/retry?blocked_only=true`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
 
     setIsProcessing(false);
 
@@ -270,8 +301,10 @@ export function ActionValidationProvider({
           <DialogHeader hideButton>
             <DialogTitle
               visual={
-                currentValidation?.metadata.icon ? (
-                  getAvatarFromIcon(currentValidation.metadata.icon)
+                currentValidation?.validationRequest.metadata.icon ? (
+                  getAvatarFromIcon(
+                    currentValidation.validationRequest.metadata.icon
+                  )
                 ) : (
                   <Icon visual={ActionPieChartIcon} size="sm" />
                 )
@@ -285,20 +318,23 @@ export function ActionValidationProvider({
               <div>
                 Allow{" "}
                 <span className="font-semibold">
-                  @{currentValidation?.metadata.agentName}
+                  @{currentValidation?.validationRequest.metadata.agentName}
                 </span>{" "}
                 to use the tool{" "}
                 <span className="font-semibold">
-                  {asDisplayName(currentValidation?.metadata.toolName)}
+                  {asDisplayName(currentValidation?.validationRequest.metadata.toolName)}
                 </span>{" "}
                 from{" "}
                 <span className="font-semibold">
-                  {asDisplayName(currentValidation?.metadata.mcpServerName)}
+                  {asDisplayName(
+                    currentValidation?.validationRequest.metadata.mcpServerName
+                  )}
                 </span>
                 ?
               </div>
-              {currentValidation?.inputs &&
-                Object.keys(currentValidation.inputs).length > 0 && (
+              {currentValidation?.validationRequest.inputs &&
+                Object.keys(currentValidation.validationRequest.inputs).length >
+                  0 && (
                   <CollapsibleComponent
                     triggerChildren={
                       <span className="font-medium text-muted-foreground dark:text-muted-foreground-night">
@@ -312,7 +348,11 @@ export function ActionValidationProvider({
                             wrapLongLines
                             className="language-json overflow-y-auto"
                           >
-                            {JSON.stringify(currentValidation?.inputs, null, 2)}
+                            {JSON.stringify(
+                              currentValidation?.validationRequest.inputs,
+                              null,
+                              2
+                            )}
                           </CodeBlock>
                         </div>
                       </div>
@@ -333,7 +373,7 @@ export function ActionValidationProvider({
                 </div>
               )}
             </div>
-            {currentValidation?.stake === "low" && (
+            {currentValidation?.validationRequest.stake === "low" && (
               <div className="mt-5">
                 <Label className="copy-sm flex w-fit cursor-pointer flex-row items-center gap-2 py-2 pr-2 font-normal">
                   <Checkbox
