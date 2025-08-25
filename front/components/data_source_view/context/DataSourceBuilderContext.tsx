@@ -150,6 +150,8 @@ type DataSourceBuilderState = StateType & {
    * Update the `tagsFilter` of the given `sources` index
    */
   updateSourcesTags: (index: number, tagsFilter: TagsFilter) => void;
+
+  toggleTagsMode: (dataSourceView: DataSourceViewType) => void;
 };
 
 type ActionType =
@@ -421,6 +423,46 @@ export function DataSourceBuilderProvider({
       [field]
     );
 
+  const toggleTagsMode: DataSourceBuilderState["toggleTagsMode"] = useCallback(
+    (dataSourceView) => {
+      field.onChange({
+        ...field.value,
+        in: field.value.in.map((source) => {
+          // Check if this source matches the given dataSourceView
+          const isMatchingSource =
+            (source.type === "data_source" &&
+              source.dataSourceView.sId === dataSourceView.sId) ||
+            (source.type === "node" &&
+              source.node.dataSourceView.sId === dataSourceView.sId);
+
+          if (isMatchingSource && "tagsFilter" in source) {
+            // Initialize tagsFilter if null
+            const currentTagsFilter = source.tagsFilter || {
+              in: [],
+              not: [],
+              mode: "custom" as const,
+            };
+
+            // Toggle between "auto" and "custom" modes
+            const newMode =
+              currentTagsFilter.mode === "auto" ? "custom" : "auto";
+
+            return {
+              ...source,
+              tagsFilter: {
+                ...currentTagsFilter,
+                mode: newMode,
+              },
+            };
+          }
+
+          return source;
+        }),
+      });
+    },
+    [field]
+  );
+
   const value = useMemo(
     () => ({
       ...state,
@@ -438,6 +480,7 @@ export function DataSourceBuilderProvider({
       addNodeEntry,
       navigateTo,
       updateSourcesTags,
+      toggleTagsMode,
     }),
     [
       state,
@@ -455,6 +498,7 @@ export function DataSourceBuilderProvider({
       setSpaceEntry,
       setDataSourceViewEntry,
       updateSourcesTags,
+      toggleTagsMode,
     ]
   );
 
