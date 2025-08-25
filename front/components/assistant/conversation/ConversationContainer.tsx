@@ -26,7 +26,6 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
-import { useBlockedActions } from "@app/lib/swr/blocked_actions";
 import {
   useConversationMessages,
   useConversations,
