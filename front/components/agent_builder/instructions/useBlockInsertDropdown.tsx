@@ -136,27 +136,32 @@ export const useBlockInsertDropdown = (
         if (!state.selection.empty) {
           return false;
         }
-        
+
         const $from = state.doc.resolve(range.from);
-        
+
         // Check if we're inside a code block (immediate parent)
         if ($from.parent.type.name === "codeBlock") {
           return false;
         }
-        
+
         // Check all ancestors for instruction blocks
         for (let d = $from.depth; d >= 0; d--) {
           if ($from.node(d).type.name === "instructionBlock") {
             return false;
           }
         }
-        
+
         return true;
       },
       command: ({ editor, range, props }) => {
         const suggestion = props as Partial<BlockSuggestion>;
         // Ensure all required parameters exist and command is callable
-        if (!editor || !range || !suggestion || typeof suggestion.command !== "function") {
+        if (
+          !editor ||
+          !range ||
+          !suggestion ||
+          typeof suggestion.command !== "function"
+        ) {
           return;
         }
         suggestion.command(

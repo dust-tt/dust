@@ -85,18 +85,20 @@ export function createInstructionBlockNode(
   content: string
 ): JSONContent {
   const paragraphs = textToParagraphNodes(content);
-  
+
   // Add opening and closing tags as paragraphs
   const blockContent: JSONContent[] = [
     {
       type: "paragraph",
-      content: [{ type: "text", text: `<${type}>` }]
+      content: [{ type: "text", text: `<${type}>` }],
     },
-    ...(paragraphs.length > 0 ? paragraphs : [{ type: "paragraph", content: [] }]),
+    ...(paragraphs.length > 0
+      ? paragraphs
+      : [{ type: "paragraph", content: [] }]),
     {
-      type: "paragraph", 
-      content: [{ type: "text", text: `</${type}>` }]
-    }
+      type: "paragraph",
+      content: [{ type: "text", text: `</${type}>` }],
+    },
   ];
 
   return {
@@ -116,12 +118,12 @@ export function createProseMirrorInstructionBlock(
   schema: Schema
 ): ProseMirrorNode {
   const paragraphs = textToProseMirrorParagraphs(content, schema);
-  
+
   // Add opening and closing tags as paragraphs
   const blockContent = [
     schema.nodes.paragraph.create({}, [schema.text(`<${type}>`)]),
     ...(paragraphs.length > 0 ? paragraphs : [schema.nodes.paragraph.create()]),
-    schema.nodes.paragraph.create({}, [schema.text(`</${type}>`)])
+    schema.nodes.paragraph.create({}, [schema.text(`</${type}>`)]),
   ];
 
   return nodeType.create({ type }, blockContent);

@@ -132,7 +132,6 @@ export function AgentBuilderInstructionsEditor({
     [field, isInstructionDiffMode]
   );
 
-
   const editor = useEditor(
     {
       extensions,

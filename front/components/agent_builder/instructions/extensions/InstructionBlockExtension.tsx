@@ -575,12 +575,12 @@ export const InstructionBlockExtension =
             // Check if we need to sync (only if they were different)
             // We need to check the old state to see if they matched before
             const oldDoc = oldState.doc;
-            
+
             // Safety check: ensure blockPos is within the old document bounds
             if (blockPos < 0 || blockPos >= oldDoc.content.size) {
               return null; // Skip syncing if position is invalid in old document
             }
-            
+
             const oldBlockNode = oldDoc.nodeAt(blockPos);
 
             if (oldBlockNode && oldBlockNode.childCount >= 2) {

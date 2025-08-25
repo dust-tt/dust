@@ -64,7 +64,7 @@ function parseInstructionBlocks(text: string): JSONContent[] {
       const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
       let lastIndex = 0;
       let match;
-      
+
       while ((match = codeBlockRegex.exec(segment.content)) !== null) {
         // Add text before code block as paragraphs
         if (match.index > lastIndex) {
@@ -72,19 +72,19 @@ function parseInstructionBlocks(text: string): JSONContent[] {
           const paragraphs = textToParagraphNodes(textBefore);
           content.push(...paragraphs);
         }
-        
+
         // Add code block
         const language = match[1] || "";
         const code = match[2];
         content.push({
           type: "codeBlock",
           attrs: { language },
-          content: code ? [{ type: "text", text: code }] : []
+          content: code ? [{ type: "text", text: code }] : [],
         });
-        
+
         lastIndex = match.index + match[0].length;
       }
-      
+
       // Add remaining text after last code block
       if (lastIndex < segment.content.length) {
         const remainingText = segment.content.slice(lastIndex);
