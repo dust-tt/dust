@@ -192,6 +192,7 @@ const triggerSchema = z.object({
   name: z.string(),
   kind: z.enum(["schedule"]),
   configuration: z.union([scheduleConfigSchema, z.null()]),
+  editor: z.number().nullable(),
 });
 
 export const agentBuilderFormSchema = z.object({

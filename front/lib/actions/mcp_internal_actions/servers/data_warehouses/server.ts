@@ -1,5 +1,5 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -23,10 +23,10 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
 import { executeQuery } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
 import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
@@ -37,23 +37,11 @@ const TABLES_FILESYSTEM_TOOL_NAME = "tables_filesystem_navigation";
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "data_warehouses",
-  version: "1.0.0",
-  description:
-    "Comprehensive tables navigation toolkit for browsing data warehouses and tables. Provides Unix-like " +
-    "browsing (ls, find) to help agents efficiently explore and discover tables organized in a " +
-    "warehouse-centric hierarchy. Each warehouse contains schemas/databases which contain tables.",
-  authorization: null,
-  icon: "ActionTableIcon",
-  documentationUrl: null,
-};
-
 const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer("data_warehouses");
 
   server.tool(
     DATA_WAREHOUSES_LIST_TOOL_NAME,

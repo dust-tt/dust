@@ -1,6 +1,7 @@
 import {
-  Chip,
+  AnimatedText,
   ClockIcon,
+  ContentMessage,
   Input,
   Label,
   Sheet,
@@ -24,6 +25,7 @@ import type {
 import { scheduleFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTextAsCronRule } from "@app/lib/swr/agent_triggers";
+import { useUser } from "@app/lib/swr/user";
 import { debounce } from "@app/lib/utils/debounce";
 import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
@@ -45,6 +47,9 @@ export function ScheduleEditionModal({
   onClose,
   onSave,
 }: ScheduleEditionModalProps) {
+  const { user } = useUser();
+  const isEditor = !trigger?.editor || trigger?.editor === user?.id;
+
   const defaultValues: ScheduleFormData = {
     name: "Schedule",
     cron: "",
@@ -54,6 +59,7 @@ export function ScheduleEditionModal({
   const form = useForm<ScheduleFormData>({
     resolver: zodResolver(scheduleFormSchema),
     defaultValues,
+    disabled: !isEditor,
   });
   const [naturalDescription, setNaturalDescription] = useState("");
   const [
@@ -95,7 +101,7 @@ export function ScheduleEditionModal({
           return `Please describe above... (minimum ${MIN_DESCRIPTION_LENGTH} characters)`;
         }
         try {
-          return `Agent will run ${cronstrue.toString(cron)}.`;
+          return `${cronstrue.toString(cron)}.`;
         } catch (error) {
           setNaturalDescriptionToCronRuleStatus("error");
         }
@@ -119,6 +125,7 @@ export function ScheduleEditionModal({
         cron: data.cron.trim(),
         timezone: data.timezone.trim(),
       },
+      editor: trigger?.editor ?? user?.id ?? null,
     };
 
     onSave(triggerData);
@@ -130,7 +137,11 @@ export function ScheduleEditionModal({
       <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>
-            {trigger ? "Edit Schedule" : "Create Schedule"}
+            {trigger
+              ? isEditor
+                ? "Edit Schedule"
+                : "View Schedule"
+              : "Create Schedule"}
           </SheetTitle>
         </SheetHeader>
 
@@ -150,13 +161,22 @@ export function ScheduleEditionModal({
               </div>
 
               <div>
-                <Label htmlFor="trigger-description">Frequency</Label>
+                <div className="pb-2">
+                  <Label htmlFor="trigger-description">Scheduler</Label>
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    The trigger will run in the{" "}
+                    {trigger?.configuration?.timezone ||
+                      Intl.DateTimeFormat().resolvedOptions().timeZone}{" "}
+                    timezone.
+                  </p>
+                </div>
 
                 <TextArea
                   id="schedule-description"
                   placeholder='Describe when you want the agent to run in natural language. e.g. "run every day at 9 AM", or "Late afternoon on business days"...'
                   rows={3}
                   value={naturalDescription}
+                  disabled={!isEditor}
                   onChange={async (e) => {
                     const txt = e.target.value;
                     setNaturalDescription(txt);
@@ -187,12 +207,19 @@ export function ScheduleEditionModal({
                   }}
                 />
                 <div className="my-2">
-                  <Chip
-                    color={"primary"}
-                    isBusy={naturalDescriptionToCronRuleStatus === "loading"}
-                    label={cronDescription}
+                  <ContentMessage
+                    variant="outline"
                     icon={ClockIcon}
-                  />
+                    title="Agent runs"
+                  >
+                    {naturalDescriptionToCronRuleStatus === "loading" ? (
+                      <AnimatedText variant="highlight">
+                        {cronDescription}
+                      </AnimatedText>
+                    ) : (
+                      cronDescription
+                    )}
+                  </ContentMessage>
                 </div>
               </div>
 
@@ -206,30 +233,36 @@ export function ScheduleEditionModal({
                 className="hidden" // Field is hidden, but we need to keep it for form validation
               />
 
-              <div>
-                <Label htmlFor="trigger-timezone">Timezone</Label>
-                <Input
-                  id="trigger-timezone"
-                  {...form.register("timezone")}
-                  placeholder="e.g., America/New_York, Europe/Paris"
-                  message={form.formState.errors.timezone?.message}
-                  messageStatus="error"
-                />
-              </div>
+              <Input
+                id="trigger-timezone"
+                {...form.register("timezone")}
+                placeholder="e.g., America/New_York, Europe/Paris"
+                message={form.formState.errors.timezone?.message}
+                messageStatus="error"
+                className="hidden" // Field is hidden, but we need to keep it for form validation
+              />
             </div>
           </FormProvider>
         </SheetContainer>
 
         <SheetFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-            onClick: handleCancel,
-          }}
+          leftButtonProps={
+            isEditor
+              ? {
+                  label: "Cancel",
+                  variant: "outline",
+                  onClick: handleCancel,
+                }
+              : undefined
+          }
           rightButtonProps={{
-            label: trigger ? "Update Trigger" : "Add Trigger",
+            label: trigger
+              ? isEditor
+                ? "Update Trigger"
+                : "Close"
+              : "Add Trigger",
             variant: "primary",
-            onClick: form.handleSubmit(onSubmit),
+            onClick: isEditor ? form.handleSubmit(onSubmit) : handleCancel,
             disabled: form.formState.isSubmitting,
           }}
         />

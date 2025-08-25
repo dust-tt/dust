@@ -26,7 +26,7 @@ export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 const editorVariants = cva(
   [
-    "overflow-auto border rounded-xl p-2 resize-y min-h-60 h-100",
+    "overflow-auto border rounded-xl p-2 resize-y min-h-60 max-h-[1024px]",
     "transition-all duration-200",
     "bg-muted-background dark:bg-muted-background-night",
   ],
@@ -129,7 +129,10 @@ export function AgentBuilderInstructionsEditor({
 
     const currentContent = plainTextFromTipTapContent(editor.getJSON());
     if (currentContent !== field.value) {
-      editor.commands.setContent(tipTapContentFromPlainText(field.value));
+      // Use setTimeout to ensure this runs after any diff mode changes
+      setTimeout(() => {
+        editor.commands.setContent(tipTapContentFromPlainText(field.value));
+      }, 0);
     }
   }, [editor, field.value]);
 

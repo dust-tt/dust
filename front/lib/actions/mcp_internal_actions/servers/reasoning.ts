@@ -14,7 +14,6 @@ import {
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getRedisClient } from "@app/lib/api/redis";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -39,21 +38,11 @@ const CANCELLATION_CHECK_INTERVAL = 500;
 
 const REASONING_GENERATION_TOKENS = 20480;
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "reasoning",
-  version: "1.0.0",
-  description:
-    "Agent can decide to trigger a reasoning model for complex tasks.",
-  icon: "ActionLightbulbIcon",
-  authorization: null,
-  documentationUrl: null,
-};
-
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer("reasoning");
 
   server.tool(
     "advanced_reasoning",

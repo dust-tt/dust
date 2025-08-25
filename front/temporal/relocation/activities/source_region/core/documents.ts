@@ -6,11 +6,11 @@ import type {
   CoreDocumentAPIRelocationBlob,
   DataSourceCoreIds,
 } from "@app/temporal/relocation/activities/types";
+import { CORE_API_CONCURRENCY_LIMIT } from "@app/temporal/relocation/activities/types";
 import {
-  CORE_API_CONCURRENCY_LIMIT,
-  CORE_API_LIST_NODES_BATCH_SIZE,
-} from "@app/temporal/relocation/activities/types";
-import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
+  withJSONSerializationRetry,
+  writeToRelocationStorage,
+} from "@app/temporal/relocation/lib/file_storage/relocation";
 import type {
   CoreAPIDocumentBlob,
   CoreAPINodesSearchFilter,
@@ -25,12 +25,14 @@ export async function getDataSourceDocuments({
   sourceRegion,
   workspaceId,
   fileName,
+  limit,
 }: {
   dataSourceCoreIds: DataSourceCoreIds;
   pageCursor: string | null;
   sourceRegion: RegionType;
   workspaceId: string;
   fileName?: string;
+  limit: number;
 }) {
   const localLogger = logger.child({
     dataSourceCoreIds,
@@ -53,7 +55,7 @@ export async function getDataSourceDocuments({
   };
 
   const options: CoreAPISearchCursorRequest = {
-    limit: CORE_API_LIST_NODES_BATCH_SIZE,
+    limit,
   };
 
   if (pageCursor) {
@@ -128,28 +130,44 @@ export async function getDataSourceDocuments({
     },
   };
 
-  // 3) Save the document blobs to file storage.
-  const dataPath = await writeToRelocationStorage(blobs, {
-    workspaceId,
-    type: "core",
-    operation: "data_source_documents_blobs",
-    fileName,
-  });
+  return withJSONSerializationRetry<{
+    dataPath: string | null;
+    nextPageCursor: string | null;
+    nextLimit: number | null;
+  }>(
+    async () => {
+      const dataPath = await writeToRelocationStorage(blobs, {
+        workspaceId,
+        type: "core",
+        operation: "data_source_documents_blobs",
+        fileName,
+      });
 
-  localLogger.info(
-    {
-      dataPath,
-      nextPageCursor,
-      nodeCount: nodes.length,
-      totalNodeCount,
+      localLogger.info(
+        {
+          dataPath,
+          nextPageCursor,
+          nodeCount: nodes.length,
+          totalNodeCount,
+        },
+        "[Core] Retrieved data source documents"
+      );
+
+      return {
+        dataPath,
+        nextPageCursor,
+        nextLimit: null,
+      };
     },
-    "[Core] Retrieved data source documents"
+    {
+      fallbackResult: {
+        dataPath: null,
+        nextPageCursor: pageCursor,
+      },
+      limit,
+      localLogger,
+    }
   );
-
-  return {
-    dataPath,
-    nextPageCursor,
-  };
 }
 
 export async function getRegionDustFacingUrl() {

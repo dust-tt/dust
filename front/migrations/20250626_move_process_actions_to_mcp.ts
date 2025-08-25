@@ -13,6 +13,7 @@ import type {
   ExtractResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ProcessActionOutputsType } from "@app/lib/actions/process";
+import config from "@app/lib/api/config";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -29,7 +30,6 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType, ModelId, TimeFrame } from "@app/types";
 import { isGlobalAgentId } from "@app/types";
-import config from "@app/lib/api/config";
 
 const WORKSPACE_CONCURRENCY = 50;
 const BATCH_SIZE = 200;

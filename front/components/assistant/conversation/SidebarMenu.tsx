@@ -476,7 +476,7 @@ const RenderConversation = ({
           icon={
             conversation.actionRequired
               ? ActionRequiredIcon
-              : conversation.unread
+              : conversation.visibility === "triggered"
                 ? ClockIcon
                 : undefined
           }

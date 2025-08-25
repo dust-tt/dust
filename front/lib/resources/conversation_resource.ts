@@ -371,6 +371,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const includedConversationVisibilities: ConversationVisibility[] = [
       "unlisted",
+      "triggered",
     ];
 
     if (options?.includeDeleted) {

@@ -19,6 +19,8 @@ import { SpinnerProps } from "@sparkle/components/Spinner";
 import { ChevronDownIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
+const PULSE_ANIMATION_DURATION = 1;
+
 export const BUTTON_VARIANTS = [
   "primary",
   "highlight",
@@ -193,7 +195,7 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     isSelect?: boolean;
     isLoading?: boolean;
     isPulsing?: boolean;
-    pulseOnce?: boolean;
+    briefPulse?: boolean;
     tooltip?: string;
     isCounter?: boolean;
     counterValue?: string;
@@ -224,7 +226,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       tooltip,
       isSelect = false,
       isPulsing = false,
-      pulseOnce = false,
+      briefPulse = false,
       isCounter = false,
       counterValue,
       size = "sm",
@@ -241,18 +243,21 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const iconSize = ICON_SIZE_MAP[size];
     const counterSize = COUNTER_SIZE_MAP[size];
 
-    const [isPulsingOnce, setIsPulsingOnce] = useState(false);
+    const [isPulsingBriefly, setIsPulsingBriefly] = useState(false);
 
     useEffect(() => {
-      if (!pulseOnce) {
+      if (!briefPulse) {
         return;
       }
       const startPulse = () => {
-        setIsPulsingOnce(true);
-        setTimeout(() => setIsPulsingOnce(false), 1500);
+        setIsPulsingBriefly(true);
+        setTimeout(
+          () => setIsPulsingBriefly(false),
+          PULSE_ANIMATION_DURATION * 3000
+        );
       };
       startPulse();
-    }, [pulseOnce]);
+    }, [briefPulse]);
 
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
       <Icon visual={visual} size={iconSize} className={cn(extraClass)} />
@@ -335,14 +340,14 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         variant={variant}
         disabled={isLoading || props.disabled}
         className={cn(
-          (isPulsing || isPulsingOnce) && "s-animate-pulse",
+          (isPulsing || isPulsingBriefly) && "s-animate-pulse",
           className
         )}
         aria-label={ariaLabel || tooltip || label}
         style={
           {
             "--pulse-color": "#93C5FD",
-            "--duration": "1.5s",
+            "--duration": `${PULSE_ANIMATION_DURATION}s`,
           } as React.CSSProperties
         }
         asChild={shouldUseSlot}

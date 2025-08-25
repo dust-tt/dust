@@ -348,7 +348,7 @@ export function ConversationContainer({
         </div>
       )}
 
-      {hasPendingValidations && (
+      {activeConversationId && hasPendingValidations && (
         <ContentMessageInline
           icon={InformationCircleIcon}
           variant="primary"
@@ -375,7 +375,7 @@ export function ConversationContainer({
         }
         stickyMentions={stickyMentions}
         conversationId={activeConversationId}
-        disable={hasPendingValidations}
+        disable={activeConversationId !== null && hasPendingValidations}
       />
 
       {!activeConversationId && (
