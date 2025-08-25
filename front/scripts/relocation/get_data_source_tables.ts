@@ -1,6 +1,7 @@
 import { isRegionType, SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { makeScript } from "@app/scripts/helpers";
 import { getDataSourceTables } from "@app/temporal/relocation/activities/source_region/core/tables";
+import { CORE_API_LIST_TABLES_BATCH_SIZE } from "@app/temporal/relocation/activities/types";
 
 makeScript(
   {
@@ -31,6 +32,9 @@ makeScript(
     pageCursor: {
       type: "string",
     },
+    limit: {
+      type: "number",
+    },
   },
   async (
     {
@@ -40,6 +44,7 @@ makeScript(
       workspaceId,
       sourceRegion,
       pageCursor,
+      limit,
       execute,
     },
     logger
@@ -63,6 +68,7 @@ makeScript(
       pageCursor,
       sourceRegion,
       workspaceId,
+      limit: limit ?? CORE_API_LIST_TABLES_BATCH_SIZE,
     });
 
     logger.info({ result }, "Retrieved tables");
