@@ -105,7 +105,9 @@ export async function publishConversationRelatedEvent(
   a: ConversationRelatedEventParams
 ) {
   if (isMessageEventParams(a, a.event.type)) {
-    return publishMessageEvent(a.event, { step: a.step });
+    return publishMessageEvent(a.event, {
+      step: a.step,
+    });
   } else {
     return publishConversationEvent(a.event, {
       conversationId: a.conversationId,

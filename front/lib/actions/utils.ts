@@ -214,9 +214,10 @@ export function computeStepContexts({
     });
 
     stepContexts.push({
-      retrievalTopK,
-      citationsOffset: currentOffset,
       citationsCount,
+      citationsOffset: currentOffset,
+      restartState: null,
+      retrievalTopK,
       websearchResultCount: websearchResults,
     });
 

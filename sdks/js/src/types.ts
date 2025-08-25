@@ -1110,16 +1110,22 @@ export type BlockedActionExecutionType = z.infer<
 
 const MCPApproveExecutionEventSchema = ToolExecutionMetadataSchema.extend({
   type: z.literal("tool_approve_execution"),
-  created: z.number(),
   configurationId: z.string(),
-  messageId: z.string(),
   conversationId: z.string(),
+  created: z.number(),
+  isLastBlockingEventForStep: z.boolean().optional(),
+  messageId: z.string(),
 });
+
+export type MCPApproveExecutionEvent = z.infer<
+  typeof MCPApproveExecutionEventSchema
+>;
 
 const ToolErrorEventSchema = z.object({
   type: z.literal("tool_error"),
   created: z.number(),
   configurationId: z.string(),
+  isLastBlockingEventForStep: z.boolean().optional(),
   messageId: z.string(),
   error: z.object({
     code: z.string(),

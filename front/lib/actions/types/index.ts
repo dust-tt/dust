@@ -11,9 +11,10 @@ import type {
 } from "@app/types";
 
 export type StepContext = {
-  retrievalTopK: number;
-  citationsOffset: number;
   citationsCount: number;
+  citationsOffset: number;
+  restartState: Record<string, unknown> | null;
+  retrievalTopK: number;
   websearchResultCount: number;
 };
 

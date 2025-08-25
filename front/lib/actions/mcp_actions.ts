@@ -41,6 +41,7 @@ import {
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { BlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import type {
   MCPConnectionParams,
   ServerSideMCPConnectionParams,
@@ -223,7 +224,10 @@ type MCPCallToolEvent =
       type: "result";
       result: Result<
         CallToolResult["content"],
-        Error | McpError | MCPServerPersonalAuthenticationRequiredError
+        | Error
+        | McpError
+        | MCPServerPersonalAuthenticationRequiredError
+        | BlockedAwaitingInputError
       >;
     };
 
@@ -387,6 +391,17 @@ export async function* tryCallMCPTool(
                     authReq.provider
                   )
                 ),
+              };
+              return;
+            } else if (parsed?.__dust_blocked_awaiting_input) {
+              const err = new BlockedAwaitingInputError(
+                parsed.__dust_blocked_awaiting_input.blockingEvents,
+                parsed.__dust_blocked_awaiting_input.state
+              );
+
+              yield {
+                type: "result",
+                result: new Err(err),
               };
               return;
             }

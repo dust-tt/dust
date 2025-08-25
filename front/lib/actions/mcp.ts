@@ -25,6 +25,7 @@ import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_interna
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { BlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import {
   hideFileFromActionOutput,
   rewriteContentForModel,
@@ -439,7 +440,6 @@ export async function* runToolWithStreaming(
     agentMessage,
     conversation,
     mcpAction,
-    stepContext,
   }: {
     action: AgentMCPActionResource;
     actionBaseParams: ActionBaseParams;
@@ -447,7 +447,6 @@ export async function* runToolWithStreaming(
     agentMessage: AgentMessageType;
     conversation: ConversationType;
     mcpAction: MCPActionType;
-    stepContext: StepContext;
   }
 ): AsyncGenerator<
   | MCPApproveExecutionEvent
@@ -485,7 +484,7 @@ export async function* runToolWithStreaming(
     agentConfiguration,
     agentMessage,
     conversation,
-    stepContext,
+    stepContext: action.stepContext,
     toolConfiguration,
   };
 
@@ -511,11 +510,11 @@ export async function* runToolWithStreaming(
       "Error calling MCP tool on run."
     );
 
+    const { error: toolErr } = toolCallResult ?? {};
+
     // If we got a personal authentication error, we emit a specific event that will be
     // deferred until after all tools complete, then converted to a tool_error.
-    if (
-      MCPServerPersonalAuthenticationRequiredError.is(toolCallResult?.error)
-    ) {
+    if (MCPServerPersonalAuthenticationRequiredError.is(toolErr)) {
       const authErrorMessage =
         `The tool ${actionBaseParams.functionCallName} requires personal ` +
         `authentication, please authenticate to use it.`;
@@ -529,20 +528,32 @@ export async function* runToolWithStreaming(
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         authError: {
-          mcpServerId: toolCallResult.error.mcpServerId,
-          provider: toolCallResult.error.provider,
+          mcpServerId: toolErr.mcpServerId,
+          provider: toolErr.provider,
           toolName: actionBaseParams.functionCallName ?? "unknown",
           message: authErrorMessage,
-          ...(toolCallResult.error.scope && {
-            scope: toolCallResult.error.scope,
+          ...(toolErr.scope && {
+            scope: toolErr.scope,
           }),
         },
       };
 
       return;
+    } else if (toolErr instanceof BlockedAwaitingInputError) {
+      // Update the step context to keep the restart state.
+      await action.updateStepContext({
+        ...action.stepContext,
+        restartState: toolErr.restartState,
+      });
+
+      // Yield the blocking events.
+      for (const event of toolErr.blockingEvents) {
+        yield event;
+      }
+
+      return;
     }
 
-    const { error: toolErr } = toolCallResult ?? {};
     let errorMessage: string;
 
     // We don't want to expose the MCP full error message to the user.
