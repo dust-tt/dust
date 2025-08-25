@@ -2,6 +2,7 @@ import {
   cn,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -77,7 +78,7 @@ export const BlockInsertDropdown = ({
         onCloseAutoFocus={(e) => e.preventDefault()}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="px-3 pb-0.5 pt-1">
+        <div className="px-2 pb-0.5 pt-1">
           <span className="text-xs font-medium text-muted-foreground">
             Insert
           </span>
@@ -87,36 +88,24 @@ export const BlockInsertDropdown = ({
             No matching blocks
           </div>
         ) : (
-          <div className="flex flex-col gap-y-1 p-1">
+          <>
             {suggestions.map((suggestion, index) => {
               const Icon = suggestion.icon;
               return (
-                <button
+                <DropdownMenuItem
                   key={suggestion.id}
+                  icon={() => <Icon className="h-3.5 w-3.5" />}
+                  label={suggestion.label}
                   className={cn(
-                    "flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left",
-                    index === selectedIndex
-                      ? "bg-muted-background dark:bg-muted-background-night"
-                      : "text-foreground hover:bg-muted"
+                    index === selectedIndex &&
+                      "bg-muted-background dark:bg-muted-background-night"
                   )}
                   onClick={() => onSelect(suggestion)}
                   onMouseEnter={() => onSelectedIndexChange(index)}
-                >
-                  <div
-                    className={cn(
-                      "flex h-5 w-5 items-center justify-center rounded",
-                      index === selectedIndex ? "bg-muted" : "bg-muted/50"
-                    )}
-                  >
-                    <Icon className="h-3 w-3" />
-                  </div>
-                  <span className="text-sm font-medium">
-                    {suggestion.label}
-                  </span>
-                </button>
+                />
               );
             })}
-          </div>
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
