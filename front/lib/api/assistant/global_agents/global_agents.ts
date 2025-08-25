@@ -70,6 +70,7 @@ function getGlobalAgent({
   dataSourcesFileSystemMCPServerView,
   interactiveContentMCPServerView,
   runAgentMCPServerView,
+  toolsetsMCPServerView,
   dataWarehousesMCPServerView,
 }: {
   auth: Authenticator;
@@ -83,6 +84,7 @@ function getGlobalAgent({
   dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
   interactiveContentMCPServerView: MCPServerViewResource | null;
   runAgentMCPServerView: MCPServerViewResource | null;
+  toolsetsMCPServerView: MCPServerViewResource | null;
   dataWarehousesMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType | null {
   const settings =
@@ -287,6 +289,7 @@ function getGlobalAgent({
         interactiveContentMCPServerView,
         runAgentMCPServerView,
         dataWarehousesMCPServerView,
+        toolsetsMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_TASK:
@@ -296,6 +299,7 @@ function getGlobalAgent({
         webSearchBrowseMCPServerView,
         dataSourcesFileSystemMCPServerView,
         dataWarehousesMCPServerView,
+        toolsetsMCPServerView,
       });
       break;
     default:
@@ -357,6 +361,7 @@ export async function getGlobalAgents(
     dataSourcesFileSystemMCPServerView,
     interactiveContentMCPServerView,
     runAgentMCPServerView,
+    toolsetsMCPServerView,
     dataWarehousesMCPServerView,
   ] = await Promise.all([
     variant === "full"
@@ -400,6 +405,12 @@ export async function getGlobalAgents(
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
           "run_agent"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "toolsets"
         )
       : null,
     variant === "full"
@@ -461,6 +472,7 @@ export async function getGlobalAgents(
       dataSourcesFileSystemMCPServerView,
       interactiveContentMCPServerView,
       runAgentMCPServerView,
+      toolsetsMCPServerView,
       dataWarehousesMCPServerView,
     })
   );
