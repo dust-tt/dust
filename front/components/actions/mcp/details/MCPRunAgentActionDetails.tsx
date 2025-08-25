@@ -64,6 +64,7 @@ export function MCPRunAgentActionDetails({
   const { serverViews: mcpServerViews } = useMCPServerViews({
     owner,
     space: spaces.find((s) => s.kind === "global"),
+    availability: "all",
     disabled: addedMCPServerViewIds.length === 0,
   });
 

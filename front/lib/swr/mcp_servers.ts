@@ -878,21 +878,31 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
   return { createPersonalConnection };
 }
 
-function getMCPServerViewsKey(owner: LightWorkspaceType, space?: SpaceType) {
-  return space ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views` : null;
+function getMCPServerViewsKey(
+  owner: LightWorkspaceType,
+  space?: SpaceType,
+  availability?: MCPServerAvailability | "all"
+) {
+  return space
+    ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views${
+        availability ? `?availability=${availability}` : ""
+      }`
+    : null;
 }
 
 export function useMCPServerViews({
   owner,
   space,
+  availability,
   disabled,
 }: {
   owner: LightWorkspaceType;
   space?: SpaceType;
+  availability?: MCPServerAvailability | "all";
   disabled?: boolean;
 }) {
   const configFetcher: Fetcher<GetMCPServerViewsResponseBody> = fetcher;
-  const url = getMCPServerViewsKey(owner, space);
+  const url = getMCPServerViewsKey(owner, space, availability);
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
     disabled,
   });

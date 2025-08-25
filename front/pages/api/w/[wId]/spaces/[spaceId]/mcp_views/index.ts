@@ -41,6 +41,7 @@ async function handler(
 
   switch (method) {
     case "GET": {
+      const { availability = "manual" } = req.query;
       const mcpServerViews = await MCPServerViewResource.listBySpace(
         auth,
         space
@@ -49,7 +50,10 @@ async function handler(
         success: true,
         serverViews: mcpServerViews
           .map((mcpServerView) => mcpServerView.toJSON())
-          .filter((s) => s.server.availability === "manual"),
+          .filter(
+            (s) =>
+              availability === "all" || s.server.availability === availability
+          ),
       });
     }
     case "POST": {

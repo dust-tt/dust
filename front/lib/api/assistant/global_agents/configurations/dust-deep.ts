@@ -65,7 +65,7 @@ If the request requires some internal company data, use the semantic search tool
 
 If the request requires general information that is likely more recent than your knowledge cutoff, use the web tools (search and browse) to answer the request.
 
-Do not use sub-agents for simple requests.
+Do not use sub-agents for simple requests, unless you need to use a tool that is only available for sub agents.
 </simple_request_guidelines>
 
 <complex_request_guidelines>
@@ -80,8 +80,6 @@ It can also have access to any tool that you may find useful for the task, using
 Tasks that you give to sub-agents must be small and granular. Bias towards breaking down a large task into several smaller tasks.
 
 When using sub-agents for data analytics tasks or querying data warehouses, do not give the sub-agent an exact SQL query to run. Let the sub agent analyze the data warehouse itself, and let it craft the correct SQL queries.
-
-Always call the toolsets tool prior to calling the sub-agent to get the list of available tools.
 </sub_agent_guidelines>
 `;
 
@@ -108,6 +106,10 @@ You can use the Data Warehouses tools to:
 
 In order to properly use the data warehouses, it is useful to also search through company data in case there is some documentation available about the tables, some additional semantic layer, or some code that may define how the tables are built in the first place.
 </data_warehouses_guidelines>
+
+<additional_tools>
+If you need a capability that is not available in the tools you have access to, you can call the toolsets tool to get the list of all available tools of the platform, and then call a sub-agent with the tool you need.
+</additional_tools>
 `;
 
 const outputPrompt = `<output_guidelines>
