@@ -1,9 +1,4 @@
-import {
-  ArrowUpIcon,
-  Button,
-  FullscreenExitIcon,
-  FullscreenIcon,
-} from "@dust-tt/sparkle";
+import { ArrowUpIcon, Button } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import React, {
