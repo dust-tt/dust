@@ -55,7 +55,7 @@ import {
 export type AuthorizationInfo = {
   provider: OAuthProvider;
   supported_use_cases: MCPOAuthUseCase[];
-  scope?: string | null;
+  scope?: string;
 };
 
 export function isAuthorizationInfo(a: unknown): a is AuthorizationInfo {
@@ -235,7 +235,7 @@ export const connectToMCPServer = async (
                     new MCPServerPersonalAuthenticationRequiredError(
                       params.mcpServerId,
                       metadata.authorization.provider,
-                      metadata.authorization.scope ?? undefined
+                      metadata.authorization.scope
                     )
                   );
                 } else {
