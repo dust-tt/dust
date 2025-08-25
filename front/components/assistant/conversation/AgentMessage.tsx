@@ -17,6 +17,7 @@ import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
+import { useActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
 import {
   DefaultAgentMessageGeneratedFiles,
   InteractiveAgentMessageGeneratedFiles,
@@ -29,7 +30,6 @@ import { FeedbackSelector } from "@app/components/assistant/conversation/Feedbac
 import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
-import { useValidationRequirementsContext } from "@app/components/assistant/conversation/ValidationRequirementsProvider";
 import {
   CitationsContext,
   CiteBlock,
@@ -102,7 +102,7 @@ export function AgentMessage({
     message.configuration.sId as GLOBAL_AGENTS_SID
   );
 
-  const { showValidationDialog } = useValidationRequirementsContext();
+  const { showValidationDialog } = useActionValidationContext();
 
   const { mutateMessage } = useConversationMessage({
     conversationId,

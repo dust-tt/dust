@@ -8,6 +8,7 @@ import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import { useActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowserContainer";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
@@ -19,7 +20,6 @@ import {
   createPlaceholderUserMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
-import { useValidationRequirementsContext } from "@app/components/assistant/conversation/ValidationRequirementsProvider";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -67,7 +67,7 @@ export function ConversationContainer({
     hasPendingValidations,
     totalPendingValidations,
     showValidationDialog,
-  } = useValidationRequirementsContext();
+  } = useActionValidationContext();
 
   const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
   const { scrollConversationsToTop } = useConversationsNavigation();

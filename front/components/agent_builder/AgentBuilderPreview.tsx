@@ -8,6 +8,7 @@ import {
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
@@ -16,7 +17,6 @@ import {
   GenerationContextProvider,
 } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import { ValidationRequirementsProvider } from "@app/components/assistant/conversation/ValidationRequirementsProvider";
 import type { DustError } from "@app/lib/error";
 import { useUser } from "@app/lib/swr/user";
 import type {
@@ -219,9 +219,9 @@ export function AgentBuilderPreview() {
 
   return (
     <div className="flex h-full w-full flex-col" aria-label="Agent preview">
-      <ValidationRequirementsProvider owner={owner} conversation={conversation}>
+      <ActionValidationProvider owner={owner} conversation={conversation}>
         <GenerationContextProvider>{renderContent()}</GenerationContextProvider>
-      </ValidationRequirementsProvider>
+      </ActionValidationProvider>
     </div>
   );
 }

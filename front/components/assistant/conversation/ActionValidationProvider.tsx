@@ -1,19 +1,14 @@
+import type { MultiPageDialogPage } from "@dust-tt/sparkle";
 import {
   ActionPieChartIcon,
-  Button,
   Checkbox,
   CodeBlock,
   CollapsibleComponent,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Icon,
   Label,
   Spinner,
 } from "@dust-tt/sparkle";
+import { MultiPageDialog, MultiPageDialogContent } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import {
   createContext,
@@ -35,108 +30,35 @@ import type {
 } from "@app/types";
 import { asDisplayName, pluralize } from "@app/types";
 
-function useValidationQueue({
-  pendingValidations,
-}: {
-  pendingValidations: MCPActionValidationRequest[];
-}) {
-  // We store two states: the current validation and a queue.
-  // The current validation is the one displayed in the dialog that can be validated.
-  // The queue does not store the current validation.
-  const [validationQueue, setValidationQueue] = useState<
-    // Store validations by `actionId` to prevent duplicate entries.
-    Record<string, MCPActionValidationRequest>
-  >({});
-
-  const [currentValidation, setCurrentValidation] =
-    useState<MCPActionValidationRequest | null>(null);
-
-  useEffect(() => {
-    const nextValidation = pendingValidations[0];
-    if (nextValidation) {
-      setCurrentValidation(nextValidation);
-    }
-    if (pendingValidations.length > 1) {
-      setValidationQueue(
-        Object.fromEntries(
-          pendingValidations
-            .slice(1)
-            .map((validation) => [validation.actionId, validation])
-        )
-      );
-    }
-  }, [pendingValidations]);
-
-  const handleValidationRequest = useCallback(
-    (validationRequest: MCPActionValidationRequest) => {
-      setCurrentValidation((current) => {
-        if (
-          current === null ||
-          current.actionId === validationRequest.actionId
-        ) {
-          return validationRequest;
-        }
-
-        setValidationQueue((prevRecord) => ({
-          ...prevRecord,
-          [validationRequest.actionId]: validationRequest,
-        }));
-        return current;
-      });
-    },
-    []
-  );
-
-  // We don't update the current validation here to avoid content flickering.
-  const takeNextFromQueue = useCallback(() => {
-    const enqueuedActionIds = Object.keys(validationQueue);
-
-    if (enqueuedActionIds.length > 0) {
-      const nextValidationActionId = enqueuedActionIds[0];
-      const nextValidation = validationQueue[nextValidationActionId];
-
-      setValidationQueue((prevRecord) => {
-        const newRecord = { ...prevRecord };
-        delete newRecord[nextValidationActionId];
-        return newRecord;
-      });
-      return nextValidation;
-    }
-
-    return null;
-  }, [validationQueue]);
-
-  const validationQueueLength = useMemo(
-    () => Object.keys(validationQueue).length,
-    [validationQueue]
-  );
-
-  return {
-    validationQueueLength,
-    currentValidation,
-    handleValidationRequest,
-    takeNextFromQueue,
-    setCurrentValidation,
-  };
+interface ValidationRequirement {
+  id: string;
+  actionId: string;
+  conversationId: string;
+  messageId: string;
+  toolName: string;
+  mcpServerName: string;
+  agentName: string;
+  inputs: Record<string, unknown>;
+  stake?: string;
+  icon?: string;
 }
 
-type ActionValidationContextType = {
+interface ActionValidationContextType {
   showValidationDialog: (
     validationRequest?: MCPActionValidationRequest
   ) => void;
   hasPendingValidations: boolean;
   totalPendingValidations: number;
-};
+}
 
-const ActionValidationContext = createContext<
-  ActionValidationContextType | undefined
->(undefined);
+const ActionValidationContext =
+  createContext<ActionValidationContextType | null>(null);
 
 export function useActionValidationContext() {
   const context = useContext(ActionValidationContext);
   if (!context) {
     throw new Error(
-      "useActionValidationContext must be used within an ActionValidationContext"
+      "useActionValidationContext must be used within ActionValidationProvider"
     );
   }
   return context;
@@ -153,187 +75,257 @@ export function ActionValidationProvider({
   conversation,
   children,
 }: ActionValidationProviderProps) {
-  const { blockedActions } = useBlockedActions({
+  const { blockedActions, mutate: mutateBlockedActions } = useBlockedActions({
     conversationId: conversation?.sId || null,
     workspaceId: owner.sId,
   });
 
-  // Filter blocked actions to only get validation required ones.
-  // TODO(durable-agents): also display blocked_authentication_required.
-  const pendingValidations = useMemo(() => {
-    return blockedActions.filter(
-      (action) => action.status === "blocked_validation_required"
-    );
+  // Filter blocked actions to only get validation required ones
+  const validationRequirements = useMemo(() => {
+    return blockedActions
+      .filter((action) => action.status === "blocked_validation_required")
+      .map((action) => ({
+        id: `${action.actionId}`,
+        actionId: action.actionId,
+        conversationId: action.conversationId,
+        messageId: action.messageId,
+        toolName: action.metadata.toolName,
+        mcpServerName: action.metadata.mcpServerName,
+        agentName: action.metadata.agentName,
+        inputs: action.inputs,
+        stake: action.stake,
+        icon: action.metadata.icon,
+      }));
   }, [blockedActions]);
 
-  const {
-    validationQueueLength,
-    currentValidation,
-    setCurrentValidation,
-    handleValidationRequest,
-    takeNextFromQueue,
-  } = useValidationQueue({ pendingValidations });
-
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [currentPageId, setCurrentPageId] = useState<string>("overview");
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
   const [neverAskAgain, setNeverAskAgain] = useState(false);
+  const [completedValidations, setCompletedValidations] = useState<Set<string>>(
+    new Set()
+  );
 
   useNavigationLock(isDialogOpen);
 
-  const sendCurrentValidation = async (status: MCPValidationOutputType) => {
-    if (!currentValidation) {
+  // Poll for blocked actions every 2 seconds when conversation is active
+  useEffect(() => {
+    if (!conversation?.sId) {
       return;
     }
 
-    let approved = status;
-    if (status === "approved" && neverAskAgain) {
-      approved = "always_approved";
-    }
+    const interval = setInterval(() => {
+      void mutateBlockedActions();
+    }, 2000);
 
-    setErrorMessage(null);
-    setIsProcessing(true);
+    return () => clearInterval(interval);
+  }, [conversation?.sId, mutateBlockedActions]);
 
-    const response = await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${currentValidation.conversationId}/messages/${currentValidation.messageId}/validate-action`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          actionId: currentValidation.actionId,
-          approved,
-        }),
+  // Automatically open dialog when validation requirements become available
+  useEffect(() => {
+    if (validationRequirements.length > 0 && !isDialogOpen) {
+      // Skip overview page if there's only one validation
+      if (validationRequirements.length === 1) {
+        setCurrentPageId(`validation-${validationRequirements[0].id}`);
+      } else {
+        setCurrentPageId("overview");
       }
-    );
-
-    setIsProcessing(false);
-
-    if (!response.ok) {
-      setErrorMessage("Failed to assess action approval. Please try again.");
-      return;
-    }
-
-    setNeverAskAgain(false);
-  };
-
-  const handleSubmit = (approved: MCPValidationOutputType) => {
-    void sendCurrentValidation(approved);
-
-    const foundItem = takeNextFromQueue();
-    if (foundItem) {
-      setCurrentValidation(foundItem);
-    } else {
-      // To avoid content flickering, we will clear out the current validation in onDialogAnimationEnd.
-      setIsDialogOpen(false);
-    }
-  };
-
-  // To avoid content flickering, we will clear out the current validation when closing animation ends.
-  const onDialogAnimationEnd = () => {
-    // This is safe to check because the dialog closing animation is triggered after isDialogOpen is set to false.
-    if (!isDialogOpen) {
-      setCurrentValidation(null);
+      setIsDialogOpen(true);
+      setCompletedValidations(new Set());
       setErrorMessage(null);
     }
-  };
+  }, [validationRequirements]);
 
-  // This will be used as a dependency of the hook down the line so we need to use useCallback.
-  const showValidationDialog = useCallback(
-    (validationRequest?: MCPActionValidationRequest) => {
-      if (!isDialogOpen) {
-        setIsDialogOpen(true);
+  const sendValidation = useCallback(
+    async (
+      requirement: ValidationRequirement,
+      status: MCPValidationOutputType
+    ) => {
+      let approved = status;
+      if (status === "approved" && neverAskAgain) {
+        approved = "always_approved";
       }
 
-      // If we have a new validation request, queue it.
-      if (validationRequest) {
-        handleValidationRequest(validationRequest);
+      setErrorMessage(null);
+      setIsProcessing(true);
+
+      try {
+        const response = await fetch(
+          `/api/w/${owner.sId}/assistant/conversations/${requirement.conversationId}/messages/${requirement.messageId}/validate-action`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              actionId: requirement.actionId,
+              approved,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to assess action approval");
+        }
+
+        setCompletedValidations((prev) => new Set([...prev, requirement.id]));
+        setNeverAskAgain(false);
+
+        // Revalidate blocked actions to update the UI
+        await mutateBlockedActions();
+
+        return true;
+      } catch (error) {
+        setErrorMessage("Failed to assess action approval. Please try again.");
+        return false;
+      } finally {
+        setIsProcessing(false);
       }
     },
-    [handleValidationRequest, isDialogOpen]
+    [owner.sId, neverAskAgain, mutateBlockedActions]
   );
 
-  const hasPendingValidations =
-    currentValidation !== null || validationQueueLength > 0;
-  const totalPendingValidations =
-    (currentValidation ? 1 : 0) + validationQueueLength;
+  const handleValidationSubmit = useCallback(
+    async (
+      requirement: ValidationRequirement,
+      approved: MCPValidationOutputType
+    ) => {
+      const success = await sendValidation(requirement, approved);
 
-  return (
-    <ActionValidationContext.Provider
-      value={{
-        showValidationDialog,
-        hasPendingValidations,
-        totalPendingValidations,
-      }}
-    >
-      {children}
+      if (!success) {
+        return; // Don't proceed if validation failed
+      }
 
-      <Dialog open={isDialogOpen}>
-        <DialogContent isAlertDialog onAnimationEnd={onDialogAnimationEnd}>
-          <DialogHeader hideButton>
-            <DialogTitle
-              visual={
-                currentValidation?.metadata.icon ? (
-                  getAvatarFromIcon(currentValidation.metadata.icon)
-                ) : (
-                  <Icon visual={ActionPieChartIcon} size="sm" />
-                )
-              }
-            >
-              Tool Validation Required
-            </DialogTitle>
-          </DialogHeader>
-          <DialogContainer>
-            <div className="flex flex-col gap-4">
-              <div>
-                Allow <b>@{currentValidation?.metadata.agentName}</b> to use the
-                tool{" "}
-                <b>{asDisplayName(currentValidation?.metadata.toolName)}</b>{" "}
-                from{" "}
-                <b>
-                  {asDisplayName(currentValidation?.metadata.mcpServerName)}
-                </b>
-                ?
-              </div>
-              {currentValidation?.inputs &&
-                Object.keys(currentValidation.inputs).length > 0 && (
-                  <CollapsibleComponent
-                    triggerChildren={
-                      <span className="font-medium text-muted-foreground dark:text-muted-foreground-night">
-                        Details
-                      </span>
-                    }
-                    contentChildren={
-                      <div>
-                        <div className="max-h-80 overflow-auto rounded-lg bg-muted dark:bg-muted-night">
-                          <CodeBlock
-                            wrapLongLines
-                            className="language-json overflow-y-auto"
-                          >
-                            {JSON.stringify(currentValidation?.inputs, null, 2)}
-                          </CodeBlock>
-                        </div>
-                      </div>
-                    }
-                  />
-                )}
+      // Find the next uncompleted validation in order
+      const remainingValidations = validationRequirements.filter(
+        (req) => !completedValidations.has(req.id) && req.id !== requirement.id
+      );
 
-              {validationQueueLength > 0 && (
-                <div className="mt-2 text-sm font-medium text-info-900 dark:text-info-900-night">
-                  {validationQueueLength} more request
-                  {pluralize(validationQueueLength)} in the queue
-                </div>
-              )}
+      if (remainingValidations.length > 0) {
+        const nextRequirement = remainingValidations[0];
+        setCurrentPageId(`validation-${nextRequirement.id}`);
+      } else {
+        // All validations completed, close dialog
+        setIsDialogOpen(false);
+        setCurrentPageId("overview");
+        setCompletedValidations(new Set());
+      }
+    },
+    [sendValidation, validationRequirements, completedValidations]
+  );
 
-              {errorMessage && (
-                <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
-                  {errorMessage}
-                </div>
-              )}
+  const showValidationDialog = useCallback(() => {
+    if (validationRequirements.length > 0) {
+      setIsDialogOpen(true);
+      // Skip overview page if there's only one validation
+      if (validationRequirements.length === 1) {
+        setCurrentPageId(`validation-${validationRequirements[0].id}`);
+      } else {
+        setCurrentPageId("overview");
+      }
+      setCompletedValidations(new Set());
+      setErrorMessage(null);
+    }
+  }, [validationRequirements]);
+
+  const hasPendingValidations = validationRequirements.length > 0;
+  const totalPendingValidations = validationRequirements.length;
+
+  // Create dialog pages
+  const dialogPages: MultiPageDialogPage[] = useMemo(() => {
+    if (validationRequirements.length === 0) {
+      return [];
+    }
+
+    const pages: MultiPageDialogPage[] = [
+      // Overview page
+      {
+        id: "overview",
+        title: "Tool Validation Required",
+        description: `${validationRequirements.length} tool${pluralize(validationRequirements.length)} need approval`,
+        content: (
+          <div className="flex flex-col gap-4">
+            <div className="text-sm text-muted-foreground">
+              The following tools require your approval before they can be used:
             </div>
-            {currentValidation?.stake === "low" && (
+            <div className="space-y-3">
+              {validationRequirements.map((req, index) => (
+                <div
+                  key={req.id}
+                  className="flex items-center justify-between rounded-lg border p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                      {req.icon ? (
+                        getAvatarFromIcon(req.icon)
+                      ) : (
+                        <Icon visual={ActionPieChartIcon} size="sm" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-medium">
+                        {asDisplayName(req.toolName)}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        from {asDisplayName(req.mcpServerName)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {index + 1} of {validationRequirements.length}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ),
+      },
+    ];
+
+    // Add individual validation pages in the same order as blockedActions
+    validationRequirements.forEach((req) => {
+      pages.push({
+        id: `validation-${req.id}`,
+        title: `Validate ${asDisplayName(req.toolName)}`,
+        description: `Allow @${req.agentName} to use this tool`,
+        content: (
+          <div className="flex flex-col gap-4">
+            <div>
+              Allow <b>@{req.agentName}</b> to use the tool{" "}
+              <b>{asDisplayName(req.toolName)}</b> from{" "}
+              <b>{asDisplayName(req.mcpServerName)}</b>?
+            </div>
+
+            {req.inputs && Object.keys(req.inputs).length > 0 && (
+              <CollapsibleComponent
+                triggerChildren={
+                  <span className="font-medium text-muted-foreground">
+                    Details
+                  </span>
+                }
+                contentChildren={
+                  <div>
+                    <div className="max-h-80 overflow-auto rounded-lg bg-muted">
+                      <CodeBlock
+                        wrapLongLines
+                        className="language-json overflow-y-auto"
+                      >
+                        {JSON.stringify(req.inputs, null, 2)}
+                      </CodeBlock>
+                    </div>
+                  </div>
+                }
+              />
+            )}
+
+            {errorMessage && (
+              <div className="text-sm font-medium text-warning-800">
+                {errorMessage}
+              </div>
+            )}
+
+            {req.stake === "low" && (
               <div className="mt-5">
                 <Label className="copy-sm flex w-fit cursor-pointer flex-row items-center gap-2 py-2 pr-2 font-normal">
                   <Checkbox
@@ -346,37 +338,105 @@ export function ActionValidationProvider({
                 </Label>
               </div>
             )}
-          </DialogContainer>
-          <DialogFooter>
-            <Button
-              label="Decline"
-              variant="outline"
-              onClick={() => handleSubmit("rejected")}
-              disabled={isProcessing}
-            >
-              {isProcessing && (
-                <div className="flex items-center">
-                  <span className="mr-2">Declining</span>
-                  <Spinner size="xs" variant="dark" />
-                </div>
-              )}
-            </Button>
-            <Button
-              label="Allow"
-              variant="highlight"
-              onClick={() => handleSubmit("approved")}
-              disabled={isProcessing}
-            >
-              {isProcessing && (
-                <div className="flex items-center">
-                  <span className="mr-2">Approving</span>
-                  <Spinner size="xs" variant="light" />
-                </div>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        ),
+      });
+    });
+
+    return pages;
+  }, [validationRequirements, errorMessage, neverAskAgain]);
+
+  // Get current page to determine which buttons to show
+  const isOverviewPage = currentPageId === "overview";
+  const currentValidationRequirement = isOverviewPage
+    ? null
+    : validationRequirements.find(
+        (req) => currentPageId === `validation-${req.id}`
+      );
+
+  // Configure buttons based on current page
+  const getDialogButtons = () => {
+    if (isOverviewPage) {
+      return {
+        leftButton: {
+          label: "Cancel",
+          variant: "outline" as const,
+          onClick: () => setIsDialogOpen(false),
+        },
+        rightButton: {
+          label: "Start Review",
+          variant: "highlight" as const,
+          onClick: () => {
+            const firstRequirement = validationRequirements[0];
+            if (firstRequirement) {
+              setCurrentPageId(`validation-${firstRequirement.id}`);
+            }
+          },
+        },
+      };
+    }
+
+    if (currentValidationRequirement) {
+      return {
+        leftButton: {
+          label: "Decline",
+          variant: "outline" as const,
+          onClick: () =>
+            handleValidationSubmit(currentValidationRequirement, "rejected"),
+          disabled: isProcessing,
+          children: isProcessing ? (
+            <div className="flex items-center">
+              <span className="mr-2">Declining</span>
+              <Spinner size="xs" variant="dark" />
+            </div>
+          ) : undefined,
+        },
+        rightButton: {
+          label: "Allow",
+          variant: "highlight" as const,
+          onClick: () =>
+            handleValidationSubmit(currentValidationRequirement, "approved"),
+          disabled: isProcessing,
+          autoFocus: true,
+          children: isProcessing ? (
+            <div className="flex items-center">
+              <span className="mr-2">Approving</span>
+              <Spinner size="xs" variant="light" />
+            </div>
+          ) : undefined,
+        },
+      };
+    }
+
+    return {};
+  };
+
+  const dialogButtons = getDialogButtons();
+
+  return (
+    <ActionValidationContext.Provider
+      value={{
+        showValidationDialog,
+        hasPendingValidations,
+        totalPendingValidations,
+      }}
+    >
+      {children}
+
+      {dialogPages.length > 0 && (
+        <MultiPageDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <MultiPageDialogContent
+            pages={dialogPages}
+            currentPageId={currentPageId}
+            onPageChange={setCurrentPageId}
+            size="lg"
+            showNavigation={validationRequirements.length > 1}
+            showHeaderNavigation={validationRequirements.length > 1}
+            addFooterSeparator={true}
+            {...dialogButtons}
+          />
+        </MultiPageDialog>
+      )}
     </ActionValidationContext.Provider>
   );
 }
