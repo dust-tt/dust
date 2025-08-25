@@ -88,6 +88,7 @@ interface SheetContentProps
   trapFocusScope?: boolean;
   side?: SheetSideType;
   preventAutoFocusOnClose?: boolean;
+  preventAutoFocusOnOpen?: boolean;
 }
 
 const SheetContent = React.forwardRef<
@@ -102,7 +103,9 @@ const SheetContent = React.forwardRef<
       side,
       trapFocusScope,
       preventAutoFocusOnClose = true,
+      preventAutoFocusOnOpen = true,
       onCloseAutoFocus,
+      onOpenAutoFocus,
       ...props
     },
     ref
@@ -117,6 +120,16 @@ const SheetContent = React.forwardRef<
       [preventAutoFocusOnClose, onCloseAutoFocus]
     );
 
+    const handleOpenAutoFocus = React.useCallback(
+      (event: Event) => {
+        if (preventAutoFocusOnOpen) {
+          event.preventDefault();
+        }
+        onOpenAutoFocus?.(event);
+      },
+      [preventAutoFocusOnOpen, onOpenAutoFocus]
+    );
+
     return (
       <SheetPortal>
         <SheetOverlay />
@@ -129,6 +142,7 @@ const SheetContent = React.forwardRef<
               "s-sheet s-text-foreground dark:s-text-foreground-night"
             )}
             onCloseAutoFocus={handleCloseAutoFocus}
+            onOpenAutoFocus={handleOpenAutoFocus}
             {...props}
           >
             {children}
