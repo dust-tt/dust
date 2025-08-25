@@ -242,7 +242,7 @@ const InputBarContainer = ({
     "inline-block w-full",
     "border-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
     "whitespace-pre-wrap font-normal",
-    "pr-3 sm:pl-4 pl-3 sm:pt-3.5 pt-3"
+    "px-3 sm:pl-4 sm:pt-3.5 pt-3"
   );
 
   return (
@@ -268,7 +268,7 @@ const InputBarContainer = ({
             "max-h-[40vh] min-h-14 sm:min-h-16"
           )}
         />
-        <div className="flex items-center justify-between px-1 pb-1.5 pr-2 pt-1.5 sm:pb-3 sm:pl-2 sm:pr-3">
+        <div className="flex items-center justify-between px-1 px-2 py-1.5 sm:pb-3 sm:pr-3">
           <div className="flex items-center">
             {actions.includes("attachment") && (
               <>
