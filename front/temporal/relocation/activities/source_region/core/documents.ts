@@ -6,12 +6,11 @@ import type {
   CoreDocumentAPIRelocationBlob,
   DataSourceCoreIds,
 } from "@app/temporal/relocation/activities/types";
+import { CORE_API_CONCURRENCY_LIMIT } from "@app/temporal/relocation/activities/types";
 import {
-  CORE_API_CONCURRENCY_LIMIT,
-  CORE_API_LIST_NODES_BATCH_SIZE,
-  isJSONStringifyRangeError,
-} from "@app/temporal/relocation/activities/types";
-import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
+  withJSONSerializationRetry,
+  writeToRelocationStorage,
+} from "@app/temporal/relocation/lib/file_storage/relocation";
 import type {
   CoreAPIDocumentBlob,
   CoreAPINodesSearchFilter,
@@ -131,59 +130,44 @@ export async function getDataSourceDocuments({
     },
   };
 
-  try {
-    // 3) Save the document blobs to file storage.
-    const dataPath = await writeToRelocationStorage(blobs, {
-      workspaceId,
-      type: "core",
-      operation: "data_source_documents_blobs",
-      fileName,
-    });
+  return withJSONSerializationRetry<{
+    dataPath: string | null;
+    nextPageCursor: string | null;
+    nextLimit: number | null;
+  }>(
+    async () => {
+      const dataPath = await writeToRelocationStorage(blobs, {
+        workspaceId,
+        type: "core",
+        operation: "data_source_documents_blobs",
+        fileName,
+      });
 
-    localLogger.info(
-      {
+      localLogger.info(
+        {
+          dataPath,
+          nextPageCursor,
+          nodeCount: nodes.length,
+          totalNodeCount,
+        },
+        "[Core] Retrieved data source documents"
+      );
+
+      return {
         dataPath,
         nextPageCursor,
-        nodeCount: nodes.length,
-        totalNodeCount,
-      },
-      "[Core] Retrieved data source documents"
-    );
-
-    return {
-      dataPath,
-      nextPageCursor,
-      nextLimit: null,
-    };
-  } catch (err) {
-    if (isJSONStringifyRangeError(err)) {
-      const nextLimit = Math.floor(limit / 2);
-      if (nextLimit === 0) {
-        localLogger.error(
-          { error: err, pageCursor, limit, nextLimit },
-          "[Core] Failed to write documents blobs to file storage, string too long - skipping"
-        );
-        // Go to next page, reset limit.
-        return {
-          dataPath: null,
-          nextPageCursor,
-          nextLimit: null,
-        };
-      } else {
-        localLogger.error(
-          { error: err, pageCursor, limit, nextLimit },
-          "[Core] Failed to write documents blobs to file storage, string too long - retrying with smaller limit"
-        );
-      }
-      // Keep the same page cursor, but try to reduce the limit.
-      return {
+        nextLimit: null,
+      };
+    },
+    {
+      result: {
         dataPath: null,
         nextPageCursor: pageCursor,
-        nextLimit,
-      };
+      },
+      limit,
+      localLogger,
     }
-    throw err;
-  }
+  );
 }
 
 export async function getRegionDustFacingUrl() {

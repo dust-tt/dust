@@ -8,10 +8,12 @@ import type {
 } from "@app/temporal/relocation/activities/types";
 import {
   CORE_API_CONCURRENCY_LIMIT,
-  isJSONStringifyRangeError,
   isStringTooLongError,
 } from "@app/temporal/relocation/activities/types";
-import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
+import {
+  withJSONSerializationRetry,
+  writeToRelocationStorage,
+} from "@app/temporal/relocation/lib/file_storage/relocation";
 import type {
   CoreAPINodesSearchFilter,
   CoreAPISearchCursorRequest,
@@ -143,55 +145,41 @@ export async function getDataSourceTables({
     "[Core] Blobs fetched, now writing to target storage"
   );
 
-  try {
-    // 3) Save the tables blobs to file storage.
-    const dataPath = await writeToRelocationStorage(blobs, {
-      workspaceId,
-      type: "core",
-      operation: "data_source_tables_blobs",
-    });
+  return withJSONSerializationRetry<{
+    dataPath: string | null;
+    nextPageCursor: string | null;
+    nextLimit: number | null;
+  }>(
+    async () => {
+      // 3) Save the tables blobs to file storage.
+      const dataPath = await writeToRelocationStorage(blobs, {
+        workspaceId,
+        type: "core",
+        operation: "data_source_tables_blobs",
+      });
 
-    localLogger.info(
-      {
+      localLogger.info(
+        {
+          dataPath,
+          nextPageCursor,
+          nodeCount: nodes.length,
+        },
+        "[Core] Retrieved data source tables"
+      );
+
+      return {
         dataPath,
         nextPageCursor,
-        nodeCount: nodes.length,
-      },
-      "[Core] Retrieved data source tables"
-    );
-
-    return {
-      dataPath,
-      nextPageCursor,
-      nextLimit: null,
-    };
-  } catch (err) {
-    if (isJSONStringifyRangeError(err)) {
-      const nextLimit = Math.floor(limit / 2);
-      if (nextLimit === 0) {
-        localLogger.error(
-          { error: err, pageCursor, limit, nextLimit },
-          "[Core] Failed to write tables blobs to file storage, string too long - skipping"
-        );
-        // Go to next page, reset limit.
-        return {
-          dataPath: null,
-          nextPageCursor,
-          nextLimit: null,
-        };
-      } else {
-        localLogger.error(
-          { error: err, pageCursor, limit, nextLimit },
-          "[Core] Failed to write tables blobs to file storage, string too long - retrying with smaller limit"
-        );
-      }
-      // Keep the same page cursor, but try to reduce the limit.
-      return {
+        nextLimit: null,
+      };
+    },
+    {
+      result: {
         dataPath: null,
         nextPageCursor: pageCursor,
-        nextLimit,
-      };
+      },
+      limit,
+      localLogger,
     }
-    throw err;
-  }
+  );
 }

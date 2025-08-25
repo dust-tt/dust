@@ -18,10 +18,9 @@ import type {
   RelocationBlob,
 } from "@app/temporal/relocation/activities/types";
 import {
-  isJSONStringifyRangeError,
-  isStringTooLongError,
-} from "@app/temporal/relocation/activities/types";
-import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
+  withJSONSerializationRetry,
+  writeToRelocationStorage,
+} from "@app/temporal/relocation/lib/file_storage/relocation";
 import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
 import type { ModelId } from "@app/types";
@@ -177,76 +176,62 @@ export async function readFrontTableChunk({
 
   const idClause = lastId ? `AND id > ${lastId}` : "";
 
-  try {
-    const rows = await frontSequelize.query<{ id: ModelId }>(
-      `SELECT * FROM "${tableName}"
+  const rows = await frontSequelize.query<{ id: ModelId }>(
+    `SELECT * FROM "${tableName}"
      WHERE "workspaceId" = :workspaceId ${idClause}
      ORDER BY id
      LIMIT :limit`,
-      {
-        replacements: { workspaceId: workspace.id, limit: realLimit },
-        type: QueryTypes.SELECT,
-        raw: true,
-      }
-    );
-
-    const blob: RelocationBlob = {
-      statements: {
-        [tableName]: generateParameterizedInsertStatements(tableName, rows, {
-          onConflict: "ignore",
-        }),
-      },
-    };
-
-    const dataPath = await writeToRelocationStorage(blob, {
-      workspaceId,
-      type: "front",
-      operation: `read_table_chunk_${tableName}`,
-      fileName,
-    });
-
-    localLogger.info(
-      {
-        dataPath,
-      },
-      "[SQL Table] Table chunk read successfully"
-    );
-
-    return {
-      dataPath,
-      hasMore: rows.length === realLimit,
-      lastId: rows[rows.length - 1]?.id ?? lastId,
-      nextLimit: null,
-    };
-  } catch (err) {
-    if (isStringTooLongError(err) || isJSONStringifyRangeError(err)) {
-      const nextLimit = Math.floor(realLimit / 2);
-      if (nextLimit === 0) {
-        localLogger.error(
-          { error: err, lastId, limit: realLimit, nextLimit },
-          "[Core] Failed to write tables blobs to file storage, string too long - skipping"
-        );
-        // Go to next page, reset limit.
-        return {
-          dataPath: null,
-          hasMore: true,
-          nextLimit: null,
-          lastId: (lastId ?? 1) + 1,
-        };
-      } else {
-        localLogger.error(
-          { error: err, lastId, limit: realLimit, nextLimit },
-          "[Core] Failed to write tables blobs to file storage, string too long - retrying with smaller limit"
-        );
-        // Keep the same page cursor, but try to reduce the limit.
-        return {
-          dataPath: null,
-          hasMore: true,
-          nextLimit,
-          lastId: lastId,
-        };
-      }
+    {
+      replacements: { workspaceId: workspace.id, limit: realLimit },
+      type: QueryTypes.SELECT,
+      raw: true,
     }
-    throw err;
-  }
+  );
+
+  const blob: RelocationBlob = {
+    statements: {
+      [tableName]: generateParameterizedInsertStatements(tableName, rows, {
+        onConflict: "ignore",
+      }),
+    },
+  };
+
+  return withJSONSerializationRetry<{
+    dataPath: string | null;
+    hasMore: boolean;
+    lastId: number | undefined;
+    nextLimit: number | null;
+  }>(
+    async () => {
+      const dataPath = await writeToRelocationStorage(blob, {
+        workspaceId,
+        type: "front",
+        operation: `read_table_chunk_${tableName}`,
+        fileName,
+      });
+
+      localLogger.info(
+        {
+          dataPath,
+        },
+        "[SQL Table] Table chunk read successfully"
+      );
+
+      return {
+        dataPath,
+        hasMore: rows.length === realLimit,
+        lastId: rows[rows.length - 1]?.id ?? lastId,
+        nextLimit: null,
+      };
+    },
+    {
+      result: {
+        dataPath: null,
+        hasMore: true,
+        lastId,
+      },
+      limit: realLimit,
+      localLogger,
+    }
+  );
 }
