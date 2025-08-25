@@ -129,11 +129,10 @@ export function ProcessingMethodSection() {
               ))}
           </DropdownMenuContent>
         </DropdownMenu>
-
-        {!hasOnlyTablesSelected && hasSomeTablesSelected && (
-          <Chip color="info" size="sm" label=" Your tables will be ignored " />
-        )}
       </div>
+      {!hasOnlyTablesSelected && hasSomeTablesSelected && (
+        <Chip color="info" size="sm" label=" Your tables will be ignored " />
+      )}
     </div>
   );
 }

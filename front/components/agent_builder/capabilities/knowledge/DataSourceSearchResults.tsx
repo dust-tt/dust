@@ -319,11 +319,13 @@ export function DataSourceSearchResults({
       return {
         type: "data_source",
         dataSourceView: node.dataSourceView,
+        tagsFilter: null,
       };
     } else {
       return {
         type: "node",
         node: node,
+        tagsFilter: null,
       };
     }
   };
