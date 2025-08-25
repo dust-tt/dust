@@ -204,7 +204,7 @@ export async function workspaceRelocateFrontTableWorkflow({
         tableName,
         sourceRegion,
         destRegion,
-        limit: limit || DOCUMENT_BLOB_CHUNK_SIZE,
+        limit: limit || CHUNK_SIZE,
       });
 
     if (dataPath) {
