@@ -112,7 +112,7 @@ function useValidationQueue({
     [validationQueue]
   );
 
-  const clearCurrentItem = () => {
+  const clearCurrentValidation = () => {
     setCurrentValidation(null);
   };
 
@@ -126,9 +126,7 @@ function useValidationQueue({
 }
 
 type ActionValidationContextType = {
-  enqueueValidation: (
-    validationRequest?: MCPActionValidationRequest
-  ) => void;
+  enqueueValidation: (validationRequest: MCPActionValidationRequest) => void;
   showValidationDialog: () => void;
   hasPendingValidations: boolean;
   totalPendingValidations: number;
@@ -189,7 +187,7 @@ export function ActionValidationProvider({
   useNavigationLock(isDialogOpen);
 
   const submitValidation = async (status: MCPValidationOutputType) => {
-    if (!currentItem) {
+    if (!currentValidation) {
       return;
     }
 
@@ -252,9 +250,9 @@ export function ActionValidationProvider({
   }, [isDialogOpen]);
 
   const hasPendingValidations =
-    currentItem !== null || validationQueueLength > 0;
-  const totalPendingValidations = (currentItem ? 1 : 0) + validationQueueLength;
-
+    currentValidation !== null || validationQueueLength > 0;
+  const totalPendingValidations =
+    (currentValidation ? 1 : 0) + validationQueueLength;
 
   return (
     <ActionValidationContext.Provider
@@ -285,8 +283,11 @@ export function ActionValidationProvider({
           <DialogContainer>
             <div className="flex flex-col gap-4">
               <div>
-                Allow <b>@{currentValidation?.metadata.agentName}</b> to use the
-                tool{" "}
+                Allow{" "}
+                <span className="font-semibold">
+                  @{currentValidation?.metadata.agentName}
+                </span>{" "}
+                to use the tool{" "}
                 <b>{asDisplayName(currentValidation?.metadata.toolName)}</b>{" "}
                 from{" "}
                 <b>
