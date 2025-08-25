@@ -288,11 +288,13 @@ export function ActionValidationProvider({
                   @{currentValidation?.metadata.agentName}
                 </span>{" "}
                 to use the tool{" "}
-                <b>{asDisplayName(currentValidation?.metadata.toolName)}</b>{" "}
+                <span className="font-semibold">
+                  {asDisplayName(currentValidation?.metadata.toolName)}
+                </span>{" "}
                 from{" "}
-                <b>
+                <span className="font-semibold">
                   {asDisplayName(currentValidation?.metadata.mcpServerName)}
-                </b>
+                </span>
                 ?
               </div>
               {currentValidation?.inputs &&
