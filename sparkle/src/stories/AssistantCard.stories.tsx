@@ -11,7 +11,6 @@ import {
   DropdownMenuTrigger,
   LargeAssistantCard,
 } from "@sparkle/components";
-// ToolCard has its own story now; keep AssistantCard story focused
 
 const meta: Meta<typeof AssistantCard> = {
   title: "Modules/AssistantCard",
@@ -96,5 +95,3 @@ export const AssistantCardExample = () => (
     </CardGrid>
   </div>
 );
-
-// ToolCard variant examples were moved to ToolCard.stories.
