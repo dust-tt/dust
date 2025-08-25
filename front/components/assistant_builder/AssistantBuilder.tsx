@@ -153,6 +153,7 @@ export default function AssistantBuilder({
         kind: trigger.kind,
         name: trigger.name,
         configuration: trigger.configuration,
+        editor: trigger.editor,
       })),
     }));
   }, [actions, triggers, error, sendNotification, setBuilderState]);
