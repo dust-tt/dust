@@ -405,6 +405,7 @@ export default async function createServer(
                   provider: metadata.provider,
                   toolName: metadata.toolName,
                   message: metadata.message,
+                  scope: metadata.scope,
                 },
               });
 

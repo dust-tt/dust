@@ -50,7 +50,8 @@ export async function publishDeferredEventsActivity(
                 scope: event.authError.scope,
               }),
               // TODO(DURABLE-AGENTS 2025-08-25): Find a proper place to pass conversationId.
-              conversationId: context.conversationId,
+              conversationId: event.conversationId,
+              messageId: event.messageId,
             },
           },
           metadata: {
