@@ -122,12 +122,15 @@ export function AgentMessage({
 
       if (eventType === "tool_approve_execution") {
         showValidationDialog({
-          messageId: eventPayload.data.messageId,
-          conversationId: eventPayload.data.conversationId,
-          actionId: eventPayload.data.actionId,
-          inputs: eventPayload.data.inputs,
-          stake: eventPayload.data.stake,
-          metadata: eventPayload.data.metadata,
+          message,
+          validationRequest: {
+            messageId: eventPayload.data.messageId,
+            conversationId: eventPayload.data.conversationId,
+            actionId: eventPayload.data.actionId,
+            inputs: eventPayload.data.inputs,
+            stake: eventPayload.data.stake,
+            metadata: eventPayload.data.metadata,
+          },
         });
       }
     },
