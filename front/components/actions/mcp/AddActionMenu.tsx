@@ -21,7 +21,7 @@ import type { WorkspaceType } from "@app/types";
 
 type AddActionMenuProps = {
   owner: WorkspaceType;
-  enabledMCPServers: { id: string; name: string }[];
+  enabledMCPServers: MCPServerType[];
   buttonVariant?: "primary" | "outline";
   createInternalMCPServer: (mcpServer: MCPServerType) => void;
   createRemoteMCPServer: (
@@ -55,7 +55,7 @@ export const AddActionMenu = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-[500px]">
         <DropdownMenuSearchbar
-          className="flex-grow"
+          className="flex-grow items-center gap-14"
           placeholder="Search tools..."
           name="search"
           value={searchText}
@@ -67,6 +67,7 @@ export const AddActionMenu = ({
               label="Add MCP Server"
               // Empty call is required given onClick passes a MouseEvent
               onClick={() => createRemoteMCPServer()}
+              size="xs"
             />
           }
         />
@@ -76,15 +77,13 @@ export const AddActionMenu = ({
           </div>
         )}
         {availableMCPServers
+          .filter((mcpServer) => mcpServer.availability === "manual")
           .filter(
             (mcpServer) =>
-              !enabledMCPServers.some((enabled) => enabled.id === mcpServer.sId)
-          )
-          // ID is auto-incremented, so we need to filter out default servers with matching names
-          .filter(
-            (mcpServer) =>
+              mcpServer.allowMultipleInstances ||
               !enabledMCPServers.some(
-                (enabled) => enabled.name === mcpServer.name
+                // The comparison by names here is safe because names are shared between multiple instance of the same MCP server (sIds are not).
+                (enabledMCPServer) => enabledMCPServer.name === mcpServer.name
               )
           )
           .filter((mcpServer) => filterMCPServer(mcpServer, searchText))

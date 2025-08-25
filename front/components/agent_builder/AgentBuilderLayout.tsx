@@ -76,12 +76,13 @@ export function AgentBuilderLayout({
                 className="h-full w-full"
               >
                 <ResizablePanel defaultSize={70} minSize={30}>
-                  <div className="h-full w-full overflow-y-auto px-6">
+                  <div className="h-full w-full overflow-y-auto">
                     {leftPanel}
                   </div>
                 </ResizablePanel>
 
                 <ResizableHandle
+                  withHandle={isPreviewPanelOpen}
                   disabled={!isPreviewPanelOpen}
                   onDragging={(isDragging) => setIsResizing(isDragging)}
                 />

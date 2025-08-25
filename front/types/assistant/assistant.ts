@@ -159,6 +159,7 @@ export const GPT_4_1_MODEL_ID = "gpt-4.1-2025-04-14" as const;
 export const GPT_4_1_MINI_MODEL_ID = "gpt-4.1-mini-2025-04-14" as const;
 export const GPT_4O_20240806_MODEL_ID = "gpt-4o-2024-08-06" as const;
 export const GPT_4O_MINI_MODEL_ID = "gpt-4o-mini" as const;
+export const GPT_5_MODEL_ID = "gpt-5" as const;
 export const O1_MODEL_ID = "o1" as const;
 export const O1_MINI_MODEL_ID = "o1-mini" as const;
 export const O3_MINI_MODEL_ID = "o3-mini" as const;
@@ -236,6 +237,7 @@ export const MODEL_IDS = [
   GPT_4_1_MINI_MODEL_ID,
   GPT_4O_20240806_MODEL_ID,
   GPT_4O_MINI_MODEL_ID,
+  GPT_5_MODEL_ID,
   O1_MODEL_ID,
   O1_MINI_MODEL_ID,
   O3_MODEL_ID,
@@ -307,6 +309,12 @@ export type ModelConfigurationType = {
   // This meta-prompt is injected into the agent's system instructions if the agent is in a native reasoning context (reasoning effort >= medium).
   nativeReasoningMetaPrompt?: string;
 
+  // This meta-prompt is always injected into the agent's system instructions.
+  formattingMetaPrompt?: string;
+
+  // This meta-prompt is injected if the agent has tools available.
+  toolUseMetaPrompt?: string;
+
   // Adjust the token count estimation by a ratio. Only needed for anthropic models, where the token count is higher than our estimate
   tokenCountAdjustment?: number;
 
@@ -319,6 +327,10 @@ export type ModelConfigurationType = {
   minimumReasoningEffort: AgentReasoningEffort;
   maximumReasoningEffort: AgentReasoningEffort;
   defaultReasoningEffort: AgentReasoningEffort;
+
+  // If set to true, we'll pass the "light" reasoning effort to `core`. Otherwise, we'll
+  // use chain of thought prompting.
+  useNativeLightReasoning?: boolean;
 
   // Denotes model is able to take a response format request parameter
   supportsResponseFormat?: boolean;
@@ -464,6 +476,58 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
 };
+
+const OPENAI_FORMATTING_META_PROMPT = `# Response Formats
+SYSTEM STYLE: Rich Markdown by default
+- Always respond using rich Markdown unless the user explicitly requests another format.
+- You can use H1 titles (# Title) when appropriate.
+- Organize content into sections with H2/H3 headings (##, ###). Favor paragraphs and subsections.
+- Use bullet/numbered lists sparingly and never as the sole structure of the response.
+- Include tables when they materially aid clarity; use code blocks for code, configs, or commands.
+- If the user specifies a different format, follow the user’s instructions.
+- When style directives conflict, prefer this Markdown style guide.
+NEVER:
+- Return a response that is just a list of bullet points.
+- Omit headings in multi-paragraph answers.`;
+
+const OPENAI_TOOL_USE_META_PROMPT =
+  `CRITICAL: When calling functions or tools, ` +
+  `you MUST be extremely careful with accented characters. ` +
+  `Always use the actual accented character in the JSON, ` +
+  `never use Unicode escape sequences like \\u00XX.
+CORRECT examples (what you SHOULD do):
+- Use: {"query": "Žižek philosophy"}
+- Use: {"query": "café français"}  
+- Use: {"query": "naïveté übermensch"}
+- Use: {"query": "Søren Kierkegaard"}
+INCORRECT examples (what you must NEVER do):
+- Never: {"query": "\\u017di\\u017eek philosophy"}
+- Never: {"query": "caf\\u00e9 fran\\u00e7ais"}
+- Never: {"query": "na\\u00efvet\\u00e9"}
+The tools expect properly formed JSON with actual UTF-8 characters, not escape sequences.`;
+
+export const GPT_5_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_5_MODEL_ID,
+  displayName: "GPT 5",
+  contextSize: 400_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64, // 32_768
+  largeModel: true,
+  description: "OpenAI's GPT 5 model (400k context).",
+  shortDescription: "OpenAI's latest model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 128_000,
+  supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "high",
+  defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+};
 export const O1_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: O1_MODEL_ID,
@@ -528,6 +592,8 @@ export const O3_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
   supportsResponseFormat: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
 };
 
 export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
@@ -549,6 +615,8 @@ export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
   supportsResponseFormat: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
 };
 
 export const O4_MINI_MODEL_CONFIG: ModelConfigurationType = {
@@ -569,6 +637,8 @@ export const O4_MINI_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
   supportsResponseFormat: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
 };
 
 export const DEFAULT_TOKEN_COUNT_ADJUSTMENT = 1.15;
@@ -655,8 +725,28 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
 };
 
 const CLAUDE_4_NATIVE_REASONING_META_PROMPT =
-  `Never output any text between tool calls, or between tool calls and tool results. ` +
-  `Only start outputting text after the last tool call and tool result, once you are ready to provide your final answer.\n`;
+  `
+When executing multiple tool calls, output text only after all tools have completed.
+
+This restriction applies ONLY to visible text output - you should still use your ` +
+  `full internal reasoning and thinking process to plan your approach and analyze results.
+
+Example of what NOT to do:
+User: "Analyze our sales data and create a report"
+Assistant: "I'll search for the sales data first..."
+[search_tool]
+Assistant: "Great, now let me create a visualization..."
+[create_chart_tool]
+Assistant: [final response]
+
+Example of correct behavior:
+User: "Analyze our sales data and create a report"
+[search_tool]
+[create_chart_tool]
+Assistant: [final response]
+
+Think deeply and reason internally as needed. Execute all tools first, then provide your complete response.
+`;
 
 export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -1349,6 +1439,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_4O_MINI_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
+  GPT_5_MODEL_CONFIG,
   O1_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   O3_MODEL_CONFIG,
@@ -1432,6 +1523,8 @@ export type ReasoningModelConfigurationType = {
 export enum GLOBAL_AGENTS_SID {
   HELPER = "helper",
   DUST = "dust",
+  RESEARCH = "research",
+  DUST_TASK = "dust-task",
   SLACK = "slack",
   GOOGLE_DRIVE = "google_drive",
   NOTION = "notion",
@@ -1439,6 +1532,7 @@ export enum GLOBAL_AGENTS_SID {
   INTERCOM = "intercom",
   GPT35_TURBO = "gpt-3.5-turbo",
   GPT4 = "gpt-4",
+  GPT5 = "gpt-5",
   O1 = "o1",
   O1_MINI = "o1-mini",
   O1_HIGH_REASONING = "o1_high",
@@ -1468,6 +1562,7 @@ export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
 export function getGlobalAgentAuthorName(agentId: string): string {
   switch (agentId) {
     case GLOBAL_AGENTS_SID.GPT4:
+    case GLOBAL_AGENTS_SID.GPT5:
     case GLOBAL_AGENTS_SID.O1:
     case GLOBAL_AGENTS_SID.O1_MINI:
     case GLOBAL_AGENTS_SID.O1_HIGH_REASONING:
@@ -1537,6 +1632,14 @@ export function compareAgentsForSort(
     return -1;
   }
   if (b.sId === GLOBAL_AGENTS_SID.DUST) {
+    return 1;
+  }
+
+  // Check for 'gpt5'
+  if (a.sId === GLOBAL_AGENTS_SID.GPT5) {
+    return -1;
+  }
+  if (b.sId === GLOBAL_AGENTS_SID.GPT5) {
     return 1;
   }
 

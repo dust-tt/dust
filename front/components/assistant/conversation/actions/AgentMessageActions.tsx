@@ -1,105 +1,118 @@
-import { TOOL_RUNNING_LABEL } from "@dust-tt/client";
-import { Button, Chip, CommandLineIcon } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
+import {
+  AnimatedText,
+  Button,
+  Card,
+  cn,
+  CommandLineIcon,
+  ContentMessage,
+  Markdown,
+  Spinner,
+} from "@dust-tt/sparkle";
 
-import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
-import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
-import type { AgentStateClassification } from "@app/lib/assistant/state/messageReducer";
+import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import type { MCPActionType } from "@app/lib/actions/mcp";
+import type {
+  ActionProgressState,
+  AgentStateClassification,
+} from "@app/lib/assistant/state/messageReducer";
 import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
 
 interface AgentMessageActionsProps {
   agentMessage: LightAgentMessageType;
-  conversationId: string;
   lastAgentStateClassification: AgentStateClassification;
   actionProgress: ActionProgressState;
   owner: LightWorkspaceType;
 }
 
+function isMCPActionType(
+  action: { type: "tool_action"; id: number } | undefined
+): action is MCPActionType {
+  return action !== undefined && "functionCallName" in action;
+}
+
 export function AgentMessageActions({
   agentMessage,
-  conversationId,
   lastAgentStateClassification,
   actionProgress,
   owner,
 }: AgentMessageActionsProps) {
-  const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
-  const [isActionDrawerOpened, setIsActionDrawerOpened] = useState(false);
+  const { openPanel } = useConversationSidePanelContext();
 
-  useEffect(() => {
-    switch (lastAgentStateClassification) {
-      case "thinking":
-        setChipLabel("Thinking");
-        break;
-      case "acting":
-        if (agentMessage.actions && agentMessage.actions.length > 0) {
-          setChipLabel(TOOL_RUNNING_LABEL);
-        }
-        break;
-      case "done":
-        setChipLabel(undefined);
-        break;
-      default:
-        assertNever(lastAgentStateClassification);
-    }
-  }, [lastAgentStateClassification, agentMessage.actions]);
+  const lastAction = agentMessage.actions[agentMessage.actions.length - 1];
+  const hasSidePanelContent =
+    agentMessage.actions.length > 0 || agentMessage.chainOfThought;
+  const chainOfThought = agentMessage.chainOfThought || "";
+  const onClick = () => {
+    openPanel({
+      type: "actions",
+      messageId: agentMessage.sId,
+      metadata: {
+        actionProgress,
+      },
+    });
+  };
 
-  const isThinkingOrActing = useMemo(
-    () => agentMessage.status === "created",
-    [agentMessage.status]
-  );
-
-  return (
-    <div className="flex flex-col items-start gap-y-4">
-      <AgentMessageActionsDrawer
-        conversationId={conversationId}
-        message={agentMessage}
-        isOpened={isActionDrawerOpened}
-        onClose={() => setIsActionDrawerOpened(false)}
-        isActing={lastAgentStateClassification === "acting"}
-        actionProgress={actionProgress}
-        owner={owner}
-      />
-      <ActionDetails
-        hasActions={agentMessage.actions.length > 0}
-        isActionStepDone={!isThinkingOrActing}
-        label={chipLabel}
-        onClick={() => setIsActionDrawerOpened(true)}
-      />
-    </div>
-  );
-}
-
-function ActionDetails({
-  hasActions,
-  label,
-  isActionStepDone,
-  onClick,
-}: {
-  hasActions: boolean;
-  label?: string;
-  isActionStepDone: boolean;
-  onClick: () => void;
-}) {
-  if (!label && (!isActionStepDone || !hasActions)) {
+  if (lastAgentStateClassification === "done" && !hasSidePanelContent) {
     return null;
   }
 
-  return label ? (
+  const lastNotification = actionProgress.get(lastAction?.id)?.progress ?? null;
+
+  return lastAgentStateClassification !== "done" ? (
     <div
-      key={label}
-      onClick={hasActions ? onClick : undefined}
-      className={hasActions ? "cursor-pointer" : ""}
+      onClick={onClick}
+      className={cn(
+        "flex flex-col gap-y-4",
+        lastAction ? "cursor-pointer" : ""
+      )}
     >
-      <Chip size="sm" isBusy label={label} />
+      {isMCPActionType(lastAction) &&
+      lastAgentStateClassification === "acting" ? (
+        <Card variant="secondary" size="sm">
+          <MCPActionDetails
+            viewType="conversation"
+            action={lastAction}
+            owner={owner}
+            lastNotification={lastNotification}
+            messageStatus={agentMessage.status}
+          />
+        </Card>
+      ) : (
+        <div>
+          <ContentMessage variant="primary" className="max-w-[1000px] p-3">
+            <div className="flex w-full flex-row">
+              {!chainOfThought ? (
+                <AnimatedText variant="primary">Thinking...</AnimatedText>
+              ) : (
+                <Markdown
+                  content={chainOfThought}
+                  isStreaming={false}
+                  forcedTextSize="text-sm"
+                  textColor="text-muted-foreground dark:text-muted-foreground-night"
+                  isLastMessage={false}
+                />
+              )}
+              <span className="flex-grow"></span>
+              <div className="w-8 self-start pl-4 pt-0.5">
+                {lastAgentStateClassification === "thinking" && (
+                  <Spinner size="xs" />
+                )}
+              </div>
+            </div>
+          </ContentMessage>
+        </div>
+      )}
     </div>
   ) : (
-    <Button
-      size="sm"
-      label="Tools inspection"
-      icon={CommandLineIcon}
-      variant="outline"
-      onClick={onClick}
-    />
+    <div className="flex flex-col items-start gap-y-4">
+      <Button
+        size="sm"
+        label="Message Breakdown"
+        icon={CommandLineIcon}
+        variant="outline"
+        onClick={onClick}
+      />
+    </div>
   );
 }

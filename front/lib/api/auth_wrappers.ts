@@ -8,6 +8,7 @@ import {
   getAPIKey,
   getAuthType,
   getBearerToken,
+  getSession,
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -587,4 +588,24 @@ async function handleWorkOSAuth<T>(
   }
 
   return new Ok(authRes.value);
+}
+
+/**
+ * Checks if the current session has a user that is an active member of the specified workspace.
+ * Returns true if the user is authenticated and is a member of the workspace.
+ * Returns false if not authenticated or not a member.
+ */
+export async function isSessionWithUserFromWorkspace(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  workspaceId: string
+): Promise<boolean> {
+  const session = await getSession(req, res);
+  if (!session) {
+    return false;
+  }
+
+  const auth = await Authenticator.fromSession(session, workspaceId);
+
+  return auth.isUser();
 }

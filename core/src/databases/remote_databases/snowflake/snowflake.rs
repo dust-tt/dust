@@ -1,5 +1,5 @@
-use crate::{debug, info};
 use std::{collections::HashSet, env};
+use tracing::{debug, info};
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -248,7 +248,8 @@ impl SnowflakeRemoteDatabase {
             auth_method,
             SnowflakeClientConfig {
                 warehouse: Some(warehouse.clone()),
-                account,
+                // Replace any `_` with `-` in the account name for nginx proxy.
+                account: account.clone().replace('_', "-"),
                 role: Some(role),
                 database: None,
                 schema: None,

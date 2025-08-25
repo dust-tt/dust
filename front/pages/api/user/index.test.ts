@@ -1,13 +1,12 @@
-import { describe, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { UserResource } from "@app/lib/resources/user_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
 
 describe("GET /api/user", () => {
-  itInTransaction("returns 200 when the user is authenticated", async () => {
+  it("returns 200 when the user is authenticated", async () => {
     const { req, res, user, workspace, membership } =
       await createPrivateApiMockRequest();
 
@@ -27,6 +26,7 @@ describe("GET /api/user", () => {
         image: user.imageUrl,
         createdAt: user.createdAt.getTime(),
         lastLoginAt: user.lastLoginAt?.getTime(),
+        organizations: [],
         workspaces: [
           {
             id: workspace.id,
@@ -45,7 +45,7 @@ describe("GET /api/user", () => {
     });
   });
 
-  itInTransaction("update the user on patch request", async () => {
+  it("update the user on patch request", async () => {
     const { req, res, user } = await createPrivateApiMockRequest({
       method: "PATCH",
     });
@@ -67,7 +67,7 @@ describe("GET /api/user", () => {
     expect(userAfterUpdate?.lastName).toBe("Doe");
   });
 
-  itInTransaction("update requires firstName and lastName", async () => {
+  it("update requires firstName and lastName", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "PATCH",
     });
@@ -85,7 +85,7 @@ describe("GET /api/user", () => {
     });
   });
 
-  itInTransaction("update ignores unknown fields", async () => {
+  it("update ignores unknown fields", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "PATCH",
     });
@@ -104,7 +104,7 @@ describe("GET /api/user", () => {
     });
   });
 
-  itInTransaction("only support GET and PATCH", async () => {
+  it("only support GET and PATCH", async () => {
     for (const method of ["DELETE", "POST", "PUT"] as const) {
       const { req, res } = await createPrivateApiMockRequest({
         method,

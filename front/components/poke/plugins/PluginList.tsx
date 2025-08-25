@@ -20,7 +20,7 @@ interface PluginCardProps {
 function PluginCard({ onClick, plugin }: PluginCardProps) {
   return (
     <PokeCard
-      className="flex h-20 w-44 cursor-pointer hover:bg-gray-100"
+      className="flex h-20 w-44 cursor-pointer hover:bg-gray-100 dark:hover:bg-muted/10"
       onClick={onClick}
     >
       <PokeCardHeader className="flex space-y-1.5 overflow-hidden p-2 text-left">
@@ -72,8 +72,8 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
 
   return (
     <div className="border-material-200 flex min-h-48 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
-      <div className="flex justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
-        <h2 className="text-md font-bold">Plugins :</h2>
+      <div className="flex items-center justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
+        <h2 className="text-md font-bold">Plugins</h2>
         <div className="max-w-xs flex-1">
           <Input
             placeholder="Search plugins..."
@@ -84,7 +84,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
         </div>
       </div>
 
-      <div>
+      <div className="h-full">
         {filteredPlugins.length === 0 ? (
           <div className="flex h-full items-center justify-center text-gray-500">
             {searchQuery.trim() ? (

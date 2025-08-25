@@ -116,8 +116,8 @@ export function ZendeskTagFilters({
         <ContextItem.Visual visual={isDark ? ZendeskWhiteLogo : ZendeskLogo} />
       }
       action={
-        <div className="flex items-center gap-2">
-          {isEditing ? (
+        <div className="flex flex-col gap-2">
+          {isEditing && (
             <>
               <div className="flex flex-col gap-2">
                 <Tabs
@@ -137,31 +137,25 @@ export function ZendeskTagFilters({
                   onKeyDown={handleKeyDown}
                   placeholder={placeholder}
                   disabled={readOnly || !isAdmin || loading}
-                  className="w-80"
                 />
               </div>
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={readOnly || !isAdmin || loading || !inputValue.trim()}
-                label="Add"
-              />
-              <Button
-                size="sm"
-                variant="ghost-secondary"
-                onClick={handleCancel}
-                disabled={readOnly || !isAdmin || loading}
-                label="Cancel"
-              />
-            </>
-          ) : (
-            <>
-              <Button
-                size="sm"
-                onClick={handleEdit}
-                disabled={readOnly || !isAdmin || loading}
-                label="Add Tags"
-              />
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={
+                    readOnly || !isAdmin || loading || !inputValue.trim()
+                  }
+                  label="Add"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCancel}
+                  disabled={readOnly || !isAdmin || loading}
+                  label="Cancel"
+                />
+              </div>
             </>
           )}
         </div>
@@ -169,7 +163,17 @@ export function ZendeskTagFilters({
     >
       <ContextItem.Description>
         <div className="text-muted-foreground dark:text-muted-foreground-night">
-          <p className="mb-4">{description}</p>
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <p>{description}</p>
+            {!isEditing && (
+              <Button
+                size="sm"
+                onClick={handleEdit}
+                disabled={readOnly || !isAdmin || loading}
+                label="Add Tags"
+              />
+            )}
+          </div>
 
           {hasIncludedTags && (
             <div className="mb-4">
@@ -200,15 +204,10 @@ export function ZendeskTagFilters({
           )}
 
           {!hasTags && (
-            <p className="mb-4 text-sm text-muted-foreground">
-              No tag filters configured. All items will be synced.
+            <p className="mb-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              No tag filters configured.
             </p>
           )}
-
-          <p className="mt-2 text-xs text-muted-foreground">
-            Enter one tag at a time. Excluded tags take precedence over included
-            tags.
-          </p>
         </div>
       </ContextItem.Description>
     </ContextItem>

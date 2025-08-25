@@ -23,12 +23,14 @@ export function WorkspaceInfoTable({
   workspaceCreationDay,
   extensionConfig,
   workspaceRetention,
+  workosEnvironmentId,
 }: {
   owner: WorkspaceType;
   workspaceVerifiedDomains: WorkspaceDomain[];
   workspaceCreationDay: string;
   extensionConfig: ExtensionConfigurationType | null;
   workspaceRetention: number | null;
+  workosEnvironmentId: string;
 }) {
   const { dsyncStatus } = useWorkOSDSyncStatus({ owner });
 
@@ -65,7 +67,7 @@ export function WorkspaceInfoTable({
     <div className="flex justify-between gap-3">
       <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-md flex-grow pb-4 font-bold">Workspace info:</h2>
+          <h2 className="text-md flex-grow pb-4 font-bold">Workspace info</h2>
         </div>
         <PokeTable>
           <PokeTableBody>
@@ -87,6 +89,20 @@ export function WorkspaceInfoTable({
                 >
                   Metabase
                 </Link>
+              </PokeTableCell>
+            </PokeTableRow>
+            <PokeTableRow>
+              <PokeTableCell>WorkOS dashboard</PokeTableCell>
+              <PokeTableCell>
+                {owner.workOSOrganizationId && (
+                  <Link
+                    href={`https://dashboard.workos.com/${workosEnvironmentId}/organizations/${owner.workOSOrganizationId}`}
+                    target="_blank"
+                    className="text-xs text-highlight-400"
+                  >
+                    Organization
+                  </Link>
+                )}
               </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
@@ -115,6 +131,9 @@ export function WorkspaceInfoTable({
                     ? "⚠️"
                     : "❌"}
               </PokeTableCell>
+            </PokeTableRow>
+            <PokeTableRow>
+              <PokeTableCell>Verified Domains</PokeTableCell>
               <PokeTableCell>
                 {workspaceVerifiedDomains.map((d) => d.domain).join(", ")}
               </PokeTableCell>

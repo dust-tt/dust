@@ -10,7 +10,8 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type { ReturnTypeOf } from "@octokit/core/types";
-import { sortBy, uniqBy } from "lodash";
+import sortBy from "lodash/sortBy";
+import uniqBy from "lodash/uniqBy";
 import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
@@ -504,6 +505,7 @@ const SpaceDataSourceViewItem = ({
   return (
     <Tree.Item
       isNavigatable
+      className="dd-privacy-mask"
       type={isEmpty ? "leaf" : "node"}
       isSelected={router.asPath === dataSourceViewPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}

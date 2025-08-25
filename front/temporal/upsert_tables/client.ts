@@ -1,4 +1,4 @@
-import { getTemporalClient } from "@app/lib/temporal";
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
@@ -17,7 +17,7 @@ export async function launchUpsertTableWorkflow({
   upsertQueueId: string;
   enqueueTimestamp: number;
 }): Promise<Result<string, Error>> {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
 
   const workflowId = `upsert-table-queue-${workspaceId}-${dataSourceId}-${upsertQueueId}`;
 

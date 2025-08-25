@@ -2,7 +2,6 @@ import {
   ArrowPathIcon,
   Button,
   Label,
-  Page,
   Separator,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -12,6 +11,7 @@ import { useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { AdvancedSettings } from "@app/components/agent_builder/instructions/AdvancedSettings";
 import { AgentBuilderInstructionsEditor } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { AgentInstructionsHistory } from "@app/components/agent_builder/instructions/AgentInstructionsHistory";
@@ -44,41 +44,35 @@ export function AgentBuilderInstructionsBlock({
       return;
     }
 
-    setValue("instructions", text, { shouldDirty: true });
+    setValue("instructions", text, { shouldDirty: true, shouldValidate: true });
     setCompareVersion(null);
     setIsInstructionDiffMode(false);
   };
 
-  return (
-    <div className="flex h-full flex-col gap-4">
-      <Page.H>Instructions</Page.H>
-      <div className="flex flex-col items-center justify-between sm:flex-row">
-        <Page.P>
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Command or guideline you provide to your agent to direct its
-            responses.
-          </span>
-        </Page.P>
-        <div className="flex w-full flex-col gap-2 sm:w-auto">
-          <div className="flex items-center gap-2">
-            {!isInstructionDiffMode && <AdvancedSettings />}
-            {agentConfigurationHistory &&
-              agentConfigurationHistory.length > 1 && (
-                <AgentInstructionsHistory
-                  history={agentConfigurationHistory}
-                  selectedConfig={compareVersion}
-                  onSelect={(config) => {
-                    setCompareVersion(config);
-                    setIsInstructionDiffMode(true);
-                  }}
-                  owner={owner}
-                  agentConfigurationId={agentConfigurationId}
-                />
-              )}
-          </div>
-        </div>
-      </div>
+  const headerActions = (
+    <>
+      {!isInstructionDiffMode && <AdvancedSettings />}
+      {agentConfigurationHistory && agentConfigurationHistory.length > 1 && (
+        <AgentInstructionsHistory
+          history={agentConfigurationHistory}
+          selectedConfig={compareVersion}
+          onSelect={(config) => {
+            setCompareVersion(config);
+            setIsInstructionDiffMode(true);
+          }}
+          owner={owner}
+          agentConfigurationId={agentConfigurationId}
+        />
+      )}
+    </>
+  );
 
+  return (
+    <AgentBuilderSectionContainer
+      title="Instructions"
+      description="Command or guideline you provide to your agent to direct its responses."
+      headerActions={headerActions}
+    >
       {isInstructionDiffMode && compareVersion && (
         <>
           <Separator />
@@ -113,6 +107,6 @@ export function AgentBuilderInstructionsBlock({
         compareVersion={compareVersion}
         isInstructionDiffMode={isInstructionDiffMode}
       />
-    </div>
+    </AgentBuilderSectionContainer>
   );
 }

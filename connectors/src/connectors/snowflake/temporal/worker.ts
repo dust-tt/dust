@@ -25,11 +25,13 @@ export async function runSnowflakeWorker() {
     reuseV8Context: true,
     namespace,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
-        },
-        () => new SnowflakeCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "snowflake"),
+        }),
+        () => ({
+          inbound: new SnowflakeCastKnownErrorsInterceptor(),
+        }),
       ],
     },
     bundlerOptions: {

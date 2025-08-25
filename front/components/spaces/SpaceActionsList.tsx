@@ -1,9 +1,10 @@
-import { DataTable, Spinner, usePaginationFromUrl } from "@dust-tt/sparkle";
+import { DataTable, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
+import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import {
   getMcpServerViewDescription,
@@ -18,6 +19,7 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
+import { isDevelopment } from "@app/types";
 
 import { RequestActionsModal } from "./mcp/RequestActionsModal";
 import SpaceManagedActionsViewsModel from "./SpaceManagedActionsViewsModal";
@@ -81,6 +83,11 @@ export const SpaceActionsList = ({
             <div className="flex flex-row items-center gap-2 py-3">
               <div>{info.row.original.avatar}</div>
               <div className="flex-grow truncate">{info.getValue()}</div>
+              {isDevelopment() && (
+                <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                  {info.row.original.id}
+                </div>
+              )}
             </div>
           </DataTable.CellContent>
         ),

@@ -1,6 +1,7 @@
-import { groupBy } from "lodash";
+import groupBy from "lodash/groupBy";
 import { useMemo } from "react";
 
+import { sortMCPServerViewsByPriority } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import type {
@@ -96,6 +97,7 @@ function getGroupedMCPServerViews({
 
       const isWithKnowledge =
         requirements.requiresDataSourceConfiguration ||
+        requirements.requiresDataWarehouseConfiguration ||
         requirements.requiresTableConfiguration;
 
       return isWithKnowledge
@@ -109,7 +111,9 @@ function getGroupedMCPServerViews({
   );
 
   return {
-    mcpServerViewsWithKnowledge: mcpServerViewsWithKnowledge || [],
+    mcpServerViewsWithKnowledge: sortMCPServerViewsByPriority(
+      mcpServerViewsWithKnowledge || []
+    ),
     defaultMCPServerViews: grouped.auto || [],
     nonDefaultMCPServerViews: grouped.manual || [],
   };

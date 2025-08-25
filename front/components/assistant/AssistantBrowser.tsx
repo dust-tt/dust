@@ -12,7 +12,6 @@ import {
   DropdownMenuTrigger,
   MoreIcon,
   PencilSquareIcon,
-  PlusIcon,
   RobotIcon,
   ScrollArea,
   ScrollBar,
@@ -22,13 +21,14 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  useHashParam,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React, { useCallback, useMemo, useState } from "react";
 
+import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useHashParam } from "@app/hooks/useHashParams";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   compareForFuzzySort,
@@ -36,7 +36,7 @@ import {
   subFilter,
   tagsSorter,
 } from "@app/lib/utils";
-import { setQueryParam } from "@app/lib/utils/router";
+import { getAgentBuilderRoute, setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
 
@@ -296,22 +296,17 @@ export function AssistantBrowser({
           <div className="flex gap-2">
             {!isRestrictedFromAgentCreation && (
               <div ref={createAgentButtonRef}>
-                <Button
-                  tooltip="Create your own agent"
-                  href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-                  variant="primary"
-                  icon={PlusIcon}
-                  label="Create"
-                  data-gtm-label="assistantCreationButton"
-                  data-gtm-location="homepage"
-                  size="sm"
-                />
+                <CreateAgentButton owner={owner} dataGtmLocation="homepage" />
               </div>
             )}
 
             <Button
               tooltip="Manage agents"
-              href={`/w/${owner.sId}/builder/assistants/`}
+              href={getAgentBuilderRoute(
+                owner.sId,
+                "manage",
+                featureFlags.includes("agent_builder_v2")
+              )}
               variant="primary"
               icon={RobotIcon}
               label="Manage"
@@ -372,12 +367,6 @@ export function AssistantBrowser({
           <ScrollBar orientation="horizontal" className="hidden" />
         </ScrollArea>
       </div>
-
-      {isLoading && (
-        <div className="flex justify-center py-8">
-          <Spinner size="lg" />
-        </div>
-      )}
 
       {viewTab === "all" ? (
         <>
@@ -447,6 +436,11 @@ export function AssistantBrowser({
             handleMoreClick={handleMoreClick}
           />
         )
+      )}
+      {isLoading && (
+        <div className="flex justify-center py-8">
+          <Spinner size="lg" />
+        </div>
       )}
     </>
   );

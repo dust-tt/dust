@@ -13,7 +13,7 @@ import {
 
 export function MCPGetDatabaseSchemaActionDetails({
   action,
-  defaultOpen,
+  viewType,
 }: MCPActionDetailsProps) {
   const { output } = action;
 
@@ -25,18 +25,24 @@ export function MCPGetDatabaseSchemaActionDetails({
 
   return (
     <ActionDetailsWrapper
-      actionName="Get database schema"
-      defaultOpen={defaultOpen}
+      viewType={viewType}
+      actionName={
+        viewType === "conversation"
+          ? "Getting database schema"
+          : "Get database schema"
+      }
       visual={TableIcon}
     >
-      <div className="flex flex-col gap-4 pl-6 pt-4">
-        <>
-          <DatabaseSchemaSection schemas={schemaBlocks} />
-          {exampleRowsBlocks.length > 0 && (
-            <ExampleRowsSection examples={exampleRowsBlocks} />
-          )}
-        </>
-      </div>
+      {viewType === "sidebar" && (
+        <div className="flex flex-col gap-4 pl-6 pt-4">
+          <>
+            <DatabaseSchemaSection schemas={schemaBlocks} />
+            {exampleRowsBlocks.length > 0 && (
+              <ExampleRowsSection examples={exampleRowsBlocks} />
+            )}
+          </>
+        </div>
+      )}
     </ActionDetailsWrapper>
   );
 }

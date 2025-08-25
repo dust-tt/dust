@@ -1,10 +1,9 @@
-import { afterEach, describe, expect, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { TagFactory } from "@app/tests/utils/TagFactory";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
 
@@ -13,7 +12,7 @@ describe("DELETE /api/w/[wId]/tags/[tId]", () => {
     vi.clearAllMocks();
   });
 
-  itInTransaction("should not delete a tag if user is not admin", async () => {
+  it("should not delete a tag if user is not admin", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "DELETE",
     });
@@ -31,7 +30,7 @@ describe("DELETE /api/w/[wId]/tags/[tId]", () => {
     });
   });
 
-  itInTransaction("should delete a tag", async () => {
+  it("should delete a tag", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "DELETE",
       role: "admin",
@@ -50,7 +49,7 @@ describe("DELETE /api/w/[wId]/tags/[tId]", () => {
     expect(deletedTag).toBeNull();
   });
 
-  itInTransaction("should return 404 if tag not found", async () => {
+  it("should return 404 if tag not found", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "DELETE",
       role: "admin",

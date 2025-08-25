@@ -1,42 +1,38 @@
 import {
   Avatar,
   Button,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
-  Page,
   PencilSquareIcon,
   SparklesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AgentBuilderEditors } from "@app/components/agent_builder/settings/AgentBuilderEditors";
-import { AgentBuilderScopeSelector } from "@app/components/agent_builder/settings/AgentBuilderScopeSelector";
-import { AgentBuilderSlackSelector } from "@app/components/agent_builder/settings/AgentBuilderSlackSelector";
+import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
+import { AvatarPicker } from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker";
+import {
+  DROID_AVATAR_URLS,
+  SPIRIT_AVATAR_URLS,
+} from "@app/components/agent_builder/settings/avatar_picker/types";
 import { TagsSection } from "@app/components/agent_builder/settings/TagsSection";
 import {
   fetchWithErr,
   getDescriptionSuggestion,
   getNameSuggestions,
 } from "@app/components/agent_builder/settings/utils";
-import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
+import { VisibilitySection } from "@app/components/agent_builder/settings/VisibilitySection";
+import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import {
   buildSelectedEmojiType,
   makeUrlForEmojiAndBackground,
 } from "@app/components/assistant_builder/avatar_picker/utils";
-import {
-  DROID_AVATAR_URLS,
-  SPIRIT_AVATAR_URLS,
-} from "@app/components/assistant_builder/shared";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   APIError,
@@ -137,10 +133,7 @@ function AgentNameInput() {
   };
 
   return (
-    <div className="space-y-2">
-      <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
-        Name
-      </label>
+    <SettingSectionContainer title="Name">
       <div className="relative">
         <Input placeholder="Enter agent name" {...field} className="pr-10" />
         <DropdownMenu
@@ -188,7 +181,7 @@ function AgentNameInput() {
       {fieldState.error && (
         <p className="text-sm text-warning-500">{fieldState.error.message}</p>
       )}
-    </div>
+    </SettingSectionContainer>
   );
 }
 
@@ -256,16 +249,9 @@ function AgentDescriptionInput() {
   };
 
   return (
-    <div className="space-y-2">
-      <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
-        Description
-      </label>
+    <SettingSectionContainer title="Description">
       <div className="relative">
-        <Input
-          placeholder="Enter agent description"
-          {...field}
-          className="pr-10"
-        />
+        <Input placeholder="Enter agent description" {...field} />
         <Button
           icon={isGenerating ? () => <Spinner size="xs" /> : SparklesIcon}
           variant="outline"
@@ -290,13 +276,14 @@ function AgentDescriptionInput() {
       {fieldState.error && (
         <p className="text-sm text-warning-500">{fieldState.error.message}</p>
       )}
-    </div>
+    </SettingSectionContainer>
   );
 }
 
 function AgentPictureInput() {
   const { owner } = useAgentBuilderContext();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const hasSuggestedRef = useRef(false);
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
     name: "instructions",
   });
@@ -341,10 +328,20 @@ function AgentPictureInput() {
   useEffect(() => {
     if (
       !field.value &&
+      !hasSuggestedRef.current &&
       instructions &&
       instructions.length >= MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
     ) {
+      hasSuggestedRef.current = true;
       void updateEmojiFromSuggestions();
+    }
+
+    // Reset the flag if instructions become too short again
+    if (
+      instructions &&
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+    ) {
+      hasSuggestedRef.current = false;
     }
   }, [field.value, instructions, updateEmojiFromSuggestions]);
 
@@ -359,8 +356,8 @@ function AgentPictureInput() {
         spiritAvatarUrls={SPIRIT_AVATAR_URLS}
         avatarUrl={field.value || null}
       />
-      <div className="group relative py-2">
-        <Avatar size="xl" visual={field.value || null} />
+      <div className="group relative">
+        <Avatar size="lg" visual={field.value || null} />
         <Button
           variant="outline"
           size="sm"
@@ -374,21 +371,6 @@ function AgentPictureInput() {
   );
 }
 
-function AgentAccessAndPublication() {
-  return (
-    <div className="flex h-full flex-col space-y-2">
-      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
-        Access and Publication
-      </label>
-      <div className="flex flex-wrap items-center gap-2">
-        <AgentBuilderEditors />
-        <AgentBuilderScopeSelector />
-        <AgentBuilderSlackSelector />
-      </div>
-    </div>
-  );
-}
-
 interface AgentBuilderSettingsBlockProps {
   isSettingBlocksOpen: boolean;
 }
@@ -396,38 +378,23 @@ interface AgentBuilderSettingsBlockProps {
 export function AgentBuilderSettingsBlock({
   isSettingBlocksOpen,
 }: AgentBuilderSettingsBlockProps) {
-  const [isOpen, setIsOpen] = useState(isSettingBlocksOpen);
-
   return (
-    <div className="flex h-full flex-col gap-4">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger
-          isOpen={isOpen}
-          className="flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 hover:bg-transparent focus:outline-none"
-        >
-          <Page.H>Settings</Page.H>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="flex flex-col gap-4 pt-4">
-            <Page.P>
-              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Configure tags and access settings for your agent.
-              </span>
-            </Page.P>
-            <div className="space-y-4">
-              <div className="flex items-start gap-8">
-                <div className="flex-grow">
-                  <AgentNameInput />
-                </div>
-                <AgentPictureInput />
-              </div>
-              <AgentDescriptionInput />
-              <TagsSection />
-              <AgentAccessAndPublication />
-            </div>
+    <AgentBuilderSectionContainer
+      title="Settings"
+      collapsible
+      defaultOpen={isSettingBlocksOpen}
+    >
+      <div className="space-y-5">
+        <div className="flex items-start gap-8">
+          <div className="flex-grow">
+            <AgentNameInput />
           </div>
-        </CollapsibleContent>
-      </Collapsible>
-    </div>
+          <AgentPictureInput />
+        </div>
+        <AgentDescriptionInput />
+        <VisibilitySection />
+        <TagsSection />
+      </div>
+    </AgentBuilderSectionContainer>
   );
 }

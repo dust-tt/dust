@@ -1,13 +1,15 @@
 import * as yaml from "js-yaml";
-import { z } from "zod";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { ACTION_TYPE_TO_MCP_SERVER_MAP } from "@app/components/agent_builder/types";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { processAdditionalConfiguration } from "@app/components/agent_builder/submitAgentBuilderForm";
+import {
+  isAutoInternalMCPServerName,
+  isInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { Result } from "@app/types";
+import type { DataSourceViewSelectionConfigurations, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -22,15 +24,6 @@ import type {
 } from "./schemas";
 import { agentYAMLConfigSchema } from "./schemas";
 
-const yamlConverterMetadataSchema = z.object({
-  agentSId: z.string().min(1, "Agent ID is required"),
-  createdBy: z.string().min(1, "Created by user ID is required"),
-  lastModified: z.date(),
-  version: z.string().min(1, "Version is required"),
-});
-
-type YamlConverterMetadata = z.infer<typeof yamlConverterMetadataSchema>;
-
 /**
  * AgentYAMLConverter provides utilities for converting between AgentBuilderFormData
  * and YAML format, with proper error handling and type safety.
@@ -42,29 +35,22 @@ export class AgentYAMLConverter {
   /**
    * Converts AgentBuilderFormData to YAML configuration format.
    *
+   * @param auth - The authenticator for API calls
    * @param formData - The form data from the agent builder
    * @param metadata - Metadata including agent ID, creator, version info
    * @returns Result containing the YAML configuration or error
    */
-  static fromBuilderFormData(
-    formData: AgentBuilderFormData,
-    metadata: YamlConverterMetadata
-  ): Result<AgentYAMLConfig, Error> {
+  static async fromBuilderFormData(
+    auth: Authenticator,
+    formData: AgentBuilderFormData
+  ): Promise<Result<AgentYAMLConfig, Error>> {
     try {
-      const validatedMetadata = yamlConverterMetadataSchema.parse(metadata);
-
-      const actionsResult = this.convertActions(formData.actions);
+      const actionsResult = await this.convertActions(auth, formData.actions);
       if (actionsResult.isErr()) {
         return actionsResult;
       }
 
       const yamlConfig = {
-        metadata: {
-          version: validatedMetadata.version,
-          agent_id: validatedMetadata.agentSId,
-          last_modified: validatedMetadata.lastModified.toISOString(),
-          created_by: validatedMetadata.createdBy,
-        },
         agent: {
           handle: formData.agentSettings.name,
           description: formData.agentSettings.description,
@@ -127,86 +113,73 @@ export class AgentYAMLConverter {
 
   /**
    * Converts form data actions to YAML format
+   * All actions (except DATA_VISUALIZATION) are now MCP type
    */
-  private static convertActions(
+  private static async convertActions(
+    auth: Authenticator,
     actions: AgentBuilderFormData["actions"]
-  ): Result<AgentYAMLAction[], Error> {
+  ): Promise<Result<AgentYAMLAction[], Error>> {
     try {
       const convertedActions: AgentYAMLAction[] = [];
       for (const action of actions) {
         const baseAction = {
-          id: action.id,
           name: action.name,
           description: action.description,
         };
 
-        switch (action.type) {
-          case "SEARCH":
-            convertedActions.push({
-              ...baseAction,
-              type: "SEARCH",
-              configuration: {
-                data_sources: this.convertDataSourceConfigurations(
-                  action.configuration.dataSourceConfigurations
-                ),
-              },
-            });
-            break;
-
-          case "DATA_VISUALIZATION":
-            convertedActions.push({
-              ...baseAction,
-              type: "DATA_VISUALIZATION",
-              configuration: {},
-            });
-            break;
-
-          case "INCLUDE_DATA":
-            convertedActions.push({
-              ...baseAction,
-              type: "INCLUDE_DATA",
-              configuration: {
-                data_sources: this.convertDataSourceConfigurations(
-                  action.configuration.dataSourceConfigurations
-                ),
-                time_frame: action.configuration.timeFrame,
-              },
-            });
-            break;
-
-          case "EXTRACT_DATA":
-            convertedActions.push({
-              ...baseAction,
-              type: "EXTRACT_DATA",
-              configuration: {
-                data_sources: this.convertDataSourceConfigurations(
-                  action.configuration.dataSourceConfigurations
-                ),
-                time_frame: action.configuration.timeFrame,
-                json_schema: action.configuration.jsonSchema,
-              },
-            });
-            break;
-
-          case "QUERY_TABLES":
-            convertedActions.push({
-              ...baseAction,
-              type: "QUERY_TABLES",
-              configuration: {
-                data_sources: this.convertDataSourceConfigurations(
-                  action.configuration.dataSourceConfigurations
-                ),
-                time_frame: action.configuration.timeFrame,
-              },
-            });
-            break;
-
-          default:
+        if (action.type === "DATA_VISUALIZATION") {
+          convertedActions.push({
+            ...baseAction,
+            type: "DATA_VISUALIZATION",
+            configuration: {},
+          });
+        } else if (action.type === "MCP") {
+          // MCP actions are already in the correct format
+          // We need to extract the server name from the configuration
+          const mcpServerName = await this.getMCPServerNameFromConfig(
+            auth,
+            action.configuration
+          );
+          if (!mcpServerName) {
             return new Err(
               new Error(
-                `Unsupported action type: ${(action as { type: string }).type}`
+                "Could not determine MCP server name from configuration"
               )
             );
+          }
+
+          convertedActions.push({
+            ...baseAction,
+            type: "MCP",
+            configuration: {
+              mcp_server_name: mcpServerName,
+              data_sources: action.configuration.dataSourceConfigurations
+                ? this.convertDataSourceConfigurations(
+                    action.configuration
+                      .dataSourceConfigurations as DataSourceViewSelectionConfigurations
+                  )
+                : undefined,
+              time_frame: action.configuration.timeFrame || undefined,
+              json_schema: action.configuration.jsonSchema || undefined,
+              reasoning_model: action.configuration.reasoningModel
+                ? {
+                    model_id: action.configuration.reasoningModel.modelId,
+                    provider_id: action.configuration.reasoningModel.providerId,
+                    temperature:
+                      action.configuration.reasoningModel.temperature ??
+                      undefined,
+                    reasoning_effort:
+                      action.configuration.reasoningModel.reasoningEffort ??
+                      undefined,
+                  }
+                : undefined,
+              additional_configuration:
+                Object.keys(action.configuration.additionalConfiguration || {})
+                  .length > 0
+                  ? action.configuration.additionalConfiguration
+                  : undefined,
+            },
+          });
         }
       }
 
@@ -287,14 +260,28 @@ export class AgentYAMLConverter {
     };
   }
 
-  private static getMCPServerName(
-    actionType: string
-  ): InternalMCPServerNameType | null {
-    return (
-      ACTION_TYPE_TO_MCP_SERVER_MAP[
-        actionType as keyof typeof ACTION_TYPE_TO_MCP_SERVER_MAP
-      ] || null
-    );
+  // Gets the MCP server name from an MCP action configuration.
+  // Looks up the MCP server view to get the actual server name.
+  private static async getMCPServerNameFromConfig(
+    auth: Authenticator,
+    configuration: { mcpServerViewId: string | null }
+  ): Promise<string | null> {
+    if (configuration.mcpServerViewId) {
+      try {
+        const mcpServerView = await MCPServerViewResource.fetchById(
+          auth,
+          configuration.mcpServerViewId
+        );
+
+        if (mcpServerView) {
+          const json = mcpServerView.toJSON();
+          return json.server.name;
+        }
+      } catch {
+        return null;
+      }
+    }
+    return null;
   }
 
   private static convertDataSources(
@@ -334,9 +321,25 @@ export class AgentYAMLConverter {
       return new Ok(null);
     }
 
-    const mcpServerName = this.getMCPServerName(action.type);
+    // At this point, action.type must be "MCP" due to discriminated union
+
+    const mcpServerName = action.configuration.mcp_server_name;
     if (!mcpServerName) {
-      return new Err(new Error(`Unsupported action type: ${action.type}`));
+      return new Err(new Error("MCP server name is required"));
+    }
+
+    if (!isInternalMCPServerName(mcpServerName)) {
+      return new Err(
+        new Error(`Invalid internal MCP server name: ${mcpServerName}`)
+      );
+    }
+
+    if (!isAutoInternalMCPServerName(mcpServerName)) {
+      return new Err(
+        new Error(
+          `MCP server ${mcpServerName} is not available for auto configuration`
+        )
+      );
     }
 
     try {
@@ -358,23 +361,45 @@ export class AgentYAMLConverter {
         name: action.name,
         description: action.description,
         dataSources:
-          "data_sources" in action.configuration
+          "data_sources" in action.configuration &&
+          action.configuration.data_sources
             ? this.convertDataSources(
                 action.configuration.data_sources,
                 auth.getNonNullableWorkspace().sId
               )
             : null,
+        // TODO(ab-v2): Handle tables configuration if needed
         tables: null,
+        // TODO(ab-v2): Handle child agent ID if needed
         childAgentId: null,
-        reasoningModel: null,
+        reasoningModel:
+          "reasoning_model" in action.configuration &&
+          action.configuration.reasoning_model
+            ? {
+                modelId: action.configuration.reasoning_model.model_id,
+                providerId: action.configuration.reasoning_model.provider_id,
+                temperature:
+                  action.configuration.reasoning_model.temperature ?? null,
+                reasoningEffort:
+                  action.configuration.reasoning_model.reasoning_effort ?? null,
+              }
+            : null,
         jsonSchema:
-          "json_schema" in action.configuration
+          "json_schema" in action.configuration &&
+          action.configuration.json_schema
             ? action.configuration.json_schema
             : null,
-        additionalConfiguration: {},
+        additionalConfiguration:
+          "additional_configuration" in action.configuration &&
+          action.configuration.additional_configuration
+            ? processAdditionalConfiguration(
+                action.configuration.additional_configuration
+              )
+            : {},
         dustAppConfiguration: null,
         timeFrame:
-          "time_frame" in action.configuration
+          "time_frame" in action.configuration &&
+          action.configuration.time_frame
             ? action.configuration.time_frame
             : null,
       });
@@ -387,13 +412,17 @@ export class AgentYAMLConverter {
    * Converts an array of YAML actions to MCP server configurations.
    * Filters out DATA_VISUALIZATION actions which are handled differently.
    * Uses concurrent execution for better performance with bounds checking.
+   * Returns both successful configurations and skipped actions with reasons.
    */
   static async convertYAMLActionsToMCPConfigurations(
     auth: Authenticator,
     yamlActions: AgentYAMLAction[]
   ): Promise<
     Result<
-      PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][],
+      {
+        configurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][];
+        skipped: { action: AgentYAMLAction; reason: string }[];
+      },
       Error
     >
   > {
@@ -406,18 +435,26 @@ export class AgentYAMLConverter {
 
       const mcpConfigurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][] =
         [];
+      const skippedActions: { action: AgentYAMLAction; reason: string }[] = [];
 
-      for (const result of results) {
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        const originalAction = yamlActions[i];
+
         if (result.isErr()) {
-          return result;
-        }
-
-        if (result.value) {
+          skippedActions.push({
+            action: originalAction,
+            reason: result.error.message,
+          });
+        } else if (result.value) {
           mcpConfigurations.push(result.value);
         }
       }
 
-      return new Ok(mcpConfigurations);
+      return new Ok({
+        configurations: mcpConfigurations,
+        skipped: skippedActions,
+      });
     } catch (error) {
       return new Err(normalizeError(error));
     }

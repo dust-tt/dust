@@ -150,7 +150,7 @@ export async function getMembers(
     memberships.map(async (m) => {
       let role = "none" as RoleType;
       let origin: MembershipOriginType | undefined = undefined;
-      if (m && !m.isRevoked()) {
+      if (!m.isRevoked()) {
         switch (m.role) {
           case "admin":
           case "builder":
@@ -160,8 +160,8 @@ export async function getMembers(
           default:
             role = "none";
         }
-        origin = m.origin;
       }
+      origin = m.origin;
 
       let user: UserResource | null;
       if (!m.user) {

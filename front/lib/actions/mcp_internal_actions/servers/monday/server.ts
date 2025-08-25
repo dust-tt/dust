@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import type { SearchItemsFilters } from "@app/lib/actions/mcp_internal_actions/servers/monday/monday_api_helper";
@@ -34,27 +34,13 @@ import {
   uploadFileToColumn,
 } from "@app/lib/actions/mcp_internal_actions/servers/monday/monday_api_helper";
 import {
+  makeInternalMCPServer,
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "monday",
-  version: "1.0.0",
-  description:
-    "Monday.com integration providing CRM-like operations for boards, items, and updates. Enables reading and managing Monday.com boards and items through the GraphQL API.",
-  authorization: {
-    provider: "monday" as const,
-    supported_use_cases: ["personal_actions", "platform_actions"] as const,
-  },
-  icon: "MondayLogo",
-  documentationUrl:
-    "https://developer.monday.com/api-reference/docs/introduction-to-graphql",
-};
 
 const createServer = (): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer("monday");
 
   server.tool(
     "get_boards",
@@ -929,4 +915,3 @@ const createServer = (): McpServer => {
 };
 
 export default createServer;
-export { serverInfo };

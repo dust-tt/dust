@@ -6,6 +6,7 @@ import type {
 import { col, fn, literal, Op, Sequelize, where } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
+import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
 import {
   AgentMessage,
   ConversationModel,
@@ -15,8 +16,11 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
+  ConversationMCPServerViewType,
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
@@ -26,7 +30,6 @@ import type {
 import { ConversationError, Err, normalizeError, Ok } from "@app/types";
 
 import { GroupResource } from "./group_resource";
-import { frontSequelize } from "./storage";
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 import type { ResourceFindOptions } from "./types";
 
@@ -368,6 +371,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const includedConversationVisibilities: ConversationVisibility[] = [
       "unlisted",
+      "triggered",
     ];
 
     if (options?.includeDeleted) {
@@ -378,7 +382,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     const participations = await ConversationParticipantModel.findAll({
-      attributes: ["userId", "updatedAt", "conversationId"],
+      attributes: [
+        "userId",
+        "updatedAt",
+        "conversationId",
+        "unread",
+        "actionRequired",
+      ],
       where: {
         userId: user.id,
         workspaceId: owner.id,
@@ -404,6 +414,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           id: c.id,
           created: c.createdAt.getTime(),
           updated: p.updatedAt.getTime(),
+          unread: p.unread,
+          actionRequired: p.actionRequired,
           sId: c.sId,
           owner,
           title: c.title,
@@ -429,7 +441,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return;
     }
 
-    await frontSequelize.transaction(async (t) => {
+    await withTransaction(async (t) => {
       const participant = await ConversationParticipantModel.findOne({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -455,6 +467,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             action: "posted",
             userId: user.id,
             workspaceId: conversation.owner.id,
+            unread: false,
+            actionRequired: false,
           },
           { transaction: t }
         );
@@ -493,6 +507,99 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  static async fetchMCPServerViews(
+    auth: Authenticator,
+    conversation: ConversationWithoutContentType,
+    onlyEnabled?: boolean
+  ): Promise<ConversationMCPServerViewType[]> {
+    const conversationMCPServerViews =
+      await ConversationMCPServerViewModel.findAll({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: conversation.id,
+          ...(onlyEnabled ? { enabled: true } : {}),
+        },
+      });
+
+    return conversationMCPServerViews.map((view) => ({
+      id: view.id,
+      workspaceId: view.workspaceId,
+      conversationId: view.conversationId,
+      mcpServerViewId: view.mcpServerViewId,
+      userId: view.userId,
+      enabled: view.enabled,
+      createdAt: view.createdAt,
+      updatedAt: view.updatedAt,
+    }));
+  }
+
+  static async upsertMCPServerViews(
+    auth: Authenticator,
+    {
+      conversation,
+      mcpServerViews,
+      enabled,
+    }: {
+      conversation: ConversationWithoutContentType;
+      mcpServerViews: MCPServerViewResource[];
+      enabled: boolean;
+    }
+  ): Promise<Result<undefined, Error>> {
+    // For now we only allow MCP server views from the Company Space.
+    // It's blocked in the UI but it's a last line of defense.
+    // If we lift this limit, we should handle the requestedGroupIds on the conversation.
+    if (
+      mcpServerViews.some(
+        (mcpServerViewResource) => mcpServerViewResource.space.kind !== "global"
+      )
+    ) {
+      return new Err(
+        new Error(
+          "MCP server views are not part of the Company Space. It should not happen."
+        )
+      );
+    }
+
+    const existingConversationMCPServerViews = await this.fetchMCPServerViews(
+      auth,
+      conversation
+    );
+
+    // Cycle through the mcpServerViewIds and create or update the conversationMCPServerView
+    for (const mcpServerView of mcpServerViews) {
+      const existingConversationMCPServerView =
+        existingConversationMCPServerViews.find(
+          (view) => view.mcpServerViewId === mcpServerView.id
+        );
+      if (existingConversationMCPServerView) {
+        await ConversationMCPServerViewModel.update(
+          {
+            enabled,
+            userId: auth.getNonNullableUser().id,
+            updatedAt: new Date(),
+          },
+          {
+            where: {
+              id: existingConversationMCPServerView.id,
+              workspaceId: auth.getNonNullableWorkspace().id,
+              conversationId: conversation.id,
+            },
+          }
+        );
+      } else {
+        await ConversationMCPServerViewModel.create({
+          conversationId: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          mcpServerViewId: mcpServerView.id,
+          userId: auth.getNonNullableUser().id,
+          enabled,
+        });
+      }
+    }
+
+    return new Ok(undefined);
+  }
+
   async updateTitle(title: string) {
     return this.update({ title });
   }
@@ -517,6 +624,31 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  async leaveConversation(
+    auth: Authenticator
+  ): Promise<
+    Result<{ isConversationEmpty: boolean; affectedCount: number }, Error>
+  > {
+    const user = auth.user();
+    if (!user) {
+      return new Err(new Error("user_not_authenticated"));
+    }
+    const affectedCount = await ConversationParticipantModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: this.id,
+        userId: user.id,
+      },
+    });
+    const remaining = await ConversationParticipantModel.count({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: this.id,
+      },
+    });
+    return new Ok({ isConversationEmpty: remaining === 0, affectedCount });
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction | undefined } = {}
@@ -524,8 +656,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const owner = auth.getNonNullableWorkspace();
 
     try {
+      await ConversationMCPServerViewModel.destroy({
+        where: { workspaceId: owner.id, conversationId: this.id },
+        transaction,
+      });
       await ConversationParticipantModel.destroy({
-        where: { conversationId: this.id },
+        where: { workspaceId: owner.id, conversationId: this.id },
         transaction,
       });
       await ConversationResource.model.destroy({

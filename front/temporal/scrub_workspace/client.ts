@@ -1,7 +1,7 @@
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
-import { getTemporalClient } from "@app/lib/temporal";
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import {
   immediateWorkspaceScrubWorkflow,
@@ -17,7 +17,7 @@ export async function launchScheduleWorkspaceScrubWorkflow({
 }: {
   workspaceId: string;
 }): Promise<Result<string, Error>> {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
   const workflowId = getWorkflowId(workspaceId);
 
   try {
@@ -53,7 +53,7 @@ export async function launchImmediateWorkspaceScrubWorkflow({
 }: {
   workspaceId: string;
 }): Promise<Result<string, Error>> {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
   const workflowId = getWorkflowId(workspaceId);
 
   try {
@@ -89,7 +89,7 @@ export async function terminateScheduleWorkspaceScrubWorkflow({
 }: {
   workspaceId: string;
 }): Promise<Result<void, Error>> {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForFrontNamespace();
   const workflowId = getWorkflowId(workspaceId);
   try {
     const handle: WorkflowHandle<typeof scheduleWorkspaceScrubWorkflow> =

@@ -2,37 +2,18 @@ import { cva } from "class-variance-authority";
 import * as React from "react";
 import { useState } from "react";
 
-import { Button, Icon, ScrollArea } from "@sparkle/components";
+import { Button, Icon, ScrollArea, Separator } from "@sparkle/components";
 import {
   Dialog,
   DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@sparkle/components/Dialog";
 import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
-
-const MULTI_PAGE_DIALOG_SIZES = ["md", "lg", "xl"] as const;
-type MultiPageDialogSizeType = (typeof MULTI_PAGE_DIALOG_SIZES)[number];
-
-const multiPageDialogSizeClasses: Record<MultiPageDialogSizeType, string> = {
-  md: "s-h-100 s-max-h-screen",
-  lg: "s-h-125 s-max-h-screen",
-  xl: "s-h-150 s-max-h-screen",
-};
-
-const multiPageDialogHeightVariants = cva("", {
-  variants: {
-    size: multiPageDialogSizeClasses,
-  },
-  defaultVariants: {
-    size: "md",
-  },
-});
 
 const multiPageDialogLayoutVariants = cva(
   cn("s-flex s-flex-col s-h-full s-overflow-hidden")
@@ -44,27 +25,77 @@ interface MultiPageDialogPage {
   description?: string;
   icon?: React.ComponentType;
   content: React.ReactNode;
-}
-
-interface MultiPageDialogProps {
-  pages: MultiPageDialogPage[];
-  currentPageId: string;
-  onPageChange: (pageId: string) => void;
-  size?: MultiPageDialogSizeType;
-  trapFocusScope?: boolean;
-  isAlertDialog?: boolean;
-  showNavigation?: boolean;
-  showHeaderNavigation?: boolean;
-  footerContent?: React.ReactNode;
-  onSave?: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
-  className?: string;
-  disableNext?: boolean;
-  disableSave?: boolean;
+  fixedContent?: React.ReactNode;
 }
 
 const MultiPageDialogRoot = Dialog;
 const MultiPageDialogTrigger = DialogTrigger;
 const MultiPageDialogClose = DialogClose;
+
+interface MultiPageDialogFooterProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  addTopSeparator: boolean;
+  leftButton?: React.ComponentProps<typeof Button>;
+  centerButton?: React.ComponentProps<typeof Button>;
+  rightButton?: React.ComponentProps<typeof Button>;
+}
+
+const MultiPageDialogFooter = ({
+  className,
+  addTopSeparator,
+  children,
+  leftButton,
+  centerButton,
+  rightButton,
+  ...props
+}: MultiPageDialogFooterProps) => {
+  const content = (
+    <div
+      className={cn("s-flex s-flex-none s-flex-col s-gap-3 s-p-4", className)}
+      {...props}
+    >
+      {children}
+      <div className="s-flex s-flex-row s-justify-between">
+        <div>{leftButton && <Button {...leftButton} />}</div>
+        <div className="s-flex s-gap-2">
+          {centerButton && <Button {...centerButton} />}
+          {rightButton && <Button {...rightButton} />}
+        </div>
+      </div>
+    </div>
+  );
+
+  return addTopSeparator ? (
+    <>
+      <Separator />
+      {content}
+    </>
+  ) : (
+    <>{content}</>
+  );
+};
+
+MultiPageDialogFooter.displayName = "MultiPageDialogFooter";
+
+interface MultiPageDialogProps {
+  pages: MultiPageDialogPage[];
+  currentPageId: string;
+  onPageChange: (pageId: string) => void;
+  size?: React.ComponentProps<typeof DialogContent>["size"];
+  height?: React.ComponentProps<typeof DialogContent>["height"];
+  trapFocusScope?: boolean;
+  isAlertDialog?: boolean;
+  preventAutoFocusOnClose?: boolean;
+  showNavigation?: boolean;
+  showHeaderNavigation?: boolean;
+  className?: string;
+  disableNext?: boolean;
+  leftButton?: React.ComponentProps<typeof Button>;
+  centerButton?: React.ComponentProps<typeof Button>;
+  rightButton?: React.ComponentProps<typeof Button>;
+  footerContent?: React.ReactNode;
+  addFooterSeparator?: boolean;
+}
 
 interface MultiPageDialogContentProps extends MultiPageDialogProps {
   children?: never;
@@ -80,15 +111,19 @@ const MultiPageDialogContent = React.forwardRef<
       currentPageId,
       onPageChange,
       size = "md",
+      height,
       trapFocusScope,
       isAlertDialog,
+      preventAutoFocusOnClose,
       showNavigation = true,
       showHeaderNavigation = true,
-      footerContent,
-      onSave,
       className,
       disableNext = false,
-      disableSave = false,
+      addFooterSeparator = false,
+      leftButton,
+      centerButton,
+      rightButton,
+      footerContent,
       ...props
     },
     ref
@@ -143,13 +178,18 @@ const MultiPageDialogContent = React.forwardRef<
       <DialogContent
         ref={ref}
         size={size}
+        height={height}
         trapFocusScope={trapFocusScope}
         isAlertDialog={isAlertDialog}
-        className={cn(multiPageDialogHeightVariants({ size }), className)}
+        preventAutoFocusOnClose={preventAutoFocusOnClose}
+        className={className}
         {...props}
       >
         <div className={cn(multiPageDialogLayoutVariants())}>
-          <DialogHeader hideButton={true} className="s-flex-none">
+          <DialogHeader
+            hideButton={showHeaderNavigation}
+            className="s-flex-none"
+          >
             <div className="s-flex s-items-center s-justify-between s-pr-8">
               <div className="s-flex s-items-center s-gap-3">
                 {showNavigation && showHeaderNavigation && (
@@ -218,8 +258,8 @@ const MultiPageDialogContent = React.forwardRef<
             </div>
           </DialogHeader>
 
-          <div className="s-min-h-0 s-flex-1 s-overflow-hidden">
-            <ScrollArea
+          <div className="s-min-h-0 s-flex-1 s-overflow-y-auto">
+            <div
               className={cn(
                 "s-h-full s-transition-all s-duration-200 s-ease-out",
                 {
@@ -229,54 +269,36 @@ const MultiPageDialogContent = React.forwardRef<
                   "s--translate-x-2":
                     isTransitioning && transitionDirection === "prev",
                   "s-translate-x-0 s-opacity-100": !isTransitioning,
-                }
+                },
+                currentPage.fixedContent ? "s-flex s-flex-col" : ""
               )}
             >
-              <div className="s-flex s-flex-col s-gap-2 s-px-5 s-py-4">
-                {currentPage.content}
-              </div>
-            </ScrollArea>
+              {currentPage.fixedContent && (
+                <>
+                  <div className="s-flex-none s-px-5 s-py-4">
+                    {currentPage.fixedContent}
+                  </div>
+                  <Separator />
+                </>
+              )}
+              <ScrollArea
+                className={currentPage.fixedContent ? "s-flex-1" : "s-h-full"}
+              >
+                <div className="s-flex s-flex-col s-gap-2 s-px-5 s-py-4">
+                  {currentPage.content}
+                </div>
+              </ScrollArea>
+            </div>
           </div>
 
-          <DialogFooter
-            className="s-flex-none"
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              size: "sm",
-            }}
-            rightButtonProps={
-              showNavigation && pages.length > 1 && hasPrevious
-                ? {
-                    label: "Previous",
-                    variant: "outline",
-                    size: "sm",
-                    disabled: isTransitioning,
-                    onClick: handlePrevious,
-                  }
-                : undefined
-            }
+          <MultiPageDialogFooter
+            leftButton={leftButton}
+            centerButton={centerButton}
+            rightButton={rightButton}
+            addTopSeparator={addFooterSeparator}
           >
-            {showNavigation && pages.length > 1 && hasNext && (
-              <Button
-                label="Next"
-                variant="outline"
-                size="sm"
-                disabled={disableNext || isTransitioning}
-                onClick={handleNext}
-              />
-            )}
-            {showNavigation && pages.length > 1 && !hasNext && onSave && (
-              <Button
-                label="Save changes"
-                variant="primary"
-                size="sm"
-                disabled={disableSave || isTransitioning}
-                onClick={onSave}
-              />
-            )}
             {footerContent}
-          </DialogFooter>
+          </MultiPageDialogFooter>
         </div>
       </DialogContent>
     );
@@ -289,6 +311,8 @@ export {
   MultiPageDialogRoot as MultiPageDialog,
   MultiPageDialogClose,
   MultiPageDialogContent,
+  MultiPageDialogFooter,
+  type MultiPageDialogFooterProps,
   type MultiPageDialogPage,
   type MultiPageDialogProps,
   MultiPageDialogTrigger,

@@ -7,18 +7,19 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  useHashParam,
 } from "@dust-tt/sparkle";
 import assert from "assert";
-import { uniqueId } from "lodash";
+import uniqueId from "lodash/uniqueId";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useState } from "react";
 
+import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import ActionsScreen, {
   hasActionError,
 } from "@app/components/assistant_builder/ActionsScreen";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { BuilderLayout } from "@app/components/assistant_builder/BuilderLayout";
+import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { usePreviewPanelContext } from "@app/components/assistant_builder/contexts/PreviewPanelContext";
 import {
@@ -31,18 +32,13 @@ import SettingsScreen, {
 } from "@app/components/assistant_builder/SettingsScreen";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
-  AssistantBuilderInitialState,
   AssistantBuilderLightProps,
-  AssistantBuilderPendingAction,
-  AssistantBuilderSetActionType,
-  AssistantBuilderState,
   BuilderScreen,
 } from "@app/components/assistant_builder/types";
 import {
   BUILDER_SCREENS,
   BUILDER_SCREENS_INFOS,
   getDataVisualizationActionConfiguration,
-  getDefaultAssistantState,
 } from "@app/components/assistant_builder/types";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { useSlackChannel } from "@app/components/assistant_builder/useSlackChannels";
@@ -54,17 +50,15 @@ import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
+import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAssistantConfigurationActions } from "@app/lib/swr/actions";
+import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
 import { useUser } from "@app/lib/swr/user";
-import type { AgentConfigurationScope, PlanType } from "@app/types";
 import {
   assertNever,
-  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
-  GPT_4_1_MINI_MODEL_CONFIG,
   isAdmin,
   isBuilder,
   SUPPORTED_MODEL_CONFIGS,
@@ -74,53 +68,12 @@ function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
 }
 
-function getDefaultBuilderState(
-  initialBuilderState: AssistantBuilderInitialState | null,
-  defaultScope: Exclude<AgentConfigurationScope, "global">,
-  plan: PlanType
-) {
-  if (initialBuilderState) {
-    // We fetch actions on the client side, but in case of duplicating an agent,
-    // we need to use the actions from the original agent.
-    const duplicatedActions = initialBuilderState.actions.map((action) => ({
-      id: uniqueId(),
-      ...action,
-    }));
-
-    // We need to add data viz as a fake action if it's enabled.
-    if (initialBuilderState.visualizationEnabled) {
-      duplicatedActions.push(getDataVisualizationActionConfiguration());
-    }
-
-    return {
-      ...initialBuilderState,
-      generationSettings: initialBuilderState.generationSettings ?? {
-        ...getDefaultAssistantState().generationSettings,
-      },
-      actions: duplicatedActions,
-    };
-  }
-
-  return {
-    ...getDefaultAssistantState(),
-    scope: defaultScope,
-    generationSettings: {
-      ...getDefaultAssistantState().generationSettings,
-      modelSettings: !isUpgraded(plan)
-        ? GPT_4_1_MINI_MODEL_CONFIG
-        : CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
-    },
-  };
-}
-
 export default function AssistantBuilder({
   owner,
   subscription,
-  plan,
   initialBuilderState,
   agentConfiguration,
   flow,
-  defaultIsEdited,
   baseUrl,
   defaultTemplate,
   duplicateAgentId,
@@ -134,7 +87,8 @@ export default function AssistantBuilder({
 
   const isSavingDisabled = killSwitches?.includes("save_agent_configurations");
 
-  const defaultScope = flow === "personal_assistants" ? "hidden" : "visible";
+  const { builderState, setBuilderState, edited, setEdited } =
+    useAssistantBuilderContext();
 
   const [currentTab, setCurrentTab] = useHashParam(
     "selectedTab",
@@ -143,7 +97,7 @@ export default function AssistantBuilder({
   const [screen, setScreen] = useState<BuilderScreen>(
     currentTab && isValidTab(currentTab) ? currentTab : "instructions"
   );
-  const [edited, setEdited] = useState(defaultIsEdited ?? false);
+  //const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [disableUnsavedChangesPrompt, setDisableUnsavedChangesPrompt] =
     useState(false);
@@ -167,6 +121,11 @@ export default function AssistantBuilder({
     duplicateAgentId ?? agentConfiguration?.sId ?? null
   );
 
+  const { triggers, isTriggersLoading } = useAgentTriggers({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
+  });
+
   useEffect(() => {
     if (error) {
       sendNotification({
@@ -189,18 +148,15 @@ export default function AssistantBuilder({
           ? [getDataVisualizationActionConfiguration()]
           : []),
       ],
+      triggers: triggers.map((trigger) => ({
+        sId: uniqueId(),
+        kind: trigger.kind,
+        name: trigger.name,
+        configuration: trigger.configuration,
+        editor: trigger.editor,
+      })),
     }));
-  }, [actions, error, sendNotification]);
-
-  const [builderState, setBuilderState] = useState<AssistantBuilderState>(() =>
-    getDefaultBuilderState(initialBuilderState, defaultScope, plan)
-  );
-
-  const [pendingAction, setPendingAction] =
-    useState<AssistantBuilderPendingAction>({
-      action: null,
-      previousActionName: null,
-    });
+  }, [actions, triggers, error, sendNotification, setBuilderState]);
 
   const {
     template,
@@ -261,6 +217,7 @@ export default function AssistantBuilder({
     owner,
     agentConfiguration?.sId,
     initialBuilderState,
+    setBuilderState,
   ]);
 
   const formValidation = useCallback(async () => {
@@ -340,34 +297,6 @@ export default function AssistantBuilder({
     }
   }, [currentTab]);
 
-  const setAction = useCallback(
-    (p: AssistantBuilderSetActionType) => {
-      if (p.type === "pending") {
-        setPendingAction({ action: p.action, previousActionName: null });
-      } else if (p.type === "edit") {
-        setPendingAction({
-          action: p.action,
-          previousActionName: p.action.name,
-        });
-      } else if (p.type === "clear_pending") {
-        setPendingAction({ action: null, previousActionName: null });
-      } else if (p.type === "insert") {
-        if (builderState.actions.some((a) => a.name === p.action.name)) {
-          return;
-        }
-
-        setEdited(true);
-        setBuilderState((state) => {
-          return {
-            ...state,
-            actions: [...state.actions, p.action],
-          };
-        });
-      }
-    },
-    [builderState, setBuilderState, setEdited]
-  );
-
   const onAssistantSave = async () => {
     // Redirect to the right screen if there are errors.
     if (instructionsError) {
@@ -419,7 +348,7 @@ export default function AssistantBuilder({
   };
 
   const [doTypewriterEffect, setDoTypewriterEffect] = useState(
-    Boolean(template !== null && builderState.instructions)
+    Boolean(template !== null && initialBuilderState?.instructions)
   );
 
   const modalTitle = agentConfiguration
@@ -428,168 +357,164 @@ export default function AssistantBuilder({
 
   return (
     <>
-      <AppContentLayout subscription={subscription} hideSidebar owner={owner}>
-        <div className="flex h-full flex-col">
-          {!edited ? (
-            <AppLayoutSimpleCloseTitle
-              title={modalTitle}
-              onClose={async () => {
-                await appLayoutBack(owner, router);
-              }}
-            />
-          ) : (
-            <AppLayoutSimpleSaveCancelTitle
-              title={modalTitle}
-              onCancel={async () => {
-                await appLayoutBack(owner, router);
-              }}
-              onSave={isSavingDisabled ? undefined : onAssistantSave}
-              isSaving={isSavingOrDeleting}
-              saveTooltip={
-                isSavingDisabled
-                  ? "Saving agents is temporarily disabled and will be re-enabled shortly."
-                  : undefined
-              }
-            />
-          )}
-          <BuilderLayout
-            leftPanel={
-              <div className="flex h-full flex-col gap-4 pb-6 pt-4">
-                <div className="flex flex-row justify-between sm:flex-row">
-                  <Tabs
-                    className="w-full"
-                    onValueChange={(t) => {
-                      setCurrentTab(t);
-                    }}
-                    value={screen}
-                  >
-                    <TabsList>
-                      {Object.values(BUILDER_SCREENS_INFOS).map((tab) => (
-                        <TabsTrigger
-                          key={tab.label}
-                          value={tab.id}
-                          label={tab.label}
-                          icon={tab.icon}
-                          data-gtm-label={tab.dataGtm.label}
-                          data-gtm-location={tab.dataGtm.location}
-                        />
-                      ))}
-                    </TabsList>
-                  </Tabs>
-                  <div className="border-b border-border">
-                    <Button
-                      icon={
-                        isPreviewPanelOpen
-                          ? SidebarRightCloseIcon
-                          : SidebarRightOpenIcon
-                      }
-                      variant="ghost"
-                      tooltip={
-                        isPreviewPanelOpen ? "Hide preview" : "Open preview"
-                      }
-                      onClick={() => setIsPreviewPanelOpen(!isPreviewPanelOpen)}
+      {
+        <AppContentLayout subscription={subscription} hideSidebar owner={owner}>
+          <div className="flex h-full flex-col">
+            {!edited ? (
+              <AppLayoutSimpleCloseTitle
+                title={modalTitle}
+                onClose={async () => {
+                  await appLayoutBack(owner, router);
+                }}
+              />
+            ) : (
+              <AppLayoutSimpleSaveCancelTitle
+                title={modalTitle}
+                onCancel={async () => {
+                  await appLayoutBack(owner, router);
+                }}
+                onSave={isSavingDisabled ? undefined : onAssistantSave}
+                isSaving={isSavingOrDeleting}
+                saveTooltip={
+                  isSavingDisabled
+                    ? "Saving agents is temporarily disabled and will be re-enabled shortly."
+                    : undefined
+                }
+              />
+            )}
+            <BuilderLayout
+              leftPanel={
+                <div className="flex h-full flex-col gap-4 pb-6 pt-4">
+                  <div className="flex flex-row justify-between sm:flex-row">
+                    <Tabs
+                      className="w-full"
+                      onValueChange={(t) => {
+                        setCurrentTab(t);
+                      }}
+                      value={screen}
+                    >
+                      <TabsList>
+                        {Object.values(BUILDER_SCREENS_INFOS).map((tab) => (
+                          <TabsTrigger
+                            key={tab.label}
+                            value={tab.id}
+                            label={tab.label}
+                            icon={tab.icon}
+                            data-gtm-label={tab.dataGtm.label}
+                            data-gtm-location={tab.dataGtm.location}
+                          />
+                        ))}
+                      </TabsList>
+                    </Tabs>
+                    <div className="border-b border-border">
+                      <Button
+                        icon={
+                          isPreviewPanelOpen
+                            ? SidebarRightCloseIcon
+                            : SidebarRightOpenIcon
+                        }
+                        variant="ghost"
+                        tooltip={
+                          isPreviewPanelOpen ? "Hide preview" : "Open preview"
+                        }
+                        onClick={() =>
+                          setIsPreviewPanelOpen(!isPreviewPanelOpen)
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="flex h-full justify-center">
+                    <div className="h-full w-full max-w-4xl">
+                      {(() => {
+                        switch (screen) {
+                          case "instructions":
+                            return (
+                              <InstructionScreen
+                                owner={owner}
+                                resetAt={instructionsResetAt}
+                                isUsingTemplate={template !== null}
+                                instructionsError={instructionsError}
+                                doTypewriterEffect={doTypewriterEffect}
+                                setDoTypewriterEffect={setDoTypewriterEffect}
+                                agentConfigurationId={
+                                  agentConfiguration?.sId ?? null
+                                }
+                                models={models}
+                                setIsInstructionDiffMode={
+                                  setIsInstructionDiffMode
+                                }
+                                isInstructionDiffMode={isInstructionDiffMode}
+                              />
+                            );
+                          case "actions":
+                            return (
+                              <ActionsScreen
+                                owner={owner}
+                                reasoningModels={reasoningModels}
+                                isFetchingActions={isActionsLoading}
+                              />
+                            );
+
+                          case "settings":
+                            return (
+                              <SettingsScreen
+                                agentConfigurationId={
+                                  agentConfiguration?.sId ?? null
+                                }
+                                baseUrl={baseUrl}
+                                owner={owner}
+                                initialHandle={initialBuilderState?.handle}
+                                assistantHandleError={assistantHandleError}
+                                descriptionError={descriptionError}
+                                slackChannelSelected={
+                                  selectedSlackChannels || []
+                                }
+                                slackDataSource={slackDataSource}
+                                setSelectedSlackChannels={
+                                  setSelectedSlackChannels
+                                }
+                                currentUser={user}
+                                isTriggersLoading={isTriggersLoading}
+                              />
+                            );
+                          default:
+                            assertNever(screen);
+                        }
+                      })()}
+                    </div>
+                  </div>
+                  <div className="mt-auto flex-shrink-0">
+                    <PrevNextButtons
+                      screen={screen}
+                      setCurrentTab={setCurrentTab}
                     />
                   </div>
                 </div>
-                <div className="flex h-full justify-center">
-                  <div className="h-full w-full max-w-4xl">
-                    {(() => {
-                      switch (screen) {
-                        case "instructions":
-                          return (
-                            <InstructionScreen
-                              owner={owner}
-                              builderState={builderState}
-                              setBuilderState={setBuilderState}
-                              setEdited={setEdited}
-                              resetAt={instructionsResetAt}
-                              isUsingTemplate={template !== null}
-                              instructionsError={instructionsError}
-                              doTypewriterEffect={doTypewriterEffect}
-                              setDoTypewriterEffect={setDoTypewriterEffect}
-                              agentConfigurationId={
-                                agentConfiguration?.sId ?? null
-                              }
-                              models={models}
-                              setIsInstructionDiffMode={
-                                setIsInstructionDiffMode
-                              }
-                              isInstructionDiffMode={isInstructionDiffMode}
-                            />
-                          );
-                        case "actions":
-                          return (
-                            <ActionsScreen
-                              owner={owner}
-                              builderState={builderState}
-                              reasoningModels={reasoningModels}
-                              setBuilderState={setBuilderState}
-                              setEdited={setEdited}
-                              setAction={setAction}
-                              pendingAction={pendingAction}
-                              isFetchingActions={isActionsLoading}
-                            />
-                          );
-
-                        case "settings":
-                          return (
-                            <SettingsScreen
-                              agentConfigurationId={
-                                agentConfiguration?.sId ?? null
-                              }
-                              baseUrl={baseUrl}
-                              owner={owner}
-                              builderState={builderState}
-                              initialHandle={initialBuilderState?.handle}
-                              setBuilderState={setBuilderState}
-                              setEdited={setEdited}
-                              assistantHandleError={assistantHandleError}
-                              descriptionError={descriptionError}
-                              slackChannelSelected={selectedSlackChannels || []}
-                              slackDataSource={slackDataSource}
-                              setSelectedSlackChannels={
-                                setSelectedSlackChannels
-                              }
-                              currentUser={user}
-                            />
-                          );
-                        default:
-                          assertNever(screen);
-                      }
-                    })()}
-                  </div>
-                </div>
-                <div className="mt-auto flex-shrink-0">
-                  <PrevNextButtons
+              }
+              rightPanel={
+                <ConversationSidePanelProvider>
+                  <AssistantBuilderRightPanel
                     screen={screen}
-                    setCurrentTab={setCurrentTab}
+                    template={template}
+                    mcpServerViews={mcpServerViews}
+                    removeTemplate={removeTemplate}
+                    resetToTemplateInstructions={async () => {
+                      resetToTemplateInstructions(setBuilderState);
+                      setEdited(true);
+                    }}
+                    resetToTemplateActions={async () => {
+                      resetToTemplateActions(setBuilderState);
+                      setEdited(true);
+                    }}
+                    owner={owner}
+                    agentConfiguration={agentConfiguration}
                   />
-                </div>
-              </div>
-            }
-            rightPanel={
-              <AssistantBuilderRightPanel
-                screen={screen}
-                template={template}
-                mcpServerViews={mcpServerViews}
-                removeTemplate={removeTemplate}
-                resetToTemplateInstructions={async () => {
-                  resetToTemplateInstructions(setBuilderState);
-                  setEdited(true);
-                }}
-                resetToTemplateActions={async () => {
-                  resetToTemplateActions(setBuilderState);
-                  setEdited(true);
-                }}
-                owner={owner}
-                builderState={builderState}
-                agentConfiguration={agentConfiguration}
-                setAction={setAction}
-              />
-            }
-          />
-        </div>
-      </AppContentLayout>
+                </ConversationSidePanelProvider>
+              }
+            />
+          </div>
+        </AppContentLayout>
+      }
     </>
   );
 }

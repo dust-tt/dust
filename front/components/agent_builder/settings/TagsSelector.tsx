@@ -2,13 +2,14 @@ import {
   Button,
   Chip,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
-  DropdownMenuTagItem,
-  DropdownMenuTagList,
   DropdownMenuTrigger,
   PlusIcon,
+  SparklesIcon,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -23,15 +24,23 @@ import { TagCreationDialog } from "./TagCreationDialog";
 interface TagsSelectorProps {
   owner: WorkspaceType;
   tags: TagType[];
-  onTagsChange: (tags: TagType[]) => void;
-  suggestionButton?: JSX.Element;
+  onAddTag: (tag: TagType) => void;
+  onRemoveTag: (tagId: string) => void;
+  onSuggestTags?: () => Promise<void>;
+  isSuggestLoading?: boolean;
+  isSuggestDisabled?: boolean;
+  suggestTooltip?: string;
 }
 
 export const TagsSelector = ({
   owner,
   tags,
-  onTagsChange,
-  suggestionButton,
+  onAddTag,
+  onRemoveTag,
+  onSuggestTags,
+  isSuggestLoading,
+  isSuggestDisabled,
+  suggestTooltip,
 }: TagsSelectorProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -48,27 +57,16 @@ export const TagsSelector = ({
     }
   };
 
+  const currentTagIds = new Set(tags.map((t) => t.sId));
+
   const filteredTags = useMemo(() => {
-    const currentTagIds = new Set(tags.map((t) => t.sId));
     return allTags
-      .filter(
-        (t) =>
-          !currentTagIds.has(t.sId) &&
-          t.name.toLowerCase().includes(searchText.toLowerCase())
-      )
+      .filter((t) => t.name.toLowerCase().includes(searchText.toLowerCase()))
       .filter((t) => isBuilder(owner) || t.kind !== "protected")
       .sort(tagsSorter);
-  }, [allTags, tags, searchText, owner]);
+  }, [allTags, searchText, owner]);
 
   const sortedTags = tags.toSorted(tagsSorter);
-
-  const addTag = (tag: TagType) => {
-    onTagsChange([...tags, tag]);
-  };
-
-  const removeTag = (tagId: string) => {
-    onTagsChange(tags.filter((t) => t.sId !== tagId));
-  };
 
   return (
     <>
@@ -76,7 +74,7 @@ export const TagsSelector = ({
         owner={owner}
         isOpen={isDialogOpen}
         setIsOpen={setIsDialogOpen}
-        addTag={addTag}
+        addTag={onAddTag}
       />
       <div className="space-y-2">
         <div className="flex gap-2">
@@ -91,58 +89,86 @@ export const TagsSelector = ({
                 variant="outline"
                 label="Add"
                 isSelect
+                size="sm"
                 tooltip="Select a tag"
               />
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="h-96 w-96"
-              dropdownHeaders={
-                <>
-                  <DropdownMenuSearchbar
-                    autoFocus
-                    placeholder="Search"
-                    name="input"
-                    value={searchText}
-                    onChange={setSearchText}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && filteredTags.length > 0) {
-                        addTag(filteredTags[0]);
-                        onMenuOpenChange(false);
-                      }
-                    }}
-                    button={
-                      isAdmin(owner) ? (
-                        <Button
-                          label="Create"
-                          variant="primary"
-                          icon={PlusIcon}
-                          onClick={() => {
-                            onMenuOpenChange(false);
-                            setIsDialogOpen(true);
-                          }}
-                        />
-                      ) : undefined
+            <DropdownMenuContent className="w-96" side="top" align="start">
+              <DropdownMenuSearchbar
+                autoFocus
+                placeholder="Choose an option"
+                name="input"
+                value={searchText}
+                onChange={setSearchText}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && filteredTags.length > 0) {
+                    const firstUnselected = filteredTags.find(
+                      (tag) => !currentTagIds.has(tag.sId)
+                    );
+                    if (firstUnselected) {
+                      onAddTag(firstUnselected);
                     }
-                  />
-                  <DropdownMenuSeparator />
-                </>
-              }
-            >
-              <DropdownMenuTagList>
+                  }
+                }}
+              />
+              <DropdownMenuSeparator />
+              <div className="max-h-80 overflow-auto">
                 {filteredTags.map((tag) => (
-                  <DropdownMenuTagItem
-                    color="golden"
+                  <DropdownMenuCheckboxItem
                     key={tag.sId}
                     label={tag.name}
-                    onClick={() => {
-                      addTag(tag);
+                    checked={currentTagIds.has(tag.sId)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        onAddTag(tag);
+                      } else {
+                        onRemoveTag(tag.sId);
+                      }
+                    }}
+                    onSelect={(event) => {
+                      event.preventDefault();
                     }}
                   />
                 ))}
-              </DropdownMenuTagList>
+              </div>
+              {(isAdmin(owner) || onSuggestTags) && (
+                <>
+                  <DropdownMenuSeparator />
+                  <div className="flex gap-2 p-2">
+                    {isAdmin(owner) && (
+                      <Button
+                        label="Create new tag"
+                        variant="outline"
+                        icon={PlusIcon}
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => {
+                          onMenuOpenChange(false);
+                          setIsDialogOpen(true);
+                        }}
+                      />
+                    )}
+                    {onSuggestTags && (
+                      <Button
+                        icon={
+                          isSuggestLoading
+                            ? () => <Spinner size="xs" />
+                            : SparklesIcon
+                        }
+                        variant="outline"
+                        size="sm"
+                        disabled={isSuggestDisabled}
+                        tooltip={suggestTooltip}
+                        onClick={async () => {
+                          await onSuggestTags();
+                        }}
+                      />
+                    )}
+                  </div>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
-          {suggestionButton}
         </div>
         {sortedTags.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -152,7 +178,7 @@ export const TagsSelector = ({
                 onRemove={
                   tag.kind === "protected" && !isBuilder(owner)
                     ? undefined
-                    : () => removeTag(tag.sId)
+                    : () => onRemoveTag(tag.sId)
                 }
                 size="xs"
                 color="golden"

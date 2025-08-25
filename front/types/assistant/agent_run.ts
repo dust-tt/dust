@@ -1,15 +1,16 @@
 /**
  * Run agent arguments
  */
-
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import { z } from "zod";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
+import { isGlobalAgentId } from "@app/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
@@ -20,7 +21,9 @@ import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
-import { isGlobalAgentId } from "@app/types";
+
+export const ExecutionModeSchema = z.enum(["sync", "async", "auto"]);
+export type ExecutionMode = z.infer<typeof ExecutionModeSchema>;
 
 export type RunAgentAsynchronousArgs = {
   agentMessageId: string;
@@ -31,7 +34,7 @@ export type RunAgentAsynchronousArgs = {
   userMessageVersion: number;
 };
 
-export type RunAgentSynchronousArgs = {
+export type RunAgentExecutionData = {
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
   agentMessageRow: AgentMessage;
@@ -39,25 +42,33 @@ export type RunAgentSynchronousArgs = {
   userMessage: UserMessageType;
 };
 
-export type RunAgentArgs =
+export type RunAgentArgsInput =
   | {
       sync: true;
-      inMemoryData: RunAgentSynchronousArgs;
+      inMemoryData: RunAgentExecutionData;
+      syncToAsyncTimeoutMs?: number;
     }
   | {
       sync: false;
       idArgs: RunAgentAsynchronousArgs;
     };
 
+export type RunAgentArgs = RunAgentArgsInput & {
+  initialStartTime: number;
+};
+
 export async function getRunAgentData(
   authType: AuthenticatorType,
-  runAgentArgs: RunAgentArgs
-): Promise<Result<RunAgentSynchronousArgs, Error>> {
-  if (runAgentArgs.sync) {
-    return new Ok(runAgentArgs.inMemoryData);
-  }
-
+  runAgentArgs: RunAgentArgsInput
+): Promise<Result<RunAgentExecutionData & { auth: Authenticator }, Error>> {
   const auth = await Authenticator.fromJSON(authType);
+
+  if (runAgentArgs.sync) {
+    return new Ok({
+      ...runAgentArgs.inMemoryData,
+      auth,
+    });
+  }
 
   const {
     agentMessageId,
@@ -75,27 +86,30 @@ export async function getRunAgentData(
 
   const conversation = conversationRes.value;
 
-  // Find the agent message group by searching in reverse order.
-  // All messages of the same group should be of the same type and of same sId.
-  // For safety, this is asserted below.
-  const agentMessageGroup = conversation.content.findLast(
-    (messageGroup) => messageGroup[0]?.sId === agentMessageId
-  );
+  // Find the agent message by searching all groups in reverse order. Retried messages do not have
+  // the same sId as the original message, so we need to search all groups.
+  let agentMessage: AgentMessageType | undefined;
+  for (let i = conversation.content.length - 1; i >= 0 && !agentMessage; i--) {
+    const messageGroup = conversation.content[i];
+    for (const msg of messageGroup) {
+      if (
+        isAgentMessageType(msg) &&
+        msg.sId === agentMessageId &&
+        msg.version === agentMessageVersion
+      ) {
+        agentMessage = msg;
+        break;
+      }
+    }
+  }
 
-  const agentMessage = agentMessageGroup?.[agentMessageVersion];
-
-  if (
-    !agentMessage ||
-    !isAgentMessageType(agentMessage) ||
-    agentMessage.sId !== agentMessageId ||
-    agentMessage.version !== agentMessageVersion
-  ) {
+  if (!agentMessage) {
     return new Err(new Error("Agent message not found"));
   }
 
   // Find the user message group by searching in reverse order.
-  const userMessageGroup = conversation.content.findLast(
-    (messageGroup) => messageGroup[0]?.sId === userMessageId
+  const userMessageGroup = conversation.content.findLast((messageGroup) =>
+    messageGroup.some((m) => m.sId === userMessageId)
   );
 
   // We assume that the message group is ordered by version ASC. Message version starts from 0.
@@ -147,10 +161,11 @@ export async function getRunAgentData(
   }
 
   return new Ok({
+    agentConfiguration,
     agentMessage,
     agentMessageRow: agentMessageRow.agentMessage,
+    auth,
     conversation,
     userMessage,
-    agentConfiguration,
   });
 }

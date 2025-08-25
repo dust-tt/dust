@@ -113,34 +113,43 @@ export default function EditAssistant({
     throw new Error("Cannot edit archived agent");
   }
 
+  const defaultScope = flow === "personal_assistants" ? "hidden" : "visible";
+  const initialBuilderState = {
+    scope: agentConfiguration.scope,
+    handle: agentConfiguration.name,
+    description: agentConfiguration.description,
+    instructions: agentConfiguration.instructions || "", // TODO we don't support null in the UI yet
+    avatarUrl: agentConfiguration.pictureUrl,
+    generationSettings: {
+      modelSettings: {
+        modelId: agentConfiguration.model.modelId,
+        providerId: agentConfiguration.model.providerId,
+      },
+      temperature: agentConfiguration.model.temperature,
+      reasoningEffort: agentConfiguration.model.reasoningEffort || "none",
+      responseFormat: agentConfiguration.model.responseFormat,
+    },
+    actions: [], // Actions will be populated later from the client
+    triggers: [], // Triggers will be populated later from the client
+    visualizationEnabled: agentConfiguration.visualizationEnabled,
+    templateId: agentConfiguration.templateId,
+    tags: agentConfiguration.tags,
+    editors: agentEditors,
+  };
+
   return (
-    <AssistantBuilderProviders owner={owner}>
+    <AssistantBuilderProviders
+      owner={owner}
+      plan={plan}
+      defaultScope={defaultScope}
+      initialBuilderState={initialBuilderState}
+      assistantTemplate={null}
+    >
       <AssistantBuilder
         owner={owner}
         subscription={subscription}
-        plan={plan}
         flow={flow}
-        initialBuilderState={{
-          scope: agentConfiguration.scope,
-          handle: agentConfiguration.name,
-          description: agentConfiguration.description,
-          instructions: agentConfiguration.instructions || "", // TODO we don't support null in the UI yet
-          avatarUrl: agentConfiguration.pictureUrl,
-          generationSettings: {
-            modelSettings: {
-              modelId: agentConfiguration.model.modelId,
-              providerId: agentConfiguration.model.providerId,
-            },
-            temperature: agentConfiguration.model.temperature,
-            reasoningEffort: agentConfiguration.model.reasoningEffort || "none",
-            responseFormat: agentConfiguration.model.responseFormat,
-          },
-          actions: [], // Actions will be populated later from the client
-          visualizationEnabled: agentConfiguration.visualizationEnabled,
-          templateId: agentConfiguration.templateId,
-          tags: agentConfiguration.tags,
-          editors: agentEditors,
-        }}
+        initialBuilderState={initialBuilderState}
         agentConfiguration={agentConfiguration}
         baseUrl={baseUrl}
         defaultTemplate={null}

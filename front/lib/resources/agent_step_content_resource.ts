@@ -11,6 +11,7 @@ import type {
 import { Op } from "sequelize";
 
 import { MCPActionType } from "@app/lib/actions/mcp";
+import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
@@ -26,15 +27,14 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
 import type { ModelId, Result } from "@app/types";
-import { removeNulls } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 import type { AgentStepContentType } from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -348,45 +348,47 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           "Unexpected: MCP actions on non-function call step content"
         );
         // MCP actions filtering already happened in fetch methods if latestVersionsOnly was requested
-        base.mcpActions = this.agentMCPActions.map(
-          (action: AgentMCPAction) =>
-            new MCPActionType({
-              id: action.id,
-              params: JSON.parse(value.value.arguments),
-              output: removeNulls(
-                action.outputItems.map(hideFileFromActionOutput)
-              ),
-              functionCallId: value.value.id,
-              functionCallName: value.value.name,
-              agentMessageId: action.agentMessageId,
-              step: this.step,
-              mcpServerConfigurationId: action.mcpServerConfigurationId,
-              executionState: action.executionState,
-              isError: action.isError,
-              type: "tool_action",
-              citationsAllocated: action.citationsAllocated,
-              generatedFiles: removeNulls(
-                action.outputItems.map((o) => {
-                  if (!o.file) {
-                    return null;
-                  }
+        base.mcpActions = this.agentMCPActions.map((action: AgentMCPAction) => {
+          const mcpServerId = action.toolConfiguration?.toolServerId || null;
 
-                  const file = o.file;
-                  const fileSid = FileResource.modelIdToSId({
-                    id: file.id,
-                    workspaceId: action.workspaceId,
-                  });
+          return new MCPActionType({
+            id: action.id,
+            params: JSON.parse(value.value.arguments),
+            output: removeNulls(
+              action.outputItems.map(hideFileFromActionOutput)
+            ),
+            functionCallId: value.value.id,
+            functionCallName: value.value.name,
+            mcpServerId,
+            internalMCPServerName: getInternalMCPServerNameFromSId(mcpServerId),
+            agentMessageId: action.agentMessageId,
+            step: this.step,
+            mcpServerConfigurationId: action.mcpServerConfigurationId,
+            type: "tool_action",
+            status: action.status,
+            citationsAllocated: action.citationsAllocated,
+            generatedFiles: removeNulls(
+              action.outputItems.map((o) => {
+                if (!o.file) {
+                  return null;
+                }
 
-                  return {
-                    fileId: fileSid,
-                    contentType: file.contentType,
-                    title: file.fileName,
-                    snippet: file.snippet,
-                  };
-                })
-              ),
-            })
-        );
+                const file = o.file;
+                const fileSid = FileResource.modelIdToSId({
+                  id: file.id,
+                  workspaceId: action.workspaceId,
+                });
+
+                return {
+                  fileId: fileSid,
+                  contentType: file.contentType,
+                  title: file.fileName,
+                  snippet: file.snippet,
+                };
+              })
+            ),
+          });
+        });
       }
     }
 
@@ -404,7 +406,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     CreationAttributes<AgentStepContentModel>,
     "version"
   >): Promise<AgentStepContentResource> {
-    return frontSequelize.transaction(async (transaction: Transaction) => {
+    return withTransaction(async (transaction: Transaction) => {
       const existingContent = await this.model.findAll({
         where: {
           agentMessageId,
@@ -539,8 +541,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           createdAt: action.createdAt.toISOString(),
           functionCallName: stepContent.value.value.name,
           params: JSON.parse(stepContent.value.value.arguments),
-          executionState: action.executionState,
-          isError: action.isError,
+          status: action.status,
           conversationId: stepContent.agentMessage.message.conversation.sId,
           messageId: stepContent.agentMessage.message.sId,
         };

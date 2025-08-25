@@ -23,23 +23,21 @@ import { useContext, useEffect, useRef, useState } from "react";
 
 import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
-import { InteractiveContentProvider } from "@app/components/assistant/conversation/content/InteractiveContentContext";
+import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import {
   usePreviewAssistant,
   useTryAssistantCore,
 } from "@app/components/assistant_builder/TryAssistant";
-import type {
-  AssistantBuilderSetActionType,
-  AssistantBuilderState,
-  BuilderScreen,
-} from "@app/components/assistant_builder/types";
+import type { BuilderScreen } from "@app/components/assistant_builder/types";
 import { getDefaultMCPServerConfigurationWithId } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -60,9 +58,7 @@ interface AssistantBuilderRightPanelProps {
   resetToTemplateInstructions: () => Promise<void>;
   resetToTemplateActions: () => Promise<void>;
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
   agentConfiguration: LightAgentConfigurationType | null;
-  setAction: (action: AssistantBuilderSetActionType) => void;
   mcpServerViews: MCPServerViewType[];
 }
 
@@ -73,11 +69,10 @@ export default function AssistantBuilderRightPanel({
   resetToTemplateInstructions,
   resetToTemplateActions,
   owner,
-  builderState,
   agentConfiguration,
-  setAction,
   mcpServerViews,
 }: AssistantBuilderRightPanelProps) {
+  const { builderState, setAction } = useAssistantBuilderContext();
   const [rightPanelTab, setRightPanelTab] =
     useState<AssistantBuilderRightPanelTabType>(
       template ? "Template" : "Preview"
@@ -102,6 +97,8 @@ export default function AssistantBuilderRightPanel({
     assistant: draftAssistant,
     createDraftAgent,
   });
+
+  const { currentPanel } = useConversationSidePanelContext();
 
   const isBuilderStateEmpty =
     !builderState.instructions?.trim() && !builderState.actions.length;
@@ -157,7 +154,7 @@ export default function AssistantBuilderRightPanel({
     const mcpServerView = mcpServerViews.find(
       (mcpServerView) =>
         mcpServerView.server.sId ===
-        internalMCPServerNameToSId({
+        autoInternalMCPServerNameToSId({
           name: internalMcpServerName,
           workspaceId: owner.id,
         })
@@ -216,25 +213,21 @@ export default function AssistantBuilderRightPanel({
               </div>
             ) : (
               <ConversationsNavigationProvider>
-                <ActionValidationProvider owner={owner}>
+                <ActionValidationProvider
+                  owner={owner}
+                  conversation={conversation}
+                >
                   <GenerationContextProvider>
-                    <div className="flex-grow overflow-y-auto">
+                    <div
+                      className={
+                        currentPanel ? "hidden" : "flex h-full flex-col"
+                      }
+                    >
                       {conversation && (
-                        <InteractiveContentProvider>
-                          <ConversationViewer
-                            owner={owner}
-                            user={user}
-                            conversationId={conversation.sId}
-                            onStickyMentionsChange={setStickyMentions}
-                            isInModal
-                            key={conversation.sId}
-                          />
-                        </InteractiveContentProvider>
-                      )}
-                    </div>
-                    <div className="shrink-0">
-                      {conversation && (
-                        <div className="mb-2 px-4">
+                        <div className="flex items-center justify-between py-3">
+                          <h2 className="font-semibold text-foreground dark:text-foreground-night">
+                            {conversation.title}
+                          </h2>
                           <Button
                             variant="outline"
                             size="sm"
@@ -244,20 +237,41 @@ export default function AssistantBuilderRightPanel({
                           />
                         </div>
                       )}
-                      <AssistantInputBar
-                        disableButton={isSavingDraftAgent}
-                        owner={owner}
-                        onSubmit={handleSubmit}
-                        stickyMentions={stickyMentions}
-                        conversationId={conversation?.sId || null}
-                        additionalAgentConfiguration={
-                          draftAssistant ?? undefined
-                        }
-                        actions={["attachment"]}
-                        disableAutoFocus
-                        isFloating={false}
-                      />
+                      <div className="flex-grow overflow-y-auto">
+                        {conversation && (
+                          <div>
+                            <ConversationViewer
+                              owner={owner}
+                              user={user}
+                              conversationId={conversation.sId}
+                              onStickyMentionsChange={setStickyMentions}
+                              isInModal
+                              key={conversation.sId}
+                            />
+                          </div>
+                        )}
+                      </div>
+                      <div className="shrink-0">
+                        <AssistantInputBar
+                          disable={isSavingDraftAgent}
+                          owner={owner}
+                          onSubmit={handleSubmit}
+                          stickyMentions={stickyMentions}
+                          conversationId={conversation?.sId || null}
+                          additionalAgentConfiguration={
+                            draftAssistant ?? undefined
+                          }
+                          actions={["attachment"]}
+                          disableAutoFocus
+                          isFloating={false}
+                        />
+                      </div>
                     </div>
+                    <ConversationSidePanelContent
+                      conversation={conversation}
+                      owner={owner}
+                      currentPanel={currentPanel}
+                    />
                   </GenerationContextProvider>
                 </ActionValidationProvider>
               </ConversationsNavigationProvider>

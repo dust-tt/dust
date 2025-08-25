@@ -13,6 +13,7 @@ import { useDataSourceViewsContext } from "@app/components/assistant_builder/con
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import {
+  isRemoteDatabase,
   supportsDocumentsData,
   supportsStructuredData,
 } from "@app/lib/data_sources";
@@ -85,6 +86,11 @@ export default function AssistantBuilderDataSourceModal({
         return dataSourceViews.filter((dsv) =>
           supportsStructuredData(dsv.dataSource)
         );
+      case "data_warehouse":
+        // For data_warehouse view, only show remote databases.
+        return dataSourceViews.filter((dsv) =>
+          isRemoteDatabase(dsv.dataSource)
+        );
       case "document":
         return dataSourceViews.filter((dsv) =>
           supportsDocumentsData(dsv.dataSource, featureFlags)
@@ -95,7 +101,7 @@ export default function AssistantBuilderDataSourceModal({
   }, [dataSourceViews, viewType, featureFlags]);
 
   const selectedTableCount = useMemo(() => {
-    if (viewType !== "table") {
+    if (viewType !== "table" && viewType !== "data_warehouse") {
       return null;
     }
     return Object.values(selectionConfigurations).reduce((acc, curr) => {

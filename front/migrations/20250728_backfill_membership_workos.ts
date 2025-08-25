@@ -1,10 +1,11 @@
+import type { OrganizationMembership } from "@workos-inc/node";
+
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
-import { OrganizationMembership } from "@workos-inc/node";
 
 async function updateMembershipOriginsForWorkspace(
   workspace: LightWorkspaceType,
@@ -20,18 +21,20 @@ async function updateMembershipOriginsForWorkspace(
     return;
   }
 
-  const { memberships } = await MembershipResource.getMembershipsForWorkspace({
+  const { memberships } = await MembershipResource.getActiveMemberships({
     workspace,
-    includeUser: true,
   });
 
-  let m: OrganizationMembership[] = [];
+  let workOSMemberships: OrganizationMembership[] = [];
   while (true) {
     const curr = await getWorkOS().userManagement.listOrganizationMemberships({
       organizationId: workspace.workOSOrganizationId,
       statuses: ["active"],
       limit: 100,
-      after: m.length > 0 ? m[m.length - 1].id : undefined,
+      after:
+        workOSMemberships.length > 0
+          ? workOSMemberships[workOSMemberships.length - 1].id
+          : undefined,
     });
 
     logger.info(
@@ -40,7 +43,7 @@ async function updateMembershipOriginsForWorkspace(
       workspace.sId
     );
 
-    m = m.concat(curr.data);
+    workOSMemberships = workOSMemberships.concat(curr.data);
     if (curr.data.length < 100) {
       break;
     }
@@ -48,7 +51,7 @@ async function updateMembershipOriginsForWorkspace(
 
   logger.info(
     "Found %d active WorkOS memberships for workspace %s",
-    m.length,
+    workOSMemberships.length,
     workspace.sId
   );
 
@@ -60,10 +63,17 @@ async function updateMembershipOriginsForWorkspace(
       continue;
     }
 
-    if (m.some((mem) => mem.userId === user.workOSUserId)) {
+    const existingMembership = workOSMemberships.find(
+      (mem) => mem.userId === user.workOSUserId
+    );
+    if (
+      existingMembership &&
+      existingMembership.role.slug === membership.role
+    ) {
       workspaceLogger.info(
-        `User ${user.email} already has WorkOS membership for workspace ${workspace.sId} - ${workspace.name}`
+        `User ${user.email} already has WorkOS membership for workspace ${workspace.sId} - ${workspace.name} with role ${membership.role}`
       );
+
       continue;
     }
 
@@ -73,14 +83,29 @@ async function updateMembershipOriginsForWorkspace(
 
       while (retryCount < maxRetries) {
         try {
-          await getWorkOS().userManagement.createOrganizationMembership({
-            userId: user.workOSUserId,
-            organizationId: workspaceWorkOSId,
-          });
+          if (existingMembership) {
+            await getWorkOS().userManagement.updateOrganizationMembership(
+              existingMembership.id,
+              {
+                roleSlug: membership.role,
+              }
+            );
 
-          workspaceLogger.info(
-            `Set WorkOS membership for user ${user.email} for workspace ${workspace.sId} - ${workspace.name}`
-          );
+            workspaceLogger.info(
+              `Updated WorkOS membership for user ${user.email} for workspace ${workspace.sId} - ${workspace.name} with role ${membership.role}`
+            );
+          } else {
+            await getWorkOS().userManagement.createOrganizationMembership({
+              userId: user.workOSUserId,
+              organizationId: workspaceWorkOSId,
+              roleSlug: membership.role,
+            });
+
+            workspaceLogger.info(
+              `Created WorkOS membership for user ${user.email} for workspace ${workspace.sId} - ${workspace.name} with role ${membership.role}`
+            );
+          }
+
           break;
         } catch (error: any) {
           if (error?.status === 429) {
@@ -111,8 +136,35 @@ async function updateMembershipOriginsForWorkspace(
       }
     } else {
       workspaceLogger.info(
-        `Would set WorkOS membership for user ${user.email} for workspace ${workspace.sId} - ${workspace.name}`
+        `Would set WorkOS membership for user ${user.email} for workspace ${workspace.sId} - ${workspace.name} with role ${membership.role}`
       );
+    }
+  }
+  for (const workOSMembership of workOSMemberships) {
+    if (
+      workOSMembership.status !== "active" ||
+      workOSMembership.role.slug === "member"
+    ) {
+      // Ignore inactive memberships and members
+      continue;
+    }
+
+    const existingMembership = memberships.find(
+      (m) => m.user?.workOSUserId === workOSMembership.userId
+    );
+    if (!existingMembership) {
+      if (execute) {
+        await getWorkOS().userManagement.deleteOrganizationMembership(
+          workOSMembership.id
+        );
+        workspaceLogger.info(
+          `Deleted WorkOS membership for user ${workOSMembership.userId} for workspace ${workspace.sId} - ${workspace.name}`
+        );
+      } else {
+        workspaceLogger.info(
+          `Would delete WorkOS membership for user ${workOSMembership.userId} for workspace ${workspace.sId} - ${workspace.name}`
+        );
+      }
     }
   }
 }

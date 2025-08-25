@@ -1,0 +1,184 @@
+import { ActionIcons, BookOpenIcon, ToolCard } from "@dust-tt/sparkle";
+import React, { useMemo } from "react";
+
+import { useAgentBuilderFormActions } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
+import {
+  DISABLED_REASON,
+  getAllowedSpaces,
+  getSpaceIdToActionsMap,
+} from "@app/components/agent_builder/get_allowed_spaces";
+import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import type { ActionSpecification } from "@app/components/agent_builder/types";
+import { getDefaultMCPAction } from "@app/components/agent_builder/types";
+import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
+import {
+  InternalActionIcons,
+  isCustomServerIconType,
+} from "@app/lib/actions/mcp_icons";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { removeNulls } from "@app/types";
+
+interface DataVisualizationCardProps {
+  specification: ActionSpecification;
+  isSelected: boolean;
+  onClick: () => void;
+}
+
+function DataVisualizationCard({
+  specification,
+  isSelected,
+  onClick,
+}: DataVisualizationCardProps) {
+  return (
+    <ToolCard
+      icon={specification.dropDownIcon}
+      label={specification.label}
+      description={specification.description}
+      isSelected={isSelected}
+      canAdd={!isSelected}
+      onClick={onClick}
+    />
+  );
+}
+
+interface MCPServerCardProps {
+  view: MCPServerViewTypeWithLabel;
+  isSelected: boolean;
+  isSpaceAllowed: boolean;
+  onClick: () => void;
+}
+
+function MCPServerCard({
+  view,
+  isSelected,
+  isSpaceAllowed,
+  onClick,
+}: MCPServerCardProps) {
+  const requirement = getMCPServerRequirements(view);
+  const canAdd =
+    isSpaceAllowed && (requirement.noRequirement ? !isSelected : true);
+
+  const icon = isCustomServerIconType(view.server.icon)
+    ? ActionIcons[view.server.icon]
+    : InternalActionIcons[view.server.icon] || BookOpenIcon;
+
+  return (
+    <ToolCard
+      icon={icon}
+      label={view.label}
+      description={getMcpServerViewDescription(view)}
+      isSelected={isSelected}
+      canAdd={canAdd}
+      cantAddReason={!isSpaceAllowed ? DISABLED_REASON : undefined}
+      onClick={onClick}
+    />
+  );
+}
+
+interface MCPServerSelectionPageProps {
+  defaultMcpServerViews: MCPServerViewTypeWithLabel[];
+  nonDefaultMcpServerViews: MCPServerViewTypeWithLabel[];
+  onItemClick: (mcpServerView: MCPServerViewType) => void;
+  dataVisualization?: ActionSpecification | null;
+  onDataVisualizationClick?: () => void;
+  selectedToolsInSheet?: SelectedTool[];
+}
+
+export function MCPServerSelectionPage({
+  defaultMcpServerViews,
+  nonDefaultMcpServerViews,
+  onItemClick,
+  dataVisualization,
+  onDataVisualizationClick,
+  selectedToolsInSheet = [],
+}: MCPServerSelectionPageProps) {
+  // Optimize selection lookup with Set-based approach
+  const selectedMCPIds = useMemo(() => {
+    const mcpIds = new Set<string>();
+    selectedToolsInSheet.forEach((tool) => {
+      if (tool.type === "MCP") {
+        mcpIds.add(tool.view.sId);
+      }
+    });
+    return mcpIds;
+  }, [selectedToolsInSheet]);
+
+  // Already added actions.
+  const { actions: alreadyAddedActions } = useAgentBuilderFormActions();
+
+  // Currently selected actions.
+  const selectedActions = useMemo(() => {
+    return removeNulls(
+      selectedToolsInSheet.map((tool) =>
+        tool.type === "MCP"
+          ? tool.configuredAction ?? getDefaultMCPAction(tool.view)
+          : null
+      )
+    );
+  }, [selectedToolsInSheet]);
+
+  const { spaces } = useSpacesContext();
+  const spaceIdToActions = getSpaceIdToActionsMap(
+    [...alreadyAddedActions, ...selectedActions],
+    [...defaultMcpServerViews, ...nonDefaultMcpServerViews]
+  );
+  const allowedSpaces = getAllowedSpaces({
+    spaces,
+    spaceIdToActions,
+  });
+
+  const isDataVisualizationSelected = selectedToolsInSheet.some(
+    (tool) => tool.type === "DATA_VISUALIZATION"
+  );
+
+  return (
+    <>
+      <div className="flex flex-col gap-4">
+        {((dataVisualization && onDataVisualizationClick) ||
+          defaultMcpServerViews) && (
+          <span className="text-lg font-semibold">Top tools</span>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          {dataVisualization && onDataVisualizationClick && (
+            <DataVisualizationCard
+              key="data-visualization"
+              specification={dataVisualization}
+              isSelected={isDataVisualizationSelected}
+              onClick={onDataVisualizationClick}
+            />
+          )}
+          {defaultMcpServerViews.map((view) => (
+            <MCPServerCard
+              key={view.id}
+              view={view}
+              isSelected={selectedMCPIds.has(view.sId)}
+              isSpaceAllowed={
+                !!allowedSpaces.find((space) => space.sId === view.spaceId)
+              }
+              onClick={() => onItemClick(view)}
+            />
+          ))}
+        </div>
+        {nonDefaultMcpServerViews.length && (
+          <span className="text-lg font-semibold">Other tools</span>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          {nonDefaultMcpServerViews.map((view) => (
+            <MCPServerCard
+              key={view.id}
+              view={view}
+              isSelected={selectedMCPIds.has(view.sId)}
+              isSpaceAllowed={
+                !!allowedSpaces.find((space) => space.sId === view.spaceId)
+              }
+              onClick={() => onItemClick(view)}
+            />
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}

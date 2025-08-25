@@ -1,4 +1,6 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { createContext, useContext } from "react";
+import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
 import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
@@ -24,9 +26,44 @@ export const generationSettingsSchema = z.object({
   responseFormat: z.string().optional(),
 });
 
-export type AgentBuilderGenerationSettings = z.infer<
-  typeof generationSettingsSchema
+export const mcpServerViewIdSchema = z.string();
+
+export const childAgentIdSchema = z.string().nullable();
+
+export const additionalConfigurationSchema = z.record(
+  z.string(),
+  z.union([
+    z.boolean(),
+    z.number(),
+    z.string(),
+    z.array(z.string()),
+    // Allow only one level of nesting
+    z.record(
+      z.string(),
+      z.union([z.boolean(), z.number(), z.string(), z.array(z.string())])
+    ),
+  ])
+);
+
+export type AdditionalConfigurationInBuilderType = z.infer<
+  typeof additionalConfigurationSchema
 >;
+
+export const dustAppConfigurationSchema = z
+  .object({
+    id: z.number(),
+    sId: z.string(),
+    type: z.literal("dust_app_run_configuration"),
+    appWorkspaceId: z.string(),
+    appId: z.string(),
+    name: z.string(),
+    description: z.string().nullable(),
+  })
+  .nullable();
+
+export const jsonSchemaFieldSchema = z.custom<JSONSchema>().nullable();
+
+export const jsonSchemaStringSchema = z.string().nullable();
 
 const tagsFilterSchema = z
   .object({
@@ -39,58 +76,29 @@ const tagsFilterSchema = z
 const dataSourceViewSelectionConfigurationSchema = z.object({
   dataSourceView: z.custom<DataSourceViewType>(),
   selectedResources: z.array(z.custom<DataSourceViewContentNode>()),
+  excludedResources: z.array(z.custom<DataSourceViewContentNode>()),
   isSelectAll: z.boolean(),
   tagsFilter: tagsFilterSchema,
 });
 
-const searchActionConfigurationSchema = z.object({
-  type: z.literal("SEARCH"),
-  dataSourceConfigurations: z.record(
-    z.string(),
-    dataSourceViewSelectionConfigurationSchema
-  ),
-});
+export const dataSourceConfigurationSchema = z
+  .record(z.string(), dataSourceViewSelectionConfigurationSchema)
+  .nullable();
 
-const timeFrameSchema = z
+export const timeFrameSchema = z
   .object({
     duration: z.number().min(1),
     unit: z.enum(["hour", "day", "week", "month", "year"]),
   })
   .nullable();
 
-const includeDataActionConfigurationSchema = z.object({
-  type: z.literal("INCLUDE_DATA"),
-  dataSourceConfigurations: z.record(
-    z.string(),
-    dataSourceViewSelectionConfigurationSchema
-  ),
-  timeFrame: timeFrameSchema,
-});
-
-const extractDataActionConfigurationSchema = z.object({
-  type: z.literal("EXTRACT_DATA"),
-  dataSourceConfigurations: z.record(
-    z.string(),
-    dataSourceViewSelectionConfigurationSchema
-  ),
-  timeFrame: timeFrameSchema,
-  jsonSchema: z.custom<JSONSchema>().nullable(),
-});
-
-const queryTablesActionConfigurationSchema = z.object({
-  type: z.literal("QUERY_TABLES"),
-  dataSourceConfigurations: z.record(
-    z.string(),
-    dataSourceViewSelectionConfigurationSchema
-  ),
-  timeFrame: timeFrameSchema,
-});
+export const mcpTimeFrameSchema = timeFrameSchema;
 
 const baseActionSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
-  noConfigurationRequired: z.boolean(),
+  noConfigurationRequired: z.boolean().optional(),
 });
 
 const TAG_KINDS = z.union([z.literal("standard"), z.literal("protected")]);
@@ -101,64 +109,44 @@ const tagSchema = z.object({
   kind: TAG_KINDS,
 });
 
-const searchActionSchema = baseActionSchema.extend({
-  type: z.literal("SEARCH"),
-  configuration: searchActionConfigurationSchema,
-});
-
 const dataVisualizationActionSchema = baseActionSchema.extend({
   type: z.literal("DATA_VISUALIZATION"),
   configuration: z.null(),
 });
 
-const dustAppRunConfigurationSchema = z.object({
-  appWorkspaceId: z.string(),
-  appId: z.string(),
+export const reasoningModelSchema = z
+  .object({
+    modelId: modelIdSchema,
+    providerId: providerIdSchema,
+    temperature: z.number().min(0).max(1).nullable(),
+    reasoningEffort: reasoningEffortSchema.nullable(),
+  })
+  .nullable();
+
+export const mcpServerConfigurationSchema = z.object({
+  mcpServerViewId: mcpServerViewIdSchema,
+  dataSourceConfigurations: dataSourceConfigurationSchema,
+  tablesConfigurations: dataSourceConfigurationSchema,
+  childAgentId: childAgentIdSchema,
+  timeFrame: mcpTimeFrameSchema,
+  additionalConfiguration: additionalConfigurationSchema,
+  dustAppConfiguration: dustAppConfigurationSchema,
+  jsonSchema: jsonSchemaFieldSchema,
+  reasoningModel: reasoningModelSchema,
+  _jsonSchemaString: jsonSchemaStringSchema,
 });
 
-const mcpServerConfigurationSchema = z.object({
-  mcpServerViewId: z.string(),
-  dataSourceConfigurations:
-    dataSourceViewSelectionConfigurationSchema.nullable(),
-  tablesConfigurations: dataSourceViewSelectionConfigurationSchema.nullable(),
-  childAgentId: z.string().nullable(),
-  reasoningModel: generationSettingsSchema.nullable(),
-  timeFrame: timeFrameSchema,
-  additionalConfiguration: z.record(
-    z.union([z.boolean(), z.number(), z.string()])
-  ),
-  dustAppConfiguration: dustAppRunConfigurationSchema.nullable(),
-  jsonSchema: z.custom<JSONSchema>().nullable(),
-  _jsonSchemaString: z.string().nullable(),
-});
+export type MCPServerConfigurationType = z.infer<
+  typeof mcpServerConfigurationSchema
+>;
 
 const mcpActionSchema = baseActionSchema.extend({
   type: z.literal("MCP"),
   configuration: mcpServerConfigurationSchema,
 });
 
-const includeDataActionSchema = baseActionSchema.extend({
-  type: z.literal("INCLUDE_DATA"),
-  configuration: includeDataActionConfigurationSchema,
-});
-
-const extractDataActionSchema = baseActionSchema.extend({
-  type: z.literal("EXTRACT_DATA"),
-  configuration: extractDataActionConfigurationSchema,
-});
-
-const queryTablesActionSchema = baseActionSchema.extend({
-  type: z.literal("QUERY_TABLES"),
-  configuration: queryTablesActionConfigurationSchema,
-});
-
-// TODO: the goal is to have only two schema: mcpActionSchema and dataVizSchema.
 const actionSchema = z.discriminatedUnion("type", [
-  searchActionSchema,
   dataVisualizationActionSchema,
-  includeDataActionSchema,
-  extractDataActionSchema,
-  queryTablesActionSchema,
   mcpActionSchema,
 ]);
 
@@ -194,23 +182,79 @@ const agentSettingsSchema = z.object({
   tags: z.array(tagSchema),
 });
 
-// TODO: only have mcpActionSchema.
+const scheduleConfigSchema = z.object({
+  cron: z.string(),
+  timezone: z.string(),
+});
+
+const triggerSchema = z.object({
+  sId: z.string().optional(),
+  name: z.string(),
+  kind: z.enum(["schedule"]),
+  configuration: z.union([scheduleConfigSchema, z.null()]),
+  editor: z.number().nullable(),
+});
+
 export const agentBuilderFormSchema = z.object({
   agentSettings: agentSettingsSchema,
   instructions: z.string().min(1, "Instructions are required"),
   generationSettings: generationSettingsSchema,
-  actions: z.union([z.array(actionSchema), z.array(mcpActionSchema)]),
+  actions: z.array(actionSchema),
+  triggers: z.array(triggerSchema),
   maxStepsPerRun: z
     .number()
     .min(1, "Max steps per run must be at least 1")
     .default(8),
 });
 
+export const scheduleFormSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255, "Name is too long"),
+  cron: z.string().min(9, "Cron expression is required"),
+  timezone: z.string().min(1, "Timezone is required"),
+});
+export type ScheduleFormData = z.infer<typeof scheduleFormSchema>;
+
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
+export type AgentBuilderTriggerType = z.infer<typeof triggerSchema>;
 export type AgentBuilderAction = z.infer<typeof actionSchema>;
 export type AgentBuilderDataVizAction = z.infer<
   typeof dataVisualizationActionSchema
 >;
 
-export type BaseActionData = z.infer<typeof baseActionSchema>;
+// TODO: create types from schema
+export interface MCPFormData {
+  name: string;
+  description: string;
+  configuration: {
+    mcpServerViewId: string;
+    dataSourceConfigurations: any;
+    tablesConfigurations: any;
+    childAgentId: string | null;
+    reasoningModel: any;
+    timeFrame: {
+      duration: number;
+      unit: "hour" | "day" | "week" | "month" | "year";
+    } | null;
+    additionalConfiguration: AdditionalConfigurationInBuilderType;
+    dustAppConfiguration: any;
+    jsonSchema: any;
+    _jsonSchemaString: string | null;
+  };
+}
+
+export const AgentBuilderFormContext =
+  createContext<UseFormReturn<AgentBuilderFormData> | null>(null);
+
+export const useAgentBuilderFormActions = () => {
+  const context = useContext(AgentBuilderFormContext);
+  if (!context) {
+    throw new Error("AgentBuilderFormContext not found");
+  }
+
+  const actions = context.getValues("actions");
+
+  return {
+    actions,
+  };
+};

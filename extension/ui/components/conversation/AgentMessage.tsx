@@ -132,7 +132,11 @@ function makeInitialMessageStreamState(
   };
 }
 
-export type AgentStateClassification = "thinking" | "acting" | "done";
+export type AgentStateClassification =
+  | "thinking"
+  | "acting"
+  | "writing"
+  | "done";
 
 /**
  *
@@ -515,19 +519,12 @@ export function AgentMessage({
 
     return (
       <div className="flex flex-col gap-y-4">
-        <div className="flex flex-col gap-2">
-          <AgentMessageActions
-            agentMessage={agentMessage}
-            lastAgentStateClassification={messageStreamState.agentState}
-            owner={owner}
-          />
-
-          {agentMessage.chainOfThought?.length ? (
-            <ContentMessage title="Agent thoughts" variant="primary">
-              {agentMessage.chainOfThought}
-            </ContentMessage>
-          ) : null}
-        </div>
+        <AgentMessageActions
+          agentMessage={agentMessage}
+          lastAgentStateClassification={messageStreamState.agentState}
+          owner={owner}
+          actionProgress={messageStreamState.actionProgress}
+        />
         {agentMessage.content !== null && (
           <div>
             {lastTokenClassification !== "chain_of_thought" &&

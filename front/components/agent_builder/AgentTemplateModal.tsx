@@ -3,6 +3,7 @@ import {
   Button,
   Markdown,
   Page,
+  ReadOnlyTextArea,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -12,7 +13,6 @@ import {
 } from "@dust-tt/sparkle";
 import Link from "next/link";
 
-import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type { WorkspaceType } from "@app/types";
@@ -60,7 +60,7 @@ export function AgentTemplateModal({
                     @{assistantTemplate.handle}
                   </span>
                   <Link
-                    href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}&templateId=${assistantTemplate.sId}`}
+                    href={`/w/${owner.sId}/builder/agents/new?flow=${flow}&templateId=${assistantTemplate.sId}`}
                   >
                     <Button
                       label="Use this template"

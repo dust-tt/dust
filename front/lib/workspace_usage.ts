@@ -2,8 +2,7 @@ import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
-import { AVAILABLE_INTERNAL_MCP_SERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -111,12 +110,9 @@ export async function unsafeGetUsageData(
   workspace: WorkspaceType
 ): Promise<string> {
   const wId = workspace.sId;
-  const names = AVAILABLE_INTERNAL_MCP_SERVER_NAMES;
-  const sids = names.map((name) =>
-    internalMCPServerNameToSId({ name, workspaceId: workspace.id })
-  );
 
   const readReplica = getFrontReplicaDbConnection();
+
   // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const results = await readReplica.query<WorkspaceUsageQueryResult>(
     `
@@ -131,18 +127,10 @@ export async function unsafeGetUsageData(
           WHEN cf."id" IS NOT NULL THEN 'content_fragment'
         END AS "messageType",
         um."userContextFullName" AS "userFullName",
-        um."userContextEmail" AS "userEmail",
+        LOWER(um."userContextEmail") AS "userEmail",
         COALESCE(ac."sId", am."agentConfigurationId") AS "assistantId",
         COALESCE(ac."name", am."agentConfigurationId") AS "assistantName",
-        CASE
-            WHEN COUNT(DISTINCT msv."id") > 0 THEN
-              CASE
-                WHEN msv."internalMCPServerId" IN (:sids) THEN
-                  (SELECT name FROM (SELECT unnest(ARRAY[:sids]) as sid, unnest(ARRAY[:names]) as name) as t WHERE t.sid = msv."internalMCPServerId")
-                ELSE msv."internalMCPServerId"
-              END
-            ELSE NULL
-        END AS "actionType",
+        msv."internalMCPServerId" AS "actionType",
         um."userContextOrigin" AS "source"
     FROM
         "messages" m
@@ -179,14 +167,32 @@ export async function unsafeGetUsageData(
         wId,
         startDate: format(startDate, "yyyy-MM-dd'T'00:00:00"), // Use first day of start month
         endDate: format(endDate, "yyyy-MM-dd'T'23:59:59"), // Use last day of end month
-        sids,
-        names,
       },
       type: QueryTypes.SELECT,
     }
   );
   if (!results.length) {
     return "No data available for the selected period.";
+  } else {
+    // Do a second pass to replace the internalMCPServerId with the names.
+    const lookup = new Map<string, string>();
+    for (const result of results) {
+      if (!result.actionType) {
+        continue;
+      }
+
+      let name = lookup.get(result.actionType);
+      if (!name) {
+        const r = getInternalMCPServerNameAndWorkspaceId(result.actionType);
+        if (r.isOk()) {
+          name = r.value.name;
+        } else {
+          name = "unknown";
+        }
+        lookup.set(result.actionType, name);
+      }
+      result.actionType = name;
+    }
   }
   return generateCsvFromQueryResult(results);
 }
@@ -217,7 +223,7 @@ export async function getMessageUsageData(
         m."parentId" AS "parent_message_id",
         um."id" AS "user_message_id",
         um."userId" AS "user_id",
-        um."userContextEmail" AS "user_email",
+        LOWER(um."userContextEmail") AS "user_email",
         um."userContextOrigin" AS "source"
       FROM
         "agent_messages" am
@@ -336,7 +342,13 @@ export async function getUserUsageData(
         attributes: [
           "userMessage.userId",
           "userMessage.userContextFullName",
-          "userMessage.userContextEmail",
+          [
+            Sequelize.fn(
+              "LOWER",
+              Sequelize.col("userMessage.userContextEmail")
+            ),
+            "userContextEmail",
+          ],
           "userMessage.userContextOrigin",
           [Sequelize.fn("COUNT", Sequelize.col("userMessage.id")), "count"],
           [
@@ -389,7 +401,7 @@ export async function getUserUsageData(
         group: [
           "userMessage.userId",
           "userMessage.userContextFullName",
-          "userMessage.userContextEmail",
+          Sequelize.fn("LOWER", Sequelize.col("userMessage.userContextEmail")),
           "userMessage.userContextOrigin",
         ],
         order: [["count", "DESC"]],

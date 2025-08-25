@@ -18,6 +18,9 @@ export const MessageBaseSchema = t.type({
     t.partial({
       clientSideMCPServerIds: t.array(t.string),
     }),
+    t.partial({
+      selectedMCPServerViewIds: t.array(t.string),
+    }),
   ]),
 });
 
@@ -180,6 +183,7 @@ export const InternalPostConversationsRequestBodySchema = t.type({
   title: t.union([t.string, t.null]),
   visibility: t.union([
     t.literal("unlisted"),
+    t.literal("triggered"),
     t.literal("deleted"),
     t.literal("test"),
   ]),

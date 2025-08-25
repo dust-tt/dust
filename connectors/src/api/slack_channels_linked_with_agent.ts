@@ -12,8 +12,8 @@ import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { slackChannelIdFromInternalId } from "@connectors/connectors/slack/lib/utils";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { sequelizeConnection } from "@connectors/resources/storage";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
 
 const PatchSlackChannelsLinkedWithAgentReqBodySchema = t.type({
   agent_configuration_id: t.string,
@@ -78,7 +78,7 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
 
   const slackClient = await getSlackClient(parseInt(connectorId));
 
-  await sequelizeConnection.transaction(async (t) => {
+  await withTransaction(async (t) => {
     if (missingSlackChannelIds.length) {
       const remoteChannels = (
         await getChannels(slackClient, parseInt(connectorId), false)

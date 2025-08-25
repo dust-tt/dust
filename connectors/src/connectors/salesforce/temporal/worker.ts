@@ -25,11 +25,13 @@ export async function runSalesforceWorker() {
     reuseV8Context: true,
     namespace,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
-        },
-        () => new SalesforceCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "salesforce"),
+        }),
+        () => ({
+          inbound: new SalesforceCastKnownErrorsInterceptor(),
+        }),
       ],
     },
     bundlerOptions: {

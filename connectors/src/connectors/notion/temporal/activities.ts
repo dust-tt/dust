@@ -1,6 +1,11 @@
 import { assertNever } from "@dust-tt/client";
 import { Storage } from "@google-cloud/storage";
-import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
+import {
+  APIResponseError,
+  isFullBlock,
+  isFullPage,
+  isNotionClientError,
+} from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
 import { chunk } from "lodash";
@@ -76,11 +81,11 @@ import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
+  DataSourceConfig,
+  ModelId,
   PageObjectProperties,
   ParsedNotionBlock,
 } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
 import {
   getNotionDatabaseTableId,
   INTERNAL_MIME_TYPES,
@@ -94,7 +99,38 @@ const logger = mainLogger.child({ provider: "notion" });
 // Connector ID hashes for which deletion should be skipped during garbage collection.
 const SKIP_DELETION_CONNECTOR_ID_HASHES = new Set<string>([
   "vket28uPYFZqPX/Vo2+BlXmOKEizaBldml0g4AfFmgw=",
+  "pDddXWMzWYw4oN/acYfLiOwxB3tlp51IH6MuMYD3YXQ=",
 ]);
+
+const wrapWithErrorCheck = async <T>(
+  callback: () => Promise<T>,
+  loggerArgs: Record<string, string | number>
+) => {
+  try {
+    return await callback();
+  } catch (e) {
+    if (APIResponseError.isAPIResponseError(e)) {
+      if (
+        (e.code === "internal_server_error" && e.status === 500) ||
+        (e.code === "service_unavailable" && e.status === 503)
+      ) {
+        if (Context.current().info.attempt > 20) {
+          logger.error(
+            {
+              ...loggerArgs,
+              error: e,
+              attempt: Context.current().info.attempt,
+            },
+            "Failed to get make notion call. Giving up and moving on"
+          );
+          return null;
+        }
+      }
+    }
+
+    throw e;
+  }
+};
 
 export async function fetchDatabaseChildPages({
   connectorId,
@@ -149,44 +185,19 @@ export async function fetchDatabaseChildPages({
   };
   const localLogger = logger.child(localLoggerArgs);
 
-  let res;
-  try {
-    res = await retrieveDatabaseChildrenResultPage({
-      accessToken,
+  const res = await wrapWithErrorCheck(
+    () =>
+      retrieveDatabaseChildrenResultPage({
+        accessToken,
+        databaseId,
+        loggerArgs: localLoggerArgs,
+        cursor,
+      }),
+    {
+      ...loggerArgs,
       databaseId,
-      loggerArgs: localLoggerArgs,
-      cursor,
-    });
-  } catch (e) {
-    // Sometimes a cursor will consistently fail with 500.
-    // In this case, there is not much we can do, so we just give up and move on.
-    // Notion workspaces are resynced daily so nothing is lost forever.
-    const potentialNotionError = e as {
-      body: unknown;
-      code: string;
-      status: number;
-    };
-    if (
-      potentialNotionError.code === "internal_server_error" &&
-      potentialNotionError.status === 500
-    ) {
-      if (Context.current().info.attempt > 20) {
-        localLogger.error(
-          {
-            error: potentialNotionError,
-            attempt: Context.current().info.attempt,
-          },
-          "Failed to get Notion database children result page with cursor. Giving up and moving on"
-        );
-        return {
-          pageIds: [],
-          nextCursor: null,
-        };
-      }
     }
-
-    throw e;
-  }
+  );
 
   if (!res) {
     return {
@@ -496,7 +507,13 @@ export async function upsertDatabaseInConnectorsDb({
     "notionUpsertDatabaseActivity: Upserting notion database in DB."
   );
 
-  const parsedDb = await getParsedDatabase(accessToken, databaseId, loggerArgs);
+  const parsedDb = await wrapWithErrorCheck(
+    () => getParsedDatabase(accessToken, databaseId, loggerArgs),
+    {
+      ...loggerArgs,
+      databaseId,
+    }
+  );
 
   let parentType: NotionConnectorPageCacheEntry["parentType"] | undefined =
     parsedDb?.parentType;
@@ -951,13 +968,16 @@ export async function completeGarbageCollectionRun(
   connectorId: ModelId,
   nbOfBatches: number
 ) {
-  const redisCli = await redisClient({ origin: "notion_gc" });
   const redisKey = redisGarbageCollectorKey(connectorId);
-  await redisCli.del(`${redisKey}-pages`);
-  await redisCli.del(`${redisKey}-databases`);
+  // Generate all the keys
+  const keysToDelete = [`${redisKey}-pages`, `${redisKey}-databases`];
   for (let i = 0; i < nbOfBatches; i++) {
-    await redisCli.del(`${redisKey}-resources-not-seen-batch-${i}`);
+    keysToDelete.push(`${redisKey}-resources-not-seen-batch-${i}`);
   }
+
+  const redisCli = await redisClient({ origin: "notion_gc" });
+  // Delete all keys in one DEL command
+  await redisCli.del(keysToDelete);
 
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {

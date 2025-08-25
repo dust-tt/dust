@@ -15,8 +15,11 @@ import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assist
 import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type {
+  ConversationToolActionRequest,
+  FetchConversationToolsResponse,
+} from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/tools";
+import type {
   ConversationError,
-  ConversationType,
   ConversationWithoutContentType,
   FetchConversationMessagesResponse,
   LightWorkspaceType,
@@ -31,13 +34,14 @@ export function useConversation({
   workspaceId: string;
   options?: { disabled: boolean };
 }): {
-  conversation: ConversationType | null;
+  conversation: ConversationWithoutContentType | null;
   isConversationLoading: boolean;
   conversationError: ConversationError;
   mutateConversation: () => void;
 } {
-  const conversationFetcher: Fetcher<{ conversation: ConversationType }> =
-    fetcher;
+  const conversationFetcher: Fetcher<{
+    conversation: ConversationWithoutContentType;
+  }> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     conversationId
@@ -186,6 +190,40 @@ export function useConversationParticipants({
   };
 }
 
+export function useConversationTools({
+  conversationId,
+  workspaceId,
+  options,
+}: {
+  conversationId: string | null;
+  workspaceId: string;
+  options?: { disabled: boolean };
+}) {
+  const conversationToolsFetcher: Fetcher<FetchConversationToolsResponse> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    conversationId
+      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/tools`
+      : null,
+    conversationToolsFetcher,
+    options
+  );
+
+  return {
+    conversationTools: useMemo(
+      () =>
+        data
+          ? data.tools
+          : emptyArray<FetchConversationToolsResponse["tools"][number]>(),
+      [data]
+    ),
+    isConversationToolsLoading: !error && !data,
+    isConversationToolsError: error,
+    mutateConversationTools: mutate,
+  };
+}
+
 export const useDeleteConversation = (owner: LightWorkspaceType) => {
   const sendNotification = useSendNotification();
   const { mutateConversations } = useConversations({
@@ -219,6 +257,106 @@ export const useDeleteConversation = (owner: LightWorkspaceType) => {
 
   return doDelete;
 };
+
+export function useAddDeleteConversationTool({
+  conversationId,
+  workspaceId,
+}: {
+  conversationId: string | null;
+  workspaceId: string;
+}) {
+  const { mutateConversationTools } = useConversationTools({
+    conversationId,
+    workspaceId,
+    options: {
+      disabled: true,
+    },
+  });
+
+  const addTool = useCallback(
+    async (mcpServerViewId: string): Promise<boolean> => {
+      if (!conversationId) {
+        return false;
+      }
+
+      try {
+        const response = await fetch(
+          `/api/w/${workspaceId}/assistant/conversations/${conversationId}/tools`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "add",
+              mcp_server_view_id: mcpServerViewId,
+            } as ConversationToolActionRequest),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to add tool to conversation");
+        }
+
+        const result = await response.json();
+        if (result.success) {
+          // Refetch the tools list to get the updated state
+          void mutateConversationTools();
+          return true;
+        }
+
+        return false;
+      } catch (error) {
+        console.error("Error adding tool to conversation:", error);
+        return false;
+      }
+    },
+    [conversationId, workspaceId, mutateConversationTools]
+  );
+
+  const deleteTool = useCallback(
+    async (mcpServerViewId: string): Promise<boolean> => {
+      if (!conversationId) {
+        return false;
+      }
+
+      try {
+        const response = await fetch(
+          `/api/w/${workspaceId}/assistant/conversations/${conversationId}/tools`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "delete",
+              mcp_server_view_id: mcpServerViewId,
+            } as ConversationToolActionRequest),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to remove tool from conversation");
+        }
+
+        const result = await response.json();
+        if (result.success) {
+          // Refetch the tools list to get the updated state
+          void mutateConversationTools();
+          return true;
+        }
+
+        return false;
+      } catch (error) {
+        console.error("Error removing tool from conversation:", error);
+        return false;
+      }
+    },
+    [conversationId, workspaceId, mutateConversationTools]
+  );
+
+  return { addTool, deleteTool };
+}
 
 export function useVisualizationRetry({
   workspaceId,

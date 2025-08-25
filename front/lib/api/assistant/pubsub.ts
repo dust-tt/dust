@@ -147,12 +147,15 @@ export async function* getMessagesEvents(
 ): AsyncGenerator<
   {
     eventId: string;
-    data:
+    data: (
       | AgentErrorEvent
       | AgentActionRunningEvents
       | AgentActionSuccessEvent
       | AgentGenerationCancelledEvent
-      | GenerationTokensEvent;
+      | GenerationTokensEvent
+    ) & {
+      step: number;
+    };
   },
   void
 > {

@@ -102,6 +102,12 @@ export const ConfigurableToolInputSchemas = {
       mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE),
     })
   ),
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE]: z.array(
+    z.object({
+      uri: z.string().regex(DATA_SOURCE_CONFIGURATION_URI_PATTERN),
+      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE),
+    })
+  ),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE]: z.array(
     z.object({
       uri: z.string().regex(TABLE_CONFIGURATION_URI_PATTERN),
@@ -153,7 +159,8 @@ export const ConfigurableToolInputSchemas = {
   // for instance the ENUM mime type is flexible and the exact content of the enum is dynamic.
 } as const satisfies Omit<
   Record<InternalToolInputMimeType, z.ZodType>,
-  typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM
+  | typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM
+  | typeof INTERNAL_MIME_TYPES.TOOL_INPUT.LIST
 >;
 
 // Type for the tool inputs that have a flexible schema, which are schemas that can vary between tools.
@@ -161,6 +168,15 @@ type FlexibleConfigurableToolInput = {
   [INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM]: {
     value: string;
     mimeType: typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM;
+  };
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.LIST]: {
+    // Added "options" here but allow undefined because it's expected in the input schema to build the configuration UI but useless in the MCP tool call.
+    options?: {
+      value: string;
+      label: string;
+    }[];
+    values: string[];
+    mimeType: typeof INTERNAL_MIME_TYPES.TOOL_INPUT.LIST;
   };
 };
 

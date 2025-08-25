@@ -9,6 +9,12 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { MembershipRoleType } from "@app/types";
 
+import { setupWorkOSMocks } from "./mocks/workos";
+
+// Setup WorkOS mocks
+setupWorkOSMocks();
+
+// Mock the getSession function to return the user without going through the auth0 session
 vi.mock(import("../../lib/auth"), async (importOriginal) => {
   const mod = await importOriginal();
   return {
@@ -68,11 +74,13 @@ export const createPrivateApiMockRequest = async ({
         email_verified: true,
         name: user.username!,
         nickname: user.username!,
+        organizations: [],
       },
       authenticationMethod: "GoogleOAuth",
       isSSO: false,
       workspaceId: workspace.sId,
       organizationId: workspace.workOSOrganizationId || undefined,
+      region: "us-central1",
     })
   );
 

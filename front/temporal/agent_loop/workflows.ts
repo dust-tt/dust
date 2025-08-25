@@ -1,14 +1,16 @@
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 import type { ChildWorkflowHandle } from "@temporalio/workflow";
 import {
   proxyActivities,
   startChild,
-  WorkflowExecutionAlreadyStartedError,
   workflowInfo,
 } from "@temporalio/workflow";
 
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
-import type * as runModelActivities from "@app/temporal/agent_loop/activities/run_model";
+import type * as logAgentLoopMetricsActivities from "@app/temporal/agent_loop/activities/instrumentation";
+import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
+import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
 import type { AgentLoopActivities } from "@app/temporal/agent_loop/lib/activity_interface";
 import { executeAgentLoop } from "@app/temporal/agent_loop/lib/agent_loop_executor";
@@ -18,13 +20,36 @@ import type {
   RunAgentAsynchronousArgs,
 } from "@app/types/assistant/agent_run";
 
+const logMetricsActivities = proxyActivities<
+  typeof logAgentLoopMetricsActivities
+>({
+  startToCloseTimeout: "30 seconds",
+});
+
 const activities: AgentLoopActivities = {
-  runModelActivity: proxyActivities<typeof runModelActivities>({
-    startToCloseTimeout: "5 minutes",
-  }).runModelActivity,
+  runModelAndCreateActionsActivity: proxyActivities<
+    typeof runModelAndCreateWrapperActivities
+  >({
+    startToCloseTimeout: "7 minutes",
+  }).runModelAndCreateActionsActivity,
   runToolActivity: proxyActivities<typeof runToolActivities>({
     startToCloseTimeout: "10 minutes",
+    retry: {
+      // Do not retry tool activities. Those are not idempotent.
+      maximumAttempts: 1,
+    },
   }).runToolActivity,
+  publishDeferredEventsActivity: proxyActivities<
+    typeof publishDeferredEventsActivities
+  >({
+    startToCloseTimeout: "2 minutes",
+  }).publishDeferredEventsActivity,
+  logAgentLoopPhaseStartActivity:
+    logMetricsActivities.logAgentLoopPhaseStartActivity,
+  logAgentLoopPhaseCompletionActivity:
+    logMetricsActivities.logAgentLoopPhaseCompletionActivity,
+  logAgentLoopStepCompletionActivity:
+    logMetricsActivities.logAgentLoopStepCompletionActivity,
 };
 
 const { ensureConversationTitleActivity } = proxyActivities<
@@ -43,6 +68,7 @@ export async function agentLoopConversationTitleWorkflow({
   const runAgentArgs: RunAgentArgs = {
     sync: false,
     idArgs: runAsynchronousAgentArgs,
+    initialStartTime: 0,
   };
 
   await ensureConversationTitleActivity(authType, runAgentArgs);
@@ -50,10 +76,12 @@ export async function agentLoopConversationTitleWorkflow({
 
 export async function agentLoopWorkflow({
   authType,
+  initialStartTime,
   runAsynchronousAgentArgs,
   startStep,
 }: {
   authType: AuthenticatorType;
+  initialStartTime: number;
   runAsynchronousAgentArgs: RunAgentAsynchronousArgs;
   startStep: number;
 }) {
@@ -62,6 +90,7 @@ export async function agentLoopWorkflow({
   const runAgentArgs: RunAgentArgs = {
     sync: false,
     idArgs: runAsynchronousAgentArgs,
+    initialStartTime,
   };
 
   let childWorkflowHandle: ChildWorkflowHandle<
@@ -87,14 +116,16 @@ export async function agentLoopWorkflow({
         }
       );
     } catch (err) {
-      if (err instanceof WorkflowExecutionAlreadyStartedError) {
-        return;
+      if (!(err instanceof WorkflowExecutionAlreadyStartedError)) {
+        throw err;
       }
-      throw err;
     }
   }
 
-  await executeAgentLoop(authType, runAgentArgs, activities, startStep);
+  // In Temporal workflows, we don't pass syncStartTime since async execution doesn't need timeout.
+  await executeAgentLoop(authType, runAgentArgs, activities, {
+    startStep,
+  });
 
   if (childWorkflowHandle) {
     await childWorkflowHandle.result();

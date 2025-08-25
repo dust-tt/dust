@@ -5,7 +5,7 @@ import { QueryTypes } from "sequelize";
 
 import type { CheckFunction } from "@app/lib/production_checks/types";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
-import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
+import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import { getNotionWorkflowId } from "@app/types";
 import { withRetries } from "@app/types";
 
@@ -166,7 +166,7 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
 ) => {
   const notionConnectors = await listAllNotionConnectors();
 
-  const client = await getTemporalConnectorsNamespaceConnection();
+  const client = await getTemporalClientForConnectorsNamespace();
 
   logger.info(`Found ${notionConnectors.length} Notion connectors.`);
 

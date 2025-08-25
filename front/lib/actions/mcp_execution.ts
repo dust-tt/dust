@@ -2,7 +2,10 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { Logger } from "pino";
 
-import { generatePlainTextFile } from "@app/lib/actions/action_file_helpers";
+import {
+  generatePlainTextFile,
+  uploadFileToConversationDataSource,
+} from "@app/lib/actions/action_file_helpers";
 import {
   computeTextByteSize,
   MAX_RESOURCE_CONTENT_SIZE,
@@ -10,6 +13,7 @@ import {
   MAXED_OUTPUT_FILE_SNIPPET_LENGTH,
 } from "@app/lib/actions/action_output_limits";
 import type {
+  LightMCPToolConfigurationType,
   MCPActionType,
   MCPApproveExecutionEvent,
   MCPToolConfigurationType,
@@ -26,18 +30,15 @@ import {
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
-import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type {
   ActionGeneratedFileType,
   AgentLoopRunContextType,
 } from "@app/lib/actions/types";
-import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
+import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   AgentConfigurationType,
@@ -45,7 +46,6 @@ import type {
   ConversationType,
   FileUseCase,
   FileUseCaseMetadata,
-  LightWorkspaceType,
   Result,
   SupportedFileContentType,
 } from "@app/types";
@@ -56,122 +56,6 @@ import {
   removeNulls,
   stripNullBytes,
 } from "@app/types";
-
-/**
- * Handles tool approval process and returns the final execution status.
- * Yields approval events during the process.
- */
-export async function* handleToolApproval({
-  auth,
-  actionConfiguration,
-  agentConfiguration,
-  conversation,
-  agentMessage,
-  mcpAction,
-  owner,
-  localLogger,
-}: {
-  auth: Authenticator;
-  actionConfiguration: MCPToolConfigurationType;
-  agentConfiguration: AgentConfigurationType;
-  conversation: ConversationType;
-  agentMessage: AgentMessageType;
-  mcpAction: MCPActionType;
-  owner: LightWorkspaceType;
-  localLogger: Logger;
-}): AsyncGenerator<
-  MCPApproveExecutionEvent,
-  | "allowed_implicitly"
-  | "allowed_explicitly"
-  | "pending"
-  | "timeout"
-  | "denied",
-  unknown
-> {
-  const { status: s } = await getExecutionStatusFromConfig(
-    auth,
-    actionConfiguration,
-    agentMessage
-  );
-  let status:
-    | "allowed_implicitly"
-    | "allowed_explicitly"
-    | "pending"
-    | "timeout"
-    | "denied" = s;
-
-  if (status === "pending") {
-    yield {
-      type: "tool_approve_execution",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      conversationId: conversation.sId,
-      actionId: mcpAction.getSId(owner),
-      action: mcpAction,
-      inputs: mcpAction.params,
-      stake: actionConfiguration.permission,
-      metadata: {
-        toolName: actionConfiguration.originalName,
-        mcpServerName: actionConfiguration.mcpServerName,
-        agentName: agentConfiguration.name,
-        icon: actionConfiguration.icon,
-      },
-    };
-
-    try {
-      const actionEventGenerator = getMCPEvents({
-        actionId: mcpAction.getSId(owner),
-      });
-
-      localLogger.info(
-        {
-          workspaceId: owner.sId,
-          actionName: actionConfiguration.name,
-        },
-        "Waiting for action validation"
-      );
-
-      // Start listening for action events
-      for await (const event of actionEventGenerator) {
-        const { data } = event;
-
-        // Check that the event is indeed for this action.
-        if (getResourceIdFromSId(data.actionId) !== mcpAction.id) {
-          status = "denied";
-          break;
-        }
-
-        if (data.type === "always_approved") {
-          const user = auth.getNonNullableUser();
-          await user.appendToMetadata(
-            `toolsValidations:${actionConfiguration.toolServerId}`,
-            `${actionConfiguration.name}`
-          );
-        }
-
-        if (data.type === "approved" || data.type === "always_approved") {
-          status = "allowed_explicitly";
-          break;
-        } else if (data.type === "rejected") {
-          status = "denied";
-          break;
-        }
-      }
-    } catch (error) {
-      localLogger.error({ error }, "Error checking action validation status");
-      throw error; // Let the caller handle this error.
-    }
-  }
-
-  // The status was not updated by the event, or no event was received.
-  // In this case, we set the status to timeout.
-  if (status === "pending") {
-    status = "timeout";
-  }
-
-  return status;
-}
 
 /**
  * Executes the MCP tool and handles progress notifications.
@@ -190,7 +74,7 @@ export async function* executeMCPTool({
   auth: Authenticator;
   inputs: Record<string, unknown>;
   agentLoopRunContext: AgentLoopRunContextType;
-  action: AgentMCPAction;
+  action: AgentMCPActionResource;
   agentConfiguration: AgentConfigurationType;
   conversation: ConversationType;
   agentMessage: AgentMessageType;
@@ -203,6 +87,8 @@ export async function* executeMCPTool({
   > | null,
   unknown
 > {
+  await action.updateStatus("running");
+
   let toolCallResult: Result<
     CallToolResult["content"],
     Error | McpError | MCPServerPersonalAuthenticationRequiredError
@@ -235,9 +121,6 @@ export async function* executeMCPTool({
           yield {
             created: Date.now(),
             type: "tool_approve_execution",
-            // Added to make it backwards compatible, this is not the action of sub agent but it won't be used.
-            // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
-            action: mcpAction,
             configurationId,
             conversationId,
             messageId,
@@ -272,21 +155,22 @@ export async function* executeMCPTool({
  * Processes tool results, handles file uploads, and creates output items.
  * Returns the processed content and generated files.
  */
-export async function processToolResults({
-  auth,
-  toolCallResult,
-  conversation,
-  action,
-  actionConfiguration,
-  localLogger,
-}: {
-  auth: Authenticator;
-  toolCallResult: CallToolResult["content"];
-  conversation: ConversationType;
-  action: AgentMCPAction;
-  actionConfiguration: MCPToolConfigurationType;
-  localLogger: Logger;
-}): Promise<{
+export async function processToolResults(
+  auth: Authenticator,
+  {
+    action,
+    conversation,
+    localLogger,
+    toolCallResult,
+    toolConfiguration,
+  }: {
+    action: AgentMCPActionResource;
+    conversation: ConversationType;
+    localLogger: Logger;
+    toolCallResult: CallToolResult["content"];
+    toolConfiguration: LightMCPToolConfigurationType;
+  }
+): Promise<{
   outputItems: AgentMCPActionOutputItem[];
   generatedFiles: ActionGeneratedFileType[];
 }> {
@@ -306,9 +190,9 @@ export async function processToolResults({
           // If the text is too large we create a file and return a resource block that references the file.
           if (
             computeTextByteSize(block.text) > MAX_TEXT_CONTENT_SIZE &&
-            actionConfiguration.mcpServerName !== "conversation_files"
+            toolConfiguration.mcpServerName !== "conversation_files"
           ) {
-            const fileName = `${actionConfiguration.mcpServerName}_${Date.now()}.txt`;
+            const fileName = `${toolConfiguration.mcpServerName}_${Date.now()}.txt`;
             const snippet =
               block.text.substring(0, MAXED_OUTPUT_FILE_SNIPPET_LENGTH) +
               "... (truncated)";
@@ -367,7 +251,11 @@ export async function processToolResults({
               auth,
               block.resource.fileId
             );
-
+            // We need to create the conversation data source in case the file comes from a subagent
+            // who uploaded it to its own conversation but not the main agent's.
+            if (file) {
+              await uploadFileToConversationDataSource({ auth, file });
+            }
             return {
               content: {
                 type: block.type,
@@ -473,6 +361,12 @@ export async function processToolResults({
             };
           }
         }
+        case "resource_link": {
+          return {
+            content: block,
+            file: null,
+          };
+        }
         default:
           assertNever(block);
       }
@@ -506,15 +400,16 @@ export async function processToolResults({
 /**
  * Helper function to augment inputs with configuration data.
  */
-export function getAugmentedInputs({
-  auth,
-  rawInputs,
-  actionConfiguration,
-}: {
-  auth: Authenticator;
-  rawInputs: Record<string, unknown>;
-  actionConfiguration: MCPToolConfigurationType;
-}): Record<string, unknown> {
+export function getAugmentedInputs(
+  auth: Authenticator,
+  {
+    actionConfiguration,
+    rawInputs,
+  }: {
+    actionConfiguration: MCPToolConfigurationType;
+    rawInputs: Record<string, unknown>;
+  }
+): Record<string, unknown> {
   return augmentInputsWithConfiguration({
     owner: auth.getNonNullableWorkspace(),
     rawInputs,

@@ -1,8 +1,13 @@
 import {
+  ArrowDownOnSquareIcon,
   Button,
   CodeBlock,
   CommandLineIcon,
-  SparklesIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  EyeIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import React from "react";
@@ -11,14 +16,59 @@ import { VisualizationActionIframe } from "@app/components/assistant/conversatio
 import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
 import { isFileUsingConversationFiles } from "@app/lib/files";
 import { useFileContent } from "@app/lib/swr/files";
-import type { ConversationType, LightWorkspaceType } from "@app/types";
+import type {
+  ConversationWithoutContentType,
+  LightWorkspaceType,
+} from "@app/types";
 
+import { useConversationSidePanelContext } from "../ConversationSidePanelContext";
 import { ShareInteractiveFilePopover } from "../ShareInteractiveFilePopover";
-import { useInteractiveContentContext } from "./InteractiveContentContext";
 import { InteractiveContentHeader } from "./InteractiveContentHeader";
 
+interface ExportContentDropdownProps {
+  iframeRef: React.RefObject<HTMLIFrameElement>;
+}
+
+function ExportContentDropdown({ iframeRef }: ExportContentDropdownProps) {
+  const exportVisualization = React.useCallback(
+    (format: "png" | "svg") => {
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          { type: `EXPORT_${format.toUpperCase()}` },
+          "*"
+        );
+      } else {
+        console.log("No iframe content window found");
+      }
+    },
+    [iframeRef]
+  );
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          icon={ArrowDownOnSquareIcon}
+          isSelect
+          size="xs"
+          tooltip="Export content"
+          variant="ghost"
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem onClick={() => exportVisualization("png")}>
+          Export as PNG
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => exportVisualization("svg")}>
+          Export as SVG
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 interface ClientExecutableRendererProps {
-  conversation: ConversationType;
+  conversation: ConversationWithoutContentType;
   fileId: string;
   fileName?: string;
   owner: LightWorkspaceType;
@@ -30,11 +80,14 @@ export function ClientExecutableRenderer({
   fileName,
   owner,
 }: ClientExecutableRendererProps) {
-  const { closeContent } = useInteractiveContentContext();
+  const { closePanel } = useConversationSidePanelContext();
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
+
   const { fileContent, isFileContentLoading, error } = useFileContent({
     fileId,
     owner,
   });
+
   const isUsingConversationFiles = React.useMemo(
     () => (fileContent ? isFileUsingConversationFiles(fileContent) : false),
     [fileContent]
@@ -64,15 +117,16 @@ export function ClientExecutableRenderer({
       <InteractiveContentHeader
         title={fileName || "Client Executable"}
         subtitle={fileId}
-        onClose={closeContent}
+        onClose={closePanel}
       >
         <Button
-          icon={showCode ? SparklesIcon : CommandLineIcon}
+          icon={showCode ? EyeIcon : CommandLineIcon}
           onClick={() => setShowCode(!showCode)}
           size="xs"
           tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
           variant="ghost"
         />
+        <ExportContentDropdown iframeRef={iframeRef} />
         <ShareInteractiveFilePopover
           fileId={fileId}
           owner={owner}
@@ -106,6 +160,7 @@ export function ClientExecutableRenderer({
               key={`viz-${fileId}`}
               conversationId={conversation.sId}
               isInDrawer={true}
+              ref={iframeRef}
             />
           </div>
         )}

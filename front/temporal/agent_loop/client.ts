@@ -1,5 +1,5 @@
 import type { AuthenticatorType } from "@app/lib/auth";
-import { getTemporalClient } from "@app/lib/temporal";
+import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import type { Result } from "@app/types";
 import { Ok } from "@app/types";
@@ -12,12 +12,14 @@ export async function launchAgentLoopWorkflow({
   authType,
   runAsynchronousAgentArgs,
   startStep,
+  initialStartTime,
 }: {
   authType: AuthenticatorType;
   runAsynchronousAgentArgs: RunAgentAsynchronousArgs;
   startStep: number;
+  initialStartTime: number;
 }): Promise<Result<undefined, Error>> {
-  const client = await getTemporalClient();
+  const client = await getTemporalClientForAgentNamespace();
 
   const workflowId = makeAgentLoopWorkflowId(
     authType,
@@ -25,7 +27,7 @@ export async function launchAgentLoopWorkflow({
   );
 
   await client.workflow.start(agentLoopWorkflow, {
-    args: [{ authType, runAsynchronousAgentArgs, startStep }],
+    args: [{ authType, runAsynchronousAgentArgs, startStep, initialStartTime }],
     taskQueue: QUEUE_NAME,
     workflowId,
   });

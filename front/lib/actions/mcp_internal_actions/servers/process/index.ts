@@ -1,5 +1,5 @@
 import { INTERNAL_MIME_TYPES, removeNulls } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import _ from "lodash";
@@ -11,6 +11,10 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  FIND_TAGS_TOOL_NAME,
+  PROCESS_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   ConfigurableToolInputSchemas,
@@ -25,6 +29,7 @@ import {
   getDataSourceConfiguration,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
@@ -32,11 +37,10 @@ import type {
   AgentLoopContextType,
 } from "@app/lib/actions/types";
 import {
+  isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
-  isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -58,15 +62,6 @@ import { applyDataSourceFilters, getExtractFileTitle } from "./utils";
 type ProcessActionOutputsType = {
   data: unknown[];
   total_documents?: number;
-};
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "extract_data",
-  version: "1.0.0",
-  description: "Structured extraction",
-  icon: "ActionScanIcon",
-  authorization: null,
-  documentationUrl: null,
 };
 
 const EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION =
@@ -98,7 +93,7 @@ function makeExtractInformationFromDocumentsTool(
 ) {
   return withToolLogging(
     auth,
-    { toolName: "extract_information_from_documents", agentLoopContext },
+    { toolName: PROCESS_TOOL_NAME, agentLoopContext },
     async ({
       dataSources,
       objective,
@@ -225,13 +220,11 @@ function makeExtractInformationFromDocumentsTool(
   );
 }
 
-const PROCESS_TOOL_NAME = "extract_information_from_documents";
-
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer("extract_data");
 
   const isJsonSchemaConfigured =
     (agentLoopContext?.listToolsContext &&
@@ -241,10 +234,10 @@ function createServer(
       agentLoopContext.listToolsContext.agentActionConfiguration.jsonSchema !==
         null) ||
     (agentLoopContext?.runContext &&
-      isServerSideMCPToolConfiguration(
-        agentLoopContext.runContext.actionConfiguration
+      isLightServerSideMCPToolConfiguration(
+        agentLoopContext.runContext.toolConfiguration
       ) &&
-      agentLoopContext.runContext.actionConfiguration.jsonSchema !== null);
+      agentLoopContext.runContext.toolConfiguration.jsonSchema !== null);
 
   const isTimeFrameConfigured =
     (agentLoopContext?.listToolsContext &&
@@ -254,10 +247,10 @@ function createServer(
       agentLoopContext.listToolsContext.agentActionConfiguration.timeFrame !==
         null) ||
     (agentLoopContext?.runContext &&
-      isServerSideMCPToolConfiguration(
-        agentLoopContext.runContext.actionConfiguration
+      isLightServerSideMCPToolConfiguration(
+        agentLoopContext.runContext.toolConfiguration
       ) &&
-      agentLoopContext.runContext.actionConfiguration.timeFrame !== null);
+      agentLoopContext.runContext.toolConfiguration.timeFrame !== null);
 
   const areTagsDynamic = agentLoopContext
     ? shouldAutoGenerateTags(agentLoopContext)
@@ -335,7 +328,7 @@ function createServer(
     );
 
     server.tool(
-      "find_tags",
+      FIND_TAGS_TOOL_NAME,
       makeFindTagsDescription(PROCESS_TOOL_NAME),
       findTagsSchema,
       makeFindTagsTool(auth)

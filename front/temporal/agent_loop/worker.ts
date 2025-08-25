@@ -2,11 +2,17 @@ import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
-import { getTemporalWorkerConnection } from "@app/lib/temporal";
+import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import { ensureConversationTitleActivity } from "@app/temporal/agent_loop/activities/ensure_conversation_title";
-import { runModelActivity } from "@app/temporal/agent_loop/activities/run_model";
+import {
+  logAgentLoopPhaseCompletionActivity,
+  logAgentLoopPhaseStartActivity,
+  logAgentLoopStepCompletionActivity,
+} from "@app/temporal/agent_loop/activities/instrumentation";
+import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activities/publish_deferred_events";
+import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
 
@@ -14,14 +20,18 @@ import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
 const SHUTDOWN_GRACE_TIME = "2 minutes";
 
 export async function runAgentLoopWorker() {
-  const { connection, namespace } = await getTemporalWorkerConnection();
+  const { connection, namespace } = await getTemporalAgentWorkerConnection();
 
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities: {
-      runModelActivity,
-      runToolActivity,
       ensureConversationTitleActivity,
+      logAgentLoopPhaseCompletionActivity,
+      logAgentLoopPhaseStartActivity,
+      logAgentLoopStepCompletionActivity,
+      publishDeferredEventsActivity,
+      runModelAndCreateActionsActivity,
+      runToolActivity,
     },
     taskQueue: QUEUE_NAME,
     connection,

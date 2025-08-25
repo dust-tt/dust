@@ -122,6 +122,7 @@ export default function SpaceManagedDataSourcesViewsModal({
           acc[config.dataSourceView.sId] = {
             dataSourceView: config.dataSourceView,
             selectedResources,
+            excludedResources: [],
             isSelectAll,
             tagsFilter: null, // No tags filters needed to list data source views
           };

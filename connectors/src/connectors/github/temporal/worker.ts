@@ -14,6 +14,7 @@ import logger from "@connectors/logger/logger";
 
 export async function runGithubWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
+
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities: {
@@ -27,11 +28,13 @@ export async function runGithubWorker() {
     reuseV8Context: true,
     namespace,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
-        },
-        () => new GithubCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "github"),
+        }),
+        () => ({
+          inbound: new GithubCastKnownErrorsInterceptor(),
+        }),
       ],
     },
   });

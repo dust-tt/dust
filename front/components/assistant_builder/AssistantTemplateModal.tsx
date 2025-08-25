@@ -3,6 +3,7 @@ import {
   Button,
   Markdown,
   Page,
+  ReadOnlyTextArea,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -12,9 +13,10 @@ import {
 } from "@dust-tt/sparkle";
 import Link from "next/link";
 
-import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 
 interface AssistantTemplateModalProps {
@@ -32,6 +34,11 @@ export function AssistantTemplateModal({
 }: AssistantTemplateModalProps) {
   const { assistantTemplate, isAssistantTemplateLoading } =
     useAssistantTemplate({ templateId });
+
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
 
   return (
     <Sheet
@@ -61,7 +68,12 @@ export function AssistantTemplateModal({
                       @{assistantTemplate.handle}
                     </span>
                     <Link
-                      href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}&templateId=${assistantTemplate.sId}`}
+                      href={getAgentBuilderRoute(
+                        owner.sId,
+                        "new",
+                        hasAgentBuilderV2,
+                        `flow=${flow}&templateId=${assistantTemplate.sId}`
+                      )}
                     >
                       <Button
                         label="Use this template"

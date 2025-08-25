@@ -1,4 +1,4 @@
-import { isEqual } from "lodash";
+import isEqual from "lodash/isEqual";
 
 import type { LightAgentConfigurationType } from "@app/types";
 import type { TagType } from "@app/types/tag";

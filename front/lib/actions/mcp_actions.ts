@@ -4,7 +4,10 @@ import type {
   CallToolResult,
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
-import { ProgressNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolResultSchema,
+  ProgressNotificationSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import EventEmitter from "events";
 import type { JSONSchema7 } from "json-schema";
@@ -29,10 +32,9 @@ import type {
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
-import { CallToolResultSchemaWithoutBase64Validation } from "@app/lib/actions/mcp_call_tool_result_schema";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
-  getInternalMCPServerAvailability,
+  getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -74,11 +76,11 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
-import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
+import { Err, normalizeError, Ok, slugify } from "@app/types";
 
 const MAX_OUTPUT_ITEMS = 128;
 
-const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes.
+const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes.
 
 const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
@@ -108,6 +110,48 @@ export interface ServerToolsAndInstructions {
   serverName: string;
   instructions?: string;
   tools: MCPToolConfigurationType[];
+}
+
+export function makeToolsWithStakesAndTimeout(
+  mcpServerId: string,
+  metadata: {
+    toolName: string;
+    permission: "high" | "low" | "never_ask";
+    enabled: boolean;
+  }[]
+) {
+  let toolsStakes: Record<string, MCPToolStakeLevelType> = {};
+  let serverTimeoutMs: number | undefined;
+
+  const { serverType } = getServerTypeAndIdFromSId(mcpServerId);
+  if (serverType === "internal") {
+    const r = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
+    if (r.isErr()) {
+      return r;
+    }
+    const serverName = r.value.name;
+    toolsStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes || {};
+    serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
+  } else {
+    metadata.forEach(
+      ({ toolName, permission }) => (toolsStakes[toolName] = permission)
+    );
+  }
+
+  // Filter out tools that are not enabled.
+  const toolsEnabled = metadata.reduce<Record<string, boolean>>(
+    (acc, metadata) => {
+      acc[metadata.toolName] = metadata.enabled;
+      return acc;
+    },
+    {}
+  );
+
+  return new Ok({
+    toolsEnabled,
+    toolsStakes,
+    serverTimeoutMs,
+  });
 }
 
 function makeServerSideMCPToolConfigurations(
@@ -198,7 +242,9 @@ export async function* tryCallMCPTool(
     progressToken: ModelId;
   }
 ): AsyncGenerator<MCPCallToolEvent, void> {
-  if (!isMCPToolConfiguration(agentLoopRunContext.actionConfiguration)) {
+  const { toolConfiguration } = agentLoopRunContext;
+
+  if (!isMCPToolConfiguration(toolConfiguration)) {
     yield {
       type: "result",
       result: new Err(
@@ -216,7 +262,7 @@ export async function* tryCallMCPTool(
 
   const connectionParamsRes = await getMCPClientConnectionParams(
     auth,
-    agentLoopRunContext.actionConfiguration,
+    toolConfiguration,
     {
       conversationId,
       messageId,
@@ -271,18 +317,15 @@ export async function* tryCallMCPTool(
     // Start the tool call in parallel.
     const toolPromise = mcpClient.callTool(
       {
-        name: agentLoopRunContext.actionConfiguration.originalName,
+        name: toolConfiguration.originalName,
         arguments: inputs,
         _meta: {
           progressToken,
         },
       },
-      // Use custom schema to avoid Zod base64 validation stack overflow with large images
-      CallToolResultSchemaWithoutBase64Validation,
+      CallToolResultSchema,
       {
-        timeout:
-          agentLoopRunContext.actionConfiguration.timeoutMs ??
-          DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+        timeout: toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
       }
     );
 
@@ -358,7 +401,7 @@ export async function* tryCallMCPTool(
           conversationId,
           error: toolCallResult.content,
           messageId,
-          toolName: agentLoopRunContext.actionConfiguration.originalName,
+          toolName: toolConfiguration.originalName,
           workspaceId: auth.getNonNullableWorkspace().sId,
         },
         `Error calling MCP tool in tryCallMCPTool().`
@@ -379,7 +422,7 @@ export async function* tryCallMCPTool(
     const generateContentMetadata = (
       content: CallToolResult["content"]
     ): {
-      type: "text" | "image" | "resource" | "audio";
+      type: "text" | "image" | "resource" | "audio" | "resource_link";
       byteSize: number;
       maxSize: number;
     }[] => {
@@ -398,21 +441,14 @@ export async function* tryCallMCPTool(
     };
 
     const serverType = (() => {
-      if (
-        isClientSideMCPToolConfiguration(
-          agentLoopRunContext.actionConfiguration
-        )
-      ) {
+      if (isClientSideMCPToolConfiguration(toolConfiguration)) {
         return "client";
       }
-      if (
-        isServerSideMCPToolConfiguration(
-          agentLoopRunContext.actionConfiguration
-        ) &&
-        agentLoopRunContext.actionConfiguration.internalMCPServerId
-      ) {
+
+      if (isServerSideMCPToolConfiguration(toolConfiguration)) {
         return "internal";
       }
+
       return "remote";
     })();
 
@@ -443,7 +479,7 @@ export async function* tryCallMCPTool(
         conversationId,
         error,
         messageId,
-        toolName: agentLoopRunContext.actionConfiguration.originalName,
+        toolName: toolConfiguration.originalName,
         workspaceId: auth.getNonNullableWorkspace().sId,
       },
       "Exception calling MCP tool in tryCallMCPTool()."
@@ -502,7 +538,12 @@ export function getPrefixedToolName(
   originalName: string
 ): Result<string, Error> {
   const slugifiedConfigName = slugify(config.name);
-  const slugifiedOriginalName = slugify(originalName);
+  const slugifiedOriginalName = slugify(originalName).replaceAll(
+    // Remove anything that is not a-zA-Z0-9_.- because it's not supported by the LLMs.
+    /[^a-zA-Z0-9_.-]/g,
+    ""
+  );
+
   const separator = TOOL_NAME_SEPARATOR;
 
   // If the original name is already too long, we can't use it.
@@ -596,12 +637,46 @@ export async function tryListMCPTools(
       const processedTools = [];
 
       for (const toolConfig of rawToolsFromServer) {
+        // Fix the tool name to be valid for the model.
         const toolName = getPrefixedToolName(action, toolConfig.name);
         if (toolName.isErr()) {
-          // If one tool name fails for a server, we skip this server entirely, we might want to
-          // revisit this in the future.
-          // For now, returning an error for the whole server batch.
-          return new Err(toolName.error);
+          logger.warn(
+            {
+              workspaceId: owner.sId,
+              conversationId: agentLoopListToolsContext.conversation.sId,
+              messageId: agentLoopListToolsContext.agentMessage.sId,
+              actionId: action.sId,
+              mcpServerName: action.name,
+              toolName: toolConfig.name,
+              error: toolName.error,
+            },
+            `Invalid tool name, skipping the tool.`
+          );
+          continue;
+        }
+
+        // Check that all tools arguments names are valid for the model (a-zA-Z0-9_.-).
+        const toolArgumentsNames = Object.keys(
+          toolConfig.inputSchema?.properties ?? {}
+        );
+
+        const invalidArgumentNames = toolArgumentsNames.filter(
+          (argumentName) => !/^[a-zA-Z0-9_.-]+$/.test(argumentName)
+        );
+        if (invalidArgumentNames.length > 0) {
+          logger.warn(
+            {
+              workspaceId: owner.sId,
+              conversationId: agentLoopListToolsContext.conversation.sId,
+              messageId: agentLoopListToolsContext.agentMessage.sId,
+              actionId: action.sId,
+              mcpServerName: action.name,
+              toolName: toolConfig.name,
+              invalidArgumentNames,
+            },
+            `Invalid argument name(s), skipping the tool.`
+          );
+          continue;
         }
 
         // This handles the case where the MCP server configuration is using pre-configured data sources
@@ -710,7 +785,7 @@ async function listToolsForClientSideMCPServer(
   return new Ok(clientSideToolConfigs);
 }
 
-async function listToolsForServerSideMCPServer(
+export async function listToolsForServerSideMCPServer(
   auth: Authenticator,
   connectionParams: ServerSideMCPConnectionParams,
   mcpClient: Client,
@@ -747,70 +822,37 @@ async function listToolsForServerSideMCPServer(
     return new Ok(serverSideToolConfigs);
   }
 
-  const availability = getInternalMCPServerAvailability(
+  const metadata = await RemoteMCPServerToolMetadataResource.fetchByServerId(
+    auth,
     connectionParams.mcpServerId
   );
-  const { serverType, id } = getServerTypeAndIdFromSId(
-    connectionParams.mcpServerId
+
+  const r = makeToolsWithStakesAndTimeout(
+    connectionParams.mcpServerId,
+    metadata
   );
-
-  let toolsStakes: Record<string, MCPToolStakeLevelType> = {};
-  let serverTimeoutMs: number | undefined;
-
-  switch (serverType) {
-    case "internal": {
-      const r = getInternalMCPServerNameAndWorkspaceId(
-        connectionParams.mcpServerId
-      );
-      if (r.isErr()) {
-        return r;
-      }
-      const serverName = r.value.name;
-      toolsStakes = INTERNAL_MCP_SERVERS[serverName]?.tools_stakes || {};
-      serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
-      break;
-    }
-
-    case "remote": {
-      const metadata =
-        await RemoteMCPServerToolMetadataResource.fetchByServerId(auth, id);
-      toolsStakes = metadata.reduce<Record<string, MCPToolStakeLevelType>>(
-        (acc, metadata) => {
-          acc[metadata.toolName] = metadata.permission;
-          return acc;
-        },
-        {}
-      );
-
-      // Filter out tools that are not enabled.
-      const toolsEnabled = metadata.reduce<Record<string, boolean>>(
-        (acc, metadata) => {
-          acc[metadata.toolName] = metadata.enabled;
-          return acc;
-        },
-        {}
-      );
-      allToolsRaw = allToolsRaw.filter((tool) => {
-        return !toolsEnabled[tool.name] || toolsEnabled[tool.name];
-      });
-
-      break;
-    }
-    default:
-      assertNever(serverType);
+  if (r.isErr()) {
+    return r;
   }
+  const { toolsEnabled, toolsStakes, serverTimeoutMs } = r.value;
 
-  const toolsWithStakesAndTimeout = allToolsRaw.map((tool) => ({
-    ...tool,
-    stakeLevel:
-      toolsStakes[tool.name] ||
-      (availability === "manual"
-        ? FALLBACK_MCP_TOOL_STAKE_LEVEL
-        : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL),
-    availability,
-    toolServerId: connectionParams.mcpServerId,
-    ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
-  }));
+  const availability = getAvailabilityOfInternalMCPServerById(
+    connectionParams.mcpServerId
+  );
+
+  const toolsWithStakesAndTimeout = allToolsRaw
+    .filter(({ name }) => !(toolsEnabled[name] === false)) // Include tools that are enabled (true) or not explicitly disabled (undefined).
+    .map((tool) => ({
+      ...tool,
+      stakeLevel:
+        toolsStakes[tool.name] ||
+        (availability === "manual"
+          ? FALLBACK_MCP_TOOL_STAKE_LEVEL
+          : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL),
+      availability,
+      toolServerId: connectionParams.mcpServerId,
+      ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
+    }));
 
   const serverSideToolConfigs = makeServerSideMCPToolConfigurations(
     config,

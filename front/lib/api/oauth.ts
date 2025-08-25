@@ -6,6 +6,7 @@ import type {
   RelatedCredential,
 } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import { ConfluenceOAuthProvider } from "@app/lib/api/oauth/providers/confluence";
+import { FreshserviceOAuthProvider } from "@app/lib/api/oauth/providers/freshservice";
 import { GithubOAuthProvider } from "@app/lib/api/oauth/providers/github";
 import { GmailOAuthProvider } from "@app/lib/api/oauth/providers/gmail";
 import { GongOAuthProvider } from "@app/lib/api/oauth/providers/gong";
@@ -14,6 +15,7 @@ import { HubspotOAuthProvider } from "@app/lib/api/oauth/providers/hubspot";
 import { IntercomOAuthProvider } from "@app/lib/api/oauth/providers/intercom";
 import { JiraOAuthProvider } from "@app/lib/api/oauth/providers/jira";
 import { MCPOAuthProvider } from "@app/lib/api/oauth/providers/mcp";
+import { MCPOAuthStaticOAuthProvider } from "@app/lib/api/oauth/providers/mcp_static";
 import { MicrosoftOAuthProvider } from "@app/lib/api/oauth/providers/microsoft";
 import { MicrosoftToolsOAuthProvider } from "@app/lib/api/oauth/providers/microsoft_tools";
 import { MondayOAuthProvider } from "@app/lib/api/oauth/providers/monday";
@@ -46,6 +48,7 @@ export type OAuthError = {
 // DO NOT USE THIS DIRECTLY, USE getProviderStrategy instead.
 const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   confluence: new ConfluenceOAuthProvider(),
+  freshservice: new FreshserviceOAuthProvider(),
   github: new GithubOAuthProvider(),
   gmail: new GmailOAuthProvider(),
   gong: new GongOAuthProvider(),
@@ -54,6 +57,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   intercom: new IntercomOAuthProvider(),
   jira: new JiraOAuthProvider(),
   mcp: new MCPOAuthProvider(),
+  mcp_static: new MCPOAuthStaticOAuthProvider(),
   microsoft: new MicrosoftOAuthProvider(),
   microsoft_tools: new MicrosoftToolsOAuthProvider(),
   monday: new MondayOAuthProvider(),
@@ -243,7 +247,7 @@ export async function finalizeConnection(
   }
 
   if (providerStrategy.checkConnectionValidPostFinalize) {
-    const res = providerStrategy.checkConnectionValidPostFinalize(
+    const res = await providerStrategy.checkConnectionValidPostFinalize(
       cRes.value.connection
     );
     if (res.isErr()) {

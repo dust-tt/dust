@@ -1,6 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import { z } from "zod";
 
@@ -9,31 +9,27 @@ import {
   ConfigurableToolInputSchemas,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeInternalMCPServer,
+  makeMCPToolTextError,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
+  isLightServerSideMCPToolConfiguration,
+  isMCPActionArray,
   isServerSideMCPServerConfiguration,
-  isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agent_metadata";
+import { getCitationsFromActions } from "@app/lib/api/assistant/citations";
+import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import config from "@app/lib/api/config";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { getResourcePrefix } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import type { CitationType, Result } from "@app/types";
 import { isGlobalAgentId } from "@app/types";
 import { Err, getHeaderFromUserEmail, normalizeError, Ok } from "@app/types";
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "run_agent",
-  version: "1.0.0",
-  description: "Run a child agent (agent as tool).",
-  icon: "ActionRobotIcon",
-  authorization: null,
-  documentationUrl: null,
-};
 
 function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
@@ -102,7 +98,7 @@ export default async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer("run_agent");
   const owner = auth.getNonNullableWorkspace();
 
   let childAgentId: string | null = null;
@@ -122,12 +118,12 @@ export default async function createServer(
   if (
     agentLoopContext &&
     agentLoopContext.runContext &&
-    isServerSideMCPToolConfiguration(
-      agentLoopContext.runContext.actionConfiguration
+    isLightServerSideMCPToolConfiguration(
+      agentLoopContext.runContext.toolConfiguration
     ) &&
-    agentLoopContext.runContext.actionConfiguration.childAgentId
+    agentLoopContext.runContext.toolConfiguration.childAgentId
   ) {
-    childAgentId = agentLoopContext.runContext.actionConfiguration.childAgentId;
+    childAgentId = agentLoopContext.runContext.toolConfiguration.childAgentId;
   }
 
   let childAgentBlob: {
@@ -168,14 +164,29 @@ export default async function createServer(
           "The query sent to the agent. This is the question or instruction that will be " +
             "processed by the agent, which will respond with its own capabilities and knowledge."
         ),
+      toolsetsToAdd: z
+        .array(
+          z
+            .string()
+            .regex(new RegExp(`^${getResourcePrefix("mcp_server_view")}_\\w+$`))
+        )
+        .describe(
+          "The toolsets ids to add to the agent in addition to the ones already set in the agent configuration."
+        )
+        .optional()
+        .nullable(),
       childAgent:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
     },
-    async ({ query, childAgent: { uri } }, { sendNotification, _meta }) => {
+    async (
+      { query, childAgent: { uri }, toolsetsToAdd },
+      { sendNotification, _meta }
+    ) => {
       assert(
         agentLoopContext?.runContext,
         "agentLoopContext is required where the tool is called"
       );
+
       const { agentConfiguration: mainAgent, conversation: mainConversation } =
         agentLoopContext.runContext;
 
@@ -218,10 +229,15 @@ export default async function createServer(
             profilePictureUrl: mainAgent.pictureUrl,
             // `run_agent` origin will skip adding the conversation to the user history.
             origin: "run_agent",
+            selectedMCPServerViewIds: toolsetsToAdd,
           },
         },
         skipToolsValidation:
           agentLoopContext.runContext.agentMessage.skipToolsValidation ?? false,
+        params: {
+          // TODO(DURABLE_AGENT 2025-08-20): Remove this if we decided to always use async mode.
+          execution: "async",
+        },
       });
 
       if (convRes.isErr()) {
@@ -270,14 +286,55 @@ export default async function createServer(
 
       let finalContent = "";
       let chainOfThought = "";
+      let refs: Record<string, CitationType> = {};
       try {
         for await (const event of streamRes.value.eventStream) {
           if (event.type === "generation_tokens") {
             // Separate content based on classification
             if (event.classification === "chain_of_thought") {
               chainOfThought += event.text;
+              const notification: MCPProgressNotificationType = {
+                method: "notifications/progress",
+                params: {
+                  progress: 0,
+                  total: 1,
+                  progressToken: 0,
+                  data: {
+                    label: "Agent thinking...",
+                    output: {
+                      type: "run_agent_chain_of_thought",
+                      childAgentId: childAgentId,
+                      conversationId: conversation.sId,
+                      chainOfThought: chainOfThought,
+                    },
+                  },
+                },
+              };
+              if (sendNotification) {
+                await sendNotification(notification);
+              }
             } else if (event.classification === "tokens") {
               finalContent += event.text;
+              const notification: MCPProgressNotificationType = {
+                method: "notifications/progress",
+                params: {
+                  progress: 0,
+                  total: 1,
+                  progressToken: 0,
+                  data: {
+                    label: "Agent responding...",
+                    output: {
+                      type: "run_agent_generation_tokens",
+                      childAgentId: childAgentId,
+                      conversationId: conversation.sId,
+                      text: finalContent,
+                    },
+                  },
+                },
+              };
+              if (sendNotification) {
+                await sendNotification(notification);
+              }
             } else if (
               event.classification === "closing_delimiter" &&
               event.delimiterClassification === "chain_of_thought" &&
@@ -285,6 +342,26 @@ export default async function createServer(
             ) {
               // For closing chain of thought delimiters, add a newline
               chainOfThought += "\n";
+              const notification: MCPProgressNotificationType = {
+                method: "notifications/progress",
+                params: {
+                  progress: 0,
+                  total: 1,
+                  progressToken: 0,
+                  data: {
+                    label: "Agent thinking...",
+                    output: {
+                      type: "run_agent_chain_of_thought",
+                      childAgentId: childAgentId,
+                      conversationId: conversation.sId,
+                      chainOfThought: chainOfThought,
+                    },
+                  },
+                },
+              };
+              if (sendNotification) {
+                await sendNotification(notification);
+              }
             }
           } else if (event.type === "agent_error") {
             const errorMessage = `Agent error: ${event.error.message}`;
@@ -293,6 +370,9 @@ export default async function createServer(
             const errorMessage = `User message error: ${event.error.message}`;
             return makeMCPToolTextError(errorMessage);
           } else if (event.type === "agent_message_success") {
+            if (isMCPActionArray(event.message.actions)) {
+              refs = getCitationsFromActions(event.message.actions);
+            }
             break;
           } else if (event.type === "tool_approve_execution") {
             // We catch tool approval events and bubble them up as progress notifications to the
@@ -355,6 +435,7 @@ export default async function createServer(
               chainOfThought:
                 chainOfThought.length > 0 ? chainOfThought : undefined,
               uri: `${config.getClientFacingUrl()}/w/${auth.getNonNullableWorkspace().sId}/assistant/${conversation.sId}`,
+              refs: Object.keys(refs).length > 0 ? refs : undefined,
             },
           },
         ],

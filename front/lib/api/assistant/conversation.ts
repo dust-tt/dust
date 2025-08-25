@@ -45,6 +45,7 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid, normalizeArrays } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   AgentMessageType,
@@ -83,6 +84,7 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+import type { ExecutionMode } from "@app/types/assistant/agent_run";
 
 // Soft assumption that we will not have more than 10 mentions in the same user message.
 const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;
@@ -197,6 +199,66 @@ export async function deleteConversation(
   if (destroy) {
     await conversation.delete(auth);
   } else {
+    await conversation.updateVisibilityToDeleted();
+  }
+  return new Ok({ success: true });
+}
+
+/**
+ * Delete-or-Leave:
+ * - If the user has access to the conversation: perform a soft-delete
+ *   (update visibility to "deleted").
+ * - If the user lacks access: perform a leave (remove participation) so the
+ *   entry disappears from their history without returning 403. If the
+ *   conversation becomes empty after the leave, soft-delete it for
+ *   consistency with delete() when destroy=false.
+ */
+export async function deleteOrLeaveConversation(
+  auth: Authenticator,
+  {
+    conversationId,
+  }: {
+    conversationId: string;
+  }
+): Promise<Result<{ success: true }, Error>> {
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId,
+    {
+      includeDeleted: true,
+    }
+  );
+
+  if (!conversation) {
+    return new Err(new ConversationError("conversation_not_found"));
+  }
+
+  const hasAccess = ConversationResource.canAccessConversation(
+    auth,
+    conversation
+  );
+
+  if (hasAccess) {
+    const del = await deleteConversation(auth, { conversationId });
+    if (del.isErr()) {
+      return new Err(del.error);
+    }
+    return new Ok({ success: true });
+  }
+
+  // User does not have access to the conversation, so we need to leave it.
+  const user = auth.user();
+  if (!user) {
+    return new Err(
+      new Error("Cannot leave conversation: user not authenticated.")
+    );
+  }
+  const leaveRes = await conversation.leaveConversation(auth);
+  if (leaveRes.isErr()) {
+    return new Err(leaveRes.error);
+  }
+  // If the conversation is empty after the leave, soft-delete it.
+  if (leaveRes.value.affectedCount > 0 && leaveRes.value.isConversationEmpty) {
     await conversation.updateVisibilityToDeleted();
   }
   return new Ok({ success: true });
@@ -338,14 +400,14 @@ export async function postUserMessage(
     mentions,
     context,
     skipToolsValidation,
-    forceAsynchronousLoop = false,
+    executionMode,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
     skipToolsValidation: boolean;
-    forceAsynchronousLoop?: boolean;
+    executionMode?: ExecutionMode;
   }
 ): Promise<
   Result<
@@ -461,7 +523,7 @@ export async function postUserMessage(
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
-    await frontSequelize.transaction(async (t) => {
+    await withTransaction(async (t) => {
       // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
       // this transaction, otherwise this other query will be competing for a connection in the database
       // connection pool, resulting in a deadlock.
@@ -598,6 +660,7 @@ export async function postUserMessage(
                   rank: messageRow.rank,
                   skipToolsValidation: agentMessageRow.skipToolsValidation,
                   contents: [],
+                  parsedContents: {},
                 } satisfies AgentMessageWithRankType,
               };
             })();
@@ -695,9 +758,9 @@ export async function postUserMessage(
       };
 
       void runAgentLoop(
-        auth.toJSON(),
+        auth,
         { sync: true, inMemoryData },
-        { forceAsynchronousLoop, startStep: 0 }
+        { executionMode, startStep: 0 }
       );
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
@@ -863,7 +926,7 @@ export async function editUserMessage(
 
   try {
     // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
-    const result = await frontSequelize.transaction(async (t) => {
+    const result = await withTransaction(async (t) => {
       // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
       // this transaction, otherwise this other query will be competing for a connection in the database
       // connection pool, resulting in a deadlock.
@@ -1046,6 +1109,7 @@ export async function editUserMessage(
                 rank: messageRow.rank,
                 skipToolsValidation: agentMessageRow.skipToolsValidation,
                 contents: [],
+                parsedContents: {},
               } satisfies AgentMessageWithRankType,
             };
           })();
@@ -1145,11 +1209,7 @@ export async function editUserMessage(
         agentMessageRow,
       };
 
-      void runAgentLoop(
-        auth.toJSON(),
-        { sync: true, inMemoryData },
-        { forceAsynchronousLoop: false, startStep: 0 }
-      );
+      void runAgentLoop(auth, { sync: true, inMemoryData }, { startStep: 0 });
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
   );
@@ -1198,7 +1258,7 @@ export async function retryAgentMessage(
     agentMessageRow: AgentMessage;
   } | null = null;
   try {
-    agentMessageResult = await frontSequelize.transaction(async (t) => {
+    agentMessageResult = await withTransaction(async (t) => {
       await getConversationRankVersionLock(conversation, t);
 
       const messageRow = await Message.findOne({
@@ -1285,6 +1345,7 @@ export async function retryAgentMessage(
         rank: m.rank,
         skipToolsValidation: agentMessageRow.skipToolsValidation,
         contents: [],
+        parsedContents: {},
       };
 
       return {
@@ -1374,11 +1435,7 @@ export async function retryAgentMessage(
     agentMessageRow,
   };
 
-  void runAgentLoop(
-    auth.toJSON(),
-    { sync: true, inMemoryData },
-    { forceAsynchronousLoop: false, startStep: 0 }
-  );
+  void runAgentLoop(auth, { sync: true, inMemoryData }, { startStep: 0 });
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -
@@ -1437,63 +1494,61 @@ export async function postNewContentFragment(
     }
   }
 
-  const { contentFragment, messageRow } = await frontSequelize.transaction(
-    async (t) => {
-      await getConversationRankVersionLock(conversation, t);
+  const { contentFragment, messageRow } = await withTransaction(async (t) => {
+    await getConversationRankVersionLock(conversation, t);
 
-      const fullBlob = {
-        ...cfBlobRes.value,
-        userId: auth.user()?.id,
-        userContextProfilePictureUrl: context?.profilePictureUrl,
-        userContextEmail: context?.email,
-        userContextFullName: context?.fullName,
-        userContextUsername: context?.username,
-        workspaceId: owner.id,
-      };
+    const fullBlob = {
+      ...cfBlobRes.value,
+      userId: auth.user()?.id,
+      userContextProfilePictureUrl: context?.profilePictureUrl,
+      userContextEmail: context?.email,
+      userContextFullName: context?.fullName,
+      userContextUsername: context?.username,
+      workspaceId: owner.id,
+    };
 
-      const contentFragment = await (() => {
-        if (supersededContentFragmentId) {
-          return ContentFragmentResource.makeNewVersion(
-            supersededContentFragmentId,
-            fullBlob,
-            t
-          );
-        } else {
-          return ContentFragmentResource.makeNew(fullBlob, t);
-        }
-      })();
-
-      const nextMessageRank =
-        ((await Message.max<number | null, Message>("rank", {
-          where: {
-            conversationId: conversation.id,
-          },
-          transaction: t,
-        })) ?? -1) + 1;
-      const messageRow = await Message.create(
-        {
-          sId: messageId,
-          rank: nextMessageRank,
-          conversationId: conversation.id,
-          contentFragmentId: contentFragment.id,
-          workspaceId: owner.id,
-        },
-        {
-          transaction: t,
-        }
-      );
-
-      if (isContentFragmentInputWithContentNode(cf)) {
-        await updateConversationRequestedGroupIds(auth, {
-          contentFragment: cf,
-          conversation,
-          t,
-        });
+    const contentFragment = await (() => {
+      if (supersededContentFragmentId) {
+        return ContentFragmentResource.makeNewVersion(
+          supersededContentFragmentId,
+          fullBlob,
+          t
+        );
+      } else {
+        return ContentFragmentResource.makeNew(fullBlob, t);
       }
+    })();
 
-      return { contentFragment, messageRow };
+    const nextMessageRank =
+      ((await Message.max<number | null, Message>("rank", {
+        where: {
+          conversationId: conversation.id,
+        },
+        transaction: t,
+      })) ?? -1) + 1;
+    const messageRow = await Message.create(
+      {
+        sId: messageId,
+        rank: nextMessageRank,
+        conversationId: conversation.id,
+        contentFragmentId: contentFragment.id,
+        workspaceId: owner.id,
+      },
+      {
+        transaction: t,
+      }
+    );
+
+    if (isContentFragmentInputWithContentNode(cf)) {
+      await updateConversationRequestedGroupIds(auth, {
+        contentFragment: cf,
+        conversation,
+        t,
+      });
     }
-  );
+
+    return { contentFragment, messageRow };
+  });
   const render = await contentFragment.renderFromMessage({
     auth,
     conversationId: conversation.sId,
@@ -1597,7 +1652,7 @@ export async function updateConversationRequestedGroupIds(
   }: {
     agents?: LightAgentConfigurationType[];
     contentFragment?: ContentFragmentInputWithContentNode;
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     t: Transaction;
   }
 ): Promise<void> {

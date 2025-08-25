@@ -371,6 +371,12 @@ module.exports = {
         100: "400px",
         125: "500px",
         150: "600px",
+        175: "700px",
+        // Semantic height classes matching dialog widths
+        md: "448px",
+        lg: "576px",
+        xl: "768px",
+        "2xl": "1024px",
       },
       minHeight: (theme) => ({
         ...theme("spacing"),

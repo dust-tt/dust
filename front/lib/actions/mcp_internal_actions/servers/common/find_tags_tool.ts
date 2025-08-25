@@ -1,8 +1,9 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { trim } from "lodash";
+import trim from "lodash/trim";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { FIND_TAGS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/servers/utils";
@@ -41,7 +42,7 @@ export function makeFindTagsTool(
 ) {
   return withToolLogging(
     auth,
-    { toolName: "find_tags", agentLoopContext },
+    { toolName: FIND_TAGS_TOOL_NAME, agentLoopContext },
     async ({
       query,
       dataSources,

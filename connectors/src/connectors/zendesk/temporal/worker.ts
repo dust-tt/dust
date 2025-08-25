@@ -23,11 +23,13 @@ export async function runZendeskWorkers() {
     namespace,
     maxConcurrentActivityTaskExecutions: 16,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
-        },
-        () => new ZendeskCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "zendesk"),
+        }),
+        () => ({
+          inbound: new ZendeskCastKnownErrorsInterceptor(),
+        }),
       ],
     },
     bundlerOptions: {

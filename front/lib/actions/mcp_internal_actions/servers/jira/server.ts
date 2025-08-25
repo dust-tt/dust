@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import {
@@ -14,65 +14,74 @@ import {
   getProject,
   getProjects,
   getTransitions,
+  listFieldSummaries,
+  listUsers,
   searchIssues,
+  searchUsersByEmailExact,
   transitionIssue,
   updateIssue,
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
 import {
+  ADFDocumentSchema,
   JiraCreateIssueLinkRequestSchema,
   JiraCreateIssueRequestSchema,
   JiraSearchFilterSchema,
   JiraSortSchema,
+  SEARCH_USERS_MAX_RESULTS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
+  makeInternalMCPServer,
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "jira",
-  version: "1.0.0",
-  description:
-    "Comprehensive JIRA integration providing full issue management capabilities including create, read, update, comment, workflow transitions, and issue linking operations using the JIRA REST API.",
-  authorization: {
-    provider: "jira" as const,
-    supported_use_cases: ["platform_actions", "personal_actions"] as const,
-  },
-  icon: "JiraLogo",
-  documentationUrl: null,
-};
 
 const createServer = (): McpServer => {
-  const server = new McpServer(serverInfo, {
-    instructions: `
-      You have access to the following tools: get_issue, get_projects, get_project, get_transitions, create_comment, get_issues, get_issue_types, get_issue_fields, get_connection_info, transition_issue, create_issue, update_issue, create_issue_link, delete_issue_link, get_issue_link_types.
+  const server = makeInternalMCPServer("jira");
 
-      # General Workflow for JIRA Data:
-      0.  **Authenticate:** Use \`get_connection_info\` to authenticate with JIRA if you are not authenticated ("No access token found").
-      1.  **Describe Object:** Use \`get_issue_types\` and \`get_issue_fields\` with the specific issue typename to get its detailed metadata. This will show you all available fields, their exact names, data types, and information about relationships (child relationships are particularly important for subqueries).
-      3.  **Execute Read Query:** Use \`get_issues\` to retrieve data using JQL. Construct your JQL queries based on the information obtained from \`get_issue_types\` to ensure you are using correct field and relationship names.
-
-      **Best Practices for Querying:**
-      1.  **Discover Object Structure First:** Use \`get_issue_fields\` to understand an object's fields and relationships before writing complex queries. Alternatively, for a quick field list directly in a query, use \`get_issues\` .
-      2.  **Verify Field and Relationship Names:** If you encounter JIRA 400 errors suggesting that the field or relationship does not exist, use \`get_issue_types\` for the relevant object(s) to confirm the exact names and their availability.
-    `,
-  });
+  server.tool(
+    "get_issue_read_fields",
+    "Lists available Jira field keys/ids and names for use in the get_issue.fields parameter (read-time).",
+    {},
+    async (_, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await listFieldSummaries(baseUrl, accessToken);
+          if (result.isErr()) {
+            return makeMCPToolTextError(
+              `Error retrieving fields: ${result.error}`
+            );
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Fields retrieved successfully",
+            result: result.value,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
 
   server.tool(
     "get_issue",
     "Retrieves a single JIRA issue by its key (e.g., 'PROJ-123').",
     {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
+      fields: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Optional list of fields to include. Defaults to a minimal set for performance."
+        ),
     },
-    async ({ issueKey }, { authInfo }) => {
+    async ({ issueKey, fields }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
           const issue = await getIssue({
             baseUrl,
             accessToken,
             issueKey,
+            fields,
           });
           if (issue.isOk() && issue.value === null) {
             return makeMCPToolJSONSuccess({
@@ -175,10 +184,14 @@ const createServer = (): McpServer => {
 
   server.tool(
     "create_comment",
-    "Adds a comment to an existing JIRA issue.",
+    "Adds a comment to an existing JIRA issue. Accepts either plain text string or rich Atlassian Document Format (ADF).",
     {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
-      comment: z.string().describe("The comment text to add"),
+      comment: z
+        .union([z.string(), ADFDocumentSchema])
+        .describe(
+          "The comment content - either plain text string or ADF document object for rich formatting"
+        ),
       visibilityType: z
         .enum(["group", "role"])
         .optional()
@@ -221,7 +234,8 @@ const createServer = (): McpServer => {
             message: "Comment added successfully",
             result: {
               issueKey,
-              comment,
+              comment:
+                typeof comment === "string" ? comment : "[Rich ADF Content]",
               commentId: result.value.id,
             },
           });
@@ -233,7 +247,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_issues",
-    "Search issues using one or more filters (e.g., status, priority, labels, assignee, customField, dueDate, created, resolved). Use exact matching by default, or fuzzy matching for approximate/partial matches on summary field. For custom fields, use field 'customField' with customFieldName parameter. For date fields (dueDate, created, resolved), use operator parameter with '<', '>', '=', etc. and date format '2023-07-03' or relative '-25d', '7d', '2w', '1M', etc. Results can be sorted using the sortBy parameter with field and direction (ASC/DESC). When referring to the user, use the get_connection_info tool. When referring to unknown fields, use the get_issue_fields or get_issue_types tool to discover the field names.",
+    "Search issues using one or more filters (e.g., status, priority, labels, assignee, customField, dueDate, created, resolved). Use exact matching by default, or fuzzy matching for approximate/partial matches on summary field. For custom fields, use field 'customField' with customFieldName parameter. For date fields (dueDate, created, resolved), use operator parameter with '<', '>', '=', etc. and date format '2023-07-03' or relative '-25d', '7d', '2w', '1M', etc. Results can be sorted using the sortBy parameter with field and direction (ASC/DESC). When referring to the user, use the get_connection_info tool. When referring to unknown create/update fields, use get_issue_create_fields or get_issue_types to discover the field names.",
     {
       filters: z
         .array(JiraSearchFilterSchema)
@@ -309,8 +323,8 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "get_issue_fields",
-    "Retrieves available fields for creating issues in a JIRA project for a specific issue type. Use get_issue_types to get the issue type ID.",
+    "get_issue_create_fields",
+    "Create/update-time field metadata for a specific project and issue type. Returns only fields available on the Create/Update screens (subset). Use get_issue_types to get the issue type ID.",
     {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
       issueTypeId: z
@@ -422,7 +436,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "create_issue",
-    "Creates a new JIRA issue with the specified details. Note: Available fields vary by project and issue type. Use get_issue_fields to check which fields are required and available.",
+    "Creates a new JIRA issue with the specified details. For textarea fields (like description), you can use either plain text or rich ADF format. Note: Available fields vary by project and issue type. Use get_issue_create_fields to check which fields are required and available.",
     {
       issueData: JiraCreateIssueRequestSchema.describe(
         "The description of the issue"
@@ -438,7 +452,7 @@ const createServer = (): McpServer => {
               result.error.includes("cannot be set") ||
               result.error.includes("not on the appropriate screen")
             ) {
-              errorMessage = `Field configuration error: ${result.error}. Some fields are not available for this project/issue type. Use get_issue_fields to check which fields are required and available before creating issues.`;
+              errorMessage = `Field configuration error: ${result.error}. Some fields are not available for this project/issue type. Use get_issue_create_fields to check which fields are required and available before creating issues.`;
             }
             return makeMCPToolTextError(errorMessage);
           }
@@ -454,11 +468,11 @@ const createServer = (): McpServer => {
 
   server.tool(
     "update_issue",
-    "Updates an existing JIRA issue with new field values (e.g., summary, description, priority, assignee). Note: Issue links, attachments, and some system fields require separate APIs and are not supported.",
+    "Updates an existing JIRA issue with new field values (e.g., summary, description, priority, assignee). For textarea fields (like description), you can use either plain text or rich ADF format. Use get_issue_create_fields to identify textarea fields. Note: Issue links, attachments, and some system fields require separate APIs and are not supported.",
     {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       updateData: JiraCreateIssueRequestSchema.partial().describe(
-        "The partial data to update the issue with"
+        "The partial data to update the issue with - description field supports both plain text and ADF format"
       ),
     },
     async ({ issueKey, updateData }, { authInfo }) => {
@@ -571,8 +585,105 @@ const createServer = (): McpServer => {
     }
   );
 
+  server.tool(
+    "get_users",
+    "Search for JIRA users. Provide emailAddress for exact email match, or name for display name contains. If neither is provided, returns the first maxResults users. Use startAt for pagination (pass the previous result's nextStartAt).",
+    {
+      emailAddress: z
+        .string()
+        .optional()
+        .describe(
+          "Exact email address (e.g., 'john.doe@company.com'). If provided, only exact matches are returned."
+        ),
+      name: z
+        .string()
+        .optional()
+        .describe(
+          "Display name filter (e.g., 'John Doe'). Case-insensitive contains match."
+        ),
+      maxResults: z
+        .number()
+        .min(1)
+        .max(SEARCH_USERS_MAX_RESULTS)
+        .optional()
+        .default(SEARCH_USERS_MAX_RESULTS)
+        .describe(
+          `Maximum number of users to return when searching by name (default: ${SEARCH_USERS_MAX_RESULTS}, max: ${SEARCH_USERS_MAX_RESULTS})`
+        ),
+      startAt: z
+        .number()
+        .int()
+        .min(0)
+        .optional()
+        .describe(
+          "Pagination offset. Pass the previous response's nextStartAt to fetch the next page."
+        ),
+    },
+    async (
+      { emailAddress, name, maxResults = SEARCH_USERS_MAX_RESULTS, startAt },
+      { authInfo }
+    ) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          if (emailAddress) {
+            const result = await searchUsersByEmailExact(
+              baseUrl,
+              accessToken,
+              emailAddress,
+              { maxResults, startAt }
+            );
+            if (result.isErr()) {
+              return makeMCPToolTextError(
+                `Error searching users: ${result.error}`
+              );
+            }
+
+            const message =
+              result.value.users.length === 0
+                ? "No users found with the specified email address"
+                : `Found ${result.value.users.length} exact match(es) for the specified email address`;
+            return makeMCPToolJSONSuccess({
+              message,
+              result: {
+                users: result.value.users,
+                nextStartAt: result.value.nextStartAt,
+              },
+            });
+          }
+
+          const result = await listUsers(baseUrl, accessToken, {
+            name,
+            maxResults,
+            startAt,
+          });
+          if (result.isErr()) {
+            return makeMCPToolTextError(
+              `Error searching users: ${result.error}`
+            );
+          }
+
+          const message =
+            result.value.users.length === 0
+              ? name
+                ? "No users found matching the name"
+                : "No users found"
+              : name
+                ? `Found ${result.value.users.length} user(s) matching the name`
+                : `Listed ${result.value.users.length} user(s)`;
+          return makeMCPToolJSONSuccess({
+            message,
+            result: {
+              users: result.value.users,
+              nextStartAt: result.value.nextStartAt,
+            },
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
   return server;
 };
 
 export default createServer;
-export { serverInfo };

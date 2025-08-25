@@ -1,18 +1,17 @@
-import type {
-  AgentBuilderAction,
-  AgentBuilderFormData,
-  BaseActionData,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { SupportedAgentBuilderActionType } from "@app/components/agent_builder/types";
+import uniqueId from "lodash/uniqueId";
+
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
+import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { UserType } from "@app/types";
-import type { LightAgentConfigurationType, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types";
 import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
  * Transforms a light agent configuration (server-side) into agent builder form data (client-side).
+ * Dynamic values (editors, slackProvider, actions) are intentionally set to empty defaults
+ * as they will be populated reactively in the component.
  */
 export function transformAgentConfigurationToFormData(
   agentConfiguration: LightAgentConfigurationType
@@ -26,9 +25,9 @@ export function transformAgentConfigurationToFormData(
         agentConfiguration.scope === "global"
           ? "visible"
           : agentConfiguration.scope,
-      editors: [], // Fallback - editors will be updated reactively
-      slackProvider: null, // TODO: determine from agent configuration
-      slackChannels: [], // TODO: determine from agent configuration
+      editors: [], // Will be populated reactively from useEditors hook
+      slackProvider: null, // Will be populated reactively from supportedDataSourceViews
+      slackChannels: [], // Will be populated reactively if needed
       tags: agentConfiguration.tags,
     },
     instructions: agentConfiguration.instructions || "",
@@ -41,153 +40,10 @@ export function transformAgentConfigurationToFormData(
       reasoningEffort: agentConfiguration.model.reasoningEffort || "none",
       responseFormat: agentConfiguration.model.responseFormat,
     },
-    actions: [], // Actions are always loaded client-side via SWR
+    actions: [], // Will be populated reactively from useAgentConfigurationActions hook
+    triggers: [], // Will be populated reactively from the hook
     maxStepsPerRun: agentConfiguration.maxStepsPerRun || 8,
   };
-}
-
-const SERVER_NAME_TO_ACTION_TYPE = {
-  extract_data: "EXTRACT_DATA",
-  include_data: "INCLUDE_DATA",
-  search: "SEARCH",
-} as const satisfies Record<string, SupportedAgentBuilderActionType>;
-
-function isKnownServerName(
-  serverName: string
-): serverName is keyof typeof SERVER_NAME_TO_ACTION_TYPE {
-  return serverName in SERVER_NAME_TO_ACTION_TYPE;
-}
-
-/**
- * Transforms assistant builder MCP configurations (from the builder actions API)
- * into agent builder form actions. This handles the fully hydrated data source
- * configurations that come from the server.
- */
-export function transformAssistantBuilderActionsToFormData(
-  assistantBuilderActions: AssistantBuilderMCPConfiguration[],
-  mcpServerViews: Array<{ sId: string; server: { name: string } }> = []
-): Result<AgentBuilderAction[], Error> {
-  try {
-    const formActions: AgentBuilderAction[] = [];
-
-    for (const action of assistantBuilderActions) {
-      if (action.type !== "MCP") {
-        continue;
-      }
-
-      const mcpServerViewId = action.configuration.mcpServerViewId;
-      const mcpServerView = mcpServerViews.find(
-        (view) => view.sId === mcpServerViewId
-      );
-
-      const actionType = determineActionType(mcpServerView);
-
-      const dataSourceConfigurations =
-        action.configuration.dataSourceConfigurations ?? {};
-
-      const baseActionData = {
-        id: mcpServerViewId,
-        name: action.name,
-        description: action.description,
-        noConfigurationRequired: action.noConfigurationRequired ?? false,
-      };
-
-      const formAction = createTypedAction(actionType, baseActionData, {
-        dataSourceConfigurations,
-        timeFrame: action.configuration.timeFrame,
-        jsonSchema: action.configuration.jsonSchema,
-      });
-
-      formActions.push(formAction);
-    }
-
-    return new Ok(formActions);
-  } catch (error) {
-    return new Err(normalizeError(error));
-  }
-}
-
-function determineActionType(
-  mcpServerView: { server: { name: string } } | undefined
-): SupportedAgentBuilderActionType {
-  if (!mcpServerView) {
-    throw new Error("MCP server view is required");
-  }
-
-  const serverName = mcpServerView.server.name;
-  if (isKnownServerName(serverName)) {
-    return SERVER_NAME_TO_ACTION_TYPE[serverName];
-  }
-
-  throw new Error(`Unknown MCP server name: ${serverName}`);
-}
-
-type ActionConfig = Pick<
-  AssistantBuilderMCPConfiguration["configuration"],
-  "dataSourceConfigurations" | "timeFrame" | "jsonSchema"
->;
-
-function createTypedAction(
-  actionType: SupportedAgentBuilderActionType,
-  baseActionData: BaseActionData,
-  config: ActionConfig
-): AgentBuilderAction {
-  const baseAction = {
-    ...baseActionData,
-    configuration: {
-      dataSourceConfigurations: config.dataSourceConfigurations ?? {},
-    },
-  };
-
-  switch (actionType) {
-    case "EXTRACT_DATA":
-      return {
-        ...baseAction,
-        type: "EXTRACT_DATA",
-        configuration: {
-          type: "EXTRACT_DATA",
-          dataSourceConfigurations:
-            baseAction.configuration.dataSourceConfigurations,
-          timeFrame: config.timeFrame,
-          jsonSchema: config.jsonSchema,
-        },
-      };
-
-    case "INCLUDE_DATA":
-      return {
-        ...baseAction,
-        type: "INCLUDE_DATA",
-        configuration: {
-          type: "INCLUDE_DATA",
-          dataSourceConfigurations:
-            baseAction.configuration.dataSourceConfigurations,
-          timeFrame: config.timeFrame,
-        },
-      };
-
-    case "SEARCH":
-      return {
-        ...baseAction,
-        type: "SEARCH",
-        configuration: {
-          type: "SEARCH",
-          dataSourceConfigurations:
-            baseAction.configuration.dataSourceConfigurations,
-        },
-      };
-
-    case "QUERY_TABLES":
-      return {
-        ...baseAction,
-        type: "QUERY_TABLES",
-        configuration: {
-          type: "QUERY_TABLES",
-          dataSourceConfigurations:
-            baseAction.configuration.dataSourceConfigurations,
-          timeFrame: config.timeFrame,
-        },
-      };
-  }
 }
 
 export function getDefaultAgentFormData(user: UserType): AgentBuilderFormData {
@@ -214,6 +70,64 @@ export function getDefaultAgentFormData(user: UserType): AgentBuilderFormData {
       responseFormat: undefined,
     },
     actions: [],
+    triggers: [],
     maxStepsPerRun: 8,
   };
+}
+
+/**
+ * Transforms an assistant template into agent builder form data with defaults.
+ * Merges template presets with default form data to create a complete configuration.
+ */
+export function transformTemplateToFormData(
+  template: FetchAssistantTemplateResponse,
+  user: UserType
+): AgentBuilderFormData {
+  const defaultFormData = getDefaultAgentFormData(user);
+
+  return {
+    ...defaultFormData,
+    instructions: template.presetInstructions ?? defaultFormData.instructions,
+    agentSettings: {
+      ...defaultFormData.agentSettings,
+      name: template.handle ?? defaultFormData.agentSettings.name,
+      description:
+        template.description ?? defaultFormData.agentSettings.description,
+      pictureUrl:
+        template.pictureUrl ?? defaultFormData.agentSettings.pictureUrl,
+    },
+    generationSettings: {
+      ...defaultFormData.generationSettings,
+      modelSettings: {
+        providerId:
+          template.presetProviderId ??
+          defaultFormData.generationSettings.modelSettings.providerId,
+        modelId:
+          template.presetModelId ??
+          defaultFormData.generationSettings.modelSettings.modelId,
+      },
+      temperature: template.presetTemperature
+        ? AGENT_CREATIVITY_LEVEL_TEMPERATURES[template.presetTemperature]
+        : defaultFormData.generationSettings.temperature,
+    },
+    actions: [],
+    triggers: [],
+  };
+}
+
+/**
+ * Converts AssistantBuilderMCPConfiguration actions to AgentBuilderFormData actions format.
+ * Used for YAML export to include actions that are normally loaded client-side.
+ * Generates unique IDs since they're only needed for UI purposes.
+ */
+export function convertActionsForFormData(
+  actions: AssistantBuilderMCPConfiguration[]
+): AgentBuilderFormData["actions"] {
+  return actions.map((action) => ({
+    id: uniqueId(),
+    name: action.name,
+    description: action.description,
+    type: "MCP",
+    configuration: action.configuration,
+  }));
 }

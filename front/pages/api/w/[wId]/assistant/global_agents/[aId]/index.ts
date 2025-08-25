@@ -3,7 +3,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { upsertGlobalAgentSettings } from "@app/lib/api/assistant/global_agents";
+import { upsertGlobalAgentSettings } from "@app/lib/api/assistant/global_agents/global_agents";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -13,7 +13,12 @@ type PatchGlobalAgentSettingResponseBody = {
   success: boolean;
 };
 const PatchGlobalAgentSettingsRequestBodySchema = t.type({
-  status: t.union([t.literal("active"), t.literal("disabled_by_admin")]),
+  status: t.union([
+    t.undefined,
+    t.literal("active"),
+    t.literal("disabled_by_admin"),
+  ]),
+  guidelines: t.union([t.string, t.undefined]),
 });
 
 async function handler(
@@ -53,6 +58,7 @@ async function handler(
       const created = await upsertGlobalAgentSettings(auth, {
         agentId: req.query.aId as string,
         status: bodyValidation.right.status,
+        guidelines: bodyValidation.right.guidelines,
       });
 
       if (!created) {

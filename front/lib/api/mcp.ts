@@ -15,7 +15,7 @@ import type { EditedByUser, MCPOAuthUseCase, ModelId } from "@app/types";
 export type MCPToolType = {
   name: string;
   description: string;
-  inputSchema: JSONSchema | undefined;
+  inputSchema?: JSONSchema;
 };
 
 export type MCPToolWithAvailabilityType = MCPToolType & {
@@ -48,6 +48,7 @@ export type MCPServerType = {
   authorization: AuthorizationInfo | null;
   tools: MCPToolType[];
   availability: MCPServerAvailability;
+  allowMultipleInstances: boolean;
   documentationUrl: string | null;
 };
 
@@ -57,7 +58,12 @@ export type RemoteMCPServerType = MCPServerType & {
   lastSyncAt?: Date | null;
   lastError?: string | null;
   icon: CustomServerIconType | InternalAllowedIconType;
+  // Always manual and allow multiple instances.
+  availability: "manual";
+  allowMultipleInstances: true;
 };
+
+export type MCPServerViewTypeType = "remote" | "internal";
 
 export interface MCPServerViewType {
   id: ModelId;
@@ -67,7 +73,7 @@ export interface MCPServerViewType {
   createdAt: number;
   updatedAt: number;
   spaceId: string;
-  serverType: "remote" | "internal";
+  serverType: MCPServerViewTypeType;
   server: MCPServerType;
   oAuthUseCase: MCPOAuthUseCase | null;
   editedByUser: EditedByUser | null;
@@ -75,17 +81,20 @@ export interface MCPServerViewType {
 
 export type MCPServerDefinitionType = Omit<
   MCPServerType,
-  "tools" | "sId" | "availability"
+  "tools" | "sId" | "availability" | "allowMultipleInstances"
 >;
 
 type InternalMCPServerType = MCPServerType & {
   name: InternalMCPServerNameType;
-  icon: InternalAllowedIconType; // We enforce that we pass an icon here.
+  // We enforce that we pass an icon here.
+  icon: InternalAllowedIconType;
+  // Instructions that are appended to the overall prompt.
+  instructions: string | null;
 };
 
 export type InternalMCPServerDefinitionType = Omit<
   InternalMCPServerType,
-  "tools" | "sId" | "availability"
+  "tools" | "sId" | "availability" | "allowMultipleInstances"
 >;
 
 export type MCPServerTypeWithViews = MCPServerType & {

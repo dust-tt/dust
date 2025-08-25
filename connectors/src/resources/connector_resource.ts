@@ -17,7 +17,6 @@ import type {
   ConnectorProviderStrategy,
 } from "@connectors/resources/connector/strategy";
 import { getConnectorProviderStrategy } from "@connectors/resources/connector/strategy";
-import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 import type {
@@ -26,6 +25,7 @@ import type {
   ModelId,
 } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
+import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -66,7 +66,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     specificBlob: ConnectorProviderModelMapping[T],
     transaction?: Transaction
   ) {
-    const createConnector = async (t: Transaction) => {
+    const connector = await withTransaction(async (t: Transaction) => {
       const connector = await ConnectorModel.create(
         {
           ...blob,
@@ -86,13 +86,9 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       connectorRes._configuration = configuration;
 
       return connectorRes;
-    };
+    }, transaction);
 
-    if (transaction) {
-      return createConnector(transaction);
-    }
-
-    return sequelizeConnection.transaction(createConnector);
+    return connector;
   }
 
   static async listByType(
@@ -212,7 +208,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
   }
 
   async delete(): Promise<Result<undefined, Error>> {
-    return sequelizeConnection.transaction(async (transaction) => {
+    return withTransaction(async (transaction) => {
       try {
         await this.strategy.delete(this, transaction);
 

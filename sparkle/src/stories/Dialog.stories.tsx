@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { Avatar, Button, Input } from "@sparkle/components";
+import { Avatar, Button, Input, SearchInput } from "@sparkle/components";
 
 import {
   Dialog,
@@ -164,32 +164,73 @@ export const LargeContent: Story = {
       <DialogTrigger asChild>
         <Button label="View Terms" />
       </DialogTrigger>
-      <DialogContent size="xl">
+      <DialogContent size="2xl" height="md">
         <DialogHeader>
           <DialogTitle>Terms of Service</DialogTitle>
         </DialogHeader>
-        <DialogContainer>
+        <DialogContainer
+          fixedContent={
+            <SearchInput
+              value=""
+              onChange={() => {}}
+              name="search-terms"
+              placeholder="Search terms..."
+            />
+          }
+        >
           <div className="s-space-y-4">
             <h3 className="s-font-semibold">1. Introduction</h3>
             <p className="s-text-sm s-text-muted-foreground">
               Lorem ipsum dolor sit amet consectetur adipisicing elit. Quod
               possimus sit modi reprehenderit sed dolorem nisi nostrum,
-              dignissimos tempora eligendi!
+              dignissimos tempora eligendi! Sed enim sapiente molestias pariatur
+              earum ipsum exercitationem corrupti voluptates?
             </p>
             <h3 className="s-font-semibold">2. Terms of Use</h3>
             <p className="s-text-sm s-text-muted-foreground">
               Lorem ipsum dolor sit amet consectetur adipisicing elit. Quod
               possimus sit modi reprehenderit sed dolorem nisi nostrum,
-              dignissimos tempora eligendi!
+              dignissimos tempora eligendi! Minus voluptatem iste accusantium
+              delectus nesciunt adipisci vitae earum similique.
             </p>
             <h3 className="s-font-semibold">3. Privacy Policy</h3>
             <p className="s-text-sm s-text-muted-foreground">
               Lorem ipsum dolor sit amet consectetur adipisicing elit. Quod
               possimus sit modi reprehenderit sed dolorem nisi nostrum,
-              dignissimos tempora eligendi!
+              dignissimos tempora eligendi! Facere explicabo aliquam corporis
+              error consectetur veniam assumenda.
+            </p>
+            <h3 className="s-font-semibold">4. Data Processing</h3>
+            <p className="s-text-sm s-text-muted-foreground">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit. Dolorem
+              ipsum inventore vel, voluptatem fugiat necessitatibus reiciendis
+              accusantium dignissimos optio error.
+            </p>
+            <h3 className="s-font-semibold">5. User Rights</h3>
+            <p className="s-text-sm s-text-muted-foreground">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit. Deserunt
+              architecto dolorem corrupti accusamus optio neque officia
+              perferendis molestiae.
+            </p>
+            <h3 className="s-font-semibold">6. Additional Terms</h3>
+            <p className="s-text-sm s-text-muted-foreground">
+              More content to make the dialog scrollable and test the fixed
+              search input functionality. Lorem ipsum dolor sit amet consectetur
+              adipisicing elit. Quod possimus sit modi reprehenderit sed dolorem
+              nisi nostrum.
             </p>
           </div>
         </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Accept",
+            variant: "highlight",
+          }}
+        />
       </DialogContent>
     </Dialog>
   ),

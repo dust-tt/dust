@@ -1,6 +1,5 @@
 use std::{io::prelude::*, time::Duration};
 
-use crate::info;
 use crate::{
     providers::{llm::LLMTokenUsage, provider::ProviderID},
     utils,
@@ -15,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
+use tracing::info;
 
 use super::{
     chat_messages::{
@@ -29,11 +29,45 @@ use super::{
 // OpenAI Responses API types
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum OpenAIResponsesInputContentType {
+    InputText,
+    InputImage,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIResponsesInputTextContent {
+    pub r#type: OpenAIResponsesInputContentType,
+    pub text: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIResponsesInputImageContent {
+    pub r#type: OpenAIResponsesInputContentType,
+    pub image_url: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[serde(untagged)]
+pub enum OpenAIResponsesInputContentBlock {
+    TextContent(OpenAIResponsesInputTextContent),
+    ImageContent(OpenAIResponsesInputImageContent),
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(untagged)]
+pub enum OpenAIResponsesMessageContent {
+    String(String),
+    Structured(Vec<OpenAIResponsesInputContentBlock>),
+}
+
+// Input items for the input array format
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum OpenAIResponseInputItem {
     Message {
         role: OpenAIChatMessageRole,
-        content: String,
+        content: OpenAIResponsesMessageContent,
     },
     Reasoning {
         id: String,
@@ -77,6 +111,8 @@ pub struct OpenAIResponseAPITool {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parameters: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strict: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -102,6 +138,8 @@ pub struct OpenAIResponsesRequest {
     pub include: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub previous_response_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_tier: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -174,6 +212,11 @@ pub struct OpenAIResponsesResponse {
 
 // OpenAI Responses API conversion functions
 
+/// Strips literal Unicode escape sequences like \u0000 and \u0004 from strings
+fn strip_null_chars(s: &str) -> String {
+    s.replace("\\u0000", "").replace("\\u0004", "")
+}
+
 fn responses_api_input_from_chat_messages(
     messages: &Vec<ChatMessage>,
     transform_system_messages: TransformSystemMessages,
@@ -184,15 +227,31 @@ fn responses_api_input_from_chat_messages(
         match message {
             ChatMessage::User(user_msg) => {
                 let content = match &user_msg.content {
-                    ContentBlock::Text(text) => text.clone(),
-                    ContentBlock::Mixed(mixed_contents) => mixed_contents
-                        .iter()
-                        .map(|c| match c {
-                            MixedContent::TextContent(tc) => tc.text.clone(),
-                            MixedContent::ImageContent(ic) => ic.image_url.url.clone(),
-                        })
-                        .collect::<Vec<String>>()
-                        .join("\n"),
+                    ContentBlock::Text(text) => OpenAIResponsesMessageContent::String(text.clone()),
+                    ContentBlock::Mixed(mixed_contents) => {
+                        let content_blocks: Vec<OpenAIResponsesInputContentBlock> = mixed_contents
+                            .iter()
+                            .map(|c| match c {
+                                MixedContent::TextContent(tc) => {
+                                    OpenAIResponsesInputContentBlock::TextContent(
+                                        OpenAIResponsesInputTextContent {
+                                            r#type: OpenAIResponsesInputContentType::InputText,
+                                            text: tc.text.clone(),
+                                        },
+                                    )
+                                }
+                                MixedContent::ImageContent(ic) => {
+                                    OpenAIResponsesInputContentBlock::ImageContent(
+                                        OpenAIResponsesInputImageContent {
+                                            r#type: OpenAIResponsesInputContentType::InputImage,
+                                            image_url: ic.image_url.url.clone(),
+                                        },
+                                    )
+                                }
+                            })
+                            .collect();
+                        OpenAIResponsesMessageContent::Structured(content_blocks)
+                    }
                 };
                 input_items.push(OpenAIResponseInputItem::Message {
                     role: OpenAIChatMessageRole::User,
@@ -208,7 +267,7 @@ fn responses_api_input_from_chat_messages(
                     };
                 input_items.push(OpenAIResponseInputItem::Message {
                     role,
-                    content: system_msg.content.clone(),
+                    content: OpenAIResponsesMessageContent::String(system_msg.content.clone()),
                 });
             }
             ChatMessage::Assistant(assistant_msg) => {
@@ -258,7 +317,7 @@ fn responses_api_input_from_chat_messages(
                         AssistantContentItem::TextContent { value } => {
                             input_items.push(OpenAIResponseInputItem::Message {
                                 role: OpenAIChatMessageRole::Assistant,
-                                content: value.clone(),
+                                content: OpenAIResponsesMessageContent::String(value.clone()),
                             });
                         }
                     }
@@ -348,7 +407,7 @@ fn assistant_chat_message_from_responses_api_output(
                 let fc = ChatFunctionCall {
                     id: call_id,
                     name,
-                    arguments,
+                    arguments: strip_null_chars(&arguments),
                 };
                 function_calls.push(fc.clone());
                 contents.push(AssistantContentItem::FunctionCall { value: fc });
@@ -387,8 +446,10 @@ pub async fn openai_responses_api_completion(
     transform_system_messages: TransformSystemMessages,
     provider_name: String,
 ) -> Result<LLMChatGeneration> {
-    let is_reasoning_model =
-        model_id.starts_with("o3") || model_id.starts_with("o1") || model_id.starts_with("o4");
+    let is_reasoning_model = model_id.starts_with("o3")
+        || model_id.starts_with("o1")
+        || model_id.starts_with("o4")
+        || model_id.starts_with("gpt-5");
 
     let (openai_org_id, instructions, reasoning_effort, store) = match &extras {
         None => (None, None, None, true),
@@ -402,9 +463,17 @@ pub async fn openai_responses_api_completion(
                 _ => None,
             },
             match v.get("reasoning_effort") {
-                Some(Value::String(r)) => Some(r.to_string()),
+                Some(Value::String(r)) => {
+                    if r == "light" {
+                        Some("low".to_string())
+                    } else {
+                        Some(r.to_string())
+                    }
+                }
                 _ => {
-                    if is_reasoning_model {
+                    if model_id.starts_with("gpt-5") {
+                        Some("minimal".to_string())
+                    } else if is_reasoning_model {
                         Some("medium".to_string())
                     } else {
                         None
@@ -427,6 +496,7 @@ pub async fn openai_responses_api_completion(
             name: f.name.clone(),
             description: f.description.clone(),
             parameters: f.parameters.clone(),
+            strict: Some(false),
         })
         .collect();
 
@@ -442,6 +512,13 @@ pub async fn openai_responses_api_completion(
         (None, None)
     };
 
+    // TODO(gpt-5): remove this once we have a proper service tier system
+    let service_tier = if model_id.starts_with("gpt-5") {
+        Some("priority".to_string())
+    } else {
+        None
+    };
+
     let request = OpenAIResponsesRequest {
         model: model_id.clone(),
         input: Some(input),
@@ -454,6 +531,7 @@ pub async fn openai_responses_api_completion(
         store: Some(store),
         include,
         previous_response_id: None,
+        service_tier,
     };
 
     let (response, request_id) = if event_sender.is_some() {
@@ -780,7 +858,7 @@ async fn streamed_responses_api_completion(
                             handle_response_completed(&mut state, event_data, &event_sender)?;
                             break 'stream;
                         }
-                        "response.error" | "response.failed" => {
+                        "response.failed" | "response.incomplete" => {
                             handle_response_error(event_data, &provider_name, &request_id)?;
                             break 'stream;
                         }
@@ -972,16 +1050,16 @@ fn handle_output_item_done(
                     }
                     "function_call" => {
                         // Parse as function call item.
-                        if let Ok(fc_item) =
+                        if let Ok(mut fc_item) =
                             serde_json::from_value::<OpenAIResponseOutputItem>(item)
                         {
                             if let OpenAIResponseOutputItem::FunctionCall {
-                                id: _,
-                                name: _,
-                                arguments: _,
-                                call_id: _,
-                            } = &fc_item
+                                ref mut arguments,
+                                ..
+                            } = &mut fc_item
                             {
+                                // Strip null characters from arguments
+                                *arguments = strip_null_chars(arguments);
                                 // Add to state.
                                 state.output_items.push(fc_item);
                             }
@@ -1056,12 +1134,32 @@ fn handle_response_error(
     provider_name: &str,
     request_id: &Option<String>,
 ) -> Result<()> {
-    let error_msg = if let Some(error) = event.error {
-        format!("Response error: {:?}", error)
-    } else if let Some(reason) = event.reason {
-        format!("Response failed: {}", reason)
-    } else {
-        "Unknown error in response".to_string()
+    let response = match event.response {
+        Some(response) => response,
+        None => {
+            info!("Missing response in error event: {:?}", event);
+            Err(anyhow!("Missing response in error event"))?
+        }
+    };
+
+    let error_msg = {
+        // Check for error field (response.failed event)
+        if let Some(error) = response.get("error") {
+            match error.get("message").and_then(|m| m.as_str()) {
+                Some(message) => format!("Response failed: {}", message),
+                None => format!("Response failed: {:?}", error),
+            }
+        }
+        // Check for incomplete_details (response.incomplete event)
+        else if let Some(incomplete) = response.get("incomplete_details") {
+            match incomplete.get("reason").and_then(|r| r.as_str()) {
+                Some(reason) => format!("Response incomplete: {}", reason),
+                None => format!("Response incomplete: {:?}", incomplete),
+            }
+        } else {
+            info!("Unknown error in OpenAI Responses API: {:?}", response);
+            "Unknown error in response".to_string()
+        }
     };
 
     Err(ModelError {
@@ -1069,4 +1167,158 @@ fn handle_response_error(
         message: format!("{}: {}", provider_name, error_msg),
         retryable: None,
     })?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::providers::chat_messages::{
+        ImageContent, ImageContentType, ImageUrlContent, SystemChatMessage, TextContent,
+        TextContentType, UserChatMessage,
+    };
+    use crate::providers::llm::ChatMessageRole;
+
+    #[test]
+    fn test_simple_text_input() {
+        // Simple case: single user message with text should produce array with one message
+        let user_message = ChatMessage::User(UserChatMessage {
+            content: ContentBlock::Text("Tell me a bedtime story".to_string()),
+            name: None,
+            role: ChatMessageRole::User,
+        });
+
+        let messages = vec![user_message];
+        let result =
+            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep)
+                .unwrap();
+
+        assert_eq!(result.len(), 1);
+        if let OpenAIResponseInputItem::Message { role, content } = &result[0] {
+            assert_eq!(*role, OpenAIChatMessageRole::User);
+            if let OpenAIResponsesMessageContent::String(text) = content {
+                assert_eq!(text, "Tell me a bedtime story");
+            } else {
+                panic!("Expected string content");
+            }
+        } else {
+            panic!("Expected message input item");
+        }
+    }
+
+    #[test]
+    fn test_mixed_content_with_image() {
+        // Mixed content with image should produce message array format
+        let user_message = ChatMessage::User(UserChatMessage {
+            content: ContentBlock::Mixed(vec![
+                MixedContent::TextContent(TextContent {
+                    r#type: TextContentType::Text,
+                    text: "what is in this image?".to_string(),
+                }),
+                MixedContent::ImageContent(ImageContent {
+                    r#type: ImageContentType::ImageUrl,
+                    image_url: ImageUrlContent {
+                        url: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg".to_string(),
+                    },
+                }),
+            ]),
+            name: None,
+            role: ChatMessageRole::User,
+        });
+
+        let messages = vec![user_message];
+        let result =
+            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep)
+                .unwrap();
+
+        assert_eq!(result.len(), 1);
+
+        if let OpenAIResponseInputItem::Message { role, content } = &result[0] {
+            assert_eq!(*role, OpenAIChatMessageRole::User);
+
+            if let OpenAIResponsesMessageContent::Structured(blocks) = content {
+                assert_eq!(blocks.len(), 2);
+
+                // Check text content
+                if let OpenAIResponsesInputContentBlock::TextContent(text_block) = &blocks[0] {
+                    assert_eq!(text_block.text, "what is in this image?");
+                    assert_eq!(
+                        text_block.r#type,
+                        OpenAIResponsesInputContentType::InputText
+                    );
+                } else {
+                    panic!("Expected text content block");
+                }
+
+                // Check image content
+                if let OpenAIResponsesInputContentBlock::ImageContent(image_block) = &blocks[1] {
+                    assert_eq!(image_block.image_url, "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg");
+                    assert_eq!(
+                        image_block.r#type,
+                        OpenAIResponsesInputContentType::InputImage
+                    );
+                } else {
+                    panic!("Expected image content block");
+                }
+            } else {
+                panic!("Expected structured content");
+            }
+        } else {
+            panic!("Expected message input item");
+        }
+    }
+
+    #[test]
+    fn test_multiple_messages_produces_array() {
+        // Multiple messages should always produce array format, even if all text
+        let messages = vec![
+            ChatMessage::System(SystemChatMessage {
+                content: "You are a helpful assistant.".to_string(),
+                role: ChatMessageRole::System,
+            }),
+            ChatMessage::User(UserChatMessage {
+                content: ContentBlock::Text("Hello!".to_string()),
+                name: None,
+                role: ChatMessageRole::User,
+            }),
+        ];
+
+        let result =
+            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep)
+                .unwrap();
+
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn test_input_image_serialization() {
+        // Test that the serialization produces the expected JSON format for input_image
+        let image_content = OpenAIResponsesInputImageContent {
+            r#type: OpenAIResponsesInputContentType::InputImage,
+            image_url: "https://example.com/image.jpg".to_string(),
+        };
+
+        let json = serde_json::to_value(&image_content).unwrap();
+
+        // Verify the JSON structure matches Responses API format
+        assert_eq!(json["type"], "input_image");
+        assert_eq!(json["image_url"], "https://example.com/image.jpg");
+
+        // Verify it's different from Chat API format (which would have nested image_url object)
+        assert!(json["image_url"].is_string()); // Direct string, not object
+    }
+
+    #[test]
+    fn test_input_text_serialization() {
+        // Test that the serialization produces the expected JSON format for input_text
+        let text_content = OpenAIResponsesInputTextContent {
+            r#type: OpenAIResponsesInputContentType::InputText,
+            text: "Hello world".to_string(),
+        };
+
+        let json = serde_json::to_value(&text_content).unwrap();
+
+        // Verify the JSON structure matches Responses API format
+        assert_eq!(json["type"], "input_text");
+        assert_eq!(json["text"], "Hello world");
+    }
 }

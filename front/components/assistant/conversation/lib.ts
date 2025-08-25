@@ -65,7 +65,7 @@ export async function submitMessage({
   user,
   conversationId,
   messageData,
-  forceAsync = false,
+  executionMode,
 }: {
   owner: WorkspaceType;
   user: UserType;
@@ -76,7 +76,7 @@ export async function submitMessage({
     contentFragments: ContentFragmentsType;
     clientSideMCPServerIds?: string[];
   };
-  forceAsync?: boolean;
+  executionMode?: string;
 }): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
   const { input, mentions, contentFragments, clientSideMCPServerIds } =
     messageData;
@@ -144,7 +144,7 @@ export async function submitMessage({
   }
 
   // Create a new user message.
-  const queryParams = forceAsync ? "?async=true" : "";
+  const queryParams = executionMode ? `?execution=${executionMode}` : "";
   const mRes = await fetch(
     `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages${queryParams}`,
     {
@@ -221,7 +221,7 @@ export async function createConversationWithMessage({
   messageData,
   visibility = "unlisted",
   title,
-  forceAsync = false,
+  executionMode,
 }: {
   owner: WorkspaceType;
   user: UserType;
@@ -230,13 +230,19 @@ export async function createConversationWithMessage({
     mentions: MentionType[];
     contentFragments: ContentFragmentsType;
     clientSideMCPServerIds?: string[];
+    selectedMCPServerViewIds?: string[];
   };
   visibility?: ConversationVisibility;
   title?: string;
-  forceAsync?: boolean;
+  executionMode?: string;
 }): Promise<Result<ConversationType, SubmitMessageError>> {
-  const { input, mentions, contentFragments, clientSideMCPServerIds } =
-    messageData;
+  const {
+    input,
+    mentions,
+    contentFragments,
+    clientSideMCPServerIds,
+    selectedMCPServerViewIds,
+  } = messageData;
 
   const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> = {
     title: title ?? null,
@@ -247,6 +253,7 @@ export async function createConversationWithMessage({
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
         profilePictureUrl: user.image,
         clientSideMCPServerIds,
+        selectedMCPServerViewIds,
       },
       mentions,
     },
@@ -284,7 +291,7 @@ export async function createConversationWithMessage({
   };
 
   // Create new conversation and post the initial message at the same time.
-  const queryParams = forceAsync ? "?async=true" : "";
+  const queryParams = executionMode ? `?execution=${executionMode}` : "";
   const cRes = await fetch(
     `/api/w/${owner.sId}/assistant/conversations${queryParams}`,
     {

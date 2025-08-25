@@ -185,6 +185,7 @@ async function _upsertDataSourceDocument({
         if (axios.isAxiosError(e) && e.config?.data) {
           e.config.data = "[REDACTED]";
         }
+
         statsDClient.increment(
           "data_source_upserts_error.count",
           1,

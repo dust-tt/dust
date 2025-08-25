@@ -10,10 +10,15 @@ import InputBarContainer, {
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { DustError } from "@app/lib/error";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
-import { useConversation } from "@app/lib/swr/conversations";
+import {
+  useAddDeleteConversationTool,
+  useConversation,
+  useConversationTools,
+} from "@app/lib/swr/conversations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 import type {
@@ -38,7 +43,8 @@ interface AssistantInputBarProps {
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragments: ContentFragmentsType
+    contentFragments: ContentFragmentsType,
+    selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
@@ -47,7 +53,7 @@ interface AssistantInputBarProps {
   disableAutoFocus: boolean;
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
-  disableButton?: boolean;
+  disable?: boolean;
 }
 
 /**
@@ -65,9 +71,9 @@ export function AssistantInputBar({
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   isFloating = true,
-  disableButton = false,
+  disable = false,
 }: AssistantInputBarProps) {
-  const [disableSendButton, setDisableSendButton] = useState(disableButton);
+  const [disableSendButton, setDisableSendButton] = useState(disable);
   const [isFocused, setIsFocused] = useState(false);
   const rainbowEffectRef = useRef<HTMLDivElement>(null);
 
@@ -183,6 +189,41 @@ export function AssistantInputBar({
     };
   }, []);
 
+  // Tools selection
+
+  const [selectedMCPServerViewIds, setSelectedMCPServerViewIds] = useState<
+    string[]
+  >([]);
+
+  const { conversationTools } = useConversationTools({
+    conversationId,
+    workspaceId: owner.sId,
+  });
+
+  // The truth is in the conversationTools, we need to update the selectedMCPServerViewIds when the conversationTools change.
+  useEffect(() => {
+    setSelectedMCPServerViewIds(conversationTools.map((tool) => tool.sId));
+  }, [conversationTools]);
+
+  const { addTool, deleteTool } = useAddDeleteConversationTool({
+    conversationId,
+    workspaceId: owner.sId,
+  });
+
+  const handleMCPServerViewSelect = (serverView: MCPServerViewType) => {
+    // Optimistic update
+    setSelectedMCPServerViewIds((prev) => [...prev, serverView.sId]);
+    void addTool(serverView.sId);
+  };
+
+  const handleMCPServerViewDeselect = (serverView: MCPServerViewType) => {
+    // Optimistic update
+    setSelectedMCPServerViewIds((prev) =>
+      prev.filter((sv) => sv !== serverView.sId)
+    );
+    void deleteTool(serverView.sId);
+  };
+
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
 
@@ -207,15 +248,22 @@ export function AssistantInputBar({
       setLoading(true);
       setDisableSendButton(true);
 
-      const r = await onSubmit(markdown, mentions, {
-        uploaded: fileUploaderService.getFileBlobs().map((cf) => {
-          return {
-            title: cf.filename,
-            fileId: cf.fileId,
-          };
-        }),
-        contentNodes: attachedNodes,
-      });
+      const r = await onSubmit(
+        markdown,
+        mentions,
+        {
+          uploaded: fileUploaderService.getFileBlobs().map((cf) => {
+            return {
+              title: cf.filename,
+              fileId: cf.fileId,
+            };
+          }),
+          contentNodes: attachedNodes,
+        },
+        // Only send the selectedMCPServerViewIds if we are creating a new conversation.
+        // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
+        selectedMCPServerViewIds
+      );
 
       setLoading(false);
       setDisableSendButton(false);
@@ -298,8 +346,8 @@ export function AssistantInputBar({
   }, [isStopping, generationContext.generatingMessages, conversationId]);
 
   useEffect(() => {
-    setDisableSendButton(disableButton);
-  }, [disableButton]);
+    setDisableSendButton(disable);
+  }, [disable]);
 
   return (
     <div className="flex w-full flex-col">
@@ -308,7 +356,6 @@ export function AssistantInputBar({
       ) && (
         <div className="flex justify-center px-4 pb-4">
           <Button
-            className="mt-4"
             variant="outline"
             label={isStopping ? "Stopping generation..." : "Stop generation"}
             icon={StopIcon}
@@ -323,17 +370,18 @@ export function AssistantInputBar({
           className="w-full"
           containerClassName="w-full"
           size={isFocused ? "large" : "medium"}
-          disabled={!isFloating}
+          disabled={disable || !isFloating}
         >
           <div
             className={classNames(
               "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-3 sm:flex-row",
-              "rounded-3xl transition-all",
+              "rounded-2xl transition-all",
               "bg-muted-background dark:bg-muted-background-night",
               "border",
               "border-border-dark dark:border-border-dark-night",
               "sm:border-border-dark/50 sm:focus-within:border-border-dark",
               "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
+              disable && "cursor-not-allowed opacity-75",
               isFloating
                 ? classNames(
                     "focus-within:ring-1 dark:focus-within:ring-1",
@@ -369,8 +417,12 @@ export function AssistantInputBar({
                 disableSendButton={
                   disableSendButton || fileUploaderService.isProcessingFiles
                 }
+                disableTextInput={disable}
                 onNodeSelect={handleNodesAttachmentSelect}
                 onNodeUnselect={handleNodesAttachmentRemove}
+                selectedMCPServerViewIds={selectedMCPServerViewIds}
+                onMCPServerViewSelect={handleMCPServerViewSelect}
+                onMCPServerViewDeselect={handleMCPServerViewDeselect}
                 attachedNodes={attachedNodes}
               />
             </div>
@@ -389,25 +441,28 @@ export function FixedAssistantInputBar({
   additionalAgentConfiguration,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
+  disable = false,
 }: {
   owner: WorkspaceType;
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragments: ContentFragmentsType
+    contentFragments: ContentFragmentsType,
+    selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
   stickyMentions?: AgentMention[];
   conversationId: string | null;
   additionalAgentConfiguration?: LightAgentConfigurationType;
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus?: boolean;
+  disable?: boolean;
 }) {
   return (
     <div
       className={cn(
         "sticky bottom-0 z-20 flex max-h-screen w-full",
         "pb-2",
-        "sm:w-full sm:max-w-3xl sm:pb-8"
+        "sm:w-full sm:max-w-3xl sm:pb-4"
       )}
     >
       <AssistantInputBar
@@ -418,6 +473,7 @@ export function FixedAssistantInputBar({
         additionalAgentConfiguration={additionalAgentConfiguration}
         actions={actions}
         disableAutoFocus={disableAutoFocus}
+        disable={disable}
       />
     </div>
   );

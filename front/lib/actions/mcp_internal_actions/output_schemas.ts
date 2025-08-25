@@ -452,6 +452,7 @@ export const BrowseResultResourceSchema = z.object({
   requestedUrl: z.string(),
   uri: z.string(), // Browsed url, might differ from the requested url
   text: z.string(),
+  html: z.string().optional(),
   title: z.string().optional(),
   description: z.string().optional(),
   responseCode: z.string(),
@@ -499,12 +500,63 @@ export const isRunAgentQueryResourceType = (
   );
 };
 
+// Agent creation results.
+
+export const AgentCreationResultResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_CREATION_RESULT),
+  text: z.string(), // Required by MCP SDK
+  uri: z.string(),
+  mainAgent: z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string(),
+    pictureUrl: z.string(),
+    url: z.string(),
+  }),
+  subAgent: z.optional(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      description: z.string(),
+      pictureUrl: z.string(),
+      url: z.string(),
+    })
+  ),
+});
+
+export type AgentCreationResultResourceType = z.infer<
+  typeof AgentCreationResultResourceSchema
+>;
+
+export const isAgentCreationResultResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: AgentCreationResultResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    AgentCreationResultResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 export const RunAgentResultResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT),
   conversationId: z.string(),
   text: z.string(),
   chainOfThought: z.string().optional(),
   uri: z.string(),
+  refs: z
+    .record(
+      z.string(),
+      z.object({
+        description: z.string().optional(),
+        href: z.string().optional(),
+        title: z.string(),
+        provider: z.string(),
+      })
+    )
+    .optional(),
 });
 
 export type RunAgentResultResourceType = z.infer<
@@ -600,6 +652,44 @@ export const isDataSourceNodeListType = (
   return (
     outputBlock.type === "resource" &&
     DataSourceNodeListSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+const RenderedWarehouseNodeSchema = z.object({
+  nodeId: z.string(),
+  title: z.string(),
+  parentTitle: z.string().nullable(),
+  mimeType: z.string(),
+  hasChildren: z.boolean(),
+  connectorProvider: z.enum(CONNECTOR_PROVIDERS).nullable(),
+  sourceUrl: z.undefined(),
+  lastUpdatedAt: z.undefined(),
+});
+export type RenderedWarehouseNodeType = z.infer<
+  typeof RenderedWarehouseNodeSchema
+>;
+
+export const WAREHOUSES_BROWSE_MIME_TYPE =
+  "application/vnd.dust.tool-output.data-warehouses-browse";
+
+const WarehousesBrowseSchema = z.object({
+  mimeType: z.literal(WAREHOUSES_BROWSE_MIME_TYPE),
+  uri: z.literal(""),
+  text: z.string(),
+  nodeId: z.string().nullable(),
+  data: z.array(RenderedWarehouseNodeSchema),
+  nextPageCursor: z.string().nullable(),
+  resultCount: z.number(),
+});
+
+export type WarehousesBrowseType = z.infer<typeof WarehousesBrowseSchema>;
+
+export const isWarehousesBrowseType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is { type: "resource"; resource: WarehousesBrowseType } => {
+  return (
+    outputBlock.type === "resource" &&
+    WarehousesBrowseSchema.safeParse(outputBlock.resource).success
   );
 };
 
@@ -751,15 +841,73 @@ const NotificationRunAgentContentSchema = z.object({
   query: z.string(),
 });
 
-type RunAgentProgressOutput = z.infer<typeof NotificationRunAgentContentSchema>;
+type RunAgentQueryProgressOutput = z.infer<
+  typeof NotificationRunAgentContentSchema
+>;
 
-export function isRunAgentProgressOutput(
+export function isRunAgentQueryProgressOutput(
   output: ProgressNotificationOutput
-): output is RunAgentProgressOutput {
+): output is RunAgentQueryProgressOutput {
   return (
     output !== undefined &&
     output.type === "run_agent" &&
     "childAgentId" in output
+  );
+}
+
+const NotificationRunAgentChainOfThoughtSchema = z.object({
+  type: z.literal("run_agent_chain_of_thought"),
+  childAgentId: z.string(),
+  conversationId: z.string(),
+  chainOfThought: z.string(),
+});
+
+const NotificationRunAgentGenerationTokensSchema = z.object({
+  type: z.literal("run_agent_generation_tokens"),
+  childAgentId: z.string(),
+  conversationId: z.string(),
+  text: z.string(),
+});
+
+type RunAgentChainOfThoughtProgressOutput = z.infer<
+  typeof NotificationRunAgentChainOfThoughtSchema
+>;
+
+export function isRunAgentChainOfThoughtProgressOutput(
+  output: ProgressNotificationOutput
+): output is RunAgentChainOfThoughtProgressOutput {
+  return (
+    output !== undefined &&
+    output.type === "run_agent_chain_of_thought" &&
+    "chainOfThought" in output
+  );
+}
+
+type RunAgentGenerationTokensProgressOutput = z.infer<
+  typeof NotificationRunAgentGenerationTokensSchema
+>;
+
+export function isRunAgentGenerationTokensProgressOutput(
+  output: ProgressNotificationOutput
+): output is RunAgentGenerationTokensProgressOutput {
+  return (
+    output !== undefined &&
+    output.type === "run_agent_generation_tokens" &&
+    "text" in output &&
+    !("chainOfThought" in output)
+  );
+}
+
+export function isRunAgentProgressOutput(
+  output: ProgressNotificationOutput
+): output is
+  | RunAgentQueryProgressOutput
+  | RunAgentChainOfThoughtProgressOutput
+  | RunAgentGenerationTokensProgressOutput {
+  return (
+    isRunAgentQueryProgressOutput(output) ||
+    isRunAgentChainOfThoughtProgressOutput(output) ||
+    isRunAgentGenerationTokensProgressOutput(output)
   );
 }
 
@@ -768,6 +916,8 @@ export const ProgressNotificationOutputSchema = z
     NotificationImageContentSchema,
     NotificationInteractiveFileContentSchema,
     NotificationRunAgentContentSchema,
+    NotificationRunAgentChainOfThoughtSchema,
+    NotificationRunAgentGenerationTokensSchema,
     NotificationTextContentSchema,
     NotificationToolApproveBubbleUpContentSchema,
   ])

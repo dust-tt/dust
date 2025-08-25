@@ -10,7 +10,7 @@ export type DefaultRemoteMCPServerConfig = {
   icon: InternalAllowedIconType;
   documentationUrl?: string;
   connectionInstructions?: string;
-  authMethod: "bearer" | "oauth" | null;
+  authMethod: "bearer" | "oauth-dynamic" | null;
   supportedOAuthUseCases?: MCPOAuthUseCase[];
   toolStakes?: Record<string, "high" | "low" | "never_ask">;
 };
@@ -60,7 +60,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     url: "https://mcp.linear.app/sse",
     icon: "LinearLogo",
     documentationUrl: "https://linear.app/docs",
-    authMethod: "oauth",
+    authMethod: "oauth-dynamic",
     toolStakes: {
       search_documentation: "never_ask",
       list_comments: "never_ask",
@@ -86,6 +86,65 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       update_project: "high",
     },
   },
+  //Removed temporaly see https://dust4ai.slack.com/archives/C050SM8NSPK/p1754397289272209
+  /*
+  {
+    id: 10002,
+    name: "Datadog",
+    description:
+      "Datadog tools for monitoring and observability (Region: US1).",
+    url: "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp",
+    documentationUrl: "https://docs.datadoghq.com/bits_ai/mcp_server/?site=us1",
+    icon: "MagnifyingGlassIcon",
+    authMethod: "oauth",
+    toolStakes: {
+      ask_docs: "never_ask",
+      get_active_hosts_count: "never_ask",
+      get_eventsSearch: "never_ask",
+      get_incident: "never_ask",
+      get_metrics: "never_ask",
+      get_monitors: "never_ask",
+      get_synthetics_tests: "never_ask",
+      get_trace: "never_ask",
+      list_dashboards: "never_ask",
+      list_hosts: "never_ask",
+      list_incidents: "never_ask",
+      list_metrics: "never_ask",
+      list_services: "never_ask",
+      list_spans: "never_ask",
+      search_logs: "never_ask",
+      search_rum_events: "never_ask",
+    },
+  },
+  {
+    id: 10003,
+    name: "Datadog Europe",
+    description:
+      "Datadog tools for monitoring and observability (Region: EU1).",
+    url: "https://mcp.datadoghq.eu/api/unstable/mcp-server/mcp",
+    documentationUrl: "https://docs.datadoghq.com/bits_ai/mcp_server/?site=eu1",
+    icon: "MagnifyingGlassIcon",
+    authMethod: "oauth",
+    toolStakes: {
+      ask_docs: "never_ask",
+      get_active_hosts_count: "never_ask",
+      get_eventsSearch: "never_ask",
+      get_incident: "never_ask",
+      get_metrics: "never_ask",
+      get_monitors: "never_ask",
+      get_synthetics_tests: "never_ask",
+      get_trace: "never_ask",
+      list_dashboards: "never_ask",
+      list_hosts: "never_ask",
+      list_incidents: "never_ask",
+      list_metrics: "never_ask",
+      list_services: "never_ask",
+      list_spans: "never_ask",
+      search_logs: "never_ask",
+      search_rum_events: "never_ask",
+    },
+  },
+  */
 ];
 
 export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {

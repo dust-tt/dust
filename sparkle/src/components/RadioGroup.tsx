@@ -7,7 +7,7 @@ import { Label } from "@sparkle/components/Label";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { cn } from "@sparkle/lib/utils";
 
-const radioStyles = cva(
+export const radioStyles = cva(
   cn(
     "s-aspect-square s-rounded-full s-border",
     "s-s-border-border-dark dark:s-border-primary-500",
@@ -32,7 +32,7 @@ const radioStyles = cva(
   }
 );
 
-const radioIndicatorStyles = cva(
+export const radioIndicatorStyles = cva(
   "s-bg-primary dark:s-bg-primary-night s-flex s-items-center s-justify-center s-rounded-full",
   {
     variants: {

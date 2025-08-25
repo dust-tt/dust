@@ -1,7 +1,10 @@
 import {
   ArrowPathIcon,
   Button,
+  ContentMessage,
+  Hoverable,
   Label,
+  MagicIcon,
   Page,
   Separator,
   XMarkIcon,
@@ -12,6 +15,7 @@ import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
 import type { Editor, Extensions, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { useRouter } from "next/router";
 import React, { useEffect, useMemo, useState } from "react";
 
 import {
@@ -20,17 +24,20 @@ import {
 } from "@app/components/assistant/conversation/input_bar/editor/extensions/AgentBuilderInstructionsAutoCompleteExtension";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
+import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import { InstructionDiffExtension } from "@app/components/assistant_builder/instructions/InstructionDiffExtension";
 import { InstructionHistory } from "@app/components/assistant_builder/instructions/InstructionsHistory";
 import { InstructionSuggestions } from "@app/components/assistant_builder/instructions/InstructionSuggestions";
-import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
 } from "@app/lib/client/assistant_builder/instructions";
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
+import { useUserMetadata } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { setUserMetadataFromClient } from "@app/lib/user";
 import { classNames } from "@app/lib/utils";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
   ModelConfigurationType,
@@ -39,6 +46,7 @@ import type {
 } from "@app/types";
 import { isSupportingResponseFormat } from "@app/types";
 
+const TEMPLATE_CALLOUT_METADATA_KEY = "template_callout_dismissed";
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 const useInstructionEditorService = (editor: Editor | null) => {
@@ -66,9 +74,7 @@ const BASE_EXTENSIONS: Extensions = [
 
 export function InstructionScreen({
   owner,
-  builderState,
-  setBuilderState,
-  setEdited,
+
   resetAt,
   isUsingTemplate,
   instructionsError,
@@ -80,11 +86,6 @@ export function InstructionScreen({
   setIsInstructionDiffMode,
 }: {
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
-  setBuilderState: (
-    statefn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
   resetAt: number | null;
   isUsingTemplate: boolean;
   instructionsError: string | null;
@@ -95,9 +96,18 @@ export function InstructionScreen({
   isInstructionDiffMode: boolean;
   setIsInstructionDiffMode: (isDiffMode: boolean) => void;
 }) {
+  const { builderState, setBuilderState, setEdited } =
+    useAssistantBuilderContext();
+
+  const { metadata, isMetadataLoading } = useUserMetadata(
+    TEMPLATE_CALLOUT_METADATA_KEY
+  );
+
+  const router = useRouter();
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
+  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
 
   const extensions = useMemo(() => {
     return getAgentBuilderInstructionsExtensionsForWorkspace(
@@ -264,6 +274,25 @@ export function InstructionScreen({
     hour12: true,
   });
 
+  const [isTemplateCalloutDismissed, setIsTemplateCalloutDismissed] =
+    useState(false);
+
+  const mustShowTemplateCallout = useMemo(() => {
+    if (isUsingTemplate || agentConfigurationHistory || isMetadataLoading) {
+      return false;
+    }
+
+    return metadata?.value !== "true";
+  }, [metadata, isMetadataLoading, isUsingTemplate, agentConfigurationHistory]);
+
+  const dismissTemplateCallout = () => {
+    setIsTemplateCalloutDismissed(true);
+    void setUserMetadataFromClient({
+      key: TEMPLATE_CALLOUT_METADATA_KEY,
+      value: "true",
+    });
+  };
+
   const restoreVersion = () => {
     const text = compareVersion?.instructions;
     if (!editor || !text) {
@@ -288,11 +317,72 @@ export function InstructionScreen({
 
   return (
     <div className="flex h-full flex-col gap-4">
+      {mustShowTemplateCallout && (
+        <div
+          className={classNames(
+            "",
+            isTemplateCalloutDismissed && "animate-fade-collapse"
+          )}
+        >
+          <ContentMessage
+            title="Don't know how get started?"
+            variant="highlight"
+            size="sm"
+            icon={MagicIcon}
+          >
+            We've carefully crafted some templates for you!
+            <div className="mt-2">
+              <Button
+                variant="highlight"
+                size="xs"
+                onClick={() => {
+                  void router.push(
+                    getAgentBuilderRoute(
+                      owner.sId,
+                      "create",
+                      hasAgentBuilderV2,
+                      "flow=personal_assistants"
+                    )
+                  );
+                }}
+                label="Browse templates"
+              />
+              <Button
+                variant="secondary"
+                size="xs"
+                onClick={dismissTemplateCallout}
+                label="Dismiss"
+              />
+            </div>
+          </ContentMessage>
+        </div>
+      )}
       <div className="flex flex-col items-center justify-between sm:flex-row">
         <Page.P>
           <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Command or guideline you provide to your agent to direct its
             responses.
+            {!mustShowTemplateCallout &&
+              !isUsingTemplate &&
+              !agentConfigurationHistory &&
+              !isMetadataLoading && (
+                <>
+                  {" "}
+                  You can also use one of our{" "}
+                  <Hoverable
+                    variant="highlight"
+                    href={getAgentBuilderRoute(
+                      owner.sId,
+                      "create",
+                      hasAgentBuilderV2
+                    )}
+                    target="_blank"
+                  >
+                    templates
+                  </Hoverable>
+                  .
+                </>
+              )}
           </span>
         </Page.P>
         <div className="flex w-full flex-col gap-2 sm:w-auto">
@@ -368,7 +458,7 @@ export function InstructionScreen({
       )}
 
       <div className="flex h-full flex-col gap-1">
-        <div className="relative h-full min-h-60 grow gap-1 p-px">
+        <div className="dd-privacy-mask relative h-full min-h-60 grow gap-1 p-px">
           <EditorContent
             editor={editor}
             className="absolute bottom-0 left-0 right-0 top-0"

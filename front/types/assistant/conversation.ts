@@ -1,4 +1,7 @@
-import type { MCPActionType } from "@app/lib/actions/mcp";
+import type {
+  MCPActionType,
+  MCPApproveExecutionEvent,
+} from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 
 import type { ContentFragmentType } from "../content_fragment";
@@ -91,6 +94,7 @@ export type UserMessageContext = {
   profilePictureUrl: string | null;
   origin?: UserMessageOrigin | null;
   clientSideMCPServerIds?: string[];
+  selectedMCPServerViewIds?: string[];
 };
 
 export type UserMessageType = {
@@ -147,6 +151,10 @@ export type BaseAgentMessageType = {
   error: ErrorContent | null;
 };
 
+export type ParsedContentItem =
+  | { kind: "reasoning"; content: string }
+  | { kind: "action"; action: MCPActionType };
+
 export type AgentMessageType = BaseAgentMessageType & {
   id: ModelId;
   agentMessageId: ModelId;
@@ -160,6 +168,7 @@ export type AgentMessageType = BaseAgentMessageType & {
     content: string;
   }>;
   contents: Array<{ step: number; content: AgentContentItemType }>;
+  parsedContents: Record<number, Array<ParsedContentItem>>;
 };
 
 export type LightAgentMessageType = BaseAgentMessageType & {
@@ -195,7 +204,11 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
  * when a user 'tests' an agent not in their list using the "test" button:
  * those conversations do not show in users' histories.
  */
-export type ConversationVisibility = "unlisted" | "deleted" | "test";
+export type ConversationVisibility =
+  | "unlisted"
+  | "triggered"
+  | "deleted"
+  | "test";
 
 /**
  * A lighter version of Conversation without the content (for menu display).
@@ -204,6 +217,8 @@ export type ConversationWithoutContentType = {
   id: ModelId;
   created: number;
   updated?: number;
+  unread?: boolean;
+  actionRequired?: boolean;
   owner: WorkspaceType;
   sId: string;
   title: string | null;
@@ -218,17 +233,6 @@ export type ConversationWithoutContentType = {
  */
 export type ConversationType = ConversationWithoutContentType & {
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
-};
-
-export type UserParticipant = {
-  username: string;
-  fullName: string | null;
-  pictureUrl: string | null;
-};
-export type AgentParticipant = {
-  configurationId: string;
-  name: string;
-  pictureUrl: string | null;
 };
 
 export type ParticipantActionType = "posted" | "reacted" | "subscribed";
@@ -250,8 +254,8 @@ export interface UserParticipantType {
 }
 
 export interface ConversationParticipantsType {
-  agents: AgentParticipant[];
-  users: UserParticipant[];
+  agents: AgentParticipantType[];
+  users: UserParticipantType[];
 }
 
 export const CONVERSATION_ERROR_TYPES = [
@@ -325,3 +329,19 @@ export type ConversationTitleEvent = {
   created: number;
   title: string;
 };
+
+export type ConversationMCPServerViewType = {
+  id: ModelId;
+  workspaceId: ModelId;
+  conversationId: ModelId;
+  mcpServerViewId: ModelId;
+  userId: ModelId;
+  enabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type MCPActionValidationRequest = Omit<
+  MCPApproveExecutionEvent,
+  "type" | "created" | "configurationId"
+>;

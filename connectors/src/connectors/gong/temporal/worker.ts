@@ -24,11 +24,13 @@ export async function runGongWorker() {
     reuseV8Context: true,
     namespace,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
-        },
-        () => new GongCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "gong"),
+        }),
+        () => ({
+          inbound: new GongCastKnownErrorsInterceptor(),
+        }),
       ],
     },
     bundlerOptions: {

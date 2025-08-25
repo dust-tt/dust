@@ -1,4 +1,5 @@
 import { Button } from "@dust-tt/sparkle";
+import Head from "next/head";
 import Link from "next/link";
 import type { ReactElement } from "react";
 
@@ -10,6 +11,7 @@ import {
   Metrics,
   pageSettings,
   Quote,
+  salesFAQItems,
   Stories,
   UseCases,
 } from "@app/components/home/content/Solutions/configs/salesConfig";
@@ -22,6 +24,7 @@ import {
   QuoteSection,
 } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
+import { FAQ } from "@app/components/home/FAQ";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import {
@@ -51,6 +54,16 @@ const GRID_SECTION_CLASSES = classNames(
 export default function Sales() {
   return (
     <>
+      <Head>
+        <title key="title">
+          AI sales Agents: build custom agents in minutes | Dust
+        </title>
+        <meta
+          key="description"
+          name="description"
+          content="Build custom AI sales agents that integrate with your CRM and tools. Automate RFPs, personalize outreach, boost team performance. Deploy in minutes, no coding required. Start free."
+        />
+      </Head>
       <div className="container flex w-full flex-col gap-16 px-2 py-2 pb-12">
         <HeroSection {...Hero} accentColor={pageSettings.accentColor} />
         <Grid>
@@ -76,6 +89,9 @@ export default function Sales() {
             />
           </div>
           <TrustedBy />
+          <div className={GRID_SECTION_CLASSES}>
+            <FAQ title="FAQ" items={salesFAQItems} />
+          </div>
           <div className={GRID_SECTION_CLASSES}>
             {Hero.ctaButtons && (
               <div className="mt-4 flex justify-center gap-4">

@@ -1,4 +1,4 @@
-import { isEqual } from "lodash";
+import isEqual from "lodash/isEqual";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -10,10 +10,12 @@ import { submitAssistantBuilderForm } from "@app/components/assistant_builder/su
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
+import { useConversation } from "@app/lib/swr/conversations";
 import type {
   AgentMention,
   ContentFragmentsType,
   ConversationType,
+  ConversationWithoutContentType,
   LightAgentConfigurationType,
   MentionType,
   Result,
@@ -162,17 +164,25 @@ export function useTryAssistantCore({
 }: {
   owner: WorkspaceType;
   user: UserType | null;
-  openWithConversation?: ConversationType;
+  openWithConversation?: ConversationWithoutContentType;
   assistant: LightAgentConfigurationType | null;
   createDraftAgent?: () => Promise<LightAgentConfigurationType | null>;
 }) {
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([
     { configurationId: assistant?.sId as string },
   ]);
-  const [conversation, setConversation] = useState<ConversationType | null>(
-    openWithConversation ?? null
+  const [conversationId, setConversationId] = useState<string | null>(
+    openWithConversation?.sId ?? null
   );
   const sendNotification = useSendNotification();
+
+  const { conversation } = useConversation({
+    conversationId: conversationId || "",
+    workspaceId: owner.sId,
+    options: {
+      disabled: !conversationId,
+    },
+  });
 
   const handleSubmit = async (
     input: string,
@@ -226,10 +236,9 @@ export function useTryAssistantCore({
         user,
         messageData,
         visibility: "test",
-        title: `Trying @${currentAssistant?.name}`,
       });
       if (result.isOk()) {
-        setConversation(result.value);
+        setConversationId(result.value.sId);
         return new Ok(undefined);
       }
       sendNotification({
@@ -273,6 +282,10 @@ export function useTryAssistantCore({
   const resetConversation = useCallback(() => {
     setConversation(null);
   }, []);
+
+  const setConversation = (newConversation: ConversationType | null) => {
+    setConversationId(newConversation?.sId || null);
+  };
 
   return {
     stickyMentions,

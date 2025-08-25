@@ -8,7 +8,6 @@ import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
 import { getFeatureFlags, isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -94,19 +93,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     // We reset the scope according to the current flow. This ensures that cloning a workspace
     // agent with flow `personal_assistants` will initialize the agent as private.
     configuration.scope = flow === "personal_assistants" ? "hidden" : "visible";
-  } else if (templateId) {
-    const agentConfigRes = await generateMockAgentConfigurationFromTemplate(
-      templateId,
-      flow
-    );
-
-    if (agentConfigRes.isErr()) {
-      return {
-        notFound: true,
-      };
-    }
-
-    configuration = agentConfigRes.value;
   }
 
   const user = auth.getNonNullableUser().toJSON();
@@ -142,8 +128,18 @@ export default function CreateAgent({
   }
 
   return (
-    <AgentBuilderProvider owner={owner} user={user}>
-      <AgentBuilder />
+    <AgentBuilderProvider
+      owner={owner}
+      user={user}
+      assistantTemplate={assistantTemplate}
+    >
+      <AgentBuilder
+        agentConfiguration={
+          agentConfiguration && "sId" in agentConfiguration
+            ? agentConfiguration
+            : undefined
+        }
+      />
     </AgentBuilderProvider>
   );
 }

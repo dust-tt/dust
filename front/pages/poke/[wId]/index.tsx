@@ -12,7 +12,7 @@ import {
   SheetTrigger,
 } from "@dust-tt/sparkle";
 import { format } from "date-fns/format";
-import { keyBy } from "lodash";
+import keyBy from "lodash/keyBy";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -25,6 +25,7 @@ import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { PluginRunsDataTable } from "@app/components/poke/plugins/table";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { SpaceDataTable } from "@app/components/poke/spaces/table";
 import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/table";
@@ -61,6 +62,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   whitelistableFeatures: WhitelistableFeature[];
   workspaceVerifiedDomains: WorkspaceDomain[];
   workspaceCreationDay: string;
+  workosEnvironmentId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const activeSubscription = auth.subscription();
@@ -108,6 +110,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       workspaceCreationDay: format(workspaceCreationDay, "yyyy-MM-dd"),
       extensionConfig: extensionConfig?.toJSON() ?? null,
       baseUrl: config.getClientFacingUrl(),
+      workosEnvironmentId: config.getWorkOSEnvironmentId(),
     },
   };
 });
@@ -122,6 +125,7 @@ const WorkspacePage = ({
   workspaceCreationDay,
   extensionConfig,
   baseUrl,
+  workosEnvironmentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
 
@@ -211,6 +215,7 @@ const WorkspacePage = ({
                 workspaceCreationDay={workspaceCreationDay}
                 extensionConfig={extensionConfig}
                 workspaceRetention={workspaceRetention}
+                workosEnvironmentId={workosEnvironmentId}
               />
               <div className="flex flex-grow flex-col gap-4">
                 <PluginList
@@ -227,6 +232,7 @@ const WorkspacePage = ({
                 />
               </div>
             </div>
+            <PluginRunsDataTable owner={owner} />
             <DataSourceDataTable owner={owner} />
             <DataSourceViewsDataTable owner={owner} />
             <MCPServerViewsDataTable owner={owner} />

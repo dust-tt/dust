@@ -25,8 +25,10 @@ import { useMentionDropdown } from "@app/components/assistant/conversation/input
 import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
@@ -41,6 +43,7 @@ import type {
 import { getSupportedFileExtensions } from "@app/types";
 
 export const INPUT_BAR_ACTIONS = [
+  "tools",
   "attachment",
   "assistants-list",
   "assistants-list-with-actions",
@@ -59,10 +62,14 @@ export interface InputBarContainerProps {
   actions: InputBarAction[];
   disableAutoFocus: boolean;
   disableSendButton: boolean;
+  disableTextInput: boolean;
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   attachedNodes: DataSourceViewContentNode[];
+  onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
+  onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
+  selectedMCPServerViewIds: string[];
 }
 
 const InputBarContainer = ({
@@ -75,10 +82,14 @@ const InputBarContainer = ({
   actions,
   disableAutoFocus,
   disableSendButton,
+  disableTextInput,
   fileUploaderService,
   onNodeSelect,
   onNodeUnselect,
   attachedNodes,
+  onMCPServerViewSelect,
+  onMCPServerViewDeselect,
+  selectedMCPServerViewIds,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -117,10 +128,17 @@ const InputBarContainer = ({
     suggestionHandler: mentionDropdown.getSuggestionHandler(),
   });
 
-  // Update the editor ref when the editor is created
+  // Update the editor ref when the editor is created.
   useEffect(() => {
     editorRef.current = editor;
   }, [editor]);
+
+  // Disable the editor when disableTextInput is true.
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(!disableTextInput);
+    }
+  }, [editor, disableTextInput]);
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
@@ -241,28 +259,35 @@ const InputBarContainer = ({
     "inline-block w-full",
     "border-0 px-2 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
     "whitespace-pre-wrap font-normal",
-    "pb-6 pt-4 sm:py-3.5" // Increased padding on mobile
+    "py-3.5"
   );
 
   return (
     <div
       id="InputBarContainer"
-      className="relative flex flex-1 cursor-text flex-col sm:flex-row sm:pt-0"
+      className="relative flex flex-1 cursor-text flex-row sm:pt-0"
+      onClick={(e) => {
+        // If e.target is not a child of a div with class "tiptap", then focus on the editor
+        if (!(e.target instanceof HTMLElement && e.target.closest(".tiptap"))) {
+          editorService.focusEnd();
+        }
+      }}
     >
-      <EditorContent
-        editor={editor}
-        className={classNames(
-          contentEditableClasses,
-          "scrollbar-hide",
-          "overflow-y-auto",
-          isExpanded
-            ? "h-[60vh] max-h-[60vh] lg:h-[80vh] lg:max-h-[80vh]"
-            : "max-h-64"
-        )}
-      />
-
-      <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-3 pr-3 sm:flex-col sm:border-0">
-        <div className="flex items-center py-0 sm:py-3.5">
+      <div className="flex w-0 flex-grow flex-col">
+        <EditorContent
+          disabled={disableTextInput}
+          editor={editor}
+          className={classNames(
+            contentEditableClasses,
+            "scrollbar-hide",
+            "overflow-y-auto",
+            disableTextInput && "cursor-not-allowed",
+            isExpanded
+              ? "h-[60vh] max-h-[60vh] lg:h-[80vh] lg:max-h-[80vh]"
+              : "max-h-64 min-h-24 sm:min-h-14"
+          )}
+        />
+        <div className="flex items-center pb-3 pt-0">
           {actions.includes("attachment") && (
             <>
               <input
@@ -286,8 +311,18 @@ const InputBarContainer = ({
                 onNodeSelect={onNodeSelect}
                 onNodeUnselect={onNodeUnselect}
                 attachedNodes={attachedNodes}
+                disabled={disableTextInput}
               />
             </>
+          )}
+          {actions.includes("tools") && (
+            <ToolsPicker
+              owner={owner}
+              selectedMCPServerViewIds={selectedMCPServerViewIds}
+              onSelect={onMCPServerViewSelect}
+              onDeselect={onMCPServerViewDeselect}
+              disabled={disableTextInput}
+            />
           )}
           {(actions.includes("assistants-list") ||
             actions.includes("assistants-list-with-actions")) && (
@@ -298,14 +333,22 @@ const InputBarContainer = ({
                 editorService.insertMention({ id: c.sId, label: c.name });
               }}
               assistants={allAssistants}
+              showDropdownArrow={false}
               showFooterButtons={actions.includes(
                 "assistants-list-with-actions"
               )}
+              disabled={disableTextInput}
             />
           )}
+        </div>
+      </div>
+
+      <div className="flex flex-col items-end justify-between gap-2 self-stretch pb-3 pr-3 pt-3 sm:border-0">
+        <div className="flex items-center">
           {actions.includes("fullscreen") && (
             <div className="hidden sm:flex">
               <Button
+                disabled={disableTextInput}
                 variant="ghost-secondary"
                 icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
                 size="xs"
@@ -315,7 +358,7 @@ const InputBarContainer = ({
           )}
         </div>
         <Button
-          size="sm"
+          size="xs"
           isLoading={disableSendButton}
           icon={ArrowUpIcon}
           variant="highlight"

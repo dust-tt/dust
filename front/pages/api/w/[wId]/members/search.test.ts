@@ -1,16 +1,15 @@
-import { describe, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./search";
 
 describe("GET /api/w/[wId]/members/search", () => {
   // We need search to work for all users as they can be added as editors of an agent by anyone.
-  itInTransaction("allows users to search members", async () => {
+  it("allows users to search members", async () => {
     const { req, res, user } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
@@ -27,7 +26,7 @@ describe("GET /api/w/[wId]/members/search", () => {
     expect(data.members[0].workspace.role).toBe("user");
   });
 
-  itInTransaction("returns 405 for non-GET methods", async () => {
+  it("returns 405 for non-GET methods", async () => {
     for (const method of ["POST", "PUT", "DELETE"] as const) {
       const { req, res } = await createPrivateApiMockRequest({
         method,
@@ -46,7 +45,7 @@ describe("GET /api/w/[wId]/members/search", () => {
     }
   });
 
-  itInTransaction("handles search by term", async () => {
+  it("handles search by term", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
@@ -76,7 +75,7 @@ describe("GET /api/w/[wId]/members/search", () => {
     expect(data.members[0].id).toBe(users[0].id);
   });
 
-  itInTransaction("handles search by emails", async () => {
+  it("handles search by emails", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
@@ -106,7 +105,7 @@ describe("GET /api/w/[wId]/members/search", () => {
     expect(data.members.map((m: any) => m.email)).toContain(users[1].email);
   });
 
-  itInTransaction("returns 400 when too many emails provided", async () => {
+  it("returns 400 when too many emails provided", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
@@ -131,7 +130,7 @@ describe("GET /api/w/[wId]/members/search", () => {
     });
   });
 
-  itInTransaction("handles pagination with search results", async () => {
+  it("handles pagination with search results", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
@@ -161,7 +160,7 @@ describe("GET /api/w/[wId]/members/search", () => {
     expect(data.members).toHaveLength(20);
   });
 
-  itInTransaction("handles empty search results", async () => {
+  it("handles empty search results", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",

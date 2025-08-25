@@ -1,11 +1,15 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import {
   generateCSVFileAndSnippet,
   generateSectionFile,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
+import {
+  QUERY_TABLES_TOOL_NAME,
+  TABLE_QUERY_SERVER_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   ExecuteTablesQueryErrorResourceType,
@@ -14,12 +18,14 @@ import type {
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeInternalMCPServer,
+  makeMCPToolTextError,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import type { CSVRecord } from "@app/lib/api/csv";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -36,28 +42,19 @@ type TablesQueryOutputResources =
   | ExecuteTablesQueryErrorResourceType
   | ToolGeneratedFileType;
 
-export // We need a model with at least 54k tokens to run tables_query.
+// We need a model with at least 54k tokens to run tables_query.
 const TABLES_QUERY_MIN_TOKEN = 50_000;
 const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
 export const TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH = 500;
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "query_tables",
-  version: "1.0.0",
-  description: "Tables, Spreadsheets, Notion DBs (quantitative).",
-  icon: "ActionTableIcon",
-  authorization: null,
-  documentationUrl: null,
-};
 
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer(TABLE_QUERY_SERVER_NAME);
 
   server.tool(
-    "query_tables",
+    QUERY_TABLES_TOOL_NAME,
     "Query data tables described below by executing a SQL query automatically generated from the conversation context. " +
       "The function does not require any inputs, the SQL query will be inferred from the conversation history.",
     {
@@ -96,7 +93,7 @@ function createServer(
         tools: "",
         allowedTokenCount,
         excludeImages: true,
-        checkMissingActions: false,
+        onMissingAction: "skip",
       });
       if (renderedConversationRes.isErr()) {
         return makeMCPToolTextError(

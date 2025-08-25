@@ -9,7 +9,11 @@ import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
 import type { LightAgentMessageType } from "@app/types/assistant/conversation";
 
-export type AgentStateClassification = "thinking" | "acting" | "done";
+export type AgentStateClassification =
+  | "thinking"
+  | "acting"
+  | "writing"
+  | "done";
 
 export type ActionProgressState = Map<
   ModelId,
@@ -27,7 +31,10 @@ export interface MessageTemporaryState {
   actionProgress: ActionProgressState;
 }
 
-export type AgentMessageStateEvent = AgentMessageEvents | ToolNotificationEvent;
+export type AgentMessageStateEvent = (
+  | AgentMessageEvents
+  | ToolNotificationEvent
+) & { step: number };
 
 type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
   AgentMessageStateEvent,
@@ -40,13 +47,8 @@ function updateMessageWithAction(
 ): LightAgentMessageType {
   return {
     ...m,
-    actions: [
-      ...m.actions.filter((a) => a.id !== action.id),
-      {
-        type: action.type,
-        id: action.id,
-      },
-    ],
+    chainOfThought: "",
+    actions: [...m.actions.filter((a) => a.id !== action.id), action],
   };
 }
 
@@ -76,12 +78,20 @@ function updateProgress(
 }
 
 export const CLEAR_CONTENT_EVENT = { type: "clear_content" as const };
+export const RETRY_BLOCKED_ACTIONS_STARTED_EVENT = {
+  type: "retry_blocked_actions_started" as const,
+};
 
 export type ClearContentEvent = typeof CLEAR_CONTENT_EVENT;
+export type RetryBlockedActionsStartedEvent =
+  typeof RETRY_BLOCKED_ACTIONS_STARTED_EVENT;
 
 export function messageReducer(
   state: MessageTemporaryState,
-  event: AgentMessageStateEventWithoutToolApproveExecution | ClearContentEvent
+  event:
+    | AgentMessageStateEventWithoutToolApproveExecution
+    | ClearContentEvent
+    | RetryBlockedActionsStartedEvent
 ): MessageTemporaryState {
   switch (event.type) {
     case "clear_content":
@@ -93,11 +103,23 @@ export function messageReducer(
           chainOfThought: null,
         },
       };
+
+    case "retry_blocked_actions_started":
+      return {
+        ...state,
+        message: {
+          ...state.message,
+          status: "created",
+          error: null,
+        },
+        // Reset the agent state to "acting" to allow for streaming to continue.
+        agentState: "acting",
+      };
+
     case "agent_action_success":
       return {
         ...state,
         message: updateMessageWithAction(state.message, event.action),
-        agentState: "thinking",
         // Clean up progress for this specific action.
         actionProgress: new Map(
           Array.from(state.actionProgress.entries()).filter(
@@ -148,15 +170,20 @@ export function messageReducer(
         case "tokens":
           newState.message.content =
             (newState.message.content || "") + event.text;
+          newState.agentState = "writing";
           break;
         case "chain_of_thought":
-          newState.message.chainOfThought =
-            (newState.message.chainOfThought || "") + event.text;
+          if (event.text === "\n\n") {
+            newState.message.chainOfThought = "";
+          } else {
+            newState.message.chainOfThought =
+              (newState.message.chainOfThought || "") + event.text;
+          }
+          newState.agentState = "thinking";
           break;
         default:
           assertNever(event);
       }
-      newState.agentState = "thinking";
       return newState;
     }
     case "tool_params":

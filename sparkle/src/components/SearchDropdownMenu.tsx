@@ -41,6 +41,7 @@ export function SearchDropdownMenu({
           ref={searchInputRef}
           name="search"
           placeholder="Search"
+          className="w-full"
           value={searchInputValue}
           disabled={disabled}
           onFocus={() => {
@@ -79,12 +80,12 @@ export function SearchDropdownMenu({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        onOpenAutoFocus={(e) => {
-          e.preventDefault();
-        }}
         side="bottom"
         align="start"
         className="s-w-[--radix-popper-anchor-width]"
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+        }}
         onFocusOutside={(e) => {
           // Prevent closing when search input is focused
           if (e.target === searchInputRef.current) {

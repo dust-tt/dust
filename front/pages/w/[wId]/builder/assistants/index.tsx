@@ -14,7 +14,6 @@ import {
   TabsList,
   TabsTrigger,
   TrashIcon,
-  useHashParam,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -23,11 +22,13 @@ import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
+import { useHashParam } from "@app/hooks/useHashParams";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -339,13 +340,9 @@ export default function WorkspaceAssistants({
                     owner={owner}
                   />
                   {!isRestrictedFromAgentCreation && (
-                    <Button
-                      variant="primary"
-                      icon={PlusIcon}
-                      href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
-                      label="Create an agent"
-                      data-gtm-label="assistantCreationButton"
-                      data-gtm-location="assistantsWorkspace"
+                    <CreateAgentButton
+                      owner={owner}
+                      dataGtmLocation="assistantsWorkspace"
                     />
                   )}
                 </div>

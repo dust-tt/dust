@@ -4,13 +4,11 @@ import {
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
-  ContentMessage,
   ConversationMessage,
   DocumentIcon,
   InteractiveImageGrid,
   Markdown,
   Separator,
-  Tooltip,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { marked } from "marked";
@@ -19,7 +17,7 @@ import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
-import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { useActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
 import {
   DefaultAgentMessageGeneratedFiles,
   InteractiveAgentMessageGeneratedFiles,
@@ -59,6 +57,7 @@ import type {
 import {
   CLEAR_CONTENT_EVENT,
   messageReducer,
+  RETRY_BLOCKED_ACTIONS_STARTED_EVENT,
 } from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type {
@@ -175,7 +174,7 @@ export function AgentMessage({
     [conversationId, message.sId, owner.sId]
   );
 
-  const { showValidationDialog } = React.useContext(ActionValidationContext);
+  const { showValidationDialog } = useActionValidationContext();
 
   const { mutateMessage } = useConversationMessage({
     conversationId,
@@ -201,8 +200,6 @@ export function AgentMessage({
           inputs: eventPayload.data.inputs,
           stake: eventPayload.data.stake,
           metadata: eventPayload.data.metadata,
-          // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
-          action: eventPayload.data.action,
         });
 
         return;
@@ -570,7 +567,11 @@ export function AgentMessage({
             mcpServerId={agentMessage.error.metadata.mcp_server_id}
             provider={agentMessage.error.metadata.provider}
             scope={agentMessage.error.metadata.scope}
-            retryHandler={async () => retryHandler(agentMessage)}
+            retryHandler={async () => {
+              // Dispatch retry event to reset failed state and re-enable streaming.
+              dispatch(RETRY_BLOCKED_ACTIONS_STARTED_EVENT);
+              return retryHandler(agentMessage, { blockedOnly: true });
+            }}
           />
         );
       }
@@ -614,35 +615,12 @@ export function AgentMessage({
 
     return (
       <div className="flex flex-col gap-y-4">
-        <div className="flex flex-col gap-2">
-          <AgentMessageActions
-            conversationId={conversationId}
-            agentMessage={agentMessage}
-            lastAgentStateClassification={messageStreamState.agentState}
-            actionProgress={messageStreamState.actionProgress}
-            owner={owner}
-          />
-
-          {agentMessage.chainOfThought?.trim().length ? (
-            <Tooltip
-              label="Agent thoughts"
-              trigger={
-                <div>
-                  <ContentMessage variant="primary">
-                    <Markdown
-                      content={agentMessage.chainOfThought}
-                      isStreaming={false}
-                      forcedTextSize="text-sm"
-                      textColor="text-muted-foreground"
-                      isLastMessage={false}
-                    />
-                  </ContentMessage>
-                </div>
-              }
-              tooltipTriggerAsChild
-            />
-          ) : null}
-        </div>
+        <AgentMessageActions
+          agentMessage={agentMessage}
+          lastAgentStateClassification={messageStreamState.agentState}
+          actionProgress={messageStreamState.actionProgress}
+          owner={owner}
+        />
         <InteractiveAgentMessageGeneratedFiles files={interactiveFiles} />
         {(inProgressImages.length > 0 || completedImages.length > 0) && (
           <InteractiveImageGrid
@@ -717,10 +695,13 @@ export function AgentMessage({
     );
   }
 
-  async function retryHandler(agentMessage: LightAgentMessageType) {
+  async function retryHandler(
+    agentMessage: LightAgentMessageType,
+    { blockedOnly }: { blockedOnly: boolean } = { blockedOnly: false }
+  ) {
     setIsRetryHandlerProcessing(true);
     await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry`,
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry?blocked_only=${blockedOnly}`,
       {
         method: "POST",
         headers: {
@@ -728,6 +709,7 @@ export function AgentMessage({
         },
       }
     );
+
     setIsRetryHandlerProcessing(false);
   }
 }

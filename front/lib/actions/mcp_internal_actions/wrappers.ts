@@ -55,13 +55,13 @@ export function withToolLogging<T>(
     if (agentLoopContext?.runContext) {
       const {
         agentConfiguration,
-        actionConfiguration,
+        toolConfiguration,
         conversation,
         agentMessage,
       } = agentLoopContext.runContext;
       loggerArgs = {
         ...loggerArgs,
-        actionConfigurationId: actionConfiguration.sId,
+        actionConfigurationId: toolConfiguration.sId,
         agentConfigurationId: agentConfiguration.sId,
         agentConfigurationVersion: agentConfiguration.version,
         agentMessageId: agentMessage.sId,
@@ -98,6 +98,7 @@ export function withToolLogging<T>(
           "Tool execution error"
         );
       }
+
       return {
         isError: true,
         content: [

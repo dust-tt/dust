@@ -244,6 +244,7 @@ interface DropdownMenuContentProps
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
   dropdownHeaders?: React.ReactNode;
+  preventAutoFocusOnClose?: boolean;
   onOpenAutoFocus?: (e: React.FocusEvent<HTMLDivElement>) => void;
 }
 
@@ -258,11 +259,23 @@ const DropdownMenuContent = React.forwardRef<
       mountPortal = true,
       mountPortalContainer,
       dropdownHeaders,
+      preventAutoFocusOnClose = true,
+      onCloseAutoFocus,
       children,
       ...props
     },
     ref
   ) => {
+    const handleCloseAutoFocus = React.useCallback(
+      (event: Event) => {
+        if (preventAutoFocusOnClose) {
+          event.preventDefault();
+        }
+        onCloseAutoFocus?.(event);
+      },
+      [preventAutoFocusOnClose, onCloseAutoFocus]
+    );
+
     const content = (
       <DropdownMenuPrimitive.Content
         ref={ref}
@@ -273,6 +286,7 @@ const DropdownMenuContent = React.forwardRef<
           dropdownHeaders && "s-h-80 xs:s-h-96", // We use dropdownHeaders for putting search bar, so we can set the height for the container
           className
         )}
+        onCloseAutoFocus={handleCloseAutoFocus}
         {...props}
       >
         <div className="s-sticky s-top-0 s-bg-background dark:s-bg-background-night">
@@ -646,6 +660,7 @@ const DropdownMenuSearchbar = React.forwardRef<
     return (
       <div className={cn("s-flex s-gap-1.5 s-p-1.5", className)}>
         <SearchInput
+          className="w-full"
           ref={internalRef}
           placeholder={placeholder}
           name={name}

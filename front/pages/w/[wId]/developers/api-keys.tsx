@@ -209,7 +209,7 @@ export function APIKeys({
               <div className="mt-4">
                 <Page.H variant="h5">Name</Page.H>
                 <Page.Horizontal align="center">
-                  <pre className="flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
+                  <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
                     {keys[0]?.name}
                   </pre>
                   <IconButton
@@ -226,7 +226,7 @@ export function APIKeys({
               <div className="mt-4">
                 <Page.H variant="h5">Domain</Page.H>
                 <Page.Horizontal align="center">
-                  <pre className="flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
+                  <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
                     {process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
                   </pre>
                   <IconButton
@@ -243,7 +243,7 @@ export function APIKeys({
               <div className="mt-4">
                 <Page.H variant="h5">Workspace ID</Page.H>
                 <Page.Horizontal align="center">
-                  <pre className="flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
+                  <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
                     {owner.sId}
                   </pre>
                   <IconButton
@@ -260,7 +260,7 @@ export function APIKeys({
               <div className="mt-4">
                 <Page.H variant="h5">API Key</Page.H>
                 <Page.Horizontal align="center">
-                  <pre className="flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
+                  <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
                     {keys[0]?.secret}
                   </pre>
                   <IconButton
@@ -413,7 +413,7 @@ export function APIKeys({
                             {key.status === "active" ? "active" : "revoked"}
                           </p>
                         </div>
-                        <div>
+                        <div className="dd-privacy-mask">
                           <p
                             className={classNames(
                               "truncate font-mono text-sm",

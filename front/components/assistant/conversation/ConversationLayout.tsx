@@ -1,9 +1,4 @@
-import {
-  cn,
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@dust-tt/sparkle";
+import { cn, ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
@@ -11,12 +6,10 @@ import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
-import { InteractiveContentContainer } from "@app/components/assistant/conversation/content/InteractiveContentContainer";
-import {
-  InteractiveContentProvider,
-  useInteractiveContentContext,
-} from "@app/components/assistant/conversation/content/InteractiveContentContext";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
+import ConversationSidePanelContainer from "@app/components/assistant/conversation/ConversationSidePanelContainer";
+import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import {
   ConversationsNavigationProvider,
   useConversationsNavigation,
@@ -34,7 +27,7 @@ import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ConversationError,
-  ConversationType,
+  ConversationWithoutContentType,
   LightWorkspaceType,
   SubscriptionType,
   UserType,
@@ -63,17 +56,15 @@ export default function ConversationLayout({
     <ConversationsNavigationProvider
       initialConversationId={pageProps.conversationId}
     >
-      <ActionValidationProvider owner={owner}>
-        <ConversationLayoutContent
-          baseUrl={baseUrl}
-          owner={owner}
-          subscription={subscription}
-          user={user}
-          isAdmin={isAdmin}
-        >
-          {children}
-        </ConversationLayoutContent>
-      </ActionValidationProvider>
+      <ConversationLayoutContent
+        baseUrl={baseUrl}
+        owner={owner}
+        subscription={subscription}
+        user={user}
+        isAdmin={isAdmin}
+      >
+        {children}
+      </ConversationLayoutContent>
     </ConversationsNavigationProvider>
   );
 }
@@ -137,59 +128,61 @@ const ConversationLayoutContent = ({
   };
 
   return (
-    <InputBarProvider>
-      <AppContentLayout
-        hasTitle={!!activeConversationId}
-        subscription={subscription}
-        owner={owner}
-        pageTitle={
-          conversation?.title
-            ? `Dust - ${conversation?.title}`
-            : `Dust - New Conversation`
-        }
-        navChildren={<AssistantSidebarMenu owner={owner} />}
-      >
-        <AssistantDetails
+    <ActionValidationProvider owner={owner} conversation={conversation}>
+      <InputBarProvider>
+        <AppContentLayout
+          hasTitle={!!activeConversationId}
+          subscription={subscription}
           owner={owner}
-          user={user}
-          assistantId={assistantSId}
-          onClose={() => onOpenChangeAssistantModal(false)}
-        />
-        <CoEditionProvider
-          owner={owner}
-          hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
+          pageTitle={
+            conversation?.title
+              ? `Dust - ${conversation?.title}`
+              : `Dust - New Conversation`
+          }
+          navChildren={<AssistantSidebarMenu owner={owner} />}
         >
-          <InteractiveContentProvider>
-            <ConversationInnerLayout
-              activeConversationId={activeConversationId}
-              baseUrl={baseUrl}
-              conversation={conversation}
-              conversationError={conversationError}
-              owner={owner}
-            >
-              {children}
-            </ConversationInnerLayout>
-          </InteractiveContentProvider>
-        </CoEditionProvider>
-        {shouldDisplayWelcomeTourGuide && (
-          <WelcomeTourGuide
+          <AssistantDetails
             owner={owner}
             user={user}
-            isAdmin={isAdmin}
-            startConversationRef={startConversationRef}
-            spaceMenuButtonRef={spaceMenuButtonRef}
-            createAgentButtonRef={createAgentButtonRef}
-            onTourGuideEnd={onTourGuideEnd}
+            assistantId={assistantSId}
+            onClose={() => onOpenChangeAssistantModal(false)}
           />
-        )}
-      </AppContentLayout>
-    </InputBarProvider>
+          <CoEditionProvider
+            owner={owner}
+            hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
+          >
+            <ConversationSidePanelProvider>
+              <ConversationInnerLayout
+                activeConversationId={activeConversationId}
+                baseUrl={baseUrl}
+                conversation={conversation}
+                conversationError={conversationError}
+                owner={owner}
+              >
+                {children}
+              </ConversationInnerLayout>
+            </ConversationSidePanelProvider>
+          </CoEditionProvider>
+          {shouldDisplayWelcomeTourGuide && (
+            <WelcomeTourGuide
+              owner={owner}
+              user={user}
+              isAdmin={isAdmin}
+              startConversationRef={startConversationRef}
+              spaceMenuButtonRef={spaceMenuButtonRef}
+              createAgentButtonRef={createAgentButtonRef}
+              onTourGuideEnd={onTourGuideEnd}
+            />
+          )}
+        </AppContentLayout>
+      </InputBarProvider>
+    </ActionValidationProvider>
   );
 };
 
 interface ConversationInnerLayoutProps {
   children: React.ReactNode;
-  conversation: ConversationType | null;
+  conversation: ConversationWithoutContentType | null;
   owner: LightWorkspaceType;
   baseUrl: string;
   conversationError: ConversationError | null;
@@ -204,7 +197,7 @@ function ConversationInnerLayout({
   conversationError,
   activeConversationId,
 }: ConversationInnerLayoutProps) {
-  const { isContentOpen } = useInteractiveContentContext();
+  const { currentPanel } = useConversationSidePanelContext();
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -225,9 +218,9 @@ function ConversationInnerLayout({
                   <div
                     id={CONVERSATION_VIEW_SCROLL_LAYOUT}
                     className={cn(
-                      "h-full overflow-y-auto scroll-smooth px-4",
-                      // Hide conversation on mobile when interactive content is opened.
-                      isContentOpen && "hidden md:block"
+                      "dd-privacy-mask h-full overflow-y-auto scroll-smooth px-4",
+                      // Hide conversation on mobile when any panel is opened.
+                      currentPanel && "hidden md:block"
                     )}
                   >
                     {children}
@@ -238,26 +231,10 @@ function ConversationInnerLayout({
           </div>
         </ResizablePanel>
 
-        {/* Interactive Content Panel */}
-        {isContentOpen && <ResizableHandle className="hidden md:block" />}
-        <ResizablePanel
-          minSize={20}
-          defaultSize={70}
-          className={cn(
-            !isContentOpen && "hidden",
-            // On mobile: overlay full screen with absolute positioning.
-            "md:relative",
-            isContentOpen && "absolute inset-0 md:relative md:inset-auto"
-          )}
-        >
-          {isContentOpen && (
-            <InteractiveContentContainer
-              conversation={conversation}
-              isOpen={isContentOpen}
-              owner={owner}
-            />
-          )}
-        </ResizablePanel>
+        <ConversationSidePanelContainer
+          owner={owner}
+          conversation={conversation}
+        />
       </ResizablePanelGroup>
     </div>
   );

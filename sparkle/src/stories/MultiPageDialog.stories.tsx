@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
 
+import { SearchInput } from "@sparkle/components";
 import { Button } from "@sparkle/components/Button";
 import {
   MultiPageDialog,
@@ -117,13 +118,19 @@ const samplePages: MultiPageDialogPage[] = [
 
 const MultiPageDialogDemo = () => {
   const [currentPageId, setCurrentPageId] = useState("profile");
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleSave = () => {
     alert("Changes saved!");
+    setIsOpen(false);
+  };
+
+  const handleCancel = () => {
+    setIsOpen(false);
   };
 
   return (
-    <MultiPageDialog>
+    <MultiPageDialog open={isOpen} onOpenChange={setIsOpen}>
       <MultiPageDialogTrigger asChild>
         <Button label="Open Multi-Page Dialog" />
       </MultiPageDialogTrigger>
@@ -132,7 +139,16 @@ const MultiPageDialogDemo = () => {
         currentPageId={currentPageId}
         onPageChange={setCurrentPageId}
         size="xl"
-        onSave={handleSave}
+        leftButton={{
+          label: "Cancel",
+          variant: "outline",
+          onClick: handleCancel,
+        }}
+        rightButton={{
+          label: "Save Changes",
+          variant: "primary",
+          onClick: handleSave,
+        }}
       />
     </MultiPageDialog>
   );
@@ -142,9 +158,152 @@ export const Default: Story = {
   render: () => <MultiPageDialogDemo />,
 };
 
+// Simple two-button example (like your screenshot)
+export const SimpleToolDialog: Story = {
+  render: () => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [selectedTools, setSelectedTools] = useState<string[]>([]);
+
+    const handleAddTools = () => {
+      alert(
+        `Adding ${selectedTools.length} tools: ${selectedTools.join(", ")}`
+      );
+      setIsOpen(false);
+    };
+
+    const handleCancel = () => {
+      setSelectedTools([]);
+      setIsOpen(false);
+    };
+
+    const toggleTool = (tool: string) => {
+      setSelectedTools((prev) =>
+        prev.includes(tool) ? prev.filter((t) => t !== tool) : [...prev, tool]
+      );
+    };
+
+    const toolPages: MultiPageDialogPage[] = [
+      {
+        id: "tool-selection",
+        title: "Add tools",
+        content: (
+          <div className="s-space-y-6">
+            <div className="s-space-y-4">
+              <h3 className="s-text-lg s-font-semibold">Capabilities</h3>
+              <div className="s-grid s-grid-cols-2 s-gap-3">
+                {[
+                  {
+                    name: "Image generation",
+                    desc: "Generate images using natural language",
+                  },
+                  {
+                    name: "Run agent",
+                    desc: "Run a child agent (agent as tool)",
+                  },
+                  {
+                    name: "Interactive content",
+                    desc: "Generate interactive content",
+                  },
+                  {
+                    name: "Agent memory",
+                    desc: "Store and recall information",
+                  },
+                ].map((tool) => (
+                  <div
+                    key={tool.name}
+                    className={`s-cursor-pointer s-rounded-lg s-border s-p-4 s-transition-colors hover:s-bg-gray-50 ${
+                      selectedTools.includes(tool.name)
+                        ? "s-border-blue-300 s-bg-blue-50"
+                        : "s-border-gray-200"
+                    }`}
+                    onClick={() => toggleTool(tool.name)}
+                  >
+                    <div className="s-flex s-items-start s-justify-between">
+                      <div>
+                        <h4 className="s-font-medium">{tool.name}</h4>
+                        <p className="s-text-sm s-text-gray-600">{tool.desc}</p>
+                      </div>
+                      {selectedTools.includes(tool.name) && (
+                        <span className="s-rounded s-bg-green-100 s-px-2 s-py-1 s-text-xs s-text-green-700">
+                          ADDED
+                        </span>
+                      )}
+                    </div>
+                    {!selectedTools.includes(tool.name) && (
+                      <button className="s-mt-2 s-text-sm s-text-blue-600 hover:s-text-blue-700">
+                        + Add
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {selectedTools.length > 0 && (
+              <div className="s-space-y-3">
+                <h4 className="s-font-medium">Added tools</h4>
+                <div className="s-flex s-flex-wrap s-gap-2">
+                  {selectedTools.map((tool) => (
+                    <span
+                      key={tool}
+                      className="s-flex s-items-center s-gap-1 s-rounded s-bg-gray-100 s-px-3 s-py-1 s-text-sm"
+                    >
+                      {tool}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleTool(tool);
+                        }}
+                        className="s-ml-1 s-text-gray-500 hover:s-text-gray-700"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ),
+      },
+    ];
+
+    return (
+      <MultiPageDialog open={isOpen} onOpenChange={setIsOpen}>
+        <MultiPageDialogTrigger asChild>
+          <Button label="Add tools" />
+        </MultiPageDialogTrigger>
+        <MultiPageDialogContent
+          pages={toolPages}
+          showHeaderNavigation={false}
+          currentPageId="tool-selection"
+          onPageChange={() => {}}
+          size="xl"
+          height="xl"
+          leftButton={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: handleCancel,
+          }}
+          rightButton={{
+            label:
+              selectedTools.length > 0
+                ? `Add ${selectedTools.length} tool${selectedTools.length > 1 ? "s" : ""}`
+                : "Add tools",
+            variant: "primary",
+            disabled: selectedTools.length === 0,
+            onClick: handleAddTools,
+          }}
+        />
+      </MultiPageDialog>
+    );
+  },
+};
+
 export const InteractiveContent: Story = {
   render: () => {
     const [currentPageId, setCurrentPageId] = useState("step1");
+    const [isOpen, setIsOpen] = useState(false);
     const [formData, setFormData] = useState({
       name: "",
       email: "",
@@ -154,7 +313,41 @@ export const InteractiveContent: Story = {
 
     const handleSave = () => {
       alert(`Setup completed! Data: ${JSON.stringify(formData, null, 2)}`);
+      setIsOpen(false);
     };
+
+    const handleCancel = () => {
+      setIsOpen(false);
+    };
+
+    const handleNext = () => {
+      if (currentPageId === "step1") {
+        setCurrentPageId("step2");
+      } else if (currentPageId === "step2") {
+        setCurrentPageId("step3");
+      }
+    };
+
+    const handlePrevious = () => {
+      if (currentPageId === "step3") {
+        setCurrentPageId("step2");
+      } else if (currentPageId === "step2") {
+        setCurrentPageId("step1");
+      }
+    };
+
+    const canProceed = () => {
+      if (currentPageId === "step1") {
+        return formData.name && formData.email;
+      }
+      if (currentPageId === "step2") {
+        return formData.selectedFile;
+      }
+      return true;
+    };
+
+    const isFirstPage = currentPageId === "step1";
+    const isLastPage = currentPageId === "step3";
 
     const interactivePages: MultiPageDialogPage[] = [
       {
@@ -195,15 +388,6 @@ export const InteractiveContent: Story = {
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                />
-              </div>
-              <div className="s-pt-2">
-                <Button
-                  label="Continue to File Selection"
-                  variant="primary"
-                  size="md"
-                  disabled={!formData.name || !formData.email}
-                  onClick={() => setCurrentPageId("step2")}
                 />
               </div>
             </div>
@@ -254,16 +438,6 @@ export const InteractiveContent: Story = {
                 </div>
               ))}
             </div>
-            {formData.selectedFile && (
-              <div className="s-pt-2">
-                <Button
-                  label="Continue to Settings"
-                  variant="primary"
-                  size="md"
-                  onClick={() => setCurrentPageId("step3")}
-                />
-              </div>
-            )}
           </div>
         ),
       },
@@ -314,7 +488,7 @@ export const InteractiveContent: Story = {
     ];
 
     return (
-      <MultiPageDialog>
+      <MultiPageDialog open={isOpen} onOpenChange={setIsOpen}>
         <MultiPageDialogTrigger asChild>
           <Button label="Open Interactive Setup" />
         </MultiPageDialogTrigger>
@@ -323,7 +497,26 @@ export const InteractiveContent: Story = {
           currentPageId={currentPageId}
           onPageChange={setCurrentPageId}
           size="lg"
-          onSave={handleSave}
+          leftButton={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: handleCancel,
+          }}
+          centerButton={
+            !isFirstPage
+              ? {
+                  label: "Previous",
+                  variant: "outline",
+                  onClick: handlePrevious,
+                }
+              : undefined
+          }
+          rightButton={{
+            label: isLastPage ? "Complete Setup" : "Next",
+            variant: "primary",
+            disabled: !canProceed(),
+            onClick: isLastPage ? handleSave : handleNext,
+          }}
         />
       </MultiPageDialog>
     );
@@ -333,6 +526,7 @@ export const InteractiveContent: Story = {
 export const WithConditionalNavigation: Story = {
   render: () => {
     const [currentPageId, setCurrentPageId] = useState("data-selection");
+    const [isOpen, setIsOpen] = useState(false);
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [description, setDescription] = useState("");
 
@@ -340,7 +534,29 @@ export const WithConditionalNavigation: Story = {
       alert(
         `Configuration saved! Selected: ${selectedItems.join(", ")}, Description: ${description}`
       );
+      setIsOpen(false);
     };
+
+    const handleCancel = () => {
+      setIsOpen(false);
+    };
+
+    const handleNext = () => {
+      if (currentPageId === "data-selection") {
+        setCurrentPageId("description");
+      }
+    };
+
+    const handlePrevious = () => {
+      if (currentPageId === "description") {
+        setCurrentPageId("data-selection");
+      }
+    };
+
+    const isFirstPage = currentPageId === "data-selection";
+    const isLastPage = currentPageId === "description";
+    const canProceedFromFirst = selectedItems.length > 0;
+    const canSave = description.trim().length > 0;
 
     const conditionalPages: MultiPageDialogPage[] = [
       {
@@ -441,7 +657,7 @@ export const WithConditionalNavigation: Story = {
     ];
 
     return (
-      <MultiPageDialog>
+      <MultiPageDialog open={isOpen} onOpenChange={setIsOpen}>
         <MultiPageDialogTrigger asChild>
           <Button label="Open Configuration Wizard" />
         </MultiPageDialogTrigger>
@@ -450,15 +666,39 @@ export const WithConditionalNavigation: Story = {
           currentPageId={currentPageId}
           onPageChange={setCurrentPageId}
           size="lg"
-          onSave={handleSave}
-          showNavigation={true}
-          disableNext={
-            currentPageId === "data-selection" && selectedItems.length === 0
+          height="md"
+          leftButton={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: handleCancel,
+          }}
+          centerButton={
+            !isFirstPage
+              ? {
+                  label: "Previous",
+                  variant: "outline",
+                  onClick: handlePrevious,
+                }
+              : undefined
           }
-          disableSave={!description.trim()}
+          rightButton={{
+            label: isLastPage ? "Save Configuration" : "Next",
+            variant: "primary",
+            disabled: isFirstPage ? !canProceedFromFirst : !canSave,
+            onClick: isLastPage ? handleSave : handleNext,
+          }}
+          addFooterSeparator
           footerContent={
-            <div className="s-w-full s-border s-border-border-dark">
-              This is a footer content
+            <div className="s-rounded s-bg-blue-50">
+              <p className="s-text-xs s-text-blue-700">
+                {selectedItems.length > 0 && (
+                  <>
+                    {selectedItems.length} data source
+                    {selectedItems.length !== 1 ? "s" : ""} selected •{" "}
+                  </>
+                )}
+                Step {isFirstPage ? "1" : "2"} of 2
+              </p>
             </div>
           }
         />
@@ -470,17 +710,48 @@ export const WithConditionalNavigation: Story = {
 export const ScrollableContent: Story = {
   render: () => {
     const [currentPageId, setCurrentPageId] = useState("long-form");
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
 
     const handleSave = () => {
       alert("Long form submitted!");
+      setIsOpen(false);
     };
+
+    const handleCancel = () => {
+      setIsOpen(false);
+    };
+
+    const handleNext = () => {
+      if (currentPageId === "long-form") {
+        setCurrentPageId("summary");
+      }
+    };
+
+    const handlePrevious = () => {
+      if (currentPageId === "summary") {
+        setCurrentPageId("long-form");
+      }
+    };
+
+    const isFirstPage = currentPageId === "long-form";
+    const isLastPage = currentPageId === "summary";
 
     const scrollablePages: MultiPageDialogPage[] = [
       {
         id: "long-form",
         title: "Long Form Content",
-        description: "This page demonstrates scrollable content",
+        description:
+          "This page demonstrates scrollable content with fixed search",
         icon: DocumentTextIcon,
+        fixedContent: (
+          <SearchInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            name="search-content"
+            placeholder="Search through content..."
+          />
+        ),
         content: (
           <div className="s-space-y-6">
             <div>
@@ -489,9 +760,16 @@ export const ScrollableContent: Story = {
               </h3>
               <p className="s-text-sm s-text-muted-foreground">
                 This page contains a lot of content to demonstrate scrolling
-                functionality. The content should be scrollable within the
-                dialog area.
+                functionality with a fixed search input. The search input stays
+                visible while scrolling through the content below.
               </p>
+              {searchTerm && (
+                <div className="s-rounded-md s-border s-bg-yellow-50 s-p-3">
+                  <p className="s-text-sm s-text-yellow-800">
+                    🔍 Searching for: <strong>{searchTerm}</strong>
+                  </p>
+                </div>
+              )}
             </div>
 
             {Array.from({ length: 15 }, (_, i) => (
@@ -534,12 +812,13 @@ export const ScrollableContent: Story = {
 
             <div className="s-rounded-md s-border s-bg-blue-50 s-p-4">
               <h4 className="s-mb-2 s-text-sm s-font-semibold s-text-blue-900">
-                Scroll Test Complete
+                Fixed Content Test Complete
               </h4>
               <p className="s-text-xs s-text-blue-700">
-                If you can see this message, the scrolling functionality is
-                working correctly! The dialog maintains its fixed height while
-                allowing the content to scroll.
+                If you can see this message, the fixed content functionality is
+                working correctly! The search input remains fixed at the top
+                while this content scrolls. Try scrolling back up - the search
+                input should always be visible.
               </p>
             </div>
           </div>
@@ -575,16 +854,35 @@ export const ScrollableContent: Story = {
     ];
 
     return (
-      <MultiPageDialog>
+      <MultiPageDialog open={isOpen} onOpenChange={setIsOpen}>
         <MultiPageDialogTrigger asChild>
-          <Button label="Open Scrollable Content Dialog" />
+          <Button label="Open Fixed Content Test Dialog" />
         </MultiPageDialogTrigger>
         <MultiPageDialogContent
           pages={scrollablePages}
           currentPageId={currentPageId}
           onPageChange={setCurrentPageId}
-          size="lg"
-          onSave={handleSave}
+          size="xl"
+          height="xl"
+          leftButton={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: handleCancel,
+          }}
+          centerButton={
+            !isFirstPage
+              ? {
+                  label: "Previous",
+                  variant: "outline",
+                  onClick: handlePrevious,
+                }
+              : undefined
+          }
+          rightButton={{
+            label: isLastPage ? "Submit Form" : "Next",
+            variant: "primary",
+            onClick: isLastPage ? handleSave : handleNext,
+          }}
         />
       </MultiPageDialog>
     );

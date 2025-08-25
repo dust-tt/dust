@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import type { Fetcher } from "swr";
+import type { Fetcher, SWRConfiguration } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
@@ -1116,7 +1116,8 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
 function useMCPServerViewsFromSpacesBase(
   owner: LightWorkspaceType,
   spaces: SpaceType[],
-  availabilities: MCPServerAvailability[]
+  availabilities: MCPServerAvailability[],
+  swrOptions?: SWRConfiguration
 ) {
   const configFetcher: Fetcher<GetMCPServerViewsListResponseBody> = fetcher;
 
@@ -1126,6 +1127,7 @@ function useMCPServerViewsFromSpacesBase(
   const url = `/api/w/${owner.sId}/mcp/views?spaceIds=${spaceIds}&availabilities=${availabilitiesParam}`;
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
     disabled: !spaces.length,
+    ...swrOptions,
   });
 
   return {
@@ -1138,21 +1140,31 @@ function useMCPServerViewsFromSpacesBase(
 
 export function useMCPServerViewsFromSpaces(
   owner: LightWorkspaceType,
-  spaces: SpaceType[]
+  spaces: SpaceType[],
+  swrOptions?: SWRConfiguration
 ) {
-  return useMCPServerViewsFromSpacesBase(owner, spaces, ["manual", "auto"]);
+  return useMCPServerViewsFromSpacesBase(
+    owner,
+    spaces,
+    ["manual", "auto"],
+    swrOptions
+  );
 }
 
+// Note from seb: the name is misleading as manual will return both internal and remote servers. (all remote are manual, some internals are manual too).
 export function useRemoteMCPServerViewsFromSpaces(
   owner: LightWorkspaceType,
-  spaces: SpaceType[]
+  spaces: SpaceType[],
+  swrOptions?: SWRConfiguration
 ) {
-  return useMCPServerViewsFromSpacesBase(owner, spaces, ["manual"]);
+  return useMCPServerViewsFromSpacesBase(owner, spaces, ["manual"], swrOptions);
 }
 
+// Note from seb: on the flip side, auto will return only internal servers but not all of them so the name is also misleading.
 export function useInternalMCPServerViewsFromSpaces(
   owner: LightWorkspaceType,
-  spaces: SpaceType[]
+  spaces: SpaceType[],
+  swrOptions?: SWRConfiguration
 ) {
-  return useMCPServerViewsFromSpacesBase(owner, spaces, ["auto"]);
+  return useMCPServerViewsFromSpacesBase(owner, spaces, ["auto"], swrOptions);
 }

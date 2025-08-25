@@ -2,10 +2,15 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { markdownToAdf } from "marklassian";
 import { z } from "zod";
 
-import { createJQLFromSearchFilters } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
+import {
+  createJQLFromSearchFilters,
+  processFieldsForJira,
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
 import type {
+  ADFDocument,
   JiraConnectionInfoSchema,
   JiraCreateCommentRequestSchema,
   JiraCreateIssueLinkRequestSchema,
@@ -19,8 +24,10 @@ import type {
   SortDirection,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
+  ADFDocumentSchema,
   JiraCommentSchema,
   JiraCreateMetaSchema,
+  JiraFieldsSchema,
   JiraIssueLinkTypeSchema,
   JiraIssueSchema,
   JiraIssueTypeSchema,
@@ -30,12 +37,19 @@ import {
   JiraTransitionIssueSchema,
   JiraTransitionsSchema,
   JiraUserInfoSchema,
+  JiraUsersSearchResultSchema,
   SEARCH_FILTER_FIELDS,
-  SEARCH_MAX_RESULTS,
+  SEARCH_ISSUES_MAX_RESULTS,
+  SEARCH_USERS_MAX_RESULTS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
+
+// Type guard to check if a value is an ADFDocument
+function isADFDocument(value: unknown): value is ADFDocument {
+  return ADFDocumentSchema.safeParse(value).success;
+}
 
 // Generic helper to handle errors consistently
 function handleResults<T>(
@@ -103,18 +117,129 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
   }
 }
 
+async function listUsersPage(
+  baseUrl: string,
+  accessToken: string,
+  startAt: number,
+  perPage: number
+): Promise<
+  Result<z.infer<typeof JiraUsersSearchResultSchema>, JiraErrorResult>
+> {
+  const params = new URLSearchParams({
+    startAt: String(startAt),
+    maxResults: String(perPage),
+  });
+
+  return jiraApiCall(
+    {
+      endpoint: `/rest/api/3/users/search?${params.toString()}`,
+      accessToken,
+    },
+    JiraUsersSearchResultSchema,
+    { baseUrl }
+  );
+}
+
+export async function listUsers(
+  baseUrl: string,
+  accessToken: string,
+  {
+    name,
+    maxResults,
+    startAt = 0,
+  }: {
+    name?: string;
+    maxResults: number;
+    startAt?: number;
+  }
+): Promise<
+  Result<
+    {
+      users: z.infer<typeof JiraUsersSearchResultSchema>;
+      nextStartAt: number | null;
+    },
+    JiraErrorResult
+  >
+> {
+  const perPage = 100;
+  let cursor = startAt;
+  const results: z.infer<typeof JiraUsersSearchResultSchema> = [];
+  const hasName = !!name && name.trim().length > 0;
+  const normalizedName = (name || "").trim().toLowerCase();
+
+  while (results.length < maxResults) {
+    const pageResult = await listUsersPage(
+      baseUrl,
+      accessToken,
+      cursor,
+      perPage
+    );
+    if (pageResult.isErr()) {
+      return pageResult;
+    }
+    const page = pageResult.value || [];
+    if (page.length === 0) {
+      return new Ok({ users: results, nextStartAt: null });
+    }
+
+    for (const u of page) {
+      if (u.accountType !== "atlassian") {
+        continue;
+      }
+      if (
+        !hasName ||
+        (u.displayName || "").toLowerCase().includes(normalizedName)
+      ) {
+        results.push(u);
+        if (results.length >= maxResults) {
+          break;
+        }
+      }
+    }
+
+    cursor += page.length;
+    if (page.length < perPage) {
+      return new Ok({ users: results, nextStartAt: null });
+    }
+  }
+
+  return new Ok({ users: results, nextStartAt: cursor });
+}
+
 export async function getIssue({
   baseUrl,
   accessToken,
   issueKey,
+  fields,
 }: {
   baseUrl: string;
   accessToken: string;
   issueKey: string;
+  fields?: string[];
 }): Promise<Result<z.infer<typeof JiraIssueSchema> | null, JiraErrorResult>> {
+  // Use a minimal default field set to reduce payload size while keeping key metadata
+  const defaultFields = [
+    "summary",
+    "issuetype",
+    "priority",
+    "assignee",
+    "reporter",
+    "labels",
+    "duedate",
+    "parent",
+    "project",
+    "status",
+  ];
+
+  const params = new URLSearchParams();
+  const fieldList = (fields && fields.length > 0 ? fields : defaultFields).join(
+    ","
+  );
+  params.set("fields", fieldList);
+
   const result = await jiraApiCall(
     {
-      endpoint: `/rest/api/3/issue/${issueKey}`,
+      endpoint: `/rest/api/3/issue/${issueKey}?${params.toString()}`,
       accessToken,
     },
     JiraIssueSchema,
@@ -242,27 +367,29 @@ export async function createComment(
   baseUrl: string,
   accessToken: string,
   issueKey: string,
-  commentBody: string,
+  commentBody: string | ADFDocument,
   visibility?: {
     type: "group" | "role";
     value: string;
   }
 ): Promise<Result<z.infer<typeof JiraCommentSchema> | null, JiraErrorResult>> {
+  let adfBody: ADFDocument;
+
+  if (typeof commentBody === "string") {
+    adfBody = markdownToAdf(commentBody);
+  } else if (isADFDocument(commentBody)) {
+    adfBody = commentBody;
+  } else {
+    return new Err(
+      "Invalid comment body: must be a string or valid ADF document"
+    );
+  }
+
   const requestBody: z.infer<typeof JiraCreateCommentRequestSchema> = {
     body: {
-      type: "doc",
-      version: 1,
-      content: [
-        {
-          type: "paragraph",
-          content: [
-            {
-              type: "text",
-              text: commentBody,
-            },
-          ],
-        },
-      ],
+      type: adfBody.type,
+      version: adfBody.version,
+      content: adfBody.content || [],
     },
   };
   if (visibility) {
@@ -317,7 +444,7 @@ export async function searchIssues(
   const {
     nextPageToken,
     sortBy,
-    maxResults = SEARCH_MAX_RESULTS,
+    maxResults = SEARCH_ISSUES_MAX_RESULTS,
   } = options || {};
 
   const jql = createJQLFromSearchFilters(filters, sortBy);
@@ -495,11 +622,118 @@ export async function transitionIssue(
   return handleResults(result, null);
 }
 
+export async function getAllFields(
+  baseUrl: string,
+  accessToken: string
+): Promise<
+  Result<
+    Record<string, { schema?: { type?: string; custom?: string } }>,
+    JiraErrorResult
+  >
+> {
+  const result = await jiraApiCall(
+    {
+      endpoint: "/rest/api/3/field",
+      accessToken,
+    },
+    JiraFieldsSchema,
+    { baseUrl }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const fieldsMetadata: Record<
+    string,
+    { schema?: { type?: string; custom?: string } }
+  > = {};
+
+  for (const field of result.value) {
+    const fieldKey = field.key || field.id;
+    fieldsMetadata[fieldKey] = {
+      schema: field.schema
+        ? {
+            type: field.schema.type,
+            custom: field.schema.custom,
+          }
+        : undefined,
+    };
+  }
+
+  return new Ok(fieldsMetadata);
+}
+
+// Returns a compact list of fields with their identifiers and names for discovery
+export async function listFieldSummaries(
+  baseUrl: string,
+  accessToken: string
+): Promise<
+  Result<
+    Array<{ id: string; key?: string; name: string; custom: boolean }>,
+    JiraErrorResult
+  >
+> {
+  const result = await jiraApiCall(
+    {
+      endpoint: "/rest/api/3/field",
+      accessToken,
+    },
+    JiraFieldsSchema,
+    { baseUrl }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const summaries = (result.value || []).map((f) => ({
+    id: f.id,
+    key: f.key,
+    name: f.name,
+    custom: f.custom,
+  }));
+  return new Ok(summaries);
+}
+
+async function processFieldsWithMetadata(
+  baseUrl: string,
+  accessToken: string,
+  fields: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  let fieldsMetadata: Record<
+    string,
+    {
+      schema?: { type?: string; custom?: string };
+    }
+  > = {};
+
+  // Check if we have custom fields that might need metadata for accurate processing
+  const hasCustomFields = Object.keys(fields).some((key) =>
+    key.startsWith("customfield_")
+  );
+
+  if (hasCustomFields) {
+    const metadataResult = await getAllFields(baseUrl, accessToken);
+    if (metadataResult.isOk()) {
+      fieldsMetadata = metadataResult.value;
+    }
+  }
+
+  return processFieldsForJira(fields, fieldsMetadata);
+}
+
 export async function createIssue(
   baseUrl: string,
   accessToken: string,
   issueData: z.infer<typeof JiraCreateIssueRequestSchema>
 ): Promise<Result<z.infer<typeof JiraIssueSchema>, JiraErrorResult>> {
+  const processedFields = await processFieldsWithMetadata(
+    baseUrl,
+    accessToken,
+    issueData
+  );
+
   const result = await jiraApiCall(
     {
       endpoint: "/rest/api/3/issue",
@@ -508,7 +742,7 @@ export async function createIssue(
     JiraIssueSchema,
     {
       method: "POST",
-      body: { fields: issueData },
+      body: { fields: processedFields },
       baseUrl,
     }
   );
@@ -533,6 +767,12 @@ export async function updateIssue(
 ): Promise<
   Result<{ issueKey: string; browseUrl?: string } | null, JiraErrorResult>
 > {
+  const processedFields = await processFieldsWithMetadata(
+    baseUrl,
+    accessToken,
+    updateData
+  );
+
   const result = await jiraApiCall(
     {
       endpoint: `/rest/api/3/issue/${issueKey}`,
@@ -541,7 +781,7 @@ export async function updateIssue(
     z.void(),
     {
       method: "PUT",
-      body: { fields: updateData },
+      body: { fields: processedFields },
       baseUrl,
     }
   );
@@ -574,28 +814,17 @@ export async function createIssueLink(
   accessToken: string,
   linkData: z.infer<typeof JiraCreateIssueLinkRequestSchema>
 ): Promise<Result<void, JiraErrorResult>> {
-  const requestBody = { ...linkData };
+  const requestBody: Record<string, any> = { ...linkData };
 
-  // If there's a comment, transform it to JIRA document format
+  // If there's a comment, transform it to JIRA document format using ADF helper
   if (
     requestBody.comment?.body &&
     typeof requestBody.comment.body === "string"
   ) {
     const commentText = requestBody.comment.body;
-    (requestBody.comment as any).body = {
-      type: "doc",
-      version: 1,
-      content: [
-        {
-          type: "paragraph",
-          content: [
-            {
-              type: "text",
-              text: commentText,
-            },
-          ],
-        },
-      ],
+    requestBody.comment = {
+      ...requestBody.comment,
+      body: markdownToAdf(commentText),
     };
   }
 
@@ -655,6 +884,64 @@ export async function getIssueLinkTypes(
   }
 
   return new Ok(result.value.issueLinkTypes);
+}
+
+export async function searchUsersByEmailExact(
+  baseUrl: string,
+  accessToken: string,
+  emailAddress: string,
+  {
+    maxResults = SEARCH_USERS_MAX_RESULTS,
+    startAt = 0,
+  }: { maxResults?: number; startAt?: number } = {}
+): Promise<
+  Result<
+    {
+      users: z.infer<typeof JiraUsersSearchResultSchema>;
+      nextStartAt: number | null;
+    },
+    JiraErrorResult
+  >
+> {
+  const perPage = 100;
+  let cursor = startAt;
+  const matches: z.infer<typeof JiraUsersSearchResultSchema> = [];
+  const normalized = emailAddress.trim().toLowerCase();
+
+  while (matches.length < maxResults) {
+    const pageResult = await listUsersPage(
+      baseUrl,
+      accessToken,
+      cursor,
+      perPage
+    );
+    if (pageResult.isErr()) {
+      return pageResult;
+    }
+    const page = pageResult.value || [];
+    if (page.length === 0) {
+      return new Ok({ users: matches, nextStartAt: null });
+    }
+
+    for (const u of page) {
+      if (
+        u.accountType === "atlassian" &&
+        (u.emailAddress || "").toLowerCase() === normalized
+      ) {
+        matches.push(u);
+        if (matches.length >= maxResults) {
+          return new Ok({ users: matches, nextStartAt: cursor + page.length });
+        }
+      }
+    }
+
+    cursor += page.length;
+    if (page.length < perPage) {
+      return new Ok({ users: matches, nextStartAt: null });
+    }
+  }
+
+  return new Ok({ users: matches, nextStartAt: cursor });
 }
 
 export const withAuth = async ({

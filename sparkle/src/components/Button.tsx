@@ -1,7 +1,7 @@
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   Counter,
@@ -18,6 +18,8 @@ import {
 import { SpinnerProps } from "@sparkle/components/Spinner";
 import { ChevronDownIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+
+const PULSE_ANIMATION_DURATION = 1;
 
 export const BUTTON_VARIANTS = [
   "primary",
@@ -36,7 +38,7 @@ export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 // Define button styling with cva
 const buttonVariants = cva(
   cn(
-    "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-ring-offset-background s-transition-colors s-ring-inset",
+    "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-ring-offset-background s-transition-colors s-ring-inset s-select-none",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-0",
     "dark:focus-visible:s-ring-0 dark:focus-visible:s-ring-offset-1"
   ),
@@ -193,6 +195,7 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     isSelect?: boolean;
     isLoading?: boolean;
     isPulsing?: boolean;
+    briefPulse?: boolean;
     tooltip?: string;
     isCounter?: boolean;
     counterValue?: string;
@@ -223,6 +226,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       tooltip,
       isSelect = false,
       isPulsing = false,
+      briefPulse = false,
       isCounter = false,
       counterValue,
       size = "sm",
@@ -238,6 +242,22 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const iconSize = ICON_SIZE_MAP[size];
     const counterSize = COUNTER_SIZE_MAP[size];
+
+    const [isPulsingBriefly, setIsPulsingBriefly] = useState(false);
+
+    useEffect(() => {
+      if (!briefPulse) {
+        return;
+      }
+      const startPulse = () => {
+        setIsPulsingBriefly(true);
+        setTimeout(
+          () => setIsPulsingBriefly(false),
+          PULSE_ANIMATION_DURATION * 3000
+        );
+      };
+      startPulse();
+    }, [briefPulse]);
 
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
       <Icon visual={visual} size={iconSize} className={cn(extraClass)} />
@@ -319,12 +339,15 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         size={size}
         variant={variant}
         disabled={isLoading || props.disabled}
-        className={cn(isPulsing && "s-animate-pulse", className)}
+        className={cn(
+          (isPulsing || isPulsingBriefly) && "s-animate-pulse",
+          className
+        )}
         aria-label={ariaLabel || tooltip || label}
         style={
           {
             "--pulse-color": "#93C5FD",
-            "--duration": "1.5s",
+            "--duration": `${PULSE_ANIMATION_DURATION}s`,
           } as React.CSSProperties
         }
         asChild={shouldUseSlot}

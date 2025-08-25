@@ -98,19 +98,8 @@ export default function Subscribe({
         rightActions={
           <>
             <div className="flex flex-row items-center">
-              {user && user.workspaces.length > 1 && (
-                <WorkspacePicker
-                  user={user}
-                  workspace={owner}
-                  onWorkspaceUpdate={(workspace) => {
-                    const assistantRoute = `/w/${workspace.sId}/assistant/new`;
-                    if (workspace.id !== owner.id) {
-                      void router
-                        .push(assistantRoute)
-                        .then(() => router.reload());
-                    }
-                  }}
-                />
+              {user?.organizations && user.organizations.length > 1 && (
+                <WorkspacePicker user={user} workspace={owner} />
               )}
               <div>
                 {user && (

@@ -11,8 +11,10 @@ import {
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
-import { isBuilder } from "@app/types";
+import { GLOBAL_AGENTS_SID, isBuilder } from "@app/types";
 
 type GlobalAgentActionProps = {
   agent: LightAgentConfigurationType;
@@ -32,11 +34,21 @@ export function GlobalAgentAction({
   setShowDisabledFreeWorkspacePopup,
 }: GlobalAgentActionProps) {
   const router = useRouter();
+
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
+
   if (agent.sId === "helper") {
     return null;
   }
 
-  if (agent.sId === "dust") {
+  const isConfigurable =
+    agent.sId === GLOBAL_AGENTS_SID.RESEARCH ||
+    agent.sId === GLOBAL_AGENTS_SID.DUST;
+
+  if (isConfigurable) {
     return (
       <Button
         variant="outline"
@@ -45,7 +57,9 @@ export function GlobalAgentAction({
         disabled={!isBuilder(owner)}
         onClick={(e: Event) => {
           e.stopPropagation();
-          void router.push(`/w/${owner.sId}/builder/assistants/dust`);
+          void router.push(
+            getAgentBuilderRoute(owner.sId, agent.sId, hasAgentBuilderV2)
+          );
         }}
       />
     );

@@ -16,8 +16,8 @@ const sqids = new Sqids({
 // backwards compatibility with existing string IDs.
 // They were originally used for sharding and region information but are no longer functionally
 // needed after migration to cross-region architecture.
+export const LEGACY_REGION_BIT = 1; // Previously indicated US region.
 const LEGACY_SHARD_BIT = 1;
-const LEGACY_REGION_BIT = 1; // Previously indicated US region.
 
 const RESOURCES_PREFIX = {
   file: "fil",
@@ -57,8 +57,31 @@ type ResourceNameType = keyof typeof RESOURCES_PREFIX;
 
 const sIdCache = new Map<string, string>();
 
+export function getResourcePrefix(resourceName: ResourceNameType): string {
+  return RESOURCES_PREFIX[resourceName];
+}
+
+export function dangerouslyMakeSIdWithCustomFirstPrefix(
+  resourceName: "internal_mcp_server",
+  {
+    id,
+    workspaceId,
+    firstPrefix,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+    firstPrefix: number;
+  }
+): string {
+  return _makeSId(resourceName, {
+    id,
+    workspaceId,
+    customFirstPrefix: firstPrefix,
+  });
+}
+
 export function makeSId(
-  resourceName: ResourceNameType,
+  resourceName: Exclude<ResourceNameType, "internal_mcp_server">,
   {
     id,
     workspaceId,
@@ -67,7 +90,27 @@ export function makeSId(
     workspaceId: ModelId;
   }
 ): string {
-  const idsToEncode = [LEGACY_REGION_BIT, LEGACY_SHARD_BIT, workspaceId, id];
+  return _makeSId(resourceName, {
+    id,
+    workspaceId,
+  });
+}
+
+function _makeSId(
+  resourceName: ResourceNameType,
+  {
+    id,
+    workspaceId,
+    customFirstPrefix = LEGACY_REGION_BIT,
+    customSecondPrefix = LEGACY_SHARD_BIT,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+    customFirstPrefix?: number;
+    customSecondPrefix?: number;
+  }
+): string {
+  const idsToEncode = [customFirstPrefix, customSecondPrefix, workspaceId, id];
 
   // Computing the sId is relatively expensive and we have a lot of them.
   // We cache them in memory to avoid recomputing them, they are immutable.
@@ -87,7 +130,7 @@ export function makeSId(
   return sId;
 }
 
-function getIdsFromSId(sId: string): Result<
+export function getIdsFromSId(sId: string): Result<
   {
     workspaceModelId: ModelId;
     resourceModelId: ModelId;

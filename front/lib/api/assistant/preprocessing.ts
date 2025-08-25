@@ -49,7 +49,7 @@ export async function renderConversationForModel(
     allowedTokenCount,
     excludeActions,
     excludeImages,
-    checkMissingActions = true,
+    onMissingAction = "inject-placeholder",
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -58,7 +58,7 @@ export async function renderConversationForModel(
     allowedTokenCount: number;
     excludeActions?: boolean;
     excludeImages?: boolean;
-    checkMissingActions?: boolean;
+    onMissingAction?: "inject-placeholder" | "skip";
   }
 ): Promise<
   Result<
@@ -82,7 +82,7 @@ export async function renderConversationForModel(
         message: m,
         workspaceId: conversation.owner.sId,
         conversationId: conversation.sId,
-        checkMissingActions,
+        onMissingAction,
       });
 
       if (excludeActions) {
@@ -331,13 +331,13 @@ async function getSteps(
     message,
     workspaceId,
     conversationId,
-    checkMissingActions,
+    onMissingAction,
   }: {
     model: ModelConfigurationType;
     message: AgentMessageType;
     workspaceId: string;
     conversationId: string;
-    checkMissingActions: boolean;
+    onMissingAction: "inject-placeholder" | "skip";
   }
 ): Promise<Step[]> {
   const supportedModel = getSupportedModelConfig(model);
@@ -403,40 +403,54 @@ async function getSteps(
       // For each step, we look at the contents to find the function calls.
       // If some function calls have no associated function result, we make a dummy "errored" one.
       .map((step) => {
-        const actions = step.actions;
-        const functionResultByCallId: Record<string, FunctionMessageTypeModel> =
-          {};
-        for (const action of actions) {
-          functionResultByCallId[action.call.id] = action.result;
+        if (onMissingAction !== "inject-placeholder") {
+          return step;
         }
-        if (checkMissingActions) {
-          for (const content of step.contents) {
-            if (content.type === "function_call") {
-              const functionCall = content.value;
-              if (!functionResultByCallId[functionCall.id]) {
-                logger.warn(
-                  {
-                    workspaceId,
-                    conversationId,
-                    agentMessageId: message.sId,
-                    functionCallId: functionCall.id,
-                  },
-                  "Unexpected state, agent message step with no action for function call"
-                );
-                actions.push({
-                  call: functionCall,
-                  result: {
-                    role: "function",
-                    name: functionCall.name,
-                    function_call_id: functionCall.id,
-                    content: "Error: tool execution failed",
-                  },
-                });
-              }
+
+        const actions = step.actions;
+        const functionResultByCallId = Object.fromEntries(
+          step.actions.map((action) => [action.call.id, action.result])
+        );
+        for (const content of step.contents) {
+          if (content.type === "function_call") {
+            const functionCall = content.value;
+            if (!functionResultByCallId[functionCall.id]) {
+              logger.warn(
+                {
+                  workspaceId,
+                  conversationId,
+                  agentMessageId: message.sId,
+                  functionCallId: functionCall.id,
+                },
+                "Unexpected state, agent message step with no action for function call"
+              );
+              actions.push({
+                call: functionCall,
+                result: {
+                  role: "function",
+                  name: functionCall.name,
+                  function_call_id: functionCall.id,
+                  content: "Error: tool execution failed",
+                },
+              });
             }
           }
         }
         return { ...step, actions };
+      })
+      .filter((step) => {
+        if (onMissingAction !== "skip") {
+          return true;
+        }
+
+        const functionResultByCallId = Object.fromEntries(
+          step.actions.map((action) => [action.call.id, action.result])
+        );
+        return step.contents.every(
+          (content) =>
+            content.type !== "function_call" ||
+            functionResultByCallId[content.value.id]
+        );
       })
   );
 }

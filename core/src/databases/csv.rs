@@ -7,9 +7,9 @@ use futures::stream::StreamExt;
 use lazy_static::lazy_static;
 use tokio::io::AsyncReadExt;
 
-use crate::info;
 use regex::Regex;
 use tokio_util::compat::TokioAsyncReadCompatExt;
+use tracing::info;
 use unicode_normalization::UnicodeNormalization;
 
 use crate::{databases::table::Row, utils};
@@ -19,7 +19,7 @@ pub struct GoogleCloudStorageCSVContent {
     pub bucket_csv_path: String,
 }
 
-const MAX_TABLE_COLUMNS: usize = 512;
+pub const MAX_TABLE_COLUMNS: usize = 512;
 const MAX_COLUMN_NAME_LENGTH: usize = 1024;
 const MAX_TABLE_ROWS: usize = 500_000;
 

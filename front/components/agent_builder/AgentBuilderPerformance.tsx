@@ -17,7 +17,7 @@ import {
 import { useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
+import { FeedbacksSection } from "@app/components/agent_builder/FeedbacksSection";
 import { useAgentAnalytics } from "@app/lib/swr/assistants";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { removeNulls } from "@app/types";
@@ -48,7 +48,7 @@ function NoAgentState() {
 }
 
 interface AgentBuilderPerformanceProps {
-  agentConfigurationSId: string;
+  agentConfigurationSId?: string;
 }
 
 export function AgentBuilderPerformance({

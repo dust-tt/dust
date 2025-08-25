@@ -24,11 +24,13 @@ export async function runSlackWorker() {
     maxConcurrentActivityTaskExecutions: 16,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
-        },
-        () => new SlackCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "slack"),
+        }),
+        () => ({
+          inbound: new SlackCastKnownErrorsInterceptor(),
+        }),
       ],
     },
   });

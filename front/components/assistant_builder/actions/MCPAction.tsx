@@ -13,6 +13,7 @@ import { JsonSchemaConfigurationSection } from "@app/components/assistant_builde
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
 import { DataDescription } from "@app/components/assistant_builder/actions/DataDescription";
+import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import type {
   AssistantBuilderMCPConfiguration,
@@ -28,7 +29,6 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   LightWorkspaceType,
   Result,
-  SpaceType,
   TimeFrame,
   WhitelistableFeature,
   WorkspaceType,
@@ -78,7 +78,6 @@ function NoActionAvailable({ owner }: NoActionAvailableProps) {
 
 interface MCPActionProps {
   owner: LightWorkspaceType;
-  allowedSpaces: SpaceType[];
   hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
   action: AssistantBuilderMCPOrVizState;
   isEditing: boolean;
@@ -89,7 +88,7 @@ interface MCPActionProps {
       old: AssistantBuilderMCPConfiguration["configuration"]
     ) => AssistantBuilderMCPConfiguration["configuration"];
   }) => void;
-  setEdited: (edited: boolean) => void;
+
   setShowInvalidActionDescError: (
     showInvalidActionDescError: string | null
   ) => void;
@@ -100,14 +99,15 @@ interface MCPActionProps {
 // please use the `ConfigurationSectionContainer` component and wrap the section in it.
 export function MCPAction({
   owner,
-  allowedSpaces,
   hasFeature,
   action,
   updateAction,
-  setEdited,
   setShowInvalidActionDescError,
   showInvalidActionDescError,
 }: MCPActionProps) {
+  const { setEdited, getAllowedSpaces } = useAssistantBuilderContext();
+  const allowedSpaces = getAllowedSpaces(action);
+
   const actionConfiguration =
     action.configuration as AssistantBuilderMCPServerConfiguration;
 
@@ -169,7 +169,10 @@ export function MCPAction({
   const requirements = getMCPServerRequirements(selectedMCPServerView);
   const withDataSource =
     requirements.requiresDataSourceConfiguration ||
+    requirements.requiresDataWarehouseConfiguration ||
     requirements.requiresTableConfiguration;
+
+  const isDataWarehouseConfig = requirements.requiresDataWarehouseConfiguration;
 
   // We don't show the "Available Tools" section if there is only one tool.
   // Because it's redundant with the tool description.
@@ -186,7 +189,8 @@ export function MCPAction({
   return (
     <>
       {/* Additional modals for selecting data sources */}
-      {requirements.requiresDataSourceConfiguration && (
+      {(requirements.requiresDataSourceConfiguration ||
+        isDataWarehouseConfig) && (
         <AssistantBuilderDataSourceModal
           isOpen={showDataSourcesModal}
           setOpen={setShowDataSourcesModal}
@@ -198,7 +202,7 @@ export function MCPAction({
             actionConfiguration.dataSourceConfigurations ?? {}
           }
           allowedSpaces={allowedSpaces}
-          viewType="document"
+          viewType={isDataWarehouseConfig ? "data_warehouse" : "document"}
         />
       )}
       {requirements.requiresTableConfiguration && (
@@ -226,7 +230,8 @@ export function MCPAction({
       )}
 
       {/* Configurable blocks */}
-      {requirements.requiresDataSourceConfiguration && (
+      {(requirements.requiresDataSourceConfiguration ||
+        isDataWarehouseConfig) && (
         <DataSourceSelectionSection
           owner={owner}
           dataSourceConfigurations={
@@ -236,7 +241,7 @@ export function MCPAction({
           onSave={(dataSourceConfigurations) => {
             handleConfigUpdate((old) => ({ ...old, dataSourceConfigurations }));
           }}
-          viewType="document"
+          viewType={isDataWarehouseConfig ? "data_warehouse" : "document"}
         />
       )}
       {requirements.requiresTableConfiguration && (
@@ -296,7 +301,6 @@ export function MCPAction({
           instructions={action.description}
           description={action.description}
           sectionConfigurationDescription="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
-          setEdited={setEdited}
           onConfigUpdate={({ jsonSchema, _jsonSchemaString }) => {
             handleConfigUpdate((old) => ({
               ...old,
@@ -344,7 +348,7 @@ export function MCPAction({
           <ToolsList
             owner={owner}
             mcpServerView={selectedMCPServerView}
-            forcedCanUpdate={false}
+            disableUpdates={true}
           />
         </ConfigurationSectionContainer>
       )}
@@ -433,6 +437,11 @@ export function hasErrorActionMCP(
       }
     }
     for (const key in requirements.requiredEnums) {
+      if (!(key in action.configuration.additionalConfiguration)) {
+        missingFields.push(key);
+      }
+    }
+    for (const key in requirements.requiredLists) {
       if (!(key in action.configuration.additionalConfiguration)) {
         missingFields.push(key);
       }

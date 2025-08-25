@@ -1,5 +1,5 @@
 import assert from "assert";
-import { uniq } from "lodash";
+import uniq from "lodash/uniq";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
 import {
@@ -16,11 +16,11 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import type { DataSourceWithAgentsUsageType, Result } from "@app/types";
@@ -89,7 +89,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     );
   }
 
-  await frontSequelize.transaction(async (t) => {
+  await withTransaction(async (t) => {
     // Soft delete all data source views.
     await concurrentExecutor(
       dataSourceViews,
@@ -215,7 +215,7 @@ export async function hardDeleteSpace(
     }
   }
 
-  await frontSequelize.transaction(async (t) => {
+  await withTransaction(async (t) => {
     // Delete all spaces groups.
     for (const group of space.groups) {
       // Skip deleting global groups for regular spaces.
@@ -264,7 +264,7 @@ export async function createRegularSpaceAndGroup(
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
 
-  const result = await frontSequelize.transaction(async (t) => {
+  const result = await withTransaction(async (t) => {
     await getWorkspaceAdministrationVersionLock(owner, t);
 
     const all = await SpaceResource.listWorkspaceSpaces(auth, undefined, t);

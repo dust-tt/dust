@@ -3,6 +3,7 @@ import { Spinner } from "@dust-tt/sparkle";
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
 import { PublicInteractiveContentHeader } from "@app/components/assistant/conversation/content/PublicInteractiveContentHeader";
+import { formatFilenameForDisplay } from "@app/lib/files";
 import { usePublicFile } from "@app/lib/swr/files";
 
 interface PublicClientExecutableRendererProps {
@@ -40,7 +41,9 @@ export function PublicClientExecutableRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <PublicInteractiveContentHeader title={fileName || "Client Executable"} />
+      <PublicInteractiveContentHeader
+        title={formatFilenameForDisplay(fileName ?? "Interactive Content")}
+      />
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">

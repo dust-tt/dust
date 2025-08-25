@@ -158,9 +158,14 @@ fn try_parse_private_key(pem: &str, password: Option<&[u8]>) -> Result<RsaPrivat
         }
     }
 
-    RsaPrivateKey::from_pkcs8_pem(pem)
-        .or_else(|_| RsaPrivateKey::from_pkcs1_pem(pem))
-        .map_err(|e| Error::Decode(format!("Failed to parse private key: {}", e)))
+    RsaPrivateKey::from_pkcs8_pem(pem).or_else(|pkcs8_err| {
+        RsaPrivateKey::from_pkcs1_pem(pem).map_err(|pkcs1_err| {
+            Error::Decode(format!(
+                "Failed to parse private key. PKCS8 error: {}, PKCS1 error: {}",
+                pkcs8_err, pkcs1_err
+            ))
+        })
+    })
 }
 
 #[derive(serde::Deserialize)]

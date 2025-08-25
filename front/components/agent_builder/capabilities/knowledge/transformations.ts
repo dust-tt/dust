@@ -1,37 +1,14 @@
-import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
+import uniqBy from "lodash/uniqBy";
+
 import type {
-  DataSourceViewContentNode,
+  DataSourceBuilderTreeItemType,
+  DataSourceBuilderTreeType,
+} from "@app/components/data_source_view/context/types";
+import { isNodeSelected } from "@app/components/data_source_view/context/utils";
+import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
 } from "@app/types";
-
-/**
- * Creates a placeholder DataSourceViewContentNode with minimal information.
- * The actual content node data will be resolved on the backend when this
- * configuration is used.
- */
-function getPlaceholderResource(
-  nodeId: string,
-  parentId: string | null,
-  dataSourceView: DataSourceViewType
-): DataSourceViewContentNode {
-  return {
-    internalId: nodeId,
-    parentInternalId: parentId,
-    parentInternalIds: parentId ? [parentId] : null,
-    parentTitle: null,
-    title: nodeId,
-    type: "document",
-    mimeType: "application/octet-stream",
-    lastUpdatedAt: null,
-    expandable: false,
-    permission: "read",
-    providerVisibility: null,
-    sourceUrl: null,
-    preventSelection: false,
-    dataSourceView,
-  };
-}
 
 /**
  * Transforms DataSourceBuilderTreeType to DataSourceViewSelectionConfigurations
@@ -51,27 +28,20 @@ export function transformTreeToSelectionConfigurations(
     dataSourceViews.map((dsv) => [dsv.sId, dsv])
   );
 
-  const existingResourcesMap = new Map<string, Set<string>>();
-
-  // Parse the tree paths to extract data source configurations
-  for (const path of tree.in) {
-    const parts = path.split(".");
-    if (parts.length < 2 || parts[0] !== "root") {
+  // Parse the tree paths to extract data source configurations from included items
+  for (const item of tree.in) {
+    // We can skip for item that aren't data_source or node. As we only allow those
+    // to be selected, it safe to skip, and make our life easier type wise after that checks
+    if (item.type !== "node" && item.type !== "data_source") {
       continue;
     }
 
+    const parts = item.path.split("/");
     // Find the data source view ID in the path - optimize with early break
-    let dsvIdIndex = -1;
-    let dsvId = "";
-    for (let i = 1; i < parts.length; i++) {
-      if (isDataSourceViewId(parts[i])) {
-        dsvIdIndex = i;
-        dsvId = parts[i];
-        break;
-      }
-    }
+    const dsvIdIndex = parts.findIndex((part) => isDataSourceViewId(part));
+    const dsvId = parts[dsvIdIndex];
 
-    if (dsvIdIndex === -1) {
+    if (dsvId == null) {
       continue;
     }
 
@@ -81,38 +51,63 @@ export function transformTreeToSelectionConfigurations(
     }
 
     // Check if this is a full data source selection or specific nodes
-    const isFullDataSource = dsvIdIndex === parts.length - 1;
+    const isFullDataSource =
+      item.type === "data_source" &&
+      isNodeSelected(tree, item.path.split("/")) === true;
 
     // Initialize configuration if not exists
     if (!configurations[dataSourceView.sId]) {
       configurations[dataSourceView.sId] = {
         dataSourceView,
         selectedResources: [],
+        excludedResources: [],
         isSelectAll: isFullDataSource,
         tagsFilter: null,
       };
-      existingResourcesMap.set(dataSourceView.sId, new Set<string>());
     }
 
     // If it's not a full data source selection, extract the selected nodes
-    if (!isFullDataSource) {
-      configurations[dataSourceView.sId].isSelectAll = false;
+    if (item.type === "node") {
+      configurations[dataSourceView.sId].selectedResources.push(item.node);
+    }
+  }
 
-      // Extract node information from the path
-      const nodeIds = parts.slice(dsvIdIndex + 1);
-      if (nodeIds.length > 0) {
-        const nodeId = nodeIds[nodeIds.length - 1]; // Last part is the selected node
-        const parentId =
-          nodeIds.length > 1 ? nodeIds[nodeIds.length - 2] : null;
+  // Parse the tree paths to extract excluded resources from notIn items
+  for (const item of tree.notIn) {
+    // We can skip for item that aren't data_source or node. As we only allow those
+    // to be excluded, it safe to skip, and make our life easier type wise after that checks
+    if (item.type !== "node" && item.type !== "data_source") {
+      continue;
+    }
 
-        const existingResources = existingResourcesMap.get(dataSourceView.sId)!;
-        if (!existingResources.has(nodeId)) {
-          existingResources.add(nodeId);
-          configurations[dataSourceView.sId].selectedResources.push(
-            getPlaceholderResource(nodeId, parentId, dataSourceView)
-          );
-        }
-      }
+    const parts = item.path.split("/");
+    // Find the data source view ID in the path - optimize with early break
+    const dsvIdIndex = parts.findIndex((part) => isDataSourceViewId(part));
+    const dsvId = parts[dsvIdIndex];
+
+    if (dsvId == null) {
+      continue;
+    }
+
+    const dataSourceView = dataSourceViewMap.get(dsvId);
+    if (!dataSourceView || dataSourceView.spaceId !== parts[1]) {
+      continue;
+    }
+
+    // Initialize configuration if not exists
+    if (!configurations[dataSourceView.sId]) {
+      configurations[dataSourceView.sId] = {
+        dataSourceView,
+        selectedResources: [],
+        excludedResources: [],
+        isSelectAll: false,
+        tagsFilter: null,
+      };
+    }
+
+    // Extract the excluded nodes
+    if (item.type === "node") {
+      configurations[dataSourceView.sId].excludedResources.push(item.node);
     }
   }
 
@@ -130,8 +125,8 @@ export function transformTreeToSelectionConfigurations(
 export function transformSelectionConfigurationsToTree(
   configurations: DataSourceViewSelectionConfigurations
 ): DataSourceBuilderTreeType {
-  const inPaths: string[] = [];
-  const notInPaths: string[] = [];
+  const inPaths: DataSourceBuilderTreeItemType[] = [];
+  const notInPaths: DataSourceBuilderTreeItemType[] = [];
 
   for (const config of Object.values(configurations)) {
     const { dataSourceView } = config;
@@ -139,49 +134,97 @@ export function transformSelectionConfigurationsToTree(
 
     if (config.isSelectAll) {
       // If all nodes are selected, just add the data source path
-      inPaths.push(baseParts.join("."));
-    } else if (config.selectedResources.length > 0) {
-      // Group selected resources by parent for efficient processing
-      const resourcesByParent = new Map<
-        string | null,
-        typeof config.selectedResources
-      >();
+      inPaths.push({
+        path: baseParts,
+        name: dataSourceView.dataSource.name,
+        type: "data_source",
+        dataSourceView,
+      });
+      continue;
+    }
 
+    if (config.selectedResources.length > 0) {
       for (const node of config.selectedResources) {
-        const parentId = node.parentInternalId || null;
-        const nodes = resourcesByParent.get(parentId) || [];
-        nodes.push(node);
-        resourcesByParent.set(parentId, nodes);
+        if (node.parentInternalId) {
+          const pathParts = [
+            baseParts,
+            ...(
+              node.parentInternalIds?.filter((id) => id !== node.internalId) ??
+              []
+            ).toReversed(),
+            node.internalId,
+          ];
+          inPaths.push({
+            path: pathParts.join("/"),
+            name: node.title,
+            type: "node",
+            node,
+          });
+        } else {
+          const pathParts = [baseParts, node.internalId];
+          inPaths.push({
+            path: pathParts.join("/"),
+            name: node.title,
+            type: "data_source",
+            dataSourceView: node.dataSourceView,
+          });
+        }
       }
+    }
 
-      // Add paths for selected resources
-      for (const [parentId, nodes] of resourcesByParent) {
-        for (const node of nodes) {
-          const pathParts = parentId
-            ? [...baseParts, parentId, node.internalId]
-            : [...baseParts, node.internalId];
-          inPaths.push(pathParts.join("."));
+    // Process excluded resources and add them to notInPaths
+    if (config.excludedResources.length > 0) {
+      // Add paths for excluded resources
+      for (const node of config.excludedResources) {
+        if (node.parentInternalId) {
+          const pathParts = [
+            baseParts,
+            ...(
+              node.parentInternalIds?.filter((id) => id !== node.internalId) ??
+              []
+            ).toReversed(),
+            node.internalId,
+          ];
+          notInPaths.push({
+            path: pathParts.join("/"),
+            name: node.title,
+            type: "node",
+            node,
+          });
+        } else {
+          const pathParts = [baseParts, node.internalId];
+          notInPaths.push({
+            path: pathParts.join("/"),
+            name: node.title,
+            type: "data_source",
+            dataSourceView: node.dataSourceView,
+          });
         }
       }
     }
   }
 
-  return {
+  const res = {
     in: deduplicatePaths(inPaths),
     notIn: deduplicatePaths(notInPaths),
   };
+
+  return res;
 }
 
 /**
  * Removes duplicate paths and paths that are already covered by parent paths
  */
-function deduplicatePaths(paths: string[]): string[] {
-  const uniquePaths = [...new Set(paths)];
+function deduplicatePaths(
+  paths: DataSourceBuilderTreeItemType[]
+): DataSourceBuilderTreeItemType[] {
+  const uniquePaths = uniqBy(paths, (el) => el.path);
 
   // Remove paths that are covered by parent paths
   return uniquePaths.filter((path) => {
     return !uniquePaths.some(
-      (otherPath) => otherPath !== path && path.startsWith(otherPath + ".")
+      (otherPath) =>
+        otherPath !== path && path.path.startsWith(otherPath.path + "/")
     );
   });
 }
@@ -196,7 +239,7 @@ function isDataSourceViewId(segment: string): boolean {
 /**
  * Builds a navigation path for a data source view
  */
-function buildDataSourcePath(dataSourceView: DataSourceViewType): string[] {
+function buildDataSourcePath(dataSourceView: DataSourceViewType): string {
   const parts = ["root", dataSourceView.spaceId];
 
   if (dataSourceView.category) {
@@ -204,5 +247,5 @@ function buildDataSourcePath(dataSourceView: DataSourceViewType): string[] {
   }
 
   parts.push(dataSourceView.sId);
-  return parts;
+  return parts.join("/");
 }

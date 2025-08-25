@@ -39,6 +39,10 @@ import {
   Spinner,
   Tooltip,
 } from "@sparkle/components";
+import {
+  radioIndicatorStyles,
+  radioStyles,
+} from "@sparkle/components/RadioGroup";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import {
   ArrowDownIcon,
@@ -107,6 +111,7 @@ interface DataTableProps<TData extends TBaseData> {
   rowSelection?: RowSelectionState;
   setRowSelection?: (rowSelection: RowSelectionState) => void;
   enableRowSelection?: boolean | ((row: Row<TData>) => boolean);
+  enableMultiRowSelection?: boolean;
 }
 
 export function DataTable<TData extends TBaseData>({
@@ -128,6 +133,7 @@ export function DataTable<TData extends TBaseData>({
   rowSelection,
   setRowSelection,
   enableRowSelection = false,
+  enableMultiRowSelection = true,
   getRowId,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
@@ -198,6 +204,7 @@ export function DataTable<TData extends TBaseData>({
     },
     onPaginationChange,
     enableRowSelection,
+    enableMultiRowSelection,
     getRowId,
   });
 
@@ -261,31 +268,45 @@ export function DataTable<TData extends TBaseData>({
           ))}
         </DataTable.Header>
         <DataTable.Body>
-          {table.getRowModel().rows.map((row) => (
-            <DataTable.Row
-              widthClassName={widthClassName}
-              key={row.id}
-              onClick={row.original.onClick}
-              {...(enableRowSelection && {
-                "data-selected": row.getIsSelected(),
-              })}
-            >
-              {row.getVisibleCells().map((cell) => {
-                const breakpoint = columnsBreakpoints[cell.column.id];
-                if (
-                  !windowSize.width ||
-                  !shouldRenderColumn(windowSize.width, breakpoint)
-                ) {
-                  return null;
+          {table.getRowModel().rows.map((row) => {
+            const handleRowClick = () => {
+              if (enableRowSelection && row.getCanSelect()) {
+                row.toggleSelected(!enableMultiRowSelection ? true : undefined);
+              }
+              row.original.onClick?.();
+            };
+
+            return (
+              <DataTable.Row
+                widthClassName={widthClassName}
+                key={row.id}
+                onClick={
+                  enableRowSelection ? handleRowClick : row.original.onClick
                 }
-                return (
-                  <DataTable.Cell column={cell.column} key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </DataTable.Cell>
-                );
-              })}
-            </DataTable.Row>
-          ))}
+                {...(enableRowSelection && {
+                  "data-selected": row.getIsSelected(),
+                })}
+              >
+                {row.getVisibleCells().map((cell) => {
+                  const breakpoint = columnsBreakpoints[cell.column.id];
+                  if (
+                    !windowSize.width ||
+                    !shouldRenderColumn(windowSize.width, breakpoint)
+                  ) {
+                    return null;
+                  }
+                  return (
+                    <DataTable.Cell column={cell.column} key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </DataTable.Cell>
+                  );
+                })}
+              </DataTable.Row>
+            );
+          })}
         </DataTable.Body>
       </DataTable.Root>
       {pagination && (
@@ -328,6 +349,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
   rowSelection,
   setRowSelection,
   enableRowSelection,
+  enableMultiRowSelection = true,
   getRowId,
 }: ScrollableDataTableProps<TData>) {
   const windowSize = useWindowSize();
@@ -369,7 +391,6 @@ export function ScrollableDataTable<TData extends TBaseData>({
     rowCount: totalRowCount,
     getCoreRowModel: getCoreRowModel(),
     enableColumnResizing: true,
-    onRowSelectionChange,
     ...(enableRowSelection && {
       onRowSelectionChange,
     }),
@@ -377,6 +398,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
       ...(enableRowSelection && { rowSelection }),
     },
     enableRowSelection,
+    enableMultiRowSelection,
     getRowId,
   });
 
@@ -515,12 +537,23 @@ export function ScrollableDataTable<TData extends TBaseData>({
             >
               {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                 const row = rows[virtualRow.index];
+                const handleRowClick = () => {
+                  if (enableRowSelection && row.getCanSelect()) {
+                    row.toggleSelected(
+                      !enableMultiRowSelection ? true : undefined
+                    );
+                  }
+                  row.original.onClick?.();
+                };
+
                 return (
                   <DataTable.Row
                     key={row.id}
                     id={row.id}
                     widthClassName={widthClassName}
-                    onClick={row.original.onClick}
+                    onClick={
+                      enableRowSelection ? handleRowClick : row.original.onClick
+                    }
                     className="s-absolute s-w-full"
                     {...(enableRowSelection && {
                       "data-selected": row.getIsSelected(),
@@ -693,8 +726,7 @@ DataTable.Row = function Row({
         onClick
           ? "s-cursor-pointer hover:s-bg-muted dark:hover:s-bg-muted-night"
           : "",
-        props["data-selected"] &&
-          "s-bg-highlight-50 dark:s-bg-highlight-900/10",
+        props["data-selected"] && "s-bg-muted/50 dark:s-bg-muted/50",
         widthClassName,
         className
       )}
@@ -1112,6 +1144,35 @@ export function createSelectionColumn<TData>(): ColumnDef<TData> {
             row.toggleSelected(state);
           }}
         />
+      </div>
+    ),
+    meta: {
+      className: "s-w-10",
+    },
+  };
+}
+
+export function createRadioSelectionColumn<TData>(): ColumnDef<TData> {
+  return {
+    id: "radio-select",
+    enableSorting: false,
+    enableHiding: false,
+    header: () => null,
+    cell: ({ row }) => (
+      <div className="s-flex s-h-full s-w-full s-items-center">
+        <div
+          className={cn(
+            radioStyles({ size: "xs" }),
+            row.getIsSelected() && "s-bg-muted/50 dark:s-bg-muted/50",
+            !row.getCanSelect() && "s-cursor-not-allowed s-opacity-50"
+          )}
+          aria-checked={row.getIsSelected()}
+          role="radio"
+        >
+          {row.getIsSelected() && (
+            <div className={radioIndicatorStyles({ size: "xs" })} />
+          )}
+        </div>
       </div>
     ),
     meta: {

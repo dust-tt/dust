@@ -1,6 +1,7 @@
 import * as t from "io-ts";
 
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 
 export const OAUTH_USE_CASES = [
   "connection",
@@ -23,6 +24,7 @@ export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
 
 export const OAUTH_PROVIDERS = [
   "confluence",
+  "freshservice",
   "github",
   "google_drive",
   "gmail",
@@ -37,11 +39,13 @@ export const OAUTH_PROVIDERS = [
   "zendesk",
   "salesforce",
   "hubspot",
-  "mcp", // MCP is a special provider for MCP servers
+  "mcp", // MCP is a special provider for MCP servers.
+  "mcp_static", // MCP static is a special provider for MCP servers requiring static OAuth credentials.
 ] as const;
 
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
+  freshservice: "Freshservice",
   github: "GitHub",
   gmail: "Gmail",
   google_drive: "Google",
@@ -57,6 +61,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   salesforce: "Salesforce",
   hubspot: "Hubspot",
   mcp: "MCP",
+  mcp_static: "MCP",
 };
 
 const SUPPORTED_OAUTH_CREDENTIALS = [
@@ -66,6 +71,10 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "code_verifier",
   "code_challenge",
   "scope",
+  "token_endpoint",
+  "authorization_endpoint",
+  "freshservice_domain",
+  "freshworks_org_url",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -147,6 +156,25 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
         return result;
       }
       return null;
+    case "freshservice":
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
+        const result: OAuthCredentialInputs = {
+          freshworks_org_url: {
+            label: "Freshworks Organization URL",
+            value: undefined,
+            helpMessage:
+              "Your Freshworks organization URL (e.g., yourcompany.myfreshworks.com).",
+          },
+          freshservice_domain: {
+            label: "Freshservice Domain URL",
+            value: undefined,
+            helpMessage:
+              "Your Freshservice domain URL (e.g., yourcompany.freshservice.com).",
+          },
+        };
+        return result;
+      }
+      return null;
     case "hubspot":
     case "zendesk":
     case "slack":
@@ -161,6 +189,43 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "intercom":
     case "jira":
     case "mcp":
+      return null;
+    case "mcp_static":
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
+        const result: OAuthCredentialInputs = {
+          client_id: {
+            label: "OAuth Client ID",
+            value: undefined,
+            helpMessage: "The client ID from your MCP server.",
+            validator: isValidClientIdOrSecret,
+          },
+          client_secret: {
+            label: "OAuth Client Secret",
+            value: undefined,
+            helpMessage: "The client secret from your MCP server.",
+            validator: isValidClientIdOrSecret,
+          },
+          token_endpoint: {
+            label: "OAuth Token Endpoint",
+            value: undefined,
+            helpMessage: "The token endpoint from your MCP server.",
+            validator: isValidUrl,
+          },
+          authorization_endpoint: {
+            label: "OAuth Authorization Endpoint",
+            value: undefined,
+            helpMessage: "The authorization endpoint from your MCP server.",
+            validator: isValidUrl,
+          },
+          scope: {
+            label: "OAuth Scope(s)",
+            value: undefined,
+            helpMessage: "The scope(s) to request (comma-separated list).",
+            validator: isValidScope,
+          },
+        };
+        return result;
+      }
       return null;
     default:
       assertNever(provider);
@@ -215,6 +280,10 @@ export function isValidSalesforceDomain(s: unknown): s is string {
 
 export function isValidClientIdOrSecret(s: unknown): s is string {
   return typeof s === "string" && s.trim().length > 0;
+}
+
+export function isValidUrl(s: unknown): s is string {
+  return typeof s === "string" && validateUrl(s).valid;
 }
 
 // Credentials Providers

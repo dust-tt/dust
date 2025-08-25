@@ -12,8 +12,8 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -27,6 +27,7 @@ import {
   ConversationError,
   InternalPostConversationsRequestBodySchema,
 } from "@app/types";
+import { ExecutionModeSchema } from "@app/types/assistant/agent_run";
 
 export type GetConversationsResponseBody = {
   conversations: ConversationWithoutContentType[];
@@ -75,13 +76,13 @@ async function handler(
       const { title, visibility, message, contentFragments } =
         bodyValidation.right;
 
-      const featureFlags = await getFeatureFlags(
-        auth.getNonNullableWorkspace()
+      const executionModeParseResult = ExecutionModeSchema.safeParse(
+        req.query.execution
       );
-      const hasAsyncLoopFeature = featureFlags.includes("async_loop");
-      const forceAsynchronousLoop =
-        req.query.async === "true" ||
-        (req.query.async !== "false" && hasAsyncLoopFeature);
+
+      const executionMode = executionModeParseResult.success
+        ? executionModeParseResult.data
+        : undefined;
 
       if (message?.context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(
@@ -170,6 +171,29 @@ async function handler(
       }
 
       if (message) {
+        // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
+        if (message.context.selectedMCPServerViewIds) {
+          const mcpServerViews = await MCPServerViewResource.fetchByIds(
+            auth,
+            message.context.selectedMCPServerViewIds
+          );
+
+          const r = await ConversationResource.upsertMCPServerViews(auth, {
+            conversation,
+            mcpServerViews,
+            enabled: true,
+          });
+          if (r.isErr()) {
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: "Failed to add MCP server views to conversation",
+              },
+            });
+          }
+        }
+
         // If a message was provided we do await for the message to be created before returning the
         // conversation along with the message.
         const messageRes = await postUserMessage(auth, {
@@ -188,7 +212,7 @@ async function handler(
           },
           // For now we never skip tools when interacting with agents from the web client.
           skipToolsValidation: false,
-          forceAsynchronousLoop,
+          executionMode,
         });
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);

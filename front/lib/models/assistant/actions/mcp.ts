@@ -3,6 +3,9 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
+import type { StepContext } from "@app/lib/actions/types";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
@@ -14,6 +17,12 @@ import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type { TimeFrame } from "@app/types";
 import { isTimeFrame } from "@app/types";
 
+// Note, in storage, we store the path using "." in the key of the record.
+export type AdditionalConfigurationType = Record<
+  string,
+  boolean | number | string | string[]
+>;
+
 export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPServerConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -23,7 +32,7 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
   declare sId: string;
 
   declare timeFrame: TimeFrame | null;
-  declare additionalConfiguration: Record<string, boolean | number | string>;
+  declare additionalConfiguration: AdditionalConfigurationType;
   declare jsonSchema: JSONSchema | null;
 
   declare appId: string | null;
@@ -182,22 +191,19 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare updatedAt: CreationOptional<Date>;
 
   declare mcpServerConfigurationId: string;
-
   declare version: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
 
-  declare isError: boolean;
-  declare executionState:
-    | "pending"
-    | "timeout"
-    | "allowed_explicitly"
-    | "allowed_implicitly"
-    | "denied";
+  declare status: ToolExecutionStatus;
 
   declare citationsAllocated: number;
+  declare augmentedInputs: Record<string, unknown>;
+  declare toolConfiguration: LightMCPToolConfigurationType;
+  declare stepContext: StepContext;
 
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
+
   declare agentMessage?: NonAttribute<AgentMessage>;
 }
 
@@ -222,30 +228,30 @@ AgentMCPAction.init(
       allowNull: false,
       defaultValue: 0,
     },
-    executionState: {
+    status: {
       type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        isIn: [
-          [
-            "pending",
-            "timeout",
-            "allowed_explicitly",
-            "allowed_implicitly",
-            "denied",
-          ],
-        ],
-      },
-    },
-    isError: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
+      allowNull: true,
+      defaultValue: "succeeded",
     },
     citationsAllocated: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
+    },
+    augmentedInputs: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: {},
+    },
+    toolConfiguration: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: {},
+    },
+    stepContext: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: {},
     },
   },
   {
@@ -264,6 +270,11 @@ AgentMCPAction.init(
         fields: ["workspaceId", "agentMessageId", "stepContentId", "version"],
         name: "agent_mcp_action_workspace_agent_message_step_content_version",
         unique: true,
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "agentMessageId", "status"],
+        name: "agent_mcp_action_workspace_agent_message_status",
         concurrently: true,
       },
     ],

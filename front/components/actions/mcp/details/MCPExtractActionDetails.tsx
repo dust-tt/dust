@@ -42,7 +42,7 @@ interface MCPExtractActionResultsProps {
 
 export function MCPExtractActionDetails({
   action,
-  defaultOpen,
+  viewType,
 }: MCPActionDetailsProps) {
   const queryResource = action.output
     ?.filter(isExtractQueryResourceType)
@@ -56,8 +56,10 @@ export function MCPExtractActionDetails({
 
   return (
     <ActionDetailsWrapper
-      actionName="Extract data"
-      defaultOpen={defaultOpen}
+      viewType={viewType}
+      actionName={
+        viewType === "conversation" ? "Extracting data" : "Extract data"
+      }
       visual={ScanIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
@@ -94,19 +96,21 @@ export function MCPExtractActionDetails({
           </div>
         )}
 
-        <div>
-          <CollapsibleComponent
-            rootProps={{ defaultOpen }}
-            triggerChildren={
-              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                Results
-              </span>
-            }
-            contentChildren={
-              <MCPExtractActionResults resultResource={resultResource} />
-            }
-          />
-        </div>
+        {viewType === "sidebar" && (
+          <div>
+            <CollapsibleComponent
+              rootProps={{ defaultOpen: true }}
+              triggerChildren={
+                <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                  Results
+                </span>
+              }
+              contentChildren={
+                <MCPExtractActionResults resultResource={resultResource} />
+              }
+            />
+          </div>
+        )}
       </div>
     </ActionDetailsWrapper>
   );

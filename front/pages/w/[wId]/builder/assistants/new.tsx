@@ -139,53 +139,56 @@ export default function CreateAssistant({
     return null;
   }
 
+  const defaultScope = flow === "personal_assistants" ? "hidden" : "visible";
+  const initialBuilderState = agentConfiguration
+    ? {
+        actions: [],
+        triggers: [],
+        scope:
+          agentConfiguration.scope !== "global"
+            ? agentConfiguration.scope
+            : "hidden",
+        handle: `${agentConfiguration.name}${
+          "isTemplate" in agentConfiguration ? "" : "_Copy"
+        }`,
+        description: agentConfiguration.description,
+        instructions: agentConfiguration.instructions || "", // TODO we don't support null in the UI yet
+        avatarUrl:
+          "pictureUrl" in agentConfiguration
+            ? agentConfiguration.pictureUrl
+            : null,
+        generationSettings: {
+          modelSettings: {
+            providerId: agentConfiguration.model.providerId,
+            modelId: agentConfiguration.model.modelId,
+          },
+          temperature: agentConfiguration.model.temperature,
+          reasoningEffort: agentConfiguration.model.reasoningEffort || "none",
+          responseFormat: agentConfiguration.model.responseFormat,
+        },
+        visualizationEnabled: agentConfiguration.visualizationEnabled,
+        templateId: templateId,
+        tags: agentConfiguration.tags.filter((tag) => tag.kind !== "protected"),
+        // either new, or template, or duplicate, so initially no editors
+        editors: [],
+      }
+    : null;
+
   return (
-    <AssistantBuilderProviders owner={owner}>
+    <AssistantBuilderProviders
+      owner={owner}
+      plan={plan}
+      defaultScope={defaultScope}
+      initialBuilderState={initialBuilderState}
+      assistantTemplate={assistantTemplate}
+    >
       <AssistantBuilder
         owner={owner}
         subscription={subscription}
-        plan={plan}
         flow={flow}
         duplicateAgentId={duplicateAgentId}
-        initialBuilderState={
-          agentConfiguration
-            ? {
-                actions: [],
-                scope:
-                  agentConfiguration.scope !== "global"
-                    ? agentConfiguration.scope
-                    : "hidden",
-                handle: `${agentConfiguration.name}${
-                  "isTemplate" in agentConfiguration ? "" : "_Copy"
-                }`,
-                description: agentConfiguration.description,
-                instructions: agentConfiguration.instructions || "", // TODO we don't support null in the UI yet
-                avatarUrl:
-                  "pictureUrl" in agentConfiguration
-                    ? agentConfiguration.pictureUrl
-                    : null,
-                generationSettings: {
-                  modelSettings: {
-                    providerId: agentConfiguration.model.providerId,
-                    modelId: agentConfiguration.model.modelId,
-                  },
-                  temperature: agentConfiguration.model.temperature,
-                  reasoningEffort:
-                    agentConfiguration.model.reasoningEffort || "none",
-                  responseFormat: agentConfiguration.model.responseFormat,
-                },
-                visualizationEnabled: agentConfiguration.visualizationEnabled,
-                templateId: templateId,
-                tags: agentConfiguration.tags.filter(
-                  (tag) => tag.kind !== "protected"
-                ),
-                // either new, or template, or duplicate, so initially no editors
-                editors: [],
-              }
-            : null
-        }
+        initialBuilderState={initialBuilderState}
         agentConfiguration={null}
-        defaultIsEdited={assistantTemplate !== null}
         baseUrl={baseUrl}
         defaultTemplate={assistantTemplate}
       />

@@ -65,6 +65,7 @@ import {
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 const ITEMS_PER_PAGE = 50;
+const MAX_ROOT_NODES_LIMIT = 2000;
 
 const getUseResourceHook =
   (
@@ -290,6 +291,9 @@ export function DataSourceViewsSelector({
     const includesConnectorIDs: string[] = [];
     const excludesConnectorIDs: string[] = [];
 
+    // When selecting tables, for tables query all tables from a single warehouse
+    // (either the same remoteDb or all from Dust SQLite).
+    // The data_warehouse view type (for the warehouses tool server) allows multiple warehouses.
     if (viewType === "table" && useCase === "assistantBuilder") {
       const selection = Object.values(selectionConfigurations);
       const firstDs =
@@ -482,7 +486,7 @@ export function DataSourceViewsSelector({
   ]);
 
   return (
-    <div>
+    <div className="dd-privacy-mask">
       <SearchInputWithPopover
         value={searchSpaceText}
         onChange={setSearchSpaceText}
@@ -742,10 +746,11 @@ export function DataSourceViewSelector({
     [dataSourceView]
   );
 
-  const { nodes: rootNodes } = useContentNodes({
+  const { nodes: rootNodes, totalNodesCount } = useContentNodes({
     owner,
     dataSourceView,
     viewType,
+    pagination: { limit: MAX_ROOT_NODES_LIMIT, cursor: null },
   });
 
   const hasActiveSelection =
@@ -796,7 +801,7 @@ export function DataSourceViewSelector({
 
   const isTableView = viewType === "table";
 
-  // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
+  // Show the checkbox by default. Hide it only for tables view where no child items are partially checked.
   const hideCheckbox = readonly || (isTableView && isChecked !== "partial");
 
   const selectedNodes = useMemo(
@@ -896,6 +901,12 @@ export function DataSourceViewSelector({
     [searchResult, isExpanded]
   );
 
+  if (totalNodesCount > MAX_ROOT_NODES_LIMIT) {
+    return (
+      <div>Total nodes count is too high. Please contact support@dust.tt.</div>
+    );
+  }
+
   return (
     <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.sId}`}>
       <Tree.Item
@@ -944,7 +955,7 @@ export function DataSourceViewSelector({
             parentIsSelected={selectionConfiguration.isSelectAll}
             useResourcesHook={useResourcesHook}
             emptyComponent={
-              viewType === "table" ? (
+              viewType === "table" || viewType === "data_warehouse" ? (
                 <Tree.Empty label="No tables" />
               ) : (
                 <Tree.Empty label="No documents" />

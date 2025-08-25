@@ -17,7 +17,6 @@ use dust::{
     },
     utils::{self, error_response, APIResponse},
 };
-use dust::{error, info};
 use hyper::StatusCode;
 use lazy_static::lazy_static;
 use reqwest::Method;
@@ -37,6 +36,7 @@ use tokio::{
     net::TcpListener,
     signal::unix::{signal, SignalKind},
 };
+use tracing::{error, info};
 
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
@@ -62,6 +62,8 @@ const DEFAULT_QUERY_TIMEOUT_MS: u64 = 10_000;
 
 // Cleanup databases every 30 seconds instead of every loop iteration.
 const DATABASE_CLEANUP_INTERVAL: Duration = Duration::from_secs(30);
+
+const CORE_API_TIMEOUT: Duration = Duration::from_secs(2);
 
 struct DatabaseEntry {
     database: Arc<Mutex<SqliteDatabase>>,
@@ -164,7 +166,9 @@ impl WorkerState {
     }
 
     async fn _core_request(&self, method: &str) -> Result<()> {
-        let res = reqwest::Client::new()
+        let res = reqwest::Client::builder()
+            .timeout(CORE_API_TIMEOUT)
+            .build()?
             .request(
                 Method::from_bytes(method.as_bytes())?,
                 format!("{}/sqlite_workers", *CORE_API),
@@ -198,13 +202,13 @@ async fn index(State(state): State<Arc<WorkerState>>) -> Result<&'static str, St
 
     let elapsed = now - last_heartbeat;
 
-    if elapsed < HEARTBEAT_INTERVAL_MS * 2 {
+    if elapsed < HEARTBEAT_INTERVAL_MS * 10 {
         Ok("sqlite_worker server ready")
     } else {
         error!(
             "Health check failed: last heartbeat was {} ms ago (threshold: {} ms)",
             elapsed,
-            HEARTBEAT_INTERVAL_MS * 2
+            HEARTBEAT_INTERVAL_MS * 10
         );
         Err(StatusCode::SERVICE_UNAVAILABLE)
     }

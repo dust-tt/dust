@@ -2,20 +2,26 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   Checkbox,
+  ClockIcon,
+  DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  FolderOpenIcon,
+  Icon,
+  InformationCircleIcon,
   Label,
   ListCheckIcon,
+  MagicIcon,
   MoreIcon,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
-  PlusIcon,
   RobotIcon,
   SearchInput,
+  Spinner,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -30,12 +36,14 @@ import { DeleteConversationsDialog } from "@app/components/assistant/conversatio
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import {
   useConversations,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
 
@@ -65,10 +73,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   >([]);
   const doDelete = useDeleteConversation(owner);
 
-  const { featureFlags } = useFeatureFlags({
+  const { featureFlags, hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
+  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&
     !isBuilder(owner);
@@ -78,6 +87,9 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [titleFilter, setTitleFilter] = useState<string>("");
+  const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
+    owner,
+  });
   const sendNotification = useSendNotification();
 
   const toggleMultiSelect = useCallback(() => {
@@ -98,37 +110,75 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
 
   const deleteSelection = useCallback(async () => {
     setIsDeleting(true);
-    if (selectedConversations.length > 0) {
+    const total = selectedConversations.length;
+    let successCount = 0;
+    if (total > 0) {
       for (const conversation of selectedConversations) {
-        await doDelete(conversation);
+        const ok = await doDelete(conversation);
+        if (ok) {
+          successCount += 1;
+        }
       }
       toggleMultiSelect();
     }
     setIsDeleting(false);
     setShowDeleteDialog(null);
-    sendNotification({
-      type: "success",
-      title: "Conversations successfully deleted",
-      description:
-        selectedConversations.length > 1
-          ? `${selectedConversations.length} conversations have been deleted.`
-          : `${selectedConversations.length} conversation has been deleted.`,
-    });
+    if (!total) {
+      return;
+    }
+    if (successCount === total) {
+      sendNotification({
+        type: "success",
+        title: "Conversations successfully deleted",
+        description: `${total} conversation${total > 1 ? "s" : ""} have been deleted.`,
+      });
+    } else if (successCount === 0) {
+      sendNotification({
+        type: "error",
+        title: "Failed to delete conversations",
+        description: `Could not delete the selected ${total > 1 ? "conversations" : "conversation"}.`,
+      });
+    } else {
+      sendNotification({
+        type: "error",
+        title: "Some conversations couldn’t be deleted",
+        description: `Deleted ${successCount} of ${total} conversations.`,
+      });
+    }
   }, [doDelete, selectedConversations, sendNotification, toggleMultiSelect]);
 
   const deleteAll = useCallback(async () => {
     setIsDeleting(true);
+    const total = conversations.length;
+    let successCount = 0;
     for (const conversation of conversations) {
-      await doDelete(conversation);
+      const ok = await doDelete(conversation);
+      if (ok) {
+        successCount += 1;
+      }
     }
-    sendNotification({
-      type: "success",
-      title: "Conversations successfully deleted",
-      description:
-        conversations.length > 1
-          ? `${conversations.length} conversations have been deleted.`
-          : `${conversations.length} conversation has been deleted.`,
-    });
+    if (!total) {
+      return;
+    }
+    if (successCount === total) {
+      sendNotification({
+        type: "success",
+        title: "Conversations successfully deleted",
+        description: `${total} conversation${total > 1 ? "s" : ""} have been deleted.`,
+      });
+    } else if (successCount === 0) {
+      sendNotification({
+        type: "error",
+        title: "Failed to delete conversations",
+        description: "Could not delete conversation history.",
+      });
+    } else {
+      sendNotification({
+        type: "error",
+        title: "Some conversations couldn’t be deleted",
+        description: `Deleted ${successCount} of ${total} conversations.`,
+      });
+    }
     setIsDeleting(false);
     setShowDeleteDialog(null);
   }, [conversations, doDelete, sendNotification]);
@@ -254,17 +304,58 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                       <>
                         <DropdownMenuLabel>Agent</DropdownMenuLabel>
                         <DropdownMenuItem
-                          href={`/w/${owner.sId}/builder/assistants/create`}
-                          icon={PlusIcon}
-                          label="Create new agent"
+                          href={getAgentBuilderRoute(
+                            owner.sId,
+                            "new",
+                            hasAgentBuilderV2,
+                            "flow=personal_assistants"
+                          )}
+                          icon={DocumentIcon}
+                          label="New agent from scratch"
                           data-gtm-label="assistantCreationButton"
                           data-gtm-location="sidebarMenu"
                         />
+                        <DropdownMenuItem
+                          href={getAgentBuilderRoute(
+                            owner.sId,
+                            "create",
+                            hasAgentBuilderV2,
+                            "flow=personal_assistants"
+                          )}
+                          icon={MagicIcon}
+                          label="New agent from template"
+                          data-gtm-label="assistantCreationButton"
+                          data-gtm-location="sidebarMenu"
+                        />
+                        {hasFeature("agent_to_yaml") && (
+                          <DropdownMenuItem
+                            icon={
+                              isUploadingYAML ? (
+                                <Spinner size="xs" />
+                              ) : (
+                                FolderOpenIcon
+                              )
+                            }
+                            label={
+                              isUploadingYAML
+                                ? "Uploading..."
+                                : "New agent from YAML"
+                            }
+                            disabled={isUploadingYAML}
+                            onClick={triggerYAMLUpload}
+                            data-gtm-label="yamlUploadButton"
+                            data-gtm-location="sidebarMenu"
+                          />
+                        )}
                       </>
                     )}
                     {isBuilder(owner) && (
                       <DropdownMenuItem
-                        href={`/w/${owner.sId}/builder/assistants`}
+                        href={getAgentBuilderRoute(
+                          owner.sId,
+                          "manage",
+                          hasAgentBuilderV2
+                        )}
                         icon={RobotIcon}
                         label="Manage agents"
                         data-gtm-label="assistantManagementButton"
@@ -294,7 +385,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               </Label>
             )}
             <NavigationList
-              className="w-full px-3"
+              className="dd-privacy-mask w-full px-3"
               ref={conversationsNavigationRef}
             >
               {conversationsByDate &&
@@ -374,6 +465,10 @@ const RenderConversation = ({
       ? "New Conversation"
       : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
+  const ActionRequiredIcon = () => (
+    <Icon visual={InformationCircleIcon} className="text-golden-700" />
+  );
+
   return (
     <>
       {isMultiSelect ? (
@@ -394,6 +489,13 @@ const RenderConversation = ({
       ) : (
         <NavigationListItem
           selected={router.query.cId === conversation.sId}
+          icon={
+            conversation.actionRequired
+              ? ActionRequiredIcon
+              : conversation.visibility === "triggered"
+                ? ClockIcon
+                : undefined
+          }
           label={conversationLabel}
           href={`/w/${owner.sId}/assistant/${conversation.sId}`}
           shallow

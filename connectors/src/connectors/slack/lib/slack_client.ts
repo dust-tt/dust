@@ -1,11 +1,10 @@
-import type {
-  CodedError,
-  WebAPIHTTPError,
-  WebAPIPlatformError,
-  WebAPIRateLimitedError,
-} from "@slack/web-api";
-import { ErrorCode, WebClient } from "@slack/web-api";
+import { WebClient } from "@slack/web-api";
 
+import {
+  isWebAPIHTTPError,
+  isWebAPIPlatformError,
+  isWebAPIRateLimitedError,
+} from "@connectors/connectors/slack/lib/errors";
 import {
   ExternalOAuthTokenError,
   ProviderRateLimitError,
@@ -19,10 +18,6 @@ import type { ModelId } from "@connectors/types";
 
 // Timeout in ms for all network requests;
 const SLACK_NETWORK_TIMEOUT_MS = 30000;
-
-function isCodedError(error: unknown): error is CodedError {
-  return error != null && typeof error === "object" && "code" in error;
-}
 
 export function reportSlackUsage({
   connectorId,
@@ -40,40 +35,6 @@ export function reportSlackUsage({
     tags.push(`use_case:${useCase}`);
   }
   statsDClient.increment("slack_api_call.count", 1, tags);
-}
-
-// Type guards for Slack errors
-// See https://github.com/slackapi/node-slack-sdk/blob/main/packages/web-api/src/errors.ts.
-function isWebAPIRateLimitedError(
-  error: unknown
-): error is WebAPIRateLimitedError {
-  return (
-    isCodedError(error) &&
-    error.code === ErrorCode.RateLimitedError &&
-    "retryAfter" in error &&
-    typeof error.retryAfter === "number"
-  );
-}
-
-function isWebAPIHTTPError(error: unknown): error is WebAPIHTTPError {
-  return (
-    isCodedError(error) &&
-    error.code === ErrorCode.HTTPError &&
-    "statusCode" in error &&
-    typeof error.statusCode === "number"
-  );
-}
-
-function isWebAPIPlatformError(error: unknown): error is WebAPIPlatformError {
-  return (
-    isCodedError(error) &&
-    error.code === ErrorCode.PlatformError &&
-    "data" in error &&
-    error.data != null &&
-    typeof error.data === "object" &&
-    "error" in error.data &&
-    typeof error.data.error === "string"
-  );
 }
 
 /**

@@ -100,7 +100,7 @@ export function ActiveSubscriptionTable({
           <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-md flex-grow pb-4 font-bold">
-                Active Subscription:
+                Active Subscription
               </h2>
               <SubscriptionsHistoryModal
                 owner={owner}
@@ -167,7 +167,7 @@ export function ActiveSubscriptionTable({
             </PokeTable>
           </div>
           <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
-            <h2 className="text-md pb-4 font-bold">Plan limitations:</h2>
+            <h2 className="text-md pb-4 font-bold">Plan limitations</h2>
             <PokeTable>
               <PokeTableBody>
                 <PokeTableRow>

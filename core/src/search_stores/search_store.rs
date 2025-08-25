@@ -14,6 +14,7 @@ use elasticsearch_dsl::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tracing::{error, info};
 use url::Url;
 
 use crate::data_sources::data_source::{DataSourceESDocumentWithStats, Document};
@@ -29,13 +30,14 @@ use crate::{
     stores::store::Store,
     utils,
 };
-use crate::{error, info};
 
 const MAX_PAGE_SIZE: u64 = 1000;
 // Number of hits that is tracked exactly, above this value we only get a lower bound on the hit count.
 // Note: this is the default value.
 const MAX_TOTAL_HITS_TRACKED: i64 = 10000;
 const MAX_ES_QUERY_CLAUSES: usize = 1024; // Default Elasticsearch limit.
+
+const DEFAULT_TAG_AGGREGATION_SIZE_LIMIT: u64 = 200;
 
 #[derive(serde::Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
@@ -185,6 +187,13 @@ impl Clone for Box<dyn SearchStore + Sync + Send> {
 #[derive(Clone)]
 pub struct ElasticsearchSearchStore {
     pub client: Elasticsearch,
+}
+
+fn map_sort_field(field: &str) -> &str {
+    match field {
+        "title" => "title.keyword",
+        other => other,
+    }
 }
 
 impl ElasticsearchSearchStore {
@@ -616,10 +625,10 @@ impl SearchStore for ElasticsearchSearchStore {
         };
         let aggregate =
             aggregate.aggregate("tags_in_datasource", Aggregation::terms("data_source_id"));
-        let search = Search::new()
-            .size(0)
-            .query(bool_query)
-            .aggregate("unique_tags", aggregate.size(limit.unwrap_or(100)));
+        let search = Search::new().size(0).query(bool_query).aggregate(
+            "unique_tags",
+            aggregate.size(limit.unwrap_or(DEFAULT_TAG_AGGREGATION_SIZE_LIMIT)),
+        );
 
         let response = self
             .client
@@ -1134,7 +1143,7 @@ impl ElasticsearchSearchStore {
                 sort.into_iter()
                     .map(|s| {
                         Sort::FieldSort(
-                            FieldSort::new(s.field)
+                            FieldSort::new(map_sort_field(&s.field))
                                 .order(match s.direction {
                                     SortDirection::Asc => SortOrder::Asc,
                                     SortDirection::Desc => SortOrder::Desc,

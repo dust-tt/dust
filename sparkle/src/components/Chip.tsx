@@ -11,7 +11,7 @@ import { cn } from "@sparkle/lib/utils";
 
 import { Icon, IconProps } from "./Icon";
 
-export const CHIP_SIZES = ["xs", "sm"] as const;
+export const CHIP_SIZES = ["mini", "xs", "sm"] as const;
 
 type ChipSizeType = (typeof CHIP_SIZES)[number];
 
@@ -30,6 +30,7 @@ export const CHIP_COLORS = [
 type ChipColorType = (typeof CHIP_COLORS)[number];
 
 const sizeVariants: Record<ChipSizeType, string> = {
+  mini: "s-rounded-md s-min-h-5 s-text-xs s-font-medium s-px-1.5 s-py-1 s-gap-0.5",
   xs: "s-rounded-lg s-min-h-7 s-heading-xs s-px-3 s-gap-1",
   sm: "s-rounded-xl s-min-h-9 s-heading-sm s-px-4 s-gap-1.5",
 };
@@ -206,10 +207,19 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
         tabIndex={onClick ? 0 : undefined}
       >
         {children}
-        {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
+        {icon && (
+          <Icon
+            visual={icon}
+            size={size === "mini" ? "xs" : (size as IconProps["size"])}
+          />
+        )}
         {label && (
           <span
-            className={cn("s-grow s-truncate", onClick && "s-cursor-pointer")}
+            className={cn(
+              "s-grow s-truncate",
+              onClick && "s-cursor-pointer",
+              size === "mini" && "s-uppercase"
+            )}
           >
             {isBusy ? (
               <AnimatedText variant={color}>{label}</AnimatedText>
@@ -227,7 +237,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
           >
             <Icon
               visual={XMarkIcon}
-              size={size}
+              size={size === "mini" ? "xs" : (size as IconProps["size"])}
               className={cn(
                 "s-transition-color -s-mr-1 s-duration-200",
                 closeIconVariants[color || "primary"]

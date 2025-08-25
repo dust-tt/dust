@@ -2,7 +2,7 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 import assert from "assert";
-import { keyBy } from "lodash";
+import keyBy from "lodash/keyBy";
 import type {
   Attributes,
   CreationAttributes,
@@ -23,7 +23,6 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
@@ -35,6 +34,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   ConversationType,
@@ -129,7 +129,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     editedByUser?: UserResource | null,
     transaction?: Transaction
   ) {
-    const createDataSourceAndView = async (t: Transaction) => {
+    return withTransaction(async (t: Transaction) => {
       const dataSource = await DataSourceResource.makeNew(
         blob,
         space,
@@ -142,13 +142,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         editedByUser?.toJSON(),
         t
       );
-    };
-
-    if (transaction) {
-      return createDataSourceAndView(transaction);
-    }
-
-    return frontSequelize.transaction(createDataSourceAndView);
+    }, transaction);
   }
 
   static async createViewInSpaceFromDataSource(
@@ -335,6 +329,27 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     });
   }
 
+  static async listAllInGlobalGroup(auth: Authenticator) {
+    const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    assert(globalGroup.isOk(), "Failed to fetch global group");
+
+    const spaces = await SpaceResource.listForGroups(auth, [globalGroup.value]);
+
+    return this.baseFetch(auth, undefined, {
+      includes: [
+        {
+          model: DataSourceModel,
+          as: "dataSourceForView",
+          required: true,
+        },
+      ],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: spaces.map((s) => s.id),
+      },
+    });
+  }
+
   static async listForDataSourcesInSpace(
     auth: Authenticator,
     dataSources: DataSourceResource[],
@@ -473,10 +488,12 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         switch (key) {
           case "dataSourceId":
           case "vaultId":
-            const vaultModelId = getResourceIdFromSId(value);
+            const resourceModelId = getResourceIdFromSId(value);
 
-            if (vaultModelId) {
-              whereClause[key] = vaultModelId;
+            if (resourceModelId) {
+              whereClause[key] = resourceModelId;
+            } else {
+              return [];
             }
             break;
 
@@ -677,19 +694,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       )
     );
 
-    // Delete associated MCP server configurations.
-    if (mcpServerConfigurationIds.length > 0) {
-      await AgentMCPServerConfiguration.destroy({
-        where: {
-          id: {
-            [Op.in]: mcpServerConfigurationIds,
-          },
-          workspaceId,
-        },
-        transaction,
-      });
-    }
-
     await AgentDataSourceConfiguration.destroy({
       where: {
         dataSourceViewId: this.id,
@@ -705,6 +709,19 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       },
       transaction,
     });
+
+    // Delete associated MCP server configurations.
+    if (mcpServerConfigurationIds.length > 0) {
+      await AgentMCPServerConfiguration.destroy({
+        where: {
+          id: {
+            [Op.in]: mcpServerConfigurationIds,
+          },
+          workspaceId,
+        },
+        transaction,
+      });
+    }
 
     const deletedCount = await DataSourceViewModel.destroy({
       where: {

@@ -29,7 +29,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
+import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
@@ -124,7 +124,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         ...connectorRes.value,
         connectionId: null,
       };
-      const temporalClient = await getTemporalConnectorsNamespaceConnection();
+      const temporalClient = await getTemporalClientForConnectorsNamespace();
 
       const res = temporalClient.workflow.list({
         query: `ExecutionStatus = 'Running' AND connectorId = ${connector.id}`,
@@ -556,13 +556,13 @@ const DataSourcePage = ({
   return (
     <>
       <h3 className="text-xl font-bold">
-        Data Source: {dataSource.name} of workspace:{" "}
+        Data Source {dataSource.name} in workspace{" "}
         <a href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </a>
       </h3>
       <p>
-        The content source of truth is <b>connectors</b>.
+        The data displayed here is fetched from <b>connectors</b>.
       </p>
 
       <div className="flex flex-row gap-x-6">
@@ -758,7 +758,7 @@ async function handleCheckOrFindNotionUrl(
 
 async function handleCheckZendeskTicket(
   args:
-    | { brandId: number; ticketId: number; wId: string; dsId: string }
+    | { brandId: number | null; ticketId: number; wId: string; dsId: string }
     | { ticketUrl: string; wId: string; dsId: string }
 ): Promise<ZendeskFetchTicketResponseType | null> {
   const res = await fetch(`/api/poke/admin`, {
@@ -989,9 +989,9 @@ function ZendeskTicketCheck({
           variant="outline"
           icon={idsIsLoading ? Spinner : MagnifyingGlassIcon}
           label={idsIsLoading ? undefined : "Check"}
-          disabled={!ticketId || !brandId || idsIsLoading}
+          disabled={!ticketId || idsIsLoading}
           onClick={async () => {
-            if (brandId && ticketId) {
+            if (ticketId) {
               setIdsIsLoading(true);
               setTicketDetails(
                 await handleCheckZendeskTicket({
@@ -1073,20 +1073,21 @@ function ZendeskTicketCheck({
               {ticketDetails.ticket && (
                 <Tooltip
                   label={
-                    ticketDetails.shouldSyncTicket
-                      ? "Looking at its state, the ticket should be synced with Dust."
-                      : "Looking at its state, the ticket should not be synced with Dust."
+                    ticketDetails.shouldSyncTicket.reason ??
+                    "Looking at its state, the ticket should be synced with Dust."
                   }
                   className="max-w-md"
                   trigger={
                     <Chip
                       label={
-                        ticketDetails.shouldSyncTicket
+                        ticketDetails.shouldSyncTicket.shouldSync
                           ? "Should be synced"
                           : "Should not be synced"
                       }
                       color={
-                        ticketDetails.shouldSyncTicket ? "success" : "info"
+                        ticketDetails.shouldSyncTicket.shouldSync
+                          ? "success"
+                          : "info"
                       }
                     />
                   }

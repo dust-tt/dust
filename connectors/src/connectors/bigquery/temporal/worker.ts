@@ -25,11 +25,13 @@ export async function runBigQueryWorker() {
     reuseV8Context: true,
     namespace,
     interceptors: {
-      activityInbound: [
-        (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
-        },
-        () => new BigQueryCastKnownErrorsInterceptor(),
+      activity: [
+        (ctx: Context) => ({
+          inbound: new ActivityInboundLogInterceptor(ctx, logger, "bigquery"),
+        }),
+        () => ({
+          inbound: new BigQueryCastKnownErrorsInterceptor(),
+        }),
       ],
     },
     bundlerOptions: {

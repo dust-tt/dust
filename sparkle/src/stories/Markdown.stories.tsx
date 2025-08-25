@@ -29,6 +29,13 @@ const example = `
 
 ### Level 3 Title
 
+#### Level 4 Title
+
+##### Level 5 Title
+
+###### Level 6 Title
+
+
 This is a paragraph with **bold** text and *italic* text. This is \`code\` block:
 \`\`\`
 Block 

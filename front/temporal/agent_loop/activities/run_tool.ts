@@ -1,51 +1,34 @@
-import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import { runToolWithStreaming } from "@app/lib/actions/mcp";
-import type { StepContext } from "@app/lib/actions/types";
+import assert from "assert";
+
+import { MCPActionType, runToolWithStreaming } from "@app/lib/actions/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
+import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
+import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
-import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type { RunAgentArgs } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
-import type { ModelId } from "@app/types/shared/model_id";
 
 export async function runToolActivity(
   authType: AuthenticatorType,
   {
+    actionId,
     runAgentArgs,
-    action,
-    stepContext,
-    stepContentId,
+    step,
   }: {
+    actionId: ModelId;
     runAgentArgs: RunAgentArgs;
-    action: MCPToolConfigurationType;
-    stepContext: StepContext;
-    stepContentId: ModelId;
+    step: number;
   }
-): Promise<void> {
+): Promise<ToolExecutionResult> {
   const auth = await Authenticator.fromJSON(authType);
-
-  // Fetch step content to derive inputs, functionCallId, and step
-  const stepContent =
-    await AgentStepContentResource.fetchByModelId(stepContentId);
-  if (!stepContent) {
-    throw new Error(
-      `Step content not found for stepContentId: ${stepContentId}`
-    );
-  }
-  if (!isFunctionCallContent(stepContent.value)) {
-    throw new Error(
-      `Expected step content to be a function call, got: ${stepContent.value.type}`
-    );
-  }
-
-  const { step } = stepContent;
+  const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
-
   if (runAgentDataRes.isErr()) {
     throw runAgentDataRes.error;
   }
@@ -70,20 +53,45 @@ export async function runToolActivity(
       step: step + 1,
     });
 
-  const eventStream = runToolWithStreaming(auth, action, {
-    agentConfiguration: agentConfiguration,
-    conversation,
-    agentMessage,
-    rawInputs: JSON.parse(stepContent.value.value.arguments),
-    functionCallId: stepContent.value.value.id,
+  const action = await AgentMCPActionResource.fetchByModelIdWithAuth(
+    auth,
+    actionId
+  );
+  assert(action, "Action not found");
+
+  const mcpServerId = action.toolConfiguration.toolServerId;
+
+  const actionBaseParams = await buildActionBaseParams({
+    agentMessageId: action.agentMessageId,
+    citationsAllocated: action.citationsAllocated,
+    mcpServerConfigurationId: action.mcpServerConfigurationId,
+    mcpServerId,
     step,
-    stepContext,
-    stepContentId,
+    stepContentId: action.stepContentId,
+    status: action.status,
+  });
+
+  const mcpAction = new MCPActionType({
+    ...actionBaseParams,
+    id: action.id,
+    type: "tool_action",
+    output: null,
+  });
+
+  const eventStream = runToolWithStreaming(auth, {
+    action,
+    actionBaseParams,
+    agentConfiguration,
+    agentMessage,
+    conversation,
+    mcpAction,
+    stepContext: action.stepContext,
   });
 
   for await (const event of eventStream) {
     switch (event.type) {
       case "tool_error":
+        // For tool errors, send immediately.
         await updateResourceAndPublishEvent(
           {
             type: "tool_error",
@@ -96,11 +104,28 @@ export async function runToolActivity(
               metadata: event.error.metadata,
             },
           },
-          conversation,
           agentMessageRow,
-          step
+          {
+            conversationId: conversation.sId,
+            step,
+          }
         );
-        return;
+
+        return { deferredEvents };
+
+      case "tool_personal_auth_required":
+        // Defer personal auth events to be sent after all tools complete.
+        deferredEvents.push({
+          event,
+          context: {
+            agentMessageRowId: agentMessageRow.id,
+            conversationId: conversation.sId,
+            step,
+          },
+          shouldPauseAgentLoop: true,
+        });
+
+        return { deferredEvents };
 
       case "tool_success":
         await updateResourceAndPublishEvent(
@@ -111,29 +136,45 @@ export async function runToolActivity(
             messageId: agentMessage.sId,
             action: event.action,
           },
-          conversation,
           agentMessageRow,
-          step
+          {
+            conversationId: conversation.sId,
+            step,
+          }
         );
 
         // We stitch the action into the agent message. The conversation is expected to include
         // the agentMessage object, updating this object will update the conversation as well.
-        agentMessage.actions.push(event.action);
+        // Action might have already added earlier, so we to replace it.
+        // TODO(DURABLE-AGENTS 2025-08-12): This is a hack to avoid duplicates. Consider fetching
+        // at least on every step.
+        const existingActionIndex = agentMessage.actions.findIndex(
+          (existingAction) => existingAction.id === event.action.id
+        );
+
+        if (existingActionIndex >= 0) {
+          // Replace existing action with updated one.
+          agentMessage.actions[existingActionIndex] = event.action;
+        } else {
+          // Add the new action if it doesn't exist.
+          agentMessage.actions.push(event.action);
+        }
+
         break;
 
       case "tool_params":
       case "tool_approve_execution":
       case "tool_notification":
-        await updateResourceAndPublishEvent(
-          event,
-          conversation,
-          agentMessageRow,
-          step
-        );
+        await updateResourceAndPublishEvent(event, agentMessageRow, {
+          conversationId: conversation.sId,
+          step,
+        });
         break;
 
       default:
         assertNever(event);
     }
   }
+
+  return { deferredEvents };
 }
