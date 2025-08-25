@@ -76,7 +76,9 @@ export function DataSourceSpaceSelector({
         enableHiding: false,
         cell: ({ row }) => {
           const selectionState = isRowSelected(row.original.id);
-
+          if (selectionState !== "partial") {
+            return undefined;
+          }
           return (
             <div className="flex h-full items-center">
               <Tooltip
@@ -84,35 +86,25 @@ export function DataSourceSpaceSelector({
                   <Checkbox
                     size="xs"
                     checked={selectionState}
-                    disabled={
-                      selectionState !== "partial" || row.original.disabled
-                    }
                     onClick={(event) => event.stopPropagation()}
                     onCheckedChange={async () => {
                       const item: NavigationHistoryEntryType = {
                         type: "space",
                         space: row.original,
                       };
-
-                      if (selectionState === "partial") {
-                        const confirmed = await confirm({
-                          title: "Are you sure?",
-                          message: `Do you want to unselect all of "${row.original.name}"?`,
-                          validateLabel: "Unselect all",
-                          validateVariant: "warning",
-                        });
-                        if (confirmed) {
-                          removeNode(item);
-                        }
+                      const confirmed = await confirm({
+                        title: "Are you sure?",
+                        message: `Do you want to unselect all of "${row.original.name}"?`,
+                        validateLabel: "Unselect all",
+                        validateVariant: "warning",
+                      });
+                      if (confirmed) {
+                        removeNode(item);
                       }
                     }}
                   />
                 }
-                label={
-                  selectionState === "partial"
-                    ? `Unselect all of "${row.original.name}"`
-                    : "You cannot select the whole space"
-                }
+                label={`Unselect all of "${row.original.name}"`}
               />
             </div>
           );

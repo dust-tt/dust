@@ -1,8 +1,8 @@
+import { DataSourceCategoryBrowser } from "@app/components/agent_builder/capabilities/knowledge/DataSourceCategoryBrowser";
+import { DataSourceNodeTable } from "@app/components/agent_builder/capabilities/knowledge/DataSourceNodeTable";
+import { DataSourceViewTable } from "@app/components/agent_builder/capabilities/knowledge/DataSourceViewTable";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { findDataSourceViewFromNavigationHistory } from "@app/components/data_source_view/context/utils";
-import { DataSourceCategoryBrowser } from "@app/components/data_source_view/DataSourceCategoryBrowser";
-import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
-import { DataSourceViewTable } from "@app/components/data_source_view/DataSourceViewTable";
 import type { ContentNodesViewType } from "@app/types";
 
 interface DataSourceNavigationViewProps {

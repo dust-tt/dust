@@ -2,13 +2,13 @@ import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import { Breadcrumbs, cn, SearchInput } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
+import { DataSourceNavigationView } from "@app/components/agent_builder/capabilities/knowledge/DataSourceNavigationView";
+import { DataSourceSearchResults } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSearchResults";
+import { DataSourceSpaceSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import { findSpaceFromNavigationHistory } from "@app/components/data_source_view/context/utils";
-import { DataSourceNavigationView } from "@app/components/data_source_view/DataSourceNavigationView";
-import { DataSourceSearchResults } from "@app/components/data_source_view/DataSourceSearchResults";
-import { DataSourceSpaceSelector } from "@app/components/data_source_view/DataSourceSpaceSelector";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
