@@ -241,7 +241,7 @@ export type ToolErrorEvent = {
   configurationId: string;
   messageId: string;
   error: ErrorContent;
-  isLastBlockingEventForStep?: boolean;
+  isLastBlockingEventForStep: boolean;
 };
 
 export type AgentDisabledErrorEvent = {

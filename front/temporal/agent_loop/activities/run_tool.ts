@@ -103,6 +103,7 @@ export async function runToolActivity(
               message: event.error.message,
               metadata: event.error.metadata,
             },
+            isLastBlockingEventForStep: true,
           },
           agentMessageRow,
           {

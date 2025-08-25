@@ -157,6 +157,9 @@ async function createActionForTool(
           message: validateToolInputsResult.error.message,
           metadata: null,
         },
+        // This is not exactly correct, but it's not relevant here as we only care about the
+        // blocking nature of the event, which is not the case here.
+        isLastBlockingEventForStep: false,
       },
       agentMessageRow,
       {
