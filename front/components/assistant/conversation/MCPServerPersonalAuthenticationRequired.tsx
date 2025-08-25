@@ -65,12 +65,12 @@ export function MCPServerPersonalAuthenticationRequired({
             disabled={isConnecting}
             onClick={async () => {
               setIsConnecting(true);
-              const success = await createPersonalConnection(
+              const success = await createPersonalConnection({
                 mcpServer,
                 provider,
-                "personal_actions",
-                scope
-              );
+                useCase: "personal_actions",
+                scope,
+              });
               setIsConnecting(false);
               if (!success) {
                 setIsConnected(false);
