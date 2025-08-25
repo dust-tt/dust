@@ -1,6 +1,7 @@
 import {
-  Chip,
+  AnimatedText,
   ClockIcon,
+  ContentMessage,
   Input,
   Label,
   Sheet,
@@ -100,7 +101,7 @@ export function ScheduleEditionModal({
           return `Please describe above... (minimum ${MIN_DESCRIPTION_LENGTH} characters)`;
         }
         try {
-          return `Agent will run ${cronstrue.toString(cron)}.`;
+          return `${cronstrue.toString(cron)}.`;
         } catch (error) {
           setNaturalDescriptionToCronRuleStatus("error");
         }
@@ -198,12 +199,19 @@ export function ScheduleEditionModal({
                   }}
                 />
                 <div className="my-2">
-                  <Chip
-                    color={"primary"}
-                    isBusy={naturalDescriptionToCronRuleStatus === "loading"}
-                    label={cronDescription}
+                  <ContentMessage
+                    variant="outline"
                     icon={ClockIcon}
-                  />
+                    title="Agent runs"
+                  >
+                    {naturalDescriptionToCronRuleStatus === "loading" ? (
+                      <AnimatedText variant="highlight">
+                        {cronDescription}
+                      </AnimatedText>
+                    ) : (
+                      cronDescription
+                    )}
+                  </ContentMessage>
                 </div>
               </div>
 
