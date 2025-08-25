@@ -63,6 +63,7 @@ import {
   isAdmin,
   isAPIErrorResponse,
   Ok,
+  removeNulls,
   setupOAuthConnection,
 } from "@app/types";
 
@@ -1167,4 +1168,50 @@ export function useInternalMCPServerViewsFromSpaces(
   swrOptions?: SWRConfiguration
 ) {
   return useMCPServerViewsFromSpacesBase(owner, spaces, ["auto"], swrOptions);
+}
+
+export function useMCPServerViewsWithPersonalConnections({
+  owner,
+  mcpServerViewToCheckIds,
+  mcpServerViews,
+}: {
+  owner: LightWorkspaceType;
+  mcpServerViewToCheckIds: string[];
+  mcpServerViews: MCPServerViewType[];
+}): {
+  mcpServerView: MCPServerViewType;
+  isAlreadyConnected: boolean;
+}[] {
+  const mcpServerViewsMap = new Map(mcpServerViews.map((v) => [v.sId, v]));
+
+  const mcpServerViewsWithPersonalConnections = removeNulls(
+    mcpServerViewToCheckIds.map((id) => {
+      const mcpServerView = mcpServerViewsMap.get(id);
+      if (mcpServerView?.oAuthUseCase === "personal_actions") {
+        return mcpServerView;
+      }
+      return null;
+    })
+  );
+
+  const { connections } = useMCPServerConnections({
+    owner,
+    connectionType: "personal",
+    disabled: mcpServerViewsWithPersonalConnections.length === 0,
+  });
+
+  return useMemo(
+    () =>
+      mcpServerViewsWithPersonalConnections.length === 0
+        ? emptyArray()
+        : mcpServerViewsWithPersonalConnections.map((mcpServerView) => {
+            const isAlreadyConnected = connections.some(
+              (c) =>
+                c.internalMCPServerId === mcpServerView.server.sId ||
+                c.remoteMCPServerId === mcpServerView.server.sId
+            );
+            return { mcpServerView, isAlreadyConnected };
+          }),
+    [connections, mcpServerViewsWithPersonalConnections]
+  );
 }
