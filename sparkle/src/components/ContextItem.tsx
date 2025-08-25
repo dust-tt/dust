@@ -1,12 +1,13 @@
 import React, { ComponentType, ReactNode } from "react";
 
-import { classNames, cn } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 
 type ContextItemProps = {
   action?: ReactNode;
   children?: ReactNode;
+  className?: string;
   hasSeparator?: boolean;
   hasSeparatorIfLast?: boolean;
   subElement?: ReactNode;
@@ -18,6 +19,7 @@ type ContextItemProps = {
 export function ContextItem({
   action,
   children,
+  className,
   hasSeparator = true,
   hasSeparatorIfLast = false,
   subElement,
@@ -27,24 +29,23 @@ export function ContextItem({
 }: ContextItemProps) {
   return (
     <div
-      className={classNames(
-        hasSeparator
-          ? "s-border-b s-border-border dark:s-border-border-night"
-          : "",
+      className={cn(
         "s-flex s-w-full s-flex-col",
-        hasSeparatorIfLast ? "" : "last:s-border-none"
+        className,
+        hasSeparator && "s-border-b s-border-border dark:s-border-border-night",
+        !hasSeparatorIfLast && "last:s-border-none"
       )}
     >
       <div
-        className={classNames(
+        className={cn(
           "s-flex s-w-full s-flex-row s-items-start s-gap-3 s-px-4 s-py-3",
-          onClick
-            ? cn(
-                "s-cursor-pointer s-transition s-duration-200",
-                "hover:s-bg-muted-background dark:hover:s-bg-muted-background-night",
-                "active:s-bg-primary-100 dark:active:s-bg-primary-100-night"
-              )
-            : ""
+          onClick &&
+            cn(
+              "s-cursor-pointer s-transition s-duration-200",
+              "hover:s-bg-muted-background dark:hover:s-bg-muted-background-night",
+              "active:s-bg-primary-100 dark:active:s-bg-primary-100-night"
+            ),
+          children ? "s-items-start" : "s-items-center"
         )}
         onClick={onClick}
       >
@@ -54,11 +55,13 @@ export function ContextItem({
             <div className="s-heading-base s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap">
               {title}
             </div>
-            <div className="s-flex s-flex-shrink-0 s-items-center s-gap-3 s-overflow-hidden s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-              {subElement}
-            </div>
+            {subElement && (
+              <div className="s-flex s-flex-shrink-0 s-items-center s-gap-3 s-overflow-hidden s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                {subElement}
+              </div>
+            )}
           </div>
-          <div>{children}</div>
+          {children && <div>{children}</div>}
         </div>
         <div>{action}</div>
       </div>
@@ -101,12 +104,11 @@ ContextItem.List = function ({
 
   return (
     <div
-      className={classNames(
-        className ? className : "",
-        hasBorder
-          ? "s-border-b s-border-t s-border-border dark:s-border-border-night"
-          : "",
-        "s-flex s-flex-col"
+      className={cn(
+        "s-flex s-flex-col",
+        className,
+        hasBorder &&
+          "s-border-b s-border-t s-border-border dark:s-border-border-night"
       )}
     >
       {children}
@@ -156,9 +158,9 @@ ContextItem.SectionHeader = function ({
 }: ItemSectionHeaderProps) {
   return (
     <div
-      className={classNames(
+      className={cn(
         "s-flex s-flex-col s-gap-0 s-pb-3 s-pt-7",
-        hasBorder ? "s-border-b s-border-border dark:s-border-border-night" : ""
+        hasBorder && "s-border-b s-border-border dark:s-border-border-night"
       )}
     >
       <div className="s-heading-xl s-text-foreground dark:s-text-foreground-night">
