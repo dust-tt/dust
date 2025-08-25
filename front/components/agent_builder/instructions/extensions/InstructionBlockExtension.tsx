@@ -39,7 +39,10 @@ function positionCursorInMiddleParagraph(
   const node = editor.state.doc.nodeAt(blockPos);
 
   if (!node || node.type.name !== "instructionBlock") {
-    console.warn(
+    logger.warn(
+      "Invalid node: not an instruction block at position",
+      blockPos
+    );
       "Invalid node: not an instruction block at position",
       blockPos
     );
