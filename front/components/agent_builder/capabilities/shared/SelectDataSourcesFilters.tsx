@@ -11,6 +11,7 @@ import { useWatch } from "react-hook-form";
 
 import { DataSourceViewTagsFilterDropdown } from "@app/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
+import { CONFIGURATION_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -71,6 +72,7 @@ function DataSourceFilterContextItem({
 }
 
 export function SelectDataSourcesFilters() {
+  const { setSheetPageId } = useDataSourceBuilderContext();
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
   const dataSourceViews = sources.in.reduce(
     (acc, source) => {
@@ -96,7 +98,15 @@ export function SelectDataSourcesFilters() {
       <div className="align-center flex flex-row justify-between">
         <h3 className="mb-2 text-lg font-semibold">Selected data source</h3>
 
-        <DataSourceViewTagsFilterDropdown />
+        <div className="flex flex-row items-center space-x-2">
+          <Button
+            label="Manage selection"
+            onClick={() =>
+              setSheetPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION)
+            }
+          />
+          <DataSourceViewTagsFilterDropdown />
+        </div>
       </div>
 
       <div>

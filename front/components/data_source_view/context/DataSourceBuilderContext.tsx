@@ -38,6 +38,7 @@ import {
   useReducer,
 } from "react";
 
+import type { ConfigurationPagePageId } from "@app/components/agent_builder/types";
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import type {
   DataSourceBuilderTreeItemType,
@@ -68,6 +69,7 @@ type StateType = {
    * so in this case we can use index to update specific values
    */
   navigationHistory: NavigationHistoryEntryType[];
+  currentPageId: ConfigurationPagePageId;
 };
 
 type DataSourceBuilderState = StateType & {
@@ -152,6 +154,8 @@ type DataSourceBuilderState = StateType & {
   updateSourcesTags: (index: number, tagsFilter: TagsFilter) => void;
 
   toggleTagsMode: (dataSourceView: DataSourceViewType) => void;
+
+  setSheetPageId: (pageId: ConfigurationPagePageId) => void;
 };
 
 type ActionType =
@@ -174,6 +178,10 @@ type ActionType =
   | {
       type: "NAVIGATION_NAVIGATE_TO";
       payload: { index: number };
+    }
+  | {
+      type: "SET_SHEET_CURRENT_PAGE";
+      payload: { pageId: ConfigurationPagePageId };
     };
 
 const DataSourceBuilderContext = createContext<
@@ -231,6 +239,12 @@ function dataSourceBuilderReducer(
         ],
       };
     }
+    case "SET_SHEET_CURRENT_PAGE": {
+      return {
+        ...state,
+        currentPageId: payload.pageId,
+      };
+    }
     default:
       assertNever(type);
   }
@@ -238,14 +252,17 @@ function dataSourceBuilderReducer(
 
 export function DataSourceBuilderProvider({
   spaces,
+  initialPageId,
   children,
 }: {
   spaces: SpaceType[];
+  initialPageId: ConfigurationPagePageId;
   children: React.ReactNode;
 }) {
   const { field } = useSourcesFormController();
   const [state, dispatch] = useReducer(dataSourceBuilderReducer, {
     navigationHistory: [{ type: "root" }],
+    currentPageId: initialPageId,
   });
 
   const selectNode: DataSourceBuilderState["selectNode"] = useCallback(
@@ -463,6 +480,13 @@ export function DataSourceBuilderProvider({
     [field]
   );
 
+  const setSheetPageId: DataSourceBuilderState["setSheetPageId"] = useCallback(
+    (pageId) => {
+      dispatch({ type: "SET_SHEET_CURRENT_PAGE", payload: { pageId } });
+    },
+    []
+  );
+
   const value = useMemo(
     () => ({
       ...state,
@@ -481,6 +505,7 @@ export function DataSourceBuilderProvider({
       navigateTo,
       updateSourcesTags,
       toggleTagsMode,
+      setSheetPageId,
     }),
     [
       state,
@@ -499,6 +524,7 @@ export function DataSourceBuilderProvider({
       setDataSourceViewEntry,
       updateSourcesTags,
       toggleTagsMode,
+      setSheetPageId,
     ]
   );
 
