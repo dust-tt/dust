@@ -76,18 +76,16 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
   }
 
   static async fetchByModelIds(
+    auth: Authenticator,
     ids: ModelId[]
   ): Promise<AgentMCPActionResource[]> {
-    const actions = await this.model.findAll({
+    return this.baseFetch(auth, {
       where: {
         id: {
           [Op.in]: ids,
         },
       },
     });
-    return actions.map(
-      (action) => new this(this.model, action.get(), null as any)
-    );
   }
 
   static async listBlockedActionsForConversation(
