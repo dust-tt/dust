@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Compute the list from the registry.
-WORKERS="$(tsx ./admin/print_workers_except_agent_loop.ts)"
+WORKERS="$(npx tsx ./admin/print_workers_except_agent_loop.ts)"
 
 NODE_ENV=development npx concurrently \
   --names "workers,agent-loop" \
