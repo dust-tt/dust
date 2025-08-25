@@ -1,7 +1,8 @@
-import { AgentConfigurationType } from "@app/types/assistant/agent";
-import { ModelId } from "@app/types/shared/model_id";
-import { UserType } from "@app/types/user";
 import * as t from "io-ts";
+
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { UserType } from "@app/types/user";
 
 export type ScheduleConfig = {
   cron: string;
