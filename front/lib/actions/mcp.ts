@@ -756,7 +756,7 @@ export async function updateMCPApprovalState(
     return false;
   }
 
-  await action.updateStatus(approvalState);
+  await action.updateStatus(status);
 
   return true;
 }
