@@ -74,7 +74,10 @@ export async function generateCronRule(
   if (
     !cronRule ||
     cronRule.split(" ").length !== 5 ||
-    !cronRule.split(" ")[0].match(/^\d+$/)
+    !cronRule.split(" ")[0].match(/^\d+$/) ||
+    !cronRule.match(
+      /^((((\d+,)+\d+|(\d+(\/|-|#)\d+)|\d+L?|\*(\/\d+)?|L(-\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})|(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)$/
+    )
   ) {
     return new Err(new Error("Error generating cron rule: malformed output"));
   }

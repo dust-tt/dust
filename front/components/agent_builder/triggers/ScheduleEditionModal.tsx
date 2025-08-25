@@ -92,7 +92,7 @@ export function ScheduleEditionModal({
         return "Unable to generate a schedule (note: it can't be more frequent than hourly).";
       case "idle":
         if (!cron) {
-          return `Please describe below... (minimum ${MIN_DESCRIPTION_LENGTH} characters)`;
+          return `Please describe above... (minimum ${MIN_DESCRIPTION_LENGTH} characters)`;
         }
         try {
           return `Agent will run ${cronstrue.toString(cron)}.`;

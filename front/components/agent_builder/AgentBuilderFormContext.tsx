@@ -208,13 +208,7 @@ export const agentBuilderFormSchema = z.object({
 
 export const scheduleFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),
-  cron: z
-    .string()
-    .min(1, "Cron expression is required")
-    .regex(
-      /^((((\d+,)+\d+|(\d+(\/|-|#)\d+)|\d+L?|\*(\/\d+)?|L(-\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})|(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)$/,
-      "Invalid cron expression (expected 5 fields: min hour day month weekday)"
-    ),
+  cron: z.string().min(9, "Cron expression is required"),
   timezone: z.string().min(1, "Timezone is required"),
 });
 export type ScheduleFormData = z.infer<typeof scheduleFormSchema>;
