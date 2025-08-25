@@ -361,9 +361,16 @@ export function MCPServerViewsSheet({
             },
           },
         };
+
+        // For reasoning tools, add directly to selected tools instead of going to configure page
+        toggleToolSelection({
+          type: "MCP",
+          view: mcpServerView,
+          configuredAction,
+        });
+        return;
       }
 
-      // Switch to configure mode instead of directly setting states
       onModeChange({
         type: "configure",
         action: configuredAction,
