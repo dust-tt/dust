@@ -48,13 +48,13 @@ function useValidationQueue({
     Record<string, MCPActionValidationRequest>
   >({});
 
-  const [currentItem, setCurrentItem] =
+  const [currentValidation, setCurrentValidation] =
     useState<MCPActionValidationRequest | null>(null);
 
   useEffect(() => {
     const nextValidation = pendingValidations[0];
     if (nextValidation) {
-      setCurrentItem(nextValidation);
+      setCurrentValidation(nextValidation);
     }
     if (pendingValidations.length > 1) {
       setValidationQueue(
@@ -69,7 +69,7 @@ function useValidationQueue({
 
   const enqueueValidation = useCallback(
     (validationRequest: MCPActionValidationRequest) => {
-      setCurrentItem((current) => {
+      setCurrentValidation((current) => {
         if (
           current === null ||
           current.actionId === validationRequest.actionId
@@ -100,7 +100,7 @@ function useValidationQueue({
         delete newRecord[nextValidationActionId];
         return newRecord;
       });
-      setCurrentItem(nextValidation);
+      setCurrentValidation(nextValidation);
       return nextValidation;
     }
 
@@ -112,12 +112,16 @@ function useValidationQueue({
     [validationQueue]
   );
 
+  const clearCurrentItem = () => {
+    setCurrentValidation(null);
+  };
+
   return {
     validationQueueLength,
     currentValidation,
     enqueueValidation,
     shiftValidationQueue,
-    setCurrentValidation,
+    clearCurrentValidation,
   };
 }
 
@@ -171,7 +175,7 @@ export function ActionValidationProvider({
   const {
     validationQueueLength,
     currentValidation,
-    setCurrentItem,
+    clearCurrentValidation,
     enqueueValidation,
     shiftValidationQueue,
   } = useValidationQueue({ pendingValidations });
@@ -235,7 +239,7 @@ export function ActionValidationProvider({
   const onDialogAnimationEnd = () => {
     // This is safe to check because the dialog closing animation is triggered after isDialogOpen is set to false.
     if (!isDialogOpen) {
-      setCurrentItem(null);
+      clearCurrentValidation();
       setErrorMessage(null);
     }
   };
