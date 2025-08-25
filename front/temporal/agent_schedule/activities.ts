@@ -31,7 +31,7 @@ export async function runScheduledAgentsActivity(
 
   const newConversation = await createConversation(auth, {
     title: `@${agentConfiguration.name} scheduled call - ${new Date().toLocaleDateString()}`,
-    visibility: "unlisted",
+    visibility: "triggered",
   });
 
   const baseContext = {
