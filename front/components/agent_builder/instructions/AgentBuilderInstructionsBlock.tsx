@@ -1,13 +1,6 @@
 import {
   ArrowPathIcon,
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-  EyeIcon,
   Label,
   Separator,
   XMarkIcon,
@@ -37,8 +30,6 @@ export function AgentBuilderInstructionsBlock({
   const [compareVersion, setCompareVersion] =
     useState<LightAgentConfigurationType | null>(null);
   const [isInstructionDiffMode, setIsInstructionDiffMode] = useState(false);
-  const [viewMode, setViewMode] = useState<"visual" | "text">("visual");
-  const [hasBlocks, setHasBlocks] = useState(false);
 
   const { agentConfigurationHistory } = useAgentConfigurationHistory({
     workspaceId: owner.sId,
@@ -60,25 +51,6 @@ export function AgentBuilderInstructionsBlock({
 
   const headerActions = (
     <>
-      {!isInstructionDiffMode && hasBlocks && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button icon={EyeIcon} variant="outline" size="sm" isSelect />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Switch editor mode</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={viewMode}
-              onValueChange={(value) => setViewMode(value as "visual" | "text")}
-            >
-              <DropdownMenuRadioItem value="visual">
-                Visual
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="text">Text</DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
       {!isInstructionDiffMode && <AdvancedSettings />}
       {agentConfigurationHistory && agentConfigurationHistory.length > 1 && (
         <AgentInstructionsHistory
@@ -87,8 +59,6 @@ export function AgentBuilderInstructionsBlock({
           onSelect={(config) => {
             setCompareVersion(config);
             setIsInstructionDiffMode(true);
-            // Auto-switch to visual mode for diff view
-            setViewMode("visual");
           }}
           owner={owner}
           agentConfigurationId={agentConfigurationId}
@@ -136,9 +106,6 @@ export function AgentBuilderInstructionsBlock({
       <AgentBuilderInstructionsEditor
         compareVersion={compareVersion}
         isInstructionDiffMode={isInstructionDiffMode}
-        viewMode={viewMode}
-        setViewMode={setViewMode}
-        setHasBlocks={setHasBlocks}
       />
     </AgentBuilderSectionContainer>
   );

@@ -2,13 +2,12 @@ import { cn, markdownStyles } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor } from "@tiptap/core";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import Placeholder from "@tiptap/extension-placeholder";
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { Editor as ReactEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -27,21 +26,6 @@ import {
 import type { LightAgentConfigurationType } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
-
-// Utility function to detect if document has code blocks or instruction blocks
-function detectRichBlocks(doc: ProseMirrorNode): boolean {
-  let foundBlocks = false;
-  doc.descendants((node) => {
-    if (
-      node.type.name === "codeBlock" ||
-      node.type.name === "instructionBlock"
-    ) {
-      foundBlocks = true;
-      return false; // Stop searching
-    }
-  });
-  return foundBlocks;
-}
 
 const editorVariants = cva(
   [
@@ -72,58 +56,19 @@ const editorVariants = cva(
   }
 );
 
-const textareaVariants = cva(
-  [
-    "overflow-auto border rounded-xl p-2 resize-y min-h-60 h-100",
-    "transition-all duration-200",
-    "bg-muted-background dark:bg-muted-background-night",
-  ],
-  {
-    variants: {
-      error: {
-        true: [
-          "border-warning-500 dark:border-warning-500-night",
-          "focus:border-warning-500 dark:focus:border-warning-500-night",
-        ],
-        false: [
-          "border-border dark:border-border-night",
-          "focus:border-highlight-300 dark:focus:border-highlight-300-night",
-        ],
-      },
-    },
-    defaultVariants: {
-      error: false,
-    },
-  }
-);
-
 interface AgentBuilderInstructionsEditorProps {
   compareVersion?: LightAgentConfigurationType | null;
   isInstructionDiffMode?: boolean;
-  viewMode?: "visual" | "text";
-  setViewMode?: (mode: "visual" | "text") => void;
-  setHasBlocks?: (hasBlocks: boolean) => void;
 }
 
 export function AgentBuilderInstructionsEditor({
   compareVersion,
   isInstructionDiffMode = false,
-  viewMode: externalViewMode,
-  setHasBlocks: externalSetHasBlocks,
 }: AgentBuilderInstructionsEditorProps = {}) {
   const { owner } = useAgentBuilderContext();
   const { field } = useController<AgentBuilderFormData, "instructions">({
     name: "instructions",
   });
-  const [internalViewMode] = useState<"visual" | "text">("visual");
-
-  // Use external state if provided, otherwise use internal
-  const viewMode = externalViewMode ?? internalViewMode;
-  // Use external setter if provided, otherwise use a no-op
-  const setHasBlocks = useMemo(
-    () => externalSetHasBlocks ?? (() => {}),
-    [externalSetHasBlocks]
-  );
 
   // Create a ref to hold the editor instance
   const editorRef = useRef<ReactEditor | null>(null);
@@ -187,34 +132,6 @@ export function AgentBuilderInstructionsEditor({
     [field, isInstructionDiffMode]
   );
 
-  // Debounce block detection to prevent performance issues on large documents
-  const debouncedBlockDetection = useMemo(
-    () =>
-      debounce((editor: CoreEditor | ReactEditor) => {
-        if (!editor.isDestroyed) {
-          const foundBlocks = detectRichBlocks(editor.state.doc);
-          setHasBlocks(foundBlocks);
-        }
-      }, 500),
-    [setHasBlocks]
-  );
-
-  // Debounce background resync from text mode to prevent performance issues
-  const debouncedTextModeSync = useMemo(
-    () =>
-      debounce((editor: CoreEditor | ReactEditor, value: string) => {
-        if (!editor.isDestroyed) {
-          const currentContent = plainTextFromTipTapContent(editor.getJSON());
-          if (currentContent !== value) {
-            editor.commands.setContent(
-              tipTapContentFromPlainText(value),
-              false
-            );
-          }
-        }
-      }, 300),
-    []
-  );
 
   const editor = useEditor(
     {
@@ -224,9 +141,6 @@ export function AgentBuilderInstructionsEditor({
         // Skip selection-only changes
         if (transaction.docChanged) {
           debouncedUpdate(editor);
-
-          // Debounced check for blocks to improve performance on large documents
-          debouncedBlockDetection(editor);
         }
       },
     },
@@ -242,10 +156,8 @@ export function AgentBuilderInstructionsEditor({
   useEffect(() => {
     return () => {
       debouncedUpdate.cancel();
-      debouncedBlockDetection.cancel();
-      debouncedTextModeSync.cancel();
     };
-  }, [debouncedUpdate, debouncedBlockDetection, debouncedTextModeSync]);
+  }, [debouncedUpdate]);
 
   const currentCharacterCount =
     editor?.storage.characterCount.characters() || 0;
@@ -264,41 +176,27 @@ export function AgentBuilderInstructionsEditor({
         },
       },
     });
-
-    // Initial check for blocks
-    const foundBlocks = detectRichBlocks(editor.state.doc);
-    setHasBlocks(foundBlocks);
-  }, [editor, displayError, setHasBlocks]);
+  }, [editor, displayError]);
 
   useEffect(() => {
     if (!editor || field.value === undefined) {
       return;
     }
 
-    // Don't update if editor is focused AND in visual mode (user is typing/editing)
-    if (editor.isFocused && viewMode === "visual") {
+    // Don't update if editor is focused (user is typing/editing)
+    if (editor.isFocused) {
       return;
     }
 
-    // In text mode, debounce the background sync for performance
-    if (viewMode === "text") {
-      debouncedTextModeSync(editor, field.value);
-    } else {
-      // Visual mode - cancel any pending text-mode updates to prevent race conditions
-      debouncedTextModeSync.cancel();
-      // Also cancel any pending serialization to avoid extra churn
-      debouncedUpdate.cancel();
-      
-      // Sync the editor with the current field value if needed
-      const currentContent = plainTextFromTipTapContent(editor.getJSON());
-      if (currentContent !== field.value) {
-        editor.commands.setContent(
-          tipTapContentFromPlainText(field.value),
-          false
-        );
-      }
+    // Sync the editor with the current field value if needed
+    const currentContent = plainTextFromTipTapContent(editor.getJSON());
+    if (currentContent !== field.value) {
+      editor.commands.setContent(
+        tipTapContentFromPlainText(field.value),
+        false
+      );
     }
-  }, [editor, field.value, debouncedUpdate, viewMode, debouncedTextModeSync]);
+  }, [editor, field.value]);
 
   useEffect(() => {
     if (!editor) {
@@ -326,23 +224,7 @@ export function AgentBuilderInstructionsEditor({
   return (
     <div className="flex h-full flex-col gap-1">
       <div className="relative">
-        {viewMode === "visual" ? (
-          <EditorContent editor={editor} className="h-full cursor-text" />
-        ) : (
-          <textarea
-            value={field.value}
-            onChange={(e) => field.onChange(e.target.value)}
-            className={cn(
-              "w-full focus:outline-none focus:ring-0",
-              textareaVariants({ error: displayError })
-            )}
-            style={{
-              fontFamily: "inherit",
-              fontSize: "inherit",
-              lineHeight: "inherit",
-            }}
-          />
-        )}
+        <EditorContent editor={editor} className="h-full cursor-text" />
         <div
           className="absolute bottom-4 right-4"
           onClick={(e) => {
@@ -352,21 +234,13 @@ export function AgentBuilderInstructionsEditor({
           <InstructionTipsPopover owner={owner} />
         </div>
       </div>
-      {editor && viewMode === "visual" && (
+      {editor && (
         <CharacterCountDisplay
           count={currentCharacterCount}
           maxCount={INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT}
         />
       )}
-      {viewMode === "text" && (
-        <CharacterCountDisplay
-          count={field.value.length}
-          maxCount={INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT}
-        />
-      )}
-      {viewMode === "visual" && (
-        <BlockInsertDropdown blockDropdownState={blockDropdown} />
-      )}
+      <BlockInsertDropdown blockDropdownState={blockDropdown} />
     </div>
   );
 }
