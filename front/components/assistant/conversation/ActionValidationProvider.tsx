@@ -1,3 +1,6 @@
+// Remove ValidationRequirement interface
+// Remove overview page
+
 import type { MultiPageDialogPage } from "@dust-tt/sparkle";
 import {
   ActionPieChartIcon,
@@ -82,7 +85,7 @@ export function ActionValidationProvider({
 
   // Filter blocked actions to only get validation required ones
   // TODO(durable-agents): also display blocked_authentication_required.
-  const validationRequirements = useMemo(() => {
+  const pendingValidations = useMemo(() => {
     return blockedActions
       .filter((action) => action.status === "blocked_validation_required")
       .map((action) => ({
@@ -125,10 +128,10 @@ export function ActionValidationProvider({
 
   // Automatically open dialog when validation requirements become available
   useEffect(() => {
-    if (validationRequirements.length > 0 && !isDialogOpen) {
+    if (pendingValidations.length > 0 && !isDialogOpen) {
       // Skip overview page if there's only one validation
-      if (validationRequirements.length === 1) {
-        setCurrentPageId(`validation-${validationRequirements[0].id}`);
+      if (pendingValidations.length === 1) {
+        setCurrentPageId(`validation-${pendingValidations[0].id}`);
       } else {
         setCurrentPageId("overview");
       }
@@ -136,7 +139,7 @@ export function ActionValidationProvider({
       setCompletedValidations(new Set());
       setErrorMessage(null);
     }
-  }, [validationRequirements]);
+  }, [pendingValidations]);
 
   const sendValidation = useCallback(
     async (
@@ -198,7 +201,7 @@ export function ActionValidationProvider({
         return;
       }
 
-      const remainingValidations = validationRequirements.filter(
+      const remainingValidations = pendingValidations.filter(
         (req) => !completedValidations.has(req.id) && req.id !== requirement.id
       );
 
@@ -212,28 +215,28 @@ export function ActionValidationProvider({
         setCompletedValidations(new Set());
       }
     },
-    [sendValidation, validationRequirements, completedValidations]
+    [sendValidation, pendingValidations, completedValidations]
   );
 
   const showValidationDialog = useCallback(() => {
-    if (validationRequirements.length > 0) {
+    if (pendingValidations.length > 0) {
       setIsDialogOpen(true);
       // Skip overview page if there's only one validation
-      if (validationRequirements.length === 1) {
-        setCurrentPageId(`validation-${validationRequirements[0].id}`);
+      if (pendingValidations.length === 1) {
+        setCurrentPageId(`validation-${pendingValidations[0].id}`);
       } else {
         setCurrentPageId("overview");
       }
       setCompletedValidations(new Set());
       setErrorMessage(null);
     }
-  }, [validationRequirements]);
+  }, [pendingValidations]);
 
-  const hasPendingValidations = validationRequirements.length > 0;
-  const totalPendingValidations = validationRequirements.length;
+  const hasPendingValidations = pendingValidations.length > 0;
+  const totalPendingValidations = pendingValidations.length;
 
   const dialogPages: MultiPageDialogPage[] = useMemo(() => {
-    if (validationRequirements.length === 0) {
+    if (pendingValidations.length === 0) {
       return [];
     }
 
@@ -241,14 +244,14 @@ export function ActionValidationProvider({
       {
         id: "overview",
         title: "Tool Validation Required",
-        description: `${validationRequirements.length} tool${pluralize(validationRequirements.length)} need approval`,
+        description: `${pendingValidations.length} tool${pluralize(pendingValidations.length)} need approval`,
         content: (
           <div className="flex flex-col gap-4">
             <div className="text-sm text-muted-foreground">
               The following tools require your approval before they can be used:
             </div>
             <div className="space-y-3">
-              {validationRequirements.map((req, index) => (
+              {pendingValidations.map((req, index) => (
                 <div
                   key={req.id}
                   className="flex items-center justify-between rounded-lg border p-3"
@@ -271,7 +274,7 @@ export function ActionValidationProvider({
                     </div>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {index + 1} of {validationRequirements.length}
+                    {index + 1} of {pendingValidations.length}
                   </div>
                 </div>
               ))}
@@ -281,7 +284,7 @@ export function ActionValidationProvider({
       },
     ];
 
-    validationRequirements.forEach((req) => {
+    pendingValidations.forEach((req) => {
       pages.push({
         id: `validation-${req.id}`,
         title: `Validate ${asDisplayName(req.toolName)}`,
@@ -341,12 +344,12 @@ export function ActionValidationProvider({
     });
 
     return pages;
-  }, [validationRequirements, errorMessage, neverAskAgain]);
+  }, [pendingValidations, errorMessage, neverAskAgain]);
 
   const isOverviewPage = currentPageId === "overview";
   const currentValidationRequirement = isOverviewPage
     ? null
-    : validationRequirements.find(
+    : pendingValidations.find(
         (req) => currentPageId === `validation-${req.id}`
       );
 
@@ -362,7 +365,7 @@ export function ActionValidationProvider({
           label: "Start Review",
           variant: "highlight" as const,
           onClick: () => {
-            const firstRequirement = validationRequirements[0];
+            const firstRequirement = pendingValidations[0];
             if (firstRequirement) {
               setCurrentPageId(`validation-${firstRequirement.id}`);
             }
@@ -425,8 +428,8 @@ export function ActionValidationProvider({
             currentPageId={currentPageId}
             onPageChange={setCurrentPageId}
             size="lg"
-            showNavigation={validationRequirements.length > 1}
-            showHeaderNavigation={validationRequirements.length > 1}
+            showNavigation={pendingValidations.length > 1}
+            showHeaderNavigation={pendingValidations.length > 1}
             addFooterSeparator={true}
             {...dialogButtons}
           />
