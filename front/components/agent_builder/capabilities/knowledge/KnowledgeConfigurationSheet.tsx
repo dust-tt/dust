@@ -25,6 +25,7 @@ import { DescriptionSection } from "@app/components/agent_builder/capabilities/s
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { ProcessingMethodSection } from "@app/components/agent_builder/capabilities/shared/ProcessingMethodSection";
+import { SelectDataSourcesFilters } from "@app/components/agent_builder/capabilities/shared/SelectDataSourcesFilters";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import {
@@ -356,6 +357,8 @@ function KnowledgeConfigurationSheetContent({
       icon: config?.icon,
       content: (
         <div className="space-y-6">
+          <SelectDataSourcesFilters />
+
           <NameSection
             title="Tool Name"
             description="Customize the name of this knowledge tool to reference it in your instructions."
