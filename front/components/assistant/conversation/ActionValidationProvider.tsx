@@ -507,50 +507,50 @@ export function ActionValidationProvider({
               </div>
           </DialogContainer>
           <DialogFooter>
-            isAuthenticationRequired ?
-            <Button
-              label="Done"
-              variant="highlight"
-              onClick={() => retryBlockedActions()}
-              disabled={isProcessing}
-            >
-              {isProcessing && (
-                <div className="flex items-center">
-                  <span className="mr-2">Resuming</span>
-                  <Spinner size="xs" variant="dark" />
-                </div>
-              )}
-            </Button>
-            :(
-            <>
+            {isAuthenticationRequired ? (
               <Button
-                label="Decline"
-                variant="outline"
-                onClick={() => handleSubmit("rejected")}
-                disabled={isValidating}
+                label="Done"
+                variant="highlight"
+                onClick={() => retryBlockedActions()}
+                disabled={isProcessing}
               >
-                {isValidating && (
+                {isProcessing && (
                   <div className="flex items-center">
-                    <span className="mr-2">Declining</span>
+                    <span className="mr-2">Resuming</span>
                     <Spinner size="xs" variant="dark" />
                   </div>
                 )}
               </Button>
-              <Button
-                label="Allow"
-                variant="highlight"
-                onClick={() => handleSubmit("approved")}
-                disabled={isValidating}
-              >
-                {isValidating && (
-                  <div className="flex items-center">
-                    <span className="mr-2">Approving</span>
-                    <Spinner size="xs" variant="light" />
-                  </div>
-                )}
-              </Button>
-            </>
-            )
+            ) : (
+              <>
+                <Button
+                  label="Decline"
+                  variant="outline"
+                  onClick={() => handleSubmit("rejected")}
+                  disabled={isValidating}
+                >
+                  {isValidating && (
+                    <div className="flex items-center">
+                      <span className="mr-2">Declining</span>
+                      <Spinner size="xs" variant="dark" />
+                    </div>
+                  )}
+                </Button>
+                <Button
+                  label="Allow"
+                  variant="highlight"
+                  onClick={() => handleSubmit("approved")}
+                  disabled={isValidating}
+                >
+                  {isValidating && (
+                    <div className="flex items-center">
+                      <span className="mr-2">Approving</span>
+                      <Spinner size="xs" variant="light" />
+                    </div>
+                  )}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
