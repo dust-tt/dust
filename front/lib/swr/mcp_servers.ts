@@ -824,12 +824,17 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
 
   const sendNotification = useSendNotification();
 
-  const createPersonalConnection = async (
-    mcpServer: MCPServerType,
-    provider: OAuthProvider,
-    useCase: OAuthUseCase,
-    scope?: string
-  ): Promise<boolean> => {
+  const createPersonalConnection = async ({
+    mcpServer,
+    provider,
+    useCase,
+    scope,
+  }: {
+    mcpServer: MCPServerType;
+    provider: OAuthProvider;
+    useCase: OAuthUseCase;
+    scope?: string;
+  }): Promise<boolean> => {
     try {
       const extraConfig: Record<string, string> = {
         mcp_server_id: mcpServer.sId,
