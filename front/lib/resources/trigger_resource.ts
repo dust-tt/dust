@@ -215,6 +215,68 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
   }
 
+  async enable(auth: Authenticator): Promise<Result<undefined, Error>> {
+    if (this.enabled) {
+      return new Ok(undefined);
+    }
+
+    const updateResult = await TriggerModel.update(
+      { enabled: true },
+      {
+        where: {
+          sId: this.sId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+
+    if (updateResult[0] === 0) {
+      return new Err(new Error(`Failed to enable trigger ${this.sId}`));
+    }
+
+    // Update the local instance
+    (this as any).enabled = true;
+
+    // Re-register the temporal workflow
+    const r = await this.postRegistration(auth);
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(undefined);
+  }
+
+  async disable(auth: Authenticator): Promise<Result<undefined, Error>> {
+    if (!this.enabled) {
+      return new Ok(undefined);
+    }
+
+    const updateResult = await TriggerModel.update(
+      { enabled: false },
+      {
+        where: {
+          sId: this.sId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+
+    if (updateResult[0] === 0) {
+      return new Err(new Error(`Failed to disable trigger ${this.sId}`));
+    }
+
+    // Update the local instance
+    (this as any).enabled = false;
+
+    // Remove the temporal workflow
+    const r = await this.preDeletion(auth);
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(undefined);
+  }
+
   toJSON(): TriggerType {
     return {
       id: this.id,
@@ -223,6 +285,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       agentConfigurationId: this.agentConfigurationId,
       editor: this.editor,
       customPrompt: this.customPrompt,
+      enabled: this.enabled,
       kind: this.kind,
       configuration: this.configuration,
     };
