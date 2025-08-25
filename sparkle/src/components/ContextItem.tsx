@@ -13,6 +13,7 @@ type ContextItemProps = {
   subElement?: ReactNode;
   title: ReactNode;
   visual: ReactNode;
+  hoverAction?: boolean;
   onClick?: () => void;
 };
 
@@ -25,6 +26,7 @@ export function ContextItem({
   subElement,
   title,
   visual,
+  hoverAction,
   onClick,
 }: ContextItemProps) {
   return (
@@ -63,7 +65,15 @@ export function ContextItem({
           </div>
           {children && <div>{children}</div>}
         </div>
-        <div>{action}</div>
+        <div
+          className={classNames(
+            hoverAction
+              ? "s-opacity-0 s-transition-opacity s-duration-200 group-hover/context-item:s-opacity-100"
+              : ""
+          )}
+        >
+          {action}
+        </div>
       </div>
     </div>
   );
