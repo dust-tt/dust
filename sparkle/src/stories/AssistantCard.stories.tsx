@@ -113,7 +113,7 @@ export const ToolCardVariant = () => (
           isSelected: false,
           canAdd: true,
         }}
-        onClick={() => console.log("Add Image Generation")}
+        onClick={() => logger.info("Add Image Generation")}
       />
 
       {/* Added state (shows ADDED chip, no button) */}
