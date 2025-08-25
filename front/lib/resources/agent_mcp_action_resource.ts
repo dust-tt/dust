@@ -18,7 +18,6 @@ import {
 } from "@app/lib/actions/statuses";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
@@ -38,7 +37,6 @@ import { Err, normalizeError, Ok } from "@app/types";
 export interface AgentMCPActionResource
   extends ReadonlyAttributesType<AgentMCPAction> {
   agentMessage?: AgentMessage;
-  outputItems?: AgentMCPActionOutputItem[];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -91,9 +89,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<AgentMCPAction>, "workspaceId"> & {
-      approvalStatus: "allowed_implicitly" | "pending";
-    },
+    blob: Omit<CreationAttributes<AgentMCPAction>, "workspaceId">,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<AgentMCPActionResource> {
     const workspace = auth.getNonNullableWorkspace();
@@ -128,14 +124,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
   ): Promise<AgentMCPActionResource | null> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const action = await this.model.findOne({
+    const [action] = await this.baseFetch(auth, {
       where: { id, workspaceId },
-      transaction,
     });
-
-    if (!action) {
-      return null;
-    }
 
     const stepContent = await AgentStepContentModel.findOne({
       where: {
@@ -146,7 +137,29 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     });
     assert(stepContent, "Step content not found.");
 
-    return new this(this.model, action.get(), stepContent);
+    // Create a new resource instance with the updated stepContent
+    return new AgentMCPActionResource(
+      this.model,
+      {
+        id: action.id,
+        workspaceId: action.workspaceId,
+        agentMessageId: action.agentMessageId,
+        augmentedInputs: action.augmentedInputs,
+        citationsAllocated: action.citationsAllocated,
+        executionState: action.executionState,
+        isError: action.isError,
+        mcpServerConfigurationId: action.mcpServerConfigurationId,
+        runningState: action.runningState,
+        status: action.status,
+        stepContentId: action.stepContentId,
+        stepContext: action.stepContext,
+        toolConfiguration: action.toolConfiguration,
+        version: action.version,
+        createdAt: action.createdAt,
+        updatedAt: action.updatedAt,
+      },
+      stepContent
+    );
   }
 
   static async listBlockedActionsForConversation(

@@ -640,7 +640,6 @@ export async function createMCPAction(
     augmentedInputs,
     stepContentId,
     stepContext,
-    approvalStatus,
     toolConfiguration,
     version: 0,
     isError: false, // TODO(durable-agents): remove this once `status` has been filled
@@ -764,6 +763,7 @@ export function isMCPApproveExecutionEvent(
   return event.type === "tool_approve_execution";
 }
 
+// TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent mcp action.
 export async function getMCPAction(
   auth: Authenticator,
   actionId: string
@@ -775,6 +775,7 @@ export async function getMCPAction(
   return AgentMCPActionResource.fetchByModelIdWithAuth(auth, id);
 }
 
+// TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent mcp action.
 export async function updateMCPApprovalState(
   action: AgentMCPActionResource,
   executionState: "denied" | "allowed_explicitly"
