@@ -3,7 +3,7 @@
 import { Op } from "sequelize";
 
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
-import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
@@ -47,7 +47,7 @@ async function attachStepContentToMcpActions({
 
   if (verbose) {
     // Count total actions first.
-    const totalCount = await AgentMCPAction.count({
+    const totalCount = await AgentMCPActionModel.count({
       where: {
         workspaceId: workspace.id,
         stepContentId: {
@@ -84,7 +84,7 @@ async function attachStepContentToMcpActions({
       );
     }
 
-    const mcpActions = await AgentMCPAction.findAll({
+    const mcpActions = await AgentMCPActionModel.findAll({
       where: {
         workspaceId: workspace.id,
         id: {
