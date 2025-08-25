@@ -220,10 +220,10 @@ export async function readFrontTableChunk({
     };
   } catch (err) {
     if (isStringTooLongError(err) || isJSONStringifyRangeError(err)) {
-      const nextLimit = Math.floor(limit / 2);
+      const nextLimit = Math.floor(realLimit / 2);
       if (nextLimit === 0) {
         localLogger.error(
-          { error: err, lastId, limit, nextLimit },
+          { error: err, lastId, limit: realLimit, nextLimit },
           "[Core] Failed to write tables blobs to file storage, string too long - skipping"
         );
         // Go to next page, reset limit.
@@ -235,7 +235,7 @@ export async function readFrontTableChunk({
         };
       } else {
         localLogger.error(
-          { error: err, lastId, limit, nextLimit },
+          { error: err, lastId, limit: realLimit, nextLimit },
           "[Core] Failed to write tables blobs to file storage, string too long - retrying with smaller limit"
         );
         // Keep the same page cursor, but try to reduce the limit.
