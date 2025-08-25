@@ -101,7 +101,7 @@ export function transformTreeToSelectionConfigurations(
         selectedResources: [],
         excludedResources: [],
         isSelectAll: false,
-        tagsFilter: item.tagsFilter,
+        tagsFilter: null,
       };
     }
 
@@ -193,7 +193,7 @@ export function transformSelectionConfigurationsToTree(
             name: node.title,
             type: "node",
             node,
-            tagsFilter: config.tagsFilter,
+            tagsFilter: null,
           });
         } else {
           const pathParts = [baseParts, node.internalId];
@@ -202,7 +202,7 @@ export function transformSelectionConfigurationsToTree(
             name: node.title,
             type: "data_source",
             dataSourceView: node.dataSourceView,
-            tagsFilter: config.tagsFilter,
+            tagsFilter: null,
           });
         }
       }

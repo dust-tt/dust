@@ -7,7 +7,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
 import { useEffect, useMemo, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { FormProvider, useForm, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useAgentBuilderFormActions } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -44,7 +44,6 @@ import {
   DataSourceBuilderProvider,
   useDataSourceBuilderContext,
 } from "@app/components/data_source_view/context/DataSourceBuilderContext";
-import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -208,7 +207,7 @@ export function KnowledgeConfigurationSheet({
 
   return (
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
-      <FormProvider form={form}>
+      <FormProvider {...form}>
         {debouncedOpen && (
           <DataSourceBuilderProvider
             spaces={spaces}
