@@ -70,7 +70,7 @@ export function AgentBuilderInstructionsEditor({
     name: "instructions",
   });
 
-  // Create a ref to hold the editor instance
+  // Create a ref to hold the editor instance for the slash dropdown
   const editorRef = useRef<ReactEditor | null>(null);
 
   // Setup the block insert dropdown
@@ -146,7 +146,7 @@ export function AgentBuilderInstructionsEditor({
     [extensions]
   );
 
-  // Update the editor ref when the editor is created
+  // Keep the editor ref in sync with the current instance
   useEffect(() => {
     editorRef.current = editor;
   }, [editor]);
