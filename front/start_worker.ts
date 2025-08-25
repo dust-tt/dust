@@ -1,4 +1,4 @@
-import type { LogLevel, Logger } from "@temporalio/common/lib/logger";
+import type { Logger, LogLevel } from "@temporalio/common/lib/logger";
 import { Runtime } from "@temporalio/worker/lib/runtime";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -44,9 +44,15 @@ const pinoAdapter: Logger = {
   trace: (msg: string, meta: object) => logger.trace(meta ?? {}, msg),
 };
 
-// Install once per process — before creating Worker/Client
+// Install once per process — before creating Worker/Client.
 Runtime.install({
   logger: pinoAdapter,
+  telemetryOptions: {
+    metrics: {
+      // Datadog Agent OTLP gRPC (4317).
+      otel: { url: "grpc://datadog-agent.default.svc.cluster.local:4317" },
+    },
+  },
 });
 
 type WorkerName =
