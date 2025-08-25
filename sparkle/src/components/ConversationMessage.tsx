@@ -200,11 +200,11 @@ export const ConversationMessageHeader = React.forwardRef<
           visual={avatarUrl}
           busy={isBusy}
           disabled={isDisabled}
-          size="sm"
+          size="xs"
         />
         <div
           className={cn(
-            "s-text-sm s-font-semibold @sm:s-text-base",
+            "s-text-sm s-font-medium @sm:s-text-base",
             "s-text-foreground dark:s-text-foreground-night"
           )}
         >
