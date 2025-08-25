@@ -8,14 +8,23 @@ import type {
 import { Op } from "sequelize";
 
 import type { BlockedActionExecution } from "@app/lib/actions/mcp";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import {
+  INTERNAL_MCP_SERVERS,
+  isInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
   isToolExecutionStatusBlocked,
   TOOL_EXECUTION_BLOCKED_STATUSES,
 } from "@app/lib/actions/statuses";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
+import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
+import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -220,6 +229,41 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       variant: "extra_light",
     });
 
+    // Collect all unique MCP server view IDs for remote servers
+    const mcpServerViewIds = [
+      ...new Set(
+        blockedActions.map((a) => {
+          if (isLightServerSideMCPToolConfiguration(a.toolConfiguration)) {
+            return parseInt(a.toolConfiguration.mcpServerViewId);
+          }
+          throw new Error(" Unexpected: Malformed MCP tool configuration.");
+        })
+      ),
+    ];
+
+    // Fetch MCP server views with remote servers
+    const mcpServerViews =
+      mcpServerViewIds.length > 0
+        ? await MCPServerViewModel.findAll({
+            where: {
+              id: mcpServerViewIds,
+              workspaceId: owner.id,
+            },
+            include: [
+              {
+                model: RemoteMCPServerModel,
+                as: "remoteMCPServer",
+                required: false,
+              },
+            ],
+          })
+        : [];
+
+    // Create a map for quick lookup
+    const mcpServerViewMap = new Map(
+      mcpServerViews.map((view) => [view.id, view])
+    );
+
     for (const action of blockedActions) {
       const agentMessage = action.agentMessage;
       assert(agentMessage?.message, "No message for agent message.");
@@ -233,6 +277,30 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         isToolExecutionStatusBlocked(action.status),
         "Action is not blocked."
       );
+
+      // Get authorization info based on server type
+      let authorizationInfo: AuthorizationInfo | null = null;
+
+      assert(
+        isLightServerSideMCPToolConfiguration(action.toolConfiguration),
+        " Unexpected: Malformed MCP tool configuration."
+      );
+
+      const mcpServerViewId = action.toolConfiguration.mcpServerViewId;
+      const mcpServerView = mcpServerViewMap.get(parseInt(mcpServerViewId, 10));
+
+      if (mcpServerView?.remoteMCPServer) {
+        // For remote MCP servers, get authorization from the remote server model
+        authorizationInfo = mcpServerView.remoteMCPServer.authorization;
+      } else {
+        assert(
+          isInternalMCPServerName(action.toolConfiguration.mcpServerName),
+          " Unexpected: MCP server name is not an internal MCP server name."
+        );
+        authorizationInfo =
+          INTERNAL_MCP_SERVERS[action.toolConfiguration.mcpServerName]
+            .serverInfo.authorization;
+      }
 
       blockedActionsList.push({
         messageId: agentMessage.message.sId,
@@ -250,6 +318,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           icon: action.toolConfiguration.icon,
         },
         status: action.status,
+        authorizationInfo,
       });
     }
 
