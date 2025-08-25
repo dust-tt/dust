@@ -43,6 +43,8 @@ export async function publishDeferredEventsActivity(
             code: "mcp_server_personal_authentication_required",
             message: event.authError.message,
             metadata: {
+              conversationId: context.conversationId,
+              messageId: event.messageId,
               mcp_server_id: event.authError.mcpServerId,
               provider: event.authError.provider,
               ...(event.authError.scope && {

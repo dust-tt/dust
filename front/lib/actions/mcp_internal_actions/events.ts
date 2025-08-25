@@ -8,6 +8,8 @@ export type ToolPersonalAuthRequiredEvent = {
   configurationId: string;
   messageId: string;
   authError: {
+    conversationId: string;
+    messageId: string;
     mcpServerId: string;
     provider: string;
     scope?: string;
