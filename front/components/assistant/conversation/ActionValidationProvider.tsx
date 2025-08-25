@@ -270,16 +270,9 @@ export function ActionValidationProvider({
     >
       {children}
 
-      <Dialog
-        open={isDialogOpen}
-        onOpenChange={(open) => {
-          if (!open && !isProcessing && currentValidation) {
-            void handleSubmit("rejected");
-          }
-        }}
-      >
+      <Dialog open={isDialogOpen}>
         <DialogContent isAlertDialog onAnimationEnd={onDialogAnimationEnd}>
-          <DialogHeader>
+          <DialogHeader hideButton>
             <DialogTitle
               visual={
                 currentValidation?.metadata.icon ? (
