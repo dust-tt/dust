@@ -22,7 +22,6 @@ import {
 import { getCitationsFromActions } from "@app/lib/api/assistant/citations";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import config from "@app/lib/api/config";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -31,15 +30,6 @@ import logger from "@app/logger/logger";
 import type { CitationType, Result } from "@app/types";
 import { isGlobalAgentId } from "@app/types";
 import { Err, getHeaderFromUserEmail, normalizeError, Ok } from "@app/types";
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "run_agent",
-  version: "1.0.0",
-  description: "Run a child agent (agent as tool).",
-  icon: "ActionRobotIcon",
-  authorization: null,
-  documentationUrl: null,
-};
 
 function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
@@ -108,7 +98,7 @@ export default async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> {
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer("run_agent");
   const owner = auth.getNonNullableWorkspace();
 
   let childAgentId: string | null = null;

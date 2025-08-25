@@ -92,7 +92,11 @@ export async function getRunAgentData(
   for (let i = conversation.content.length - 1; i >= 0 && !agentMessage; i--) {
     const messageGroup = conversation.content[i];
     for (const msg of messageGroup) {
-      if (isAgentMessageType(msg)) {
+      if (
+        isAgentMessageType(msg) &&
+        msg.sId === agentMessageId &&
+        msg.version === agentMessageVersion
+      ) {
         agentMessage = msg;
         break;
       }

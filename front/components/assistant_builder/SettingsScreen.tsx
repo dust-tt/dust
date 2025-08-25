@@ -1,8 +1,6 @@
 import {
   Avatar,
   Button,
-  Card,
-  CardActionButton,
   CardGrid,
   ClockIcon,
   Collapsible,
@@ -17,7 +15,6 @@ import {
   SliderToggle,
   SparklesIcon,
   Spinner,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
 import React, {
@@ -30,6 +27,7 @@ import React, {
 } from "react";
 
 import { ScheduleEditionModal } from "@app/components/agent_builder/triggers/ScheduleEditionModal";
+import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard";
 import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
 import {
   buildSelectedEmojiType,
@@ -56,6 +54,7 @@ import type {
   BuilderEmojiSuggestionsType,
   BuilderSuggestionsType,
   DataSourceType,
+  LightWorkspaceType,
   Result,
   UserType,
   WorkspaceType,
@@ -534,7 +533,10 @@ export default function SettingsScreen({
         <TagsSection owner={owner} />
 
         {hasFeature("hootl") && (
-          <TriggersSection isTriggersLoading={isTriggersLoading} />
+          <TriggersSection
+            owner={owner}
+            isTriggersLoading={isTriggersLoading}
+          />
         )}
         <div className="flex flex-row gap-4">
           <div className="flex flex-[1_0_0] flex-col gap-2">
@@ -850,36 +852,11 @@ function EditorsMembersList({
   );
 }
 
-function TriggerCard({ trigger, onRemove, onEdit }: any) {
-  return (
-    <Card
-      variant="primary"
-      className="h-28"
-      onClick={onEdit}
-      action={
-        <CardActionButton
-          size="mini"
-          icon={XMarkIcon}
-          onClick={(e: Event) => {
-            e.stopPropagation();
-            onRemove();
-          }}
-        />
-      }
-    >
-      <div className="flex w-full flex-col gap-2 text-sm">
-        <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          <ClockIcon />
-          <span className="truncate">{trigger.name}</span>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 function TriggersSection({
+  owner,
   isTriggersLoading,
 }: {
+  owner: LightWorkspaceType;
   isTriggersLoading: boolean;
 }) {
   const { builderState, setBuilderState, setEdited } =
@@ -989,6 +966,7 @@ function TriggersSection({
 
       {/* Create/Edit Schedule Modal */}
       <ScheduleEditionModal
+        owner={owner}
         trigger={editedTrigger?.trigger}
         isOpen={editedTrigger !== null || isOpen}
         onClose={handleCloseModal}

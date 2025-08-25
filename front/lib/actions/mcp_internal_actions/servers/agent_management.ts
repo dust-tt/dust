@@ -10,19 +10,9 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import apiConfig from "@app/lib/api/config";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "agent_management",
-  version: "1.0.0",
-  description: "Tools for managing agent configurations",
-  authorization: null,
-  icon: "ActionRobotIcon",
-  documentationUrl: null,
-};
 
 const createServer = (
   auth: Authenticator,
@@ -30,7 +20,7 @@ const createServer = (
 ): McpServer => {
   void agentLoopContext;
 
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer("agent_management");
 
   server.tool(
     "create_agent",

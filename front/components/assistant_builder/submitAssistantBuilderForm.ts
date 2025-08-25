@@ -213,7 +213,7 @@ export async function submitAssistantBuilderForm({
   const newAgentConfiguration: {
     agentConfiguration: LightAgentConfigurationType | AgentConfigurationType;
   } = await res.json();
-  const agentConfigurationSid = newAgentConfiguration.agentConfiguration.sId;
+  const newAgentConfigurationId = newAgentConfiguration.agentConfiguration.sId;
 
   // PATCH the linked Slack channels if either:
   // - there were already linked channels
@@ -227,7 +227,7 @@ export async function submitAssistantBuilderForm({
     ).length
   ) {
     const slackLinkRes = await fetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationSid}/linked_slack_channels`,
+      `/api/w/${owner.sId}/assistant/agent_configurations/${newAgentConfigurationId}/linked_slack_channels`,
       {
         method: "PATCH",
         headers: {
@@ -253,9 +253,8 @@ export async function submitAssistantBuilderForm({
     return new Ok(newAgentConfiguration.agentConfiguration);
   }
 
-  /** 
   const triggerSyncRes = await fetch(
-    `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+    `/api/w/${owner.sId}/assistant/agent_configurations/${newAgentConfigurationId}/triggers`,
     {
       method: "PATCH",
       headers: {
@@ -266,7 +265,7 @@ export async function submitAssistantBuilderForm({
           name: trigger.name,
           kind: trigger.kind,
           configuration: trigger.configuration,
-          sId: trigger.sId ?? undefined,
+          sId: trigger.sId,
         })),
       }),
     }
@@ -287,6 +286,5 @@ export async function submitAssistantBuilderForm({
     }
   }
 
-  */
   return new Ok(newAgentConfiguration.agentConfiguration);
 }

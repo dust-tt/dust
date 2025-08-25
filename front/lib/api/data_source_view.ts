@@ -23,6 +23,7 @@ import type {
 import { assertNever, CoreAPI, Err, Ok } from "@app/types";
 
 const DEFAULT_PAGINATION_LIMIT = 1000;
+const CORE_MAX_PAGE_SIZE = 1000;
 
 // If `internalIds` is not provided, it means that the request is for all the content nodes in the view.
 interface GetContentNodesForDataSourceViewParams {
@@ -202,7 +203,7 @@ export async function getContentNodesForDataSourceView(
       options: {
         // We limit the results to the remaining number of nodes
         // we still need to make sure we get a correct nextPageCursor at the end of this loop.
-        limit: limit - resultNodes.length,
+        limit: Math.min(limit - resultNodes.length, CORE_MAX_PAGE_SIZE),
         cursor: nextPageCursor ?? undefined,
         sort: coreAPISorting,
       },

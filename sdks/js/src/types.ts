@@ -926,7 +926,7 @@ const AgentMessageFeedbackSchema = z.object({
 });
 
 const ConversationVisibilitySchema = FlexibleEnumSchema<
-  "unlisted" | "workspace" | "deleted" | "test"
+  "unlisted" | "triggered" | "workspace" | "deleted" | "test"
 >();
 
 export type ConversationVisibility = z.infer<
@@ -1104,7 +1104,9 @@ const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
   status: ToolExecutionBlockedStatusSchema,
 });
 
-export type BlockedActionExecutionType = z.infer<typeof BlockedActionExecutionSchema>;
+export type BlockedActionExecutionType = z.infer<
+  typeof BlockedActionExecutionSchema
+>;
 
 const MCPApproveExecutionEventSchema = ToolExecutionMetadataSchema.extend({
   type: z.literal("tool_approve_execution"),
