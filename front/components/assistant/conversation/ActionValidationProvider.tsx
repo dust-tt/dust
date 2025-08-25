@@ -27,6 +27,7 @@ import {
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
+import type { BlockedActionExecution } from "@app/lib/actions/mcp";
 import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
 import type {
@@ -141,7 +142,7 @@ type ActionValidationContextType = {
     validationRequest: MCPActionValidationRequest;
   }) => void;
   showValidationDialog: () => void;
-  hasPendingValidations: boolean;
+  userActionIsRequired: boolean;
   totalPendingValidations: number;
 };
 
@@ -175,11 +176,22 @@ export function ActionValidationProvider({
     workspaceId: owner.sId,
   });
 
+  const [actionsBlockedOnAuthentication, setActionsBlockedOnAuthentication] =
+    useState<BlockedActionExecution[]>([]);
+
   // Filter blocked actions to only get validation required ones.
   // TODO(durable-agents): also display blocked_authentication_required.
   const pendingValidations = useMemo(() => {
     return blockedActions.filter(
       (action) => action.status === "blocked_validation_required"
+    );
+  }, [blockedActions]);
+
+  useEffect(() => {
+    setActionsBlockedOnAuthentication(
+      blockedActions.filter(
+        (action) => action.status === "blocked_authentication_required"
+      )
     );
   }, [blockedActions]);
 
@@ -202,6 +214,30 @@ export function ActionValidationProvider({
   });
 
   useNavigationLock(isDialogOpen);
+
+  const retryBlockedActions = async () => {
+    setErrorMessage(null);
+    setIsProcessing(true);
+
+    const [authenticationRequiredAction] = actionsBlockedOnAuthentication;
+
+    const response = await fetch(
+      `/api/w/${owner.sId}/assistant/conversations/${authenticationRequiredAction.conversationId}/messages/${authenticationRequiredAction.messageId}/retry?blocked_only=true`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    setIsProcessing(false);
+
+    if (!response.ok) {
+      setErrorMessage("Failed to resume conversation. Please try again.");
+      return;
+    }
+  };
 
   const submitValidation = async (status: MCPValidationOutputType) => {
     if (!currentItem) {
@@ -249,9 +285,14 @@ export function ActionValidationProvider({
     }
   }, [isDialogOpen]);
 
-  const hasPendingValidations =
-    currentItem !== null || validationQueueLength > 0;
-  const totalPendingValidations = (currentItem ? 1 : 0) + validationQueueLength;
+  const isAuthenticationRequired = actionsBlockedOnAuthentication.length > 0;
+  const userActionIsRequired =
+    currentValidation !== null ||
+    validationQueueLength > 0 ||
+    isAuthenticationRequired;
+  const totalPendingValidations = isAuthenticationRequired
+    ? 1
+    : (currentValidation ? 1 : 0) + validationQueueLength;
   const validationRequest = currentItem?.validationRequest;
 
   return (
@@ -259,7 +300,7 @@ export function ActionValidationProvider({
       value={{
         showValidationDialog,
         enqueueValidation,
-        hasPendingValidations,
+        userActionIsRequired,
         totalPendingValidations,
       }}
     >
@@ -270,17 +311,37 @@ export function ActionValidationProvider({
           <DialogHeader hideButton>
             <DialogTitle
               visual={
-                validationRequest?.metadata.icon ? (
-                  getAvatarFromIcon(validationRequest?.metadata.icon)
+                !isAuthenticationRequired &&
+                (validationRequest?.metadata.icon ? (
+                  getAvatarFromIcon(validationRequest.metadata.icon)
                 ) : (
                   <Icon visual={ActionPieChartIcon} size="sm" />
-                )
+                ))
               }
             >
-              Tool Validation Required
+              {isAuthenticationRequired
+                ? "Personal Authentication Required"
+                : "Tool Validation Required"}
             </DialogTitle>
           </DialogHeader>
           <DialogContainer>
+            {/* TODO: move this to an actual component, TBD on work on triggers.. */}
+            {isAuthenticationRequired ? (
+                <div className="flex flex-col gap-4">
+                <span>
+                  The agent took an action that requires personal authentication
+                </span>
+                  {actionsBlockedOnAuthentication.map((action) => (
+                    // TODO
+                    <div key={action.actionId}>
+                      <b>@{action.metadata.agentName}</b> is trying to use the
+                      tool <b>{asDisplayName(action.metadata.toolName)}</b> from{" "}
+                      <b>{asDisplayName(action.metadata.mcpServerName)}</b>
+                    </div>
+                  ))}
+                </div>
+              ) :(
+                <>
             <div className="flex flex-col gap-4">
               <div>
                 Allow{" "}
@@ -345,35 +406,151 @@ export function ActionValidationProvider({
                   <span>Always allow this tool</span>
                 </Label>
               </div>
-            )}
+            )}</>)
+            {/* TODO: move this to an actual component, TBD on work on triggers.. */}
+            {isAuthenticationRequired ? (
+              <div className="flex flex-col gap-4">
+                <span>
+                  The agent took an action that requires personal authentication
+                </span>
+                {actionsBlockedOnAuthentication.map((action) => (
+                  // TODO
+                  <div key={action.actionId}>
+                    <b>@{action.metadata.agentName}</b> is trying to use the
+                    tool <b>{asDisplayName(action.metadata.toolName)}</b> from{" "}
+                    <b>{asDisplayName(action.metadata.mcpServerName)}</b>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-col gap-4">
+                  <div>
+                    Allow <b>@{currentValidation?.metadata.agentName}</b> to use
+                    the tool{" "}
+                    <b>{asDisplayName(currentValidation?.metadata.toolName)}</b>{" "}
+                    from{" "}
+                    <b>
+                      {asDisplayName(currentValidation?.metadata.mcpServerName)}
+                    </b>
+                    ?
+                  </div>
+                  {currentValidation?.inputs &&
+                    Object.keys(currentValidation.inputs).length > 0 && (
+                      <CollapsibleComponent
+                        triggerChildren={
+                          <span className="font-medium text-muted-foreground dark:text-muted-foreground-night">
+                            Details
+                          </span>
+                        }
+                        contentChildren={
+                          <div>
+                            <div className="max-h-80 overflow-auto rounded-lg bg-muted dark:bg-muted-night">
+                              <CodeBlock
+                                wrapLongLines
+                                className="language-json overflow-y-auto"
+                              >
+                                {JSON.stringify(
+                                  currentValidation?.inputs,
+                                  null,
+                                  2
+                                )}
+                              </CodeBlock>
+                            </div>
+                          </div>
+                        }
+                      />
+                    )}
+                  {validationQueueLength > 0 && (
+                    <div className="mt-2 text-sm font-medium text-info-900 dark:text-info-900-night">
+                      {validationQueueLength} more request
+                      {pluralize(validationQueueLength)} in the queue
+                    </div>
+                  )}
+                  {errorMessage && (
+                    <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
+                      {errorMessage}
+                    </div>
+                  )}
+                </div>
+                {currentValidation?.stake === "low" && (
+                  <div className="mt-5">
+                    <Label className="copy-sm flex w-fit cursor-pointer flex-row items-center gap-2 py-2 pr-2 font-normal">
+                      <Checkbox
+                        checked={neverAskAgain}
+                        onCheckedChange={(check) => {
+                          setNeverAskAgain(!!check);
+                        }}
+                      />
+                      <span>Always allow this tool</span>
+                    </Label>
+                  </div>
+                )}
+              </>
+              {errorMessage && (
+                <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
+                  {errorMessage}
+                </div>
+              )}
+            </div>
+            {validationRequest?.stake === "low" && (
+              <div className="mt-5">
+                <Label className="copy-sm flex w-fit cursor-pointer flex-row items-center gap-2 py-2 pr-2 font-normal">
+                  <Checkbox
+                    checked={neverAskAgain}
+                    onCheckedChange={(check) => {
+                      setNeverAskAgain(!!check);
+                    }}
+                  />
+                  <span>Always allow this tool</span>
+                </Label>
+              </div>
           </DialogContainer>
           <DialogFooter>
+            isAuthenticationRequired ?
             <Button
-              label="Decline"
-              variant="outline"
-              onClick={() => handleSubmit("rejected")}
-              disabled={isValidating}
+              label="Done"
+              variant="highlight"
+              onClick={() => retryBlockedActions()}
+              disabled={isProcessing}
             >
-              {isValidating && (
+              {isProcessing && (
                 <div className="flex items-center">
-                  <span className="mr-2">Declining</span>
+                  <span className="mr-2">Resuming</span>
                   <Spinner size="xs" variant="dark" />
                 </div>
               )}
             </Button>
-            <Button
-              label="Allow"
-              variant="highlight"
-              onClick={() => handleSubmit("approved")}
-              disabled={isValidating}
-            >
-              {isValidating && (
-                <div className="flex items-center">
-                  <span className="mr-2">Approving</span>
-                  <Spinner size="xs" variant="light" />
-                </div>
-              )}
-            </Button>
+            :(
+            <>
+              <Button
+                label="Decline"
+                variant="outline"
+                onClick={() => handleSubmit("rejected")}
+                disabled={isValidating}
+              >
+                {isValidating && (
+                  <div className="flex items-center">
+                    <span className="mr-2">Declining</span>
+                    <Spinner size="xs" variant="dark" />
+                  </div>
+                )}
+              </Button>
+              <Button
+                label="Allow"
+                variant="highlight"
+                onClick={() => handleSubmit("approved")}
+                disabled={isValidating}
+              >
+                {isValidating && (
+                  <div className="flex items-center">
+                    <span className="mr-2">Approving</span>
+                    <Spinner size="xs" variant="light" />
+                  </div>
+                )}
+              </Button>
+            </>
+            )
           </DialogFooter>
         </DialogContent>
       </Dialog>

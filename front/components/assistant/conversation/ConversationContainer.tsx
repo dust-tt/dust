@@ -64,7 +64,7 @@ export function ConversationContainer({
     useContext(InputBarContext);
 
   const {
-    hasPendingValidations,
+    userActionIsRequired,
     totalPendingValidations,
     showValidationDialog,
   } = useActionValidationContext();
@@ -365,7 +365,7 @@ export function ConversationContainer({
         </div>
       )}
 
-      {activeConversationId && hasPendingValidations && (
+      {activeConversationId && userActionIsRequired && (
         <ContentMessageInline
           icon={InformationCircleIcon}
           variant="primary"
@@ -392,7 +392,7 @@ export function ConversationContainer({
         }
         stickyMentions={stickyMentions}
         conversationId={activeConversationId}
-        disable={activeConversationId !== null && hasPendingValidations}
+        disable={activeConversationId !== null && userActionIsRequired}
       />
 
       {!activeConversationId && (
