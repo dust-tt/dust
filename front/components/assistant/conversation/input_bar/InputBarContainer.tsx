@@ -257,9 +257,9 @@ const InputBarContainer = ({
 
   const contentEditableClasses = classNames(
     "inline-block w-full",
-    "border-0 px-2 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
+    "border-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
     "whitespace-pre-wrap font-normal",
-    "py-3.5"
+    "pr-3 sm:pl-4 pl-3 sm:pt-3.5 pt-3"
   );
 
   return (
@@ -284,10 +284,10 @@ const InputBarContainer = ({
             disableTextInput && "cursor-not-allowed",
             isExpanded
               ? "h-[60vh] max-h-[60vh] lg:h-[80vh] lg:max-h-[80vh]"
-              : "max-h-64 min-h-24 sm:min-h-14"
+              : "max-h-[40vh] min-h-14 min-h-24 sm:min-h-16"
           )}
         />
-        <div className="flex items-center pb-3 pt-0">
+        <div className="flex items-center px-1 pb-1.5 sm:px-2 sm:pb-3">
           {actions.includes("attachment") && (
             <>
               <input
