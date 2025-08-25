@@ -13,7 +13,6 @@ import {
 import React, { useState } from "react";
 
 import { OPENING_TAG_REGEX } from "@app/lib/client/agent_builder/instructionBlockUtils";
-import logger from "@app/logger/client";
 
 export interface InstructionBlockAttributes {
   type: string;
@@ -40,9 +39,10 @@ function positionCursorInMiddleParagraph(
   const node = editor.state.doc.nodeAt(blockPos);
 
   if (!node || node.type.name !== "instructionBlock") {
-    logger.warn(
-      { blockPos },
-      "Invalid node: not an instruction block at position"
+    // TODO: Replace with proper client logger when available.
+    console.warn(
+      "Invalid node: not an instruction block at position",
+      blockPos
     );
     return false;
   }
@@ -52,9 +52,10 @@ function positionCursorInMiddleParagraph(
   // 2. Content paragraph (can be empty)
   // 3. Closing tag (e.g., </instructions>)
   if (node.childCount < 3) {
-    logger.warn(
-      { childCount: node.childCount },
-      "Invalid instruction block structure: expected at least 3 children"
+    // TODO: Replace with proper client logger when available.
+    console.warn(
+      "Invalid instruction block structure: expected at least 3 children, got",
+      node.childCount
     );
     return false;
   }
