@@ -8,12 +8,6 @@ import type {
 import { Op } from "sequelize";
 
 import type { BlockedActionExecution } from "@app/lib/actions/mcp";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import {
-  INTERNAL_MCP_SERVERS,
-  isInternalMCPServerName,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
   isToolExecutionStatusBlocked,
@@ -23,8 +17,6 @@ import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/gu
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
-import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
-import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
