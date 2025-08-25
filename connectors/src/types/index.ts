@@ -30,6 +30,7 @@ export * from "./shared/utils/string_utils";
 export * from "./shared/utils/structured_data";
 export * from "./shared/utils/url_utils";
 export * from "./slack";
+export * from "./slack_labs";
 export * from "./snowflake";
 export * from "./webcrawler";
 export * from "./zendesk";

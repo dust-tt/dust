@@ -1,9 +1,11 @@
 import type { SlackConfigurationType } from "./slack";
 import type { WebCrawlerConfigurationType } from "./webcrawler";
+import type { SlackLabsConfigurationType } from "./slack_labs";
 
 export type ConnectorConfiguration =
   | WebCrawlerConfigurationType
   | SlackConfigurationType
+  | SlackLabsConfigurationType
   | null;
 
 export function isWebCrawlerConfiguration(
@@ -25,6 +27,7 @@ export type ConnectorConfigurations = {
   webcrawler: WebCrawlerConfigurationType;
   notion: null;
   slack: SlackConfigurationType;
+  slack_labs: SlackLabsConfigurationType;
   google_drive: null;
   github: null;
   confluence: null;

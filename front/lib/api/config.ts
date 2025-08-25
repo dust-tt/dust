@@ -164,6 +164,11 @@ const config = {
   getOAuthSlackBotClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_SLACK_BOT_CLIENT_ID");
   },
+  getOAuthSlackLabsChannelAgentBotClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "OAUTH_SLACK_LABS_CHANNEL_AGENT_BOT_CLIENT_ID"
+    );
+  },
   getOAuthSlackToolsClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_SLACK_TOOLS_CLIENT_ID");
   },

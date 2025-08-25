@@ -72,6 +72,57 @@ SlackConfigurationModel.init(
   }
 );
 
+export class SlackLabsConfigurationModel extends ConnectorBaseModel<SlackLabsConfigurationModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare slackTeamId: string;
+  declare channelId: string;
+  declare agentConfigurationId: string;
+  declare isEnabled: boolean;
+}
+
+SlackLabsConfigurationModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    slackTeamId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    channelId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    agentConfigurationId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    isEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+  },
+  {
+    sequelize: sequelizeConnection,
+    indexes: [
+      { fields: ["slackTeamId"] },
+      { fields: ["connectorId"], unique: true },
+      { fields: ["channelId"] },
+    ],
+    modelName: "slack_labs_configurations",
+    relationship: "hasOne",
+  }
+);
+
 export class SlackMessages extends ConnectorBaseModel<SlackMessages> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;

@@ -10,7 +10,12 @@ export const labsTranscriptsProviders = [
 export type LabsTranscriptsProviderType =
   (typeof labsTranscriptsProviders)[number];
 
-export const labsFeatures = ["transcripts", "trackers", "mcp_actions"] as const;
+export const labsFeatures = [
+  "transcripts",
+  "trackers",
+  "mcp_actions",
+  "slack_channel_agent",
+] as const;
 export type LabsFeatureType = (typeof labsFeatures)[number];
 
 // Types
@@ -26,6 +31,17 @@ export type LabsTranscriptsConfigurationType = {
   credentialId: string | null;
   dataSourceViewId: ModelId | null;
   useConnectorConnection: boolean;
+};
+
+export type LabsSlackChannelAgentConfigurationType = {
+  id: ModelId;
+  workspaceId: ModelId;
+  connectionId: string | null;
+  slackTeamId: string | null;
+  channelId: string | null;
+  agentConfigurationId: string | null;
+  connectorId: string | null;
+  isEnabled: boolean;
 };
 
 export type LabsFeatureItemType = {

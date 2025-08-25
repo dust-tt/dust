@@ -87,6 +87,18 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
             ],
           };
         }
+        case "labs_slack_channel_agent_bot": {
+          return {
+            user_scopes: [],
+            bot_scopes: [
+              "channels:history",
+              "channels:read",
+              "chat:write",
+              "reactions:read",
+              "reactions:write",
+            ],
+          };
+        }
         case "labs_transcripts":
           assert(
             "Unreachable provider `labs_transcripts` in SlackOAuthProvider"
@@ -110,6 +122,9 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
         }
         case "bot": {
           return config.getOAuthSlackBotClientId();
+        }
+        case "labs_slack_channel_agent_bot": {
+          return config.getOAuthSlackLabsChannelAgentBotClientId();
         }
         case "labs_transcripts":
           assert(

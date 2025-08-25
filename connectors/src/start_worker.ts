@@ -28,7 +28,7 @@ import logger from "./logger/logger";
 setupGlobalErrorHandler(logger);
 
 type WorkerType =
-  | Exclude<ConnectorProvider, "slack_bot">
+  | Exclude<ConnectorProvider, "slack_bot" | "slack_labs">
   | "notion_garbage_collector";
 
 const workerFunctions: Record<WorkerType, () => Promise<void>> = {

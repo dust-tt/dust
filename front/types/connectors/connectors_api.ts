@@ -12,10 +12,12 @@ import type { ConnectorConfiguration } from "./configuration";
 import type { ContentNodesViewType } from "./content_nodes";
 import { SlackConfigurationTypeSchema } from "./slack";
 import { WebCrawlerConfigurationTypeSchema } from "./webcrawler";
+import { SlackLabsConfigurationTypeSchema } from "./slack_labs";
 
 export const ConnectorConfigurationTypeSchema = t.union([
   WebCrawlerConfigurationTypeSchema,
   SlackConfigurationTypeSchema,
+  SlackLabsConfigurationTypeSchema,
   t.null,
 ]);
 

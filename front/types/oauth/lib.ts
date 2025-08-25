@@ -8,6 +8,7 @@ export const OAUTH_USE_CASES = [
   "platform_actions",
   "personal_actions",
   "bot",
+  "labs_slack_channel_agent_bot",
 ] as const;
 
 export type OAuthUseCase = (typeof OAUTH_USE_CASES)[number];

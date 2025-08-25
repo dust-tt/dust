@@ -33,6 +33,7 @@ import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import { webhookSlackBotAPIHandler } from "@connectors/api/webhooks/webhook_slack_bot";
 import { webhookSlackBotInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import { webhookSlackInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_interaction";
+import { webhookSlackLabsBotAPIHandler } from "@connectors/api/webhooks/webhook_slack_labs_bot";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
 import { rateLimiter, setupGlobalErrorHandler } from "@connectors/types";
@@ -137,6 +138,10 @@ export function startServer(port: number) {
     webhookSlackInteractionsAPIHandler
   );
   app.post("/webhooks/:webhook_secret/slack_bot", webhookSlackBotAPIHandler);
+  app.post(
+    "/webhooks/:webhook_secret/slack_labs_bot",
+    webhookSlackLabsBotAPIHandler
+  );
   app.post(
     "/webhooks/:webhook_secret/slack_bot_interaction",
     webhookSlackBotInteractionsAPIHandler

@@ -11,7 +11,10 @@ import type { IntercomWorkspaceModel } from "@connectors/lib/models/intercom";
 import type { MicrosoftConfigurationModel } from "@connectors/lib/models/microsoft";
 import type { NotionConnectorState } from "@connectors/lib/models/notion";
 import type { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
-import type { SlackConfigurationModel } from "@connectors/lib/models/slack";
+import type {
+  SlackConfigurationModel,
+  SlackLabsConfigurationModel,
+} from "@connectors/lib/models/slack";
 import type { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
 import type { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
 import type { ZendeskConfigurationModel } from "@connectors/lib/models/zendesk";
@@ -25,12 +28,14 @@ import { MicrosoftConnectorStrategy } from "@connectors/resources/connector/micr
 import { NotionConnectorStrategy } from "@connectors/resources/connector/notion";
 import { SalesforceConnectorStrategy } from "@connectors/resources/connector/salesforce";
 import { SlackConnectorStrategy } from "@connectors/resources/connector/slack";
+import { SlackLabsConnectorStrategy } from "@connectors/resources/connector/slack_labs";
 import { SnowflakeConnectorStrategy } from "@connectors/resources/connector/snowflake";
 import { WebCrawlerStrategy } from "@connectors/resources/connector/webcrawler";
 import { ZendeskConnectorStrategy } from "@connectors/resources/connector/zendesk";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
   SlackConfigurationType,
+  SlackLabsConfigurationType,
   WebCrawlerConfigurationType,
 } from "@connectors/types";
 import type { ModelId } from "@connectors/types";
@@ -51,6 +56,7 @@ export interface ConnectorProviderModelM {
   notion: NotionConnectorState;
   slack: SlackConfigurationModel;
   slack_bot: SlackConfigurationModel;
+  slack_labs: SlackLabsConfigurationModel;
   webcrawler: WebCrawlerConfigurationModel;
   snowflake: SnowflakeConfigurationModel;
   zendesk: ZendeskConfigurationModel;
@@ -90,6 +96,7 @@ export interface ConnectorProviderConfigurationTypeM {
   snowflake: null;
   slack: SlackConfigurationType;
   slack_bot: SlackConfigurationType;
+  slack_labs: SlackLabsConfigurationType;
   webcrawler: WebCrawlerConfigurationType;
   zendesk: null;
   bigquery: null;
@@ -152,6 +159,9 @@ export function getConnectorProviderStrategy(
 
     case "slack_bot":
       return new SlackConnectorStrategy();
+
+    case "slack_labs":
+      return new SlackLabsConnectorStrategy();
 
     case "webcrawler":
       return new WebCrawlerStrategy();

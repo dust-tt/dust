@@ -447,6 +447,29 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Dust will index the content accessible to the authorized account only. All transcripts will be synchronized with Dust.",
     mismatchError: `You cannot change the Gong account. Please add a new Gong connection instead.`,
   },
+  slack_labs: {
+    name: "Slack Labs",
+    connectorProvider: "slack_labs",
+    status: "preview",
+    // Hidden from connections since this is a Labs-only feature
+    hide: true,
+    isPermissionsConfigurableBlocked: true,
+    permissionsDisabledPlaceholder: "N/A",
+    description: "N/A",
+    limitations: "N/A",
+    mismatchError: "N/A",
+    guideLink: null,
+    selectLabel: "N/A",
+    getLogoComponent: () => {
+      return SlackLogo;
+    },
+    isNested: false,
+    permissions: {
+      selected: "none",
+      unselected: "none",
+    },
+    isDeletable: false,
+  },
 };
 
 const WEBHOOK_BASED_CONNECTORS: ConnectorProvider[] = ["slack", "github"];
@@ -503,6 +526,7 @@ export const isConnectorProviderAllowedForPlan = (
       return !!featureFlags?.includes("salesforce_synced_queries");
     case "microsoft":
     case "slack_bot":
+    case "slack_labs":
     case "snowflake":
     case "zendesk":
     case "bigquery":
@@ -531,6 +555,7 @@ export const isConnectorProviderAssistantDefaultSelected = (
     // Remote database connectors are not available for semantic search so it makes no sense to select them by default
     case "bigquery":
     case "slack_bot":
+    case "slack_labs":
     case "salesforce":
     case "snowflake":
     case "webcrawler":
@@ -585,6 +610,7 @@ export function isConnectorTypeTrackable(
       return true;
     case "slack":
     case "slack_bot":
+    case "slack_labs":
       return false;
     default:
       assertNever(connectorType);
