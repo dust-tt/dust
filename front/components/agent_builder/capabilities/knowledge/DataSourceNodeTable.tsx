@@ -64,6 +64,7 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
           entry: {
             type: "node",
             node,
+            tagsFilter: null,
           },
         };
       }),

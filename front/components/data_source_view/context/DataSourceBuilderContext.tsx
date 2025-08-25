@@ -200,7 +200,7 @@ function dataSourceBuilderReducer(
         ...state,
         navigationHistory: [
           ...state.navigationHistory,
-          { type: "node", node: payload.node },
+          { type: "node", node: payload.node, tagsFilter: null },
         ],
       };
     }
@@ -215,7 +215,11 @@ function dataSourceBuilderReducer(
         ...state,
         navigationHistory: [
           ...state.navigationHistory.slice(0, 3),
-          { type: "data_source", dataSourceView: payload.dataSourceView },
+          {
+            type: "data_source",
+            dataSourceView: payload.dataSourceView,
+            tagsFilter: null,
+          },
         ],
       };
     }

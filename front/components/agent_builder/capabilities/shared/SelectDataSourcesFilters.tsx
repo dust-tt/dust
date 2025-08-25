@@ -3,29 +3,27 @@ import { useWatch } from "react-hook-form";
 
 import { DataSourceViewTagsFilterDropdown } from "@app/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
-import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
-import { getVisualForTreeItem } from "@app/components/data_source_view/context/utils";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-
-function KnowledgeFooterItem({
-  item,
-}: {
-  item: DataSourceBuilderTreeItemType;
-}) {
-  const { isDark } = useTheme();
-  const VisualComponent = getVisualForTreeItem(item, isDark);
-
-  return (
-    <ContextItem
-      key={item.path}
-      title={item.name}
-      visual={<ContextItem.Visual visual={VisualComponent} />}
-    />
-  );
-}
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import type { DataSourceViewType } from "@app/types";
 
 export function SelectDataSourcesFilters() {
+  const { isDark } = useTheme();
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
+  const dataSourceViews = sources.in.reduce(
+    (acc, source) => {
+      if (source.type === "data_source") {
+        acc[source.dataSourceView.dataSource.dustAPIDataSourceId] =
+          source.dataSourceView;
+      } else if (source.type === "node") {
+        acc[source.node.dataSourceView.dataSource.dustAPIDataSourceId] =
+          source.node.dataSourceView;
+      }
+
+      return acc;
+    },
+    {} as Record<string, DataSourceViewType>
+  );
 
   return (
     <div className="space-y-4">
@@ -38,8 +36,19 @@ export function SelectDataSourcesFilters() {
       <div>
         <div className="rounded-xl bg-muted dark:bg-muted-night">
           <ContextItem.List className="max-h-40 overflow-x-scroll">
-            {sources.in.map((item) => (
-              <KnowledgeFooterItem key={item.path} item={item} />
+            {Object.values(dataSourceViews).map((dsv) => (
+              <ContextItem
+                key={dsv.id}
+                title={dsv.dataSource.name}
+                visual={
+                  <ContextItem.Visual
+                    visual={getConnectorProviderLogoWithFallback({
+                      provider: dsv.dataSource.connectorProvider,
+                      isDark,
+                    })}
+                  />
+                }
+              />
             ))}
           </ContextItem.List>
         </div>
