@@ -100,6 +100,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
+  static listByWorkspace(auth: Authenticator) {
+    return this.baseFetch(auth);
+  }
+
   static async update(
     auth: Authenticator,
     sId: string,
@@ -258,6 +262,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       enabled: this.enabled,
       kind: this.kind,
       configuration: this.configuration,
+      createdAt: this.createdAt.getTime(),
     };
   }
 }

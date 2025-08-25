@@ -24,6 +24,7 @@ export type TriggerType = {
   editor: UserType["id"];
   customPrompt: string | null;
   enabled: boolean;
+  createdAt: number;
 } & TriggerConfiguration;
 
 export type TriggerKind = TriggerType["kind"];
