@@ -1,10 +1,11 @@
 import {
-  Checkbox,
+  Button,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   ContextItem,
   LoadingBlock,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -64,13 +65,18 @@ function KnowledgeFooterItem({
       title={item.name}
       visual={<ContextItem.Visual visual={VisualComponent} />}
       action={
-        <Checkbox checked onCheckedChange={() => removeNodeWithPath(item)} />
+        <Button
+          icon={XMarkIcon}
+          onClick={() => removeNodeWithPath(item)}
+          variant="ghost"
+        />
       }
-    >
-      {item.type === "node" && (
-        <KnowledgeFooterItemReadablePath node={item.node} />
-      )}
-    </ContextItem>
+      subElement={
+        item.type === "node" && (
+          <KnowledgeFooterItemReadablePath node={item.node} />
+        )
+      }
+    />
   );
 }
 

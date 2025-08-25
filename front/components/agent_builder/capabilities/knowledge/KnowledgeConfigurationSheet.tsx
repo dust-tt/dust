@@ -388,6 +388,7 @@ function KnowledgeConfigurationSheetContent({
       onSave={onSave}
       size="xl"
       showHeaderNavigation={false}
+      showNavigation={false}
       addFooterSeparator
       {...getFooterButtons()}
     />
