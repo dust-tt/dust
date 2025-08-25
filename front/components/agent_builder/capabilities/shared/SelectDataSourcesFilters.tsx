@@ -1,4 +1,12 @@
-import { ContextItem, SliderToggle, Tooltip } from "@dust-tt/sparkle";
+import {
+  Button,
+  ContextItem,
+  MoreIcon,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  SliderToggle,
+} from "@dust-tt/sparkle";
 import { useWatch } from "react-hook-form";
 
 import { DataSourceViewTagsFilterDropdown } from "@app/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown";
@@ -37,24 +45,26 @@ function DataSourceFilterContextItem({
         />
       }
       action={
-        <Tooltip
-          align="end"
-          trigger={
-            <SliderToggle
-              selected={mode === "auto"}
-              onClick={() => toggleTagsMode(dataSourceView)}
-            />
-          }
-          label={
-            <div>
-              Enable in-conversation filtering
-              <div className="text-muted-foreground dark:text-muted-foreground-night">
-                Allow agents to determine filters to apply based on conversation
-                context.
-              </div>
+        <PopoverRoot>
+          <PopoverTrigger asChild>
+            <Button icon={MoreIcon} variant="ghost" size="mini" />
+          </PopoverTrigger>
+
+          <PopoverContent align="end" className="w-72 text-sm">
+            <div className="mb-1 font-semibold">In-conversation filtering</div>
+            <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+              Allow agents to determine filters to apply based on conversation
+              context.
             </div>
-          }
-        />
+            <div className="mt-2 flex flex-row items-center justify-between">
+              <SliderToggle
+                selected={mode === "auto"}
+                onClick={() => toggleTagsMode(dataSourceView)}
+              />
+              <div className="font-medium">Enable in converation filtering</div>
+            </div>
+          </PopoverContent>
+        </PopoverRoot>
       }
     />
   );
