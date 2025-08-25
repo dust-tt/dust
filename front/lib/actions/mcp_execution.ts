@@ -36,8 +36,8 @@ import type {
 } from "@app/lib/actions/types";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
+import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
@@ -74,7 +74,7 @@ export async function* executeMCPTool({
   auth: Authenticator;
   inputs: Record<string, unknown>;
   agentLoopRunContext: AgentLoopRunContextType;
-  action: AgentMCPAction;
+  action: AgentMCPActionResource;
   agentConfiguration: AgentConfigurationType;
   conversation: ConversationType;
   agentMessage: AgentMessageType;
@@ -87,9 +87,7 @@ export async function* executeMCPTool({
   > | null,
   unknown
 > {
-  await action.update({
-    status: "running",
-  });
+  await action.updateStatus("running");
 
   let toolCallResult: Result<
     CallToolResult["content"],
@@ -166,7 +164,7 @@ export async function processToolResults(
     toolCallResult,
     toolConfiguration,
   }: {
-    action: AgentMCPAction;
+    action: AgentMCPActionResource;
     conversation: ConversationType;
     localLogger: Logger;
     toolCallResult: CallToolResult["content"];

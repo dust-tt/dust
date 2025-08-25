@@ -1,8 +1,17 @@
 import assert from "assert";
-import type { Attributes, NonAttribute, Transaction } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  NonAttribute,
+  Transaction,
+} from "sequelize";
 import { Op } from "sequelize";
 
 import type { BlockedActionExecution } from "@app/lib/actions/mcp";
+import type {
+  MCPExecutionState,
+  ToolExecutionStatus,
+} from "@app/lib/actions/statuses";
 import {
   isToolExecutionStatusBlocked,
   TOOL_EXECUTION_BLOCKED_STATUSES,
@@ -27,6 +36,7 @@ import { Err, normalizeError, Ok } from "@app/types";
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentMCPActionResource
   extends ReadonlyAttributesType<AgentMCPAction> {}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
   static model: ModelStaticWorkspaceAware<AgentMCPAction> = AgentMCPAction;
@@ -43,7 +53,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
   private static async baseFetch(
     auth: Authenticator,
     { where, limit, order }: ResourceFindOptions<AgentMCPAction> = {}
-  ) {
+  ): Promise<AgentMCPActionResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const actions = await this.model.findAll({
@@ -73,6 +83,77 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       assert(stepContent, "Step content not found.");
       return new this(this.model, a.get(), stepContent);
     });
+  }
+
+  static async makeNew(
+    auth: Authenticator,
+    blob: Omit<CreationAttributes<AgentMCPAction>, "workspaceId">,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<AgentMCPActionResource> {
+    const workspace = auth.getNonNullableWorkspace();
+    const action = await AgentMCPAction.create(
+      {
+        ...blob,
+        workspaceId: workspace.id,
+      },
+      { transaction }
+    );
+
+    const stepContent = await AgentStepContentModel.findOne({
+      where: {
+        id: action.stepContentId,
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
+    assert(stepContent, "Step content not found.");
+
+    return new this(this.model, action.get(), stepContent);
+  }
+
+  static async fetchByModelIdWithAuth(
+    auth: Authenticator,
+    id: ModelId,
+    transaction?: Transaction
+  ): Promise<AgentMCPActionResource | null> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const [action] = await this.baseFetch(auth, {
+      where: { id, workspaceId },
+    });
+
+    const stepContent = await AgentStepContentModel.findOne({
+      where: {
+        id: action.stepContentId,
+        workspaceId,
+      },
+      transaction,
+    });
+    assert(stepContent, "Step content not found.");
+
+    // Create a new resource instance with the updated stepContent
+    return new this(
+      this.model,
+      {
+        id: action.id,
+        workspaceId: action.workspaceId,
+        agentMessageId: action.agentMessageId,
+        augmentedInputs: action.augmentedInputs,
+        citationsAllocated: action.citationsAllocated,
+        executionState: action.executionState,
+        isError: action.isError,
+        mcpServerConfigurationId: action.mcpServerConfigurationId,
+        runningState: action.runningState,
+        status: action.status,
+        stepContentId: action.stepContentId,
+        stepContext: action.stepContext,
+        toolConfiguration: action.toolConfiguration,
+        version: action.version,
+        createdAt: action.createdAt,
+        updatedAt: action.updatedAt,
+      },
+      stepContent
+    );
   }
 
   static async listBlockedActionsForConversation(
@@ -167,6 +248,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     return blockedActionsList;
   }
 
+  static async listByAgentMessageIds(
+    auth: Authenticator,
+    agentMessageIds: Array<ModelId>
+  ): Promise<AgentMCPActionResource[]> {
+    return this.baseFetch(auth, {
+      where: { agentMessageId: { [Op.in]: agentMessageIds } },
+    });
+  }
+
   static async listBlockedActionsForAgentMessage(
     auth: Authenticator,
     { agentMessageId }: { agentMessageId: ModelId }
@@ -193,6 +283,61 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     );
 
     return actions;
+  }
+
+  toJSON() {
+    return {
+      agentMessageId: this.agentMessageId,
+      augmentedInputs: this.augmentedInputs,
+      citationsAllocated: this.citationsAllocated,
+      executionState: this.executionState,
+      isError: this.isError,
+      mcpServerConfigurationId: this.mcpServerConfigurationId,
+      runningState: this.runningState,
+      status: this.status,
+      stepContentId: this.stepContentId,
+      stepContext: this.stepContext,
+      toolConfiguration: this.toolConfiguration,
+      version: this.version,
+      workspaceId: this.workspaceId,
+    };
+  }
+
+  async updateStatus(
+    status: ToolExecutionStatus
+  ): Promise<[affectedCount: number]> {
+    return this.update({
+      status,
+      isError: status === "errored",
+    });
+  }
+
+  async updateExecutionState(
+    executionState: MCPExecutionState
+  ): Promise<[affectedCount: number]> {
+    return this.update({ executionState });
+  }
+
+  static async deleteByAgentMessageId(
+    auth: Authenticator,
+    params: {
+      agentMessageIds: Array<ModelId>;
+      transaction?: Transaction;
+    }
+  ): Promise<Result<undefined, Error>> {
+    try {
+      const workspaceId = auth.getNonNullableWorkspace().id;
+      await AgentMCPAction.destroy({
+        where: {
+          agentMessageId: { [Op.in]: params.agentMessageIds },
+          workspaceId,
+        },
+        transaction: params.transaction,
+      });
+      return new Ok(undefined);
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
   }
 
   async delete(
