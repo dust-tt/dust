@@ -139,11 +139,6 @@ function AgentActionsPanelContent({
   })();
 
   const streamActionProgress = messageStreamState?.actionProgress ?? new Map();
-  const isActing =
-    (agentMessageToRender?.type === "agent_message" &&
-      agentMessageToRender.status === "created") ||
-    (messageStreamState && messageStreamState.agentState !== "done");
-
   return (
     <div className="flex h-full flex-col">
       <AgentActionsPanelHeader
@@ -180,7 +175,6 @@ function AgentActionsPanelContent({
                 />
               );
             })}
-
           {/* Show current streaming step with live updates. */}
           {shouldStream &&
             messageStreamState.agentState !== "done" &&
@@ -215,12 +209,7 @@ function AgentActionsPanelContent({
                 showSeparator={currentStreamingStep > 1}
               />
             )}
-
-          {isActing && (
-            <div className="flex justify-center">
-              <Spinner variant="color" />
-            </div>
-          )}
+          g
         </div>
       </div>
     </div>
