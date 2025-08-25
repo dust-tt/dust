@@ -97,10 +97,18 @@ export const capabilityFormSchema = z
     name: z
       .string()
       .min(1, "The name cannot be empty.")
-      .regex(
-        /^[a-z0-9_]+$/,
-        "The name can only contain lowercase letters, numbers, and underscores (no spaces)."
-      )
+      .transform((val) => {
+        // Convert to lowercase and replace spaces and special chars with underscores
+        return (
+          val
+            .toLowerCase()
+            .replace(/[^a-z0-9_]/g, "_")
+            // Remove consecutive underscores
+            .replace(/_+/g, "_")
+            // Remove leading/trailing underscores
+            .replace(/^_+|_+$/g, "")
+        );
+      })
       .default(""),
     description: z
       .string()
