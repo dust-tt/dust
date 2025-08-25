@@ -1,4 +1,3 @@
-
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { makeColumnsForTriggers } from "@app/components/poke/triggers/columns";
@@ -23,16 +22,15 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
       useSWRHook={usePokeTriggers}
     >
       {(triggers, mutateTriggers) => {
-        const columns = makeColumnsForTriggers(owner, agentConfigurations, async () => {
-          await mutateTriggers();
-        });
-
-        return (
-          <PokeDataTable
-            columns={columns}
-            data={triggers}
-          />
+        const columns = makeColumnsForTriggers(
+          owner,
+          agentConfigurations,
+          async () => {
+            await mutateTriggers();
+          }
         );
+
+        return <PokeDataTable columns={columns} data={triggers} />;
       }}
     </PokeDataTableConditionalFetch>
   );

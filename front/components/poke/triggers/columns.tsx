@@ -3,7 +3,10 @@ import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { LightAgentConfigurationType, LightWorkspaceType } from "@app/types";
+import type {
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+} from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
 type TriggerDisplayType = TriggerType & {
