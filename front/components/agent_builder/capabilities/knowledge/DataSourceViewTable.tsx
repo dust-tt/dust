@@ -92,6 +92,7 @@ export function DataSourceViewTable({
       data={rows}
       columns={columns}
       getRowId={(row) => row.id}
+      maxHeight
     />
   );
 }

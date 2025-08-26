@@ -134,6 +134,7 @@ export function DataSourceCategoryBrowser({
       data={categoryRows}
       columns={columns}
       getRowId={(originalRow) => originalRow.id}
+      maxHeight
     />
   );
 }

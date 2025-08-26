@@ -1,9 +1,5 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
-import {
-  MultiPageSheet,
-  MultiPageSheetContent,
-  ScrollArea,
-} from "@dust-tt/sparkle";
+import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
 import { useEffect, useMemo, useState } from "react";
@@ -327,17 +323,14 @@ function KnowledgeConfigurationSheetContent({
         ? "Choose the tables to query for your processing method"
         : "Choose the data sources to include in your knowledge base",
       icon: undefined,
+      noScroll: true,
       content: (
-        <div className="space-y-4">
-          <ScrollArea>
-            <DataSourceBuilderSelector
-              dataSourceViews={supportedDataSourceViews}
-              owner={owner}
-              viewType="all"
-              allowedSpaces={allowedSpaces}
-            />
-          </ScrollArea>
-        </div>
+        <DataSourceBuilderSelector
+          dataSourceViews={supportedDataSourceViews}
+          owner={owner}
+          viewType="all"
+          allowedSpaces={allowedSpaces}
+        />
       ),
       footerContent: hasSourceSelection ? <KnowledgeFooter /> : undefined,
     },

@@ -12,10 +12,11 @@ import { useState } from "react";
 import { useController } from "react-hook-form";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { EditorsSheet } from "@app/components/agent_builder/settings/EditorsSheet";
 import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 
-export function VisibilitySection() {
+export function AccessSection() {
   const { field } = useController<AgentBuilderFormData, "agentSettings.scope">({
     name: "agentSettings.scope",
   });
@@ -29,8 +30,9 @@ export function VisibilitySection() {
   };
 
   return (
-    <SettingSectionContainer title="Visibility">
+    <SettingSectionContainer title="Access">
       <div className="mt-2 flex items-center gap-2">
+        <EditorsSheet />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

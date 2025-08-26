@@ -54,7 +54,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("agent_builder_v2") || !auth.isBuilder()) {
+  if (!featureFlags.includes("agent_builder_v2")) {
     return {
       notFound: true,
     };

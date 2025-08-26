@@ -86,6 +86,7 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
       getRowId={(row) => row.id}
       onLoadMore={handleLoadMore}
       isLoading={isLoadingMore}
+      maxHeight
     />
   );
 }
