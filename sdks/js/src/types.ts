@@ -1085,7 +1085,7 @@ export type MCPValidationMetadataPublicType = z.infer<
 const ToolExecutionBlockedStatusSchema = z.enum([
   "blocked_authentication_required",
   "blocked_validation_required",
-  "blocked_child_action_required",
+  "blocked_child_action_input_required",
 ]);
 
 export type ToolExecutionBlockedStatusType = z.infer<
