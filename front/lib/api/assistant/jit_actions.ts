@@ -291,9 +291,9 @@ export async function getJITServers(
     );
 
     const dataSourceIds = new Set(
-      fileIdToDataSourceViewMap
-        .values()
-        .map((dataSourceView) => dataSourceView.sId)
+      [...fileIdToDataSourceViewMap.values()].map(
+        (dataSourceView) => dataSourceView.sId
+      )
     );
 
     // Add datasources for both current conversation and child conversations
