@@ -116,6 +116,7 @@ export function AgentBuilderTriggersBlock({
                 variant="primary"
                 icon={ClockIcon}
                 onClick={handleCreateTrigger}
+                type="button"
               />
             }
             className="py-4"
