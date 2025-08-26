@@ -1,5 +1,4 @@
 import { assertNever, CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
-import assert from "assert";
 
 import {
   isConversationIncludableFileContentType,
