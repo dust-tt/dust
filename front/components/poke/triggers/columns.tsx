@@ -77,11 +77,6 @@ export function makeColumnsForTriggers(
         const agent = agentConfigMap.get(row.agentConfigurationId);
         return agent?.name || row.agentConfigurationId;
       },
-      cell: ({ row }) => {
-        const trigger = row.original;
-        const agent = agentConfigMap.get(trigger.agentConfigurationId);
-        return agent?.name || trigger.agentConfigurationId;
-      },
     },
     {
       accessorKey: "kind",
@@ -102,12 +97,7 @@ export function makeColumnsForTriggers(
       accessorKey: "enabled",
       header: "Enabled",
       cell: ({ row }) => {
-        const enabled: boolean = row.getValue("enabled");
-        return enabled ? "Yes" : "No";
-      },
-      filterFn: (row, id, value) => {
-        const enabled = row.getValue(id) as boolean;
-        return value.includes(enabled.toString());
+        return row.getValue("enabled") ? "Yes" : "No";
       },
     },
     {
