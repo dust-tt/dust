@@ -70,13 +70,8 @@ export function AgentBuilderInstructionsEditor({
     name: "instructions",
   });
 
-  // Create a ref to hold the editor instance for the slash dropdown
   const editorRef = useRef<ReactEditor | null>(null);
-
-  // Setup the block insert dropdown
   const blockDropdown = useBlockInsertDropdown(editorRef);
-
-  // Use the stable suggestion options object from the dropdown hook
   const suggestionHandler = blockDropdown.suggestionOptions;
 
   const extensions = useMemo(() => {
@@ -137,7 +132,6 @@ export function AgentBuilderInstructionsEditor({
       extensions,
       content: tipTapContentFromPlainText(field.value),
       onUpdate: ({ editor, transaction }) => {
-        // Skip selection-only changes
         if (transaction.docChanged) {
           debouncedUpdate(editor);
         }
@@ -146,12 +140,10 @@ export function AgentBuilderInstructionsEditor({
     [extensions]
   );
 
-  // Keep the editor ref in sync with the current instance
   useEffect(() => {
     editorRef.current = editor;
   }, [editor]);
 
-  // Cleanup debounced functions on unmount
   useEffect(() => {
     return () => {
       debouncedUpdate.cancel();
@@ -182,12 +174,9 @@ export function AgentBuilderInstructionsEditor({
       return;
     }
 
-    // Don't update if editor is focused (user is typing/editing)
     if (editor.isFocused) {
       return;
     }
-
-    // Sync the editor with the current field value if needed
     const currentContent = plainTextFromTipTapContent(editor.getJSON());
     if (currentContent !== field.value) {
       editor.commands.setContent(

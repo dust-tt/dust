@@ -55,12 +55,10 @@ export const BlockInsertDropdown = ({
     updateTriggerPosition();
   }, [triggerRect, updateTriggerPosition]);
 
-  // Early return if not open to prevent any focus interference
   if (!isOpen) {
     return null;
   }
 
-  // Check for valid trigger rect
   if (!triggerRect) {
     return null;
   }

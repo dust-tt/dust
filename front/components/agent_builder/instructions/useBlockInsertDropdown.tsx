@@ -20,7 +20,6 @@ export interface BlockSuggestion {
   ) => void;
 }
 
-// Static block suggestions
 const BLOCK_SUGGESTIONS: BlockSuggestion[] = [
   {
     id: "xml-block",
@@ -53,7 +52,6 @@ export interface BlockInsertDropdownState {
   triggerRect: DOMRect | null;
 }
 
-// Narrow view model for the dropdown component (excludes internal query)
 export type BlockInsertDropdownView = Pick<
   BlockInsertDropdownState,
   "isOpen" | "suggestions" | "selectedIndex" | "triggerRect"
@@ -72,7 +70,6 @@ export const useBlockInsertDropdown = (
 
   const rangeRef = useRef<{ from: number; to: number } | null>(null);
 
-  // Use ref to avoid stale closure in keyboard handler
   const currentStateRef = useRef(state);
   currentStateRef.current = state;
 
@@ -132,19 +129,15 @@ export const useBlockInsertDropdown = (
     return {
       char: "/",
       allow: ({ state, range }) => {
-        // Only allow suggestions for empty selections (not when text is selected)
         if (!state.selection.empty) {
           return false;
         }
 
         const $from = state.doc.resolve(range.from);
 
-        // Check if we're inside a code block (immediate parent)
         if ($from.parent.type.name === "codeBlock") {
           return false;
         }
-
-        // Check all ancestors for instruction blocks
         for (let d = $from.depth; d >= 0; d--) {
           if ($from.node(d).type.name === "instructionBlock") {
             return false;
@@ -155,7 +148,6 @@ export const useBlockInsertDropdown = (
       },
       command: ({ editor, range, props }) => {
         const suggestion = props as Partial<BlockSuggestion>;
-        // Ensure all required parameters exist and command is callable
         if (
           !editor ||
           !range ||

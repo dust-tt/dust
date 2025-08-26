@@ -8,7 +8,6 @@ import {
 
 function serializeNodeToText(node: JSONContent): string {
   if (node.type === "instructionBlock") {
-    // Just serialize the content as-is since tags are now part of the content
     const content = node.content?.map(serializeNodeToText).join("") || "";
     return content;
   }
@@ -22,7 +21,6 @@ function serializeNodeToText(node: JSONContent): string {
       return `${node.content[0].text}\n`;
     }
 
-    // Handle multiple nodes in paragraph
     const text = node.content.map(serializeNodeToText).join("");
     return text ? `${text}\n` : "\n";
   }
@@ -38,7 +36,6 @@ function serializeNodeToText(node: JSONContent): string {
     return `\`\`\`${language}\n${code}\`\`\`\n`;
   }
 
-  // Handle other node types by recursing into their content
   if (node.content) {
     return node.content.map(serializeNodeToText).join("");
   }
@@ -66,14 +63,11 @@ function parseInstructionBlocks(text: string): JSONContent[] {
       let match;
 
       while ((match = codeBlockRegex.exec(segment.content)) !== null) {
-        // Add text before code block as paragraphs
         if (match.index > lastIndex) {
           const textBefore = segment.content.slice(lastIndex, match.index);
           const paragraphs = textToParagraphNodes(textBefore);
           content.push(...paragraphs);
         }
-
-        // Add code block
         const language = match[1] || "";
         const code = match[2];
         content.push({
@@ -85,14 +79,12 @@ function parseInstructionBlocks(text: string): JSONContent[] {
         lastIndex = match.index + match[0].length;
       }
 
-      // Add remaining text after last code block
       if (lastIndex < segment.content.length) {
         const remainingText = segment.content.slice(lastIndex);
         const paragraphs = textToParagraphNodes(remainingText);
         content.push(...paragraphs);
       }
     } else if (segment.type === "block" && segment.blockType) {
-      // Add instruction block
       const blockNode = createInstructionBlockNode(
         segment.blockType,
         segment.content

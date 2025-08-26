@@ -100,11 +100,8 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     const newCollapsed = !isCollapsed;
     setIsCollapsed(newCollapsed);
 
-    // Update the node attribute so ProseMirror knows about the state
     updateAttributes({ isCollapsed: newCollapsed });
 
-    // Just maintain editor focus if it was already focused
-    // Don't change selection or cursor position
     if (editor.isFocused) {
       editor.commands.focus();
     }
@@ -112,13 +109,11 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
 
   const ChevronIcon = isCollapsed ? ChevronRightIcon : ChevronDownIcon;
 
-  // Handle click on collapsed block to select it
   const handleBlockClick = (e: React.MouseEvent) => {
     if (isCollapsed) {
       e.preventDefault();
       const pos = getPos();
       if (typeof pos === "number") {
-        // Select the entire node
         editor.commands.setNodeSelection(pos);
       }
     }
