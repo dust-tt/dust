@@ -13,6 +13,7 @@ type ContextItemProps = {
   subElement?: ReactNode;
   title: ReactNode;
   visual: ReactNode;
+  hoverAction?: boolean;
   onClick?: () => void;
 };
 
@@ -25,12 +26,13 @@ export function ContextItem({
   subElement,
   title,
   visual,
+  hoverAction,
   onClick,
 }: ContextItemProps) {
   return (
     <div
       className={cn(
-        "s-flex s-w-full s-flex-col",
+        "s-group/context-item s-flex s-w-full s-flex-col",
         className,
         hasSeparator && "s-border-b s-border-border dark:s-border-border-night",
         !hasSeparatorIfLast && "last:s-border-none"
@@ -63,7 +65,14 @@ export function ContextItem({
           </div>
           {children && <div>{children}</div>}
         </div>
-        <div>{action}</div>
+        <div
+          className={cn(
+            hoverAction &&
+              "s-opacity-0 s-transition-opacity s-duration-200 group-hover/context-item:s-opacity-100"
+          )}
+        >
+          {action}
+        </div>
       </div>
     </div>
   );

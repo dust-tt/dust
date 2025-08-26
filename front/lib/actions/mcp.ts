@@ -25,6 +25,7 @@ import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_interna
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import {
   hideFileFromActionOutput,
   rewriteContentForModel,
@@ -40,7 +41,6 @@ import type {
 } from "@app/lib/actions/types";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { approvalStatusToToolExecutionStatus } from "@app/lib/actions/utils";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
@@ -174,6 +174,7 @@ export type BlockedActionExecution = ToolExecutionMetadata & {
   messageId: string;
   conversationId: string;
   status: ToolExecutionBlockedStatus;
+  authorizationInfo: AuthorizationInfo | null;
 };
 
 // TODO(durable-agents): cleanup the types of the events.
@@ -183,6 +184,7 @@ export type MCPApproveExecutionEvent = ToolExecutionMetadata & {
   configurationId: string;
   messageId: string;
   conversationId: string;
+  isLastBlockingEventForStep?: boolean;
 };
 
 export function getMCPApprovalStateFromUserApprovalState(
@@ -191,7 +193,7 @@ export function getMCPApprovalStateFromUserApprovalState(
   switch (userApprovalState) {
     case "always_approved":
     case "approved":
-      return "allowed_explicitly";
+      return "ready_allowed_explicitly";
 
     case "rejected":
       return "denied";
@@ -606,14 +608,12 @@ export async function createMCPAction(
     augmentedInputs,
     stepContentId,
     stepContext,
-    approvalStatus,
   }: {
     actionBaseParams: ActionBaseParams;
     actionConfiguration: MCPToolConfigurationType;
     augmentedInputs: Record<string, unknown>;
     stepContentId: ModelId;
     stepContext: StepContext;
-    approvalStatus: "allowed_implicitly" | "pending";
   }
 ): Promise<{ action: AgentMCPActionResource; mcpAction: MCPActionType }> {
   const toolConfiguration = omit(
@@ -626,7 +626,7 @@ export async function createMCPAction(
     augmentedInputs,
     citationsAllocated: stepContext.citationsCount,
     mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
-    status: approvalStatusToToolExecutionStatus(approvalStatus),
+    status: actionBaseParams.status,
     stepContentId,
     stepContext,
     toolConfiguration,
@@ -749,14 +749,13 @@ export async function getMCPAction(
 // TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent mcp action.
 export async function updateMCPApprovalState(
   action: AgentMCPActionResource,
-  executionState: "denied" | "allowed_explicitly"
+  approvalState: "denied" | "ready_allowed_explicitly"
 ): Promise<boolean> {
-  const status = approvalStatusToToolExecutionStatus(executionState);
-  if (action.status === status) {
+  if (action.status === approvalState) {
     return false;
   }
 
-  await action.updateStatus(status);
+  await action.updateStatus(approvalState);
 
   return true;
 }

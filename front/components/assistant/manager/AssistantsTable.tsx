@@ -20,11 +20,13 @@ import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgent
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { useTags } from "@app/lib/swr/tags";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   classNames,
   formatTimestampToFriendlyDate,
   tagsSorter,
 } from "@app/lib/utils";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type {
   AgentConfigurationScope,
   AgentUsageType,
@@ -278,6 +280,12 @@ export function AssistantsTable({
     agentConfiguration: undefined,
   });
   const router = useRouter();
+
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
+
   const rows: RowData[] = useMemo(
     () =>
       agents.map((agentConfiguration) => {
@@ -345,13 +353,16 @@ export function AssistantsTable({
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void router.push(
-                        `/w/${owner.sId}/builder/assistants/${
-                          agentConfiguration.sId
-                        }?flow=${
-                          agentConfiguration.scope
-                            ? "workspace_assistants"
-                            : "personal_assistants"
-                        }`
+                        getAgentBuilderRoute(
+                          owner.sId,
+                          agentConfiguration.sId,
+                          hasAgentBuilderV2,
+                          `flow=${
+                            agentConfiguration.scope
+                              ? "workspace_assistants"
+                              : "personal_assistants"
+                          }`
+                        )
                       );
                     },
                     kind: "item" as const,
@@ -388,7 +399,12 @@ export function AssistantsTable({
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void router.push(
-                        `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
+                        getAgentBuilderRoute(
+                          owner.sId,
+                          "new",
+                          hasAgentBuilderV2,
+                          `flow=personal_assistants&duplicate=${agentConfiguration.sId}`
+                        )
                       );
                     },
                     kind: "item" as const,
@@ -413,6 +429,7 @@ export function AssistantsTable({
     [
       agents,
       handleToggleAgentStatus,
+      hasAgentBuilderV2,
       owner,
       router,
       setShowDetails,

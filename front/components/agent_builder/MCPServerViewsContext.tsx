@@ -49,14 +49,9 @@ interface MCPServerViewsContextType {
   isMCPServerViewsError: boolean;
 }
 
-const MCPServerViewsContext = createContext<MCPServerViewsContextType>({
-  mcpServerViews: [],
-  mcpServerViewsWithKnowledge: [],
-  defaultMCPServerViews: [],
-  nonDefaultMCPServerViews: [],
-  isMCPServerViewsLoading: false,
-  isMCPServerViewsError: false,
-});
+const MCPServerViewsContext = createContext<
+  MCPServerViewsContextType | undefined
+>(undefined);
 
 function getGroupedMCPServerViews({
   mcpServerViews,

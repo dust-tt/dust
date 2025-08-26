@@ -17,6 +17,11 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import {
+  PersonalConnectionRequiredDialog,
+  useAwaitableDialog,
+} from "@app/components/agent_builder/PersonalConnectionRequiredDialog";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
   getDefaultAgentFormData,
@@ -38,6 +43,7 @@ import { useEditors } from "@app/lib/swr/editors";
 import { emptyArray } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types";
+import { removeNulls } from "@app/types";
 
 function processActionsFromStorage(
   actions: AssistantBuilderMCPConfigurationWithId[]
@@ -79,6 +85,7 @@ export default function AgentBuilder({
 }: AgentBuilderProps) {
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   const router = useRouter();
   const sendNotification = useSendNotification();
@@ -179,8 +186,23 @@ export default function AgentBuilder({
     },
   });
 
+  const { showDialog, ...dialogProps } = useAwaitableDialog({
+    owner,
+    mcpServerViewToCheckIds: removeNulls(
+      processedActions.map((a) =>
+        a.type === "MCP" ? a.configuration.mcpServerViewId : null
+      )
+    ),
+    mcpServerViews,
+  });
+
   const handleSubmit = async (formData: AgentBuilderFormData) => {
     try {
+      const confirmed = await showDialog();
+      if (!confirmed) {
+        return;
+      }
+
       const result = await submitAgentBuilderForm({
         formData,
         owner,
@@ -208,10 +230,14 @@ export default function AgentBuilder({
         type: "success",
       });
 
+      // Reset form dirty state after successful save
+      form.reset(form.getValues(), {
+        keepValues: true,
+      });
+
       if (!agentConfiguration && createdAgent.sId) {
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
-        // willingly using window to not trigger next navigation events
-        window.history.replaceState(null, "", newUrl);
+        await router.replace(newUrl, undefined, { shallow: true });
       }
     } catch (error) {
       logger.error("Unexpected error:", error);
@@ -242,6 +268,15 @@ export default function AgentBuilder({
   return (
     <AgentBuilderFormContext.Provider value={form}>
       <FormProvider form={form}>
+        <PersonalConnectionRequiredDialog
+          owner={owner}
+          mcpServerViewsWithPersonalConnections={
+            dialogProps.mcpServerViewsWithPersonalConnections
+          }
+          isOpen={dialogProps.isOpen}
+          onCancel={dialogProps.onCancel}
+          onClose={dialogProps.onClose}
+        />
         <AgentBuilderLayout
           leftPanel={
             <AgentBuilderLeftPanel

@@ -23,6 +23,8 @@ export type TriggerType = {
   agentConfigurationId: AgentConfigurationType["sId"];
   editor: UserType["id"];
   customPrompt: string | null;
+  enabled: boolean;
+  createdAt: number;
 } & TriggerConfiguration;
 
 export type TriggerKind = TriggerType["kind"];

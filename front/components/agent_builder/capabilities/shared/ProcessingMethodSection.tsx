@@ -89,51 +89,52 @@ export function ProcessingMethodSection() {
     <div className="space-y-4">
       <div>
         <h3 className="mb-2 text-lg font-semibold">Processing method</h3>
+        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          Sets the approach for finding and retrieving information from your
+          data sources. Need help? Check our guide.
+        </span>
       </div>
 
-      <div className="space-y-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              isLoading={isMCPServerViewsLoading}
-              label={
-                mcpServerView
-                  ? getMcpServerViewDisplayName(mcpServerView)
-                  : "loading..."
-              }
-              icon={
-                mcpServerView != null &&
-                isInternalAllowedIcon(mcpServerView.server.icon)
-                  ? InternalActionIcons[mcpServerView.server.icon]
-                  : undefined
-              }
-              variant="outline"
-            />
-          </DropdownMenuTrigger>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            isLoading={isMCPServerViewsLoading}
+            label={
+              mcpServerView
+                ? getMcpServerViewDisplayName(mcpServerView)
+                : "loading..."
+            }
+            icon={
+              mcpServerView != null &&
+              isInternalAllowedIcon(mcpServerView.server.icon)
+                ? InternalActionIcons[mcpServerView.server.icon]
+                : undefined
+            }
+            variant="outline"
+          />
+        </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="start">
-            {mcpServerViewsWithKnowledge
-              .filter((view) =>
-                hasOnlyTablesSelected
-                  ? tablesServer.includes(view.server.name)
-                  : !tablesServer.includes(view.server.name)
-              )
-              .map((view) => (
-                <DropdownMenuItem
-                  key={view.id}
-                  label={getMcpServerViewDisplayName(view)}
-                  icon={getAvatar(view.server)}
-                  onClick={() => onChange(view)}
-                  description={getMcpServerViewDescription(view)}
-                />
-              ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {!hasOnlyTablesSelected && hasSomeTablesSelected && (
-          <Chip color="info" size="sm" label=" Your tables will be ignored " />
-        )}
-      </div>
+        <DropdownMenuContent align="start" className="max-w-100">
+          {mcpServerViewsWithKnowledge
+            .filter((view) =>
+              hasOnlyTablesSelected
+                ? tablesServer.includes(view.server.name)
+                : !tablesServer.includes(view.server.name)
+            )
+            .map((view) => (
+              <DropdownMenuItem
+                key={view.id}
+                label={getMcpServerViewDisplayName(view)}
+                icon={getAvatar(view.server)}
+                onClick={() => onChange(view)}
+                description={getMcpServerViewDescription(view)}
+              />
+            ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {!hasOnlyTablesSelected && hasSomeTablesSelected && (
+        <Chip color="info" size="sm" label=" Your tables will be ignored " />
+      )}
     </div>
   );
 }

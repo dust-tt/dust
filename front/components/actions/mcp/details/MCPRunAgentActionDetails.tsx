@@ -64,6 +64,7 @@ export function MCPRunAgentActionDetails({
   const { serverViews: mcpServerViews } = useMCPServerViews({
     owner,
     space: spaces.find((s) => s.kind === "global"),
+    availability: "all",
     disabled: addedMCPServerViewIds.length === 0,
   });
 
@@ -149,12 +150,8 @@ export function MCPRunAgentActionDetails({
     if (resultResource) {
       return resultResource.resource.uri;
     }
-    const output = lastNotification?.data.output;
-    if (isRunAgentProgressOutput(output)) {
-      return `/w/${owner.sId}/assistant/${output.conversationId}`;
-    }
     return null;
-  }, [resultResource, lastNotification, owner.sId]);
+  }, [resultResource]);
 
   const references = useMemo(() => {
     if (!resultResource?.resource.refs) {

@@ -17,7 +17,7 @@ import config from "@app/lib/api/config";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
-  AgentMCPAction,
+  AgentMCPActionModel,
   AgentMCPActionOutputItem,
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
@@ -236,7 +236,7 @@ async function migrateSingleProcessAction(
 
   if (execute) {
     // Step 2: Create the MCP action.
-    const mcpActionCreated = await AgentMCPAction.create(mcpAction.action);
+    const mcpActionCreated = await AgentMCPActionModel.create(mcpAction.action);
 
     // Step 3: Create the MCP action output items.
     const outputItems: CreationAttributes<AgentMCPActionOutputItem>[] = [];

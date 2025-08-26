@@ -24,6 +24,7 @@ import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { isAdmin, isBuilder, normalizeError } from "@app/types";
@@ -54,6 +55,7 @@ export function AssistantDetailsButtonBar({
     workspaceId: owner.sId,
   });
 
+  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&
     !isBuilder(owner);
@@ -173,7 +175,12 @@ export function AssistantDetailsButtonBar({
                   icon={ClipboardIcon}
                   onClick={async (e) => {
                     await router.push(
-                      `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
+                      getAgentBuilderRoute(
+                        owner.sId,
+                        "new",
+                        hasAgentBuilderV2,
+                        `flow=personal_assistants&duplicate=${agentConfiguration.sId}`
+                      )
                     );
                     e.stopPropagation();
                   }}
@@ -240,7 +247,12 @@ export function AssistantDetailsButtonBar({
             size="sm"
             href={
               canEditAssistant
-                ? `/w/${owner.sId}/builder/assistants/${agentConfiguration.sId}?flow=workspace_assistants`
+                ? getAgentBuilderRoute(
+                    owner.sId,
+                    agentConfiguration.sId,
+                    hasAgentBuilderV2,
+                    "flow=workspace_assistants"
+                  )
                 : undefined
             }
             disabled={!canEditAssistant}

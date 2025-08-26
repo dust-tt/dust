@@ -19,6 +19,7 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
   declare name: string;
   declare kind: TriggerKind;
   declare customPrompt: string | null;
+  declare enabled: CreationOptional<boolean>;
 
   /**
    * We use the sId, because it's static between an agent versions,
@@ -63,6 +64,11 @@ TriggerModel.init(
       allowNull: true,
       defaultValue: null,
     },
+    enabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
     configuration: {
       type: DataTypes.JSONB,
       allowNull: false,
@@ -73,7 +79,7 @@ TriggerModel.init(
     sequelize: frontSequelize,
     hooks: {
       beforeValidate: (trigger: TriggerModel) => {
-        if (!isValidTriggerKind(trigger.kind)) {
+        if (trigger.changed("kind") && !isValidTriggerKind(trigger.kind)) {
           throw new Error(`Invalid trigger kind: ${trigger.kind}`);
         }
       },

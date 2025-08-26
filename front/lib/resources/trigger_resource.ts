@@ -100,6 +100,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
+  static listByWorkspace(auth: Authenticator) {
+    return this.baseFetch(auth);
+  }
+
   static async update(
     auth: Authenticator,
     sId: string,
@@ -215,6 +219,38 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
   }
 
+  async enable(auth: Authenticator): Promise<Result<undefined, Error>> {
+    if (this.enabled) {
+      return new Ok(undefined);
+    }
+
+    await this.update({ enabled: true });
+
+    // Re-register the temporal workflow
+    const r = await this.postRegistration(auth);
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(undefined);
+  }
+
+  async disable(auth: Authenticator): Promise<Result<undefined, Error>> {
+    if (!this.enabled) {
+      return new Ok(undefined);
+    }
+
+    await this.update({ enabled: false });
+
+    // Remove the temporal workflow
+    const r = await this.preDeletion(auth);
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(undefined);
+  }
+
   toJSON(): TriggerType {
     return {
       id: this.id,
@@ -223,8 +259,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       agentConfigurationId: this.agentConfigurationId,
       editor: this.editor,
       customPrompt: this.customPrompt,
+      enabled: this.enabled,
       kind: this.kind,
       configuration: this.configuration,
+      createdAt: this.createdAt.getTime(),
     };
   }
 }

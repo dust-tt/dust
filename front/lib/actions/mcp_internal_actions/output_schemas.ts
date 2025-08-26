@@ -500,6 +500,32 @@ export const isRunAgentQueryResourceType = (
   );
 };
 
+// Toolsets results.
+
+export const ToolsetsResultResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOLSET_LIST_RESULT),
+  text: z.string(),
+  uri: z.literal(""),
+  id: z.string(),
+  description: z.string(),
+});
+
+export type ToolsetsResultResourceType = z.infer<
+  typeof ToolsetsResultResourceSchema
+>;
+
+export const isToolsetsResultResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: ToolsetsResultResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    ToolsetsResultResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 // Agent creation results.
 
 export const AgentCreationResultResourceSchema = z.object({
