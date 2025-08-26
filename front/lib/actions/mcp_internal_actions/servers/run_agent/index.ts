@@ -14,10 +14,7 @@ import type {
   ChildAgentBlob,
   RunAgentBlockingEvent,
 } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
-import {
-  BlockedAwaitingInputError,
-  makeBlockedAwaitingInputResponse,
-} from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+import { makeToolBlockedAwaitingInputResponse } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import {
   makeInternalMCPServer,
   makeMCPToolTextError,
@@ -372,20 +369,13 @@ export default async function createServer(
             // If this is the last blocking event for the step, throw an error to break the agent
             // loop until the user approves the execution.
             if (event.isLastBlockingEventForStep) {
-              const err = new BlockedAwaitingInputError(
+              return makeToolBlockedAwaitingInputResponse(
                 collectedBlockingEvents,
                 {
                   conversationId: conversation.sId,
                   userMessageId,
                 }
               );
-
-              console.log(">>>> err", err.toString());
-
-              return makeBlockedAwaitingInputResponse(collectedBlockingEvents, {
-                conversationId: conversation.sId,
-                userMessageId,
-              });
             }
           } else if (event.type === "tool_error") {
             // Handle personal authentication required errors.
@@ -410,17 +400,7 @@ export default async function createServer(
               });
 
               if (event.isLastBlockingEventForStep) {
-                const err = new BlockedAwaitingInputError(
-                  collectedBlockingEvents,
-                  {
-                    conversationId: conversation.sId,
-                    userMessageId,
-                  }
-                );
-
-                console.log(">>>> err", err);
-
-                return makeBlockedAwaitingInputResponse(
+                return makeToolBlockedAwaitingInputResponse(
                   collectedBlockingEvents,
                   {
                     conversationId: conversation.sId,

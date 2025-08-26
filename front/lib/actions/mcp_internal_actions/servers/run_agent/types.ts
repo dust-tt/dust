@@ -30,15 +30,15 @@ export function isRunAgentResumeState(
 
 // Resume required error for run_agent.
 
-export const BlockedAwaitingInputErrorName = "BlockedAwaitingInputError";
+const ToolBlockedAwaitingInputErrorName = "ToolBlockedAwaitingInputError";
 
-export class BlockedAwaitingInputError extends Error {
+export class ToolBlockedAwaitingInputError extends Error {
   constructor(
     public readonly blockingEvents: RunAgentBlockingEvent[],
     public readonly resumeState: Record<string, unknown>
   ) {
     super("Tool requires resume after blocking events");
-    this.name = BlockedAwaitingInputErrorName;
+    this.name = ToolBlockedAwaitingInputErrorName;
   }
 }
 
@@ -46,11 +46,41 @@ export type RunAgentBlockingEvent =
   | MCPApproveExecutionEvent
   | ToolPersonalAuthRequiredEvent;
 
+const DUST_BLOCKED_AWAITING_INPUT_KEY = "__dust_blocked_awaiting_input";
+
+export type ToolBlockedAwaitingInputResponse = {
+  [DUST_BLOCKED_AWAITING_INPUT_KEY]: {
+    blockingEvents: RunAgentBlockingEvent[];
+    state: RunAgentResumeState;
+  };
+};
+
+export function isToolBlockedAwaitingInputResponse(
+  response: unknown
+): response is ToolBlockedAwaitingInputResponse {
+  return (
+    typeof response === "object" &&
+    response !== null &&
+    DUST_BLOCKED_AWAITING_INPUT_KEY in response &&
+    typeof response[DUST_BLOCKED_AWAITING_INPUT_KEY] === "object" &&
+    response[DUST_BLOCKED_AWAITING_INPUT_KEY] !== null
+  );
+}
+
+export function extractToolBlockedAwaitingInputResponse(
+  response: ToolBlockedAwaitingInputResponse
+): {
+  blockingEvents: RunAgentBlockingEvent[];
+  state: RunAgentResumeState;
+} {
+  return response[DUST_BLOCKED_AWAITING_INPUT_KEY];
+}
+
 /**
- * Serializes a BlockedAwaitingInputError for MCP transport.
+ * Serializes a ToolBlockedAwaitingInputError for MCP transport.
  * MCP protocol strips custom error properties, so we encode them in the response content.
  */
-export function makeBlockedAwaitingInputResponse(
+export function makeToolBlockedAwaitingInputResponse(
   blockingEvents: RunAgentBlockingEvent[],
   state: RunAgentResumeState
 ): CallToolResult {
@@ -60,7 +90,7 @@ export function makeBlockedAwaitingInputResponse(
       {
         type: "text",
         text: JSON.stringify({
-          __dust_blocked_awaiting_input: {
+          [DUST_BLOCKED_AWAITING_INPUT_KEY]: {
             blockingEvents,
             state,
           },

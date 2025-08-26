@@ -25,7 +25,7 @@ import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_interna
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { BlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+import { ToolBlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import {
   hideFileFromActionOutput,
   rewriteContentForModel,
@@ -540,8 +540,8 @@ export async function* runToolWithStreaming(
       };
 
       return;
-    } else if (toolErr instanceof BlockedAwaitingInputError) {
-      // Update the step context to keep the restart state.
+    } else if (toolErr instanceof ToolBlockedAwaitingInputError) {
+      // Update the step context to save the resume state.
       await action.updateStepContext({
         ...action.stepContext,
         resumeState: toolErr.resumeState,

@@ -41,7 +41,11 @@ import {
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { BlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+import {
+  extractToolBlockedAwaitingInputResponse,
+  isToolBlockedAwaitingInputResponse,
+  ToolBlockedAwaitingInputError,
+} from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import type {
   MCPConnectionParams,
   ServerSideMCPConnectionParams,
@@ -227,7 +231,7 @@ type MCPCallToolEvent =
         | Error
         | McpError
         | MCPServerPersonalAuthenticationRequiredError
-        | BlockedAwaitingInputError
+        | ToolBlockedAwaitingInputError
       >;
     };
 
@@ -393,10 +397,12 @@ export async function* tryCallMCPTool(
                 ),
               };
               return;
-            } else if (parsed?.__dust_blocked_awaiting_input) {
-              const err = new BlockedAwaitingInputError(
-                parsed.__dust_blocked_awaiting_input.blockingEvents,
-                parsed.__dust_blocked_awaiting_input.state
+            } else if (isToolBlockedAwaitingInputResponse(parsed)) {
+              const { blockingEvents, state } =
+                extractToolBlockedAwaitingInputResponse(parsed);
+              const err = new ToolBlockedAwaitingInputError(
+                blockingEvents,
+                state
               );
 
               yield {

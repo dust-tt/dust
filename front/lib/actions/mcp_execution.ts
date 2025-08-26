@@ -28,7 +28,7 @@ import {
   isResourceWithName,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { BlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+import type { ToolBlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
 import type {
   ActionGeneratedFileType,
@@ -86,7 +86,7 @@ export async function* executeMCPTool({
     | Error
     | McpError
     | MCPServerPersonalAuthenticationRequiredError
-    | BlockedAwaitingInputError
+    | ToolBlockedAwaitingInputError
   > | null,
   unknown
 > {
