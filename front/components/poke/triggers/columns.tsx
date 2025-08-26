@@ -1,4 +1,4 @@
-import { IconButton, TrashIcon } from "@dust-tt/sparkle";
+import { IconButton, LinkWrapper, TrashIcon } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -25,6 +25,22 @@ export function makeColumnsForTriggers(
   return [
     {
       accessorKey: "sId",
+      cell: ({ row }) => {
+        const trigger = row.original;
+        const agent = agentConfigMap.get(trigger.agentConfigurationId);
+
+        if (!agent) {
+          return trigger.sId;
+        }
+
+        return (
+          <LinkWrapper
+            href={`/poke/${owner.sId}/assistants/${agent.sId}/triggers/${trigger.sId}`}
+          >
+            {trigger.sId}
+          </LinkWrapper>
+        );
+      },
       header: ({ column }) => {
         return (
           <div className="flex space-x-2">
