@@ -1,5 +1,5 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { createContext, useContext } from "react";
+import { createContext } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
@@ -247,16 +247,3 @@ export interface MCPFormData {
 
 export const AgentBuilderFormContext =
   createContext<UseFormReturn<AgentBuilderFormData> | null>(null);
-
-export const useAgentBuilderFormActions = () => {
-  const context = useContext(AgentBuilderFormContext);
-  if (!context) {
-    throw new Error("AgentBuilderFormContext not found");
-  }
-
-  const actions = context.getValues("actions");
-
-  return {
-    actions,
-  };
-};

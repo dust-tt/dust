@@ -8,10 +8,7 @@ import React, {
   useState,
 } from "react";
 
-import {
-  getAllowedSpaces as getAllowedSpacesOriginal,
-  getSpaceIdToActionsMap,
-} from "@app/components/agent_builder/get_allowed_spaces";
+import { getSpaceIdToActionsMap } from "@app/components/agent_builder/get_spaceid_to_actions_map";
 import { DataSourceViewsProvider } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { MCPServerViewsProvider } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
@@ -20,7 +17,6 @@ import { useSpacesContext } from "@app/components/assistant_builder/contexts/Spa
 import { SpacesProvider } from "@app/components/assistant_builder/contexts/SpacesContext";
 import type {
   AssistantBuilderInitialState,
-  AssistantBuilderMCPOrVizState,
   AssistantBuilderPendingAction,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
@@ -49,7 +45,6 @@ interface AssistantBuilderContextType {
   setEdited: (edited: boolean) => void;
   pendingAction: AssistantBuilderPendingAction;
   setAction: (action: AssistantBuilderSetActionType) => void;
-  getAllowedSpaces: (action?: AssistantBuilderMCPOrVizState) => SpaceType[];
   nonGlobalSpacesUsedInActions: SpaceType[];
 }
 
@@ -102,7 +97,6 @@ const AssistantBuilderContext = createContext<AssistantBuilderContextType>({
     previousActionName: null,
   },
   setAction: () => {},
-  getAllowedSpaces: () => [],
   nonGlobalSpacesUsedInActions: [],
 });
 
@@ -188,17 +182,6 @@ const AssistantBuilderProvider = ({
     return nonGlobalSpaces.filter((s) => spaceIdToActions[s.sId]?.length > 0);
   }, [spaceIdToActions, spaces]);
 
-  const getAllowedSpaces = useCallback(
-    (action?: AssistantBuilderMCPOrVizState) => {
-      return getAllowedSpacesOriginal({
-        action,
-        spaces,
-        spaceIdToActions,
-      });
-    },
-    [spaces, spaceIdToActions]
-  );
-
   const value = useMemo(
     () => ({
       builderState,
@@ -208,7 +191,6 @@ const AssistantBuilderProvider = ({
       pendingAction,
       setAction,
       nonGlobalSpacesUsedInActions,
-      getAllowedSpaces,
     }),
     [
       builderState,
@@ -218,7 +200,6 @@ const AssistantBuilderProvider = ({
       pendingAction,
       setAction,
       nonGlobalSpacesUsedInActions,
-      getAllowedSpaces,
     ]
   );
 

@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { useAgentBuilderFormActions } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { KnowledgeFooter } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeFooter";
 import {
@@ -24,11 +23,6 @@ import { ProcessingMethodSection } from "@app/components/agent_builder/capabilit
 import { SelectDataSourcesFilters } from "@app/components/agent_builder/capabilities/shared/SelectDataSourcesFilters";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import {
-  getAllowedSpaces,
-  getSpaceIdToActionsMap,
-} from "@app/components/agent_builder/get_allowed_spaces";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
@@ -243,14 +237,6 @@ function KnowledgeConfigurationSheetContent({
   onClose,
   getAgentInstructions,
 }: KnowledgeConfigurationSheetContentProps) {
-  const { actions } = useAgentBuilderFormActions();
-  const { mcpServerViews } = useMCPServerViewsContext();
-  const { spaces } = useSpacesContext();
-  const spaceIdToActions = getSpaceIdToActionsMap(actions, mcpServerViews);
-  const allowedSpaces = getAllowedSpaces({
-    spaces,
-    spaceIdToActions,
-  });
   const { currentPageId, setSheetPageId } = useDataSourceBuilderContext();
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
@@ -329,7 +315,6 @@ function KnowledgeConfigurationSheetContent({
           dataSourceViews={supportedDataSourceViews}
           owner={owner}
           viewType="all"
-          allowedSpaces={allowedSpaces}
         />
       ),
       footerContent: hasSourceSelection ? <KnowledgeFooter /> : undefined,

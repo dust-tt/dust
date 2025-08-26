@@ -19,6 +19,7 @@ import { useController } from "react-hook-form";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useApps } from "@app/lib/swr/apps";
 import type {
   AppType,
@@ -56,11 +57,7 @@ function AppSelectionTable({ tableData, columns }: AppSelectionTableProps) {
   );
 }
 
-interface DustAppSectionProps {
-  allowedSpaces: SpaceType[];
-}
-
-export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
+export function DustAppSection() {
   const { owner } = useAgentBuilderContext();
   const { field, fieldState } = useController<
     MCPFormData,
@@ -69,8 +66,10 @@ export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
     name: "configuration.dustAppConfiguration",
   });
 
+  const { spaces } = useSpacesContext();
+
   const [selectedSpace, setSelectedSpace] = useState<SpaceType>(
-    () => allowedSpaces[0]
+    () => spaces[0]
   );
 
   const { apps, isAppsLoading } = useApps({
@@ -86,15 +85,15 @@ export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
 
     const appInCurrentSpace = apps.find((app) => app.sId === configuredAppId);
     if (!appInCurrentSpace && selectedSpace) {
-      const currentIndex = allowedSpaces.findIndex(
+      const currentIndex = spaces.findIndex(
         (space) => space.sId === selectedSpace.sId
       );
-      const nextSpace = allowedSpaces[currentIndex + 1];
+      const nextSpace = spaces[currentIndex + 1];
       if (nextSpace) {
         setSelectedSpace(nextSpace);
       }
     }
-  }, [field.value?.appId, apps, isAppsLoading, selectedSpace, allowedSpaces]);
+  }, [field.value?.appId, apps, isAppsLoading, selectedSpace, spaces]);
 
   const availableApps = useMemo(
     () =>
@@ -186,7 +185,7 @@ export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-full">
-              {allowedSpaces.map((space) => (
+              {spaces.map((space) => (
                 <DropdownMenuItem
                   key={space.sId}
                   onClick={() => handleSpaceChange(space)}
@@ -224,9 +223,7 @@ export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
               </div>
             </div>
           </Card>
-        ) : allowedSpaces.length > 0 &&
-          selectedSpace &&
-          availableApps.length > 0 ? (
+        ) : spaces.length > 0 && selectedSpace && availableApps.length > 0 ? (
           <AppSelectionTable tableData={tableData} columns={columns} />
         ) : (
           <div className="flex flex-1 items-center justify-center">
