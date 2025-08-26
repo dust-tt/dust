@@ -109,6 +109,7 @@ function isSnowflakeSuspendedError(
   return (
     "name" in maybeSuspendedError &&
     maybeSuspendedError.name === "OperationFailedError" &&
+    "message" in maybeSuspendedError &&
     maybeSuspendedError.message.includes("suspended")
   );
 }
