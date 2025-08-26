@@ -174,12 +174,13 @@ export function PersonalConnectionRequiredDialog({
                               return;
                             }
                             setIsConnecting(true);
-                            await createPersonalConnection(
-                              mcpServerView.server,
-                              mcpServerView.server.authorization.provider,
-                              "personal_actions",
-                              mcpServerView.server.authorization.scope
-                            );
+                            await createPersonalConnection({
+                              mcpServer: mcpServerView.server,
+                              provider:
+                                mcpServerView.server.authorization.provider,
+                              useCase: "personal_actions",
+                              scope: mcpServerView.server.authorization.scope,
+                            });
                             setIsConnecting(false);
                           }}
                         />
