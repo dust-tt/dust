@@ -2,14 +2,14 @@ import {
   Button,
   Checkbox,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
   Label,
+  SearchInput,
 } from "@dust-tt/sparkle";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -225,68 +225,91 @@ function ListConfigurationInput({
   configKey: string;
   listValues: Record<string, string>;
 }) {
+  const [searchQuery, setSearchQuery] = useState("");
   const { field, fieldState } = useController<MCPFormData>({
     name: `configuration.additionalConfiguration.${configKey}`,
   });
 
   const rawValue = field.value;
   const currentValue: string[] = Array.isArray(rawValue) ? rawValue : [];
-  let displayLabel =
-    currentValue.length > 0
-      ? currentValue.map((v) => listValues[v]).join(", ")
-      : `Select ${formatKeyForDisplay(configKey)}`;
-  if (displayLabel.length > 20) {
-    displayLabel = `${currentValue.length} selected`;
-  }
+
+  const filteredValues = useMemo(() => {
+    if (searchQuery.trim() === "") {
+      return Object.entries(listValues);
+    }
+    return Object.entries(listValues).filter(([, label]) =>
+      label.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [listValues, searchQuery]);
+
+  const handleToggle = (value: string, checked?: boolean) => {
+    const currentValue = field.value ?? [];
+    if (Array.isArray(currentValue)) {
+      const isCurrentlySelected = currentValue.includes(value);
+      const shouldSelect = checked ?? !isCurrentlySelected;
+
+      const newValues = shouldSelect
+        ? [...currentValue, value]
+        : currentValue.filter((v) => v !== value);
+
+      field.onChange(newValues);
+    }
+  };
+
+  const isSelected = (value: string) => {
+    return Array.isArray(currentValue) && currentValue.includes(value);
+  };
 
   return (
-    <>
-      <div key={configKey} className="mb-2 flex items-center gap-1">
-        <Label className="w-1/5 text-sm font-medium">
-          {formatKeyForDisplay(configKey)}
-        </Label>
-        <div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                isSelect
-                label={displayLabel}
-                size="sm"
-                tooltip={displayLabel}
-                variant="outline"
-              />
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent align="start">
-              {Object.entries(listValues).map(([value, label]) => (
-                <DropdownMenuCheckboxItem
-                  key={value}
-                  label={label}
-                  checked={
-                    Array.isArray(currentValue) && currentValue.includes(value)
-                  }
-                  onCheckedChange={(checked) => {
-                    const currentValue = field.value ?? [];
-                    if (Array.isArray(currentValue)) {
-                      const newValues = checked
-                        ? [...currentValue, value]
-                        : currentValue.filter((v) => v !== value);
-
-                      field.onChange(newValues);
-                    }
-                  }}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {!!fieldState.error && (
-            <div className={"error flex items-center gap-1 text-xs"}>
-              {fieldState.error.message}
+    <div key={configKey} className="mb-4 flex flex-col gap-2">
+      <Label className="text-sm font-medium">
+        {formatKeyForDisplay(configKey)}
+      </Label>
+      <div className="space-y-2">
+        <SearchInput
+          name={`search-${configKey}`}
+          placeholder={`Search ${formatKeyForDisplay(configKey).toLowerCase()}...`}
+          value={searchQuery}
+          onChange={setSearchQuery}
+        />
+        <div className="max-h-48 space-y-1 overflow-y-auto">
+          {filteredValues.length === 0 ? (
+            <div className="py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+              {searchQuery.trim() === ""
+                ? "No options available"
+                : `No options match "${searchQuery}"`}
             </div>
+          ) : (
+            filteredValues.map(([value, label]) => (
+              <div
+                key={value}
+                className="group flex cursor-pointer items-center justify-between rounded-lg p-2 hover:bg-gray-50 dark:hover:bg-gray-800"
+                onClick={() => handleToggle(value)}
+              >
+                <div className="flex items-center space-x-3">
+                  <Checkbox
+                    checked={isSelected(value)}
+                    onCheckedChange={(checked) =>
+                      handleToggle(value, checked === true)
+                    }
+                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    size="xs"
+                  />
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {label}
+                  </span>
+                </div>
+              </div>
+            ))
           )}
         </div>
+        {!!fieldState.error && (
+          <div className={"error flex items-center gap-1 text-xs"}>
+            {fieldState.error.message}
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }
 
