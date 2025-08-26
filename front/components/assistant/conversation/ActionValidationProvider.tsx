@@ -25,6 +25,7 @@ import {
 } from "react";
 
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
+import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
@@ -191,10 +192,14 @@ export function ActionValidationProvider({
   } = useValidationQueue({ pendingValidations });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [neverAskAgain, setNeverAskAgain] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const [neverAskAgain, setNeverAskAgain] = useState(false);
+  const { validateAction, isValidating } = useValidateAction({
+    owner,
+    conversation,
+    onError: setErrorMessage,
+  });
 
   useNavigationLock(isDialogOpen);
 
@@ -203,55 +208,19 @@ export function ActionValidationProvider({
       return;
     }
 
-    let approved = status;
-    if (status === "approved" && neverAskAgain) {
-      approved = "always_approved";
-    }
-
-    setErrorMessage(null);
-    setIsProcessing(true);
-
     const { validationRequest, message } = currentItem;
 
-    const response = await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${validationRequest.conversationId}/messages/${validationRequest.messageId}/validate-action`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          actionId: validationRequest.actionId,
-          approved,
-        }),
-      }
-    );
+    const result = await validateAction({
+      validationRequest,
+      message,
+      approved:
+        status === "approved" && neverAskAgain ? "always_approved" : status,
+    });
 
-    // Retry on blocked tools on the main conversation if there is one that is != from the event's.
-    if (
-      conversation?.sId &&
-      message &&
-      conversation.sId !== validationRequest.conversationId
-    ) {
-      await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${message.sId}/retry?blocked_only=true`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+    if (result.success) {
+      setNeverAskAgain(false);
+      setErrorMessage(null);
     }
-
-    setIsProcessing(false);
-
-    if (!response.ok) {
-      setErrorMessage("Failed to assess action approval. Please try again.");
-      return;
-    }
-
-    setNeverAskAgain(false);
   };
 
   const handleSubmit = (approved: MCPValidationOutputType) => {
@@ -383,9 +352,9 @@ export function ActionValidationProvider({
               label="Decline"
               variant="outline"
               onClick={() => handleSubmit("rejected")}
-              disabled={isProcessing}
+              disabled={isValidating}
             >
-              {isProcessing && (
+              {isValidating && (
                 <div className="flex items-center">
                   <span className="mr-2">Declining</span>
                   <Spinner size="xs" variant="dark" />
@@ -396,9 +365,9 @@ export function ActionValidationProvider({
               label="Allow"
               variant="highlight"
               onClick={() => handleSubmit("approved")}
-              disabled={isProcessing}
+              disabled={isValidating}
             >
-              {isProcessing && (
+              {isValidating && (
                 <div className="flex items-center">
                   <span className="mr-2">Approving</span>
                   <Spinner size="xs" variant="light" />
