@@ -77,12 +77,12 @@ function PersonalAuthenticationRequiredInline({
       return;
     }
     setIsConnecting(true);
-    const success = await createPersonalConnection(
+    const success = await createPersonalConnection({
       mcpServer,
-      blockedAction.authorizationInfo.provider,
-      "personal_actions",
-      blockedAction.authorizationInfo.scope
-    );
+      provider: blockedAction.authorizationInfo.provider,
+      useCase: "personal_actions",
+      scope: blockedAction.authorizationInfo.scope,
+    });
     setIsConnecting(false);
     if (!success) {
       setIsConnected(false);
