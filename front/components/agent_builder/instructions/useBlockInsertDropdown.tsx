@@ -1,4 +1,4 @@
-import { CommandLineIcon, DocumentIcon } from "@dust-tt/sparkle";
+import { CommandLineIcon, DocumentIcon, DocumentTextIcon } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor } from "@tiptap/core";
 import type { Editor as ReactEditor } from "@tiptap/react";
 import type {
@@ -21,6 +21,19 @@ export interface BlockSuggestion {
 }
 
 const BLOCK_SUGGESTIONS: BlockSuggestion[] = [
+  {
+    id: "heading",
+    label: "Heading",
+    icon: DocumentTextIcon,
+    command: (editor, range) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .setHeading({ level: 1 })
+        .run();
+    },
+  },
   {
     id: "xml-block",
     label: "XML Tag",
