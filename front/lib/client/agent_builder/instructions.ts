@@ -8,13 +8,8 @@ import {
 
 function serializeNodeToText(node: JSONContent): string {
   if (node.type === "instructionBlock") {
-    const type = node.attrs?.type as string;
-    const tagName = type?.toUpperCase() || "INFO";
-
-    // Serialize content inside the block
     const content = node.content?.map(serializeNodeToText).join("") || "";
-
-    return `<${tagName}>\n${content}</${tagName}>\n`;
+    return content;
   }
 
   if (node.type === "paragraph") {
@@ -26,7 +21,6 @@ function serializeNodeToText(node: JSONContent): string {
       return `${node.content[0].text}\n`;
     }
 
-    // Handle multiple nodes in paragraph
     const text = node.content.map(serializeNodeToText).join("");
     return text ? `${text}\n` : "\n";
   }
@@ -35,7 +29,13 @@ function serializeNodeToText(node: JSONContent): string {
     return node.text || "";
   }
 
-  // Handle other node types by recursing into their content
+  if (node.type === "codeBlock") {
+    // Convert code blocks to markdown format with triple backticks
+    const language = node.attrs?.language || "";
+    const code = node.content?.map(serializeNodeToText).join("") || "";
+    return `\`\`\`${language}\n${code}\`\`\`\n`;
+  }
+
   if (node.content) {
     return node.content.map(serializeNodeToText).join("");
   }
@@ -57,11 +57,34 @@ function parseInstructionBlocks(text: string): JSONContent[] {
 
   segments.forEach((segment) => {
     if (segment.type === "text") {
-      // Add text as paragraphs
-      const paragraphs = textToParagraphNodes(segment.content);
-      content.push(...paragraphs);
+      // Parse code blocks from the text
+      const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
+      let lastIndex = 0;
+      let match;
+
+      while ((match = codeBlockRegex.exec(segment.content)) !== null) {
+        if (match.index > lastIndex) {
+          const textBefore = segment.content.slice(lastIndex, match.index);
+          const paragraphs = textToParagraphNodes(textBefore);
+          content.push(...paragraphs);
+        }
+        const language = match[1] || "";
+        const code = match[2];
+        content.push({
+          type: "codeBlock",
+          attrs: { language },
+          content: code ? [{ type: "text", text: code }] : [],
+        });
+
+        lastIndex = match.index + match[0].length;
+      }
+
+      if (lastIndex < segment.content.length) {
+        const remainingText = segment.content.slice(lastIndex);
+        const paragraphs = textToParagraphNodes(remainingText);
+        content.push(...paragraphs);
+      }
     } else if (segment.type === "block" && segment.blockType) {
-      // Add instruction block
       const blockNode = createInstructionBlockNode(
         segment.blockType,
         segment.content
