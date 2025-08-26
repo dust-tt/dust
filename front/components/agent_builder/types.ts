@@ -113,7 +113,10 @@ export const capabilityFormSchema = z
     description: z
       .string()
       .min(1, "Description is required")
-      .max(DESCRIPTION_MAX_LENGTH, "Description too long"),
+      .max(
+        DESCRIPTION_MAX_LENGTH,
+        "Description should be less than 800 characters."
+      ),
     sources: dataSourceBuilderTreeType.refine(
       (val) => {
         return val.in.length > 0;
