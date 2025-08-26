@@ -1,5 +1,5 @@
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
-import { Breadcrumbs, cn, SearchInput } from "@dust-tt/sparkle";
+import { Breadcrumbs, SearchInput } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
 import { DataSourceNavigationView } from "@app/components/agent_builder/capabilities/knowledge/DataSourceNavigationView";
@@ -93,16 +93,13 @@ export const DataSourceBuilderSelector = ({
   const hasError = isSearchError;
 
   const shouldShowSearch = isSearching && currentSpace;
-  const [isChanging, setIsChanging] = useState(false);
   const [showSearch, setShowSearch] = useState(shouldShowSearch);
 
   // Handle transition when search state changes
   useEffect(() => {
     if (shouldShowSearch !== showSearch) {
-      setIsChanging(true);
       const timer = setTimeout(() => {
         setShowSearch(shouldShowSearch);
-        setTimeout(() => setIsChanging(false), 50);
       }, 150);
 
       return () => clearTimeout(timer);
@@ -139,7 +136,7 @@ export const DataSourceBuilderSelector = ({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="relative flex h-full flex-1 flex-col gap-4">
       {breadcrumbItems.length > 0 && <Breadcrumbs items={breadcrumbItems} />}
 
       {currentNavigationEntry.type === "root" ? (
@@ -156,7 +153,7 @@ export const DataSourceBuilderSelector = ({
             onChange={setSearchTerm}
           />
           {isSearching && currentSpace && (
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Searching in{" "}
               <span className="font-medium">{currentSpace.name}</span>
             </div>
@@ -164,23 +161,16 @@ export const DataSourceBuilderSelector = ({
         </div>
       )}
 
-      <div
-        className={cn(
-          "transition-opacity duration-150",
-          isChanging && "opacity-0"
-        )}
-      >
-        {showSearch ? (
-          <DataSourceSearchResults
-            searchResultNodes={searchResultNodes}
-            isLoading={isLoading}
-            onClearSearch={() => setSearchTerm("")}
-            error={hasError ? new Error("Search failed") : null}
-          />
-        ) : (
-          <DataSourceNavigationView viewType={viewType} />
-        )}
-      </div>
+      {showSearch ? (
+        <DataSourceSearchResults
+          searchResultNodes={searchResultNodes}
+          isLoading={isLoading}
+          onClearSearch={() => setSearchTerm("")}
+          error={hasError ? new Error("Search failed") : null}
+        />
+      ) : (
+        <DataSourceNavigationView viewType={viewType} />
+      )}
     </div>
   );
 };
