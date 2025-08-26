@@ -633,6 +633,7 @@ export const WithScrollableDataTable: Story = {
         title: "User Management",
         description: "Manage users with infinite scroll",
         icon: UserIcon,
+        noScroll: true,
         content: (
           <div className="s-flex s-h-full s-flex-col s-space-y-4">
             <div className="s-flex-shrink-0">
