@@ -298,12 +298,12 @@ const PEOPLE: Record<
     github: "https://github.com/vincesarkisian",
     linkedIn: "https://www.linkedin.com/in/vincesarkisian/",
   },
-  landry: {
-    name: "Landry Monga",
-    title: "Software Engineer",
-    image: "https://avatars.githubusercontent.com/u/23080211?v=4",
-    github: "https://github.com/lvndry",
-    linkedIn: "https://www.linkedin.com/in/landry-monga",
+  faateh: {
+    name: "Faateh Dhillon",
+    title: "Senior Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U093VA8B7E0-e078a8e04a44-512",
+    github: "https://github.com/faateh-dust",
+    linkedIn: "https://www.linkedin.com/in/faatehalidhillon",
   },
   louis: {
     name: "Louis Caulet",
@@ -319,21 +319,20 @@ const PEOPLE: Record<
     github: "https://github.com/nkreider-dot",
     linkedIn: "https://www.linkedin.com/in/nkreider",
   },
-  come: {
-    name: "Côme Lucien-Brun",
-    title: "Account Executive",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U09ATL7UVB5-873d7e42eb96-512",
-    github: "https://github.com/come-lb",
-    linkedIn: "https://www.linkedin.com/in/comelb",
+  lauriane: {
+    name: "Lauriane Paour",
+    title: "Solution Engineer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U096NGVETPD-0d8f0affddf6-512",
+    linkedIn: "https://www.linkedin.com/in/lauriane-paour-152760106/",
   },
-  faateh: {
-    name: "Faateh Dhillon",
-    title: "Senior Account Executive",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U093VA8B7E0-e078a8e04a44-512",
-    github: "https://github.com/faateh-dust",
-    linkedIn: "https://www.linkedin.com/in/faatehalidhillon",
+  landry: {
+    name: "Landry Monga",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/23080211?v=4",
+    github: "https://github.com/lvndry",
+    linkedIn: "https://www.linkedin.com/in/landry-monga",
   },
-  theog: {
+  theo: {
     name: "Théo Gantzer",
     title: "Data",
     image: "https://ca.slack-edge.com/T050RH73H9P-U09ATLHUB0B-6ab7143a82c5-512",
@@ -346,6 +345,13 @@ const PEOPLE: Record<
     image: "https://ca.slack-edge.com/T050RH73H9P-U09ATLV5RNX-f840cb7fa121-512",
     linkedIn: "https://www.linkedin.com/in/okalotieno",
     github: "https://github.com/okal",
+  },
+  come: {
+    name: "Côme Lucien-Brun",
+    title: "Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09ATL7UVB5-873d7e42eb96-512",
+    github: "https://github.com/come-lb",
+    linkedIn: "https://www.linkedin.com/in/comelb",
   },
 };
 
