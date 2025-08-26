@@ -102,7 +102,8 @@ export function AgentMessage({
     message.configuration.sId as GLOBAL_AGENTS_SID
   );
 
-  const { showValidationDialog } = useActionValidationContext();
+  const { showValidationDialog, enqueueValidation } =
+    useActionValidationContext();
 
   const { mutateMessage } = useConversationMessage({
     conversationId,
@@ -121,7 +122,8 @@ export function AgentMessage({
       const eventType = eventPayload.data.type;
 
       if (eventType === "tool_approve_execution") {
-        showValidationDialog({
+        showValidationDialog();
+        enqueueValidation({
           messageId: eventPayload.data.messageId,
           conversationId: eventPayload.data.conversationId,
           actionId: eventPayload.data.actionId,
