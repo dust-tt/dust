@@ -85,7 +85,6 @@ export async function runToolActivity(
     agentMessage,
     conversation,
     mcpAction,
-    stepContext: action.stepContext,
   });
 
   for await (const event of eventStream) {
@@ -98,6 +97,7 @@ export async function runToolActivity(
             created: event.created,
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
+            conversationId: conversation.sId,
             error: {
               code: event.error.code,
               message: event.error.message,
@@ -115,10 +115,15 @@ export async function runToolActivity(
         return { deferredEvents };
 
       case "tool_personal_auth_required":
+      case "tool_approve_execution":
+        // Update the action status to blocked_child_action_input_required to break the agent loop.
+        await action.updateStatus("blocked_child_action_input_required");
+
         // Defer personal auth events to be sent after all tools complete.
         deferredEvents.push({
           event,
           context: {
+            agentMessageId: agentMessage.sId,
             agentMessageRowId: agentMessageRow.id,
             conversationId: conversation.sId,
             step,
@@ -164,7 +169,6 @@ export async function runToolActivity(
         break;
 
       case "tool_params":
-      case "tool_approve_execution":
       case "tool_notification":
         await updateResourceAndPublishEvent(event, agentMessageRow, {
           conversationId: conversation.sId,

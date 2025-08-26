@@ -1,8 +1,9 @@
 import { assertNever } from "@dust-tt/client";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 
 import { useHashParam } from "@app/hooks/useHashParams";
+import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
@@ -15,12 +16,20 @@ type OpenPanelParams =
   | {
       type: "actions";
       messageId: string;
+      metadata: AgentActionState;
     }
   | {
       type: "content";
       fileId: string;
       timestamp?: string;
+      metadata?: never;
     };
+
+interface AgentActionState {
+  actionProgress: ActionProgressState;
+}
+
+type SidePanelMetadata = OpenPanelParams["metadata"] | undefined;
 
 const isSupportedPanelType = (
   type: string | undefined
@@ -34,6 +43,7 @@ interface ConversationSidePanelContextType {
   onPanelClosed: () => void;
   setPanelRef: (ref: ImperativePanelHandle | null) => void;
   data: string | undefined;
+  metadata: SidePanelMetadata;
 }
 
 const ConversationSidePanelContext = React.createContext<
@@ -62,6 +72,7 @@ export function ConversationSidePanelProvider({
   const [currentPanel, setCurrentPanel] = useHashParam(
     SIDE_PANEL_TYPE_HASH_PARAM
   );
+  const [metadata, setMetadata] = useState<SidePanelMetadata>(undefined);
 
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
 
@@ -83,11 +94,13 @@ export function ConversationSidePanelProvider({
           return;
         }
         setData(params.messageId);
+        setMetadata(params.metadata);
         break;
       case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
         params.timestamp
           ? setData(`${params.fileId}@${params.timestamp}`)
           : setData(params.fileId);
+        setMetadata(undefined);
         break;
       default:
         assertNever(params);
@@ -102,6 +115,7 @@ export function ConversationSidePanelProvider({
 
   const onPanelClosed = () => {
     setData(undefined);
+    setMetadata(undefined);
     setCurrentPanel(undefined);
   };
 
@@ -109,10 +123,17 @@ export function ConversationSidePanelProvider({
   useEffect(() => {
     if (data && currentPanel) {
       setCurrentPanel(currentPanel);
+
+      // Set default metadata for actions panel when opened from URL
+      if (currentPanel === "actions" && !metadata) {
+        setMetadata({
+          actionProgress: new Map(),
+        });
+      }
     } else if (!data) {
       closePanel();
     }
-  }, [data, currentPanel, setCurrentPanel]);
+  }, [data, currentPanel, setCurrentPanel, metadata]);
 
   return (
     <ConversationSidePanelContext.Provider
@@ -125,6 +146,7 @@ export function ConversationSidePanelProvider({
         onPanelClosed,
         setPanelRef,
         data,
+        metadata,
       }}
     >
       {children}

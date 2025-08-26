@@ -9,6 +9,12 @@ import {
   ConfigurableToolInputSchemas,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getOrCreateConversation } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/conversation";
+import type {
+  ChildAgentBlob,
+  RunAgentBlockingEvent,
+} from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+import { makeToolBlockedAwaitingInputResponse } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import {
   makeInternalMCPServer,
   makeMCPToolTextError,
@@ -126,11 +132,7 @@ export default async function createServer(
     childAgentId = agentLoopContext.runContext.toolConfiguration.childAgentId;
   }
 
-  let childAgentBlob: {
-    name: string;
-    description: string;
-  } | null = null;
-
+  let childAgentBlob: ChildAgentBlob | null = null;
   if (childAgentId) {
     childAgentBlob = await leakyGetAgentNameAndDescriptionForChildAgent(
       auth,
@@ -214,46 +216,28 @@ export default async function createServer(
         logger
       );
 
-      const convRes = await api.createConversation({
-        title: `run_agent ${mainAgent.name} > ${childAgentBlob.name}`,
-        visibility: "unlisted",
-        depth: mainConversation.depth + 1,
-        message: {
-          content: query,
-          mentions: [{ configurationId: childAgentId }],
-          context: {
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            username: mainAgent.name,
-            fullName: `@${mainAgent.name}`,
-            email: null,
-            profilePictureUrl: mainAgent.pictureUrl,
-            // `run_agent` origin will skip adding the conversation to the user history.
-            origin: "run_agent",
-            selectedMCPServerViewIds: toolsetsToAdd,
-          },
-        },
-        skipToolsValidation:
-          agentLoopContext.runContext.agentMessage.skipToolsValidation ?? false,
-        params: {
-          // TODO(DURABLE_AGENT 2025-08-20): Remove this if we decided to always use async mode.
-          execution: "async",
-        },
-      });
+      const convRes = await getOrCreateConversation(
+        api,
+        agentLoopContext.runContext,
+        {
+          childAgentBlob,
+          childAgentId,
+          mainAgent,
+          mainConversation,
+          query,
+          toolsetsToAdd: toolsetsToAdd ?? null,
+        }
+      );
 
       if (convRes.isErr()) {
-        const errorMessage = `Failed to create conversation: ${convRes.error.message}`;
-        return makeMCPToolTextError(errorMessage);
+        return makeMCPToolTextError(convRes.error.message);
       }
 
-      const { conversation, message: createdUserMessage } = convRes.value;
+      const { conversation, isNewConversation, userMessageId } = convRes.value;
 
-      if (!createdUserMessage) {
-        const errorMessage = "Failed to retrieve the created message.";
-        return makeMCPToolTextError(errorMessage);
-      }
-
-      // Send notification indicating that a run_agent started and a new conversation was created.
-      if (_meta?.progressToken && sendNotification) {
+      // Send notification indicating that a run_agent started and a new conversation was created if
+      // it is the first time the conversation is created.
+      if (_meta?.progressToken && sendNotification && isNewConversation) {
         const notification: MCPProgressNotificationType = {
           method: "notifications/progress",
           params: {
@@ -276,7 +260,7 @@ export default async function createServer(
 
       const streamRes = await api.streamAgentAnswerEvents({
         conversation: conversation,
-        userMessageId: createdUserMessage.sId,
+        userMessageId,
       });
 
       if (streamRes.isErr()) {
@@ -284,13 +268,17 @@ export default async function createServer(
         return makeMCPToolTextError(errorMessage);
       }
 
+      const collectedBlockingEvents: RunAgentBlockingEvent[] = [];
+
+      // TODO(DURABLE_AGENT 2025-08-25): We should make this more robust and use the existing
+      // conversation content if present.
       let finalContent = "";
       let chainOfThought = "";
       let refs: Record<string, CitationType> = {};
       try {
         for await (const event of streamRes.value.eventStream) {
           if (event.type === "generation_tokens") {
-            // Separate content based on classification
+            // Separate content based on classification.
             if (event.classification === "chain_of_thought") {
               chainOfThought += event.text;
               const notification: MCPProgressNotificationType = {
@@ -340,7 +328,7 @@ export default async function createServer(
               event.delimiterClassification === "chain_of_thought" &&
               chainOfThought.length > 0
             ) {
-              // For closing chain of thought delimiters, add a newline
+              // For closing chain of thought delimiters, add a newline.
               chainOfThought += "\n";
               const notification: MCPProgressNotificationType = {
                 method: "notifications/progress",
@@ -375,34 +363,52 @@ export default async function createServer(
             }
             break;
           } else if (event.type === "tool_approve_execution") {
-            // We catch tool approval events and bubble them up as progress notifications to the
-            // parent tool execution.
-            // In the MCP server runner, we translate them into a tool_approve_execution event
-            // that can be ultimately shown to the end user.
-            // This part only passes along the event data without modifying them.
-            const notification: MCPProgressNotificationType = {
-              method: "notifications/progress",
-              params: {
-                progress: 0,
-                total: 1,
-                progressToken: 0,
-                data: {
-                  label: "Waiting for tool approval...",
-                  output: {
-                    type: "tool_approval_bubble_up",
-                    configurationId: event.configurationId,
-                    conversationId: event.conversationId,
-                    messageId: event.messageId,
-                    actionId: event.actionId,
-                    metadata: event.metadata,
-                    stake: event.stake,
-                    inputs: event.inputs,
-                  },
-                },
-              },
-            };
+            // Collect this blocking event.
+            collectedBlockingEvents.push(event);
 
-            await sendNotification(notification);
+            // If this is the last blocking event for the step, throw an error to break the agent
+            // loop until the user approves the execution.
+            if (event.isLastBlockingEventForStep) {
+              return makeToolBlockedAwaitingInputResponse(
+                collectedBlockingEvents,
+                {
+                  conversationId: conversation.sId,
+                  userMessageId,
+                }
+              );
+            }
+          } else if (event.type === "tool_error") {
+            // Handle personal authentication required errors.
+            if (
+              event.error.code === "mcp_server_personal_authentication_required"
+            ) {
+              const metadata = event.error.metadata ?? {};
+
+              collectedBlockingEvents.push({
+                type: "tool_personal_auth_required",
+                created: event.created,
+                configurationId: event.configurationId,
+                messageId: event.messageId,
+                conversationId: conversation.sId,
+                authError: {
+                  mcpServerId: metadata.mcp_server_id,
+                  provider: metadata.provider,
+                  toolName: metadata.toolName,
+                  message: metadata.message,
+                  scope: metadata.scope,
+                },
+              });
+
+              if (event.isLastBlockingEventForStep) {
+                return makeToolBlockedAwaitingInputResponse(
+                  collectedBlockingEvents,
+                  {
+                    conversationId: conversation.sId,
+                    userMessageId,
+                  }
+                );
+              }
+            }
           }
         }
       } catch (streamError) {

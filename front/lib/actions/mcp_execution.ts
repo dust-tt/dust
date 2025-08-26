@@ -26,9 +26,9 @@ import {
   isBlobResource,
   isMCPProgressNotificationType,
   isResourceWithName,
-  isToolApproveBubbleUpNotificationType,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { ToolBlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
 import type {
   ActionGeneratedFileType,
@@ -83,7 +83,10 @@ export async function* executeMCPTool({
   ToolNotificationEvent | MCPApproveExecutionEvent,
   Result<
     CallToolResult["content"],
-    Error | McpError | MCPServerPersonalAuthenticationRequiredError
+    | Error
+    | McpError
+    | MCPServerPersonalAuthenticationRequiredError
+    | ToolBlockedAwaitingInputError
   > | null,
   unknown
 > {
@@ -102,48 +105,16 @@ export async function* executeMCPTool({
     } else if (event.type === "notification") {
       const { notification } = event;
       if (isMCPProgressNotificationType(notification)) {
-        const { output: notificationOutput } = notification.params.data;
-        // Tool approval notifications have a specific handling:
-        // they are not yielded as regular notifications but are bubbled up as
-        // `tool_approval_bubble_up` events instead. We attach the messageId from the
-        // main conversation as `pubsubMessageId` to route the event to the main conversation channel.
-        if (isToolApproveBubbleUpNotificationType(notificationOutput)) {
-          const {
-            conversationId,
-            messageId,
-            configurationId,
-            actionId,
-            inputs,
-            stake,
-            metadata,
-          } = notificationOutput;
-
-          yield {
-            created: Date.now(),
-            type: "tool_approve_execution",
-            configurationId,
-            conversationId,
-            messageId,
-            actionId,
-            inputs,
-            stake,
-            metadata: {
-              ...metadata,
-              pubsubMessageId: agentMessage.sId,
-            },
-          };
-        } else {
-          // Regular notifications, we yield them as is with the type "tool_notification".
-          yield {
-            type: "tool_notification",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            conversationId: conversation.sId,
-            messageId: agentMessage.sId,
-            action: mcpAction,
-            notification: notification.params,
-          };
-        }
+        // Regular notifications, we yield them as is with the type "tool_notification".
+        yield {
+          type: "tool_notification",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          conversationId: conversation.sId,
+          messageId: agentMessage.sId,
+          action: mcpAction,
+          notification: notification.params,
+        };
       }
     }
   }

@@ -25,7 +25,7 @@ interface AgentMessageActionsProps {
   owner: LightWorkspaceType;
 }
 
-export function isMCPActionType(
+function isMCPActionType(
   action: { type: "tool_action"; id: number } | undefined
 ): action is MCPActionType {
   return action !== undefined && "functionCallName" in action;
@@ -47,6 +47,9 @@ export function AgentMessageActions({
     openPanel({
       type: "actions",
       messageId: agentMessage.sId,
+      metadata: {
+        actionProgress,
+      },
     });
   };
 

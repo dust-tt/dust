@@ -13,6 +13,7 @@ import {
   isToolExecutionStatusBlocked,
   TOOL_EXECUTION_BLOCKED_STATUSES,
 } from "@app/lib/actions/statuses";
+import type { StepContext } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
@@ -343,6 +344,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   ): Promise<[affectedCount: number]> {
     return this.update({
       status,
+    });
+  }
+
+  async updateStepContext(
+    stepContext: StepContext
+  ): Promise<[affectedCount: number]> {
+    return this.update({
+      stepContext,
     });
   }
 
