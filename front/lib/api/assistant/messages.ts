@@ -400,7 +400,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
 
   const errors = renderedMessages.filter((m) => m.isErr());
   if (errors.length > 0) {
-    return errors[0];
+    return new Err(errors[0].error);
   }
 
   return new Ok(
