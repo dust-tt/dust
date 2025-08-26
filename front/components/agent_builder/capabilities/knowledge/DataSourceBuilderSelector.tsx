@@ -152,17 +152,12 @@ export const DataSourceBuilderSelector = ({
             value={searchTerm}
             onChange={setSearchTerm}
           />
-          {isSearching && currentSpace && (
-            <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Searching in{" "}
-              <span className="font-medium">{currentSpace.name}</span>
-            </div>
-          )}
         </div>
       )}
 
       {showSearch ? (
         <DataSourceSearchResults
+          currentSpace={currentSpace}
           searchResultNodes={searchResultNodes}
           isLoading={isLoading}
           onClearSearch={() => setSearchTerm("")}
