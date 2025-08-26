@@ -19,6 +19,7 @@ import { SCOPE_INFO } from "@app/components/assistant/details/AssistantDetails";
 import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useTags } from "@app/lib/swr/tags";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
@@ -280,6 +281,7 @@ export function AssistantsTable({
     agentConfiguration: undefined,
   });
   const router = useRouter();
+  const { pagination, setPagination } = usePaginationFromUrl({});
 
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -426,12 +428,11 @@ export function AssistantsTable({
               : [],
         };
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleToggleAgentStatus & router are not stable, mutating the agents list which prevent pagination to work
     [
       agents,
-      handleToggleAgentStatus,
       hasAgentBuilderV2,
       owner,
-      router,
       setShowDetails,
       setShowDisabledFreeWorkspacePopup,
       showDisabledFreeWorkspacePopup,
@@ -465,6 +466,8 @@ export function AssistantsTable({
               isBatchEdit,
               mutateAgentConfigurations,
             })}
+            pagination={pagination}
+            setPagination={setPagination}
           />
         )}
       </div>
