@@ -195,16 +195,14 @@ const SheetContainer = ({ children, noScroll }: SheetContainerProps) => {
       }) => <div className={className}>{children}</div>
     : ScrollArea;
   return (
-    <ScrollContainer className="s-h-full">
-      <div
-        className={cn(
-          "s-h-full s-w-full s-flex-grow",
-          "s-border-t s-border-border/60 s-transition-all s-duration-300 dark:s-border-border-night/60"
-        )}
-      >
-        <div className="s-relative s-flex s-h-full s-flex-col s-gap-5 s-p-5 s-text-left s-text-sm s-text-foreground dark:s-text-foreground-night">
-          {children}
-        </div>
+    <ScrollContainer
+      className={cn(
+        "s-h-full s-w-full s-flex-grow",
+        "s-border-t s-border-border/60 s-transition-all s-duration-300 dark:s-border-border-night/60"
+      )}
+    >
+      <div className="s-relative s-flex s-h-full s-flex-col s-gap-5 s-p-5 s-text-left s-text-sm s-text-foreground dark:s-text-foreground-night">
+        {children}
       </div>
     </ScrollContainer>
   );
