@@ -25,9 +25,7 @@ export function ConfirmPopupArea({ children }: { children: React.ReactNode }) {
     null
   );
 
-  const resolveConfirmRef = React.useRef<(result: boolean) => void>(
-    () => undefined
-  );
+  const resolveConfirmRef = useRef<(result: boolean) => void>(() => undefined);
 
   const confirm = (confirm: ConfirmDataType) => {
     setConfirmData(confirm);
@@ -59,22 +57,28 @@ export function ConfirmDialog({
   resolveConfirm,
   clearConfirmData,
 }: ConfirmDialogProps) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  useEffect(() => {
+    setIsDialogOpen(confirmData != null);
+  }, [confirmData]);
+
   // To avoid content flickering, we clear out the current validation when closing animation ends
   // instead of right after clicking on one of the buttons.
   const onDialogAnimationEnd = () => {
-    if (!open) {
+    if (!isDialogOpen) {
       clearConfirmData();
     }
   };
 
   return (
     <Dialog
-      open={confirmData != null}
+      open={isDialogOpen}
       onOpenChange={(open) => {
         if (!open) {
           resolveConfirm(false);
-          clearConfirmData();
         }
+        setIsDialogOpen(open);
       }}
     >
       <DialogContent size="md" onAnimationEnd={onDialogAnimationEnd}>
