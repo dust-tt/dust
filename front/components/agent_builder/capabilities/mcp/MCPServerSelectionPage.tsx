@@ -93,6 +93,27 @@ export function MCPServerSelectionPage({
     (tool) => tool.type === "DATA_VISUALIZATION"
   );
 
+  const hasDataVisualization = dataVisualization && onDataVisualizationClick;
+  const hasDefaultViews = defaultMcpServerViews.length > 0;
+  const hasNonDefaultViews = nonDefaultMcpServerViews.length > 0;
+  const hasAnyResults =
+    hasDataVisualization || hasDefaultViews || hasNonDefaultViews;
+
+  if (!hasAnyResults) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="px-4 text-center">
+          <div className="mb-2 text-lg font-medium text-foreground">
+            No tool matches your search
+          </div>
+          <div className="max-w-sm text-muted-foreground">
+            No tools found. Try a different search term.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="flex flex-col gap-4">
