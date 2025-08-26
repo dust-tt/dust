@@ -515,7 +515,7 @@ export function MCPServerViewsSheet({
               ref={searchInputRef}
               value={searchTerm}
               onChange={setSearchTerm}
-              name="search-mcp-servers"
+              name="search-mcp"
               placeholder="Search tools..."
               className="mt-4"
             />

@@ -1,13 +1,14 @@
 import {
   Button,
+  ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Hoverable,
 } from "@dust-tt/sparkle";
-import { ContentMessage } from "@dust-tt/sparkle";
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import React from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -134,12 +135,12 @@ export function ProcessingMethodSection() {
           Sets the approach for finding and retrieving information from your
           data sources. Need help? Check our{" "}
           <Hoverable
-            href="https://docs.dust.tt/docs/knowledge"
             variant="primary"
+            href="https://docs.dust.tt/docs/knowledge"
+            target="_blank"
           >
-            guide
+            guide.
           </Hoverable>
-          .
         </span>
       </div>
 
