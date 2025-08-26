@@ -310,6 +310,7 @@ export function ActionValidationProvider({
             pages={pages}
             currentPageId={validatedActions.toString()}
             onPageChange={() => {}}
+            hideCloseButton
             size="lg"
             isAlertDialog
             showNavigation={true}
