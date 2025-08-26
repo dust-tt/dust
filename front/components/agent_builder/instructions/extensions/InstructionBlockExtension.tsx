@@ -73,16 +73,11 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     node.attrs.isCollapsed || false
   );
 
-  // Derive display type directly from content
-  // Empty tags should show as truly empty (no chip)
   let displayType = "";
-
-  // Only check the first paragraph for the tag
   if (node.childCount > 0) {
     const firstChild = node.child(0);
     if (firstChild.type.name === "paragraph") {
       const text = firstChild.textContent.trim();
-      // Match opening tag pattern: <tagname> or empty <>
       const match = text.match(/^<(\w*)>$/);
       if (match) {
         displayType = match[1] || ""; // Empty string for <>
@@ -119,7 +114,6 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     }
   };
 
-  // Show selection ring when collapsed and selected
   const containerClasses = `rounded-lg border bg-gray-100 p-2 dark:bg-gray-800 transition-all ${
     selected && isCollapsed
       ? "ring-2 ring-highlight-300 dark:ring-highlight-300-night border-highlight-300 dark:border-highlight-300-night"
@@ -228,7 +222,6 @@ export const InstructionBlockExtension =
 
             if (success) {
               requestAnimationFrame(() => {
-                // Safety check: ensure editor is still valid
                 if (editor.isDestroyed || !editor.view) {
                   return;
                 }
@@ -236,7 +229,6 @@ export const InstructionBlockExtension =
                 const { selection } = editor.state;
                 const $from = selection.$from;
 
-                // Walk up from current position to find enclosing instruction block
                 let blockPos = -1;
                 for (let d = $from.depth; d >= 0; d--) {
                   const node = $from.node(d);
@@ -302,7 +294,6 @@ export const InstructionBlockExtension =
               const { selection } = this.editor.state;
               const $from = selection.$from;
 
-              // Walk up from current position to find enclosing instruction block
               let blockPos = -1;
               for (let d = $from.depth; d >= 0; d--) {
                 const node = $from.node(d);
@@ -345,7 +336,6 @@ export const InstructionBlockExtension =
           const { selection } = state;
           const $from = selection.$from;
 
-          // Only act on caret selections
           if (!selection.empty) {
             return false;
           }
@@ -355,7 +345,6 @@ export const InstructionBlockExtension =
             return false;
           }
 
-          // Find enclosing instruction block depth
           let blockDepth: number | null = null;
           for (let d = $from.depth; d >= 0; d -= 1) {
             if ($from.node(d).type.name === this.name) {
@@ -395,7 +384,6 @@ export const InstructionBlockExtension =
           const fromPos = $from.before(blockDepth);
           const toPos = fromPos + blockNode.nodeSize;
 
-          // Remove the empty block
           tr.delete(fromPos, toPos);
 
           // Place caret at end of previous paragraph if present; otherwise create one
@@ -428,7 +416,6 @@ export const InstructionBlockExtension =
             return false;
           }
 
-          // Find enclosing instruction block depth
           let blockDepth: number | null = null;
           for (let d = $from.depth; d >= 0; d -= 1) {
             if ($from.node(d).type.name === this.name) {
@@ -492,7 +479,6 @@ export const InstructionBlockExtension =
 
     addProseMirrorPlugins() {
       return [
-        // Plugin for syncing tags
         new Plugin({
           key: new PluginKey("instructionBlockTagSync"),
           appendTransaction: (transactions, oldState, newState) => {
