@@ -20,7 +20,7 @@
     "create-db-migration": "./create_db_migration_file.sh",
     "prepare": "cd .. && husky .husky",
     "debug:profiler": "tsx ./scripts/debug/run_profiler.ts",
-    "postbuild": "next-sitemap"
+    "sitemap": "next-sitemap"
   },
   "dependencies": {
     "@datadog/browser-logs": "^6.13.0",

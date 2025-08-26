@@ -60,6 +60,7 @@ RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
         --service=$NEXT_PUBLIC_DATADOG_SERVICE && \
         find .next -type f -name "*.map" -print -delete; \
     fi
+RUN npm run sitemap
 
 # Preload jemalloc for all processes:
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
