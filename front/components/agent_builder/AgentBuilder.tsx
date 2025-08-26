@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import set from "lodash/set";
 import { useRouter } from "next/router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -89,6 +89,7 @@ export default function AgentBuilder({
 
   const router = useRouter();
   const sendNotification = useSendNotification();
+  const [isSaving, setIsSaving] = useState(false);
 
   const { actions, isActionsLoading } = useAgentConfigurationActions(
     owner.sId,
@@ -198,8 +199,10 @@ export default function AgentBuilder({
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
     try {
+      setIsSaving(true);
       const confirmed = await showDialog();
       if (!confirmed) {
+        setIsSaving(false);
         return;
       }
 
@@ -218,6 +221,7 @@ export default function AgentBuilder({
           description: result.error.message,
           type: "error",
         });
+        setIsSaving(false);
         return;
       }
 
@@ -230,17 +234,21 @@ export default function AgentBuilder({
         type: "success",
       });
 
-      // Reset form dirty state after successful save
-      form.reset(form.getValues(), {
-        keepValues: true,
-      });
-
       if (!agentConfiguration && createdAgent.sId) {
+        // For new agents, navigate immediately - form will be clean after navigation
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
         await router.replace(newUrl, undefined, { shallow: true });
+      } else {
+        // For existing agents, just reset form state
+        form.reset(form.getValues(), {
+          keepValues: true,
+        });
       }
+
+      setIsSaving(false);
     } catch (error) {
       logger.error("Unexpected error:", error);
+      setIsSaving(false);
     }
   };
 
@@ -254,7 +262,8 @@ export default function AgentBuilder({
 
   const { isDirty, isSubmitting } = form.formState;
 
-  useNavigationLock(isDirty);
+  // Disable navigation lock during save process for new agents
+  useNavigationLock(isDirty && !isSaving);
 
   const isSaveDisabled =
     !isDirty || isSubmitting || isActionsLoading || isTriggersLoading;
