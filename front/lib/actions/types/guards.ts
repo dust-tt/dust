@@ -252,8 +252,6 @@ function isMCPActionType(action: unknown): action is MCPActionType {
     "output" in action &&
     "step" in action &&
     typeof action.step === "number" &&
-    "isError" in action &&
-    typeof action.isError === "boolean" &&
     "citationsAllocated" in action &&
     typeof action.citationsAllocated === "number"
   );
