@@ -165,16 +165,18 @@ export type LightMCPToolConfigurationType =
   | LightClientSideMCPToolConfigurationType;
 
 export type ToolExecutionMetadata = {
+  conversationId: string;
+  messageId: string;
   actionId: string;
+
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
+
   mcpServerId?: string;
   metadata: MCPValidationMetadataType;
 };
 
 export type BlockedActionExecution = ToolExecutionMetadata & {
-  messageId: string;
-  conversationId: string;
   status: ToolExecutionBlockedStatus;
   authorizationInfo: AuthorizationInfo | null;
 };
@@ -184,8 +186,6 @@ export type MCPApproveExecutionEvent = ToolExecutionMetadata & {
   type: "tool_approve_execution";
   created: number;
   configurationId: string;
-  messageId: string;
-  conversationId: string;
   isLastBlockingEventForStep?: boolean;
 };
 
