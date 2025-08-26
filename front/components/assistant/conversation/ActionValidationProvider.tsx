@@ -64,6 +64,7 @@ function PersonalAuthenticationRequiredInline({
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
+  // TODO: get rid of this
   const { server: mcpServer } = useMCPServer({
     owner,
     serverId: blockedAction.mcpServerId,
@@ -71,7 +72,7 @@ function PersonalAuthenticationRequiredInline({
 
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
   const { submit: retry } = useSubmitFunction(async () => retryHandler());
-  getMcpServerDisplayName;
+
   const handleConnect = async () => {
     if (!mcpServer) {
       return;
@@ -262,6 +263,8 @@ export function ActionValidationProvider({
     conversationId: conversation?.sId || null,
     workspaceId: owner.sId,
   });
+
+  const { createPersonalConnection } = useCreatePersonalConnection(owner);
 
   const [actionsBlockedOnAuthentication, setActionsBlockedOnAuthentication] =
     useState<BlockedActionExecution[]>([]);
