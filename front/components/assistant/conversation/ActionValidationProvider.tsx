@@ -130,7 +130,7 @@ export function ActionValidationProvider({
   conversation,
   children,
 }: ActionValidationProviderProps) {
-  const { blockedActions, mutate: mutateBlockedActions } = useBlockedActions({
+  const { blockedActions } = useBlockedActions({
     conversationId: conversation?.sId || null,
     workspaceId: owner.sId,
   });
@@ -176,10 +176,6 @@ export function ActionValidationProvider({
 
     const currentValidation = validationQueue[0];
 
-    if (!currentValidation) {
-      return;
-    }
-
     const { validationRequest, message } = currentValidation;
     const result = await validateAction({
       validationRequest,
@@ -191,8 +187,6 @@ export function ActionValidationProvider({
     if (!result.success) {
       return;
     }
-
-    await mutateBlockedActions();
 
     setNeverAskAgain(false);
     setErrorMessage(null);
