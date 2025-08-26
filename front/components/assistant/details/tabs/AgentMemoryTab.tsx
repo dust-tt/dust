@@ -80,15 +80,15 @@ function DeleteMemoryDialog({
   );
 }
 
-interface AgentMemorySectionProps {
+interface AgentMemoryTabProps {
   owner: LightWorkspaceType;
   agentConfiguration: AgentConfigurationType;
 }
 
-export function AgentMemorySection({
+export function AgentMemoryTab({
   owner,
   agentConfiguration,
-}: AgentMemorySectionProps) {
+}: AgentMemoryTabProps) {
   const { memories, isMemoriesLoading } = useAgentMemoriesForUser({
     owner,
     agentConfiguration,

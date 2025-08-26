@@ -2,16 +2,13 @@ import {
   ArrowPathIcon,
   Avatar,
   BarChartIcon,
+  BellIcon,
   Button,
   Chip,
-  Cog6ToothIcon,
   ContentMessage,
   DustIcon,
   InformationCircleIcon,
   LockIcon,
-  Page,
-  PlusIcon,
-  ReadOnlyTextArea,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -27,25 +24,19 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { BrainIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
-import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
-import { AgentMemorySection } from "@app/components/assistant/details/AgentMemorySection";
-import { AssistantEditedSection } from "@app/components/assistant/details/AssistantEditedSection";
-import { AssistantKnowledgeSection } from "@app/components/assistant/details/AssistantKnowledgeSection";
-import { AssistantToolsSection } from "@app/components/assistant/details/AssistantToolsSection";
+import { AssistantDetailsButtonBar } from "@app/components/assistant/details/AssistantDetailsButtonBar";
+import { AgentEditorsTab } from "@app/components/assistant/details/tabs/AgentEditorsTab";
+import { AgentInfoTab } from "@app/components/assistant/details/tabs/AgentInfoTab";
+import { AgentMemoryTab } from "@app/components/assistant/details/tabs/AgentMemoryTab";
+import { AgentPerformanceTab } from "@app/components/assistant/details/tabs/AgentPerformanceTab";
+import { AgentTriggersTab } from "@app/components/assistant/details/tabs/AgentTriggersTab";
 import { RestoreAssistantDialog } from "@app/components/assistant/RestoreAssistantDialog";
-import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
-import { MembersList } from "@app/components/members/MembersList";
 import { isMCPConfigurationForAgentMemory } from "@app/lib/actions/types/guards";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
-import { useEditors, useUpdateEditors } from "@app/lib/swr/editors";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type {
   AgentConfigurationScope,
-  AgentConfigurationType,
   UserType,
-  UserTypeWithWorkspace,
   WorkspaceType,
 } from "@app/types";
 import { GLOBAL_AGENTS_SID, isAdmin } from "@app/types";
@@ -88,161 +79,18 @@ type AssistantDetailsProps = {
   user: UserType;
 };
 
-function AssistantDetailsInfo({
-  agentConfiguration,
-  owner,
-}: {
-  agentConfiguration: AgentConfigurationType;
-  owner: WorkspaceType;
-}) {
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
-
-  const isConfigurable = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
-  return (
-    <>
-      {agentConfiguration.tags.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {agentConfiguration.tags.map((tag) => (
-            <Chip key={tag.sId} color="golden" label={tag.name} size="xs" />
-          ))}
-        </div>
-      )}
-
-      <div className="text-sm text-foreground dark:text-foreground-night">
-        {agentConfiguration.description}
-      </div>
-      {agentConfiguration && (
-        <AssistantEditedSection agentConfiguration={agentConfiguration} />
-      )}
-      {isConfigurable && (
-        <div className="text-sm text-foreground dark:text-foreground-night">
-          {isAdmin(owner) ? (
-            <Button
-              label={`Manage ${agentConfiguration.name} configuration`}
-              icon={Cog6ToothIcon}
-              href={getAgentBuilderRoute(
-                owner.sId,
-                agentConfiguration.sId,
-                hasAgentBuilderV2
-              )}
-            />
-          ) : (
-            <Chip
-              color="blue"
-              label={`Your admin(s) can manage ${agentConfiguration.name} configuration.`}
-            />
-          )}
-        </div>
-      )}
-      <Page.Separator />
-
-      {agentConfiguration.scope !== "global" && (
-        <>
-          <AssistantKnowledgeSection
-            agentConfiguration={agentConfiguration}
-            owner={owner}
-          />
-
-          {agentConfiguration?.instructions ? (
-            <div className="dd-privacy-mask flex flex-col gap-5">
-              <div className="heading-lg text-foreground dark:text-foreground-night">
-                Instructions
-              </div>
-              <ReadOnlyTextArea content={agentConfiguration.instructions} />
-            </div>
-          ) : (
-            "This agent has no instructions."
-          )}
-        </>
-      )}
-      <AssistantToolsSection
-        agentConfiguration={agentConfiguration}
-        owner={owner}
-      />
-    </>
-  );
-}
-
-type AssistantDetailsEditorsProps = {
-  owner: WorkspaceType;
-  user: UserType;
-  agentConfiguration: AgentConfigurationType;
-};
-
-function AssistantDetailsEditors({
-  owner,
-  user,
-  agentConfiguration,
-}: AssistantDetailsEditorsProps) {
-  const updateEditors = useUpdateEditors({
-    owner,
-    agentConfigurationId: agentConfiguration.sId,
-  });
-  const { editors, isEditorsLoading } = useEditors({
-    owner,
-    agentConfigurationId: agentConfiguration.sId,
-  });
-
-  const isCurrentUserEditor =
-    editors.findIndex((u) => u.sId === user.sId) !== -1;
-
-  const onRemoveMember = async (user: UserTypeWithWorkspace) => {
-    if (isCurrentUserEditor) {
-      await updateEditors({ removeEditorIds: [user.sId], addEditorIds: [] });
-    }
-  };
-
-  const onAddEditor = async (user: UserType) => {
-    if (isCurrentUserEditor) {
-      await updateEditors({ removeEditorIds: [], addEditorIds: [user.sId] });
-    }
-  };
-
-  return (
-    <div>
-      <MembersList
-        currentUser={user}
-        membersData={{
-          members: editors.map((user) => ({
-            ...user,
-            workspace: owner,
-          })),
-          isLoading: isEditorsLoading,
-          totalMembersCount: editors.length,
-          mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
-        }}
-        showColumns={isCurrentUserEditor ? ["name", "remove"] : ["name"]}
-        onRemoveMemberClick={onRemoveMember}
-        onRowClick={function noRefCheck() {}}
-      />
-
-      {isCurrentUserEditor && (
-        <div className="mt-4">
-          <AddEditorDropdown
-            owner={owner}
-            editors={editors}
-            onAddEditor={onAddEditor}
-            trigger={
-              <Button label="Add editors" icon={PlusIcon} onClick={() => {}} />
-            }
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function AssistantDetails({
   assistantId,
   onClose,
   owner,
   user,
 }: AssistantDetailsProps) {
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
   const [selectedTab, setSelectedTab] = useState<
-    "info" | "performance" | "editors" | "agent_memory"
+    "info" | "performance" | "editors" | "agent_memory" | "triggers"
   >("info");
   const {
     agentConfiguration,
@@ -265,6 +113,8 @@ export function AssistantDetails({
 
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const showEditorsTabs = assistantId != null && !isGlobalAgent;
+  const showTriggersTabs =
+    assistantId != null && !isGlobalAgent && featureFlags.includes("hootl");
   const showAgentMemory = !!agentConfiguration?.actions.find(
     isMCPConfigurationForAgentMemory
   );
@@ -365,6 +215,14 @@ export function AssistantDetails({
                       icon={InformationCircleIcon}
                       onClick={() => setSelectedTab("info")}
                     />
+                    {showTriggersTabs && (
+                      <TabsTrigger
+                        value="triggers"
+                        label="Triggers"
+                        icon={BellIcon}
+                        onClick={() => setSelectedTab("triggers")}
+                      />
+                    )}
                     {showPerformanceTabs && (
                       <TabsTrigger
                         value="performance"
@@ -399,20 +257,26 @@ export function AssistantDetails({
               {agentConfiguration && (
                 <>
                   {selectedTab === "info" && (
-                    <AssistantDetailsInfo
+                    <AgentInfoTab
+                      agentConfiguration={agentConfiguration}
+                      owner={owner}
+                    />
+                  )}
+                  {showTriggersTabs && selectedTab === "triggers" && (
+                    <AgentTriggersTab
                       agentConfiguration={agentConfiguration}
                       owner={owner}
                     />
                   )}
                   {selectedTab === "performance" && (
-                    <AssistantDetailsPerformance
+                    <AgentPerformanceTab
                       agentConfiguration={agentConfiguration}
                       owner={owner}
                       gridMode={false}
                     />
                   )}
                   {showEditorsTabs && selectedTab === "editors" && (
-                    <AssistantDetailsEditors
+                    <AgentEditorsTab
                       owner={owner}
                       user={user}
                       agentConfiguration={agentConfiguration}
@@ -420,7 +284,7 @@ export function AssistantDetails({
                   )}
                   {showAgentMemory && selectedTab === "agent_memory" && (
                     <>
-                      <AgentMemorySection
+                      <AgentMemoryTab
                         owner={owner}
                         agentConfiguration={agentConfiguration}
                       />
