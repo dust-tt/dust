@@ -40,6 +40,7 @@ export function MCPListToolsActionDetails({
                 (v) => v.sId === result.id
               );
               if (!mcpServerView) {
+                console.log("mcpServerView not found", result);
                 return null;
               }
               return (
