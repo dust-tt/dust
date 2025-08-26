@@ -175,7 +175,9 @@ export function PersonalConnectionRequiredDialog({
                             }
                             setIsConnecting(true);
                             await createPersonalConnection({
-                              mcpServer: mcpServerView.server,
+                              mcpServerId: mcpServerView.server.sId,
+                              mcpServerDisplayName:
+                                getMcpServerViewDisplayName(mcpServerView),
                               provider:
                                 mcpServerView.server.authorization.provider,
                               useCase: "personal_actions",

@@ -617,11 +617,13 @@ export function useCreateMCPServerConnection({
   const sendNotification = useSendNotification();
   const createMCPServerConnection = async ({
     connectionId,
-    mcpServer,
+    mcpServerId,
+    mcpServerDisplayName,
     provider,
   }: {
     connectionId: string;
-    mcpServer: MCPServerType;
+    mcpServerId: string;
+    mcpServerDisplayName: string;
     provider: OAuthProvider;
   }): Promise<PostConnectionResponseBody | null> => {
     const response = await fetch(
@@ -633,7 +635,7 @@ export function useCreateMCPServerConnection({
         },
         body: JSON.stringify({
           connectionId,
-          mcpServerId: mcpServer.sId,
+          mcpServerId,
           provider,
         }),
       }
@@ -641,8 +643,8 @@ export function useCreateMCPServerConnection({
     if (response.ok) {
       sendNotification({
         type: "success",
-        title: `${getMcpServerDisplayName(mcpServer)} connected`,
-        description: `Successfully connected to ${getMcpServerDisplayName(mcpServer)}.`,
+        title: `${mcpServerDisplayName} connected`,
+        description: `Successfully connected to ${mcpServerDisplayName}.`,
       });
       void mutateConnections();
       if (connectionType === "workspace") {
@@ -652,8 +654,8 @@ export function useCreateMCPServerConnection({
     } else {
       sendNotification({
         type: "error",
-        title: `Failed to connect ${getMcpServerDisplayName(mcpServer)}`,
-        description: `Could not connect to ${getMcpServerDisplayName(mcpServer)}. Please try again.`,
+        title: `Failed to connect ${mcpServerDisplayName}`,
+        description: `Could not connect to ${mcpServerDisplayName}. Please try again.`,
       });
       return null;
     }
@@ -826,19 +828,21 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
   const sendNotification = useSendNotification();
 
   const createPersonalConnection = async ({
-    mcpServer,
+    mcpServerId,
+    mcpServerDisplayName,
     provider,
     useCase,
     scope,
   }: {
-    mcpServer: MCPServerType;
+    mcpServerId: string;
+    mcpServerDisplayName: string;
     provider: OAuthProvider;
     useCase: OAuthUseCase;
     scope?: string;
   }): Promise<boolean> => {
     try {
       const extraConfig: Record<string, string> = {
-        mcp_server_id: mcpServer.sId,
+        mcp_server_id: mcpServerId,
       };
 
       if (scope) {
@@ -864,7 +868,8 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
 
       const result = await createMCPServerConnection({
         connectionId: cRes.value.connection_id,
-        mcpServer,
+        mcpServerId: mcpServerId,
+        mcpServerDisplayName: mcpServerDisplayName,
         provider,
       });
 
