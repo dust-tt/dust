@@ -26,10 +26,11 @@ import {
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { DataSourceViewContentNode } from "@app/types";
+import type { DataSourceViewContentNode, SpaceType } from "@app/types";
 import { isDataSourceViewCategoryWithoutApps } from "@app/types";
 
 interface DataSourceSearchResultsProps {
+  currentSpace: SpaceType | null;
   searchResultNodes: DataSourceContentNode[];
   isLoading: boolean;
   onClearSearch: () => void;
@@ -145,6 +146,7 @@ function makeSearchResultColumnsWithSelection(
 }
 
 export function DataSourceSearchResults({
+  currentSpace,
   searchResultNodes,
   isLoading,
   onClearSearch,
@@ -369,17 +371,27 @@ export function DataSourceSearchResults({
   }
 
   return (
-    <div className="flex w-full flex-col gap-2">
+    <>
       {error ? (
         <div className="text-end text-sm text-muted-foreground">
           Error searching results.
         </div>
       ) : (
         <>
-          <div className="text-end text-sm text-muted-foreground">
-            {isLoading
-              ? "Searching..."
-              : `${searchResults.length} results found`}
+          <div className="flex flex-row items-center justify-between text-end text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <div>
+              {currentSpace !== null && (
+                <>
+                  Searching in{" "}
+                  <span className="font-medium">{currentSpace.name}</span>
+                </>
+              )}
+            </div>
+            <div>
+              {isLoading
+                ? "Searching..."
+                : `${searchResults.length} results found`}
+            </div>
           </div>
           <ScrollableDataTable
             data={searchTableRows}
@@ -389,10 +401,10 @@ export function DataSourceSearchResults({
               isLoading && "pointer-events-none opacity-50"
             )}
             totalRowCount={searchResults.length}
-            maxHeight="h-[600px]"
+            maxHeight
           />
         </>
       )}
-    </div>
+    </>
   );
 }

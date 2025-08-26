@@ -323,15 +323,14 @@ function KnowledgeConfigurationSheetContent({
         ? "Choose the tables to query for your processing method"
         : "Choose the data sources to include in your knowledge base",
       icon: undefined,
+      noScroll: true,
       content: (
-        <div className="h-full">
-          <DataSourceBuilderSelector
-            dataSourceViews={supportedDataSourceViews}
-            owner={owner}
-            viewType="all"
-            allowedSpaces={allowedSpaces}
-          />
-        </div>
+        <DataSourceBuilderSelector
+          dataSourceViews={supportedDataSourceViews}
+          owner={owner}
+          viewType="all"
+          allowedSpaces={allowedSpaces}
+        />
       ),
       footerContent: hasSourceSelection ? <KnowledgeFooter /> : undefined,
     },

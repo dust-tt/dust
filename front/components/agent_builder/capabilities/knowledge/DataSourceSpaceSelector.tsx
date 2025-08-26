@@ -149,6 +149,7 @@ export function DataSourceSpaceSelector({
       data={spaceRows}
       columns={columns}
       getRowId={(originalRow) => originalRow.id}
+      maxHeight
     />
   );
 }
