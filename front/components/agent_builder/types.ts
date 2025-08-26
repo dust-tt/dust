@@ -52,12 +52,11 @@ export const DESCRIPTION_MAX_LENGTH = 800;
 export type CapabilityFormData = z.infer<typeof capabilityFormSchema>;
 
 export const CONFIGURATION_SHEET_PAGE_IDS = {
-  MCP_SERVER_SELECTION: "mcp-server-selection",
   DATA_SOURCE_SELECTION: "data-source-selection",
   CONFIGURATION: "configuration",
 } as const;
 
-export const CONFIGURATION_DIALOG_PAGE_IDS = {
+export const TOOLS_SHEET_PAGE_IDS = {
   TOOL_SELECTION: "tool-selection",
   CONFIGURATION: "configuration",
   INFO: "info",
@@ -67,7 +66,7 @@ export type ConfigurationSheetPageId =
   (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
 
 export type ConfigurationPagePageId =
-  (typeof CONFIGURATION_DIALOG_PAGE_IDS)[keyof typeof CONFIGURATION_DIALOG_PAGE_IDS];
+  (typeof TOOLS_SHEET_PAGE_IDS)[keyof typeof TOOLS_SHEET_PAGE_IDS];
 
 // Zod validation schema for data source configuration - defines the contract/shape
 export const dataSourceConfigurationSchema = z.object({
@@ -98,10 +97,18 @@ export const capabilityFormSchema = z
     name: z
       .string()
       .min(1, "The name cannot be empty.")
-      .regex(
-        /^[a-z0-9_]+$/,
-        "The name can only contain lowercase letters, numbers, and underscores (no spaces)."
-      )
+      .transform((val) => {
+        // Convert to lowercase and replace spaces and special chars with underscores
+        return (
+          val
+            .toLowerCase()
+            .replace(/[^a-z0-9_]/g, "_")
+            // Remove consecutive underscores
+            .replace(/_+/g, "_")
+            // Remove leading/trailing underscores
+            .replace(/^_+|_+$/g, "")
+        );
+      })
       .default(""),
     description: z
       .string()

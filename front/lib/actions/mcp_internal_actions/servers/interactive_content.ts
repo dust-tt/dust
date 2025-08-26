@@ -12,21 +12,10 @@ import {
   editClientExecutableFile,
   getClientExecutableFileContent,
 } from "@app/lib/api/files/client_executable";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import type { InteractiveFileContentType } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { INTERACTIVE_FILE_FORMATS } from "@app/types";
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "interactive_content",
-  version: "1.0.0",
-  description:
-    "Create and update interactive content files that users can execute and interact with. Currently supports client-executable code.",
-  authorization: null,
-  icon: "ActionDocumentTextIcon",
-  documentationUrl: null,
-};
 
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
@@ -45,7 +34,7 @@ const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer("interactive_content");
 
   server.tool(
     CREATE_INTERACTIVE_FILE_TOOL_NAME,

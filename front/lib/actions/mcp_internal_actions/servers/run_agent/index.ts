@@ -1,0 +1,453 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { DustAPI } from "@dust-tt/client";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import assert from "assert";
+import { z } from "zod";
+
+import {
+  AGENT_CONFIGURATION_URI_PATTERN,
+  ConfigurableToolInputSchemas,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getOrCreateConversation } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/conversation";
+import type {
+  ChildAgentBlob,
+  RunAgentBlockingEvent,
+} from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+import { makeToolBlockedAwaitingInputResponse } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+import {
+  makeInternalMCPServer,
+  makeMCPToolTextError,
+} from "@app/lib/actions/mcp_internal_actions/utils";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isLightServerSideMCPToolConfiguration,
+  isMCPActionArray,
+  isServerSideMCPServerConfiguration,
+} from "@app/lib/actions/types/guards";
+import { getCitationsFromActions } from "@app/lib/api/assistant/citations";
+import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
+import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
+import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { getResourcePrefix } from "@app/lib/resources/string_ids";
+import logger from "@app/logger/logger";
+import type { CitationType, Result } from "@app/types";
+import { isGlobalAgentId } from "@app/types";
+import { Err, getHeaderFromUserEmail, normalizeError, Ok } from "@app/types";
+
+function parseAgentConfigurationUri(uri: string): Result<string, Error> {
+  const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
+  if (!match) {
+    return new Err(new Error(`Invalid URI for an agent configuration: ${uri}`));
+  }
+  // Safe to do this because the inputs are already checked against the zod schema here.
+  return new Ok(match[2]);
+}
+
+/**
+ * This method fetches the name and description of a child agent. It returns it even if the
+ * agent is private as it is referenced from a parent agent which requires a name and description
+ * for the associated run_agent tool rendering.
+ *
+ * Actual permissions to run the agent for the auth are checked at run time when creating the
+ * conversation. Through execution of the parent agent the child agent name and description could be
+ * leaked to the user which appears as acceptable given the proactive decision of a builder having
+ * access to it to refer it from the parent agent more broadly shared.
+ *
+ * If the agent has been archived, this method will return null leading to the tool being displayed
+ * to the model as not configured.
+ */
+async function leakyGetAgentNameAndDescriptionForChildAgent(
+  auth: Authenticator,
+  agentId: string
+): Promise<{
+  name: string;
+  description: string;
+} | null> {
+  if (isGlobalAgentId(agentId)) {
+    const metadata = getGlobalAgentMetadata(agentId);
+
+    if (!metadata) {
+      return null;
+    }
+
+    return {
+      name: metadata.name,
+      description: metadata.description,
+    };
+  }
+
+  const owner = auth.getNonNullableWorkspace();
+
+  const agentConfiguration = await AgentConfiguration.findOne({
+    where: {
+      sId: agentId,
+      workspaceId: owner.id,
+      status: "active",
+    },
+    attributes: ["name", "description"],
+  });
+
+  if (!agentConfiguration) {
+    return null;
+  }
+
+  return {
+    name: agentConfiguration.name,
+    description: agentConfiguration.description,
+  };
+}
+
+export default async function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): Promise<McpServer> {
+  const server = makeInternalMCPServer("run_agent");
+  const owner = auth.getNonNullableWorkspace();
+
+  let childAgentId: string | null = null;
+
+  if (
+    agentLoopContext &&
+    agentLoopContext.listToolsContext &&
+    isServerSideMCPServerConfiguration(
+      agentLoopContext.listToolsContext.agentActionConfiguration
+    ) &&
+    agentLoopContext.listToolsContext.agentActionConfiguration.childAgentId
+  ) {
+    childAgentId =
+      agentLoopContext.listToolsContext.agentActionConfiguration.childAgentId;
+  }
+
+  if (
+    agentLoopContext &&
+    agentLoopContext.runContext &&
+    isLightServerSideMCPToolConfiguration(
+      agentLoopContext.runContext.toolConfiguration
+    ) &&
+    agentLoopContext.runContext.toolConfiguration.childAgentId
+  ) {
+    childAgentId = agentLoopContext.runContext.toolConfiguration.childAgentId;
+  }
+
+  let childAgentBlob: ChildAgentBlob | null = null;
+  if (childAgentId) {
+    childAgentBlob = await leakyGetAgentNameAndDescriptionForChildAgent(
+      auth,
+      childAgentId
+    );
+  }
+
+  // If we have no child ID (unexpected) or the child agent was archived, return a dummy server
+  // whose tool name and description informs the agent of the situation.
+  if (!childAgentBlob) {
+    server.tool(
+      "run_agent_tool_not_available",
+      "No child agent configured for this tool, as the child agent was probably archived. " +
+        "Do not attempt to run the tool and warn the user instead.",
+      {
+        childAgent:
+          ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
+      },
+      async () => makeMCPToolTextError("No child agent configured")
+    );
+    return server;
+  }
+
+  server.tool(
+    `run_${childAgentBlob.name}`,
+    `Run agent ${childAgentBlob.name} (${childAgentBlob.description})`,
+    {
+      query: z
+        .string()
+        .describe(
+          "The query sent to the agent. This is the question or instruction that will be " +
+            "processed by the agent, which will respond with its own capabilities and knowledge."
+        ),
+      toolsetsToAdd: z
+        .array(
+          z
+            .string()
+            .regex(new RegExp(`^${getResourcePrefix("mcp_server_view")}_\\w+$`))
+        )
+        .describe(
+          "The toolsets ids to add to the agent in addition to the ones already set in the agent configuration."
+        )
+        .optional()
+        .nullable(),
+      childAgent:
+        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
+    },
+    async (
+      { query, childAgent: { uri }, toolsetsToAdd },
+      { sendNotification, _meta }
+    ) => {
+      assert(
+        agentLoopContext?.runContext,
+        "agentLoopContext is required where the tool is called"
+      );
+
+      const { agentConfiguration: mainAgent, conversation: mainConversation } =
+        agentLoopContext.runContext;
+
+      const childAgentIdRes = parseAgentConfigurationUri(uri);
+      if (childAgentIdRes.isErr()) {
+        return makeMCPToolTextError(childAgentIdRes.error.message);
+      }
+      const childAgentId = childAgentIdRes.value;
+
+      const user = auth.user();
+
+      const prodCredentials = await prodAPICredentialsForOwner(owner);
+      const api = new DustAPI(
+        config.getDustAPIConfig(),
+        {
+          ...prodCredentials,
+          extraHeaders: {
+            // We use a system API key to override the user here (not groups and role) so that the
+            // sub-agent can access the same spaces as the user but also as the sub-agent may rely
+            // on personal actions that have to be operated in the name of the user initiating the
+            // interaction.
+            ...getHeaderFromUserEmail(user?.email),
+          },
+        },
+        logger
+      );
+
+      const convRes = await getOrCreateConversation(
+        api,
+        agentLoopContext.runContext,
+        {
+          childAgentBlob,
+          childAgentId,
+          mainAgent,
+          mainConversation,
+          query,
+          toolsetsToAdd: toolsetsToAdd ?? null,
+        }
+      );
+
+      if (convRes.isErr()) {
+        return makeMCPToolTextError(convRes.error.message);
+      }
+
+      const { conversation, isNewConversation, userMessageId } = convRes.value;
+
+      // Send notification indicating that a run_agent started and a new conversation was created if
+      // it is the first time the conversation is created.
+      if (_meta?.progressToken && sendNotification && isNewConversation) {
+        const notification: MCPProgressNotificationType = {
+          method: "notifications/progress",
+          params: {
+            progress: 1,
+            total: 1,
+            progressToken: _meta.progressToken,
+            data: {
+              label: `Running agent ${childAgentBlob.name}`,
+              output: {
+                type: "run_agent",
+                query,
+                childAgentId: childAgentId,
+                conversationId: conversation.sId,
+              },
+            },
+          },
+        };
+        await sendNotification(notification);
+      }
+
+      const streamRes = await api.streamAgentAnswerEvents({
+        conversation: conversation,
+        userMessageId,
+      });
+
+      if (streamRes.isErr()) {
+        const errorMessage = `Failed to stream agent answer: ${streamRes.error.message}`;
+        return makeMCPToolTextError(errorMessage);
+      }
+
+      const collectedBlockingEvents: RunAgentBlockingEvent[] = [];
+
+      // TODO(DURABLE_AGENT 2025-08-25): We should make this more robust and use the existing
+      // conversation content if present.
+      let finalContent = "";
+      let chainOfThought = "";
+      let refs: Record<string, CitationType> = {};
+      try {
+        for await (const event of streamRes.value.eventStream) {
+          if (event.type === "generation_tokens") {
+            // Separate content based on classification.
+            if (event.classification === "chain_of_thought") {
+              chainOfThought += event.text;
+              const notification: MCPProgressNotificationType = {
+                method: "notifications/progress",
+                params: {
+                  progress: 0,
+                  total: 1,
+                  progressToken: 0,
+                  data: {
+                    label: "Agent thinking...",
+                    output: {
+                      type: "run_agent_chain_of_thought",
+                      childAgentId: childAgentId,
+                      conversationId: conversation.sId,
+                      chainOfThought: chainOfThought,
+                    },
+                  },
+                },
+              };
+              if (sendNotification) {
+                await sendNotification(notification);
+              }
+            } else if (event.classification === "tokens") {
+              finalContent += event.text;
+              const notification: MCPProgressNotificationType = {
+                method: "notifications/progress",
+                params: {
+                  progress: 0,
+                  total: 1,
+                  progressToken: 0,
+                  data: {
+                    label: "Agent responding...",
+                    output: {
+                      type: "run_agent_generation_tokens",
+                      childAgentId: childAgentId,
+                      conversationId: conversation.sId,
+                      text: finalContent,
+                    },
+                  },
+                },
+              };
+              if (sendNotification) {
+                await sendNotification(notification);
+              }
+            } else if (
+              event.classification === "closing_delimiter" &&
+              event.delimiterClassification === "chain_of_thought" &&
+              chainOfThought.length > 0
+            ) {
+              // For closing chain of thought delimiters, add a newline.
+              chainOfThought += "\n";
+              const notification: MCPProgressNotificationType = {
+                method: "notifications/progress",
+                params: {
+                  progress: 0,
+                  total: 1,
+                  progressToken: 0,
+                  data: {
+                    label: "Agent thinking...",
+                    output: {
+                      type: "run_agent_chain_of_thought",
+                      childAgentId: childAgentId,
+                      conversationId: conversation.sId,
+                      chainOfThought: chainOfThought,
+                    },
+                  },
+                },
+              };
+              if (sendNotification) {
+                await sendNotification(notification);
+              }
+            }
+          } else if (event.type === "agent_error") {
+            const errorMessage = `Agent error: ${event.error.message}`;
+            return makeMCPToolTextError(errorMessage);
+          } else if (event.type === "user_message_error") {
+            const errorMessage = `User message error: ${event.error.message}`;
+            return makeMCPToolTextError(errorMessage);
+          } else if (event.type === "agent_message_success") {
+            if (isMCPActionArray(event.message.actions)) {
+              refs = getCitationsFromActions(event.message.actions);
+            }
+            break;
+          } else if (event.type === "tool_approve_execution") {
+            // Collect this blocking event.
+            collectedBlockingEvents.push(event);
+
+            // If this is the last blocking event for the step, throw an error to break the agent
+            // loop until the user approves the execution.
+            if (event.isLastBlockingEventForStep) {
+              return makeToolBlockedAwaitingInputResponse(
+                collectedBlockingEvents,
+                {
+                  conversationId: conversation.sId,
+                  userMessageId,
+                }
+              );
+            }
+          } else if (event.type === "tool_error") {
+            // Handle personal authentication required errors.
+            if (
+              event.error.code === "mcp_server_personal_authentication_required"
+            ) {
+              const metadata = event.error.metadata ?? {};
+
+              collectedBlockingEvents.push({
+                type: "tool_personal_auth_required",
+                created: event.created,
+                configurationId: event.configurationId,
+                messageId: event.messageId,
+                conversationId: conversation.sId,
+                authError: {
+                  mcpServerId: metadata.mcp_server_id,
+                  provider: metadata.provider,
+                  toolName: metadata.toolName,
+                  message: metadata.message,
+                  scope: metadata.scope,
+                },
+              });
+
+              if (event.isLastBlockingEventForStep) {
+                return makeToolBlockedAwaitingInputResponse(
+                  collectedBlockingEvents,
+                  {
+                    conversationId: conversation.sId,
+                    userMessageId,
+                  }
+                );
+              }
+            }
+          }
+        }
+      } catch (streamError) {
+        const errorMessage = `Error processing agent stream: ${
+          normalizeError(streamError).message
+        }`;
+        return makeMCPToolTextError(errorMessage);
+      }
+      finalContent = finalContent.trim();
+      chainOfThought = chainOfThought.trim();
+
+      return {
+        isError: false,
+        content: [
+          {
+            type: "resource",
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
+              text: query,
+              childAgentId: childAgentId,
+              uri: "",
+            },
+          },
+          {
+            type: "resource",
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT,
+              conversationId: conversation.sId,
+              text: finalContent,
+              chainOfThought:
+                chainOfThought.length > 0 ? chainOfThought : undefined,
+              uri: `${config.getClientFacingUrl()}/w/${auth.getNonNullableWorkspace().sId}/assistant/${conversation.sId}`,
+              refs: Object.keys(refs).length > 0 ? refs : undefined,
+            },
+          },
+        ],
+      };
+    }
+  );
+
+  return server;
+}

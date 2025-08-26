@@ -92,14 +92,14 @@ export const isInternalAllowedIcon = (
 export const getAvatar = (
   mcpServer: MCPServerType,
   size: ComponentProps<typeof Avatar>["size"] = "sm"
-): React.ReactNode => {
+) => {
   return getAvatarFromIcon(mcpServer.icon, size);
 };
 
 export const getAvatarFromIcon = (
   icon: InternalAllowedIconType | CustomServerIconType,
   size: ComponentProps<typeof Avatar>["size"] = "sm"
-): React.ReactNode => {
+) => {
   if (isCustomServerIconType(icon)) {
     return <Avatar icon={ActionIcons[icon]} size={size} />;
   }

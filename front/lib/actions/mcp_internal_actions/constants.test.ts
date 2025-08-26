@@ -42,6 +42,7 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "data_sources_file_system", id: 1010 },
       { name: "agent_management", id: 1011 },
       { name: "data_warehouses", id: 1012 },
+      { name: "toolsets", id: 1013 },
     ];
     expect(
       autoInternalTools,

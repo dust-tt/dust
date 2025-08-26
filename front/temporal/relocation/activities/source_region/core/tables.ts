@@ -8,10 +8,12 @@ import type {
 } from "@app/temporal/relocation/activities/types";
 import {
   CORE_API_CONCURRENCY_LIMIT,
-  CORE_API_LIST_NODES_BATCH_SIZE,
   isStringTooLongError,
 } from "@app/temporal/relocation/activities/types";
-import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
+import {
+  withJSONSerializationRetry,
+  writeToRelocationStorage,
+} from "@app/temporal/relocation/lib/file_storage/relocation";
 import type {
   CoreAPINodesSearchFilter,
   CoreAPISearchCursorRequest,
@@ -25,11 +27,13 @@ export async function getDataSourceTables({
   pageCursor,
   sourceRegion,
   workspaceId,
+  limit,
 }: {
   dataSourceCoreIds: DataSourceCoreIds;
   pageCursor: string | null;
   sourceRegion: RegionType;
   workspaceId: string;
+  limit: number;
 }) {
   const localLogger = logger.child({
     dataSourceCoreIds,
@@ -54,7 +58,7 @@ export async function getDataSourceTables({
   };
 
   const options: CoreAPISearchCursorRequest = {
-    limit: CORE_API_LIST_NODES_BATCH_SIZE,
+    limit,
   };
 
   if (pageCursor) {
@@ -141,24 +145,41 @@ export async function getDataSourceTables({
     "[Core] Blobs fetched, now writing to target storage"
   );
 
-  // 3) Save the tables blobs to file storage.
-  const dataPath = await writeToRelocationStorage(blobs, {
-    workspaceId,
-    type: "core",
-    operation: "data_source_tables_blobs",
-  });
+  return withJSONSerializationRetry<{
+    dataPath: string | null;
+    nextPageCursor: string | null;
+    nextLimit: number | null;
+  }>(
+    async () => {
+      // 3) Save the tables blobs to file storage.
+      const dataPath = await writeToRelocationStorage(blobs, {
+        workspaceId,
+        type: "core",
+        operation: "data_source_tables_blobs",
+      });
 
-  localLogger.info(
-    {
-      dataPath,
-      nextPageCursor,
-      nodeCount: nodes.length,
+      localLogger.info(
+        {
+          dataPath,
+          nextPageCursor,
+          nodeCount: nodes.length,
+        },
+        "[Core] Retrieved data source tables"
+      );
+
+      return {
+        dataPath,
+        nextPageCursor,
+        nextLimit: null,
+      };
     },
-    "[Core] Retrieved data source tables"
+    {
+      fallbackResult: {
+        dataPath: null,
+        nextPageCursor: pageCursor,
+      },
+      limit,
+      localLogger,
+    }
   );
-
-  return {
-    dataPath,
-    nextPageCursor,
-  };
 }

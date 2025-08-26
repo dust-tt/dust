@@ -49,14 +49,9 @@ interface MCPServerViewsContextType {
   isMCPServerViewsError: boolean;
 }
 
-const MCPServerViewsContext = createContext<MCPServerViewsContextType>({
-  mcpServerViews: [],
-  mcpServerViewsWithKnowledge: [],
-  defaultMCPServerViews: [],
-  nonDefaultMCPServerViews: [],
-  isMCPServerViewsLoading: false,
-  isMCPServerViewsError: false,
-});
+const MCPServerViewsContext = createContext<
+  MCPServerViewsContextType | undefined
+>(undefined);
 
 function getGroupedMCPServerViews({
   mcpServerViews,
@@ -153,12 +148,14 @@ export const MCPServerViewsProvider = ({
 }: MCPServerViewsProviderProps) => {
   const { spaces, isSpacesLoading } = useSpacesContext();
 
-  // TODO: we should only fetch it on mount.
   const {
     serverViews: mcpServerViews,
     isLoading,
     isError: isMCPServerViewsError,
-  } = useMCPServerViewsFromSpaces(owner, spaces);
+  } = useMCPServerViewsFromSpaces(owner, spaces, {
+    revalidateIfStale: false,
+    revalidateOnFocus: false,
+  });
 
   const sortedMCPServerViews = useMemo(
     () => mcpServerViews.sort(mcpServerViewSortingFn),

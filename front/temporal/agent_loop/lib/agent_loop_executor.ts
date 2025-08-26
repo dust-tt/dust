@@ -73,8 +73,8 @@ async function executeStepIteration({
     };
   }
 
-  // Execute tools.
-  await Promise.all(
+  // Execute tools and collect any deferred events.
+  const toolResults = await Promise.all(
     actionBlobs.map(({ actionId }) =>
       activities.runToolActivity(authType, {
         actionId,
@@ -83,6 +83,25 @@ async function executeStepIteration({
       })
     )
   );
+
+  // Collect all deferred events from tool executions.
+  const allDeferredEvents = toolResults.flatMap(
+    (result) => result.deferredEvents
+  );
+
+  // If there are deferred events, publish them after all tools have completed.
+  if (allDeferredEvents.length > 0) {
+    const shouldPauseWorkflow =
+      await activities.publishDeferredEventsActivity(allDeferredEvents);
+
+    if (shouldPauseWorkflow) {
+      // Break the loop - workflow will be restarted externally once required action is completed.
+      return {
+        runId,
+        shouldContinue: false,
+      };
+    }
+  }
 
   return {
     runId,
@@ -131,11 +150,12 @@ export async function executeAgentLoop(
     currentStep = i;
 
     // Check if we should switch to async mode due to timeout (only in sync mode).
-    if (runAgentArgs.sync && runAgentArgs.syncToAsyncTimeoutMs) {
+    if (runAgentArgs.sync /* && runAgentArgs.syncToAsyncTimeoutMs */) {
       const elapsedMs = Date.now() - syncStartTime;
-      if (elapsedMs > runAgentArgs.syncToAsyncTimeoutMs) {
-        throw new SyncTimeoutError({ currentStep, elapsedMs });
-      }
+      // if (elapsedMs > runAgentArgs.syncToAsyncTimeoutMs) {
+      // TODO(DURABLE_AGENT 2025-08-22): Remove this once we made a decision on sync vs async.
+      throw new SyncTimeoutError({ currentStep, elapsedMs });
+      // }
     }
 
     const stepStartTime = Date.now();

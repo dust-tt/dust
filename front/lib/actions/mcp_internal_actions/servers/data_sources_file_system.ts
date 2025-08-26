@@ -44,7 +44,6 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import { ROOT_PARENT_ID } from "@app/lib/api/data_source_view";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -67,22 +66,6 @@ import {
   stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
-
-export const FILESYSTEM_SERVER_NAME = "data_sources_file_system";
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: FILESYSTEM_SERVER_NAME,
-  version: "1.0.0",
-  description:
-    "Comprehensive content navigation toolkit for browsing user data sources. Provides Unix-like " +
-    "browsing (ls, find) and smart search tools to help agents efficiently explore and discover " +
-    "content from manually uploaded files or data synced from SaaS products (Notion, Slack, Github" +
-    ", etc.) organized in a filesystem-like hierarchy. Each item in this tree-like hierarchy is " +
-    "called a node, nodes are referenced by a nodeId.",
-  authorization: null,
-  icon: "ActionDocumentTextIcon",
-  documentationUrl: null,
-};
 
 const OPTION_PARAMETERS = {
   limit: z
@@ -383,7 +366,7 @@ const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer("data_sources_file_system");
 
   server.tool(
     FILESYSTEM_CAT_TOOL_NAME,

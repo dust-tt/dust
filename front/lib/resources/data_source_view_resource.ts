@@ -329,6 +329,27 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     });
   }
 
+  static async listAllInGlobalGroup(auth: Authenticator) {
+    const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    assert(globalGroup.isOk(), "Failed to fetch global group");
+
+    const spaces = await SpaceResource.listForGroups(auth, [globalGroup.value]);
+
+    return this.baseFetch(auth, undefined, {
+      includes: [
+        {
+          model: DataSourceModel,
+          as: "dataSourceForView",
+          required: true,
+        },
+      ],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: spaces.map((s) => s.id),
+      },
+    });
+  }
+
   static async listForDataSourcesInSpace(
     auth: Authenticator,
     dataSources: DataSourceResource[],

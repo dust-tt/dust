@@ -15,7 +15,7 @@ import type { EditedByUser, MCPOAuthUseCase, ModelId } from "@app/types";
 export type MCPToolType = {
   name: string;
   description: string;
-  inputSchema: JSONSchema | undefined;
+  inputSchema?: JSONSchema;
 };
 
 export type MCPToolWithAvailabilityType = MCPToolType & {
@@ -88,8 +88,8 @@ type InternalMCPServerType = MCPServerType & {
   name: InternalMCPServerNameType;
   // We enforce that we pass an icon here.
   icon: InternalAllowedIconType;
-  // Instructions that are appended to the overall prompt
-  instructions?: string;
+  // Instructions that are appended to the overall prompt.
+  instructions: string | null;
 };
 
 export type InternalMCPServerDefinitionType = Omit<

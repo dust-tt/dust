@@ -11,22 +11,12 @@ import {
   makeInternalMCPServer,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import type { SupportedFileContentType } from "@app/types";
 import { assertNever, normalizeError, validateUrl } from "@app/types";
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "file_generation",
-  version: "1.0.0",
-  description: "Agent can generate and convert files.",
-  authorization: null,
-  icon: "ActionDocumentTextIcon",
-  documentationUrl: null,
-};
 
 const OUTPUT_FORMATS = [
   "csv",
@@ -104,7 +94,7 @@ function getContentTypeFromOutputFormat(
 }
 
 const createServer = (auth: Authenticator): McpServer => {
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer("file_generation");
   server.tool(
     "get_supported_source_formats_for_output_format",
     "Get a list of source formats supported for a target output format.",

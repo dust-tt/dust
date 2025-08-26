@@ -1,11 +1,12 @@
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
-import { Authenticator, AuthenticatorType } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import type { AuthenticatorType } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { TriggerType } from "@app/types/assistant/triggers";
+import type { TriggerType } from "@app/types/assistant/triggers";
 
 export async function runScheduledAgentsActivity(
   authType: AuthenticatorType,
@@ -17,11 +18,9 @@ export async function runScheduledAgentsActivity(
     throw new Error("Invalid authentication. Missing workspaceId or userId.");
   }
 
-  const agentConfiguration = await AgentConfiguration.findOne({
-    where: {
-      id: trigger.agentConfigurationId,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: trigger.agentConfigurationId,
+    variant: "light",
   });
 
   if (!agentConfiguration) {
@@ -32,7 +31,7 @@ export async function runScheduledAgentsActivity(
 
   const newConversation = await createConversation(auth, {
     title: `@${agentConfiguration.name} scheduled call - ${new Date().toLocaleDateString()}`,
-    visibility: "unlisted",
+    visibility: "triggered",
   });
 
   const baseContext = {
@@ -46,7 +45,9 @@ export async function runScheduledAgentsActivity(
 
   const messageRes = await postUserMessage(auth, {
     conversation: newConversation,
-    content: `:mention[${agentConfiguration.name}]{${agentConfiguration.sId}}`,
+    content:
+      `:mention[${agentConfiguration.name}]{${agentConfiguration.sId}}` +
+      (trigger.customPrompt ? `\n\n${trigger.customPrompt}` : ""),
     mentions: [{ configurationId: agentConfiguration.sId }],
     context: baseContext,
     skipToolsValidation: false,

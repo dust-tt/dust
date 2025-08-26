@@ -41,6 +41,11 @@ import {
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  extractToolBlockedAwaitingInputResponse,
+  isToolBlockedAwaitingInputResponse,
+  ToolBlockedAwaitingInputError,
+} from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import type {
   MCPConnectionParams,
   ServerSideMCPConnectionParams,
@@ -80,7 +85,7 @@ import { Err, normalizeError, Ok, slugify } from "@app/types";
 
 const MAX_OUTPUT_ITEMS = 128;
 
-const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes.
+const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes.
 
 const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
@@ -223,7 +228,10 @@ type MCPCallToolEvent =
       type: "result";
       result: Result<
         CallToolResult["content"],
-        Error | McpError | MCPServerPersonalAuthenticationRequiredError
+        | Error
+        | McpError
+        | MCPServerPersonalAuthenticationRequiredError
+        | ToolBlockedAwaitingInputError
       >;
     };
 
@@ -387,6 +395,19 @@ export async function* tryCallMCPTool(
                     authReq.provider
                   )
                 ),
+              };
+              return;
+            } else if (isToolBlockedAwaitingInputResponse(parsed)) {
+              const { blockingEvents, state } =
+                extractToolBlockedAwaitingInputResponse(parsed);
+              const err = new ToolBlockedAwaitingInputError(
+                blockingEvents,
+                state
+              );
+
+              yield {
+                type: "result",
+                result: new Err(err),
               };
               return;
             }

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   FIND_TAGS_TOOL_NAME,
+  SEARCH_SERVER_NAME,
   SEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -28,7 +29,6 @@ import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers"
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -43,15 +43,6 @@ import {
   stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "search",
-  version: "1.0.0",
-  description: "Search through selected Data sources",
-  icon: "ActionMagnifyingGlassIcon",
-  authorization: null,
-  documentationUrl: null,
-};
 
 export async function searchFunction({
   query,
@@ -224,7 +215,7 @@ function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer(SEARCH_SERVER_NAME);
 
   const commonInputsSchema = {
     query: z

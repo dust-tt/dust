@@ -1,10 +1,8 @@
 import assert from "assert";
 
-import type {
-  ActionBaseParams,
-  ToolExecutionStatus,
-} from "@app/lib/actions/mcp";
+import type { ActionBaseParams } from "@app/lib/actions/mcp";
 import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { ModelId } from "@app/types";
 import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
@@ -62,7 +60,6 @@ export async function buildActionBaseParams({
     mcpServerConfigurationId,
     params: rawInputs,
     step,
-    runningState: "running",
     status,
   };
 }

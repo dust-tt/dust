@@ -9,6 +9,7 @@ import {
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as logAgentLoopMetricsActivities from "@app/temporal/agent_loop/activities/instrumentation";
+import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
 import type { AgentLoopActivities } from "@app/temporal/agent_loop/lib/activity_interface";
@@ -38,6 +39,11 @@ const activities: AgentLoopActivities = {
       maximumAttempts: 1,
     },
   }).runToolActivity,
+  publishDeferredEventsActivity: proxyActivities<
+    typeof publishDeferredEventsActivities
+  >({
+    startToCloseTimeout: "2 minutes",
+  }).publishDeferredEventsActivity,
   logAgentLoopPhaseStartActivity:
     logMetricsActivities.logAgentLoopPhaseStartActivity,
   logAgentLoopPhaseCompletionActivity:

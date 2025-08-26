@@ -1,30 +1,17 @@
+import type { ScheduleOptions } from "@temporalio/client";
 import {
-  Client,
-  ScheduleHandle,
-  ScheduleOptions,
+  ScheduleNotFoundError,
   ScheduleOverlapPolicy,
-  WorkflowNotFoundError,
 } from "@temporalio/client";
 
+import type { AuthenticatorType } from "@app/lib/auth";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
-
 import { QUEUE_NAME } from "@app/temporal/agent_schedule/config";
 import { agentScheduleWorkflow } from "@app/temporal/agent_schedule/workflows";
-import { AuthenticatorType } from "@app/lib/auth";
-import { TriggerType } from "@app/types/assistant/triggers";
-
-function getExistingSchedule(client: Client, scheduleId: string) {
-  let schedule: ScheduleHandle | null;
-  try {
-    schedule = client.schedule.getHandle(scheduleId);
-  } catch (err) {
-    return null;
-  }
-  return schedule;
-}
+import type { Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
+import type { TriggerType } from "@app/types/assistant/triggers";
 
 function getScheduleOptions(
   authType: AuthenticatorType,
@@ -43,8 +30,8 @@ function getScheduleOptions(
       overlap: ScheduleOverlapPolicy.SKIP,
     },
     spec: {
-      cronExpressions: [trigger.config.cron],
-      timezone: trigger.config.timezone,
+      cronExpressions: [trigger.configuration.cron],
+      timezone: trigger.configuration.timezone,
     },
   };
 }
@@ -73,48 +60,53 @@ export async function createOrUpdateAgentScheduleWorkflow({
 
   if (trigger.kind !== "schedule") {
     childLogger.error(
-      { triggerConfig: trigger.config },
+      { triggerConfig: trigger.configuration },
       "Trigger is not a schedule."
     );
     return new Err(new Error("Trigger is not a schedule"));
   }
 
+  const scheduleOptions = getScheduleOptions(authType, trigger, scheduleId);
+
   /**
    * First, we try to get and update the existing schedule
    */
-  const existingSchedule = getExistingSchedule(client, scheduleId);
-  const scheduleOptions = getScheduleOptions(authType, trigger, scheduleId);
-
+  const existingSchedule = client.schedule.getHandle(scheduleId);
   try {
-    if (existingSchedule) {
-      await existingSchedule.update((previous) => {
-        return {
-          ...scheduleOptions,
-          state: previous.state,
-        };
-      });
-    } else {
-      await client.schedule.create(scheduleOptions);
-    }
+    await existingSchedule.update((previous) => {
+      return {
+        ...scheduleOptions,
+        state: previous.state,
+      };
+    });
 
-    childLogger.info(
-      { scheduleId, trigger },
-      "Scheduled workflow successfully."
-    );
-  } catch {
-    childLogger.error(
-      {
-        scheduleId,
-        trigger,
-      },
-      existingSchedule
-        ? "Failed to update existing schedule."
-        : "Failed to create new schedule."
-    );
-    return new Err(new Error("Failed to update existing schedule"));
+    childLogger.info({ scheduleId, trigger }, "Updated existing schedule.");
+    return new Ok(scheduleId);
+  } catch (err) {
+    if (!(err instanceof ScheduleNotFoundError)) {
+      childLogger.error(
+        { err, scheduleId, trigger },
+        "Failed to update existing schedule."
+      );
+      return new Err(normalizeError(err));
+    }
   }
 
-  return new Ok(scheduleId);
+  /**
+   * If we reach that point, it means the schedule does not exist,
+   * so we create a new one.
+   */
+  try {
+    await client.schedule.create(scheduleOptions);
+    childLogger.info({ scheduleId, trigger }, "Created new schedule.");
+    return new Ok(scheduleId);
+  } catch (error) {
+    childLogger.error(
+      { error, scheduleId, trigger },
+      "Failed to create new schedule."
+    );
+    return new Err(normalizeError(error));
+  }
 }
 
 export async function deleteAgentScheduleWorkflow({
@@ -122,7 +114,6 @@ export async function deleteAgentScheduleWorkflow({
   triggerId,
 }: {
   workspaceId: string;
-  agentConfigurationId: number;
   triggerId: string;
 }): Promise<Result<void, Error>> {
   const client = await getTemporalClientForAgentNamespace();
@@ -141,7 +132,7 @@ export async function deleteAgentScheduleWorkflow({
     );
     return new Ok(undefined);
   } catch (err) {
-    if (err instanceof WorkflowNotFoundError) {
+    if (err instanceof ScheduleNotFoundError) {
       childLogger.warn(
         { scheduleId },
         "Workflow not found, nothing to delete."

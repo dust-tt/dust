@@ -1,10 +1,11 @@
 import {
-  Checkbox,
+  Button,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   ContextItem,
   LoadingBlock,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -64,13 +65,19 @@ function KnowledgeFooterItem({
       title={item.name}
       visual={<ContextItem.Visual visual={VisualComponent} />}
       action={
-        <Checkbox checked onCheckedChange={() => removeNodeWithPath(item)} />
+        <Button
+          size="mini"
+          variant="ghost"
+          icon={XMarkIcon}
+          onClick={() => removeNodeWithPath(item)}
+        />
       }
-    >
-      {item.type === "node" && (
-        <KnowledgeFooterItemReadablePath node={item.node} />
-      )}
-    </ContextItem>
+      subElement={
+        item.type === "node" && (
+          <KnowledgeFooterItemReadablePath node={item.node} />
+        )
+      }
+    />
   );
 }
 
@@ -84,24 +91,22 @@ export function KnowledgeFooter() {
   }
 
   return (
-    <div className="px-4 py-5">
-      <Collapsible open={isOpen} onOpenChange={setOpen}>
-        <CollapsibleTrigger isOpen={isOpen}>
-          <span className="heading-sm text-muted-foreground">
-            Selection ({field.value.in.length} item
-            {pluralize(field.value.in.length)})
-          </span>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="rounded-xl bg-muted dark:bg-muted-night">
-            <ContextItem.List className="max-h-40 overflow-x-scroll">
-              {field.value.in.map((item) => (
-                <KnowledgeFooterItem key={item.path} item={item} />
-              ))}
-            </ContextItem.List>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-    </div>
+    <Collapsible open={isOpen} onOpenChange={setOpen}>
+      <CollapsibleTrigger isOpen={isOpen}>
+        <span className="heading-sm text-muted-foreground">
+          Selection ({field.value.in.length} item
+          {pluralize(field.value.in.length)})
+        </span>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="rounded-xl bg-muted dark:bg-muted-night">
+          <ContextItem.List className="max-h-40 overflow-x-scroll">
+            {field.value.in.map((item) => (
+              <KnowledgeFooterItem key={item.path} item={item} />
+            ))}
+          </ContextItem.List>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

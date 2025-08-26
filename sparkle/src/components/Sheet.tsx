@@ -88,6 +88,7 @@ interface SheetContentProps
   trapFocusScope?: boolean;
   side?: SheetSideType;
   preventAutoFocusOnClose?: boolean;
+  preventAutoFocusOnOpen?: boolean;
 }
 
 const SheetContent = React.forwardRef<
@@ -102,7 +103,9 @@ const SheetContent = React.forwardRef<
       side,
       trapFocusScope,
       preventAutoFocusOnClose = true,
+      preventAutoFocusOnOpen = true,
       onCloseAutoFocus,
+      onOpenAutoFocus,
       ...props
     },
     ref
@@ -117,6 +120,16 @@ const SheetContent = React.forwardRef<
       [preventAutoFocusOnClose, onCloseAutoFocus]
     );
 
+    const handleOpenAutoFocus = React.useCallback(
+      (event: Event) => {
+        if (preventAutoFocusOnOpen) {
+          event.preventDefault();
+        }
+        onOpenAutoFocus?.(event);
+      },
+      [preventAutoFocusOnOpen, onOpenAutoFocus]
+    );
+
     return (
       <SheetPortal>
         <SheetOverlay />
@@ -129,6 +142,7 @@ const SheetContent = React.forwardRef<
               "s-sheet s-text-foreground dark:s-text-foreground-night"
             )}
             onCloseAutoFocus={handleCloseAutoFocus}
+            onOpenAutoFocus={handleOpenAutoFocus}
             {...props}
           >
             {children}
@@ -166,18 +180,25 @@ const SheetHeader = ({
 );
 SheetHeader.displayName = "SheetHeader";
 
-const SheetContainer = ({ children }: React.HTMLAttributes<HTMLDivElement>) => {
+interface SheetContainerProps extends React.HTMLAttributes<HTMLDivElement> {
+  noScroll?: boolean;
+}
+
+const SheetContainer = ({ children, noScroll }: SheetContainerProps) => {
+  const ScrollContainer = noScroll ? React.Fragment : ScrollArea;
   return (
-    <ScrollArea
-      className={cn(
-        "s-w-full s-flex-grow",
-        "s-border-t s-border-border/60 s-transition-all s-duration-300 dark:s-border-border-night/60"
-      )}
-    >
-      <div className="s-relative s-flex s-flex-col s-gap-5 s-p-5 s-text-left s-text-sm s-text-foreground dark:s-text-foreground-night">
-        {children}
+    <ScrollContainer>
+      <div
+        className={cn(
+          "s-h-full s-w-full s-flex-grow",
+          "s-border-t s-border-border/60 s-transition-all s-duration-300 dark:s-border-border-night/60"
+        )}
+      >
+        <div className="s-relative s-flex s-h-full s-flex-col s-gap-5 s-p-5 s-text-left s-text-sm s-text-foreground dark:s-text-foreground-night">
+          {children}
+        </div>
       </div>
-    </ScrollArea>
+    </ScrollContainer>
   );
 };
 SheetContainer.displayName = "SheetContainer";

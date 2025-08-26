@@ -370,25 +370,25 @@ const DropdownMenuItem = React.forwardRef<
     ref
   ) => {
     return (
-      <DropdownMenuPrimitive.Item
-        ref={ref}
-        className={cn(
-          menuStyleClasses.item({ variant }),
-          inset ? menuStyleClasses.inset : "",
-          className
-        )}
-        {...props}
-        asChild={asChild}
+      <LinkWrapper
+        href={href}
+        target={target}
+        rel={rel}
+        replace={replace}
+        shallow={shallow}
+        prefetch={prefetch}
       >
-        <div className="s-h-full s-w-full">
-          <LinkWrapper
-            href={href}
-            target={target}
-            rel={rel}
-            replace={replace}
-            shallow={shallow}
-            prefetch={prefetch}
-          >
+        <DropdownMenuPrimitive.Item
+          ref={ref}
+          className={cn(
+            menuStyleClasses.item({ variant }),
+            inset ? menuStyleClasses.inset : "",
+            className
+          )}
+          {...props}
+          asChild={asChild}
+        >
+          <div className="s-h-full s-w-full">
             <ItemWithLabelIconAndDescription
               label={label}
               icon={icon}
@@ -398,9 +398,9 @@ const DropdownMenuItem = React.forwardRef<
             >
               {children}
             </ItemWithLabelIconAndDescription>
-          </LinkWrapper>
-        </div>
-      </DropdownMenuPrimitive.Item>
+          </div>
+        </DropdownMenuPrimitive.Item>
+      </LinkWrapper>
     );
   }
 );
@@ -660,6 +660,7 @@ const DropdownMenuSearchbar = React.forwardRef<
     return (
       <div className={cn("s-flex s-gap-1.5 s-p-1.5", className)}>
         <SearchInput
+          className="w-full"
           ref={internalRef}
           placeholder={placeholder}
           name={name}

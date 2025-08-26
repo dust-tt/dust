@@ -21,6 +21,12 @@ interface MultiPageSheetPage {
   icon?: React.ComponentType;
   content: React.ReactNode;
   fixedContent?: React.ReactNode;
+  footerContent?: React.ReactNode;
+  /**
+   * Remove the default ScrollArea in the SheetContainer.
+   * To be used if you want to manage the scroll yourself
+   */
+  noScroll?: boolean;
 }
 
 interface MultiPageSheetProps {
@@ -32,7 +38,6 @@ interface MultiPageSheetProps {
   trapFocusScope?: boolean;
   showNavigation?: boolean;
   showHeaderNavigation?: boolean;
-  footerContent?: React.ReactNode;
   onSave?: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
   className?: string;
   disableNext?: boolean;
@@ -69,8 +74,12 @@ const MultiPageSheetFooter = ({
       className={cn("s-flex s-flex-none s-flex-col s-gap-3 s-p-4", className)}
       {...props}
     >
-      {children}
-      <Separator />
+      {children && (
+        <>
+          {children}
+          <Separator />
+        </>
+      )}
       <div className="s-flex s-flex-row s-justify-between">
         <div>{leftButton && <Button {...leftButton} />}</div>
         <div className="s-flex s-gap-2">
@@ -111,7 +120,6 @@ const MultiPageSheetContent = React.forwardRef<
       trapFocusScope,
       showNavigation = true,
       showHeaderNavigation = true,
-      footerContent,
       className,
       disableNext = false,
       addFooterSeparator = false,
@@ -228,6 +236,7 @@ const MultiPageSheetContent = React.forwardRef<
             )}
             <SheetContainer
               className={currentPage.fixedContent ? "s-flex-1" : undefined}
+              noScroll={currentPage.noScroll}
             >
               {currentPage.content}
             </SheetContainer>
@@ -240,7 +249,7 @@ const MultiPageSheetContent = React.forwardRef<
           rightButton={rightButton}
           addTopSeparator={addFooterSeparator}
         >
-          {footerContent}
+          {currentPage.footerContent}
         </MultiPageSheetFooter>
       </SheetContent>
     );

@@ -13,19 +13,21 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType, OAuthProvider } from "@app/types";
 
-export function MCPServerPersonalAuthenticationRequired({
-  owner,
-  mcpServerId,
-  provider,
-  scope,
-  retryHandler,
-}: {
-  owner: LightWorkspaceType;
+interface MCPServerPersonalAuthenticationRequiredProps {
   mcpServerId: string;
+  owner: LightWorkspaceType;
   provider: OAuthProvider;
-  scope?: string;
   retryHandler: () => void;
-}) {
+  scope?: string;
+}
+
+export function MCPServerPersonalAuthenticationRequired({
+  mcpServerId,
+  owner,
+  provider,
+  retryHandler,
+  scope,
+}: MCPServerPersonalAuthenticationRequiredProps) {
   const { server: mcpServer } = useMCPServer({
     owner,
     serverId: mcpServerId,
@@ -63,12 +65,12 @@ export function MCPServerPersonalAuthenticationRequired({
             disabled={isConnecting}
             onClick={async () => {
               setIsConnecting(true);
-              const success = await createPersonalConnection(
+              const success = await createPersonalConnection({
                 mcpServer,
                 provider,
-                "personal_actions",
-                scope
-              );
+                useCase: "personal_actions",
+                scope,
+              });
               setIsConnecting(false);
               if (!success) {
                 setIsConnected(false);

@@ -43,9 +43,9 @@ impl MCPConnectionProvider {
         let provider = credentials.provider();
 
         // Fetch credential
-        if provider != CredentialProvider::Mcp {
+        if provider != CredentialProvider::Mcp && provider != CredentialProvider::McpStatic {
             return Err(anyhow!(
-                "Invalid credential provider: {:?}, expected MCP",
+                "Invalid credential provider: {:?}, expected MCP or McpStatic",
                 provider
             ));
         }

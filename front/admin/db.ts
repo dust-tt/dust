@@ -2,7 +2,7 @@ import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/action
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentChildAgentConfiguration,
-  AgentMCPAction,
+  AgentMCPActionModel,
   AgentMCPActionOutputItem,
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
@@ -160,7 +160,7 @@ async function main() {
 
   await AgentDataRetentionModel.sync({ alter: true });
   await AgentStepContentModel.sync({ alter: true });
-  await AgentMCPAction.sync({ alter: true });
+  await AgentMCPActionModel.sync({ alter: true });
   await AgentMCPActionOutputItem.sync({ alter: true });
   await AgentChildAgentConfiguration.sync({ alter: true });
 
