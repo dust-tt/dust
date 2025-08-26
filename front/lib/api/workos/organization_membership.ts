@@ -13,7 +13,7 @@ async function findWorkOSOrganizationsForUserIdUncached(userId: string) {
     {
       userId,
       statuses: ["active"],
-      limit: 50, // by default it returns 10 so we need to increase the limit 
+      limit: 50, // By default it returns 10 so we need to increase the limit.
     }
   );
 
