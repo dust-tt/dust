@@ -298,19 +298,19 @@ const PEOPLE: Record<
     github: "https://github.com/vincesarkisian",
     linkedIn: "https://www.linkedin.com/in/vincesarkisian/",
   },
-  landry: {
-    name: "Landry Monga",
-    title: "Software Engineer",
-    image: "https://avatars.githubusercontent.com/u/23080211?v=4",
-    github: "https://github.com/lvndry",
-    linkedIn: "https://www.linkedin.com/in/landry-monga",
-  },
   louis: {
     name: "Louis Caulet",
     title: "Enterprise Account Executive",
     image: "https://ca.slack-edge.com/T050RH73H9P-U093VA5K3JQ-6e18517d0b48-512",
     github: "https://github.com/louiscaulet",
     linkedIn: "https://www.linkedin.com/in/louiscaulet",
+  },
+  faateh: {
+    name: "Faateh Dhillon",
+    title: "Senior Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U093VA8B7E0-e078a8e04a44-512",
+    github: "https://github.com/faateh-dust",
+    linkedIn: "https://www.linkedin.com/in/faatehalidhillon",
   },
   nicole: {
     name: "Nicole Kreider",
@@ -326,19 +326,19 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/lauriane-paour-152760106/",
     github: null,
   },
+  landry: {
+    name: "Landry Monga",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/23080211?v=4",
+    github: "https://github.com/lvndry",
+    linkedIn: "https://www.linkedin.com/in/landry-monga",
+  },
   come: {
     name: "Côme Lucien-Brun",
     title: "Account Executive",
     image: "https://ca.slack-edge.com/T050RH73H9P-U09ATL7UVB5-873d7e42eb96-512",
     github: "https://github.com/come-lb",
     linkedIn: "https://www.linkedin.com/in/comelb",
-  },
-  faateh: {
-    name: "Faateh Dhillon",
-    title: "Senior Account Executive",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U093VA8B7E0-e078a8e04a44-512",
-    github: "https://github.com/faateh-dust",
-    linkedIn: "https://www.linkedin.com/in/faatehalidhillon",
   },
   theog: {
     name: "Théo Gantzer",
