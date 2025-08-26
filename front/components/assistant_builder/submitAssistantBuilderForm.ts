@@ -264,6 +264,7 @@ export async function submitAssistantBuilderForm({
         triggers: builderState.triggers.map((trigger) => ({
           name: trigger.name,
           kind: trigger.kind,
+          customPrompt: trigger.customPrompt,
           configuration: trigger.configuration,
           sId: trigger.sId,
         })),

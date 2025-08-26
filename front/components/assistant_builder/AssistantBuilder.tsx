@@ -158,6 +158,7 @@ export default function AssistantBuilder({
         name: trigger.name,
         configuration: trigger.configuration,
         editor: trigger.editor,
+        customPrompt: trigger.customPrompt ?? "",
       })),
     }));
   }, [actions, triggers, error, sendNotification, setBuilderState]);

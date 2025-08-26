@@ -41,5 +41,6 @@ const ScheduleConfigSchema = t.type({
 export const TriggerSchema = t.type({
   name: t.string,
   kind: t.literal("schedule"),
+  customPrompt: t.string,
   configuration: ScheduleConfigSchema,
 });
