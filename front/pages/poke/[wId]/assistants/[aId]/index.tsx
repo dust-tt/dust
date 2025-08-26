@@ -111,9 +111,9 @@ const AssistantDetailsPage = ({
       </div>
 
       <div className="mt-4">
-        <TriggerDataTable 
-          owner={workspace} 
-          agentId={agentConfigurations[0].sId} 
+        <TriggerDataTable
+          owner={workspace}
+          agentId={agentConfigurations[0].sId}
         />
       </div>
 

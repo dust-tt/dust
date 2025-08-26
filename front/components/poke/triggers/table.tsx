@@ -32,8 +32,10 @@ export function TriggerDataTable({ owner, agentId }: TriggerDataTableProps) {
         );
 
         // Filter triggers by agent ID if provided
-        const filteredTriggers = agentId 
-          ? triggers.filter(trigger => trigger.agentConfigurationId === agentId)
+        const filteredTriggers = agentId
+          ? triggers.filter(
+              (trigger) => trigger.agentConfigurationId === agentId
+            )
           : triggers;
 
         return <PokeDataTable columns={columns} data={filteredTriggers} />;
