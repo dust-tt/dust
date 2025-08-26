@@ -37,7 +37,6 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
-  ConversationType,
   ConversationWithoutContentType,
   DataSourceViewCategory,
   DataSourceViewType,
