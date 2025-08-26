@@ -610,7 +610,10 @@ export function ActionValidationProvider({
               <Button
                 label="Done"
                 variant="highlight"
-                onClick={() => retryBlockedActions()}
+                onClick={() => {
+                  void retryBlockedActions();
+                  setIsDialogOpen(false);
+                }}
                 disabled={isProcessing}
               >
                 {isProcessing && (
