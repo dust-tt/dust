@@ -6,7 +6,7 @@ import {
   Card,
   CardActionButton,
   CardGrid,
-  Chip,
+  ContentMessage,
   EmptyCTA,
   Hoverable,
   ListAddIcon,
@@ -42,7 +42,7 @@ import {
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
-import { asDisplayName } from "@app/types";
+import { asDisplayName, pluralize } from "@app/types";
 
 const dataVisualizationAction = {
   type: "DATA_VISUALIZATION",
@@ -313,27 +313,33 @@ export function AgentBuilderCapabilitiesBlock({
             style={BACKGROUND_IMAGE_STYLE_PROPS}
           />
         ) : (
-          <CardGrid>
-            {fields.map((field, index) => (
-              <ActionCard
-                key={field.id}
-                action={field}
-                onRemove={() => remove(index)}
-                onEdit={() => handleActionEdit(field, index)}
-              />
-            ))}
-          </CardGrid>
+          <>
+            {nonGlobalSpacesUsedInActions.length > 0 && (
+              <div className="mb-4 w-full">
+                <ContentMessage variant="golden" size="lg">
+                  Based on your selection, this agent can only be used by users
+                  with access to space
+                  {pluralize(nonGlobalSpacesUsedInActions.length)} :{" "}
+                  <strong>
+                    {nonGlobalSpacesUsedInActions.map((v) => v.name).join(", ")}
+                  </strong>
+                  .
+                </ContentMessage>
+              </div>
+            )}
+            <CardGrid>
+              {fields.map((field, index) => (
+                <ActionCard
+                  key={field.id}
+                  action={field}
+                  onRemove={() => remove(index)}
+                  onEdit={() => handleActionEdit(field, index)}
+                />
+              ))}
+            </CardGrid>
+          </>
         )}
       </div>
-      {nonGlobalSpacesUsedInActions.length > 0 && (
-        <div className="w-full">
-          <Chip
-            color="info"
-            size="sm"
-            label={`Based on your selection, this agent can only be used by users with access to space${nonGlobalSpacesUsedInActions.length > 1 ? "s" : ""} : ${nonGlobalSpacesUsedInActions.map((v) => v.name).join(", ")}.`}
-          />
-        </div>
-      )}
       <KnowledgeConfigurationSheet
         onClose={handleCloseSheet}
         onSave={handleEditSave}
