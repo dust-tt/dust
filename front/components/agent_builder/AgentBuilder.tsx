@@ -230,10 +230,14 @@ export default function AgentBuilder({
         type: "success",
       });
 
+      // Reset form dirty state after successful save
+      form.reset(form.getValues(), {
+        keepValues: true,
+      });
+
       if (!agentConfiguration && createdAgent.sId) {
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
-        // willingly using window to not trigger next navigation events
-        window.history.replaceState(null, "", newUrl);
+        await router.replace(newUrl, undefined, { shallow: true });
       }
     } catch (error) {
       logger.error("Unexpected error:", error);
