@@ -57,6 +57,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { isString } from "@app/types";
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
@@ -330,7 +331,10 @@ export function AgentMessage({
             variant="outline"
             size="xs"
             onClick={() => {
-              void retryHandler(agentMessageToRender);
+              void retryHandler({
+                conversationId,
+                messageId: agentMessageToRender.sId,
+              });
             }}
             icon={ArrowPathIcon}
             className="text-muted-foreground"
@@ -439,25 +443,44 @@ export function AgentMessage({
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
     if (agentMessage.status === "failed") {
+      const { error } = agentMessage;
       if (
-        agentMessage.error &&
-        agentMessage.error.code ===
-          "mcp_server_personal_authentication_required" &&
-        typeof agentMessage.error.metadata?.mcp_server_id === "string" &&
-        agentMessage.error.metadata?.mcp_server_id.length > 0 &&
-        isOAuthProvider(agentMessage.error.metadata?.provider) &&
-        isValidScope(agentMessage.error.metadata?.scope)
+        error &&
+        error.code === "mcp_server_personal_authentication_required" &&
+        isString(error.metadata?.mcp_server_id) &&
+        error.metadata?.mcp_server_id.length > 0 &&
+        isOAuthProvider(error.metadata?.provider) &&
+        isValidScope(error.metadata?.scope)
       ) {
         return (
           <MCPServerPersonalAuthenticationRequired
             owner={owner}
-            mcpServerId={agentMessage.error.metadata.mcp_server_id}
-            provider={agentMessage.error.metadata.provider}
-            scope={agentMessage.error.metadata.scope}
+            mcpServerId={error.metadata.mcp_server_id}
+            provider={error.metadata.provider}
+            scope={error.metadata.scope}
             retryHandler={async () => {
               // Dispatch retry event to reset failed state and re-enable streaming.
               dispatch(RETRY_BLOCKED_ACTIONS_STARTED_EVENT);
-              return retryHandler(agentMessage, { blockedOnly: true });
+              // Retry on the event's conversationId, which may be coming from a subagent.
+              // TODO(durable-agents): typeguard on a proper type here.
+              if (
+                error.metadata &&
+                isString(error.metadata.messageId) &&
+                isString(error.metadata.conversationId) &&
+                error.metadata.conversationId !== conversationId
+              ) {
+                await retryHandler({
+                  conversationId: error.metadata.conversationId,
+                  messageId: error.metadata.messageId,
+                  blockedOnly: true,
+                });
+              }
+              // Retry on the main conversation.
+              await retryHandler({
+                conversationId,
+                messageId: agentMessage.sId,
+                blockedOnly: true,
+              });
             }}
           />
         );
@@ -471,7 +494,9 @@ export function AgentMessage({
               metadata: {},
             }
           }
-          retryHandler={async () => retryHandler(agentMessage)}
+          retryHandler={async () =>
+            retryHandler({ conversationId, messageId: agentMessage.sId })
+          }
         />
       );
     }
@@ -582,13 +607,18 @@ export function AgentMessage({
     );
   }
 
-  async function retryHandler(
-    agentMessage: LightAgentMessageType,
-    { blockedOnly }: { blockedOnly: boolean } = { blockedOnly: false }
-  ) {
+  async function retryHandler({
+    conversationId,
+    messageId,
+    blockedOnly = false,
+  }: {
+    conversationId: string;
+    messageId: string;
+    blockedOnly?: boolean;
+  }) {
     setIsRetryHandlerProcessing(true);
     await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry?blocked_only=${blockedOnly}`,
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=${blockedOnly}`,
       {
         method: "POST",
         headers: {
