@@ -20,8 +20,8 @@ echo "Output file: $OUTPUT_FILE"
 # Clear the output file
 > "$OUTPUT_FILE"
 
-# Initial search with scroll
-SCROLL_ID=$(curl -s -u "$ES_USER:$ES_PASS" -X POST "$ES_URL/core.data_sources_nodes/_search?scroll=1m" \
+# Initial search with scroll (with -k flag for self-signed certificates)
+SCROLL_ID=$(curl -sk -u "$ES_USER:$ES_PASS" -X POST "$ES_URL/core.data_sources_nodes/_search?scroll=1m" \
   -H 'Content-Type: application/json' \
   -d "{
     \"size\": 1000,
@@ -45,7 +45,7 @@ PROCESSED=$(jq -r '.hits.hits | length' /tmp/es_response.json)
 
 while [ "$PROCESSED" -gt 0 ]; do
     # Fetch next batch
-    curl -s -u "$ES_USER:$ES_PASS" -X POST "$ES_URL/_search/scroll" \
+    curl -sk -u "$ES_USER:$ES_PASS" -X POST "$ES_URL/_search/scroll" \
       -H 'Content-Type: application/json' \
       -d "{
         \"scroll\": \"1m\",
@@ -65,7 +65,7 @@ while [ "$PROCESSED" -gt 0 ]; do
 done
 
 # Clean up scroll context
-curl -s -u "$ES_USER:$ES_PASS" -X DELETE "$ES_URL/_search/scroll" \
+curl -sk -u "$ES_USER:$ES_PASS" -X DELETE "$ES_URL/_search/scroll" \
   -H 'Content-Type: application/json' \
   -d "{\"scroll_id\": \"$SCROLL_ID\"}" > /dev/null
 
