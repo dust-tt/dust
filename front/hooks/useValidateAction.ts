@@ -49,8 +49,10 @@ export function useValidateAction({
           }
         );
 
-        if (!response.ok && onError) {
-          onError("Failed to assess action approval. Please try again.");
+        if (!response.ok) {
+          if (onError) {
+            onError("Failed to assess action approval. Please try again.");
+          }
           return { success: false };
         }
 
@@ -70,8 +72,10 @@ export function useValidateAction({
             }
           );
 
-          if (!response.ok && onError) {
-            onError("Failed to resume conversation. Please try again.");
+          if (!response.ok) {
+            if (onError) {
+              onError("Failed to resume conversation. Please try again.");
+            }
             return { success: false };
           }
         }
