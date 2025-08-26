@@ -191,7 +191,7 @@ const triggerSchema = z.object({
   sId: z.string().optional(),
   name: z.string(),
   kind: z.enum(["schedule"]),
-  customPrompt: z.string(),
+  customPrompt: z.string().nullable(),
   configuration: z.union([scheduleConfigSchema, z.null()]),
   editor: z.number().nullable(),
 });
