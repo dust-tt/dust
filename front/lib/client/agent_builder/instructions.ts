@@ -109,7 +109,6 @@ function parseTextWithHeadings(text: string): JSONContent[] {
   const lines = text.split("\n");
 
   for (const line of lines) {
-    // Check for markdown headings and preserve their levels (H1–H6)
     const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
     if (headingMatch) {
       const level = headingMatch[1].length; // Preserve original level (1–6)
@@ -120,7 +119,6 @@ function parseTextWithHeadings(text: string): JSONContent[] {
         content: content ? [{ type: "text", text: content }] : [],
       });
     } else {
-      // Regular paragraph
       nodes.push({
         type: "paragraph",
         content: line.trim() ? [{ type: "text", text: line.trim() }] : [],

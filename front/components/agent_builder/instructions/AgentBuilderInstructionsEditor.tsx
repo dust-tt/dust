@@ -79,7 +79,7 @@ export function AgentBuilderInstructionsEditor({
       StarterKit.configure({
         paragraph: false, // We use custom ParagraphExtension
         heading: {
-          levels: [1, 2, 3, 4, 5, 6], // Support H1–H6 but display with the same style
+          levels: [1, 2, 3, 4, 5, 6],
           HTMLAttributes: {
             class: "text-xl font-semibold mt-4 mb-3",
           },
