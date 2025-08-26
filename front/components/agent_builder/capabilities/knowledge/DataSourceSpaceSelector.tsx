@@ -7,7 +7,6 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import { useContext, useMemo } from "react";
 
-import { DISABLED_REASON } from "@app/components/agent_builder/get_allowed_spaces";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
@@ -19,17 +18,14 @@ type SpaceRowData = SpaceType & {
   id: string;
   icon: React.ComponentType;
   onClick: (() => void) | undefined;
-  disabled: boolean;
 };
 
 export interface DataSourceSpaceSelectorProps {
   spaces: SpaceType[];
-  allowedSpaces?: SpaceType[];
 }
 
 export function DataSourceSpaceSelector({
   spaces,
-  allowedSpaces = [],
 }: DataSourceSpaceSelectorProps) {
   const { removeNode, isRowSelected, setSpaceEntry } =
     useDataSourceBuilderContext();
@@ -38,15 +34,13 @@ export function DataSourceSpaceSelector({
 
   const spaceRows: SpaceRowData[] = spaces
     .map((space) => {
-      const disabled = allowedSpaces.find((s) => s.sId === space.sId) == null;
       return {
         ...space,
         id: space.sId,
         name: space.name,
         kind: space.kind,
         icon: getSpaceIcon(space),
-        onClick: disabled ? undefined : () => setSpaceEntry(space),
-        disabled,
+        onClick: () => setSpaceEntry(space),
       };
     })
     .toSorted((a, b) => {
@@ -122,18 +116,7 @@ export function DataSourceSpaceSelector({
             icon={row.original.icon}
             className="select-none"
           >
-            {row.original.disabled ? (
-              <Tooltip
-                label={DISABLED_REASON}
-                trigger={
-                  <div className="cursor-not-allowed text-muted-foreground dark:text-muted-foreground-night">
-                    {row.original.name}
-                  </div>
-                }
-              />
-            ) : (
-              <div className="font-semibold">{row.original.name}</div>
-            )}
+            <div className="font-semibold">{row.original.name}</div>
           </DataTable.CellContent>
         ),
         meta: {

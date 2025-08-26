@@ -23,14 +23,12 @@ import type {
 
 interface DustAppConfigurationSectionProps {
   owner: LightWorkspaceType;
-  allowedSpaces: SpaceType[];
   selectedConfig: DustAppRunConfigurationType | null;
   onConfigSelect: (config: DustAppRunConfigurationType) => void;
 }
 
 export function DustAppConfigurationSection({
   owner,
-  allowedSpaces,
   selectedConfig,
   onConfigSelect,
 }: DustAppConfigurationSectionProps) {
@@ -57,8 +55,7 @@ export function DustAppConfigurationSection({
       ) : (
         <SpaceSelector
           spaces={spaces}
-          allowedSpaces={allowedSpaces}
-          defaultSpace={allowedSpaces[0]?.sId}
+          defaultSpace={spaces[0]?.sId}
           renderChildren={(space) => {
             if (!space) {
               return <>No Dust Apps available.</>;

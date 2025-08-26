@@ -1,7 +1,6 @@
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import type { AssistantBuilderMCPOrVizState } from "@app/components/assistant_builder/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { SpaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
 export const DISABLED_REASON =
@@ -64,39 +63,4 @@ export const getSpaceIdToActionsMap = (
     }
     return acc;
   }, {});
-};
-
-// Only allow one space across all actions + company data space.
-export const getAllowedSpaces = ({
-  action,
-  spaces,
-  spaceIdToActions,
-}: {
-  action?: AssistantBuilderMCPOrVizState | AgentBuilderAction;
-  spaces: SpaceType[];
-  spaceIdToActions: Record<
-    string,
-    (AssistantBuilderMCPOrVizState | AgentBuilderAction)[]
-  >;
-}) => {
-  const isSpaceUsedInOtherActions = (space: SpaceType) => {
-    const actionsUsingSpace = spaceIdToActions[space.sId] ?? [];
-    return actionsUsingSpace.some((a) => {
-      // We use the id to compare actions, as the configuration can change.
-      return a.id !== action?.id;
-    });
-  };
-
-  const usedSpacesInOtherActions = spaces.filter(
-    (s) => s.kind !== "global" && isSpaceUsedInOtherActions(s)
-  );
-  if (usedSpacesInOtherActions.length === 0) {
-    return spaces;
-  }
-
-  return spaces.filter(
-    (space) =>
-      space.kind === "global" ||
-      usedSpacesInOtherActions.some((s) => s.sId === space.sId)
-  );
 };

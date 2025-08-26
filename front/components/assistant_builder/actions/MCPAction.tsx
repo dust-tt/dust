@@ -15,6 +15,7 @@ import { TimeFrameConfigurationSection } from "@app/components/assistant_builder
 import { DataDescription } from "@app/components/assistant_builder/actions/DataDescription";
 import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import type {
   AssistantBuilderMCPConfiguration,
   AssistantBuilderMCPOrVizState,
@@ -105,13 +106,13 @@ export function MCPAction({
   setShowInvalidActionDescError,
   showInvalidActionDescError,
 }: MCPActionProps) {
-  const { setEdited, getAllowedSpaces } = useAssistantBuilderContext();
-  const allowedSpaces = getAllowedSpaces(action);
+  const { setEdited } = useAssistantBuilderContext();
 
   const actionConfiguration =
     action.configuration as AssistantBuilderMCPServerConfiguration;
 
   const { mcpServerViews } = useMCPServerViewsContext();
+  const { spaces } = useSpacesContext();
 
   const noMCPServerView = mcpServerViews.length === 0;
 
@@ -178,7 +179,7 @@ export function MCPAction({
   // Because it's redundant with the tool description.
   const hasOnlyOneTool = selectedMCPServerView?.server.tools.length === 1;
 
-  const spaceName = allowedSpaces.find(
+  const spaceName = spaces.find(
     (space) => space.sId === selectedMCPServerView?.spaceId
   )?.name;
 
@@ -201,7 +202,6 @@ export function MCPAction({
           initialDataSourceConfigurations={
             actionConfiguration.dataSourceConfigurations ?? {}
           }
-          allowedSpaces={allowedSpaces}
           viewType={isDataWarehouseConfig ? "data_warehouse" : "document"}
         />
       )}
@@ -218,7 +218,6 @@ export function MCPAction({
           initialDataSourceConfigurations={
             actionConfiguration.tablesConfigurations ?? {}
           }
-          allowedSpaces={allowedSpaces}
           viewType="table"
         />
       )}
@@ -278,7 +277,6 @@ export function MCPAction({
       {requirements.requiresDustAppConfiguration && (
         <DustAppConfigurationSection
           owner={owner}
-          allowedSpaces={allowedSpaces}
           selectedConfig={actionConfiguration.dustAppConfiguration}
           onConfigSelect={(dustAppConfig) => {
             handleConfigUpdate((old) => ({

@@ -66,7 +66,6 @@ import {
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
-import { useSpaces } from "@app/lib/swr/spaces";
 import { O4_MINI_MODEL_ID } from "@app/types";
 
 export type SelectedTool =
@@ -126,7 +125,6 @@ export function MCPServerViewsSheet({
   getAgentInstructions,
 }: MCPServerViewsSheetProps) {
   const { owner } = useAgentBuilderContext();
-  const { spaces } = useSpaces({ workspaceId: owner.sId });
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
   const {
@@ -548,7 +546,7 @@ export function MCPServerViewsSheet({
                 )}
 
                 {requirements.requiresDustAppConfiguration && (
-                  <DustAppSection allowedSpaces={spaces} />
+                  <DustAppSection />
                 )}
 
                 {requirements.mayRequireJsonSchemaConfiguration && (
