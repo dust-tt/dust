@@ -210,10 +210,11 @@ export function ActionValidationProvider({
   };
 
   const showValidationDialog = useCallback(() => {
-    if (!isDialogOpen) {
+    if (!isDialogOpen && validationQueue.length > 0) {
+      setInitialQueueLength(validationQueue.length);
       setIsDialogOpen(true);
     }
-  }, [isDialogOpen]);
+  }, [isDialogOpen, validationQueue.length]);
 
   const hasPendingValidations = validationQueue.length > 0;
   const totalPendingValidations = validationQueue.length;
