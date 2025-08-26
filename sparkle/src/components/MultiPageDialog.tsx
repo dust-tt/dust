@@ -95,6 +95,7 @@ interface MultiPageDialogProps {
   rightButton?: React.ComponentProps<typeof Button>;
   footerContent?: React.ReactNode;
   addFooterSeparator?: boolean;
+  hideCloseButton?: boolean;
 }
 
 interface MultiPageDialogContentProps extends MultiPageDialogProps {
@@ -124,6 +125,7 @@ const MultiPageDialogContent = React.forwardRef<
       centerButton,
       rightButton,
       footerContent,
+      hideCloseButton,
       ...props
     },
     ref
@@ -187,7 +189,7 @@ const MultiPageDialogContent = React.forwardRef<
       >
         <div className={cn(multiPageDialogLayoutVariants())}>
           <DialogHeader
-            hideButton={showHeaderNavigation}
+            hideButton={hideCloseButton || showHeaderNavigation}
             className="s-flex-none"
           >
             <div className="s-flex s-items-center s-justify-between s-pr-8">
