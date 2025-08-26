@@ -30,6 +30,7 @@ import { useNavigationLock } from "@app/components/assistant_builder/useNavigati
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedActionExecution } from "@app/lib/actions/mcp";
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -70,7 +71,7 @@ function PersonalAuthenticationRequiredInline({
 
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
   const { submit: retry } = useSubmitFunction(async () => retryHandler());
-
+  getMcpServerDisplayName;
   const handleConnect = async () => {
     if (!mcpServer) {
       return;
@@ -99,8 +100,8 @@ function PersonalAuthenticationRequiredInline({
         ) : (
           <Icon visual={ActionPieChartIcon} size="sm" />
         )}
-        <span className="font-medium capitalize">
-          {blockedAction.metadata.mcpServerName}
+        <span className="font-medium">
+          {asDisplayName(blockedAction.metadata.mcpServerName)}
         </span>
       </div>
       {mcpServer &&
