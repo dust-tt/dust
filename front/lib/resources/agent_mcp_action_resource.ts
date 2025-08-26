@@ -8,6 +8,7 @@ import type {
 import { Op } from "sequelize";
 
 import type { BlockedActionExecution } from "@app/lib/actions/mcp";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
   isToolExecutionStatusBlocked,
@@ -279,6 +280,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           icon: action.toolConfiguration.icon,
         },
         mcpServerId: mcpServerView?.mcpServerId,
+        mcpServerDisplayName: mcpServerView
+          ? getMcpServerViewDisplayName(mcpServerView.toJSON())
+          : undefined,
         status: action.status,
         authorizationInfo: mcpServerView?.toJSON().server.authorization ?? null,
       });

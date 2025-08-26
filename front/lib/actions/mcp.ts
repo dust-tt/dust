@@ -173,6 +173,7 @@ export type ToolExecutionMetadata = {
   stake?: MCPToolStakeLevelType;
 
   mcpServerId?: string;
+  mcpServerDisplayName?: string;
   metadata: MCPValidationMetadataType;
 };
 
