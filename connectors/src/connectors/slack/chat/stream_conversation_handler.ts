@@ -375,6 +375,34 @@ async function streamAgentAnswerToSlack(
         return new Ok(undefined);
       }
 
+      case "agent_generation_cancelled": {
+        // Handle generation cancellation by showing a cancelled message
+        const cancelledMessage = "_Message generation was cancelled._";
+        const { formattedContent, footnotes } = annotateCitations(
+          answer || cancelledMessage,
+          actions
+        );
+        const slackContent = slackifyMarkdown(
+          normalizeContentForSlack(formattedContent)
+        );
+
+        await postSlackMessageUpdate(
+          {
+            messageUpdate: {
+              text: slackContent,
+              assistantName,
+              agentConfigurations,
+              footnotes,
+            },
+            ...conversationData,
+            updateState,
+          },
+          { adhereToRateLimit: false }
+        );
+
+        return new Ok(undefined);
+      }
+
       default:
         assertNever(event);
     }

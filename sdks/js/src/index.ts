@@ -6,6 +6,7 @@ import {
   AgentActionSuccessEvent,
   AgentConfigurationViewType,
   AgentErrorEvent,
+  AgentGenerationCancelledEvent,
   AgentMessagePublicType,
   AgentMessageSuccessEvent,
   APIError,
@@ -106,6 +107,7 @@ type AgentEvent =
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | AgentErrorEvent
+  | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
   | GenerationTokensEvent
   | UserMessageErrorEvent
@@ -829,6 +831,7 @@ export class DustAPI {
     const terminalEventTypes: AgentEvent["type"][] = [
       "agent_message_success",
       "agent_error",
+      "agent_generation_cancelled",
       "user_message_error",
     ];
 
