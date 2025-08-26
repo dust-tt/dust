@@ -44,9 +44,7 @@ export function GlobalAgentAction({
     return null;
   }
 
-  const isConfigurable =
-    agent.sId === GLOBAL_AGENTS_SID.RESEARCH ||
-    agent.sId === GLOBAL_AGENTS_SID.DUST;
+  const isConfigurable = agent.sId === GLOBAL_AGENTS_SID.DUST;
 
   if (isConfigurable) {
     return (
