@@ -7,7 +7,6 @@ const MAX_CONCURRENT_WORKOS_FETCH = 10;
 // Cache TTL for WorkOS organization memnbership data (1 hour)
 const WORKOS_ORG_CACHE_TTL_MS = 60 * 60 * 1000;
 
-
 async function findWorkOSOrganizationsForUserIdUncached(userId: string) {
   const response = await getWorkOS().userManagement.listOrganizationMemberships(
     {
