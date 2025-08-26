@@ -244,7 +244,7 @@ export function AgentMessage({
 
       dispatch(eventPayload.data);
     },
-    [showValidationDialog, mutateMessage]
+    [showValidationDialog, mutateMessage, enqueueValidation, message]
   );
 
   useEventSource(
