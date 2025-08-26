@@ -11,7 +11,7 @@ import type {
 interface UseValidateActionParams {
   owner: LightWorkspaceType;
   conversation: ConversationWithoutContentType | null;
-  onError?: (errorMessage: string) => void;
+  onError: (errorMessage: string) => void;
 }
 
 export function useValidateAction({
@@ -50,9 +50,7 @@ export function useValidateAction({
         );
 
         if (!response.ok) {
-          if (onError) {
-            onError("Failed to assess action approval. Please try again.");
-          }
+          onError("Failed to assess action approval. Please try again.");
           return { success: false };
         }
 
@@ -73,17 +71,13 @@ export function useValidateAction({
           );
 
           if (!response.ok) {
-            if (onError) {
-              onError("Failed to resume conversation. Please try again.");
-            }
+            onError("Failed to resume conversation. Please try again.");
             return { success: false };
           }
         }
         return { success: true };
       } catch (error) {
-        if (onError) {
-          onError("Failed to assess action approval. Please try again.");
-        }
+        onError("Failed to assess action approval. Please try again.");
         return { success: false };
       } finally {
         setIsValidating(false);
