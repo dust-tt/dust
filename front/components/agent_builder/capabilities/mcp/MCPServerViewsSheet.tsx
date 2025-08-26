@@ -21,7 +21,10 @@ import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
-import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
+import {
+  generateUniqueActionName,
+  nameToStorageFormat,
+} from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { createFormResetHandler } from "@app/components/agent_builder/capabilities/mcp/utils/formStateUtils";
 import {
@@ -630,11 +633,13 @@ export function MCPServerViewsSheet({
 
       const newActionName = isNewActionOrNameChanged
         ? generateUniqueActionName({
-            baseName: formData.name,
+            baseName: nameToStorageFormat(formData.name),
             existingActions: actions,
             selectedToolsInSheet,
           })
-        : formData.name;
+        : mode?.type === "edit"
+          ? configurationTool.name
+          : formData.name;
 
       const configuredAction: AgentBuilderAction = {
         ...configurationTool,

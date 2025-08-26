@@ -74,6 +74,7 @@ function DataSourceFilterContextItem({
 export function SelectDataSourcesFilters() {
   const { setSheetPageId } = useDataSourceBuilderContext();
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
+
   const dataSourceViews = sources.in.reduce(
     (acc, source) => {
       if (source.type === "data_source") {
