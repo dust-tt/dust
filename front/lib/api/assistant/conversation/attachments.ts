@@ -6,6 +6,7 @@ import {
   isQueryableContentType,
   isSearchableContentType,
 } from "@app/lib/api/assistant/conversation/content_types";
+import logger from "@app/logger/logger";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentType,
@@ -81,7 +82,7 @@ export function conversationAttachmentId(
 
 export function getAttachmentFromContentFragment(
   cf: ContentFragmentType
-): ConversationAttachmentType {
+): ConversationAttachmentType | null {
   if (isContentNodeContentFragment(cf)) {
     return getAttachmentFromContentNodeContentFragment(cf);
   }
@@ -133,9 +134,18 @@ export function getAttachmentFromContentNodeContentFragment(
 
 export function getAttachmentFromFileContentFragment(
   cf: FileContentFragmentType
-): FileAttachmentType {
+): FileAttachmentType | null {
   const fileId = cf.fileId;
-  assert(fileId, `File attachment must have a fileId (sId: ${cf.sId})`);
+  if (!fileId) {
+    logger.warn(
+      {
+        contentFragmentId: cf.sId,
+        contentFragmentCreatedAt: new Date(cf.created),
+      },
+      "File attachment without a fileId (unsupported legacy)."
+    );
+    return null;
+  }
 
   // Here, snippet not null is actually to detect file attachments that are prior to the JIT
   // actions, and differentiate them from the newer file attachments that do have a snippet.

@@ -34,7 +34,10 @@ export function listAttachments(
         continue;
       }
 
-      attachments.push(getAttachmentFromContentFragment(m));
+      const attachment = getAttachmentFromContentFragment(m);
+      if (attachment) {
+        attachments.push(attachment);
+      }
     } else if (isAgentMessageType(m)) {
       const generatedFiles = m.actions.flatMap((a) => a.getGeneratedFiles());
 
