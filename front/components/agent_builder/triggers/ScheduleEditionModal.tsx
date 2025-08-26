@@ -54,6 +54,7 @@ export function ScheduleEditionModal({
     name: "Schedule",
     cron: "",
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    customPrompt: "",
   };
 
   const form = useForm<ScheduleFormData>({
@@ -77,12 +78,14 @@ export function ScheduleEditionModal({
       name: trigger?.name ?? defaultValues.name,
       cron: trigger?.configuration?.cron ?? defaultValues.cron,
       timezone: trigger?.configuration?.timezone ?? defaultValues.timezone,
+      customPrompt: trigger?.customPrompt ?? defaultValues.customPrompt,
     });
   }, [
     reset,
     defaultValues.name,
     defaultValues.cron,
     defaultValues.timezone,
+    defaultValues.customPrompt,
     trigger,
   ]);
 
@@ -126,6 +129,7 @@ export function ScheduleEditionModal({
         timezone: data.timezone.trim(),
       },
       editor: trigger?.editor ?? user?.id ?? null,
+      customPrompt: data.customPrompt.trim() ?? null,
     };
 
     onSave(triggerData);
@@ -221,6 +225,28 @@ export function ScheduleEditionModal({
                     )}
                   </ContentMessage>
                 </div>
+              </div>
+
+              <div>
+                <div className="pb-2">
+                  <Label htmlFor="trigger-description">Custom Message</Label>
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    (optional) A custom message that will be sent to the agent
+                    when triggered.
+                  </p>
+                </div>
+                <TextArea
+                  id="schedule-custom-prompt"
+                  placeholder='e.g. "Provide a summary of the latest sales figures."'
+                  rows={4}
+                  {...form.register("customPrompt")}
+                  disabled={!isEditor}
+                />
+                {form.formState.errors.customPrompt && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {form.formState.errors.customPrompt.message}
+                  </p>
+                )}
               </div>
 
               <Input

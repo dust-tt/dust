@@ -62,6 +62,7 @@ export type AssistantBuilderTriggerType = {
   sId?: string;
   name: string;
   kind: "schedule";
+  customPrompt: string;
   editor: UserType["id"] | null;
   configuration: {
     cron: string;

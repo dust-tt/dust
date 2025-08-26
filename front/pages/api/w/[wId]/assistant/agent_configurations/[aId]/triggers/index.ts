@@ -25,6 +25,7 @@ export interface PatchTriggersRequestBody {
     {
       sId?: string;
       name: string;
+      customPrompt: string;
     } & TriggerConfiguration
   >;
 }
@@ -151,6 +152,7 @@ async function handler(
             name: validatedTrigger.name,
             kind: validatedTrigger.kind,
             configuration: validatedTrigger.configuration,
+            customPrompt: validatedTrigger.customPrompt,
             editor: auth.getNonNullableUser().id,
           });
 

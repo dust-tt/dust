@@ -45,7 +45,9 @@ export async function runScheduledAgentsActivity(
 
   const messageRes = await postUserMessage(auth, {
     conversation: newConversation,
-    content: `:mention[${agentConfiguration.name}]{${agentConfiguration.sId}}`,
+    content:
+      `:mention[${agentConfiguration.name}]{${agentConfiguration.sId}}` +
+      (trigger.customPrompt ? `\n\n${trigger.customPrompt}` : ""),
     mentions: [{ configurationId: agentConfiguration.sId }],
     context: baseContext,
     skipToolsValidation: false,
