@@ -29,24 +29,20 @@ export function NavigationLoadingProvider({
     setIsNavigating(true);
   }, []);
 
+  const endNavigationLoader = useCallback(() => {
+    setIsNavigating(false);
+  }, []);
+
   // Clear loading state when route change is complete
   useEffect(() => {
-    const handleRouteChangeComplete = () => {
-      setIsNavigating(false);
-    };
-
-    const handleRouteChangeError = () => {
-      setIsNavigating(false);
-    };
-
-    router.events.on("routeChangeComplete", handleRouteChangeComplete);
-    router.events.on("routeChangeError", handleRouteChangeError);
+    router.events.on("routeChangeComplete", endNavigationLoader);
+    router.events.on("routeChangeError", endNavigationLoader);
 
     return () => {
-      router.events.off("routeChangeComplete", handleRouteChangeComplete);
-      router.events.off("routeChangeError", handleRouteChangeError);
+      router.events.off("routeChangeComplete", endNavigationLoader);
+      router.events.off("routeChangeError", endNavigationLoader);
     };
-  }, [router.events]);
+  }, [router.events, endNavigationLoader]);
 
   return (
     <NavigationLoadingContext.Provider
