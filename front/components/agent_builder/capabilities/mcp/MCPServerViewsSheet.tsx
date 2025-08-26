@@ -496,8 +496,8 @@ export function MCPServerViewsSheet({
             <SearchInput
               value={searchTerm}
               onChange={setSearchTerm}
-              name="search-mcp-servers"
-              placeholder="Search servers..."
+              name="search-mcp"
+              placeholder="Search tools..."
             />
           )}
           <MCPServerSelectionPage
