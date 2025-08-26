@@ -127,7 +127,7 @@ function useValidationQueue({
 
   return {
     validationQueueLength,
-    currentValidation: currentItem,
+    currentItem,
     enqueueValidation,
     shiftValidationQueue,
     clearCurrentValidation,
@@ -184,7 +184,7 @@ export function ActionValidationProvider({
 
   const {
     validationQueueLength,
-    currentValidation,
+    currentItem,
     clearCurrentValidation,
     enqueueValidation,
     shiftValidationQueue,
@@ -199,7 +199,7 @@ export function ActionValidationProvider({
   useNavigationLock(isDialogOpen);
 
   const submitValidation = async (status: MCPValidationOutputType) => {
-    if (!currentValidation) {
+    if (!currentItem) {
       return;
     }
 
@@ -211,7 +211,7 @@ export function ActionValidationProvider({
     setErrorMessage(null);
     setIsProcessing(true);
 
-    const { validationRequest, message } = currentValidation;
+    const { validationRequest, message } = currentItem;
 
     const response = await fetch(
       `/api/w/${owner.sId}/assistant/conversations/${validationRequest.conversationId}/messages/${validationRequest.messageId}/validate-action`,
@@ -281,9 +281,9 @@ export function ActionValidationProvider({
   }, [isDialogOpen]);
 
   const hasPendingValidations =
-    currentValidation !== null || validationQueueLength > 0;
-  const totalPendingValidations =
-    (currentValidation ? 1 : 0) + validationQueueLength;
+    currentItem !== null || validationQueueLength > 0;
+  const totalPendingValidations = (currentItem ? 1 : 0) + validationQueueLength;
+  const validationRequest = currentItem?.validationRequest;
 
   return (
     <ActionValidationContext.Provider
@@ -301,10 +301,8 @@ export function ActionValidationProvider({
           <DialogHeader hideButton>
             <DialogTitle
               visual={
-                currentValidation?.validationRequest.metadata.icon ? (
-                  getAvatarFromIcon(
-                    currentValidation.validationRequest.metadata.icon
-                  )
+                validationRequest?.metadata.icon ? (
+                  getAvatarFromIcon(validationRequest?.metadata.icon)
                 ) : (
                   <Icon visual={ActionPieChartIcon} size="sm" />
                 )
@@ -318,25 +316,20 @@ export function ActionValidationProvider({
               <div>
                 Allow{" "}
                 <span className="font-semibold">
-                  @{currentValidation?.validationRequest.metadata.agentName}
+                  @{validationRequest?.metadata.agentName}
                 </span>{" "}
                 to use the tool{" "}
                 <span className="font-semibold">
-                  {asDisplayName(
-                    currentValidation?.validationRequest.metadata.toolName
-                  )}
+                  {asDisplayName(validationRequest?.metadata.toolName)}
                 </span>{" "}
                 from{" "}
                 <span className="font-semibold">
-                  {asDisplayName(
-                    currentValidation?.validationRequest.metadata.mcpServerName
-                  )}
+                  {asDisplayName(validationRequest?.metadata.mcpServerName)}
                 </span>
                 ?
               </div>
-              {currentValidation?.validationRequest.inputs &&
-                Object.keys(currentValidation.validationRequest.inputs).length >
-                  0 && (
+              {validationRequest?.inputs &&
+                Object.keys(validationRequest?.inputs).length > 0 && (
                   <CollapsibleComponent
                     triggerChildren={
                       <span className="font-medium text-muted-foreground dark:text-muted-foreground-night">
@@ -350,11 +343,7 @@ export function ActionValidationProvider({
                             wrapLongLines
                             className="language-json overflow-y-auto"
                           >
-                            {JSON.stringify(
-                              currentValidation?.validationRequest.inputs,
-                              null,
-                              2
-                            )}
+                            {JSON.stringify(validationRequest?.inputs, null, 2)}
                           </CodeBlock>
                         </div>
                       </div>
@@ -375,7 +364,7 @@ export function ActionValidationProvider({
                 </div>
               )}
             </div>
-            {currentValidation?.validationRequest.stake === "low" && (
+            {validationRequest?.stake === "low" && (
               <div className="mt-5">
                 <Label className="copy-sm flex w-fit cursor-pointer flex-row items-center gap-2 py-2 pr-2 font-normal">
                   <Checkbox
