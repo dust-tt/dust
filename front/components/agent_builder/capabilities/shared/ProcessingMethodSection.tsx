@@ -64,6 +64,15 @@ export function ProcessingMethodSection() {
   }, [sources]);
 
   useEffect(() => {
+    const needsUpdate =
+      !mcpServerView ||
+      (hasOnlyTablesSelected &&
+        !tablesServer.includes(mcpServerView.server.name));
+
+    if (!needsUpdate) {
+      return;
+    }
+
     if (hasOnlyTablesSelected) {
       const tableServer = mcpServerViewsWithKnowledge.find(
         (serverView) =>
@@ -83,7 +92,12 @@ export function ProcessingMethodSection() {
         onChange(searchServer);
       }
     }
-  }, [hasOnlyTablesSelected, mcpServerViewsWithKnowledge, onChange]);
+  }, [
+    hasOnlyTablesSelected,
+    mcpServerViewsWithKnowledge,
+    mcpServerView,
+    onChange,
+  ]);
 
   return (
     <div className="space-y-4">

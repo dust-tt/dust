@@ -164,13 +164,25 @@ export function transformSelectionConfigurationsToTree(
           });
         } else {
           const pathParts = [baseParts, node.internalId];
-          inPaths.push({
-            path: pathParts.join("/"),
-            name: node.title,
-            type: "data_source",
-            dataSourceView: node.dataSourceView,
-            tagsFilter: config.tagsFilter,
-          });
+          // For table nodes without parents, we should still create a "node" type
+          // so that ProcessingMethodSection can properly detect them
+          if (node.type === "table") {
+            inPaths.push({
+              path: pathParts.join("/"),
+              name: node.title,
+              type: "node",
+              node,
+              tagsFilter: config.tagsFilter,
+            });
+          } else {
+            inPaths.push({
+              path: pathParts.join("/"),
+              name: node.title,
+              type: "data_source",
+              dataSourceView: node.dataSourceView,
+              tagsFilter: config.tagsFilter,
+            });
+          }
         }
       }
     }

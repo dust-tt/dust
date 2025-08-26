@@ -13,7 +13,11 @@ import {
   transformTreeToSelectionConfigurations,
 } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import { CAPABILITY_CONFIGS } from "@app/components/agent_builder/capabilities/knowledge/utils";
-import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
+import {
+  generateUniqueActionName,
+  nameToDisplayFormat,
+  nameToStorageFormat,
+} from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { isValidPage } from "@app/components/agent_builder/capabilities/mcp/utils/sheetUtils";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/shared/DescriptionSection";
@@ -38,14 +42,6 @@ import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
-
-// Convert stored name back to user-friendly format for display
-function nameToDisplayFormat(name: string): string {
-  return name
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
 
 interface KnowledgeConfigurationSheetProps {
   onSave: (action: AgentBuilderAction) => void;
@@ -88,16 +84,20 @@ export function KnowledgeConfigurationSheet({
         ? { dataSourceConfigurations: dataSourceConfigurations }
         : { tablesConfigurations: dataSourceConfigurations };
 
-    const isNewActionOrNameChanged = isEditing
-      ? defaultValues.name !== formData.name
-      : true;
+    // For editing: check if user actually changed the name by comparing display formats
+    const originalDisplayName = action?.name
+      ? nameToDisplayFormat(action.name)
+      : "";
+    const nameActuallyChanged =
+      isEditing && originalDisplayName !== formData.name;
 
-    const newName = isNewActionOrNameChanged
-      ? generateUniqueActionName({
-          baseName: formData.name,
-          existingActions: actions || [],
-        })
-      : formData.name;
+    const newName =
+      isEditing && !nameActuallyChanged
+        ? action!.name // Keep original name when editing without changes
+        : generateUniqueActionName({
+            baseName: nameToStorageFormat(formData.name),
+            existingActions: actions || [],
+          });
 
     const newAction: AgentBuilderAction = {
       id: uniqueId(),
@@ -134,10 +134,14 @@ export function KnowledgeConfigurationSheet({
   const defaultValues = useMemo(() => {
     const dataSourceConfigurations =
       action?.configuration?.dataSourceConfigurations;
+    const tablesConfigurations = action?.configuration?.tablesConfigurations;
+
+    // Use either data source or tables configurations - they're mutually exclusive
+    const configurationToUse = dataSourceConfigurations || tablesConfigurations;
 
     const dataSourceTree =
-      dataSourceConfigurations && action
-        ? transformSelectionConfigurationsToTree(dataSourceConfigurations)
+      configurationToUse && action
+        ? transformSelectionConfigurationsToTree(configurationToUse)
         : { in: [], notIn: [] };
 
     const selectedMCPServerView = (() => {
