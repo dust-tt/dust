@@ -46,6 +46,7 @@ export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
 export const SEARCH_SERVER_NAME = "search";
 export const TABLE_QUERY_SERVER_NAME = "query_tables";
 export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2";
+export const DATA_WAREHOUSE_SERVER_NAME = "data_warehouses";
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
@@ -57,7 +58,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "agent_router",
   "conversation_files",
   "data_sources_file_system",
-  "data_warehouses",
+  DATA_WAREHOUSE_SERVER_NAME,
   "extract_data",
   "file_generation",
   "freshservice",
@@ -991,7 +992,7 @@ The directive should be used to display a clickable version of the agent name in
       instructions: null,
     },
   },
-  data_warehouses: {
+  [DATA_WAREHOUSE_SERVER_NAME]: {
     id: 1012,
     availability: "auto",
     allowMultipleInstances: false,
@@ -1002,7 +1003,7 @@ The directive should be used to display a clickable version of the agent name in
     tools_stakes: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: "data_warehouses",
+      name: DATA_WAREHOUSE_SERVER_NAME,
       version: "1.0.0",
       description:
         "Comprehensive tables navigation toolkit for browsing data warehouses and tables. Provides Unix-like " +
