@@ -147,7 +147,7 @@ export function ActionValidationProvider({
     useValidationQueue({ pendingValidations });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [initialQueueLength, setInitialQueueLength] = useState(0);
+  const [validatedActions, setValidatedActions] = useState(0);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [neverAskAgain, setNeverAskAgain] = useState(false);
@@ -162,10 +162,12 @@ export function ActionValidationProvider({
 
   useEffect(() => {
     if (validationQueue.length > 0 && !isDialogOpen) {
-      setInitialQueueLength(validationQueue.length);
+      setValidatedActions(0);
       setIsDialogOpen(true);
+    } else if (validationQueue.length === 0 && isDialogOpen && !isValidating) {
+      setIsDialogOpen(false);
     }
-  }, [validationQueue.length, isDialogOpen]);
+  }, [validationQueue.length, isDialogOpen, isValidating]);
 
   const submitValidation = async (status: MCPValidationOutputType) => {
     if (!validationQueue.length) {
@@ -195,14 +197,8 @@ export function ActionValidationProvider({
     setNeverAskAgain(false);
     setErrorMessage(null);
 
-    const remainingAfterShift = validationQueue.length - 1;
-
     shiftValidationQueue();
-
-    if (remainingAfterShift === 0) {
-      setIsDialogOpen(false);
-      setInitialQueueLength(0);
-    }
+    setValidatedActions((c) => c + 1);
   };
 
   const handleSubmit = (approved: MCPValidationOutputType) => {
@@ -211,7 +207,7 @@ export function ActionValidationProvider({
 
   const showValidationDialog = useCallback(() => {
     if (!isDialogOpen && validationQueue.length > 0) {
-      setInitialQueueLength(validationQueue.length);
+      setValidatedActions(0);
       setIsDialogOpen(true);
     }
   }, [isDialogOpen, validationQueue.length]);
@@ -220,16 +216,22 @@ export function ActionValidationProvider({
   const totalPendingValidations = validationQueue.length;
 
   const pages = useMemo(() => {
-    if (!validationQueue.length || initialQueueLength === 0) {
+    const totalCount = validatedActions + validationQueue.length;
+    if (totalCount === 0) {
       return [];
     }
 
-    const { validationRequest } = validationQueue[0];
+    const current = validationQueue[0];
+    if (!current) {
+      return [];
+    }
+
+    const { validationRequest } = current;
     const hasDetails =
       validationRequest?.inputs &&
       Object.keys(validationRequest.inputs).length > 0;
 
-    return Array.from({ length: initialQueueLength }, (_, index) => ({
+    return Array.from({ length: totalCount }, (_, index) => ({
       id: index.toString(),
       title: "Tool Validation Required",
       description: "Review and approve the tool usage request",
@@ -295,7 +297,7 @@ export function ActionValidationProvider({
         </div>
       ),
     }));
-  }, [validationQueue, errorMessage, neverAskAgain, initialQueueLength]);
+  }, [validationQueue, errorMessage, neverAskAgain, validatedActions]);
 
   return (
     <ActionValidationContext.Provider
@@ -312,10 +314,7 @@ export function ActionValidationProvider({
         {pages.length > 0 && (
           <MultiPageDialogContent
             pages={pages}
-            currentPageId={Math.max(
-              0,
-              initialQueueLength - validationQueue.length
-            ).toString()}
+            currentPageId={validatedActions.toString()}
             onPageChange={() => {}}
             size="lg"
             isAlertDialog
