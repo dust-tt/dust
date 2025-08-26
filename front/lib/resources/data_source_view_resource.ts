@@ -38,6 +38,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   ConversationType,
+  ConversationWithoutContentType,
   DataSourceViewCategory,
   DataSourceViewType,
   ModelId,
@@ -442,7 +443,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
   static async fetchByConversation(
     auth: Authenticator,
-    conversation: ConversationType
+    conversation: ConversationWithoutContentType
   ): Promise<DataSourceViewResource | null> {
     // Fetch the data source view associated with the datasource that is associated with the conversation.
     const dataSource = await DataSourceResource.fetchByConversation(

@@ -415,12 +415,13 @@ async function getConversationDataSourceViews(
           }
 
           // Fetch the datasource view for this conversation
-          const childConversation = await ConversationResource.fetchById(
-            auth,
-            fileConversationId
-          );
+          const childConversation =
+            await ConversationResource.fetchConversationWithoutContent(
+              auth,
+              fileConversationId
+            );
 
-          if (!childConversation) {
+          if (childConversation.isErr()) {
             logger.warn(
               `Could not find child conversation with sId: ${fileConversationId}`
             );
@@ -428,12 +429,10 @@ async function getConversationDataSourceViews(
           }
 
           // Create a minimal conversation object with just the id property
-          const minimalConversation = { id: childConversation.id };
-
           const childDataSourceView =
             await DataSourceViewResource.fetchByConversation(
               auth,
-              minimalConversation as any
+              childConversation.value
             );
           if (childDataSourceView) {
             // Map this file to its datasource view
