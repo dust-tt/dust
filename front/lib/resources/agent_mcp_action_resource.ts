@@ -278,11 +278,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           mcpServerName: action.toolConfiguration.mcpServerName,
           agentName: agentConfiguration.name,
           icon: action.toolConfiguration.icon,
+          mcpServerId: mcpServerView?.mcpServerId,
+          mcpServerDisplayName: mcpServerView
+            ? getMcpServerViewDisplayName(mcpServerView.toJSON())
+            : undefined,
         },
-        mcpServerId: mcpServerView?.mcpServerId,
-        mcpServerDisplayName: mcpServerView
-          ? getMcpServerViewDisplayName(mcpServerView.toJSON())
-          : undefined,
         status: action.status,
         authorizationInfo: mcpServerView?.toJSON().server.authorization ?? null,
       });

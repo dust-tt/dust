@@ -172,9 +172,10 @@ export type ToolExecutionMetadata = {
   inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
 
-  mcpServerId?: string;
-  mcpServerDisplayName?: string;
-  metadata: MCPValidationMetadataType;
+  metadata: MCPValidationMetadataType & {
+    mcpServerId?: string;
+    mcpServerDisplayName?: string;
+  };
 };
 
 export type BlockedActionExecution = ToolExecutionMetadata & {
