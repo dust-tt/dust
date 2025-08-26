@@ -398,14 +398,24 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     })
   );
 
-  const errors = renderedMessages.filter((m) => m.isErr());
+  const errors = renderedMessages.filter((m): m is Err<ConversationError> =>
+    m.isErr()
+  );
   if (errors.length > 0) {
-    return new Err(errors[0].error);
+    return errors[0];
   }
 
   return new Ok(
     renderedMessages
-      .filter((m) => m.isOk())
+      .filter(
+        (
+          m
+        ): m is Ok<{
+          m: AgentMessageType;
+          rank: number;
+          version: number;
+        }> => m.isOk()
+      )
       .map((m) => m.value) as V extends "full"
       ? { m: AgentMessageType; rank: number; version: number }[]
       : { m: LightAgentMessageType; rank: number; version: number }[]
