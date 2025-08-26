@@ -8,7 +8,10 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { LightAgentConfigurationType, LightWorkspaceType } from "@app/types";
+import type {
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+} from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
 export function ViewTriggerTable({
@@ -55,10 +58,9 @@ export function ViewTriggerTable({
               <PokeTableRow>
                 <PokeTableHead>Configuration</PokeTableHead>
                 <PokeTableCell>
-                  {trigger.kind === "schedule" 
+                  {trigger.kind === "schedule"
                     ? `${trigger.configuration.cron} (${trigger.configuration.timezone})`
-                    : JSON.stringify(trigger.configuration)
-                  }
+                    : JSON.stringify(trigger.configuration)}
                 </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
@@ -75,7 +77,9 @@ export function ViewTriggerTable({
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Created At</PokeTableHead>
-                <PokeTableCell>{formatTimestampToFriendlyDate(trigger.createdAt)}</PokeTableCell>
+                <PokeTableCell>
+                  {formatTimestampToFriendlyDate(trigger.createdAt)}
+                </PokeTableCell>
               </PokeTableRow>
             </PokeTableBody>
           </PokeTable>
