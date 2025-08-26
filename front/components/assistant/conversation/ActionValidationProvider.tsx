@@ -49,7 +49,7 @@ function useValidationQueue({
     Record<string, MCPActionValidationRequest>
   >({});
 
-  const [currentValidation, setCurrentValidation] = useState<{
+  const [currentItem, setCurrentItem] = useState<{
     message?: LightAgentMessageType;
     validationRequest: MCPActionValidationRequest;
   } | null>(null);
@@ -57,7 +57,7 @@ function useValidationQueue({
   useEffect(() => {
     const nextValidation = pendingValidations[0];
     if (nextValidation) {
-      setCurrentValidation({ validationRequest: nextValidation });
+      setCurrentItem({ validationRequest: nextValidation });
     }
     if (pendingValidations.length > 1) {
       setValidationQueue(
@@ -78,7 +78,7 @@ function useValidationQueue({
       message: LightAgentMessageType;
       validationRequest: MCPActionValidationRequest;
     }) => {
-      setCurrentValidation((current) => {
+      setCurrentItem((current) => {
         if (
           current === null ||
           current.validationRequest.actionId === validationRequest.actionId
@@ -109,7 +109,7 @@ function useValidationQueue({
         delete newRecord[nextValidationActionId];
         return newRecord;
       });
-      setCurrentValidation(nextValidation);
+      setCurrentItem({ validationRequest: nextValidation });
       return nextValidation;
     }
 
@@ -122,12 +122,12 @@ function useValidationQueue({
   );
 
   const clearCurrentValidation = () => {
-    setCurrentValidation(null);
+    setCurrentItem(null);
   };
 
   return {
     validationQueueLength,
-    currentValidation,
+    currentValidation: currentItem,
     enqueueValidation,
     shiftValidationQueue,
     clearCurrentValidation,
@@ -135,7 +135,7 @@ function useValidationQueue({
 }
 
 type ActionValidationContextType = {
-  enqueueValidation: (params?: {
+  enqueueValidation: (params: {
     message: LightAgentMessageType;
     validationRequest: MCPActionValidationRequest;
   }) => void;
@@ -322,7 +322,9 @@ export function ActionValidationProvider({
                 </span>{" "}
                 to use the tool{" "}
                 <span className="font-semibold">
-                  {asDisplayName(currentValidation?.validationRequest.metadata.toolName)}
+                  {asDisplayName(
+                    currentValidation?.validationRequest.metadata.toolName
+                  )}
                 </span>{" "}
                 from{" "}
                 <span className="font-semibold">
