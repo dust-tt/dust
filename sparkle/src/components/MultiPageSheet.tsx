@@ -22,6 +22,11 @@ interface MultiPageSheetPage {
   content: React.ReactNode;
   fixedContent?: React.ReactNode;
   footerContent?: React.ReactNode;
+  /**
+   * Remove the default ScrollArea in the SheetContainer.
+   * To be used if you want to manage the scroll yourself
+   */
+  noScroll?: boolean;
 }
 
 interface MultiPageSheetProps {
@@ -231,6 +236,7 @@ const MultiPageSheetContent = React.forwardRef<
             )}
             <SheetContainer
               className={currentPage.fixedContent ? "s-flex-1" : undefined}
+              noScroll={currentPage.noScroll}
             >
               {currentPage.content}
             </SheetContainer>
