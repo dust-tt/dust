@@ -2,6 +2,7 @@ import {
   ActionPieChartIcon,
   Button,
   Checkbox,
+  Chip,
   CloudArrowLeftRightIcon,
   CodeBlock,
   CollapsibleComponent,
@@ -102,16 +103,23 @@ function PersonalAuthenticationRequiredInline({
           {blockedAction.metadata.mcpServerName}
         </span>
       </div>
-      {!isConnected && mcpServer && (
-        <Button
-          label={isConnected ? "Connected" : "Connect"}
-          variant={isConnected ? "success" : "outline"}
-          size="sm"
-          icon={isConnected ? undefined : CloudArrowLeftRightIcon}
-          disabled={isConnecting || isConnected}
-          onClick={() => handleConnect()}
-        />
-      )}
+      {mcpServer &&
+        (isConnected ? (
+          <Chip color="success" size="xs">
+            Connected
+          </Chip>
+        ) : isConnecting ? (
+          <Spinner size="sm" />
+        ) : (
+          <Button
+            label={"Connect"}
+            variant={"outline"}
+            size="sm"
+            icon={CloudArrowLeftRightIcon}
+            disabled={isConnecting || isConnected}
+            onClick={() => handleConnect()}
+          />
+        ))}
     </div>
   );
 }
