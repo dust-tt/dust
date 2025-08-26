@@ -630,7 +630,7 @@ export async function renderLightContentFragmentForModel(
   }: {
     excludeImages: boolean;
   }
-): Promise<ContentFragmentMessageTypeModel> {
+): Promise<ContentFragmentMessageTypeModel | null> {
   const { contentType, sId } = message;
 
   const contentFragment = await ContentFragmentResource.fromMessageId(
@@ -655,6 +655,9 @@ export async function renderLightContentFragmentForModel(
   }
 
   const attachment = getAttachmentFromContentFragment(message);
+  if (!attachment) {
+    return null;
+  }
 
   const { fileId: fileModelId } = contentFragment;
 
