@@ -62,7 +62,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   private static async checkAgentMessageAccess(
     auth: Authenticator,
     agentMessageIds: ModelId[]
-  ): Promise<void> {
+  ): Promise<ModelId[]> {
     const uniqueAgentMessageIds = [...new Set(agentMessageIds)];
 
     const agentMessages = await AgentMessage.findAll({
@@ -86,7 +86,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     });
 
     if (agentConfigurations.length !== uniqueAgentIds.length) {
-      logger.error(
+      logger.info(
         {
           workspaceId: auth.getNonNullableWorkspace().sId,
           agentIds: uniqueAgentIds,
@@ -94,8 +94,12 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         },
         "User does not have access to agents"
       );
-      throw new Error("Unexpected: User does not have access to all agents");
     }
+
+    const allowedAgentIds = new Set(agentConfigurations.map((a) => a.sId));
+    return agentMessages
+      .filter((a) => allowedAgentIds.has(a.agentConfigurationId))
+      .map((a) => a.id);
   }
 
   private static async makeNew(
@@ -166,13 +170,16 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     const owner = auth.getNonNullableWorkspace();
 
     // Check authorization - will throw if unauthorized
-    await this.checkAgentMessageAccess(auth, agentMessageIds);
+    const allowedAgentMessageIds = await this.checkAgentMessageAccess(
+      auth,
+      agentMessageIds
+    );
 
     let contents = await AgentStepContentModel.findAll({
       where: {
         workspaceId: owner.id,
         agentMessageId: {
-          [Op.in]: agentMessageIds,
+          [Op.in]: allowedAgentMessageIds,
         },
       },
       order: [
@@ -296,9 +303,14 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       );
     }
 
-    await AgentStepContentResource.checkAgentMessageAccess(auth, [
-      this.agentMessageId,
-    ]);
+    const allowedAgentMessageIds =
+      await AgentStepContentResource.checkAgentMessageAccess(auth, [
+        this.agentMessageId,
+      ]);
+
+    if (allowedAgentMessageIds.length === 0) {
+      return new Err(new Error("User does not have access to agents"));
+    }
 
     const deletedCount = await AgentStepContentModel.destroy({
       where: {
