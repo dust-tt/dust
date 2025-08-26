@@ -12,6 +12,7 @@ import { useController, useWatch } from "react-hook-form";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
+import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -29,6 +30,15 @@ import {
 import { isRemoteDatabase } from "@app/lib/data_sources";
 
 const tablesServer = [TABLE_QUERY_SERVER_NAME, TABLE_QUERY_V2_SERVER_NAME];
+
+function isRemoteDatabaseItem(item: DataSourceBuilderTreeItemType): boolean {
+  return (
+    (item.type === "data_source" &&
+      isRemoteDatabase(item.dataSourceView.dataSource)) ||
+    (item.type === "node" &&
+      isRemoteDatabase(item.node.dataSourceView.dataSource))
+  );
+}
 
 export function ProcessingMethodSection() {
   const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
@@ -68,13 +78,7 @@ export function ProcessingMethodSection() {
       return [null, false];
     }
 
-    const onlyRemote = sources.in.every(
-      (item) =>
-        (item.type === "data_source" &&
-          isRemoteDatabase(item.dataSourceView.dataSource)) ||
-        (item.type === "node" &&
-          isRemoteDatabase(item.node.dataSourceView.dataSource))
-    );
+    const onlyRemote = sources.in.every(isRemoteDatabaseItem);
     if (onlyRemote) {
       if (dataWarehouseServer) {
         return [[dataWarehouseServer, ...tablesQueryServers], false];
@@ -83,7 +87,9 @@ export function ProcessingMethodSection() {
     }
 
     const onlyTableQueries = sources.in.every(
-      (item) => item.type === "node" && item.node.type === "table"
+      (item) =>
+        (item.type === "node" && item.node.type === "table") ||
+        isRemoteDatabaseItem(item)
     );
     if (onlyTableQueries) {
       return [tablesQueryServers, false];
