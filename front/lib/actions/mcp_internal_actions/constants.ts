@@ -316,7 +316,8 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "include_data",
       version: "1.0.0",
-      description: "Include data exhaustively",
+      description:
+        "Always includes specific documents in full for every conversation with this agent.",
       icon: "ActionTimeIcon",
       authorization: null,
       documentationUrl: null,
@@ -394,7 +395,8 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "extract_data",
       version: "1.0.0",
-      description: "Structured extraction",
+      description:
+        "Extracts structured information from unstructured data using your defined schema.",
       icon: "ActionScanIcon",
       authorization: null,
       documentationUrl: null,
@@ -854,7 +856,8 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: SEARCH_SERVER_NAME,
       version: "1.0.0",
-      description: "Search through selected Data sources",
+      description:
+        "Searches through selected data sources to surface the best content for answering user queries.",
       icon: "ActionMagnifyingGlassIcon",
       authorization: null,
       documentationUrl: null,
@@ -934,7 +937,7 @@ The directive should be used to display a clickable version of the agent name in
       name: "query_tables_v2",
       version: "1.0.0",
       description:
-        "Tables, Spreadsheets, Notion DBs (quantitative) (mcp, exploded).",
+        "Transforms your questions into SQL queries for analyzing data. (quantitative) (mcp, exploded).",
       icon: "ActionTableIcon",
       authorization: null,
       documentationUrl: null,

@@ -13,6 +13,10 @@ import uniqueId from "lodash/uniqueId";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useState } from "react";
 
+import {
+  PersonalConnectionRequiredDialog,
+  useAwaitableDialog,
+} from "@app/components/agent_builder/PersonalConnectionRequiredDialog";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import ActionsScreen, {
   hasActionError,
@@ -297,6 +301,14 @@ export default function AssistantBuilder({
     }
   }, [currentTab]);
 
+  const { showDialog, ...dialogProps } = useAwaitableDialog({
+    owner,
+    mcpServerViewToCheckIds: builderState.actions.map(
+      (a) => a.configuration.mcpServerViewId
+    ),
+    mcpServerViews,
+  });
+
   const onAssistantSave = async () => {
     // Redirect to the right screen if there are errors.
     if (instructionsError) {
@@ -306,6 +318,11 @@ export default function AssistantBuilder({
     } else if (assistantHandleError || descriptionError) {
       setCurrentTab("settings");
     } else {
+      const confirmed = await showDialog();
+      if (!confirmed) {
+        return;
+      }
+
       setDisableUnsavedChangesPrompt(true);
       setIsSavingOrDeleting(true);
       const res = await submitAssistantBuilderForm({
@@ -357,164 +374,167 @@ export default function AssistantBuilder({
 
   return (
     <>
-      {
-        <AppContentLayout subscription={subscription} hideSidebar owner={owner}>
-          <div className="flex h-full flex-col">
-            {!edited ? (
-              <AppLayoutSimpleCloseTitle
-                title={modalTitle}
-                onClose={async () => {
-                  await appLayoutBack(owner, router);
-                }}
-              />
-            ) : (
-              <AppLayoutSimpleSaveCancelTitle
-                title={modalTitle}
-                onCancel={async () => {
-                  await appLayoutBack(owner, router);
-                }}
-                onSave={isSavingDisabled ? undefined : onAssistantSave}
-                isSaving={isSavingOrDeleting}
-                saveTooltip={
-                  isSavingDisabled
-                    ? "Saving agents is temporarily disabled and will be re-enabled shortly."
-                    : undefined
-                }
-              />
-            )}
-            <BuilderLayout
-              leftPanel={
-                <div className="flex h-full flex-col gap-4 pb-6 pt-4">
-                  <div className="flex flex-row justify-between sm:flex-row">
-                    <Tabs
-                      className="w-full"
-                      onValueChange={(t) => {
-                        setCurrentTab(t);
-                      }}
-                      value={screen}
-                    >
-                      <TabsList>
-                        {Object.values(BUILDER_SCREENS_INFOS).map((tab) => (
-                          <TabsTrigger
-                            key={tab.label}
-                            value={tab.id}
-                            label={tab.label}
-                            icon={tab.icon}
-                            data-gtm-label={tab.dataGtm.label}
-                            data-gtm-location={tab.dataGtm.location}
-                          />
-                        ))}
-                      </TabsList>
-                    </Tabs>
-                    <div className="border-b border-border">
-                      <Button
-                        icon={
-                          isPreviewPanelOpen
-                            ? SidebarRightCloseIcon
-                            : SidebarRightOpenIcon
-                        }
-                        variant="ghost"
-                        tooltip={
-                          isPreviewPanelOpen ? "Hide preview" : "Open preview"
-                        }
-                        onClick={() =>
-                          setIsPreviewPanelOpen(!isPreviewPanelOpen)
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="flex h-full justify-center">
-                    <div className="h-full w-full max-w-4xl">
-                      {(() => {
-                        switch (screen) {
-                          case "instructions":
-                            return (
-                              <InstructionScreen
-                                owner={owner}
-                                resetAt={instructionsResetAt}
-                                isUsingTemplate={template !== null}
-                                instructionsError={instructionsError}
-                                doTypewriterEffect={doTypewriterEffect}
-                                setDoTypewriterEffect={setDoTypewriterEffect}
-                                agentConfigurationId={
-                                  agentConfiguration?.sId ?? null
-                                }
-                                models={models}
-                                setIsInstructionDiffMode={
-                                  setIsInstructionDiffMode
-                                }
-                                isInstructionDiffMode={isInstructionDiffMode}
-                              />
-                            );
-                          case "actions":
-                            return (
-                              <ActionsScreen
-                                owner={owner}
-                                reasoningModels={reasoningModels}
-                                isFetchingActions={isActionsLoading}
-                              />
-                            );
-
-                          case "settings":
-                            return (
-                              <SettingsScreen
-                                agentConfigurationId={
-                                  agentConfiguration?.sId ?? null
-                                }
-                                baseUrl={baseUrl}
-                                owner={owner}
-                                initialHandle={initialBuilderState?.handle}
-                                assistantHandleError={assistantHandleError}
-                                descriptionError={descriptionError}
-                                slackChannelSelected={
-                                  selectedSlackChannels || []
-                                }
-                                slackDataSource={slackDataSource}
-                                setSelectedSlackChannels={
-                                  setSelectedSlackChannels
-                                }
-                                currentUser={user}
-                                isTriggersLoading={isTriggersLoading}
-                              />
-                            );
-                          default:
-                            assertNever(screen);
-                        }
-                      })()}
-                    </div>
-                  </div>
-                  <div className="mt-auto flex-shrink-0">
-                    <PrevNextButtons
-                      screen={screen}
-                      setCurrentTab={setCurrentTab}
+      <PersonalConnectionRequiredDialog
+        owner={owner}
+        mcpServerViewsWithPersonalConnections={
+          dialogProps.mcpServerViewsWithPersonalConnections
+        }
+        isOpen={dialogProps.isOpen}
+        onCancel={dialogProps.onCancel}
+        onClose={dialogProps.onClose}
+      />
+      <AppContentLayout subscription={subscription} hideSidebar owner={owner}>
+        <div className="flex h-full flex-col">
+          {!edited ? (
+            <AppLayoutSimpleCloseTitle
+              title={modalTitle}
+              onClose={async () => {
+                await appLayoutBack(owner, router);
+              }}
+            />
+          ) : (
+            <AppLayoutSimpleSaveCancelTitle
+              title={modalTitle}
+              onCancel={async () => {
+                await appLayoutBack(owner, router);
+              }}
+              onSave={isSavingDisabled ? undefined : onAssistantSave}
+              isSaving={isSavingOrDeleting}
+              saveTooltip={
+                isSavingDisabled
+                  ? "Saving agents is temporarily disabled and will be re-enabled shortly."
+                  : undefined
+              }
+            />
+          )}
+          <BuilderLayout
+            leftPanel={
+              <div className="flex h-full flex-col gap-4 pb-6 pt-4">
+                <div className="flex flex-row justify-between sm:flex-row">
+                  <Tabs
+                    className="w-full"
+                    onValueChange={(t) => {
+                      setCurrentTab(t);
+                    }}
+                    value={screen}
+                  >
+                    <TabsList>
+                      {Object.values(BUILDER_SCREENS_INFOS).map((tab) => (
+                        <TabsTrigger
+                          key={tab.label}
+                          value={tab.id}
+                          label={tab.label}
+                          icon={tab.icon}
+                          data-gtm-label={tab.dataGtm.label}
+                          data-gtm-location={tab.dataGtm.location}
+                        />
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                  <div className="border-b border-border">
+                    <Button
+                      icon={
+                        isPreviewPanelOpen
+                          ? SidebarRightCloseIcon
+                          : SidebarRightOpenIcon
+                      }
+                      variant="ghost"
+                      tooltip={
+                        isPreviewPanelOpen ? "Hide preview" : "Open preview"
+                      }
+                      onClick={() => setIsPreviewPanelOpen(!isPreviewPanelOpen)}
                     />
                   </div>
                 </div>
-              }
-              rightPanel={
-                <ConversationSidePanelProvider>
-                  <AssistantBuilderRightPanel
+                <div className="flex h-full justify-center">
+                  <div className="h-full w-full max-w-4xl">
+                    {(() => {
+                      switch (screen) {
+                        case "instructions":
+                          return (
+                            <InstructionScreen
+                              owner={owner}
+                              resetAt={instructionsResetAt}
+                              isUsingTemplate={template !== null}
+                              instructionsError={instructionsError}
+                              doTypewriterEffect={doTypewriterEffect}
+                              setDoTypewriterEffect={setDoTypewriterEffect}
+                              agentConfigurationId={
+                                agentConfiguration?.sId ?? null
+                              }
+                              models={models}
+                              setIsInstructionDiffMode={
+                                setIsInstructionDiffMode
+                              }
+                              isInstructionDiffMode={isInstructionDiffMode}
+                            />
+                          );
+                        case "actions":
+                          return (
+                            <ActionsScreen
+                              owner={owner}
+                              reasoningModels={reasoningModels}
+                              isFetchingActions={isActionsLoading}
+                            />
+                          );
+
+                        case "settings":
+                          return (
+                            <SettingsScreen
+                              agentConfigurationId={
+                                agentConfiguration?.sId ?? null
+                              }
+                              baseUrl={baseUrl}
+                              owner={owner}
+                              initialHandle={initialBuilderState?.handle}
+                              assistantHandleError={assistantHandleError}
+                              descriptionError={descriptionError}
+                              slackChannelSelected={selectedSlackChannels || []}
+                              slackDataSource={slackDataSource}
+                              setSelectedSlackChannels={
+                                setSelectedSlackChannels
+                              }
+                              currentUser={user}
+                              isTriggersLoading={isTriggersLoading}
+                            />
+                          );
+                        default:
+                          assertNever(screen);
+                      }
+                    })()}
+                  </div>
+                </div>
+                <div className="mt-auto flex-shrink-0">
+                  <PrevNextButtons
                     screen={screen}
-                    template={template}
-                    mcpServerViews={mcpServerViews}
-                    removeTemplate={removeTemplate}
-                    resetToTemplateInstructions={async () => {
-                      resetToTemplateInstructions(setBuilderState);
-                      setEdited(true);
-                    }}
-                    resetToTemplateActions={async () => {
-                      resetToTemplateActions(setBuilderState);
-                      setEdited(true);
-                    }}
-                    owner={owner}
-                    agentConfiguration={agentConfiguration}
+                    setCurrentTab={setCurrentTab}
                   />
-                </ConversationSidePanelProvider>
-              }
-            />
-          </div>
-        </AppContentLayout>
-      }
+                </div>
+              </div>
+            }
+            rightPanel={
+              <ConversationSidePanelProvider>
+                <AssistantBuilderRightPanel
+                  screen={screen}
+                  template={template}
+                  mcpServerViews={mcpServerViews}
+                  removeTemplate={removeTemplate}
+                  resetToTemplateInstructions={async () => {
+                    resetToTemplateInstructions(setBuilderState);
+                    setEdited(true);
+                  }}
+                  resetToTemplateActions={async () => {
+                    resetToTemplateActions(setBuilderState);
+                    setEdited(true);
+                  }}
+                  owner={owner}
+                  agentConfiguration={agentConfiguration}
+                />
+              </ConversationSidePanelProvider>
+            }
+          />
+        </div>
+      </AppContentLayout>
     </>
   );
 }

@@ -67,7 +67,7 @@ function useValidationQueue({
     }
   }, [pendingValidations]);
 
-  const handleValidationRequest = useCallback(
+  const enqueueValidation = useCallback(
     (validationRequest: MCPActionValidationRequest) => {
       setCurrentValidation((current) => {
         if (
@@ -88,7 +88,7 @@ function useValidationQueue({
   );
 
   // We don't update the current validation here to avoid content flickering.
-  const takeNextFromQueue = useCallback(() => {
+  const shiftValidationQueue = useCallback(() => {
     const enqueuedActionIds = Object.keys(validationQueue);
 
     if (enqueuedActionIds.length > 0) {
@@ -100,6 +100,7 @@ function useValidationQueue({
         delete newRecord[nextValidationActionId];
         return newRecord;
       });
+      setCurrentValidation(nextValidation);
       return nextValidation;
     }
 
@@ -111,19 +112,22 @@ function useValidationQueue({
     [validationQueue]
   );
 
+  const clearCurrentValidation = () => {
+    setCurrentValidation(null);
+  };
+
   return {
     validationQueueLength,
     currentValidation,
-    handleValidationRequest,
-    takeNextFromQueue,
-    setCurrentValidation,
+    enqueueValidation,
+    shiftValidationQueue,
+    clearCurrentValidation,
   };
 }
 
 type ActionValidationContextType = {
-  showValidationDialog: (
-    validationRequest?: MCPActionValidationRequest
-  ) => void;
+  enqueueValidation: (validationRequest: MCPActionValidationRequest) => void;
+  showValidationDialog: () => void;
   hasPendingValidations: boolean;
   totalPendingValidations: number;
 };
@@ -169,9 +173,9 @@ export function ActionValidationProvider({
   const {
     validationQueueLength,
     currentValidation,
-    setCurrentValidation,
-    handleValidationRequest,
-    takeNextFromQueue,
+    clearCurrentValidation,
+    enqueueValidation,
+    shiftValidationQueue,
   } = useValidationQueue({ pendingValidations });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -182,7 +186,7 @@ export function ActionValidationProvider({
 
   useNavigationLock(isDialogOpen);
 
-  const sendCurrentValidation = async (status: MCPValidationOutputType) => {
+  const submitValidation = async (status: MCPValidationOutputType) => {
     if (!currentValidation) {
       return;
     }
@@ -220,13 +224,11 @@ export function ActionValidationProvider({
   };
 
   const handleSubmit = (approved: MCPValidationOutputType) => {
-    void sendCurrentValidation(approved);
+    void submitValidation(approved);
 
-    const foundItem = takeNextFromQueue();
-    if (foundItem) {
-      setCurrentValidation(foundItem);
-    } else {
-      // To avoid content flickering, we will clear out the current validation in onDialogAnimationEnd.
+    const nextValidationRequest = shiftValidationQueue();
+    // We will clear out the current validation in onDialogAnimationEnd to avoid content flickering.
+    if (!nextValidationRequest) {
       setIsDialogOpen(false);
     }
   };
@@ -235,25 +237,17 @@ export function ActionValidationProvider({
   const onDialogAnimationEnd = () => {
     // This is safe to check because the dialog closing animation is triggered after isDialogOpen is set to false.
     if (!isDialogOpen) {
-      setCurrentValidation(null);
+      clearCurrentValidation();
       setErrorMessage(null);
     }
   };
 
-  // This will be used as a dependency of the hook down the line so we need to use useCallback.
-  const showValidationDialog = useCallback(
-    (validationRequest?: MCPActionValidationRequest) => {
-      if (!isDialogOpen) {
-        setIsDialogOpen(true);
-      }
-
-      // If we have a new validation request, queue it.
-      if (validationRequest) {
-        handleValidationRequest(validationRequest);
-      }
-    },
-    [handleValidationRequest, isDialogOpen]
-  );
+  // We need the useCallback because this will be used as a dependency of the hook down the line.
+  const showValidationDialog = useCallback(() => {
+    if (!isDialogOpen) {
+      setIsDialogOpen(true);
+    }
+  }, [isDialogOpen]);
 
   const hasPendingValidations =
     currentValidation !== null || validationQueueLength > 0;
@@ -264,6 +258,7 @@ export function ActionValidationProvider({
     <ActionValidationContext.Provider
       value={{
         showValidationDialog,
+        enqueueValidation,
         hasPendingValidations,
         totalPendingValidations,
       }}
@@ -288,13 +283,18 @@ export function ActionValidationProvider({
           <DialogContainer>
             <div className="flex flex-col gap-4">
               <div>
-                Allow <b>@{currentValidation?.metadata.agentName}</b> to use the
-                tool{" "}
-                <b>{asDisplayName(currentValidation?.metadata.toolName)}</b>{" "}
+                Allow{" "}
+                <span className="font-semibold">
+                  @{currentValidation?.metadata.agentName}
+                </span>{" "}
+                to use the tool{" "}
+                <span className="font-semibold">
+                  {asDisplayName(currentValidation?.metadata.toolName)}
+                </span>{" "}
                 from{" "}
-                <b>
+                <span className="font-semibold">
                   {asDisplayName(currentValidation?.metadata.mcpServerName)}
-                </b>
+                </span>
                 ?
               </div>
               {currentValidation?.inputs &&
