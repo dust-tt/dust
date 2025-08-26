@@ -59,6 +59,14 @@ export function ConfirmDialog({
   resolveConfirm,
   closeDialogFn,
 }: ConfirmDialogProps) {
+  // To avoid content flickering, we clear out the current validation when closing animation ends
+  // instead of right after clicking on one of the buttons.
+  const onDialogAnimationEnd = () => {
+    if (!open) {
+      closeDialogFn();
+    }
+  };
+
   return (
     <Dialog
       open={confirmData != null}
@@ -69,7 +77,7 @@ export function ConfirmDialog({
         }
       }}
     >
-      <DialogContent size="md">
+      <DialogContent size="md" onAnimationEnd={onDialogAnimationEnd}>
         <DialogHeader hideButton>
           <DialogTitle>{confirmData?.title ?? ""}</DialogTitle>
         </DialogHeader>
@@ -82,18 +90,12 @@ export function ConfirmDialog({
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
-            onClick: () => {
-              resolveConfirm(false);
-              closeDialogFn();
-            },
+            onClick: () => resolveConfirm(false),
           }}
           rightButtonProps={{
             label: confirmData?.validateLabel ?? "OK",
             variant: confirmData?.validateVariant ?? "warning",
-            onClick: async () => {
-              resolveConfirm(true);
-              closeDialogFn();
-            },
+            onClick: () => resolveConfirm(true),
           }}
         />
       </DialogContent>
