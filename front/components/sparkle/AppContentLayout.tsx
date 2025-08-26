@@ -6,6 +6,7 @@ import React from "react";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { NavigationLoadingOverlay } from "@app/components/sparkle/NavigationLoadingOverlay";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
@@ -95,6 +96,7 @@ export default function AppContentLayout({
           "dark:bg-background-night dark:text-foreground-night"
         )}
       >
+        <NavigationLoadingOverlay />
         {/* Temporary measure to preserve title existence on smaller screens.
          * Page has no title, prepend empty AppLayoutTitle. */}
         {loaded && !hasTitle && (
