@@ -547,7 +547,8 @@ module.exports = {
         reload: "reload 1000ms ease-out",
         fadeout: "fadeout 500ms ease-out",
         marquee: "marquee 25s linear infinite",
-        "navigation-loader": "navigation-fade-in 0.2s ease-in-out 0.5s forwards",
+        "navigation-loader":
+          "navigation-fade-in 0.2s ease-in-out 0.5s forwards",
       },
       colors: {
         // Creates night shades for all colors
