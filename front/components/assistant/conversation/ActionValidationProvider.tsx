@@ -2,6 +2,7 @@ import {
   ActionPieChartIcon,
   Button,
   Checkbox,
+  CloudArrowLeftRightIcon,
   CodeBlock,
   CollapsibleComponent,
   Dialog,
@@ -24,13 +25,18 @@ import {
   useState,
 } from "react";
 
-import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedActionExecution } from "@app/lib/actions/mcp";
 import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
+import { useSubmitFunction } from "@app/lib/client/utils";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
+import {
+  useCreatePersonalConnection,
+  useMCPServer,
+} from "@app/lib/swr/mcp_servers";
 import type {
   ConversationWithoutContentType,
   LightAgentMessageType,
@@ -38,6 +44,77 @@ import type {
   MCPActionValidationRequest,
 } from "@app/types";
 import { asDisplayName, pluralize } from "@app/types";
+
+interface PersonalAuthenticationRequiredInlineProps {
+  owner: LightWorkspaceType;
+  blockedAction: BlockedActionExecution & {
+    mcpServerId: string;
+    authorizationInfo: AuthorizationInfo;
+  };
+  retryHandler: () => void;
+}
+
+function PersonalAuthenticationRequiredInline({
+  owner,
+  blockedAction,
+  retryHandler,
+}: PersonalAuthenticationRequiredInlineProps) {
+  const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  const { server: mcpServer } = useMCPServer({
+    owner,
+    serverId: blockedAction.mcpServerId,
+  });
+
+  const { createPersonalConnection } = useCreatePersonalConnection(owner);
+  const { submit: retry } = useSubmitFunction(async () => retryHandler());
+
+  const handleConnect = async () => {
+    if (!mcpServer) {
+      return;
+    }
+    setIsConnecting(true);
+    const success = await createPersonalConnection(
+      mcpServer,
+      blockedAction.authorizationInfo.provider,
+      "personal_actions",
+      blockedAction.authorizationInfo.scope
+    );
+    setIsConnecting(false);
+    if (!success) {
+      setIsConnected(false);
+    } else {
+      setIsConnected(true);
+      await retry();
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center">
+        {blockedAction.metadata.icon ? (
+          getAvatarFromIcon(blockedAction.metadata.icon, "md")
+        ) : (
+          <Icon visual={ActionPieChartIcon} size="sm" />
+        )}
+        <span className="font-medium capitalize">
+          {blockedAction.metadata.mcpServerName}
+        </span>
+      </div>
+      {!isConnected && mcpServer && (
+        <Button
+          label={isConnected ? "Connected" : "Connect"}
+          variant={isConnected ? "success" : "outline"}
+          size="sm"
+          icon={isConnected ? undefined : CloudArrowLeftRightIcon}
+          disabled={isConnecting || isConnected}
+          onClick={() => handleConnect()}
+        />
+      )}
+    </div>
+  );
+}
 
 function useValidationQueue({
   pendingValidations,
@@ -418,19 +495,20 @@ export function ActionValidationProvider({
             )}</>)
             {/* TODO: move this to an actual component, TBD on work on triggers.. */}
             {isAuthenticationRequired ? (
-              <div className="flex flex-col gap-2">
+              <div className="mb-4 flex flex-col gap-4">
                 {actionsBlockedOnAuthentication.map(
                   (action) =>
-                    action.mcpServerId &&
-                    action.authorizationInfo && (
-                      <MCPServerPersonalAuthenticationRequired
-                        key={`personal-auth-required-${action.actionId}`}
+                    action.authorizationInfo &&
+                    action.mcpServerId && (
+                      <PersonalAuthenticationRequiredInline
+                        key={`personal-auth-${action.actionId}`}
                         owner={owner}
-                        mcpServerId={action.mcpServerId}
-                        provider={action.authorizationInfo.provider}
-                        scope={action.authorizationInfo.scope}
-                        // We only retry when clicking on Done.
-                        retryHandler={() => {}}
+                        blockedAction={{
+                          ...action,
+                          mcpServerId: action.mcpServerId,
+                          authorizationInfo: action.authorizationInfo,
+                        }}
+                        retryHandler={retryBlockedActions}
                       />
                     )
                 )}
