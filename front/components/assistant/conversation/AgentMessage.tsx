@@ -12,7 +12,7 @@ import {
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { marked } from "marked";
-import React from "react";
+import React, { useCallback } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -118,7 +118,7 @@ export function AgentMessage({
     conversationId,
     owner,
     mutateMessage,
-    onEventCallback: React.useCallback(
+    onEventCallback: useCallback(
       (eventStr: string) => {
         const eventPayload = JSON.parse(eventStr);
         const eventType = eventPayload.data.type;
@@ -245,7 +245,7 @@ export function AgentMessage({
     isLastMessage,
   });
 
-  const PopoverContent = React.useCallback(
+  const PopoverContent = useCallback(
     () => (
       <FeedbackSelectorPopoverContent
         owner={owner}
