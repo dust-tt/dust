@@ -131,3 +131,29 @@ export function convertActionsForFormData(
     configuration: action.configuration,
   }));
 }
+
+/**
+ * Transforms an agent configuration for duplication into agent builder form data.
+ * Similar to transformAgentConfigurationToFormData but adds "_Copy" suffix to name,
+ * resets editors to current user, and defaults to private scope.
+ */
+export function transformDuplicateAgentToFormData(
+  agentConfiguration: LightAgentConfigurationType,
+  user: UserType
+): AgentBuilderFormData {
+  const baseFormData =
+    transformAgentConfigurationToFormData(agentConfiguration);
+
+  return {
+    ...baseFormData,
+    agentSettings: {
+      ...baseFormData.agentSettings,
+      name: `${agentConfiguration.name}${
+        "isTemplate" in agentConfiguration ? "" : "_Copy"
+      }`,
+      scope: "hidden", // Default duplicated agents to private scope
+      editors: [user], // Reset editors to current user for duplicated agent
+      tags: agentConfiguration.tags.filter((tag) => tag.kind !== "protected"),
+    },
+  };
+}

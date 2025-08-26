@@ -26,6 +26,7 @@ import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgen
 import {
   getDefaultAgentFormData,
   transformAgentConfigurationToFormData,
+  transformDuplicateAgentToFormData,
   transformTemplateToFormData,
 } from "@app/components/agent_builder/transformAgentConfiguration";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
@@ -78,10 +79,12 @@ function processAdditionalConfigurationFromStorage(
 
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
+  duplicateAgentId?: string | null;
 }
 
 export default function AgentBuilder({
   agentConfiguration,
+  duplicateAgentId,
 }: AgentBuilderProps) {
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
@@ -93,7 +96,7 @@ export default function AgentBuilder({
 
   const { actions, isActionsLoading } = useAgentConfigurationActions(
     owner.sId,
-    agentConfiguration?.sId ?? null
+    duplicateAgentId ?? agentConfiguration?.sId ?? null
   );
 
   const { triggers, isTriggersLoading } = useAgentTriggers({
@@ -148,7 +151,10 @@ export default function AgentBuilder({
   const formValues = useMemo((): AgentBuilderFormData => {
     let baseValues: AgentBuilderFormData;
 
-    if (agentConfiguration) {
+    if (duplicateAgentId && agentConfiguration) {
+      // Handle agent duplication case
+      baseValues = transformDuplicateAgentToFormData(agentConfiguration, user);
+    } else if (agentConfiguration) {
       baseValues = transformAgentConfigurationToFormData(agentConfiguration);
     } else if (assistantTemplate) {
       baseValues = transformTemplateToFormData(assistantTemplate, user);
@@ -171,6 +177,7 @@ export default function AgentBuilder({
     agentConfiguration,
     assistantTemplate,
     user,
+    duplicateAgentId,
     processedActions,
     slackProvider,
     editors,
