@@ -179,10 +179,12 @@ export function AgentBuilderInstructionsEditor({
     }
     const currentContent = plainTextFromTipTapContent(editor.getJSON());
     if (currentContent !== field.value) {
-      editor.commands.setContent(
-        tipTapContentFromPlainText(field.value),
-        false
-      );
+      setTimeout(() => {
+        editor.commands.setContent(
+          tipTapContentFromPlainText(field.value),
+          false
+        );
+      }, 0);
     }
   }, [editor, field.value]);
 
