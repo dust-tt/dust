@@ -39,7 +39,7 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
         onClick={canAdd && !isSelected ? onClick : undefined}
         disabled={!canAdd || isSelected}
         className={cn("s-h-24 s-p-3", className)}
-     >
+      >
         <div className="s-flex s-w-full s-flex-col">
           <div className="s-mb-2 s-flex s-items-start s-justify-between s-gap-2">
             <div className="s-flex s-items-center s-gap-2">
@@ -78,5 +78,3 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
   }
 );
 ToolCard.displayName = "ToolCard";
-
-
