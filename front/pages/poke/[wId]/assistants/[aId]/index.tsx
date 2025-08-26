@@ -15,6 +15,7 @@ import type { ReactElement } from "react";
 
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { listsAgentConfigurationVersions } from "@app/lib/api/assistant/configuration/agent";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
@@ -106,6 +107,13 @@ const AssistantDetailsPage = ({
             resourceType: "agents",
             workspace: workspace,
           }}
+        />
+      </div>
+
+      <div className="mt-4">
+        <TriggerDataTable 
+          owner={workspace} 
+          agentId={agentConfigurations[0].sId} 
         />
       </div>
 

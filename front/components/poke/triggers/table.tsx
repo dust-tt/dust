@@ -7,9 +7,10 @@ import type { LightWorkspaceType } from "@app/types";
 
 interface TriggerDataTableProps {
   owner: LightWorkspaceType;
+  agentId?: string;
 }
 
-export function TriggerDataTable({ owner }: TriggerDataTableProps) {
+export function TriggerDataTable({ owner, agentId }: TriggerDataTableProps) {
   const { data: agentConfigurations } = usePokeAgentConfigurations({
     owner,
     disabled: false,
@@ -30,7 +31,12 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
           }
         );
 
-        return <PokeDataTable columns={columns} data={triggers} />;
+        // Filter triggers by agent ID if provided
+        const filteredTriggers = agentId 
+          ? triggers.filter(trigger => trigger.agentConfigurationId === agentId)
+          : triggers;
+
+        return <PokeDataTable columns={columns} data={filteredTriggers} />;
       }}
     </PokeDataTableConditionalFetch>
   );
