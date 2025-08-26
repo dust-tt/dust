@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useReducer, useRef } from "react";
 
 import { useEventSource } from "@app/hooks/useEventSource";
-import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type {
   AgentMessageStateEvent,
   MessageTemporaryState,
@@ -10,11 +9,7 @@ import {
   CLEAR_CONTENT_EVENT,
   messageReducer,
 } from "@app/lib/assistant/state/messageReducer";
-import type {
-  AgentMessageType,
-  LightAgentMessageType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
 type AgentMessageStateWithControlEvent =
@@ -34,12 +29,12 @@ function makeInitialMessageStreamState(
 }
 
 interface UseAgentMessageStreamParams {
-  message: LightAgentMessageType | AgentMessageType;
+  message: LightAgentMessageType;
   conversationId: string | null;
   owner: LightWorkspaceType;
   mutateMessage?: () => void;
   onEventCallback?: (eventStr: string) => void;
-  streamId?: string;
+  streamId: string;
 }
 
 export function useAgentMessageStream({
@@ -50,24 +45,19 @@ export function useAgentMessageStream({
   onEventCallback: customOnEventCallback,
   streamId,
 }: UseAgentMessageStreamParams) {
-  const lightMessage =
-    "parsedContents" in message
-      ? getLightAgentMessageFromAgentMessage(message)
-      : message;
-
   const [messageStreamState, dispatch] = useReducer(
     messageReducer,
-    lightMessage,
+    message,
     makeInitialMessageStreamState
   );
 
   const isFreshMountWithContent = useRef(
-    lightMessage.status === "created" &&
-      (!!lightMessage.content || !!lightMessage.chainOfThought)
+    message.status === "created" &&
+      (!!message.content || !!message.chainOfThought)
   );
 
   const shouldStream = useMemo(() => {
-    if (lightMessage.status !== "created") {
+    if (message.status !== "created") {
       return false;
     }
 
@@ -81,26 +71,25 @@ export function useAgentMessageStream({
       default:
         assertNever(messageStreamState.message.status);
     }
-  }, [lightMessage.status, messageStreamState.message.status]);
+  }, [message.status, messageStreamState.message.status]);
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      if (!shouldStream || !conversationId || !lightMessage.sId) {
-        return null;
-      }
-      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${lightMessage.sId}/events`;
+      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: {
           eventId: string;
         } = JSON.parse(lastEvent);
         lastEventId = eventPayload.eventId;
+        // We have a lastEventId, so this is not a fresh mount
         isFreshMountWithContent.current = false;
       }
       const url = esURL + "?lastEventId=" + lastEventId;
+
       return url;
     },
-    [shouldStream, owner.sId, conversationId, lightMessage.sId]
+    [conversationId, message.sId, owner.sId]
   );
 
   const onEventCallback = useCallback(
@@ -111,6 +100,9 @@ export function useAgentMessageStream({
       } = JSON.parse(eventStr);
       const eventType = eventPayload.data.type;
 
+      // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
+      // end of the stream to the client. The message reducer does not, and should not, handle this
+      // event, so we just return.
       if (eventType === "end-of-stream") {
         return;
       }
@@ -122,6 +114,8 @@ export function useAgentMessageStream({
         return;
       }
 
+      // If this is a fresh mount with existing content and we're getting generation_tokens,
+      // we need to clear the content first to avoid duplication
       if (
         isFreshMountWithContent.current &&
         eventType === "generation_tokens" &&
@@ -152,12 +146,9 @@ export function useAgentMessageStream({
     [mutateMessage, customOnEventCallback]
   );
 
-  useEventSource(
-    buildEventSourceURL,
-    onEventCallback,
-    streamId || `message-${lightMessage.sId}`,
-    { isReadyToConsumeStream: shouldStream }
-  );
+  useEventSource(buildEventSourceURL, onEventCallback, streamId, {
+    isReadyToConsumeStream: shouldStream,
+  });
 
   return {
     messageStreamState,

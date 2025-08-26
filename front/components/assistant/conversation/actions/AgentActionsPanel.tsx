@@ -1,11 +1,12 @@
 import { Spinner } from "@dust-tt/sparkle";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
 import { PanelAgentStep } from "@app/components/assistant/conversation/actions/PanelAgentStep";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
+import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type {
   AgentMessageType,
@@ -40,17 +41,20 @@ function AgentActionsPanelContent({
 
   const { messageStreamState, shouldStream, isFreshMountWithContent } =
     useAgentMessageStream({
-      message: fullAgentMessage,
+      message: getLightAgentMessageFromAgentMessage(fullAgentMessage),
       conversationId: conversation?.sId ?? null,
       owner,
       mutateMessage,
-      onEventCallback: (eventStr: string) => {
-        const eventPayload = JSON.parse(eventStr);
+      onEventCallback: useCallback(
+        (eventStr: string) => {
+          const eventPayload = JSON.parse(eventStr);
 
-        if (currentStreamingStep !== eventPayload.data.step + 1) {
-          setCurrentStreamingStep(eventPayload.data.step + 1);
-        }
-      },
+          if (currentStreamingStep !== eventPayload.data.step + 1) {
+            setCurrentStreamingStep(eventPayload.data.step + 1);
+          }
+        },
+        [currentStreamingStep]
+      ),
       streamId: `actions-panel-${messageId}`,
     });
 
@@ -93,6 +97,10 @@ function AgentActionsPanelContent({
   }, [messageStreamState.message?.chainOfThought, currentStreamingStep]);
 
   useEffect(() => {
+    if (!shouldStream) {
+      return;
+    }
+
     const el = scrollContainerRef.current;
     if (!el) {
       return;
@@ -104,7 +112,7 @@ function AgentActionsPanelContent({
         behavior: "smooth",
       });
     }
-  }, [fullAgentMessage, messageStreamState]);
+  }, [fullAgentMessage, messageStreamState, shouldStream]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;

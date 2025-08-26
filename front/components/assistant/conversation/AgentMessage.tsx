@@ -118,25 +118,29 @@ export function AgentMessage({
     conversationId,
     owner,
     mutateMessage,
-    onEventCallback: (eventStr: string) => {
-      const eventPayload = JSON.parse(eventStr);
-      const eventType = eventPayload.data.type;
+    onEventCallback: React.useCallback(
+      (eventStr: string) => {
+        const eventPayload = JSON.parse(eventStr);
+        const eventType = eventPayload.data.type;
 
-      if (eventType === "tool_approve_execution") {
-        showValidationDialog();
-        enqueueValidation({
-          message,
-          validationRequest: {
-            messageId: eventPayload.data.messageId,
-            conversationId: eventPayload.data.conversationId,
-            actionId: eventPayload.data.actionId,
-            inputs: eventPayload.data.inputs,
-            stake: eventPayload.data.stake,
-            metadata: eventPayload.data.metadata,
-          },
-        });
-      }
-    },
+        if (eventType === "tool_approve_execution") {
+          showValidationDialog();
+          enqueueValidation({
+            message,
+            validationRequest: {
+              messageId: eventPayload.data.messageId,
+              conversationId: eventPayload.data.conversationId,
+              actionId: eventPayload.data.actionId,
+              inputs: eventPayload.data.inputs,
+              stake: eventPayload.data.stake,
+              metadata: eventPayload.data.metadata,
+            },
+          });
+        }
+      },
+      [showValidationDialog, enqueueValidation, message]
+    ),
+    streamId: `message-${message.sId}`,
   });
 
   const agentMessageToRender = ((): LightAgentMessageType => {
