@@ -203,7 +203,7 @@ function getCompanyDataAction(
 
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.RESEARCH + "-company-data-action",
+    sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-company-data-action",
     type: "mcp_server_configuration",
     name: "company_data",
     description: "The user's internal company data.",
@@ -242,7 +242,7 @@ function getCompanyDataWarehousesAction(
 
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.RESEARCH + "-data-warehouses-action",
+    sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-data-warehouses-action",
     type: "mcp_server_configuration",
     name: "data_warehouses",
     description: "The user's data warehouses.",
@@ -292,7 +292,7 @@ export function _getDustDeepGlobalAgent(
     "Deep research with company data, web search/browse, interactive content, and data warehouses.";
 
   const pictureUrl =
-    "https://dust.tt/static/systemavatar/research_avatar_full.png";
+    "https://dust.tt/static/systemavatar/dust-deep_avatar_full.png";
 
   const modelConfig = getModelConfig(owner, "anthropic");
 
@@ -301,7 +301,7 @@ export function _getDustDeepGlobalAgent(
     "status" | "maxStepsPerRun" | "actions"
   > = {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.RESEARCH,
+    sId: GLOBAL_AGENTS_SID.DUST_DEEP,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -350,7 +350,7 @@ export function _getDustDeepGlobalAgent(
 
   actions.push(
     ..._getDefaultWebActionsForGlobalAgent({
-      agentId: GLOBAL_AGENTS_SID.RESEARCH,
+      agentId: GLOBAL_AGENTS_SID.DUST_DEEP,
       webSearchBrowseMCPServerView,
     }),
     ..._getToolsetsToolsConfiguration({
@@ -372,7 +372,7 @@ export function _getDustDeepGlobalAgent(
   if (interactiveContentMCPServerView) {
     actions.push({
       id: -1,
-      sId: GLOBAL_AGENTS_SID.RESEARCH + "-interactive-content",
+      sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-interactive-content",
       type: "mcp_server_configuration",
       name: "interactive_content" satisfies InternalMCPServerNameType,
       description: "Create & update interactive content files.",
@@ -393,7 +393,7 @@ export function _getDustDeepGlobalAgent(
   if (runAgentMCPServerView) {
     actions.push({
       id: -1,
-      sId: GLOBAL_AGENTS_SID.RESEARCH + "-run-agent-dust-task",
+      sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-run-agent-dust-task",
       type: "mcp_server_configuration",
       name: "sub_agent",
       description: "Run the dust-task sub-agent for focused tasks.",
@@ -446,7 +446,7 @@ export function _getDustTaskGlobalAgent(
     "Focused research sub-agent. Same data/web tools as dust-deep, without interactive content or spawning sub-agents.";
 
   const pictureUrl =
-    "https://dust.tt/static/systemavatar/research_avatar_full.png";
+    "https://dust.tt/static/systemavatar/dust-task_avatar_full.png";
 
   const dustTaskAgent: Omit<
     AgentConfigurationType,

@@ -40,13 +40,11 @@ export function GlobalAgentAction({
   });
   const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
 
-  if (agent.sId === "helper") {
-    return null;
-  }
-
-  const isConfigurable =
-    agent.sId === GLOBAL_AGENTS_SID.RESEARCH ||
-    agent.sId === GLOBAL_AGENTS_SID.DUST;
+  const isConfigurable = agent.sId === GLOBAL_AGENTS_SID.DUST;
+  const canBeDisabled =
+    agent.sId !== GLOBAL_AGENTS_SID.DUST &&
+    agent.sId !== GLOBAL_AGENTS_SID.DUST_DEEP &&
+    agent.sId !== GLOBAL_AGENTS_SID.HELPER;
 
   if (isConfigurable) {
     return (
@@ -65,52 +63,56 @@ export function GlobalAgentAction({
     );
   }
 
-  return (
-    <>
-      <SliderToggle
-        size="xs"
-        onClick={(e) => {
-          e.stopPropagation();
-          void handleToggleAgentStatus(agent);
-        }}
-        selected={agent.status === "active"}
-        disabled={
-          !isBuilder(owner) || agent.status === "disabled_missing_datasource"
-        }
-      />
-      <div className="whitespace-normal" onClick={(e) => e.stopPropagation()}>
-        <Dialog
-          open={showDisabledFreeWorkspacePopup === agent.sId}
-          onOpenChange={(open) => {
-            if (!open) {
-              setShowDisabledFreeWorkspacePopup(null);
-            }
+  if (canBeDisabled) {
+    return (
+      <>
+        <SliderToggle
+          size="xs"
+          onClick={(e) => {
+            e.stopPropagation();
+            void handleToggleAgentStatus(agent);
           }}
-        >
-          <DialogContent size="md">
-            <DialogHeader hideButton={false}>
-              <DialogTitle>Free plan</DialogTitle>
-            </DialogHeader>
-            <DialogContainer>
-              {`@${agent.name} is only available on our paid plans.`}
-            </DialogContainer>
-            <DialogFooter
-              leftButtonProps={{
-                label: "Cancel",
-                variant: "outline",
-                onClick: () => setShowDisabledFreeWorkspacePopup(null),
-              }}
-              rightButtonProps={{
-                label: "Check Dust plans",
-                variant: "primary",
-                onClick: () => {
-                  void router.push(`/w/${owner.sId}/subscription`);
-                },
-              }}
-            />
-          </DialogContent>
-        </Dialog>
-      </div>
-    </>
-  );
+          selected={agent.status === "active"}
+          disabled={
+            !isBuilder(owner) || agent.status === "disabled_missing_datasource"
+          }
+        />
+        <div className="whitespace-normal" onClick={(e) => e.stopPropagation()}>
+          <Dialog
+            open={showDisabledFreeWorkspacePopup === agent.sId}
+            onOpenChange={(open) => {
+              if (!open) {
+                setShowDisabledFreeWorkspacePopup(null);
+              }
+            }}
+          >
+            <DialogContent size="md">
+              <DialogHeader hideButton={false}>
+                <DialogTitle>Free plan</DialogTitle>
+              </DialogHeader>
+              <DialogContainer>
+                {`@${agent.name} is only available on our paid plans.`}
+              </DialogContainer>
+              <DialogFooter
+                leftButtonProps={{
+                  label: "Cancel",
+                  variant: "outline",
+                  onClick: () => setShowDisabledFreeWorkspacePopup(null),
+                }}
+                rightButtonProps={{
+                  label: "Check Dust plans",
+                  variant: "primary",
+                  onClick: () => {
+                    void router.push(`/w/${owner.sId}/subscription`);
+                  },
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+      </>
+    );
+  }
+
+  return null;
 }

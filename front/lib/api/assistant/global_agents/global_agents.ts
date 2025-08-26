@@ -280,7 +280,7 @@ function getGlobalAgent({
         searchMCPServerView,
       });
       break;
-    case GLOBAL_AGENTS_SID.RESEARCH:
+    case GLOBAL_AGENTS_SID.DUST_DEEP:
       agentConfiguration = _getDustDeepGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
@@ -452,7 +452,7 @@ export async function getGlobalAgents(
 
   if (!flags.includes("research_agent")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.RESEARCH
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_DEEP
     );
   }
 
