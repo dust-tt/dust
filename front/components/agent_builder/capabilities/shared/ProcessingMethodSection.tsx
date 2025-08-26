@@ -73,12 +73,11 @@ export function ProcessingMethodSection() {
         (item.type === "data_source" &&
           isRemoteDatabase(item.dataSourceView.dataSource)) ||
         (item.type === "node" &&
-          item.node.type === "folder" &&
           isRemoteDatabase(item.node.dataSourceView.dataSource))
     );
     if (onlyRemote) {
       if (dataWarehouseServer) {
-        return [[dataWarehouseServer], false];
+        return [[dataWarehouseServer, ...tablesQueryServers], false];
       }
       return [tablesQueryServers, false];
     }
