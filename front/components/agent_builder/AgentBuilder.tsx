@@ -189,9 +189,9 @@ export default function AgentBuilder({
   const { showDialog, ...dialogProps } = useAwaitableDialog({
     owner,
     mcpServerViewToCheckIds: removeNulls(
-      processedActions.map((a) =>
-        a.type === "MCP" ? a.configuration.mcpServerViewId : null
-      )
+      form
+        .getValues("actions")
+        .map((a) => (a.type === "MCP" ? a.configuration.mcpServerViewId : null))
     ),
     mcpServerViews,
   });
