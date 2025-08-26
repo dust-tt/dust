@@ -7,23 +7,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
-import React from "react";
+import type { ReactNode } from "react";
+import { createContext, useEffect, useRef, useState } from "react";
 
 export type ConfirmDataType = {
   title: string;
-  message: string | React.ReactNode;
+  message: string | ReactNode;
   validateLabel?: string;
   validateVariant?: "primary" | "warning";
 };
 
-export const ConfirmContext = React.createContext<
+export const ConfirmContext = createContext<
   (n: ConfirmDataType) => Promise<boolean>
 >((n) => new Promise((resolve) => resolve(!!n))); // dummy function
 
-export function ConfirmPopupArea({ children }: { children: React.ReactNode }) {
-  const [confirmData, setConfirmData] = React.useState<ConfirmDataType | null>(
-    null
-  );
+export function ConfirmPopupArea({ children }: { children: ReactNode }) {
+  const [confirmData, setConfirmData] = useState<ConfirmDataType | null>(null);
 
   const resolveConfirmRef = useRef<(result: boolean) => void>(() => undefined);
 
