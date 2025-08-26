@@ -292,7 +292,7 @@ export function _getDustDeepGlobalAgent(
     "Deep research with company data, web search/browse, interactive content, and data warehouses.";
 
   const pictureUrl =
-    "https://dust.tt/static/systemavatar/research_avatar_full.png";
+    "https://dust.tt/static/systemavatar/dust-deep_avatar_full.png";
 
   const modelConfig = getModelConfig(owner, "anthropic");
 
@@ -446,7 +446,7 @@ export function _getDustTaskGlobalAgent(
     "Focused research sub-agent. Same data/web tools as dust-deep, without interactive content or spawning sub-agents.";
 
   const pictureUrl =
-    "https://dust.tt/static/systemavatar/research_avatar_full.png";
+    "https://dust.tt/static/systemavatar/dust-task_avatar_full.png";
 
   const dustTaskAgent: Omit<
     AgentConfigurationType,
