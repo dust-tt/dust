@@ -1,4 +1,5 @@
 const path = require("path");
+const { destination } = require("pino");
 
 const showReactScan =
   process.env.NODE_ENV === "development" && process.env.REACT_SCAN === "true";
@@ -61,6 +62,21 @@ module.exports = {
         source: "/w/:wId/u/chat/:cId",
         destination: "/w/:wId/assistant/:cId",
         permanent: false,
+      },
+      {
+        source: "/contact",
+        destination: "/home/contact",
+        permanent: true,
+      },
+      {
+        source: "/pricing",
+        destination: "/home/pricing",
+        permanent: true,
+      },
+      {
+        source: "/security",
+        destination: "/home/security",
+        permanent: true,
       },
       // Redirect all solutions pages from /solutions/* to /home/solutions/*
       {
