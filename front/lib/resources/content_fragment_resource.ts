@@ -618,7 +618,7 @@ export async function getContentFragmentFromAttachmentFile(
   }
 }
 
-// Render only a tag to specifiy that a content fragment was injected at a given position except for
+// Render only a tag to specify that a content fragment was injected at a given position except for
 // images when the model support them.
 export async function renderLightContentFragmentForModel(
   auth: Authenticator,
