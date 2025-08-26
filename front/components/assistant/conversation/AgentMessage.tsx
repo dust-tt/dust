@@ -103,7 +103,8 @@ export function AgentMessage({
     message.configuration.sId as GLOBAL_AGENTS_SID
   );
 
-  const { showValidationDialog } = useActionValidationContext();
+  const { showValidationDialog, enqueueValidation } =
+    useActionValidationContext();
 
   const { mutateMessage } = useConversationMessage({
     conversationId,
@@ -122,7 +123,8 @@ export function AgentMessage({
       const eventType = eventPayload.data.type;
 
       if (eventType === "tool_approve_execution") {
-        showValidationDialog({
+        showValidationDialog();
+        enqueueValidation({
           message,
           validationRequest: {
             messageId: eventPayload.data.messageId,
@@ -463,6 +465,7 @@ export function AgentMessage({
               // Dispatch retry event to reset failed state and re-enable streaming.
               dispatch(RETRY_BLOCKED_ACTIONS_STARTED_EVENT);
               // Retry on the event's conversationId, which may be coming from a subagent.
+              // TODO(durable-agents): typeguard on a proper type here.
               if (
                 error.metadata &&
                 isString(error.metadata.messageId) &&

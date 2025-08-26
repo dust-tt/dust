@@ -63,6 +63,7 @@ import {
   isAdmin,
   isAPIErrorResponse,
   Ok,
+  removeNulls,
   setupOAuthConnection,
 } from "@app/types";
 
@@ -824,12 +825,17 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
 
   const sendNotification = useSendNotification();
 
-  const createPersonalConnection = async (
-    mcpServer: MCPServerType,
-    provider: OAuthProvider,
-    useCase: OAuthUseCase,
-    scope?: string
-  ): Promise<boolean> => {
+  const createPersonalConnection = async ({
+    mcpServer,
+    provider,
+    useCase,
+    scope,
+  }: {
+    mcpServer: MCPServerType;
+    provider: OAuthProvider;
+    useCase: OAuthUseCase;
+    scope?: string;
+  }): Promise<boolean> => {
     try {
       const extraConfig: Record<string, string> = {
         mcp_server_id: mcpServer.sId,
@@ -878,21 +884,31 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
   return { createPersonalConnection };
 }
 
-function getMCPServerViewsKey(owner: LightWorkspaceType, space?: SpaceType) {
-  return space ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views` : null;
+function getMCPServerViewsKey(
+  owner: LightWorkspaceType,
+  space?: SpaceType,
+  availability?: MCPServerAvailability | "all"
+) {
+  return space
+    ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views${
+        availability ? `?availability=${availability}` : ""
+      }`
+    : null;
 }
 
 export function useMCPServerViews({
   owner,
   space,
+  availability,
   disabled,
 }: {
   owner: LightWorkspaceType;
   space?: SpaceType;
+  availability?: MCPServerAvailability | "all";
   disabled?: boolean;
 }) {
   const configFetcher: Fetcher<GetMCPServerViewsResponseBody> = fetcher;
-  const url = getMCPServerViewsKey(owner, space);
+  const url = getMCPServerViewsKey(owner, space, availability);
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
     disabled,
   });
@@ -1167,4 +1183,50 @@ export function useInternalMCPServerViewsFromSpaces(
   swrOptions?: SWRConfiguration
 ) {
   return useMCPServerViewsFromSpacesBase(owner, spaces, ["auto"], swrOptions);
+}
+
+export function useMCPServerViewsWithPersonalConnections({
+  owner,
+  mcpServerViewToCheckIds,
+  mcpServerViews,
+}: {
+  owner: LightWorkspaceType;
+  mcpServerViewToCheckIds: string[];
+  mcpServerViews: MCPServerViewType[];
+}): {
+  mcpServerView: MCPServerViewType;
+  isAlreadyConnected: boolean;
+}[] {
+  const mcpServerViewsMap = new Map(mcpServerViews.map((v) => [v.sId, v]));
+
+  const mcpServerViewsWithPersonalConnections = removeNulls(
+    mcpServerViewToCheckIds.map((id) => {
+      const mcpServerView = mcpServerViewsMap.get(id);
+      if (mcpServerView?.oAuthUseCase === "personal_actions") {
+        return mcpServerView;
+      }
+      return null;
+    })
+  );
+
+  const { connections } = useMCPServerConnections({
+    owner,
+    connectionType: "personal",
+    disabled: mcpServerViewsWithPersonalConnections.length === 0,
+  });
+
+  return useMemo(
+    () =>
+      mcpServerViewsWithPersonalConnections.length === 0
+        ? emptyArray()
+        : mcpServerViewsWithPersonalConnections.map((mcpServerView) => {
+            const isAlreadyConnected = connections.some(
+              (c) =>
+                c.internalMCPServerId === mcpServerView.server.sId ||
+                c.remoteMCPServerId === mcpServerView.server.sId
+            );
+            return { mcpServerView, isAlreadyConnected };
+          }),
+    [connections, mcpServerViewsWithPersonalConnections]
+  );
 }

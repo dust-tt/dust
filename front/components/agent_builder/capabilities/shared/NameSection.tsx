@@ -5,7 +5,7 @@ import type { CapabilityFormData } from "@app/components/agent_builder/types";
 
 interface NameSectionProps {
   title: string;
-  description: string;
+  description?: string;
   label?: string;
   placeholder: string;
   helpText?: string;
@@ -29,9 +29,11 @@ export function NameSection({
     <div className="space-y-4">
       <div>
         <h3 className="mb-2 text-lg font-semibold">{title}</h3>
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {description}
-        </p>
+        {description && (
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            {description}
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">

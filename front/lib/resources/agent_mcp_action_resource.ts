@@ -14,6 +14,7 @@ import {
   TOOL_EXECUTION_BLOCKED_STATUSES,
 } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
@@ -21,6 +22,7 @@ import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_cont
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -221,6 +223,27 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       variant: "extra_light",
     });
 
+    const mcpServerViewIds = [
+      ...new Set(
+        removeNulls(
+          blockedActions.map(({ toolConfiguration }) => {
+            return isLightServerSideMCPToolConfiguration(toolConfiguration)
+              ? toolConfiguration.mcpServerViewId
+              : null;
+          })
+        )
+      ),
+    ];
+
+    const mcpServerViews = await MCPServerViewResource.fetchByIds(
+      auth,
+      mcpServerViewIds
+    );
+
+    const mcpServerViewMap = new Map(
+      mcpServerViews.map((view) => [view.sId, view])
+    );
+
     for (const action of blockedActions) {
       const agentMessage = action.agentMessage;
       assert(agentMessage?.message, "No message for agent message.");
@@ -251,6 +274,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           icon: action.toolConfiguration.icon,
         },
         status: action.status,
+        authorizationInfo: isLightServerSideMCPToolConfiguration(
+          action.toolConfiguration
+        )
+          ? mcpServerViewMap
+              .get(action.toolConfiguration.mcpServerViewId)
+              ?.toJSON().server.authorization ?? null
+          : null,
       });
     }
 
