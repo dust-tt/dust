@@ -8,16 +8,16 @@ export interface ChildAgentBlob {
   description: string;
 }
 
-// Restart state for run_agent.
+// Resume state for run_agent.
 
-export type RunAgentRestartState = Record<string, unknown> & {
+export type RunAgentResumeState = Record<string, unknown> & {
   conversationId: string;
   userMessageId: string;
 };
 
-export function isRunAgentRestartState(
+export function isRunAgentResumeState(
   state: unknown
-): state is RunAgentRestartState {
+): state is RunAgentResumeState {
   return (
     typeof state === "object" &&
     state !== null &&
@@ -28,16 +28,16 @@ export function isRunAgentRestartState(
   );
 }
 
-// Restart required error for run_agent.
+// Resume required error for run_agent.
 
 export const BlockedAwaitingInputErrorName = "BlockedAwaitingInputError";
 
 export class BlockedAwaitingInputError extends Error {
   constructor(
     public readonly blockingEvents: RunAgentBlockingEvent[],
-    public readonly restartState: Record<string, unknown>
+    public readonly resumeState: Record<string, unknown>
   ) {
-    super("Tool requires restart after blocking events");
+    super("Tool requires resume after blocking events");
     this.name = BlockedAwaitingInputErrorName;
   }
 }
@@ -52,7 +52,7 @@ export type RunAgentBlockingEvent =
  */
 export function makeBlockedAwaitingInputResponse(
   blockingEvents: RunAgentBlockingEvent[],
-  state: RunAgentRestartState
+  state: RunAgentResumeState
 ): CallToolResult {
   return {
     isError: true,

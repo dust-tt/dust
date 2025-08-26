@@ -544,7 +544,7 @@ export async function* runToolWithStreaming(
       // Update the step context to keep the restart state.
       await action.updateStepContext({
         ...action.stepContext,
-        restartState: toolErr.restartState,
+        resumeState: toolErr.resumeState,
       });
 
       // Yield the blocking events.

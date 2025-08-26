@@ -216,7 +216,7 @@ export function computeStepContexts({
     stepContexts.push({
       citationsCount,
       citationsOffset: currentOffset,
-      restartState: null,
+      resumeState: null,
       retrievalTopK,
       websearchResultCount: websearchResults,
     });

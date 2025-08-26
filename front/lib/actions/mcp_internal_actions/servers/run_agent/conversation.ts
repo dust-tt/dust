@@ -2,7 +2,7 @@ import type { ConversationPublicType, DustAPI, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
 import type { ChildAgentBlob } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
-import { isRunAgentRestartState } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+import { isRunAgentResumeState } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType, ConversationType } from "@app/types";
@@ -37,10 +37,10 @@ export async function getOrCreateConversation(
 > {
   const { agentMessage, stepContext } = agentLoopContext;
 
-  const { restartState } = stepContext;
-  if (restartState && isRunAgentRestartState(restartState)) {
+  const { resumeState } = stepContext;
+  if (resumeState && isRunAgentResumeState(resumeState)) {
     const convRes = await api.getConversation({
-      conversationId: restartState.conversationId,
+      conversationId: resumeState.conversationId,
     });
 
     if (convRes.isErr()) {
@@ -50,7 +50,7 @@ export async function getOrCreateConversation(
     return new Ok({
       conversation: convRes.value,
       isNewConversation: false,
-      userMessageId: restartState.userMessageId,
+      userMessageId: resumeState.userMessageId,
     });
   }
 

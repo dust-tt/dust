@@ -13,7 +13,7 @@ import type {
 export type StepContext = {
   citationsCount: number;
   citationsOffset: number;
-  restartState: Record<string, unknown> | null;
+  resumeState: Record<string, unknown> | null;
   retrievalTopK: number;
   websearchResultCount: number;
 };
