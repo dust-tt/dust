@@ -237,7 +237,7 @@ export default function AgentBuilder({
 
       if (!agentConfiguration && createdAgent.sId) {
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
-        await router.push(newUrl);
+        await router.replace(newUrl, undefined, { shallow: true });
       }
     } catch (error) {
       logger.error("Unexpected error:", error);
