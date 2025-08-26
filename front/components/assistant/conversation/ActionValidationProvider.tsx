@@ -68,7 +68,6 @@ function useValidationQueue({
       validationRequest: MCPActionValidationRequest;
     }) => {
       setValidationQueue((prevQueue) => {
-        // Check if validation already exists in queue
         const exists = prevQueue.some(
           (v) => v.validationRequest.actionId === validationRequest.actionId
         );
@@ -160,6 +159,7 @@ export function ActionValidationProvider({
 
   useNavigationLock(isDialogOpen);
 
+  // Open the dialog when there are pending validations and the dialog is not open.
   useEffect(() => {
     if (validationQueue.length > 0 && !isDialogOpen) {
       setValidatedActions(0);
