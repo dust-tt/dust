@@ -1,7 +1,4 @@
-import {
-  isBlockedActionEvent,
-  isMCPApproveExecutionEvent,
-} from "@app/lib/actions/mcp";
+import { isBlockedActionEvent } from "@app/lib/actions/mcp";
 import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
