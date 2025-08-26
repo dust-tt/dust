@@ -12,9 +12,9 @@ import { useState } from "react";
 import { useController } from "react-hook-form";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { EditorsSheet } from "@app/components/agent_builder/settings/EditorsSheet";
 import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
-import { EditorsSheet } from "@app/components/agent_builder/settings/EditorsSheet";
 
 export function AccessSection() {
   const { field } = useController<AgentBuilderFormData, "agentSettings.scope">({
