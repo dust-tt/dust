@@ -39,6 +39,7 @@ export async function publishDeferredEventsActivity(
           created: event.created,
           configurationId: event.configurationId,
           messageId: event.messageId,
+          conversationId: event.conversationId,
           error: {
             code: "mcp_server_personal_authentication_required",
             message: event.authError.message,
@@ -48,14 +49,31 @@ export async function publishDeferredEventsActivity(
               ...(event.authError.scope && {
                 scope: event.authError.scope,
               }),
+              // TODO(DURABLE-AGENTS 2025-08-25): Find a proper place to pass conversationId.
+              conversationId: event.conversationId,
+              messageId: event.messageId,
             },
+          },
+          metadata: {
+            pubsubMessageId: deferredEvent.context.agentMessageId,
           },
           isLastBlockingEventForStep: isLastEvent,
         };
         break;
 
+      case "tool_approve_execution":
+        eventToPublish = {
+          ...event,
+          metadata: {
+            ...event.metadata,
+            // Override the message id to root the event to the right channel.
+            pubsubMessageId: deferredEvent.context.agentMessageId,
+          },
+        };
+        break;
+
       default:
-        assertNever(event.type);
+        assertNever(event);
     }
 
     await publishConversationRelatedEvent({

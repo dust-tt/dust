@@ -152,6 +152,7 @@ async function createActionForTool(
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
+        conversationId,
         error: {
           code: "tool_error",
           message: validateToolInputsResult.error.message,

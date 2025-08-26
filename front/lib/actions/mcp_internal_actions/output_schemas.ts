@@ -843,18 +843,6 @@ const NotificationToolApproveBubbleUpContentSchema = z.object({
   }),
 });
 
-type NotificationToolApproveBubbleUpContentType = z.infer<
-  typeof NotificationToolApproveBubbleUpContentSchema
->;
-
-export function isToolApproveBubbleUpNotificationType(
-  notificationOutput: ProgressNotificationOutput
-): notificationOutput is NotificationToolApproveBubbleUpContentType {
-  return NotificationToolApproveBubbleUpContentSchema.safeParse(
-    notificationOutput
-  ).success;
-}
-
 const NotificationTextContentSchema = z.object({
   type: z.literal("text"),
   text: z.string(),

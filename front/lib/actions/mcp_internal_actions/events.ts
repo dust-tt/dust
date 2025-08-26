@@ -7,6 +7,7 @@ export type ToolPersonalAuthRequiredEvent = {
   created: number;
   configurationId: string;
   messageId: string;
+  conversationId: string;
   authError: {
     mcpServerId: string;
     provider: string;
