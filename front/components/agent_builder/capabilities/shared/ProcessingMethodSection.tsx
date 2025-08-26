@@ -50,24 +50,16 @@ export function ProcessingMethodSection() {
   });
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
 
-  const dataWarehouseServer = useMemo(
-    () =>
-      mcpServerViewsWithKnowledge.find(
-        (serverView) =>
-          serverView.serverType === "internal" &&
-          serverView.server.name === DATA_WAREHOUSE_SERVER_NAME
-      ),
-    [mcpServerViewsWithKnowledge]
+  const dataWarehouseServer = mcpServerViewsWithKnowledge.find(
+    (serverView) =>
+      serverView.serverType === "internal" &&
+      serverView.server.name === DATA_WAREHOUSE_SERVER_NAME
   );
 
-  const tablesQueryServers = useMemo(
-    () =>
-      mcpServerViewsWithKnowledge.filter(
-        (serverView) =>
-          serverView.serverType === "internal" &&
-          tablesServer.includes(serverView.server.name)
-      ),
-    [mcpServerViewsWithKnowledge]
+  const tablesQueryServers = mcpServerViewsWithKnowledge.filter(
+    (serverView) =>
+      serverView.serverType === "internal" &&
+      tablesServer.includes(serverView.server.name)
   );
 
   const [serversToDisplay, displayWarningTableQuery] = useMemo((): [
