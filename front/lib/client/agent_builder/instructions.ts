@@ -3,7 +3,6 @@ import type { JSONContent } from "@tiptap/react";
 import {
   createInstructionBlockNode,
   splitTextAroundBlocks,
-  textToParagraphNodes,
 } from "@app/lib/client/agent_builder/instructionBlockUtils";
 
 function serializeNodeToText(node: JSONContent): string {
@@ -108,7 +107,7 @@ function parseInstructionBlocks(text: string): JSONContent[] {
 function parseTextWithHeadings(text: string): JSONContent[] {
   const nodes: JSONContent[] = [];
   const lines = text.split("\n");
-  
+
   for (const line of lines) {
     // Check for markdown headings and preserve their levels (H1–H6)
     const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
