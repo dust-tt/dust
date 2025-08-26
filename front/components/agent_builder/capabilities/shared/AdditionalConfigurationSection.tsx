@@ -230,8 +230,9 @@ function ListConfigurationInput({
     name: `configuration.additionalConfiguration.${configKey}`,
   });
 
-  const rawValue = field.value;
-  const currentValue: string[] = Array.isArray(rawValue) ? rawValue : [];
+  const currentValue: string[] = useMemo(() => {
+    return Array.isArray(field.value) ? field.value : [];
+  }, [field.value]);
 
   const filteredValues = useMemo(() => {
     if (searchQuery.trim() === "") {
@@ -242,26 +243,8 @@ function ListConfigurationInput({
     );
   }, [listValues, searchQuery]);
 
-  const handleToggle = (value: string, checked?: boolean) => {
-    const currentValue = field.value ?? [];
-    if (Array.isArray(currentValue)) {
-      const isCurrentlySelected = currentValue.includes(value);
-      const shouldSelect = checked ?? !isCurrentlySelected;
-
-      const newValues = shouldSelect
-        ? [...currentValue, value]
-        : currentValue.filter((v) => v !== value);
-
-      field.onChange(newValues);
-    }
-  };
-
-  const isSelected = (value: string) => {
-    return Array.isArray(currentValue) && currentValue.includes(value);
-  };
-
   return (
-    <div key={configKey} className="mb-4 flex flex-col gap-2">
+    <div className="mb-4 flex flex-col gap-2">
       <Label className="text-sm font-medium">
         {formatKeyForDisplay(configKey)}
       </Label>
@@ -283,17 +266,21 @@ function ListConfigurationInput({
             filteredValues.map(([value, label]) => (
               <div
                 key={value}
-                className="group flex cursor-pointer items-center justify-between rounded-lg p-2 hover:bg-gray-50 dark:hover:bg-gray-800"
-                onClick={() => handleToggle(value)}
+                className="group flex items-center justify-between rounded-lg p-2 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 <div className="flex items-center space-x-3">
                   <Checkbox
-                    checked={isSelected(value)}
-                    onCheckedChange={(checked) =>
-                      handleToggle(value, checked === true)
-                    }
-                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    checked={currentValue.includes(value)}
                     size="xs"
+                    onCheckedChange={(checked) => {
+                      const current = Array.isArray(field.value)
+                        ? field.value
+                        : [];
+                      const newValues = checked
+                        ? [...current, value]
+                        : current.filter((v) => v !== value);
+                      field.onChange(newValues);
+                    }}
                   />
                   <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     {label}
