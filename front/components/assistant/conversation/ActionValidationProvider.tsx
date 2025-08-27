@@ -100,7 +100,8 @@ function AuthenticationDialogPage({
                   ) : null}
                 </div>
                 <div className="font-medium">
-                  {asDisplayName(blockedAction.metadata.mcpServerName)}
+                  {blockedAction.metadata.mcpServerDisplayName ||
+                    blockedAction.metadata.mcpServerName}
                 </div>
               </div>
               <Button
