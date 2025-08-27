@@ -651,7 +651,12 @@ const createServer = (): McpServer => {
     "list_service_items",
     "Lists service catalog items. To filter by category: 1) Use list_service_categories to get category IDs, 2) Use the category_id parameter here.",
     {
-      category_id: z.number().optional().describe("Filter by category ID - use list_service_categories to get available category IDs"),
+      category_id: z
+        .number()
+        .optional()
+        .describe(
+          "Filter by category ID - use list_service_categories to get available category IDs"
+        ),
       page: z.number().optional().default(1),
       per_page: z.number().optional().default(30),
     },
@@ -687,13 +692,31 @@ const createServer = (): McpServer => {
     "search_service_items",
     "Searches for service items from the service catalog for a given search term. Only use this when specifically searching for items by keyword.",
     {
-      search_term: z.string().describe("The keywords for which the service items have to be searched (e.g. 'VPN issue', 'Adobe')"),
-      workspace_id: z.number().optional().describe("ID of the workspace to which the service item belongs. Applicable only to accounts on Employee Support Mode."),
-      user_email: z.string().email().optional().describe("By default, the API will search items for the user whose API key is provided. If you want to search items for a different user, provide their user_email."),
+      search_term: z
+        .string()
+        .describe(
+          "The keywords for which the service items have to be searched (e.g. 'VPN issue', 'Adobe')"
+        ),
+      workspace_id: z
+        .number()
+        .optional()
+        .describe(
+          "ID of the workspace to which the service item belongs. Applicable only to accounts on Employee Support Mode."
+        ),
+      user_email: z
+        .string()
+        .email()
+        .optional()
+        .describe(
+          "By default, the API will search items for the user whose API key is provided. If you want to search items for a different user, provide their user_email."
+        ),
       page: z.number().optional().default(1),
       per_page: z.number().optional().default(30),
     },
-    async ({ search_term, workspace_id, user_email, page, per_page }, { authInfo }) => {
+    async (
+      { search_term, workspace_id, user_email, page, per_page },
+      { authInfo }
+    ) => {
       return withAuth({
         action: async (accessToken, freshserviceDomain) => {
           const params = new URLSearchParams({
