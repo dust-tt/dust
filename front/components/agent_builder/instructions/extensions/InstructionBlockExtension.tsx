@@ -190,7 +190,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     }
   };
 
-  const containerClasses = `rounded-lg p-2 transition-all ${
+  const containerClasses = `rounded-lg py-2 px-1 transition-all ${
     selected && isCollapsed
       ? "ring-2 ring-highlight-300 dark:ring-highlight-300-night"
       : ""
