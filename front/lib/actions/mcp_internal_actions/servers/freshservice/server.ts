@@ -617,15 +617,45 @@ const createServer = (): McpServer => {
 
   // Service catalog
   server.tool(
-    "list_service_items",
-    "Lists service catalog items",
+    "list_service_categories",
+    "Lists service catalog categories. Use this first to get category IDs for filtering service items.",
     {
-      category_id: z.number().optional().describe("Filter by category ID"),
-      search: z.string().optional().describe("Search term"),
       page: z.number().optional().default(1),
       per_page: z.number().optional().default(30),
     },
-    async ({ category_id, search, page, per_page }, { authInfo }) => {
+    async ({ page, per_page }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const params = new URLSearchParams({
+            page: page.toString(),
+            per_page: per_page.toString(),
+          });
+
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `service_catalog/categories?${params.toString()}`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: `Retrieved ${result.service_categories?.length || 0} service categories`,
+            result: result.service_categories || [],
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "list_service_items",
+    "Lists service catalog items. To filter by category: 1) Use list_service_categories to get category IDs, 2) Use the category_id parameter here.",
+    {
+      category_id: z.number().optional().describe("Filter by category ID - use list_service_categories to get available category IDs"),
+      page: z.number().optional().default(1),
+      per_page: z.number().optional().default(30),
+    },
+    async ({ category_id, page, per_page }, { authInfo }) => {
       return withAuth({
         action: async (accessToken, freshserviceDomain) => {
           const params = new URLSearchParams({
@@ -635,9 +665,6 @@ const createServer = (): McpServer => {
 
           if (category_id) {
             params.append("category_id", category_id.toString());
-          }
-          if (search) {
-            params.append("search", search);
           }
 
           const result = await apiRequest(
@@ -649,6 +676,49 @@ const createServer = (): McpServer => {
           return makeMCPToolJSONSuccess({
             message: `Retrieved ${result.service_items?.length || 0} service items`,
             result: result.service_items || [],
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "search_service_items",
+    "Searches for service items from the service catalog for a given search term. Only use this when specifically searching for items by keyword.",
+    {
+      search_term: z.string().describe("The keywords for which the service items have to be searched (e.g. 'VPN issue', 'Adobe')"),
+      workspace_id: z.number().optional().describe("ID of the workspace to which the service item belongs. Applicable only to accounts on Employee Support Mode."),
+      user_email: z.string().email().optional().describe("By default, the API will search items for the user whose API key is provided. If you want to search items for a different user, provide their user_email."),
+      page: z.number().optional().default(1),
+      per_page: z.number().optional().default(30),
+    },
+    async ({ search_term, workspace_id, user_email, page, per_page }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const params = new URLSearchParams({
+            search_term,
+            page: page.toString(),
+            per_page: per_page.toString(),
+          });
+
+          if (workspace_id) {
+            params.append("workspace_id", workspace_id.toString());
+          }
+          if (user_email) {
+            params.append("user_email", user_email);
+          }
+
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `service_catalog/items/search?${params.toString()}`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: `Found ${result.service_items?.length || 0} service items matching '${search_term}'`,
+            result: result.service_items || [],
+            meta: result.meta,
           });
         },
         authInfo,
