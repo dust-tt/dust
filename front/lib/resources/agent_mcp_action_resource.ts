@@ -7,7 +7,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import type { BlockedActionExecution } from "@app/lib/actions/mcp";
+import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
@@ -171,7 +171,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   static async listBlockedActionsForConversation(
     auth: Authenticator,
     conversationId: string
-  ): Promise<BlockedActionExecution[]> {
+  ): Promise<BlockedToolExecution[]> {
     const owner = auth.getNonNullableWorkspace();
 
     const conversation = await ConversationResource.fetchById(
@@ -209,7 +209,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       order: [["createdAt", "ASC"]],
     });
 
-    const blockedActionsList: BlockedActionExecution[] = [];
+    const blockedActionsList: BlockedToolExecution[] = [];
 
     // We get the latest version here, it may show a different name than the one used when the
     // action was created, taking this shortcut for the sake of simplicity.

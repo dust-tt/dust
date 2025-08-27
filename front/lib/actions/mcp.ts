@@ -164,7 +164,7 @@ export type LightMCPToolConfigurationType =
   | LightServerSideMCPToolConfigurationType
   | LightClientSideMCPToolConfigurationType;
 
-export type ToolExecutionMetadata = {
+export type ToolExecution = {
   conversationId: string;
   messageId: string;
   actionId: string;
@@ -178,13 +178,13 @@ export type ToolExecutionMetadata = {
   };
 };
 
-export type BlockedActionExecution = ToolExecutionMetadata & {
+export type BlockedToolExecution = ToolExecution & {
   status: ToolExecutionBlockedStatus;
   authorizationInfo: AuthorizationInfo | null;
 };
 
 // TODO(durable-agents): cleanup the types of the events.
-export type MCPApproveExecutionEvent = ToolExecutionMetadata & {
+export type MCPApproveExecutionEvent = ToolExecution & {
   type: "tool_approve_execution";
   created: number;
   configurationId: string;
