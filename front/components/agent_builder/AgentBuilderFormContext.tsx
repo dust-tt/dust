@@ -177,6 +177,7 @@ const agentSettingsSchema = z.object({
     z.object({
       slackChannelId: z.string(),
       slackChannelName: z.string(),
+      autoRespondWithoutMention: z.boolean().optional(),
     })
   ),
   tags: z.array(tagSchema),

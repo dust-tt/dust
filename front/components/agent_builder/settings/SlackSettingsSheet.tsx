@@ -12,6 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
   SlackLogo,
+  SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -20,6 +21,7 @@ import { useController } from "react-hook-form";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 
 const SLACK_CHANNEL_INTERNAL_ID_PREFIX = "slack-channel-";
@@ -28,6 +30,7 @@ export type SlackChannel = {
   slackChannelId: string;
   slackChannelName: string;
   sourceUrl?: string | null;
+  autoRespondWithoutMention?: boolean;
 };
 
 interface SlackChannelsListProps {
@@ -193,10 +196,15 @@ export function SlackSettingsSheet({
   slackDataSource,
 }: SlackSettingsSheetProps) {
   const { owner } = useAgentBuilderContext();
-
+  const { supportedDataSourceViews } = useDataSourceViewsContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const [localSlackChannels, setLocalSlackChannels] = useState<SlackChannel[]>(
     []
   );
+  const [
+    autoRespondWithoutMentionEnabled,
+    setAutoRespondWithoutMentionEnabled,
+  ] = useState(false);
 
   const {
     field: { onChange, value: slackChannels },
@@ -206,11 +214,17 @@ export function SlackSettingsSheet({
 
   useEffect(() => {
     setLocalSlackChannels([...(slackChannels || [])]);
+    const currentAutoRespondWithoutMention =
+      (slackChannels || [])[0]?.autoRespondWithoutMention || false;
+    setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
   }, [slackChannels]);
 
   useEffect(() => {
     if (isOpen) {
       setLocalSlackChannels([...(slackChannels || [])]);
+      const currentAutoRespondWithoutMention =
+        (slackChannels || [])[0]?.autoRespondWithoutMention || false;
+      setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
     }
   }, [isOpen, slackChannels]);
 
@@ -219,12 +233,21 @@ export function SlackSettingsSheet({
   };
 
   const onSave = () => {
-    onChange(localSlackChannels);
+    const channelsWithAutoRespondWithoutMention = localSlackChannels.map(
+      (channel) => ({
+        ...channel,
+        autoRespondWithoutMention: autoRespondWithoutMentionEnabled,
+      })
+    );
+    onChange(channelsWithAutoRespondWithoutMention);
     onOpenChange();
   };
 
   const handleClose = () => {
     setLocalSlackChannels([...(slackChannels || [])]);
+    const currentAutoRespondWithoutMention =
+      (slackChannels || [])[0]?.autoRespondWithoutMention || false;
+    setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
     onOpenChange();
   };
 
@@ -240,8 +263,41 @@ export function SlackSettingsSheet({
       return true;
     }
 
-    return Array.from(currentChannelIds).some((id) => !localChannelIds.has(id));
-  }, [slackChannels, localSlackChannels]);
+    const channelSelectionChanged = Array.from(currentChannelIds).some(
+      (id) => !localChannelIds.has(id)
+    );
+
+    const currentAutoRespondWithoutMention =
+      (slackChannels || [])[0]?.autoRespondWithoutMention || false;
+    const autoRespondWithoutMentionChanged =
+      autoRespondWithoutMentionEnabled !== currentAutoRespondWithoutMention;
+
+    return channelSelectionChanged || autoRespondWithoutMentionChanged;
+  }, [slackChannels, localSlackChannels, autoRespondWithoutMentionEnabled]);
+
+  if (!slackProvider) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          No Slack integration configured for this workspace.
+        </p>
+      </div>
+    );
+  }
+
+  const slackDataSource = supportedDataSourceViews.find(
+    (dsv) => dsv.dataSource.connectorProvider === slackProvider
+  )?.dataSource;
+
+  if (!slackDataSource) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          Slack data source not found.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
@@ -258,12 +314,12 @@ export function SlackSettingsSheet({
           </SheetDescription>
         </SheetHeader>
         <SheetContainer>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-4">
             <div className="text-sm font-normal text-foreground dark:text-foreground-night">
               Set this agent as the default agent on one or several of your
               Slack channels. It will answer by default when the{" "}
-              <span className="font-bold">@Dust</span> Slack bot is mentionned
-              in these channels.
+              <span className="font-bold">@Dust</span> Slack bot is mentioned in
+              these channels.
             </div>
             <SlackChannelsList
               existingSelection={localSlackChannels}
@@ -271,6 +327,31 @@ export function SlackSettingsSheet({
               owner={owner}
               slackDataSource={slackDataSource}
             />
+            {hasFeature("enhanced_default_agent") && (
+              <div className="flex flex-col gap-2 border-t pt-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                      Enhanced Default Agent
+                    </span>
+                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                      Agent will automatically respond to all messages and
+                      thread replies in selected channels (not just @mentions)
+                    </span>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <SliderToggle
+                      selected={autoRespondWithoutMentionEnabled}
+                      onClick={() =>
+                        setAutoRespondWithoutMentionEnabled(
+                          !autoRespondWithoutMentionEnabled
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </SheetContainer>
         <SheetFooter

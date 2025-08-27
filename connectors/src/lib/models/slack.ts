@@ -131,6 +131,7 @@ export class SlackChannel extends ConnectorBaseModel<SlackChannel> {
 
   declare permission: ConnectorPermission;
   declare agentConfigurationId: CreationOptional<string | null>;
+  declare autoRespondWithoutMention: CreationOptional<boolean>;
 }
 SlackChannel.init(
   {
@@ -168,6 +169,11 @@ SlackChannel.init(
     agentConfigurationId: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    autoRespondWithoutMention: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

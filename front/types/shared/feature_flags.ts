@@ -164,6 +164,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Toolsets MCP tool",
     stage: "dust_only",
   },
+  enhanced_default_agent: {
+    description:
+      "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

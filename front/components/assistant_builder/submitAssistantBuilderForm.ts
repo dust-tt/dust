@@ -238,6 +238,10 @@ export async function submitAssistantBuilderForm({
           slack_channel_internal_ids: selectedSlackChannels.map(
             ({ slackChannelId }) => slackChannelId
           ),
+          auto_respond_without_mention:
+            selectedSlackChannels.length > 0
+              ? selectedSlackChannels[0].autoRespondWithoutMention
+              : undefined,
         }),
       }
     );
