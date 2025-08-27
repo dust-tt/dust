@@ -1,6 +1,7 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import isEmpty from "lodash/isEmpty";
 import uniqueId from "lodash/uniqueId";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
@@ -73,7 +74,11 @@ function getKnowledgeDefaultValues({
   const tablesConfigurations = action?.configuration?.tablesConfigurations;
 
   // Use either data source or tables configurations - they're mutually exclusive
-  const configurationToUse = dataSourceConfigurations || tablesConfigurations;
+  const configurationToUse = isEmpty(dataSourceConfigurations)
+    ? isEmpty(tablesConfigurations)
+      ? {}
+      : tablesConfigurations
+    : dataSourceConfigurations;
 
   const dataSourceTree =
     configurationToUse && action
