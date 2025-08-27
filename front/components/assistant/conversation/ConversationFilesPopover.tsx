@@ -10,8 +10,8 @@ import {
 import React from "react";
 
 import {
+  AgentMessageCanvasGeneratedFiles,
   DefaultAgentMessageGeneratedFiles,
-  InteractiveAgentMessageGeneratedFiles,
 } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { useConversationFiles } from "@app/lib/swr/conversations";
@@ -23,7 +23,7 @@ import { clientExecutableContentType } from "@app/types";
 
 // Explicit content type groupings.
 const CONTENT_TYPE_GROUPS = {
-  [clientExecutableContentType]: "Visualization",
+  [clientExecutableContentType]: "Canvas",
   "application/json": "JSON",
   "text/csv": "CSV",
   "text/plain": "Text",
@@ -85,7 +85,7 @@ function FileGroup({
       </div>
       <div>
         {contentType === clientExecutableContentType ? (
-          <InteractiveAgentMessageGeneratedFiles
+          <AgentMessageCanvasGeneratedFiles
             files={files}
             variant="grid"
             onClick={onFileClick}
