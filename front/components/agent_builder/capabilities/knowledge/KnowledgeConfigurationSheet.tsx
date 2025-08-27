@@ -1,6 +1,7 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import isEmpty from "lodash/isEmpty";
 import uniqueId from "lodash/uniqueId";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
@@ -44,7 +45,6 @@ import { SEARCH_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/consta
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
-import isEmpty from "lodash/isEmpty";
 
 interface KnowledgeConfigurationSheetProps {
   onSave: (action: AgentBuilderAction) => void;
