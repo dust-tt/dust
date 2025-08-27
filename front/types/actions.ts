@@ -12,6 +12,7 @@ export type AgentMCPActionType = {
   id: ModelId;
   internalMCPServerName: InternalMCPServerNameType | null;
   mcpServerConfigurationId: string;
+  mcpServerId: string | null;
   params: Record<string, unknown>;
   status: ToolExecutionStatus;
   stepContentId: ModelId;

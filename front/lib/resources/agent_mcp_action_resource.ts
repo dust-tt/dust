@@ -53,6 +53,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     readonly stepContent: NonAttribute<AgentStepContentModel>,
     readonly metadata: {
       internalMCPServerName: InternalMCPServerNameType | null;
+      mcpServerId: string;
     }
   ) {
     super(model, blob);
@@ -97,6 +98,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
       return new this(this.model, a.get(), stepContent, {
         internalMCPServerName,
+        mcpServerId: a.toolConfiguration.toolServerId,
       });
     });
   }
@@ -130,6 +132,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     return new this(this.model, action.get(), stepContent, {
       internalMCPServerName,
+      mcpServerId: blob.toolConfiguration.toolServerId,
     });
   }
 
@@ -335,6 +338,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       id: this.id,
       internalMCPServerName: this.metadata.internalMCPServerName,
       mcpServerConfigurationId: this.mcpServerConfigurationId,
+      mcpServerId: this.metadata.mcpServerId,
       params: this.augmentedInputs,
       status: this.status,
       stepContentId: this.stepContentId,
