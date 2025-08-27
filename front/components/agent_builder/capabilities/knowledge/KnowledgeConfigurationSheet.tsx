@@ -2,7 +2,7 @@ import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -34,6 +34,7 @@ import {
   capabilityFormSchema,
   CONFIGURATION_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
+import { ConfirmContext } from "@app/components/Confirm";
 import {
   DataSourceBuilderProvider,
   useDataSourceBuilderContext,
@@ -133,7 +134,9 @@ export function KnowledgeConfigurationSheet({
   action,
   ...props
 }: KnowledgeConfigurationSheetProps) {
+  const confirm = useContext(ConfirmContext);
   const open = action !== null;
+  const [isDirty, setIsDirty] = useState(false);
 
   // Custom open hook to only have debounce when we close.
   // We use this value to unmount the Sheet Content, and we need
@@ -150,16 +153,41 @@ export function KnowledgeConfigurationSheet({
     }
   }, [open]);
 
+  const handlePageChange = async () => {
+    if (isDirty) {
+      const confirmed = await confirm({
+        title: "Unsaved changes",
+        message:
+          "You have unsaved changes. Are you sure you want to close without saving?",
+        validateLabel: "Discard changes",
+        validateVariant: "warning",
+      });
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    props.onClose();
+  };
+
   return (
-    <MultiPageSheet open={open} onOpenChange={props.onClose}>
+    <MultiPageSheet open={open} onOpenChange={handlePageChange}>
       {debouncedOpen && (
-        <KnowledgeConfigurationSheetForm action={action} {...props} />
+        <KnowledgeConfigurationSheetForm
+          action={action}
+          setIsDirty={setIsDirty}
+          {...props}
+        />
       )}
     </MultiPageSheet>
   );
 }
 
-type KnowledgeConfigurationSheetFormProps = KnowledgeConfigurationSheetProps;
+type KnowledgeConfigurationSheetFormProps = KnowledgeConfigurationSheetProps & {
+  setIsDirty: (value: boolean) => void;
+};
+
 function KnowledgeConfigurationSheetForm({
   action,
   actions,
@@ -169,6 +197,7 @@ function KnowledgeConfigurationSheetForm({
   getAgentInstructions,
   onClose,
   onSave,
+  setIsDirty,
 }: KnowledgeConfigurationSheetFormProps) {
   const { spaces } = useSpacesContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
@@ -234,6 +263,13 @@ function KnowledgeConfigurationSheetForm({
     resolver: zodResolver(capabilityFormSchema),
     defaultValues,
   });
+  const {
+    formState: { isDirty },
+  } = form;
+
+  useEffect(() => {
+    setIsDirty(isDirty);
+  }, [isDirty, setIsDirty]);
 
   return (
     <FormProvider {...form}>
