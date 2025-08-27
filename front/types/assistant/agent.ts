@@ -220,17 +220,17 @@ export type AgentMessageErrorEvent = {
 };
 
 // Generic type for the content of an agent / tool error.
-export type ErrorContent =
-  | {
-      code: string;
-      message: string;
-      metadata: Record<string, string | number | boolean> | null;
-    }
-  | {
-      code: "mcp_server_personal_authentication_required";
-      message: string;
-      metadata: MCPServerPersonalAuthenticationRequiredMetadata;
-    };
+export type GenericErrorContent = {
+  code: string;
+  message: string;
+  metadata: Record<string, string | number | boolean> | null;
+};
+
+export type PersonalAuthenticationRequiredErrorContent = {
+  code: "mcp_server_personal_authentication_required";
+  message: string;
+  metadata: MCPServerPersonalAuthenticationRequiredMetadata;
+};
 
 // Generic event sent when an error occurred during the model call.
 export type AgentErrorEvent = {
@@ -238,7 +238,7 @@ export type AgentErrorEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  error: ErrorContent;
+  error: GenericErrorContent;
 };
 
 // Event sent when an error occurred during the tool call.
@@ -248,7 +248,7 @@ export type ToolErrorEvent = {
   configurationId: string;
   messageId: string;
   conversationId: string;
-  error: ErrorContent;
+  error: GenericErrorContent | PersonalAuthenticationRequiredErrorContent;
   isLastBlockingEventForStep: boolean;
   // TODO(DURABLE-AGENTS 2025-08-25): Move to a deferred event base interface.
   metadata?: {
