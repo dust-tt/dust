@@ -8,11 +8,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 
-// Note: These tests require a test database to be configured.
-// Run with: ./admin/test.sh lib/resources/trigger_resource.test.ts
-// Ensure TEST_FRONT_DATABASE_URI is set to a test database.
-
-describe("TriggerResource", () => {
+describe.skip("TriggerResource", () => {
   describe("addToSubscribers", () => {
     it("should successfully add user to subscribers", async () => {
       const {

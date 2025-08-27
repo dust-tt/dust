@@ -48,7 +48,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
 
     const resource = new this(TriggerModel, trigger.get());
-    const r = await resource.postRegistration(auth);
+    const r = await resource.upsertTemporalWorkflow(auth);
     if (r.isErr()) {
       return r;
     }
@@ -117,7 +117,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     await trigger.update(blob, transaction);
-    const r = await trigger.postRegistration(auth);
+    const r = await trigger.upsertTemporalWorkflow(auth);
     if (r.isErr()) {
       return r;
     }
@@ -188,7 +188,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
-  async postRegistration(auth: Authenticator) {
+  async upsertTemporalWorkflow(auth: Authenticator) {
     switch (this.kind) {
       case "schedule":
         return createOrUpdateAgentScheduleWorkflow({
@@ -222,7 +222,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     await this.update({ enabled: true });
 
     // Re-register the temporal workflow
-    const r = await this.postRegistration(auth);
+    const r = await this.upsertTemporalWorkflow(auth);
     if (r.isErr()) {
       return r;
     }
