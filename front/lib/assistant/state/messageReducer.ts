@@ -18,7 +18,7 @@ export type AgentStateClassification =
 export type ActionProgressState = Map<
   ModelId,
   {
-    action: MCPActionType;
+    action: AgentMCPActionType & { type: "tool_action" };
     progress?: ProgressNotificationContentType;
   }
 >;
@@ -59,7 +59,7 @@ function updateProgress(
   const actionId = event.action.id;
   const currentProgress = state.actionProgress.get(actionId);
 
-  const newState = {
+  return {
     ...state,
     actionProgress: new Map(state.actionProgress).set(actionId, {
       action: event.action,
@@ -73,8 +73,6 @@ function updateProgress(
       },
     }),
   };
-
-  return newState;
 }
 
 export const CLEAR_CONTENT_EVENT = { type: "clear_content" as const };

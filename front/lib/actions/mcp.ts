@@ -257,7 +257,9 @@ export type ToolNotificationEvent = {
   configurationId: string;
   conversationId: string;
   messageId: string;
-  action: MCPActionType;
+  action: AgentMCPActionType & {
+    type: "tool_action";
+  };
   notification: ProgressNotificationContentType;
 };
 
@@ -440,14 +442,12 @@ export async function* runToolWithStreaming(
     agentConfiguration,
     agentMessage,
     conversation,
-    mcpAction,
   }: {
     action: AgentMCPActionResource;
     actionBaseParams: ActionBaseParams;
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
     conversation: ConversationType;
-    mcpAction: MCPActionType;
   }
 ): AsyncGenerator<
   | MCPApproveExecutionEvent
@@ -460,7 +460,7 @@ export async function* runToolWithStreaming(
 > {
   const owner = auth.getNonNullableWorkspace();
 
-  const { toolConfiguration } = action;
+  const { toolConfiguration, status, augmentedInputs: inputs } = action;
 
   const localLogger = logger.child({
     actionConfigurationId: toolConfiguration.sId,
@@ -475,11 +475,6 @@ export async function* runToolWithStreaming(
     `workspace:${owner.sId}`,
     `workspace_name:${owner.name}`,
   ];
-
-  const { status } = mcpAction;
-
-  // Use the augmented inputs that were computed and stored during action creation
-  const inputs = action.augmentedInputs;
 
   const agentLoopRunContext: AgentLoopRunContextType = {
     agentConfiguration,
@@ -497,7 +492,6 @@ export async function* runToolWithStreaming(
     agentConfiguration,
     conversation,
     agentMessage,
-    mcpAction,
   });
 
   if (!toolCallResult || toolCallResult.isErr()) {

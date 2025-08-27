@@ -69,7 +69,6 @@ export async function* executeMCPTool({
   agentConfiguration,
   conversation,
   agentMessage,
-  mcpAction,
 }: {
   auth: Authenticator;
   inputs: Record<string, unknown>;
@@ -78,7 +77,6 @@ export async function* executeMCPTool({
   agentConfiguration: AgentConfigurationType;
   conversation: ConversationType;
   agentMessage: AgentMessageType;
-  mcpAction: MCPActionType;
 }): AsyncGenerator<
   ToolNotificationEvent | MCPApproveExecutionEvent,
   Result<
@@ -112,7 +110,10 @@ export async function* executeMCPTool({
           configurationId: agentConfiguration.sId,
           conversationId: conversation.sId,
           messageId: agentMessage.sId,
-          action: mcpAction,
+          action: {
+            ...action.toJSON(),
+            type: "tool_action",
+          },
           notification: notification.params,
         };
       }
