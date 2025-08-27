@@ -385,9 +385,20 @@ async function getConversationDataSourceViews(
   conversation: ConversationType,
   attachments: ConversationAttachmentType[]
 ): Promise<Map<string, DataSourceViewResource>> {
+  const conversationIdToDataSourceViewMap = new Map<
+    string,
+    DataSourceViewResource
+  >();
+
   // Get the datasource view for the conversation.
   const conversationDataSourceView =
     await DataSourceViewResource.fetchByConversation(auth, conversation);
+  if (conversationDataSourceView) {
+    conversationIdToDataSourceViewMap.set(
+      conversation.sId,
+      conversationDataSourceView
+    );
+  }
 
   const fileIdToDataSourceViewMap = new Map<string, DataSourceViewResource>();
 
@@ -403,14 +414,14 @@ async function getConversationDataSourceViews(
         if (fileResource && fileResource.useCaseMetadata?.conversationId) {
           const fileConversationId =
             fileResource.useCaseMetadata.conversationId;
-          // Skip if this is the current conversation
-          if (
-            fileConversationId === conversation.sId &&
-            conversationDataSourceView
-          ) {
+
+          // First look in already fetched conversations
+          const cachedChildDataSourceView =
+            conversationIdToDataSourceViewMap.get(fileConversationId);
+          if (cachedChildDataSourceView) {
             fileIdToDataSourceViewMap.set(
               attachment.fileId,
-              conversationDataSourceView
+              cachedChildDataSourceView
             );
             continue;
           }
@@ -434,7 +445,12 @@ async function getConversationDataSourceViews(
               auth,
               childConversation.value
             );
+
           if (childDataSourceView) {
+            conversationIdToDataSourceViewMap.set(
+              childConversation.value.sId,
+              childDataSourceView
+            );
             // Map this file to its datasource view
             fileIdToDataSourceViewMap.set(
               attachment.fileId,
