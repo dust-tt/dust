@@ -7,7 +7,8 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import type { BlockedActionExecution } from "@app/lib/actions/mcp";
+import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
   isToolExecutionStatusBlocked,
@@ -170,7 +171,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   static async listBlockedActionsForConversation(
     auth: Authenticator,
     conversationId: string
-  ): Promise<BlockedActionExecution[]> {
+  ): Promise<BlockedToolExecution[]> {
     const owner = auth.getNonNullableWorkspace();
 
     const conversation = await ConversationResource.fetchById(
@@ -208,7 +209,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       order: [["createdAt", "ASC"]],
     });
 
-    const blockedActionsList: BlockedActionExecution[] = [];
+    const blockedActionsList: BlockedToolExecution[] = [];
 
     // We get the latest version here, it may show a different name than the one used when the
     // action was created, taking this shortcut for the sake of simplicity.
@@ -257,6 +258,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         isToolExecutionStatusBlocked(action.status),
         "Action is not blocked."
       );
+      const mcpServerView = isLightServerSideMCPToolConfiguration(
+        action.toolConfiguration
+      )
+        ? mcpServerViewMap.get(action.toolConfiguration.mcpServerViewId)
+        : null;
 
       blockedActionsList.push({
         messageId: agentMessage.message.sId,
@@ -272,15 +278,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           mcpServerName: action.toolConfiguration.mcpServerName,
           agentName: agentConfiguration.name,
           icon: action.toolConfiguration.icon,
+          mcpServerId: mcpServerView?.mcpServerId,
+          mcpServerDisplayName: mcpServerView
+            ? getMcpServerViewDisplayName(mcpServerView.toJSON())
+            : undefined,
         },
         status: action.status,
-        authorizationInfo: isLightServerSideMCPToolConfiguration(
-          action.toolConfiguration
-        )
-          ? mcpServerViewMap
-              .get(action.toolConfiguration.mcpServerViewId)
-              ?.toJSON().server.authorization ?? null
-          : null,
+        authorizationInfo: mcpServerView?.toJSON().server.authorization ?? null,
       });
     }
 
