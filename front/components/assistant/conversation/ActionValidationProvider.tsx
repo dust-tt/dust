@@ -50,7 +50,6 @@ interface AuthenticationPageProps {
     scope?: string;
   }) => Promise<boolean>;
   errorMessage: string | null;
-  onAllConnected: () => void;
 }
 
 function AuthenticationPage({
@@ -59,8 +58,40 @@ function AuthenticationPage({
   setConnectionStates,
   createPersonalConnection,
   errorMessage,
-  onAllConnected,
 }: AuthenticationPageProps) {
+  const handleConnect = useCallback(
+    async (blockedAction: BlockedToolExecution) => {
+      setConnectionStates((prev) => ({
+        ...prev,
+        [blockedAction.actionId]: "connecting",
+      }));
+      const success = await createPersonalConnection({
+        mcpServerId: blockedAction.metadata.mcpServerId || "",
+        mcpServerDisplayName: blockedAction.metadata.mcpServerDisplayName || "",
+        provider: blockedAction.authorizationInfo!.provider,
+        useCase: "connection",
+        scope: blockedAction.authorizationInfo!.scope,
+      });
+      if (success) {
+        setConnectionStates((prev) => ({
+          ...prev,
+          [blockedAction.actionId]: "connected",
+        }));
+      } else {
+        setConnectionStates((prev) => ({
+          ...prev,
+          [blockedAction.actionId]: "idle",
+        }));
+      }
+    },
+    [
+      authActions,
+      connectionStates,
+      createPersonalConnection,
+      setConnectionStates,
+    ]
+  );
+
   return (
     <div className="flex flex-col gap-4">
       {authActions.map((blockedAction, authIndex) => (
@@ -93,41 +124,7 @@ function AuthenticationPage({
                 isLoading={
                   connectionStates[blockedAction.actionId] === "connecting"
                 }
-                onClick={async () => {
-                  setConnectionStates((prev) => ({
-                    ...prev,
-                    [blockedAction.actionId]: "connecting",
-                  }));
-                  const success = await createPersonalConnection({
-                    mcpServerId: blockedAction.metadata.mcpServerId || "",
-                    mcpServerDisplayName:
-                      blockedAction.metadata.mcpServerDisplayName || "",
-                    provider: blockedAction.authorizationInfo!.provider,
-                    useCase: "connection",
-                    scope: blockedAction.authorizationInfo!.scope,
-                  });
-                  if (success) {
-                    setConnectionStates((prev) => ({
-                      ...prev,
-                      [blockedAction.actionId]: "connected",
-                    }));
-                    // Check if all authentications are connected and move to next page
-                    const allConnected = authActions.every(
-                      (action) =>
-                        connectionStates[action.actionId] === "connected" ||
-                        connectionStates[action.actionId] === "connecting"
-                    );
-
-                    if (allConnected) {
-                      onAllConnected();
-                    }
-                  } else {
-                    setConnectionStates((prev) => ({
-                      ...prev,
-                      [blockedAction.actionId]: "idle",
-                    }));
-                  }
-                }}
+                onClick={() => handleConnect(blockedAction)}
               />
             )}
           </div>
@@ -345,8 +342,7 @@ export function ActionValidationProvider({
   const pendingAuthentications = useMemo(() => {
     return blockedActionsQueue.filter(
       (action) =>
-        action.blockedAction.status === "blocked_authentication_required" ||
-        action.blockedAction.status === "blocked_child_action_input_required"
+        action.blockedAction.status === "blocked_authentication_required"
     );
   }, [blockedActionsQueue]);
 
@@ -371,16 +367,9 @@ export function ActionValidationProvider({
 
   useNavigationLock(isDialogOpen);
 
-  // Open the dialog when there are pending validations and the dialog is not open.
+  // Close the dialog when there are no more blocked actions
   useEffect(() => {
-    if (blockedActionsQueue.length > 0 && !isDialogOpen) {
-      setValidatedActions(0);
-      setIsDialogOpen(true);
-    } else if (
-      blockedActionsQueue.length === 0 &&
-      isDialogOpen &&
-      !isValidating
-    ) {
+    if (blockedActionsQueue.length === 0 && isDialogOpen && !isValidating) {
       setIsDialogOpen(false);
     }
   }, [blockedActionsQueue.length, isDialogOpen, isValidating]);
@@ -413,17 +402,27 @@ export function ActionValidationProvider({
   };
 
   const showBlockedActionsDialog = useCallback(() => {
-    if (!isDialogOpen && blockedActionsQueue.length > 0) {
+    if (blockedActionsQueue.length > 0) {
       setValidatedActions(0);
       setIsDialogOpen(true);
     }
-  }, [isDialogOpen, blockedActionsQueue.length]);
+  }, [blockedActionsQueue.length]);
 
   const hasPendingValidations = pendingValidations.length > 0;
   const hasPendingAuthentications = pendingAuthentications.length > 0;
   const hasBlockedActions = hasPendingValidations || hasPendingAuthentications;
   const totalBlockedActions =
     pendingValidations.length + pendingAuthentications.length;
+
+  // Check if all authentication actions are connected
+  const areAllAuthenticationsConnected = useMemo(() => {
+    if (!hasPendingAuthentications) {
+      return true;
+    }
+    return pendingAuthentications.every(
+      (item) => connectionStates[item.blockedAction.actionId] === "connected"
+    );
+  }, [hasPendingAuthentications, pendingAuthentications, connectionStates]);
 
   const pages = useMemo(() => {
     const totalCount =
@@ -455,7 +454,6 @@ export function ActionValidationProvider({
               setConnectionStates={setConnectionStates}
               createPersonalConnection={createPersonalConnection}
               errorMessage={errorMessage}
-              onAllConnected={() => setValidatedActions((prev) => prev + 1)}
             />
           ),
         };
@@ -509,7 +507,9 @@ export function ActionValidationProvider({
             pages={pages}
             currentPageId={validatedActions.toString()}
             onPageChange={() => {}}
-            hideCloseButton
+            hideCloseButton={
+              !(hasPendingAuthentications && validatedActions === 0)
+            }
             size="lg"
             isAlertDialog
             showNavigation={true}
@@ -523,9 +523,10 @@ export function ActionValidationProvider({
                 return (
                   <div className="flex flex-row justify-end gap-2">
                     <Button
-                      variant="outline"
-                      label="Decline"
+                      variant="highlight"
+                      label="Done"
                       onClick={() => setIsDialogOpen(false)}
+                      disabled={!areAllAuthenticationsConnected}
                     >
                       Skip
                     </Button>
