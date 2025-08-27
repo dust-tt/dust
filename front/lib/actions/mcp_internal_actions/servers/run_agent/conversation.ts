@@ -27,7 +27,7 @@ export async function getOrCreateConversation(
     mainConversation,
     query,
     toolsetsToAdd,
-    filesToAdd,
+    fileOrContentFragmentIds,
   }: {
     childAgentBlob: ChildAgentBlob;
     childAgentId: string;
@@ -35,7 +35,7 @@ export async function getOrCreateConversation(
     mainConversation: ConversationType;
     query: string;
     toolsetsToAdd: string[] | null;
-    filesToAdd: string[] | null;
+    fileOrContentFragmentIds: string[] | null;
   }
 ): Promise<
   Result<
@@ -68,13 +68,13 @@ export async function getOrCreateConversation(
 
   const contentFragments: PublicPostContentFragmentRequestBody[] = [];
 
-  if (filesToAdd) {
+  if (fileOrContentFragmentIds) {
     // Get all files from the current conversation and filter which one to pass to the sub agent
     const attachments = listAttachments(mainConversation);
     for (const attachment of attachments) {
       if (
         isFileAttachmentType(attachment) &&
-        filesToAdd?.includes(attachment.fileId)
+        fileOrContentFragmentIds?.includes(attachment.fileId)
       ) {
         // Convert file attachment to content fragment
         contentFragments.push({
@@ -85,7 +85,7 @@ export async function getOrCreateConversation(
         });
       } else if (
         isContentNodeAttachmentType(attachment) &&
-        filesToAdd?.includes(attachment.contentFragmentId)
+        fileOrContentFragmentIds?.includes(attachment.contentFragmentId)
       ) {
         // Convert content node attachment to content fragment
         contentFragments.push({
