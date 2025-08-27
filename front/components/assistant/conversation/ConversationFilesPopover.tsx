@@ -2,6 +2,8 @@ import {
   Button,
   CitationGrid,
   DocumentIcon,
+  FolderIcon,
+  FolderOpenIcon,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -21,24 +23,73 @@ import type {
 } from "@app/types";
 import { clientExecutableContentType } from "@app/types";
 
-// Explicit content type groupings.
-const CONTENT_TYPE_GROUPS = {
-  [clientExecutableContentType]: "Canvas",
-  "application/json": "JSON",
-  "text/csv": "CSV",
-  "text/plain": "Text",
-  "text/markdown": "Markdown",
-} satisfies Partial<Record<AllSupportedFileContentType, string>>;
-
-type ContentTypeGroup = keyof typeof CONTENT_TYPE_GROUPS;
-
-function getGroupedContentType(contentType: AllSupportedFileContentType) {
-  return contentType in CONTENT_TYPE_GROUPS ? contentType : "other";
+interface FileGroup {
+  contentType: AllSupportedFileContentType | "other";
+  files: ActionGeneratedFileType[];
+  key: string;
+  title: string;
 }
 
-type GroupedFiles = Partial<
-  Record<AllSupportedFileContentType | "other", ActionGeneratedFileType[]>
->;
+// Configuration for content types that get their own groups.
+const GROUPED_CONTENT_TYPES = {
+  [clientExecutableContentType]: "Canvas",
+  "application/json": "JSON",
+  "text/csv": "Tables",
+  "text/plain": "Text",
+  "text/markdown": "Markdown",
+} as const satisfies Partial<Record<AllSupportedFileContentType, string>>;
+
+type GroupedContentType = keyof typeof GROUPED_CONTENT_TYPES;
+
+function hasOwnGroup(
+  contentType: AllSupportedFileContentType
+): contentType is GroupedContentType {
+  return contentType in GROUPED_CONTENT_TYPES;
+}
+
+function groupFilesByContentType(
+  files: ActionGeneratedFileType[]
+): FileGroup[] {
+  const groupMap = new Map<string, ActionGeneratedFileType[]>();
+
+  for (const file of files) {
+    const key = hasOwnGroup(file.contentType) ? file.contentType : "other";
+
+    const existingFiles = groupMap.get(key) ?? [];
+    groupMap.set(key, [...existingFiles, file]);
+  }
+
+  const groups: FileGroup[] = [];
+
+  // Add grouped content types first (in order).
+  for (const [contentType, displayName] of Object.entries(
+    GROUPED_CONTENT_TYPES
+  )) {
+    const filesForType = groupMap.get(contentType);
+    if (filesForType && filesForType.length > 0) {
+      groups.push({
+        key: contentType,
+        title: displayName,
+        contentType: contentType as GroupedContentType,
+        files: filesForType,
+      });
+      groupMap.delete(contentType);
+    }
+  }
+
+  // Add "Other" group last if there are remaining files.
+  const otherFiles = groupMap.get("other");
+  if (otherFiles && otherFiles.length > 0) {
+    groups.push({
+      key: "other",
+      title: "Other",
+      contentType: "other",
+      files: otherFiles,
+    });
+  }
+
+  return groups;
+}
 
 interface FileRendererProps {
   files: ActionGeneratedFileType[];
@@ -63,36 +114,47 @@ function FileRenderer({ files, owner }: FileRendererProps) {
   );
 }
 
-interface FileGroupProps {
-  title: string;
-  files: ActionGeneratedFileType[];
-  owner: LightWorkspaceType;
-  contentType: string;
+interface FileGroupSectionProps {
+  group: FileGroup;
   onFileClick: () => void;
+  owner: LightWorkspaceType;
 }
 
-function FileGroup({
-  title,
-  files,
-  owner,
-  contentType,
+function FileGroupSection({
+  group,
   onFileClick,
-}: FileGroupProps) {
+  owner,
+}: FileGroupSectionProps) {
+  const isCanvas = group.contentType === clientExecutableContentType;
+
   return (
     <div className="space-y-2">
       <div className="text-sm font-medium text-primary dark:text-primary-night">
-        {title}
+        {group.title}
       </div>
       <div>
-        {contentType === clientExecutableContentType ? (
+        {isCanvas ? (
           <AgentMessageCanvasGeneratedFiles
-            files={files}
+            files={group.files}
             variant="grid"
             onClick={onFileClick}
           />
         ) : (
-          <FileRenderer files={files} owner={owner} />
+          <FileRenderer files={group.files} owner={owner} />
         )}
+      </div>
+    </div>
+  );
+}
+
+function EmptyFilesState() {
+  return (
+    <div className="flex flex-col gap-2 py-4 text-center">
+      <div className="text-md font-semibold text-primary dark:text-primary-night">
+        Nothing generated yet
+      </div>
+      <div className="text-sm text-muted-foreground">
+        Files and Canvases generated in this conversation will appear here.
       </div>
     </div>
   );
@@ -115,21 +177,17 @@ export function ConversationFilesPopover({
       owner,
     });
 
-  const groupedFiles = React.useMemo((): GroupedFiles => {
-    const groups: GroupedFiles = {};
-
-    for (const file of conversationFiles) {
-      const key = getGroupedContentType(file.contentType);
-
-      groups[key] = groups[key] ?? [];
-      groups[key].push(file);
-    }
-
-    return groups;
-  }, [conversationFiles]);
+  const fileGroups = React.useMemo(
+    () => groupFilesByContentType(conversationFiles),
+    [conversationFiles]
+  );
 
   const hasFiles = conversationFiles.length > 0;
   const fileCount = conversationFiles.length;
+
+  const handleFileClick = () => {
+    setIsOpen(false);
+  };
 
   if (isConversationFilesLoading) {
     return (
@@ -148,49 +206,33 @@ export function ConversationFilesPopover({
       <PopoverTrigger asChild>
         <Button
           size="sm"
-          tooltip={
-            hasFiles
-              ? `Files generated (${fileCount})`
-              : "No files have been generated in this conversation yet."
-          }
-          icon={DocumentIcon}
+          tooltip={`Generated content (${fileCount})`}
+          icon={isOpen ? FolderOpenIcon : FolderIcon}
           variant="ghost"
-          disabled={!hasFiles}
         />
       </PopoverTrigger>
-      <PopoverContent className="flex w-96 flex-col gap-3" align="end">
+      <PopoverContent
+        className="flex w-96 flex-col gap-3"
+        align="end"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <ScrollArea>
-          <div className="heading-base text-primary dark:text-primary-night">
+          <div className="heading-lg text-primary dark:text-primary-night">
             Generated Content
           </div>
 
           {!hasFiles ? (
-            <div className="py-4 text-center text-sm text-muted-foreground">
-              No files have been generated in this conversation yet.
-            </div>
+            <EmptyFilesState />
           ) : (
             <div className="space-y-4">
-              {Object.entries(groupedFiles).map(([groupKey, files]) => {
-                if (!files?.length) {
-                  return null;
-                }
-
-                const title =
-                  groupKey === "other"
-                    ? "Other"
-                    : CONTENT_TYPE_GROUPS[groupKey as ContentTypeGroup];
-
-                return (
-                  <FileGroup
-                    key={groupKey}
-                    title={title}
-                    files={files}
-                    owner={owner}
-                    contentType={groupKey}
-                    onFileClick={() => setIsOpen(false)}
-                  />
-                );
-              })}
+              {fileGroups.map((group) => (
+                <FileGroupSection
+                  key={group.key}
+                  group={group}
+                  owner={owner}
+                  onFileClick={handleFileClick}
+                />
+              ))}
             </div>
           )}
         </ScrollArea>
