@@ -49,6 +49,8 @@ function AgentSelectionTable({
         columns={columns}
         filter={searchQuery}
         filterColumn="name"
+        sorting={[{ id: "name", desc: false }]}
+        enableSortingRemoval={false}
       />
     </>
   );
@@ -120,6 +122,7 @@ export function ChildAgentSection() {
             </div>
           </DataTable.CellContent>
         ),
+        enableSortingRemoval: false,
         meta: {
           sizeRatio: 100,
         },
