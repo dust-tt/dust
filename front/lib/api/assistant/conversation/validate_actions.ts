@@ -8,7 +8,6 @@ import {
   isMCPApproveExecutionEvent,
   updateMCPApprovalState,
 } from "@app/lib/actions/mcp";
-import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
@@ -110,12 +109,8 @@ export async function validateAction(
     );
   }
 
-  if (!isToolExecutionStatusBlocked(action.status)) {
-    return new Err(
-      new Error(
-        `Action is not blocked: ${action.status} for action ${actionId}`
-      )
-    );
+  if (action.status !== "blocked_validation_required") {
+    return new Err(new Error(`Action is not blocked: ${action.status}`));
   }
 
   const actionUpdated = await updateMCPApprovalState(
