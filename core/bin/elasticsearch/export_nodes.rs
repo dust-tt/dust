@@ -167,7 +167,9 @@ async fn run() -> Result<()> {
     // Process first batch
     if let Some(hits) = response_body["hits"]["hits"].as_array() {
         processed += process_hits(&mut writer, hits, &fields, &args)?;
-        println!("Processed {}/{} documents", processed, total);
+        if processed % 100 == 0 || processed == total {
+            println!("Processed {}/{} documents", processed, total);
+        }
     }
 
     // Get scroll ID
@@ -196,7 +198,9 @@ async fn run() -> Result<()> {
                 break;
             }
             processed += process_hits(&mut writer, hits, &fields, &args)?;
-            println!("Processed {}/{} documents", processed, total);
+            if processed % 100 == 0 || processed == total {
+                println!("Processed {}/{} documents", processed, total);
+            }
         }
 
         // Update scroll ID if it changed
