@@ -27,7 +27,11 @@ import {
   isMCPActionArray,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
-import { getCitationsFromActions } from "@app/lib/api/assistant/citations";
+import { RUN_AGENT_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
+import {
+  getCitationsFromActions,
+  getRefs,
+} from "@app/lib/api/assistant/citations";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -289,7 +293,7 @@ export default async function createServer(
       // conversation content if present.
       let finalContent = "";
       let chainOfThought = "";
-      let refs: Record<string, CitationType> = {};
+      let refsFromAgent: Record<string, CitationType> = {};
       let files: ActionGeneratedFileType[] = [];
       try {
         for await (const event of streamRes.value.eventStream) {
@@ -375,7 +379,7 @@ export default async function createServer(
             return makeMCPToolTextError(errorMessage);
           } else if (event.type === "agent_message_success") {
             if (isMCPActionArray(event.message.actions)) {
-              refs = getCitationsFromActions(event.message.actions);
+              refsFromAgent = getCitationsFromActions(event.message.actions);
               files = event.message.actions.flatMap(
                 (action) => action.generatedFiles
               );
@@ -441,6 +445,42 @@ export default async function createServer(
 
       const convoUrl = `${config.getClientFacingUrl()}/w/${auth.getNonNullableWorkspace().sId}/assistant/${conversation.sId}`;
 
+      const { citationsOffset } = agentLoopContext.runContext.stepContext;
+
+      const refs = getRefs().slice(
+        citationsOffset,
+        citationsOffset + RUN_AGENT_ACTION_NUM_RESULTS
+      );
+
+      const newRefs: Record<string, CitationType> = {};
+      Object.keys(refsFromAgent).forEach((refKeyFromAgent, index) => {
+        const newRef = refs[index];
+        if (newRef) {
+          // Replace citation references only within :cite[...] blocks
+          const citationRegex = new RegExp(
+            `(:cite\\[[^\\]]*\\b)${refKeyFromAgent}\\b([^\\]]*\\])`,
+            "g"
+          );
+          finalContent = finalContent.replace(citationRegex, `$1${newRef}$2`);
+          newRefs[newRef] = refsFromAgent[refKeyFromAgent];
+        } else {
+          // We run out of available refs, meaning we have more refs in output than
+          // RUN_AGENT_ACTION_NUM_RESULTS, so we remove the remaining citation reference and
+          // clean up formatting.
+          const citationRegex = new RegExp(
+            `(:cite\\[[^\\]]*\\b)${refKeyFromAgent}\\b(?:,([^\\]]*\\])|([^\\]]*\\]))`,
+            "g"
+          );
+
+          finalContent = finalContent.replace(citationRegex, "$1$2$3");
+        }
+      });
+
+      // Clean up trailing commas in citations (e.g., :cite[aaa,ccc,] -> :cite[aaa,ccc])
+      finalContent = finalContent.replace(/:cite\[([^\]]*),\]/g, ":cite[$1]");
+      // Clean up empty citations (e.g., :cite[] -> "")
+      finalContent = finalContent.replaceAll(":cite[]", "");
+
       return {
         isError: false,
         content: [
@@ -462,7 +502,7 @@ export default async function createServer(
               chainOfThought:
                 chainOfThought.length > 0 ? chainOfThought : undefined,
               uri: convoUrl,
-              refs: Object.keys(refs).length > 0 ? refs : undefined,
+              refs: Object.keys(newRefs).length > 0 ? newRefs : undefined,
             },
           },
           ...files.map((file) => ({

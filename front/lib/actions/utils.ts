@@ -14,6 +14,7 @@ import {
   isMCPInternalDataSourceFileSystem,
   isMCPInternalInclude,
   isMCPInternalNotion,
+  isMCPInternalRunAgent,
   isMCPInternalSearch,
   isMCPInternalSlack,
   isMCPInternalWebsearch,
@@ -26,6 +27,7 @@ import { assertNever } from "@app/types";
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 export const SLACK_SEARCH_ACTION_NUM_RESULTS = 24;
 export const NOTION_SEARCH_ACTION_NUM_RESULTS = 16;
+export const RUN_AGENT_ACTION_NUM_RESULTS = 64;
 
 export const MCP_SPECIFICATION: ActionSpecification = {
   label: "More...",
@@ -177,6 +179,10 @@ export function getCitationsCount({
 
   if (isMCPInternalNotion(action)) {
     return NOTION_SEARCH_ACTION_NUM_RESULTS;
+  }
+
+  if (isMCPInternalRunAgent(action)) {
+    return RUN_AGENT_ACTION_NUM_RESULTS;
   }
 
   return getRetrievalTopK({
