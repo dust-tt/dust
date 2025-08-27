@@ -21,7 +21,12 @@ import {
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
 import type { CanvasFileContentType } from "@app/types";
-import { Err, Ok } from "@app/types";
+import {
+  clientExecutableContentType,
+  Err,
+  Ok,
+  slideshowContentType,
+} from "@app/types";
 import { CANVAS_FILE_FORMATS } from "@app/types";
 
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
@@ -54,7 +59,8 @@ const createServer = (
         .enum(Object.keys(CANVAS_FILE_FORMATS) as [CanvasFileContentType])
         .describe(
           "The MIME type for the canvas. Currently supports " +
-            "'application/vnd.dust.client-executable' for client-side executable files."
+            `'${clientExecutableContentType}' for client-side executable files and ` +
+            `'${slideshowContentType}' for slideshows.`
         ),
       content: z
         .string()
