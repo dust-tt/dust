@@ -7,8 +7,8 @@ import {
   DropdownMenuTrigger,
   Hoverable,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo } from "react";
-import { useController, useWatch } from "react-hook-form";
+import { useEffect, useMemo, useRef } from "react";
+import { useController, useFormContext, useWatch } from "react-hook-form";
 
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -49,7 +49,13 @@ export function ProcessingMethodSection() {
   } = useController<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
   });
+  const { setValue } = useFormContext<CapabilityFormData>();
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
+
+  // Track previous sources.in to detect changes
+  const previousSourcesRef = useRef<DataSourceBuilderTreeItemType[]>(
+    sources.in
+  );
 
   const dataWarehouseServer = useMemo(
     () =>
@@ -119,13 +125,33 @@ export function ProcessingMethodSection() {
   ]);
 
   useEffect(() => {
-    if (serversToDisplay) {
+    // Check if sources.in has changed from previous render
+    const sourcesChanged = previousSourcesRef.current !== sources.in;
+
+    // Check if current mcpServerView is not in the serversToDisplay list
+    const currentServerNotInList =
+      mcpServerView && serversToDisplay
+        ? !serversToDisplay.some((server) => server.id === mcpServerView.id)
+        : false;
+
+    // Update mcpServerView only in specific cases:
+    // 1. mcpServerView is null
+    // 2. sources.in has changed from previous render
+    // 3. list of serversToDisplay doesn't include the current mcpServerView
+    const shouldUpdate =
+      serversToDisplay &&
+      (mcpServerView === null || sourcesChanged || currentServerNotInList);
+
+    if (shouldUpdate) {
       const [defaultServer] = serversToDisplay;
-      if (defaultServer) {
-        onChange(defaultServer);
+      if (defaultServer && defaultServer.id !== mcpServerView?.id) {
+        setValue("mcpServerView", defaultServer, { shouldDirty: false });
       }
     }
-  }, [serversToDisplay, onChange]);
+
+    // Update the ref to track current sources.in for next render
+    previousSourcesRef.current = sources.in;
+  }, [serversToDisplay, setValue, mcpServerView, sources.in]);
 
   return (
     <div className="space-y-4">
