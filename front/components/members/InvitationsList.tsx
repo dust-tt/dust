@@ -1,9 +1,11 @@
 import {
   Avatar,
+  Button,
   ChevronRightIcon,
   Chip,
   classNames,
   DataTable,
+  MovingMailIcon,
   Page,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
@@ -11,7 +13,9 @@ import React, { useMemo, useState } from "react";
 
 import { EditInvitationModal } from "@app/components/members/EditInvitationModal";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { INVITATION_EXPIRATION_TIME_SEC } from "@app/lib/constants/invitation";
+import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType, WorkspaceType } from "@app/types";
 
@@ -36,6 +40,7 @@ export function InvitationsList({
   const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
   const [selectedInvite, setSelectedInvite] =
     useState<MembershipInvitationType | null>(null);
+  const sendNotification = useSendNotification();
 
   const filteredInvitations = useMemo(
     () =>
@@ -68,8 +73,30 @@ export function InvitationsList({
         const isExpired = isInvitationExpired(info.row.original.createdAt);
         return (
           <DataTable.CellContent>
-            <span>{info.row.original.inviteEmail}</span>
-            {isExpired && <span className="ml-2 text-red-500">(expired)</span>}
+            <div className="flex items-center gap-2">
+              <span>{info.row.original.inviteEmail}</span>
+              {isExpired && (
+                <>
+                  <span className="text-red-500">(expired)</span>
+                  <Button
+                    size="xs"
+                    variant="primary"
+                    icon={MovingMailIcon}
+                    label="Resend"
+                    onClick={async (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      await sendInvitations({
+                        owner,
+                        emails: [info.row.original.inviteEmail],
+                        invitationRole: info.row.original.initialRole,
+                        sendNotification,
+                        isNewInvitation: false,
+                      });
+                    }}
+                  />
+                </>
+              )}
+            </div>
           </DataTable.CellContent>
         );
       },
