@@ -137,40 +137,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     id: ModelId,
     transaction?: Transaction
   ): Promise<AgentMCPActionResource | null> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
-
-    const [action] = await this.baseFetch(auth, {
-      where: { id, workspaceId },
-    });
-
-    const stepContent = await AgentStepContentModel.findOne({
-      where: {
-        id: action.stepContentId,
-        workspaceId,
-      },
-      transaction,
-    });
-    assert(stepContent, "Step content not found.");
-
-    return new this(
-      this.model,
+    const [action] = await this.baseFetch(
+      auth,
       {
-        id: action.id,
-        workspaceId: action.workspaceId,
-        agentMessageId: action.agentMessageId,
-        augmentedInputs: action.augmentedInputs,
-        citationsAllocated: action.citationsAllocated,
-        mcpServerConfigurationId: action.mcpServerConfigurationId,
-        status: action.status,
-        stepContentId: action.stepContentId,
-        stepContext: action.stepContext,
-        toolConfiguration: action.toolConfiguration,
-        version: action.version,
-        createdAt: action.createdAt,
-        updatedAt: action.updatedAt,
+        where: { id },
       },
-      stepContent
+      transaction
     );
+    return action;
   }
 
   static async fetchByModelIds(
