@@ -133,14 +133,14 @@ export function transformSelectionConfigurationsToTree(
     const baseParts = buildDataSourcePath(dataSourceView);
 
     // If all nodes are selected, just add the data source path
-    inPaths.push({
-      path: baseParts,
-      name: dataSourceView.dataSource.name,
-      type: "data_source",
-      dataSourceView,
-      tagsFilter: config.tagsFilter,
-    });
     if (config.isSelectAll) {
+      inPaths.push({
+        path: baseParts,
+        name: dataSourceView.dataSource.name,
+        type: "data_source",
+        dataSourceView,
+        tagsFilter: config.tagsFilter,
+      });
       continue;
     }
 

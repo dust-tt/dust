@@ -44,6 +44,7 @@ import { SEARCH_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/consta
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
+import isEmpty from "lodash/isEmpty";
 
 interface KnowledgeConfigurationSheetProps {
   onSave: (action: AgentBuilderAction) => void;
@@ -73,7 +74,11 @@ function getKnowledgeDefaultValues({
   const tablesConfigurations = action?.configuration?.tablesConfigurations;
 
   // Use either data source or tables configurations - they're mutually exclusive
-  const configurationToUse = dataSourceConfigurations || tablesConfigurations;
+  const configurationToUse = isEmpty(dataSourceConfigurations)
+    ? isEmpty(tablesConfigurations)
+      ? {}
+      : tablesConfigurations
+    : dataSourceConfigurations;
 
   const dataSourceTree =
     configurationToUse && action
