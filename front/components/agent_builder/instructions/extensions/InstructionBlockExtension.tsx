@@ -65,6 +65,8 @@ function positionCursorInMiddleParagraph(
 // Define consistent heading styles to match the main editor
 const instructionBlockContentStyles = cn(
   "prose prose-sm mt-2",
+  // Add left padding to align with the chip (chevron button width + gap)
+  "ml-6",
   // Override for all headings to match the editor's heading style
   "[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:text-xl",
   "[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:font-semibold",
@@ -124,10 +126,10 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     }
   };
 
-  const containerClasses = `rounded-lg border bg-gray-100 p-2 dark:bg-gray-800 transition-all ${
+  const containerClasses = `rounded-lg p-2 transition-all ${
     selected && isCollapsed
-      ? "ring-2 ring-highlight-300 dark:ring-highlight-300-night border-highlight-300 dark:border-highlight-300-night"
-      : "border-border"
+      ? "ring-2 ring-highlight-300 dark:ring-highlight-300-night"
+      : ""
   }`;
 
   return (
@@ -144,7 +146,9 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
           >
             <ChevronIcon className="h-4 w-4" />
           </button>
-          <Chip size="mini">{displayType.toUpperCase() || " "}</Chip>
+          <Chip size="mini" className="bg-gray-100 dark:bg-gray-800">
+            {displayType.toUpperCase() || " "}
+          </Chip>
         </div>
         {!isCollapsed && (
           <NodeViewContent className={instructionBlockContentStyles} as="div" />
@@ -461,7 +465,9 @@ export const InstructionBlockExtension =
           const isAtEndOfClosingTag =
             paragraphNode &&
             paragraphNode.type.name === "paragraph" &&
-            paragraphNode.textContent.match(/^<\/([A-Za-z_][A-Za-z0-9._:-]*)?>$/) &&
+            paragraphNode.textContent.match(
+              /^<\/([A-Za-z_][A-Za-z0-9._:-]*)?>$/
+            ) &&
             $from.parentOffset === paragraphNode.content.size;
 
           if (!isParagraphEmpty && !isAtEndOfClosingTag) {
