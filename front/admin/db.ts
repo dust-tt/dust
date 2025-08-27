@@ -31,6 +31,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
+import { TriggerSubscriberModel } from "@app/lib/models/assistant/trigger_subscriber";
 import { TriggerModel } from "@app/lib/models/assistant/triggers";
 import {
   TrackerConfigurationModel,
@@ -141,6 +142,7 @@ async function main() {
   await RemoteMCPServerToolMetadataModel.sync({ alter: true });
 
   await TriggerModel.sync({ alter: true });
+  await TriggerSubscriberModel.sync({ alter: true });
 
   await ConversationMCPServerViewModel.sync({ alter: true });
 
