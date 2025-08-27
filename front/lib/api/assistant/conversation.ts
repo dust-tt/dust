@@ -130,7 +130,7 @@ export async function createConversation(
     title,
     visibility,
     depth,
-    triggerId: triggerId || null,
+    triggerId,
     requestedGroupIds: [],
   });
 
