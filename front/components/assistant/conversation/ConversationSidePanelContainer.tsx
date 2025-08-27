@@ -37,18 +37,18 @@ export default function ConversationSidePanelContainer({
   return (
     <>
       {/* Resizable Handle for Panels */}
-      {currentPanel && (
-        <ResizableHandle
-          className={cn(
-            "hidden transition-all duration-300 ease-out md:block",
-            !currentPanel && "translate-x-full opacity-0"
-          )}
-        />
-      )}
+      <ResizableHandle
+        className={cn(
+          "hidden transition-all duration-300 ease-out md:block",
+          !currentPanel && "translate-x-full opacity-0"
+        )}
+        disabled={!currentPanel}
+      />
       {/* Panel Container - either Canvas or Actions */}
       <ResizablePanel
         ref={panelRef}
-        minSize={20}
+        minSize={currentPanel ? 20 : 0}
+        maxSize={currentPanel ? 100 : 0}
         defaultSize={0}
         onTransitionEnd={() => {
           if (panelRef.current?.isCollapsed()) {
