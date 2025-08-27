@@ -4,6 +4,7 @@ import type {
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { MCPServerPersonalAuthenticationRequiredMetadata } from "@app/lib/actions/mcp_internal_actions/events";
+import { isMCPServerPersonalAuthenticationRequiredMetadata } from "@app/lib/actions/mcp_internal_actions/events";
 import type {
   ReasoningContentType,
   TextContentType,
@@ -231,6 +232,19 @@ export type PersonalAuthenticationRequiredErrorContent = {
   message: string;
   metadata: MCPServerPersonalAuthenticationRequiredMetadata;
 };
+
+export function isPersonalAuthenticationRequiredErrorContent(
+  error: unknown
+): error is PersonalAuthenticationRequiredErrorContent {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "mcp_server_personal_authentication_required" &&
+    "metadata" in error &&
+    isMCPServerPersonalAuthenticationRequiredMetadata(error.metadata)
+  );
+}
 
 // Generic event sent when an error occurred during the model call.
 export type AgentErrorEvent = {

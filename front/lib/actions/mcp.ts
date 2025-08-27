@@ -66,6 +66,7 @@ import type {
   ReasoningModelConfigurationType,
   TimeFrame,
 } from "@app/types";
+import { isPersonalAuthenticationRequiredErrorContent } from "@app/types";
 import { assertNever, removeNulls } from "@app/types";
 
 export type BaseMCPServerConfigurationType = {
@@ -760,10 +761,7 @@ function isToolPersonalAuthRequiredEvent(
     "type" in event &&
     event.type === "tool_error" &&
     "error" in event &&
-    typeof event.error === "object" &&
-    event.error !== null &&
-    "code" in event.error &&
-    event.error.code === "mcp_server_personal_authentication_required"
+    isPersonalAuthenticationRequiredErrorContent(event.error)
   );
 }
 
