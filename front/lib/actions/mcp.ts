@@ -240,7 +240,10 @@ type MCPSuccessEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  action: MCPActionType;
+  action: AgentMCPActionType & {
+    type: "tool_action";
+    output: CallToolResult["content"];
+  };
 };
 
 type MCPErrorEvent = {
@@ -586,7 +589,7 @@ export async function* runToolWithStreaming(
     return;
   }
 
-  const { outputItems, generatedFiles } = await processToolResults(auth, {
+  const { outputItems } = await processToolResults(auth, {
     action,
     conversation,
     localLogger,
@@ -603,14 +606,11 @@ export async function* runToolWithStreaming(
     created: Date.now(),
     configurationId: agentConfiguration.sId,
     messageId: agentMessage.sId,
-    action: new MCPActionType({
-      ...actionBaseParams,
-      generatedFiles,
-      status: "succeeded",
-      id: action.id,
+    action: {
+      ...action.toJSON(),
       output: removeNulls(outputItems.map(hideFileFromActionOutput)),
       type: "tool_action",
-    }),
+    },
   };
 }
 
@@ -673,7 +673,7 @@ export async function handleMCPActionError(
     text: errorMessage,
   };
 
-  const { action, actionBaseParams } = params;
+  const { action } = params;
 
   await AgentMCPActionOutputItem.create({
     workspaceId: action.workspaceId,
@@ -692,14 +692,11 @@ export async function handleMCPActionError(
     created: Date.now(),
     configurationId: agentConfiguration.sId,
     messageId: agentMessage.sId,
-    action: new MCPActionType({
-      ...actionBaseParams,
-      generatedFiles: [],
-      status,
-      id: action.id,
+    action: {
+      ...action.toJSON(),
       output: [outputContent],
       type: "tool_action",
-    }),
+    },
   };
 }
 
