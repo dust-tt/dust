@@ -202,7 +202,6 @@ export function KnowledgeConfigurationSheet({
 
   const handleOpenChange = async (newOpen: boolean) => {
     if (!newOpen) {
-      // Check if there are unsaved changes
       if (isDirty) {
         const confirmed = await confirm({
           title: "Unsaved changes",
