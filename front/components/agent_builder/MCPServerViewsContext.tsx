@@ -99,6 +99,7 @@ function getGroupedMCPServerViews({
     };
   });
 
+  // TODO (yuka): rename withKnowledge/withoutKnowledge naming since it's no longer accurate.
   const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
     groupBy(mcpServerViewsWithLabel, (view) => {
       const isWithKnowledge = INTERNAL_KNOWLEDGE_TOOL_SERVER_NAMES.includes(
