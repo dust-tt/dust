@@ -47,8 +47,7 @@ export default function ConversationSidePanelContainer({
       {/* Panel Container - either Canvas or Actions */}
       <ResizablePanel
         ref={panelRef}
-        minSize={currentPanel ? 20 : 0}
-        maxSize={currentPanel ? 100 : 0}
+        minSize={20}
         defaultSize={0}
         onTransitionEnd={() => {
           if (panelRef.current?.isCollapsed()) {
