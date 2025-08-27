@@ -16,7 +16,6 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { INVITATION_EXPIRATION_TIME_SEC } from "@app/lib/constants/invitation";
 import { sendInvitations, updateInvitation } from "@app/lib/invitations";
 import { useProvisioningStatus } from "@app/lib/swr/workos";
 import type {
@@ -25,11 +24,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 
-function isInvitationExpired(createdAt: number): boolean {
-  const now = Date.now();
-  const expirationTime = createdAt + INVITATION_EXPIRATION_TIME_SEC * 1000;
-  return now > expirationTime;
-}
+import { isInvitationExpired } from "./utils";
 
 export function EditInvitationModal({
   owner,

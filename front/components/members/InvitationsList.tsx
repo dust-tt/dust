@@ -14,21 +14,15 @@ import React, { useMemo, useState } from "react";
 import { EditInvitationModal } from "@app/components/members/EditInvitationModal";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { INVITATION_EXPIRATION_TIME_SEC } from "@app/lib/constants/invitation";
 import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType, WorkspaceType } from "@app/types";
 
+import { isInvitationExpired } from "./utils";
+
 type RowData = MembershipInvitationType & {
   onClick: () => void;
 };
-
-function isInvitationExpired(createdAt: number): boolean {
-  const now = Date.now();
-  // createdAt is in milliseconds but INVITATION_EXPIRATION_TIME_SEC is in seconds
-  const expirationTime = createdAt + INVITATION_EXPIRATION_TIME_SEC * 1000;
-  return now > expirationTime;
-}
 
 export function InvitationsList({
   owner,
