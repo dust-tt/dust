@@ -78,7 +78,12 @@ export function AgentBuilderInstructionsEditor({
     return [
       StarterKit.configure({
         paragraph: false, // We use custom ParagraphExtension
-        heading: false,
+        heading: {
+          levels: [1, 2, 3, 4, 5, 6],
+          HTMLAttributes: {
+            class: "text-xl font-semibold mt-4 mb-3",
+          },
+        },
         bulletList: false,
         orderedList: false,
         listItem: false,
