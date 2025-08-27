@@ -31,23 +31,24 @@ import type {
 } from "@app/types";
 import { asDisplayName } from "@app/types";
 
-type ValidationQueueItem = {
+type BlockedActionsQueueItem = {
   message?: LightAgentMessageType;
+  // TODO(durable-agents): use BlockedToolExecution instead when supporting more blocked actions types.
   validationRequest: MCPActionValidationRequest;
 };
 
-function useValidationQueue({
+function useBlockedActionsQueue({
   pendingValidations,
 }: {
   pendingValidations: MCPActionValidationRequest[];
 }) {
-  const [validationQueue, setValidationQueue] = useState<ValidationQueueItem[]>(
-    []
-  );
+  const [blockedActionsQueue, setBlockedActionsQueue] = useState<
+    BlockedActionsQueueItem[]
+  >([]);
 
   useEffect(() => {
     if (pendingValidations.length > 0) {
-      setValidationQueue((prevQueue) => {
+      setBlockedActionsQueue((prevQueue) => {
         const existingIds = new Set(
           prevQueue.map((v) => v.validationRequest.actionId)
         );
@@ -59,7 +60,7 @@ function useValidationQueue({
     }
   }, [pendingValidations]);
 
-  const enqueueValidation = useCallback(
+  const enqueueBlockedAction = useCallback(
     ({
       message,
       validationRequest,
@@ -67,7 +68,7 @@ function useValidationQueue({
       message: LightAgentMessageType;
       validationRequest: MCPActionValidationRequest;
     }) => {
-      setValidationQueue((prevQueue) => {
+      setBlockedActionsQueue((prevQueue) => {
         const existingIndex = prevQueue.findIndex(
           (v) => v.validationRequest.actionId === validationRequest.actionId
         );
@@ -84,25 +85,25 @@ function useValidationQueue({
     []
   );
 
-  const shiftValidationQueue = useCallback(() => {
-    setValidationQueue((prevQueue) => prevQueue.slice(1));
+  const shiftBlockedActionQueue = useCallback(() => {
+    setBlockedActionsQueue((prevQueue) => prevQueue.slice(1));
   }, []);
 
   return {
-    validationQueue,
-    enqueueValidation,
-    shiftValidationQueue,
+    blockedActionsQueue,
+    enqueueBlockedAction,
+    shiftBlockedActionQueue,
   };
 }
 
 type ActionValidationContextType = {
-  enqueueValidation: (params: {
+  enqueueBlockedAction: (params: {
     message: LightAgentMessageType;
     validationRequest: MCPActionValidationRequest;
   }) => void;
   showValidationDialog: () => void;
-  hasPendingValidations: boolean;
-  totalPendingValidations: number;
+  hasBlockedActions: boolean;
+  totalBlockedActions: number;
 };
 
 const ActionValidationContext = createContext<
@@ -144,8 +145,8 @@ export function ActionValidationProvider({
     );
   }, [blockedActions]);
 
-  const { validationQueue, enqueueValidation, shiftValidationQueue } =
-    useValidationQueue({ pendingValidations });
+  const { blockedActionsQueue, enqueueBlockedAction, shiftBlockedActionQueue } =
+    useBlockedActionsQueue({ pendingValidations });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -168,21 +169,25 @@ export function ActionValidationProvider({
 
   // Open the dialog when there are pending validations and the dialog is not open.
   useEffect(() => {
-    if (validationQueue.length > 0 && !isDialogOpen) {
+    if (blockedActionsQueue.length > 0 && !isDialogOpen) {
       setValidatedActions(0);
       setIsDialogOpen(true);
-    } else if (validationQueue.length === 0 && isDialogOpen && !isValidating) {
+    } else if (
+      blockedActionsQueue.length === 0 &&
+      isDialogOpen &&
+      !isValidating
+    ) {
       setIsDialogOpen(false);
     }
-  }, [validationQueue.length, isDialogOpen, isValidating]);
+  }, [blockedActionsQueue.length, isDialogOpen, isValidating]);
 
   const submitValidation = async (status: MCPValidationOutputType) => {
     setSubmitStatus(status);
-    if (!validationQueue.length) {
+    if (!blockedActionsQueue.length) {
       return;
     }
 
-    const currentValidation = validationQueue[0];
+    const currentValidation = blockedActionsQueue[0];
 
     const { validationRequest, message } = currentValidation;
     const result = await validateAction({
@@ -200,27 +205,27 @@ export function ActionValidationProvider({
     setNeverAskAgain(false);
     setErrorMessage(null);
 
-    shiftValidationQueue();
+    shiftBlockedActionQueue();
     setValidatedActions((c) => c + 1);
   };
 
   const showValidationDialog = useCallback(() => {
-    if (!isDialogOpen && validationQueue.length > 0) {
+    if (!isDialogOpen && blockedActionsQueue.length > 0) {
       setValidatedActions(0);
       setIsDialogOpen(true);
     }
-  }, [isDialogOpen, validationQueue.length]);
+  }, [isDialogOpen, blockedActionsQueue.length]);
 
-  const hasPendingValidations = validationQueue.length > 0;
-  const totalPendingValidations = validationQueue.length;
+  const hasBlockedActions = blockedActionsQueue.length > 0;
+  const totalBlockedActions = blockedActionsQueue.length;
 
   const pages = useMemo(() => {
-    const totalCount = validatedActions + validationQueue.length;
+    const totalCount = validatedActions + blockedActionsQueue.length;
     if (totalCount === 0) {
       return [];
     }
 
-    const current = validationQueue[0];
+    const current = blockedActionsQueue[0];
     if (!current) {
       return [];
     }
@@ -295,15 +300,15 @@ export function ActionValidationProvider({
         </div>
       ),
     }));
-  }, [validationQueue, errorMessage, neverAskAgain, validatedActions]);
+  }, [blockedActionsQueue, errorMessage, neverAskAgain, validatedActions]);
 
   return (
     <ActionValidationContext.Provider
       value={{
         showValidationDialog,
-        enqueueValidation,
-        hasPendingValidations,
-        totalPendingValidations,
+        enqueueBlockedAction,
+        hasBlockedActions,
+        totalBlockedActions,
       }}
     >
       {children}
