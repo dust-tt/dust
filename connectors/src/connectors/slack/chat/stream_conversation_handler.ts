@@ -79,13 +79,13 @@ interface SlackUpdateState {
  *
  * The strategy uses exponential backoff:
  * - First 3 updates: no delay (instant feedback)
- * - Updates 4-6: 500ms minimum spacing
- * - Updates 7-10: 2s minimum spacing
- * - Updates 11-15: 4s minimum spacing
- * - Updates 16-20: 8s minimum spacing
- * - Updates 21+: 10s minimum spacing
+ * - Updates 4-5: 1s minimum spacing
+ * - Updates 6-8: 3s minimum spacing
+ * - Updates 9-11: 6s minimum spacing
+ * - Updates 12-15: 10s minimum spacing
+ * - Updates 16+: 15s minimum spacing
  *
- * This results in ~20-21 updates max per minute, well below Slack's rate limits (50/min).
+ * This results in ~12-14 updates max per minute.
  *
  * @param updateCount - Number of updates sent so far in this conversation
  * @param lastUpdateTime - Timestamp of the last update (ms since epoch)
@@ -99,16 +99,16 @@ function shouldSkipSlackUpdate({
 
   // Determine minimum spacing based on update count (exponential backoff).
   let minSpacing = 0;
-  if (updateCount >= 21) {
+  if (updateCount >= 16) {
+    minSpacing = 15_000; // 15s.
+  } else if (updateCount >= 12) {
     minSpacing = 10_000; // 10s.
-  } else if (updateCount >= 16) {
-    minSpacing = 8_000; // 8s.
-  } else if (updateCount >= 11) {
-    minSpacing = 4_000; // 4s.
-  } else if (updateCount >= 7) {
-    minSpacing = 2_000; // 2s.
+  } else if (updateCount >= 9) {
+    minSpacing = 6_000; // 6s.
+  } else if (updateCount >= 6) {
+    minSpacing = 3_000; // 3s.
   } else if (updateCount >= 4) {
-    minSpacing = 500; // 500ms.
+    minSpacing = 1_000; // 1s.
   }
   // Updates 1-3: no delay (minSpacing = 0).
 
