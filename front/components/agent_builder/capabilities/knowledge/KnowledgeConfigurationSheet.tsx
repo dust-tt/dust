@@ -2,7 +2,7 @@ import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -34,6 +34,7 @@ import {
   capabilityFormSchema,
   CONFIGURATION_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
+import { ConfirmContext } from "@app/components/Confirm";
 import {
   DataSourceBuilderProvider,
   useDataSourceBuilderContext,
@@ -67,6 +68,7 @@ export function KnowledgeConfigurationSheet({
   const open = action !== null;
   const { spaces } = useSpacesContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
+  const confirm = useContext(ConfirmContext);
 
   const handleSave = (formData: CapabilityFormData) => {
     const { description, configuration, mcpServerView } = formData;
@@ -189,15 +191,30 @@ export function KnowledgeConfigurationSheet({
     resolver: zodResolver(capabilityFormSchema),
     defaultValues,
   });
-  const { reset } = form;
+  const { reset, formState } = form;
+  const { isDirty } = formState;
 
   // Reset form when defaultValues change (e.g., when editing different actions)
   useEffect(() => {
     reset(defaultValues);
   }, [defaultValues, reset]);
 
-  const handleOpenChange = (newOpen: boolean) => {
+  const handleOpenChange = async (newOpen: boolean) => {
     if (!newOpen) {
+      if (isDirty) {
+        const confirmed = await confirm({
+          title: "Unsaved changes",
+          message:
+            "You have unsaved changes. Are you sure you want to close without saving?",
+          validateLabel: "Discard changes",
+          validateVariant: "warning",
+        });
+
+        if (!confirmed) {
+          return;
+        }
+      }
+
       onClose();
       form.reset(defaultValues);
     }
