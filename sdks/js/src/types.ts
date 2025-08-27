@@ -1729,6 +1729,11 @@ export type PostUserMessageResponseType = z.infer<
   typeof PostUserMessageResponseSchema
 >;
 
+export const RetryMessageResponseSchema = z.object({
+  message: AgentMessageTypeSchema,
+});
+export type RetryMessageResponseType = z.infer<typeof RetryMessageResponseSchema>;
+
 export const GetConversationResponseSchema = z.object({
   conversation: ConversationSchema,
 });
