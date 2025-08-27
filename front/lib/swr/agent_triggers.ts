@@ -2,8 +2,15 @@ import type { LightWorkspaceType } from "@dust-tt/client";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  emptyArray,
+  fetcher,
+  getErrorFromResponse,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type { GetTriggersResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers";
+import type { GetSubscribersResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers/[tId]/subscribers";
 import type {
   PostTextAsCronRuleRequestBody,
   PostTextAsCronRuleResponseBody,
@@ -60,4 +67,149 @@ export function useTextAsCronRule({
   );
 
   return textAsCronRule;
+}
+
+export function useTriggerSubscribers({
+  workspaceId,
+  agentConfigurationId,
+  triggerId,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string | null;
+  triggerId: string | null;
+  disabled?: boolean;
+}) {
+  const subscribersFetcher: Fetcher<GetSubscribersResponseBody> = fetcher;
+
+  const { data, error, mutate, isValidating } = useSWRWithDefaults(
+    agentConfigurationId && triggerId
+      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/subscribers`
+      : null,
+    subscribersFetcher,
+    { disabled }
+  );
+
+  return {
+    subscribers: data?.subscribers ?? emptyArray(),
+    isSubscribersLoading:
+      !!agentConfigurationId && !!triggerId && !error && !data && !disabled,
+    isSubscribersError: error,
+    isSubscribersValidating: isValidating,
+    mutateSubscribers: mutate,
+  };
+}
+
+export function useAddTriggerSubscriber({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateTriggers } = useAgentTriggers({
+    workspaceId,
+    agentConfigurationId,
+    disabled: true,
+  });
+
+  const addSubscriber = useCallback(
+    async (triggerId: string): Promise<boolean> => {
+      try {
+        const response = await fetch(
+          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/subscribers`,
+          {
+            method: "POST",
+          }
+        );
+
+        if (response.ok) {
+          sendNotification({
+            type: "success",
+            title: "Subscribed to trigger",
+            description:
+              "You will now receive notifications when this trigger runs.",
+          });
+          void mutateTriggers();
+          return true;
+        } else {
+          const errorData = await getErrorFromResponse(response);
+          sendNotification({
+            type: "error",
+            title: "Failed to subscribe",
+            description: `Error: ${errorData.message}`,
+          });
+          return false;
+        }
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to subscribe",
+          description: "An unexpected error occurred. Please try again.",
+        });
+        return false;
+      }
+    },
+    [workspaceId, agentConfigurationId, sendNotification, mutateTriggers]
+  );
+
+  return addSubscriber;
+}
+
+export function useRemoveTriggerSubscriber({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateTriggers } = useAgentTriggers({
+    workspaceId,
+    agentConfigurationId,
+    disabled: true,
+  });
+
+  const removeSubscriber = useCallback(
+    async (triggerId: string): Promise<boolean> => {
+      try {
+        const response = await fetch(
+          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/subscribers`,
+          {
+            method: "DELETE",
+          }
+        );
+
+        if (response.ok) {
+          sendNotification({
+            type: "success",
+            title: "Unsubscribed from trigger",
+            description:
+              "You will no longer receive notifications when this trigger runs.",
+          });
+          void mutateTriggers();
+          return true;
+        } else {
+          const errorData = await getErrorFromResponse(response);
+          sendNotification({
+            type: "error",
+            title: "Failed to unsubscribe",
+            description: `Error: ${errorData.message}`,
+          });
+          return false;
+        }
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to unsubscribe",
+          description: "An unexpected error occurred. Please try again.",
+        });
+        return false;
+      }
+    },
+    [workspaceId, agentConfigurationId, sendNotification, mutateTriggers]
+  );
+
+  return removeSubscriber;
 }

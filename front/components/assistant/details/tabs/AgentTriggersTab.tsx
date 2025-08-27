@@ -1,13 +1,25 @@
-import { BellIcon, ClockIcon, Icon, Page, PlusIcon } from "@dust-tt/sparkle";
+import {
+  BellIcon,
+  ClockIcon,
+  Icon,
+  Page,
+  PlusIcon,
+  TrashIcon,
+} from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { Spinner } from "@dust-tt/sparkle";
+import { useState } from "react";
 
-import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
+import {
+  useAddTriggerSubscriber,
+  useAgentTriggers,
+  useRemoveTriggerSubscriber,
+} from "@app/lib/swr/agent_triggers";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 import type { LightAgentConfigurationType } from "@app/types";
-import { isAdmin } from "@app/types";
+import { isAdmin, pluralize } from "@app/types";
 
 interface AgentTriggersTabProps {
   agentConfiguration: LightAgentConfigurationType;
@@ -27,28 +39,40 @@ export function AgentTriggersTab({
     agentConfigurationId: agentConfiguration.sId,
   });
 
+  const [isLoading, setIsLoading] = useState(false);
+
+  const subscribe = useAddTriggerSubscriber({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration.sId,
+  });
+  const unsubscribe = useRemoveTriggerSubscriber({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration.sId,
+  });
+
   const canEditAssistant = agentConfiguration.canEdit || isAdmin(owner);
+  const editionURL = getAgentBuilderRoute(
+    owner.sId,
+    agentConfiguration.sId,
+    featureFlags.includes("agent_builder_v2")
+  );
 
   return (
     <>
-      <div className="flex flex-row items-center justify-between gap-3">
-        <Page.H variant="h5">Triggers</Page.H>
-        <div className="self-end">
-          {canEditAssistant && (
+      {canEditAssistant && (
+        <div className="flex flex-row items-center justify-between gap-3">
+          <Page.H variant="h5">Trigger{pluralize(triggers.length)}</Page.H>
+          <div className="self-end">
             <Button
               icon={PlusIcon}
               label="Create Trigger"
-              href={getAgentBuilderRoute(
-                owner.sId,
-                agentConfiguration.sId,
-                featureFlags.includes("agent_builder_v2")
-              )}
+              href={editionURL}
               variant="ghost"
               size="sm"
             />
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {isTriggersLoading ? (
         <div className="w-full p-6">
@@ -73,12 +97,40 @@ export function AgentTriggersTab({
                 <div className="font-medium">{trigger.name}</div>
               </div>
               <div className="self-end">
-                {false && (
+                {trigger.isEditor ? (
                   <Button
-                    label="Subscribe"
-                    href=""
+                    label="Manage"
+                    href={editionURL}
                     variant="outline"
                     size="sm"
+                  />
+                ) : trigger.isSubscriber ? (
+                  <Button
+                    label="Unsubscribe"
+                    icon={TrashIcon}
+                    variant="outline"
+                    size="sm"
+                    isLoading={isLoading}
+                    disabled={isLoading}
+                    onClick={async () => {
+                      setIsLoading(true);
+                      await unsubscribe(trigger.sId);
+                      setIsLoading(false);
+                    }}
+                  />
+                ) : (
+                  <Button
+                    label="Subscribe"
+                    icon={PlusIcon}
+                    variant="outline"
+                    size="sm"
+                    isLoading={isLoading}
+                    disabled={isLoading}
+                    onClick={async () => {
+                      setIsLoading(true);
+                      await subscribe(trigger.sId);
+                      setIsLoading(false);
+                    }}
                   />
                 )}
               </div>

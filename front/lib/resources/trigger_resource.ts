@@ -15,6 +15,7 @@ import { TriggerModel } from "@app/lib/models/assistant/triggers";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   createOrUpdateAgentScheduleWorkflow,
@@ -301,6 +302,55 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     } catch (error) {
       return new Err(new DustError("internal_error", errorToString(error)));
     }
+  }
+
+  async getSubscribers(
+    auth: Authenticator
+  ): Promise<
+    Result<UserResource[], DustError<"unauthorized" | "internal_error">>
+  > {
+    if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
+      return new Err(
+        new DustError("unauthorized", "User do not have access to this trigger")
+      );
+    }
+
+    try {
+      const subscribers = await TriggerSubscriberModel.findAll({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          triggerId: this.id,
+        },
+      });
+
+      const userResources = await UserResource.fetchByModelIds(
+        subscribers.map((subscriber) => subscriber.userId)
+      );
+
+      return new Ok(userResources);
+    } catch (error) {
+      return new Err(new DustError("internal_error", errorToString(error)));
+    }
+  }
+
+  async isSubscriber(auth: Authenticator): Promise<boolean> {
+    if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
+      return false;
+    }
+
+    if (auth.getNonNullableUser().id === this.editor) {
+      return false;
+    }
+
+    const nbSubscribers = await TriggerSubscriberModel.count({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        triggerId: this.id,
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+
+    return nbSubscribers > 0;
   }
 
   toJSON(): TriggerType {
