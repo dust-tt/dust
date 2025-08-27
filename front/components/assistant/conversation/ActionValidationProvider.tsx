@@ -36,12 +36,13 @@ import type {
 } from "@app/types";
 import { asDisplayName } from "@app/types";
 
-interface AuthenticationPageProps {
+interface AuthenticationDialogPageProps {
   authActions: BlockedToolExecution[];
   connectionStates: Record<string, "connecting" | "connected" | "idle">;
-  setConnectionStates: React.Dispatch<
-    React.SetStateAction<Record<string, "connecting" | "connected" | "idle">>
-  >;
+  onConnect: (
+    actionId: string,
+    status: "connecting" | "connected" | "idle"
+  ) => void;
   createPersonalConnection: (params: {
     mcpServerId: string;
     mcpServerDisplayName: string;
@@ -52,62 +53,56 @@ interface AuthenticationPageProps {
   errorMessage: string | null;
 }
 
-function AuthenticationPage({
+function AuthenticationDialogPage({
   authActions,
   connectionStates,
-  setConnectionStates,
+  onConnect,
   createPersonalConnection,
   errorMessage,
-}: AuthenticationPageProps) {
+}: AuthenticationDialogPageProps) {
   const handleConnect = useCallback(
     async (blockedAction: BlockedToolExecution) => {
-      setConnectionStates((prev) => ({
-        ...prev,
-        [blockedAction.actionId]: "connecting",
-      }));
+      if (!blockedAction.authorizationInfo) {
+        return;
+      }
+
+      onConnect(blockedAction.actionId, "connecting");
       const success = await createPersonalConnection({
         mcpServerId: blockedAction.metadata.mcpServerId || "",
         mcpServerDisplayName: blockedAction.metadata.mcpServerDisplayName || "",
-        provider: blockedAction.authorizationInfo!.provider,
-        useCase: "connection",
-        scope: blockedAction.authorizationInfo!.scope,
+        provider: blockedAction.authorizationInfo.provider,
+        useCase: "personal_actions",
+        scope: blockedAction.authorizationInfo.scope,
       });
       if (success) {
-        setConnectionStates((prev) => ({
-          ...prev,
-          [blockedAction.actionId]: "connected",
-        }));
+        onConnect(blockedAction.actionId, "connected");
       } else {
-        setConnectionStates((prev) => ({
-          ...prev,
-          [blockedAction.actionId]: "idle",
-        }));
+        onConnect(blockedAction.actionId, "idle");
       }
     },
-    [
-      authActions,
-      connectionStates,
-      createPersonalConnection,
-      setConnectionStates,
-    ]
+    [authActions, connectionStates, createPersonalConnection, onConnect]
   );
 
   return (
     <div className="flex flex-col gap-4">
-      {authActions.map((blockedAction, authIndex) => (
-        <div key={authIndex} className="rounded-md">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="flex h-8 w-8 items-center justify-center">
-                {blockedAction.metadata.icon ? (
-                  <Icon visual={getIcon(blockedAction.metadata.icon)} />
-                ) : null}
+      {authActions.map((blockedAction, authIndex) => {
+        if (!blockedAction.authorizationInfo) {
+          return null;
+        }
+
+        return (
+          <div key={authIndex} className="rounded-md">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="flex h-8 w-8 items-center justify-center">
+                  {blockedAction.metadata.icon ? (
+                    <Icon visual={getIcon(blockedAction.metadata.icon)} />
+                  ) : null}
+                </div>
+                <div className="font-medium">
+                  {asDisplayName(blockedAction.metadata.mcpServerName)}
+                </div>
               </div>
-              <div className="font-medium">
-                {asDisplayName(blockedAction.metadata.mcpServerName)}
-              </div>
-            </div>
-            {blockedAction.authorizationInfo && (
               <Button
                 label={
                   connectionStates[blockedAction.actionId] === "connected"
@@ -126,10 +121,10 @@ function AuthenticationPage({
                 }
                 onClick={() => handleConnect(blockedAction)}
               />
-            )}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       {errorMessage && (
         <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
           {errorMessage}
@@ -139,19 +134,19 @@ function AuthenticationPage({
   );
 }
 
-interface ToolValidationPageProps {
+interface ToolValidationDialogPageProps {
   blockedAction: BlockedToolExecution;
   errorMessage: string | null;
   neverAskAgain: boolean;
   setNeverAskAgain: (value: boolean) => void;
 }
 
-function ToolValidationPage({
+function ToolValidationDialogPage({
   blockedAction,
   errorMessage,
   neverAskAgain,
   setNeverAskAgain,
-}: ToolValidationPageProps) {
+}: ToolValidationDialogPageProps) {
   const hasDetails =
     blockedAction?.inputs && Object.keys(blockedAction.inputs).length > 0;
 
@@ -425,6 +420,10 @@ export function ActionValidationProvider({
   }, [hasPendingAuthentications, pendingAuthentications, connectionStates]);
 
   const pages = useMemo(() => {
+    // Total count is:
+    // number of validated actions
+    // + number of pending validations
+    // +1 if there are pending authentications has it's all in one page.
     const totalCount =
       validatedActions +
       (hasPendingAuthentications ? 1 : 0) +
@@ -448,10 +447,15 @@ export function ActionValidationProvider({
             "The agent took an action that requires personal authentication",
           icon: undefined,
           content: (
-            <AuthenticationPage
+            <AuthenticationDialogPage
               authActions={authActions}
               connectionStates={connectionStates}
-              setConnectionStates={setConnectionStates}
+              onConnect={(actionId, status) =>
+                setConnectionStates((prev) => ({
+                  ...prev,
+                  [actionId]: status,
+                }))
+              }
               createPersonalConnection={createPersonalConnection}
               errorMessage={errorMessage}
             />
@@ -470,7 +474,7 @@ export function ActionValidationProvider({
           ? getIcon(blockedAction.metadata.icon)
           : ActionPieChartIcon,
         content: (
-          <ToolValidationPage
+          <ToolValidationDialogPage
             blockedAction={blockedAction}
             errorMessage={errorMessage}
             neverAskAgain={neverAskAgain}
@@ -516,10 +520,10 @@ export function ActionValidationProvider({
             showHeaderNavigation={false}
             footerContent={(() => {
               // Check if we're on the authentication page (first page with pending authentications)
-              const isOnAuthenticationPage =
+              const isOnAuthenticationDialogPage =
                 hasPendingAuthentications && validatedActions === 0;
 
-              if (isOnAuthenticationPage) {
+              if (isOnAuthenticationDialogPage) {
                 return (
                   <div className="flex flex-row justify-end gap-2">
                     <Button
