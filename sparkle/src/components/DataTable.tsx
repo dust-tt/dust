@@ -112,6 +112,7 @@ interface DataTableProps<TData extends TBaseData> {
   setRowSelection?: (rowSelection: RowSelectionState) => void;
   enableRowSelection?: boolean | ((row: Row<TData>) => boolean);
   enableMultiRowSelection?: boolean;
+  enableSortingRemoval?: boolean;
 }
 
 export function DataTable<TData extends TBaseData>({
@@ -135,6 +136,7 @@ export function DataTable<TData extends TBaseData>({
   enableRowSelection = false,
   enableMultiRowSelection = true,
   getRowId,
+  enableSortingRemoval = true,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
@@ -180,6 +182,7 @@ export function DataTable<TData extends TBaseData>({
     ...(isServerSideSorting && {
       onSortingChange: onSortingChange,
     }),
+    enableSortingRemoval,
     getCoreRowModel: getCoreRowModel(),
     ...(!isServerSideSorting && {
       getSortedRowModel: getSortedRowModel(),
