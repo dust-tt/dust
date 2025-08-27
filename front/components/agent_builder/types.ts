@@ -25,6 +25,16 @@ export const AGENT_CREATIVITY_LEVELS = [
 ] as const;
 export type AgentCreativityLevel = (typeof AGENT_CREATIVITY_LEVELS)[number];
 
+// Add a name of the server if you want to show a tool under 
+export const INTERNAL_KNOWLEDGE_TOOL_SERVER_NAMES = [
+  "search",
+  "extract_data",
+  "query_tables",
+  "query_tables_v2",
+  "include_data",
+  "data_warehouses",
+];
+
 export const AGENT_CREATIVITY_LEVEL_DISPLAY_NAMES = {
   deterministic: "Deterministic",
   factual: "Factual",
