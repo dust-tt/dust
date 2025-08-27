@@ -322,6 +322,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   toJSON(): AgentMCPActionType {
     return {
+      id: this.id,
       agentMessageId: this.agentMessageId,
       augmentedInputs: this.augmentedInputs,
       citationsAllocated: this.citationsAllocated,
