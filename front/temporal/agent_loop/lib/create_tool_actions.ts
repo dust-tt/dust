@@ -5,6 +5,7 @@ import type {
 import { createMCPAction } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -21,6 +22,7 @@ import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
 
 export interface ActionBlob {
   actionId: ModelId;
+  actionStatus: ToolExecutionStatus;
   needsApproval: boolean;
 }
 
@@ -206,6 +208,7 @@ async function createActionForTool(
   return {
     actionBlob: {
       actionId: agentMCPAction.id,
+      actionStatus: status,
       needsApproval: status === "blocked_validation_required",
     },
     approvalEventData:

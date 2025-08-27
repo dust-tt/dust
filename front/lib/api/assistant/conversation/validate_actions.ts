@@ -109,6 +109,10 @@ export async function validateAction(
     );
   }
 
+  if (action.status !== "blocked_validation_required") {
+    return new Err(new Error(`Action is not blocked: ${action.status}`));
+  }
+
   const actionUpdated = await updateMCPApprovalState(
     action,
     getMCPApprovalStateFromUserApprovalState(approvalState)
