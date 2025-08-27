@@ -206,7 +206,6 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
  */
 export type ConversationVisibility =
   | "unlisted"
-  | "triggered"
   | "deleted"
   | "test";
 
@@ -224,6 +223,7 @@ export type ConversationWithoutContentType = {
   title: string | null;
   visibility: ConversationVisibility;
   depth: number;
+  triggerId: ModelId | null;
   requestedGroupIds: string[][];
 };
 
