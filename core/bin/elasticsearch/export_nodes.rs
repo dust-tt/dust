@@ -201,9 +201,7 @@ async fn run() -> Result<()> {
                 break;
             }
             processed += process_hits(&mut writer, hits, &fields, &args)?;
-            if processed % 100 == 0 || processed == total {
-                println!("Processed {}/{} documents", processed, total);
-            }
+            println!("Processed {}/{} documents", processed, total);
         }
 
         // Update scroll ID if it changed
