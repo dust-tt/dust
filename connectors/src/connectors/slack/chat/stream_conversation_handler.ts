@@ -210,6 +210,7 @@ async function streamAgentAnswerToSlack(
           {
             connectorId: connector.id,
             conversationId: conversation.sId,
+            eventConversationId: event.conversationId,
             messageId: event.messageId,
             actionId: event.actionId,
             toolName: event.metadata.toolName,
@@ -220,7 +221,7 @@ async function streamAgentAnswerToSlack(
 
         const blockId = SlackBlockIdToolValidationSchema.encode({
           workspaceId: connector.workspaceId,
-          conversationId: conversation.sId,
+          conversationId: event.conversationId,
           messageId: event.messageId,
           actionId: event.actionId,
           slackThreadTs: mainMessage.message?.thread_ts,
