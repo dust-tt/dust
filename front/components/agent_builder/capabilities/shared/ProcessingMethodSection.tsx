@@ -125,6 +125,7 @@ export function ProcessingMethodSection() {
                 : undefined
             }
             variant="outline"
+            isSelect
           />
         </DropdownMenuTrigger>
 

@@ -259,7 +259,7 @@ export function AgentBuilderCapabilitiesBlock({
         onClick={() => setDialogMode({ type: "add" })}
         label="Add tools"
         icon={BoltIcon}
-        variant="primary"
+        variant="outline"
       />
     </div>
   );
@@ -304,7 +304,7 @@ export function AgentBuilderCapabilitiesBlock({
                   onClick={() => setDialogMode({ type: "add" })}
                   label="Add tools"
                   icon={BoltIcon}
-                  variant="primary"
+                  variant="outline"
                 />
               </div>
             }

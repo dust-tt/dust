@@ -95,7 +95,7 @@ export function AgentBuilderTriggersBlock({
         triggers.length > 0 && (
           <Button
             label="Add Schedule"
-            variant="primary"
+            variant="outline"
             icon={ClockIcon}
             onClick={handleCreateTrigger}
             type="button"
@@ -113,7 +113,7 @@ export function AgentBuilderTriggersBlock({
             action={
               <Button
                 label="Add Schedule"
-                variant="primary"
+                variant="outline"
                 icon={ClockIcon}
                 onClick={handleCreateTrigger}
                 type="button"
