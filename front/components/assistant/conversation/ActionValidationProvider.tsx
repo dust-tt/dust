@@ -68,15 +68,17 @@ function useValidationQueue({
       validationRequest: MCPActionValidationRequest;
     }) => {
       setValidationQueue((prevQueue) => {
-        const exists = prevQueue.some(
+        const existingIndex = prevQueue.findIndex(
           (v) => v.validationRequest.actionId === validationRequest.actionId
         );
 
-        if (!exists) {
-          return [...prevQueue, { validationRequest, message }];
-        }
-
-        return prevQueue;
+        // If the action is not in the queue, add it.
+        // If the action is in the queue, replace it with the new one.
+        return existingIndex === -1
+          ? [...prevQueue, { validationRequest, message }]
+          : prevQueue.map((item, index) =>
+              index === existingIndex ? { validationRequest, message } : item
+            );
       });
     },
     []
@@ -146,10 +148,15 @@ export function ActionValidationProvider({
     useValidationQueue({ pendingValidations });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Count of already validated actions.
+  // used to keep track of the current page in the dialog and the total number of pages.
   const [validatedActions, setValidatedActions] = useState(0);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [neverAskAgain, setNeverAskAgain] = useState(false);
+  const [submitStatus, setSubmitStatus] =
+    useState<MCPValidationOutputType | null>(null);
 
   const { validateAction, isValidating } = useValidateAction({
     owner,
@@ -170,6 +177,7 @@ export function ActionValidationProvider({
   }, [validationQueue.length, isDialogOpen, isValidating]);
 
   const submitValidation = async (status: MCPValidationOutputType) => {
+    setSubmitStatus(status);
     if (!validationQueue.length) {
       return;
     }
@@ -188,15 +196,12 @@ export function ActionValidationProvider({
       return;
     }
 
+    setSubmitStatus(null);
     setNeverAskAgain(false);
     setErrorMessage(null);
 
     shiftValidationQueue();
     setValidatedActions((c) => c + 1);
-  };
-
-  const handleSubmit = (approved: MCPValidationOutputType) => {
-    void submitValidation(approved);
   };
 
   const showValidationDialog = useCallback(() => {
@@ -319,8 +324,9 @@ export function ActionValidationProvider({
                 <Button
                   variant="outline"
                   label="Decline"
-                  onClick={() => handleSubmit("rejected")}
+                  onClick={() => submitValidation("rejected")}
                   disabled={isValidating}
+                  isLoading={submitStatus === "rejected"}
                 >
                   Decline
                 </Button>
@@ -328,8 +334,9 @@ export function ActionValidationProvider({
                   variant="highlight"
                   label="Allow"
                   autoFocus
-                  onClick={() => handleSubmit("approved")}
+                  onClick={() => submitValidation("approved")}
                   disabled={isValidating}
+                  isLoading={submitStatus === "approved"}
                 >
                   Allow
                 </Button>
