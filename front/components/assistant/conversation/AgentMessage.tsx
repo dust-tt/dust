@@ -138,6 +138,7 @@ export function AgentMessage({
             },
           });
         }
+        g;
       },
       [showBlockedActionsDialog, enqueueBlockedAction, message]
     ),
