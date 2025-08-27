@@ -528,6 +528,9 @@ export async function* runToolWithStreaming(
 
       return;
     } else if (toolErr instanceof ToolBlockedAwaitingInputError) {
+      // Update the action status to blocked_child_action_input_required to break the agent loop.
+      await action.updateStatus("blocked_child_action_input_required");
+
       // Update the step context to save the resume state.
       await action.updateStepContext({
         ...action.stepContext,

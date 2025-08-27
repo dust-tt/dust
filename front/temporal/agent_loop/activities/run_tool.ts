@@ -116,9 +116,6 @@ export async function runToolActivity(
 
       case "tool_personal_auth_required":
       case "tool_approve_execution":
-        // Update the action status to blocked_child_action_input_required to break the agent loop.
-        await action.updateStatus("blocked_child_action_input_required");
-
         // Defer personal auth events to be sent after all tools complete.
         deferredEvents.push({
           event,
