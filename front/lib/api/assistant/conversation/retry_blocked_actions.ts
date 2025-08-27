@@ -71,7 +71,6 @@ async function findUserMessageForRetry(
   await getRedisHybridManager().removeEvent((event) => {
     const payload = JSON.parse(event.message["payload"]);
 
-    console.log(payload);
     return isBlockedActionEvent(payload);
   }, getMessageChannelId(messageId));
 
