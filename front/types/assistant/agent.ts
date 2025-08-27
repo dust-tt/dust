@@ -3,8 +3,7 @@ import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { MCPServerPersonalAuthenticationRequiredMetadata } from "@app/lib/actions/mcp_internal_actions/events";
-import { isMCPServerPersonalAuthenticationRequiredMetadata } from "@app/lib/actions/mcp_internal_actions/events";
+import type { OAuthProvider } from "@app/types";
 import type {
   ReasoningContentType,
   TextContentType,
@@ -15,6 +14,7 @@ import type {
   ModelProviderIdType,
 } from "@app/types/assistant/assistant";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
+import { isOAuthProvider, isValidScope } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
@@ -226,6 +226,32 @@ export type GenericErrorContent = {
   message: string;
   metadata: Record<string, string | number | boolean> | null;
 };
+
+export type MCPServerPersonalAuthenticationRequiredMetadata = {
+  mcp_server_id: string;
+  provider: OAuthProvider;
+  scope?: string;
+  conversationId: string;
+  messageId: string;
+};
+
+export function isMCPServerPersonalAuthenticationRequiredMetadata(
+  metadata: unknown
+): metadata is MCPServerPersonalAuthenticationRequiredMetadata {
+  return (
+    typeof metadata === "object" &&
+    metadata !== null &&
+    "mcp_server_id" in metadata &&
+    typeof metadata.mcp_server_id === "string" &&
+    "provider" in metadata &&
+    isOAuthProvider(metadata?.provider) &&
+    (!("scope" in metadata) || isValidScope(metadata.scope)) &&
+    "conversationId" in metadata &&
+    typeof metadata.conversationId === "string" &&
+    "messageId" in metadata &&
+    typeof metadata.messageId === "string"
+  );
+}
 
 export type PersonalAuthenticationRequiredErrorContent = {
   code: "mcp_server_personal_authentication_required";

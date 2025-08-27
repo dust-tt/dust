@@ -57,14 +57,13 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { isPersonalAuthenticationRequiredErrorContent } from "@app/types";
 import { isString } from "@app/types";
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
   isInteractiveFileContentType,
-  isOAuthProvider,
   isSupportedImageContentType,
-  isValidScope,
 } from "@app/types";
 
 interface AgentMessageProps {
@@ -451,14 +450,7 @@ export function AgentMessage({
   }) {
     if (agentMessage.status === "failed") {
       const { error } = agentMessage;
-      if (
-        error &&
-        error.code === "mcp_server_personal_authentication_required" &&
-        isString(error.metadata?.mcp_server_id) &&
-        error.metadata?.mcp_server_id.length > 0 &&
-        isOAuthProvider(error.metadata?.provider) &&
-        isValidScope(error.metadata?.scope)
-      ) {
+      if (isPersonalAuthenticationRequiredErrorContent(error)) {
         return (
           <MCPServerPersonalAuthenticationRequired
             owner={owner}
