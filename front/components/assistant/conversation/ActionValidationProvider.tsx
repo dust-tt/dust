@@ -2,6 +2,7 @@ import {
   ActionPieChartIcon,
   Button,
   Checkbox,
+  CloudArrowLeftRightIcon,
   CodeBlock,
   CollapsibleComponent,
   Label,
@@ -21,88 +22,306 @@ import {
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
+import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getIcon } from "@app/lib/actions/mcp_icons";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
+import { useCreatePersonalConnection } from "@app/lib/swr/mcp_servers";
 import type {
   ConversationWithoutContentType,
   LightAgentMessageType,
   LightWorkspaceType,
-  MCPActionValidationRequest,
+  OAuthProvider,
+  OAuthUseCase,
 } from "@app/types";
 import { asDisplayName } from "@app/types";
 
-type ValidationQueueItem = {
+interface AuthenticationPageProps {
+  authActions: BlockedToolExecution[];
+  connectionStates: Record<string, "connecting" | "connected" | "idle">;
+  setConnectionStates: React.Dispatch<
+    React.SetStateAction<Record<string, "connecting" | "connected" | "idle">>
+  >;
+  createPersonalConnection: (params: {
+    mcpServerId: string;
+    mcpServerDisplayName: string;
+    provider: OAuthProvider;
+    useCase: OAuthUseCase;
+    scope?: string;
+  }) => Promise<boolean>;
+  errorMessage: string | null;
+  onAllConnected: () => void;
+}
+
+function AuthenticationPage({
+  authActions,
+  connectionStates,
+  setConnectionStates,
+  createPersonalConnection,
+  errorMessage,
+  onAllConnected,
+}: AuthenticationPageProps) {
+  return (
+    <div className="flex flex-col gap-4">
+      <div>Authentication is required for the following tools:</div>
+      {authActions.map((blockedAction, authIndex) => (
+        <div key={authIndex} className="rounded-lg border p-4">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div>
+                Allow{" "}
+                <span className="font-semibold">
+                  @{blockedAction.metadata.agentName}
+                </span>{" "}
+                to use the tool{" "}
+                <span className="font-semibold">
+                  {asDisplayName(blockedAction.metadata.toolName)}
+                </span>{" "}
+                from{" "}
+                <span className="font-semibold">
+                  {asDisplayName(blockedAction.metadata.mcpServerName)}
+                </span>
+                ?
+              </div>
+              {blockedAction?.inputs &&
+                Object.keys(blockedAction.inputs).length > 0 && (
+                  <CollapsibleComponent
+                    triggerChildren={
+                      <span className="font-medium text-muted-foreground dark:text-muted-foreground-night">
+                        Details
+                      </span>
+                    }
+                    contentChildren={
+                      <div>
+                        <div className="max-h-80 overflow-auto rounded-lg bg-muted dark:bg-muted-night">
+                          <CodeBlock
+                            wrapLongLines
+                            className="language-json overflow-y-auto"
+                          >
+                            {JSON.stringify(blockedAction.inputs, null, 2)}
+                          </CodeBlock>
+                        </div>
+                      </div>
+                    }
+                  />
+                )}
+            </div>
+            {blockedAction.authorizationInfo && (
+              <div className="ml-4 flex-shrink-0">
+                <Button
+                  label={
+                    connectionStates[blockedAction.actionId] === "connected"
+                      ? "Connected"
+                      : "Connect"
+                  }
+                  variant="outline"
+                  size="xs"
+                  icon={CloudArrowLeftRightIcon}
+                  disabled={
+                    connectionStates[blockedAction.actionId] === "connecting" ||
+                    connectionStates[blockedAction.actionId] === "connected"
+                  }
+                  isLoading={
+                    connectionStates[blockedAction.actionId] === "connecting"
+                  }
+                  onClick={async () => {
+                    setConnectionStates((prev) => ({
+                      ...prev,
+                      [blockedAction.actionId]: "connecting",
+                    }));
+                    const success = await createPersonalConnection({
+                      mcpServerId: blockedAction.metadata.mcpServerId || "",
+                      mcpServerDisplayName:
+                        blockedAction.metadata.mcpServerDisplayName || "",
+                      provider: blockedAction.authorizationInfo!.provider,
+                      useCase: "personal_actions",
+                      scope: blockedAction.authorizationInfo!.scope,
+                    });
+                    if (success) {
+                      setConnectionStates((prev) => ({
+                        ...prev,
+                        [blockedAction.actionId]: "connected",
+                      }));
+                      // Check if all authentications are connected and move to next page
+                      const allConnected = authActions.every(
+                        (action) =>
+                          connectionStates[action.actionId] === "connected" ||
+                          connectionStates[action.actionId] === "connecting"
+                      );
+                      if (allConnected) {
+                        onAllConnected();
+                      }
+                    } else {
+                      setConnectionStates((prev) => ({
+                        ...prev,
+                        [blockedAction.actionId]: "idle",
+                      }));
+                    }
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+      {errorMessage && (
+        <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
+          {errorMessage}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface ToolValidationPageProps {
+  blockedAction: BlockedToolExecution;
+  errorMessage: string | null;
+  neverAskAgain: boolean;
+  setNeverAskAgain: (value: boolean) => void;
+}
+
+function ToolValidationPage({
+  blockedAction,
+  errorMessage,
+  neverAskAgain,
+  setNeverAskAgain,
+}: ToolValidationPageProps) {
+  const hasDetails =
+    blockedAction?.inputs && Object.keys(blockedAction.inputs).length > 0;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        Allow{" "}
+        <span className="font-semibold">
+          @{blockedAction.metadata.agentName}
+        </span>{" "}
+        to use the tool{" "}
+        <span className="font-semibold">
+          {asDisplayName(blockedAction.metadata.toolName)}
+        </span>{" "}
+        from{" "}
+        <span className="font-semibold">
+          {asDisplayName(blockedAction.metadata.mcpServerName)}
+        </span>
+        ?
+      </div>
+      {hasDetails && (
+        <CollapsibleComponent
+          triggerChildren={
+            <span className="font-medium text-muted-foreground dark:text-muted-foreground-night">
+              Details
+            </span>
+          }
+          contentChildren={
+            <div>
+              <div className="max-h-80 overflow-auto rounded-lg bg-muted dark:bg-muted-night">
+                <CodeBlock
+                  wrapLongLines
+                  className="language-json overflow-y-auto"
+                >
+                  {JSON.stringify(blockedAction.inputs, null, 2)}
+                </CodeBlock>
+              </div>
+            </div>
+          }
+        />
+      )}
+      {errorMessage && (
+        <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
+          {errorMessage}
+        </div>
+      )}
+      {blockedAction.stake === "low" && (
+        <div className="mt-5">
+          <Label className="copy-sm flex w-fit cursor-pointer flex-row items-center gap-2 py-2 pr-2 font-normal">
+            <Checkbox
+              checked={neverAskAgain}
+              onCheckedChange={(check) => {
+                setNeverAskAgain(!!check);
+              }}
+            />
+            <span>Always allow this tool</span>
+          </Label>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type BlockedActionQueueItem = {
   message?: LightAgentMessageType;
-  validationRequest: MCPActionValidationRequest;
+  blockedAction: BlockedToolExecution;
 };
 
-function useValidationQueue({
-  pendingValidations,
+function useBlockedActionsQueue({
+  blockedActions,
 }: {
-  pendingValidations: MCPActionValidationRequest[];
+  blockedActions: BlockedToolExecution[];
 }) {
-  const [validationQueue, setValidationQueue] = useState<ValidationQueueItem[]>(
-    []
-  );
+  const [blockedActionsQueue, setBlockedActionsQueue] = useState<
+    BlockedActionQueueItem[]
+  >([]);
 
   useEffect(() => {
-    if (pendingValidations.length > 0) {
-      setValidationQueue((prevQueue) => {
+    if (blockedActions.length > 0) {
+      setBlockedActionsQueue((prevQueue) => {
         const existingIds = new Set(
-          prevQueue.map((v) => v.validationRequest.actionId)
+          prevQueue.map((v) => v.blockedAction.actionId)
         );
-        const newItems = pendingValidations
+        const newItems = blockedActions
           .filter((v) => !existingIds.has(v.actionId))
-          .map((validationRequest) => ({ validationRequest }));
-        return [...prevQueue, ...newItems];
+          .map((blockedAction) => ({
+            blockedAction,
+          }));
+        return [...blockedActionsQueue, ...newItems];
       });
     }
-  }, [pendingValidations]);
+  }, [blockedActions, blockedActionsQueue]);
 
-  const enqueueValidation = useCallback(
+  const enqueueBlockedAction = useCallback(
     ({
       message,
-      validationRequest,
+      blockedAction,
     }: {
       message: LightAgentMessageType;
-      validationRequest: MCPActionValidationRequest;
+      blockedAction: BlockedToolExecution;
     }) => {
-      setValidationQueue((prevQueue) => {
+      setBlockedActionsQueue((prevQueue) => {
         const existingIndex = prevQueue.findIndex(
-          (v) => v.validationRequest.actionId === validationRequest.actionId
+          (v) => v.blockedAction.actionId === blockedAction.actionId
         );
 
         // If the action is not in the queue, add it.
         // If the action is in the queue, replace it with the new one.
         return existingIndex === -1
-          ? [...prevQueue, { validationRequest, message }]
+          ? [...blockedActionsQueue, { blockedAction, message }]
           : prevQueue.map((item, index) =>
-              index === existingIndex ? { validationRequest, message } : item
+              index === existingIndex ? { blockedAction, message } : item
             );
       });
     },
-    []
+    [blockedActionsQueue]
   );
 
-  const shiftValidationQueue = useCallback(() => {
-    setValidationQueue((prevQueue) => prevQueue.slice(1));
+  const shiftBlockedActionQueue = useCallback(() => {
+    setBlockedActionsQueue((prevQueue) => prevQueue.slice(1));
   }, []);
 
   return {
-    validationQueue,
-    enqueueValidation,
-    shiftValidationQueue,
+    blockedActionsQueue,
+    enqueueBlockedAction,
+    shiftBlockedActionQueue,
   };
 }
 
 type ActionValidationContextType = {
-  enqueueValidation: (params: {
+  enqueueBlockedAction: (params: {
     message: LightAgentMessageType;
-    validationRequest: MCPActionValidationRequest;
+    blockedAction: BlockedToolExecution;
   }) => void;
-  showValidationDialog: () => void;
-  hasPendingValidations: boolean;
-  totalPendingValidations: number;
+  showBlockedActionsDialog: () => void;
+  hasPendingBlockedActions: boolean;
+  totalBlockedActions: number;
 };
 
 const ActionValidationContext = createContext<
@@ -131,23 +350,45 @@ export function ActionValidationProvider({
   conversation,
   children,
 }: ActionValidationProviderProps) {
+  const { createPersonalConnection } = useCreatePersonalConnection(owner);
+
   const { blockedActions } = useBlockedActions({
     conversationId: conversation?.sId || null,
     workspaceId: owner.sId,
   });
 
-  // Filter blocked actions to only get validation required ones.
-  // TODO(durable-agents): also display blocked_authentication_required.
+  console.log(
+    "ActionValidationProvider - blockedActions from hook:",
+    blockedActions
+  );
+  console.log("ActionValidationProvider - conversationId:", conversation?.sId);
+
+  const { blockedActionsQueue, enqueueBlockedAction } = useBlockedActionsQueue({
+    blockedActions,
+  });
+
+  console.log(
+    "ActionValidationProvider - blockedActionsQueue:",
+    blockedActionsQueue
+  );
+
+  // Track connection states for each authentication item
+  const [connectionStates, setConnectionStates] = useState<
+    Record<string, "connecting" | "connected" | "idle">
+  >({});
+
   const pendingValidations = useMemo(() => {
-    return blockedActions.filter(
-      (action) => action.status === "blocked_validation_required"
+    return blockedActionsQueue.filter(
+      (action) => action.blockedAction.status === "blocked_validation_required"
     );
-  }, [blockedActions]);
+  }, [blockedActionsQueue]);
 
-  const { validationQueue, enqueueValidation, shiftValidationQueue } =
-    useValidationQueue({ pendingValidations });
-
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const pendingAuthentications = useMemo(() => {
+    return blockedActionsQueue.filter(
+      (action) =>
+        action.blockedAction.status === "blocked_authentication_required"
+    );
+  }, [blockedActionsQueue]);
 
   // Count of already validated actions.
   // used to keep track of the current page in the dialog and the total number of pages.
@@ -155,8 +396,12 @@ export function ActionValidationProvider({
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [neverAskAgain, setNeverAskAgain] = useState(false);
+
+  // Track the status of the current submit action.
   const [submitStatus, setSubmitStatus] =
     useState<MCPValidationOutputType | null>(null);
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const { validateAction, isValidating } = useValidateAction({
     owner,
@@ -168,25 +413,29 @@ export function ActionValidationProvider({
 
   // Open the dialog when there are pending validations and the dialog is not open.
   useEffect(() => {
-    if (validationQueue.length > 0 && !isDialogOpen) {
+    if (blockedActionsQueue.length > 0 && !isDialogOpen) {
       setValidatedActions(0);
       setIsDialogOpen(true);
-    } else if (validationQueue.length === 0 && isDialogOpen && !isValidating) {
+    } else if (
+      blockedActionsQueue.length === 0 &&
+      isDialogOpen &&
+      !isValidating
+    ) {
       setIsDialogOpen(false);
     }
-  }, [validationQueue.length, isDialogOpen, isValidating]);
+  }, [blockedActionsQueue.length, isDialogOpen, isValidating]);
 
   const submitValidation = async (status: MCPValidationOutputType) => {
     setSubmitStatus(status);
-    if (!validationQueue.length) {
+    if (!blockedActionsQueue.length) {
       return;
     }
 
-    const currentValidation = validationQueue[0];
+    const currentBlockedAction = blockedActionsQueue[0];
 
-    const { validationRequest, message } = currentValidation;
+    const { blockedAction, message } = currentBlockedAction;
     const result = await validateAction({
-      validationRequest,
+      validationRequest: blockedAction,
       message,
       approved:
         status === "approved" && neverAskAgain ? "always_approved" : status,
@@ -200,110 +449,100 @@ export function ActionValidationProvider({
     setNeverAskAgain(false);
     setErrorMessage(null);
 
-    shiftValidationQueue();
     setValidatedActions((c) => c + 1);
   };
 
-  const showValidationDialog = useCallback(() => {
-    if (!isDialogOpen && validationQueue.length > 0) {
+  const showBlockedActionsDialog = useCallback(() => {
+    if (!isDialogOpen && blockedActionsQueue.length > 0) {
       setValidatedActions(0);
       setIsDialogOpen(true);
     }
-  }, [isDialogOpen, validationQueue.length]);
+  }, [isDialogOpen, blockedActionsQueue.length]);
 
-  const hasPendingValidations = validationQueue.length > 0;
-  const totalPendingValidations = validationQueue.length;
+  const hasPendingValidations = pendingValidations.length > 0;
+  const hasPendingAuthentications = pendingAuthentications.length > 0;
+  const hasPendingBlockedActions =
+    hasPendingValidations || hasPendingAuthentications;
+  const totalBlockedActions =
+    pendingValidations.length + pendingAuthentications.length;
+
+  console.log("hasPendingValidations", hasPendingValidations);
+  console.log("hasPendingAuthentications", hasPendingAuthentications);
+  console.log("hasPendingBlockedActions", hasPendingBlockedActions);
+  console.log("totalBlockedActions", totalBlockedActions);
 
   const pages = useMemo(() => {
-    const totalCount = validatedActions + validationQueue.length;
+    const totalCount =
+      validatedActions +
+      (hasPendingAuthentications ? 1 : 0) +
+      pendingValidations.length;
+
     if (totalCount === 0) {
       return [];
     }
 
-    const current = validationQueue[0];
-    if (!current) {
-      return [];
-    }
+    return Array.from({ length: totalCount }, (_, index) => {
+      if (hasPendingAuthentications && index === 0) {
+        // Create a combined authentication page with all pending authentications
+        const authActions = pendingAuthentications.map(
+          (item) => item.blockedAction
+        );
 
-    const { validationRequest } = current;
-    const hasDetails =
-      validationRequest?.inputs &&
-      Object.keys(validationRequest.inputs).length > 0;
-
-    return Array.from({ length: totalCount }, (_, index) => ({
-      id: index.toString(),
-      title: "Tool Validation Required",
-      icon: validationRequest.metadata.icon
-        ? getIcon(validationRequest.metadata.icon)
-        : ActionPieChartIcon,
-      content: (
-        <div className="flex flex-col gap-4">
-          <div>
-            Allow{" "}
-            <span className="font-semibold">
-              @{validationRequest.metadata.agentName}
-            </span>{" "}
-            to use the tool{" "}
-            <span className="font-semibold">
-              {asDisplayName(validationRequest.metadata.toolName)}
-            </span>{" "}
-            from{" "}
-            <span className="font-semibold">
-              {asDisplayName(validationRequest.metadata.mcpServerName)}
-            </span>
-            ?
-          </div>
-          {hasDetails && (
-            <CollapsibleComponent
-              triggerChildren={
-                <span className="font-medium text-muted-foreground dark:text-muted-foreground-night">
-                  Details
-                </span>
-              }
-              contentChildren={
-                <div>
-                  <div className="max-h-80 overflow-auto rounded-lg bg-muted dark:bg-muted-night">
-                    <CodeBlock
-                      wrapLongLines
-                      className="language-json overflow-y-auto"
-                    >
-                      {JSON.stringify(validationRequest.inputs, null, 2)}
-                    </CodeBlock>
-                  </div>
-                </div>
-              }
+        return {
+          id: index.toString(),
+          title: "Authentication Required",
+          icon: ActionPieChartIcon,
+          content: (
+            <AuthenticationPage
+              authActions={authActions}
+              connectionStates={connectionStates}
+              setConnectionStates={setConnectionStates}
+              createPersonalConnection={createPersonalConnection}
+              errorMessage={errorMessage}
+              onAllConnected={() => setValidatedActions((prev) => prev + 1)}
             />
-          )}
-          {errorMessage && (
-            <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
-              {errorMessage}
-            </div>
-          )}
-          {validationRequest.stake === "low" && (
-            <div className="mt-5">
-              <Label className="copy-sm flex w-fit cursor-pointer flex-row items-center gap-2 py-2 pr-2 font-normal">
-                <Checkbox
-                  checked={neverAskAgain}
-                  onCheckedChange={(check) => {
-                    setNeverAskAgain(!!check);
-                  }}
-                />
-                <span>Always allow this tool</span>
-              </Label>
-            </div>
-          )}
-        </div>
-      ),
-    }));
-  }, [validationQueue, errorMessage, neverAskAgain, validatedActions]);
+          ),
+        };
+      }
+
+      // For validation pages, adjust the index to account for the authentication page
+      const validationIndex = hasPendingAuthentications ? index - 1 : index;
+      const { blockedAction } = pendingValidations[validationIndex];
+
+      return {
+        id: index.toString(),
+        title: "Tool Validation Required",
+        icon: blockedAction.metadata.icon
+          ? getIcon(blockedAction.metadata.icon)
+          : ActionPieChartIcon,
+        content: (
+          <ToolValidationPage
+            blockedAction={blockedAction}
+            errorMessage={errorMessage}
+            neverAskAgain={neverAskAgain}
+            setNeverAskAgain={setNeverAskAgain}
+          />
+        ),
+      };
+    });
+  }, [
+    errorMessage,
+    neverAskAgain,
+    validatedActions,
+    connectionStates,
+    createPersonalConnection,
+    hasPendingAuthentications,
+    pendingValidations,
+    pendingAuthentications,
+  ]);
 
   return (
     <ActionValidationContext.Provider
       value={{
-        showValidationDialog,
-        enqueueValidation,
-        hasPendingValidations,
-        totalPendingValidations,
+        showBlockedActionsDialog,
+        enqueueBlockedAction,
+        hasPendingBlockedActions,
+        totalBlockedActions,
       }}
     >
       {children}
@@ -319,29 +558,50 @@ export function ActionValidationProvider({
             isAlertDialog
             showNavigation={true}
             showHeaderNavigation={false}
-            footerContent={
-              <div className="flex flex-row justify-end gap-2">
-                <Button
-                  variant="outline"
-                  label="Decline"
-                  onClick={() => submitValidation("rejected")}
-                  disabled={isValidating}
-                  isLoading={submitStatus === "rejected"}
-                >
-                  Decline
-                </Button>
-                <Button
-                  variant="highlight"
-                  label="Allow"
-                  autoFocus
-                  onClick={() => submitValidation("approved")}
-                  disabled={isValidating}
-                  isLoading={submitStatus === "approved"}
-                >
-                  Allow
-                </Button>
-              </div>
-            }
+            footerContent={(() => {
+              // Check if we're on the authentication page (first page with pending authentications)
+              const isOnAuthenticationPage =
+                hasPendingAuthentications && validatedActions === 0;
+
+              if (isOnAuthenticationPage) {
+                return (
+                  <div className="flex flex-row justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      label="Decline"
+                      onClick={() => setIsDialogOpen(false)}
+                    >
+                      Decline
+                    </Button>
+                  </div>
+                );
+              }
+
+              // For validation pages, show the usual Allow/Decline buttons
+              return (
+                <div className="flex flex-row justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    label="Decline"
+                    onClick={() => submitValidation("rejected")}
+                    disabled={isValidating}
+                    isLoading={submitStatus === "rejected"}
+                  >
+                    Decline
+                  </Button>
+                  <Button
+                    variant="highlight"
+                    label="Allow"
+                    autoFocus
+                    onClick={() => submitValidation("approved")}
+                    disabled={isValidating}
+                    isLoading={submitStatus === "approved"}
+                  >
+                    Allow
+                  </Button>
+                </div>
+              );
+            })()}
           />
         )}
       </MultiPageDialog>
