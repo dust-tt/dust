@@ -194,7 +194,7 @@ export function ConversationFilesPopover({
       <Button
         size="sm"
         variant="ghost"
-        icon={DocumentIcon}
+        icon={FolderIcon}
         tooltip="Loading files..."
         disabled
       />
@@ -216,7 +216,7 @@ export function ConversationFilesPopover({
         align="end"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <ScrollArea>
+        <ScrollArea className="flex flex-col gap-3">
           <div className="heading-lg text-primary dark:text-primary-night">
             Generated Content
           </div>
