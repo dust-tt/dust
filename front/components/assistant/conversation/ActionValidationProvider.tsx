@@ -327,19 +327,9 @@ export function ActionValidationProvider({
     workspaceId: owner.sId,
   });
 
-  console.log(
-    "ActionValidationProvider - blockedActions from hook:",
-    blockedActions
-  );
-
   const { blockedActionsQueue, enqueueBlockedAction } = useBlockedActionsQueue({
     blockedActions,
   });
-
-  console.log(
-    "ActionValidationProvider - blockedActionsQueue:",
-    blockedActionsQueue
-  );
 
   // Track connection states for each authentication item
   const [connectionStates, setConnectionStates] = useState<
