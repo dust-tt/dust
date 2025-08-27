@@ -233,7 +233,7 @@ export function DataSourceViewTagsFilterDropdown() {
                 }
               />
               <div className="font-medium">
-                {mode === "custom" ? "Enable" : "Disable"} in converation
+                {mode === "custom" ? "Enable" : "Disable"} in conversation
                 filtering
               </div>
             </div>
