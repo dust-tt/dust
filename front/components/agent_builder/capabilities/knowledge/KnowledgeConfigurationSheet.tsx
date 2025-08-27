@@ -1,9 +1,5 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
-import {
-  Avatar,
-  MultiPageSheet,
-  MultiPageSheetContent,
-} from "@dust-tt/sparkle";
+import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
 import { useContext, useEffect, useMemo, useState } from "react";
@@ -44,6 +40,7 @@ import {
   useDataSourceBuilderContext,
 } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
+import { SEARCH_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
@@ -59,20 +56,151 @@ interface KnowledgeConfigurationSheetProps {
   presetActionData?: TemplateActionPreset;
 }
 
+type GetKnowledgeDefaultValuesOptions = {
+  action: AgentBuilderAction | null;
+  mcpServerViews: MCPServerViewType[];
+  presetActionData?: TemplateActionPreset;
+  isEditing: boolean;
+};
+function getKnowledgeDefaultValues({
+  action,
+  mcpServerViews,
+  presetActionData,
+  isEditing,
+}: GetKnowledgeDefaultValuesOptions) {
+  const dataSourceConfigurations =
+    action?.configuration?.dataSourceConfigurations;
+  const tablesConfigurations = action?.configuration?.tablesConfigurations;
+
+  // Use either data source or tables configurations - they're mutually exclusive
+  const configurationToUse = dataSourceConfigurations || tablesConfigurations;
+
+  const dataSourceTree =
+    configurationToUse && action
+      ? transformSelectionConfigurationsToTree(configurationToUse)
+      : { in: [], notIn: [] };
+
+  const selectedMCPServerView = (() => {
+    if (isEditing && action?.type === "MCP") {
+      return mcpServerViews.find(
+        (view) => view.sId === action.configuration.mcpServerViewId
+      );
+    }
+
+    if (presetActionData) {
+      const targetServerName =
+        getMCPServerNameForTemplateAction(presetActionData);
+      return mcpServerViews.find(
+        (view) => view.server.name === targetServerName
+      );
+    }
+
+    return mcpServerViews.find(
+      (view) => view.server.name === SEARCH_SERVER_NAME
+    );
+  })();
+
+  const storedName =
+    action?.name ??
+    presetActionData?.name ??
+    selectedMCPServerView?.name ??
+    selectedMCPServerView?.server.name ??
+    "";
+
+  // Convert stored name to user-friendly format for display
+  const defaultName = storedName ? nameToDisplayFormat(storedName) : "";
+
+  const defaultDescription =
+    action?.description ?? presetActionData?.description ?? "";
+
+  return {
+    sources: dataSourceTree,
+    description: defaultDescription,
+    configuration:
+      action?.configuration ?? getDefaultConfiguration(selectedMCPServerView),
+    mcpServerView: selectedMCPServerView ?? null,
+    name: defaultName,
+  };
+}
+
+const getInitialPageId = (isEditing: boolean) => {
+  if (isEditing) {
+    return CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION;
+  }
+  return CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
+};
+
 export function KnowledgeConfigurationSheet({
-  onSave,
-  onClose,
+  action,
+  ...props
+}: KnowledgeConfigurationSheetProps) {
+  const confirm = useContext(ConfirmContext);
+  const open = action !== null;
+  const [isDirty, setIsDirty] = useState(false);
+
+  // Custom open hook to only have debounce when we close.
+  // We use this value to unmount the Sheet Content, and we need
+  // debounce when closing to avoid messing up the closing animation.
+  // 300ms is vibe based.
+  const [debouncedOpen, setDebouncedOpen] = useState(() => open);
+  useEffect(() => {
+    if (open) {
+      setDebouncedOpen(true);
+    } else {
+      setTimeout(() => {
+        setDebouncedOpen(false);
+      }, 300);
+    }
+  }, [open]);
+
+  const handlePageChange = async () => {
+    if (isDirty) {
+      const confirmed = await confirm({
+        title: "Unsaved changes",
+        message:
+          "You have unsaved changes. Are you sure you want to close without saving?",
+        validateLabel: "Discard changes",
+        validateVariant: "warning",
+      });
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    props.onClose();
+  };
+
+  return (
+    <MultiPageSheet open={open} onOpenChange={handlePageChange}>
+      {debouncedOpen && (
+        <KnowledgeConfigurationSheetForm
+          action={action}
+          setIsDirty={setIsDirty}
+          {...props}
+        />
+      )}
+    </MultiPageSheet>
+  );
+}
+
+type KnowledgeConfigurationSheetFormProps = KnowledgeConfigurationSheetProps & {
+  setIsDirty: (value: boolean) => void;
+};
+
+function KnowledgeConfigurationSheetForm({
   action,
   actions,
   isEditing,
   mcpServerViews,
-  getAgentInstructions,
   presetActionData,
-}: KnowledgeConfigurationSheetProps) {
-  const open = action !== null;
+  getAgentInstructions,
+  onClose,
+  onSave,
+  setIsDirty,
+}: KnowledgeConfigurationSheetFormProps) {
   const { spaces } = useSpacesContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
-  const confirm = useContext(ConfirmContext);
 
   const handleSave = (formData: CapabilityFormData) => {
     const { description, configuration, mcpServerView } = formData;
@@ -121,133 +249,41 @@ export function KnowledgeConfigurationSheet({
     onClose();
   };
 
-  // Custom open hook to only have debounce when we close.
-  // We use this value to unmount the Sheet Content, and we need
-  // debounce when closing to avoid messing up the closing animation.
-  // 300ms is vibe based.
-  const [debouncedOpen, setDebouncedOpen] = useState(() => open);
-  useEffect(() => {
-    if (open) {
-      setDebouncedOpen(true);
-    } else {
-      setTimeout(() => {
-        setDebouncedOpen(false);
-      }, 300);
-    }
-  }, [open]);
-
   // Memoize default values based on action (React Hook Form best practice)
   const defaultValues = useMemo(() => {
-    const dataSourceConfigurations =
-      action?.configuration?.dataSourceConfigurations;
-    const tablesConfigurations = action?.configuration?.tablesConfigurations;
-
-    // Use either data source or tables configurations - they're mutually exclusive
-    const configurationToUse = dataSourceConfigurations || tablesConfigurations;
-
-    const dataSourceTree =
-      configurationToUse && action
-        ? transformSelectionConfigurationsToTree(configurationToUse)
-        : { in: [], notIn: [] };
-
-    const selectedMCPServerView = (() => {
-      if (isEditing && action?.type === "MCP") {
-        return mcpServerViews.find(
-          (view) => view.sId === action.configuration.mcpServerViewId
-        );
-      }
-
-      if (presetActionData) {
-        const targetServerName =
-          getMCPServerNameForTemplateAction(presetActionData);
-        return mcpServerViews.find(
-          (view) => view.server.name === targetServerName
-        );
-      }
-
-      return mcpServerViews.find((view) => view.server.name === "search");
-    })();
-
-    const storedName =
-      action?.name ??
-      presetActionData?.name ??
-      selectedMCPServerView?.name ??
-      selectedMCPServerView?.server.name ??
-      "";
-
-    // Convert stored name to user-friendly format for display
-    const defaultName = storedName ? nameToDisplayFormat(storedName) : "";
-
-    const defaultDescription =
-      action?.description ?? presetActionData?.description ?? "";
-
-    return {
-      sources: dataSourceTree,
-      description: defaultDescription,
-      configuration:
-        action?.configuration ?? getDefaultConfiguration(selectedMCPServerView),
-      mcpServerView: selectedMCPServerView ?? null,
-      name: defaultName,
-    };
+    return getKnowledgeDefaultValues({
+      action,
+      mcpServerViews,
+      isEditing,
+      presetActionData,
+    });
   }, [action, mcpServerViews, isEditing, presetActionData]);
 
   const form = useForm<CapabilityFormData>({
     resolver: zodResolver(capabilityFormSchema),
     defaultValues,
   });
-  const { reset, formState } = form;
-  const { isDirty } = formState;
+  const {
+    formState: { isDirty },
+  } = form;
 
-  // Reset form when defaultValues change (e.g., when editing different actions)
   useEffect(() => {
-    reset(defaultValues);
-  }, [defaultValues, reset]);
-
-  const handleOpenChange = async (newOpen: boolean) => {
-    if (!newOpen) {
-      if (isDirty) {
-        const confirmed = await confirm({
-          title: "Unsaved changes",
-          message:
-            "You have unsaved changes. Are you sure you want to close without saving?",
-          validateLabel: "Discard changes",
-          validateVariant: "warning",
-        });
-
-        if (!confirmed) {
-          return;
-        }
-      }
-
-      onClose();
-      form.reset(defaultValues);
-    }
-  };
-
-  const getInitialPageId = () => {
-    if (isEditing) {
-      return CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION;
-    }
-    return CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
-  };
+    setIsDirty(isDirty);
+  }, [isDirty, setIsDirty]);
 
   return (
-    <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
-      <FormProvider {...form}>
-        {debouncedOpen && (
-          <DataSourceBuilderProvider
-            spaces={spaces}
-            initialPageId={getInitialPageId()}
-          >
-            <KnowledgeConfigurationSheetContent
-              onSave={form.handleSubmit(handleSave)}
-              onClose={onClose}
-              getAgentInstructions={getAgentInstructions}
-            />
-          </DataSourceBuilderProvider>
-        )}
-      </FormProvider>
-    </MultiPageSheet>
+    <FormProvider {...form}>
+      <DataSourceBuilderProvider
+        spaces={spaces}
+        initialPageId={getInitialPageId(isEditing)}
+      >
+        <KnowledgeConfigurationSheetContent
+          onSave={form.handleSubmit(handleSave)}
+          onClose={onClose}
+          getAgentInstructions={getAgentInstructions}
+        />
+      </DataSourceBuilderProvider>
+    </FormProvider>
   );
 }
 
@@ -350,9 +386,7 @@ function KnowledgeConfigurationSheetContent({
       description:
         config?.configPageDescription ||
         "Select knowledge type and configure settings",
-      icon: config?.icon
-        ? () => <Avatar icon={config.icon} size="md" className="mr-2" />
-        : undefined,
+      icon: config?.icon,
       content: (
         <div className="space-y-6">
           <SelectDataSourcesFilters />
