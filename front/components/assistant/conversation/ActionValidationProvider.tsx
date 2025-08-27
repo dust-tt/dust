@@ -63,7 +63,6 @@ function AuthenticationPage({
 }: AuthenticationPageProps) {
   return (
     <div className="flex flex-col gap-4">
-      <div>The agent requires authentication for the following tools:</div>
       {authActions.map((blockedAction, authIndex) => (
         <div key={authIndex} className="rounded-md">
           <div className="flex items-center justify-between">
@@ -456,6 +455,8 @@ export function ActionValidationProvider({
         return {
           id: index.toString(),
           title: "Personal authentication required",
+          description:
+            "The agent requires authentication for the following tools",
           icon: undefined,
           content: (
             <AuthenticationPage
