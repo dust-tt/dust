@@ -91,9 +91,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
       // Each action must have a step content.
       assert(stepContent, "Step content not found.");
-      const internalMCPServerName = getInternalMCPServerNameFromSId(
-        a.toolConfiguration.toolServerId
-      );
+      const internalMCPServerName = a.toolConfiguration.toolServerId
+        ? getInternalMCPServerNameFromSId(a.toolConfiguration.toolServerId)
+        : null;
 
       return new this(this.model, a.get(), stepContent, {
         internalMCPServerName,
