@@ -818,11 +818,13 @@ The directive should be used to display a clickable version of the agent name in
       list_oncall_schedules: "never_ask",
       list_service_items: "never_ask",
       list_solution_categories: "never_ask",
+      list_solution_folders: "never_ask",
       list_solution_articles: "never_ask",
       list_requesters: "never_ask",
       get_requester: "never_ask",
       list_purchase_orders: "never_ask",
       list_sla_policies: "never_ask",
+      get_solution_article: "never_ask",
 
       // Write operations - low/high stakes
       create_ticket: "low",
