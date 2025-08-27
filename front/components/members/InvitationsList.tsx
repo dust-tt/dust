@@ -11,12 +11,20 @@ import React, { useMemo, useState } from "react";
 
 import { EditInvitationModal } from "@app/components/members/EditInvitationModal";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import { INVITATION_EXPIRATION_TIME_SEC } from "@app/lib/constants/invitation";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType, WorkspaceType } from "@app/types";
 
 type RowData = MembershipInvitationType & {
   onClick: () => void;
 };
+
+function isInvitationExpired(createdAt: number): boolean {
+  const now = Date.now();
+  // createdAt is in milliseconds but INVITATION_EXPIRATION_TIME_SEC is in seconds
+  const expirationTime = createdAt + INVITATION_EXPIRATION_TIME_SEC * 1000;
+  return now > expirationTime;
+}
 
 export function InvitationsList({
   owner,
@@ -56,11 +64,15 @@ export function InvitationsList({
       id: "inviteEmail",
       header: "Invitation Email",
       accessorKey: "inviteEmail",
-      cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent>
-          <span>{info.row.original.inviteEmail}</span>
-        </DataTable.CellContent>
-      ),
+      cell: (info: CellContext<RowData, string>) => {
+        const isExpired = isInvitationExpired(info.row.original.createdAt);
+        return (
+          <DataTable.CellContent>
+            <span>{info.row.original.inviteEmail}</span>
+            {isExpired && <span className="ml-2 text-red-500">(expired)</span>}
+          </DataTable.CellContent>
+        );
+      },
     },
     {
       id: "initialRole",

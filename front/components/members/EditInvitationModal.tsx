@@ -16,6 +16,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { INVITATION_EXPIRATION_TIME_SEC } from "@app/lib/constants/invitation";
 import { sendInvitations, updateInvitation } from "@app/lib/invitations";
 import { useProvisioningStatus } from "@app/lib/swr/workos";
 import type {
@@ -23,6 +24,12 @@ import type {
   MembershipInvitationType,
   WorkspaceType,
 } from "@app/types";
+
+function isInvitationExpired(createdAt: number): boolean {
+  const now = Date.now();
+  const expirationTime = createdAt + INVITATION_EXPIRATION_TIME_SEC * 1000;
+  return now > expirationTime;
+}
 
 export function EditInvitationModal({
   owner,
@@ -91,6 +98,9 @@ export function EditInvitationModal({
                 <div className="text-muted-foreground dark:text-muted-foreground-night">
                   Invitation sent on{" "}
                   {new Date(invitation.createdAt).toLocaleDateString()}
+                  {isInvitationExpired(invitation.createdAt) && (
+                    <span className="ml-2 text-red-500">(expired)</span>
+                  )}
                 </div>
               </div>
 
