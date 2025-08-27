@@ -1,5 +1,9 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
-import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  MultiPageSheet,
+  MultiPageSheetContent,
+} from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
 import { useContext, useEffect, useMemo, useState } from "react";
@@ -346,7 +350,9 @@ function KnowledgeConfigurationSheetContent({
       description:
         config?.configPageDescription ||
         "Select knowledge type and configure settings",
-      icon: config?.icon,
+      icon: config?.icon
+        ? () => <Avatar icon={config.icon} size="md" className="mr-2" />
+        : undefined,
       content: (
         <div className="space-y-6">
           <SelectDataSourcesFilters />
