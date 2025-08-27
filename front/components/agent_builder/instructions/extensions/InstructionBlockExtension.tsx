@@ -85,9 +85,6 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     }
   }
 
-  // No fallback - if tag is empty, keep display empty
-  // This gives users clear feedback that the tag is empty
-
   const handleToggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -114,31 +111,41 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     }
   };
 
-  const containerClasses = `rounded-lg border bg-gray-100 p-2 dark:bg-gray-800 transition-all ${
+  const containerClasses = 
     selected && isCollapsed
-      ? "ring-2 ring-highlight-300 dark:ring-highlight-300-night border-highlight-300 dark:border-highlight-300-night"
-      : "border-border"
-  }`;
+      ? "ring-2 ring-inset ring-highlight-300 dark:ring-highlight-300-night rounded-lg transition-all"
+      : "transition-all";
 
   return (
     <NodeViewWrapper className="my-2">
       <div className={containerClasses} onClick={handleBlockClick}>
-        <div
-          className="flex select-none items-center gap-1"
-          contentEditable={false}
-        >
+        <div className={isCollapsed ? "flex items-start min-h-[32px]" : "flex items-start"}>
           <button
             onClick={handleToggle}
-            className="rounded p-0.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="rounded p-0.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0 mt-1.5"
             type="button"
+            contentEditable={false}
           >
             <ChevronIcon className="h-4 w-4" />
           </button>
-          <Chip size="mini">{displayType.toUpperCase() || " "}</Chip>
+          {isCollapsed ? (
+            <div className="ml-1 mt-[3px]" contentEditable={false}>
+              <Chip 
+                size="mini" 
+                label={displayType.toUpperCase() || " "}
+                color="info"
+                className="!bg-gray-100 dark:!bg-gray-800 !text-gray-700 dark:!text-gray-300 !border !border-gray-300 dark:!border-gray-600 !rounded-full"
+              />
+            </div>
+          ) : (
+            <div className="ml-1 flex-1 mt-1">
+              <NodeViewContent
+                className="prose prose-sm"
+                as="div"
+              />
+            </div>
+          )}
         </div>
-        {!isCollapsed && (
-          <NodeViewContent className="prose prose-sm mt-2 font-mono" as="div" />
-        )}
       </div>
     </NodeViewWrapper>
   );
