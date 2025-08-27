@@ -113,6 +113,7 @@ export async function* executeMCPTool({
           action: {
             ...action.toJSON(),
             type: "tool_action",
+            output: null,
           },
           notification: notification.params,
         };

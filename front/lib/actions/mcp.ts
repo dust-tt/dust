@@ -259,6 +259,7 @@ export type ToolNotificationEvent = {
   messageId: string;
   action: AgentMCPActionType & {
     type: "tool_action";
+    output: null;
   };
   notification: ProgressNotificationContentType;
 };
