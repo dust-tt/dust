@@ -204,10 +204,7 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
  * when a user 'tests' an agent not in their list using the "test" button:
  * those conversations do not show in users' histories.
  */
-export type ConversationVisibility =
-  | "unlisted"
-  | "deleted"
-  | "test";
+export type ConversationVisibility = "unlisted" | "deleted" | "test";
 
 /**
  * A lighter version of Conversation without the content (for menu display).
