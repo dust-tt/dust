@@ -5,12 +5,17 @@ import type { JSONContent } from "@tiptap/react";
 /**
  * Regex pattern for matching XML-style instruction blocks
  */
-export const INSTRUCTION_BLOCK_REGEX = /<(\w+)>([\s\S]*?)<\/\1>/g;
+// Support tag names with letters, digits, underscore, dash, dot, and colon.
+// Allow standard XML-like Name production (simplified): start with letter/_ then [A-Za-z0-9._:-]*
+export const INSTRUCTION_BLOCK_REGEX =
+  /<([A-Za-z_][A-Za-z0-9._:-]*)>([\s\S]*?)<\/\1>/g;
 
 /**
- * Regex pattern for matching opening XML tags (including empty <>)
+ * Regex pattern for matching opening XML tags (including empty <>).
  */
-export const OPENING_TAG_REGEX = /<(\w*)>$/;
+// Allow empty tag name while typing: <>
+// When non-empty, support letters, digits, underscore, dash, dot, and colon.
+export const OPENING_TAG_REGEX = /<([A-Za-z_][A-Za-z0-9._:-]*)?>$/;
 
 /**
  * Interface for parsed instruction block match
@@ -61,6 +66,34 @@ export function textToParagraphNodes(content: string): JSONContent[] {
 }
 
 /**
+ * Convert text content to block nodes (paragraphs and headings)
+ */
+export function textToBlockNodes(content: string): JSONContent[] {
+  const nodes: JSONContent[] = [];
+  const lines = content.split("\n");
+
+  for (const line of lines) {
+    const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+    if (headingMatch) {
+      const level = headingMatch[1].length;
+      const headingContent = headingMatch[2].trim();
+      nodes.push({
+        type: "heading",
+        attrs: { level },
+        content: headingContent ? [{ type: "text", text: headingContent }] : [],
+      });
+    } else {
+      nodes.push({
+        type: "paragraph",
+        content: line.trim() ? [{ type: "text", text: line.trim() }] : [],
+      });
+    }
+  }
+
+  return nodes;
+}
+
+/**
  * Convert text content to ProseMirror paragraph nodes
  */
 export function textToProseMirrorParagraphs(
@@ -78,13 +111,48 @@ export function textToProseMirrorParagraphs(
 }
 
 /**
+ * Convert text content to ProseMirror block nodes (paragraphs and headings)
+ */
+export function textToProseMirrorBlocks(
+  content: string,
+  schema: Schema
+): ProseMirrorNode[] {
+  const nodes: ProseMirrorNode[] = [];
+  const lines = content.split("\n");
+
+  for (const line of lines) {
+    const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+    if (headingMatch && schema.nodes.heading) {
+      const level = headingMatch[1].length;
+      const headingContent = headingMatch[2].trim();
+      nodes.push(
+        schema.nodes.heading.create(
+          { level },
+          headingContent ? [schema.text(headingContent)] : []
+        )
+      );
+    } else {
+      const trimmedLine = line.trim();
+      nodes.push(
+        schema.nodes.paragraph.create(
+          {},
+          trimmedLine ? [schema.text(trimmedLine)] : []
+        )
+      );
+    }
+  }
+
+  return nodes;
+}
+
+/**
  * Create instruction block JSONContent
  */
 export function createInstructionBlockNode(
   type: string,
   content: string
 ): JSONContent {
-  const paragraphs = textToParagraphNodes(content);
+  const blocks = textToBlockNodes(content);
 
   // Add opening and closing tags as paragraphs
   const blockContent: JSONContent[] = [
@@ -92,9 +160,7 @@ export function createInstructionBlockNode(
       type: "paragraph",
       content: [{ type: "text", text: `<${type}>` }],
     },
-    ...(paragraphs.length > 0
-      ? paragraphs
-      : [{ type: "paragraph", content: [] }]),
+    ...(blocks.length > 0 ? blocks : [{ type: "paragraph", content: [] }]),
     {
       type: "paragraph",
       content: [{ type: "text", text: `</${type}>` }],
@@ -117,12 +183,12 @@ export function createProseMirrorInstructionBlock(
   nodeType: NodeType,
   schema: Schema
 ): ProseMirrorNode {
-  const paragraphs = textToProseMirrorParagraphs(content, schema);
+  const blocks = textToProseMirrorBlocks(content, schema);
 
   // Add opening and closing tags as paragraphs
   const blockContent = [
     schema.nodes.paragraph.create({}, [schema.text(`<${type}>`)]),
-    ...(paragraphs.length > 0 ? paragraphs : [schema.nodes.paragraph.create()]),
+    ...(blocks.length > 0 ? blocks : [schema.nodes.paragraph.create()]),
     schema.nodes.paragraph.create({}, [schema.text(`</${type}>`)]),
   ];
 
