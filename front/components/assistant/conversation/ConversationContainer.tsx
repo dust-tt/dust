@@ -63,11 +63,8 @@ export function ConversationContainer({
   const { animate, setAnimate, setSelectedAssistant } =
     useContext(InputBarContext);
 
-  const {
-    hasPendingBlockedActions,
-    totalBlockedActions,
-    showBlockedActionsDialog,
-  } = useActionValidationContext();
+  const { hasBlockedActions, totalBlockedActions, showBlockedActionsDialog } =
+    useActionValidationContext();
 
   const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
   const { scrollConversationsToTop } = useConversationsNavigation();
@@ -365,7 +362,7 @@ export function ConversationContainer({
         </div>
       )}
 
-      {activeConversationId && hasPendingBlockedActions && (
+      {activeConversationId && hasBlockedActions && (
         <ContentMessageInline
           icon={InformationCircleIcon}
           variant="primary"
@@ -392,7 +389,7 @@ export function ConversationContainer({
         }
         stickyMentions={stickyMentions}
         conversationId={activeConversationId}
-        disable={activeConversationId !== null && hasPendingBlockedActions}
+        disable={activeConversationId !== null && hasBlockedActions}
       />
 
       {!activeConversationId && (
