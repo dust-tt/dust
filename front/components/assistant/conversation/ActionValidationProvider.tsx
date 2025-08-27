@@ -5,6 +5,7 @@ import {
   CloudArrowLeftRightIcon,
   CodeBlock,
   CollapsibleComponent,
+  Icon,
   Label,
   MultiPageDialog,
   MultiPageDialogContent,
@@ -62,103 +63,73 @@ function AuthenticationPage({
 }: AuthenticationPageProps) {
   return (
     <div className="flex flex-col gap-4">
-      <div>Authentication is required for the following tools:</div>
+      <div>The agent requires authentication for the following tools:</div>
       {authActions.map((blockedAction, authIndex) => (
-        <div key={authIndex} className="rounded-lg border p-4">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div>
-                Allow{" "}
-                <span className="font-semibold">
-                  @{blockedAction.metadata.agentName}
-                </span>{" "}
-                to use the tool{" "}
-                <span className="font-semibold">
-                  {asDisplayName(blockedAction.metadata.toolName)}
-                </span>{" "}
-                from{" "}
-                <span className="font-semibold">
-                  {asDisplayName(blockedAction.metadata.mcpServerName)}
-                </span>
-                ?
+        <div key={authIndex} className="rounded-md">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="flex h-8 w-8 items-center justify-center">
+                {blockedAction.metadata.icon ? (
+                  <Icon visual={getIcon(blockedAction.metadata.icon)} />
+                ) : null}
               </div>
-              {blockedAction?.inputs &&
-                Object.keys(blockedAction.inputs).length > 0 && (
-                  <CollapsibleComponent
-                    triggerChildren={
-                      <span className="font-medium text-muted-foreground dark:text-muted-foreground-night">
-                        Details
-                      </span>
-                    }
-                    contentChildren={
-                      <div>
-                        <div className="max-h-80 overflow-auto rounded-lg bg-muted dark:bg-muted-night">
-                          <CodeBlock
-                            wrapLongLines
-                            className="language-json overflow-y-auto"
-                          >
-                            {JSON.stringify(blockedAction.inputs, null, 2)}
-                          </CodeBlock>
-                        </div>
-                      </div>
-                    }
-                  />
-                )}
+              <div className="font-medium">
+                {asDisplayName(blockedAction.metadata.mcpServerName)}
+              </div>
             </div>
             {blockedAction.authorizationInfo && (
-              <div className="ml-4 flex-shrink-0">
-                <Button
-                  label={
-                    connectionStates[blockedAction.actionId] === "connected"
-                      ? "Connected"
-                      : "Connect"
-                  }
-                  variant="outline"
-                  size="xs"
-                  icon={CloudArrowLeftRightIcon}
-                  disabled={
-                    connectionStates[blockedAction.actionId] === "connecting" ||
-                    connectionStates[blockedAction.actionId] === "connected"
-                  }
-                  isLoading={
-                    connectionStates[blockedAction.actionId] === "connecting"
-                  }
-                  onClick={async () => {
+              <Button
+                label={
+                  connectionStates[blockedAction.actionId] === "connected"
+                    ? "Connected"
+                    : "Connect"
+                }
+                variant="outline"
+                size="xs"
+                icon={CloudArrowLeftRightIcon}
+                disabled={
+                  connectionStates[blockedAction.actionId] === "connecting" ||
+                  connectionStates[blockedAction.actionId] === "connected"
+                }
+                isLoading={
+                  connectionStates[blockedAction.actionId] === "connecting"
+                }
+                onClick={async () => {
+                  setConnectionStates((prev) => ({
+                    ...prev,
+                    [blockedAction.actionId]: "connecting",
+                  }));
+                  const success = await createPersonalConnection({
+                    mcpServerId: blockedAction.metadata.mcpServerId || "",
+                    mcpServerDisplayName:
+                      blockedAction.metadata.mcpServerDisplayName || "",
+                    provider: blockedAction.authorizationInfo!.provider,
+                    useCase: "connection",
+                    scope: blockedAction.authorizationInfo!.scope,
+                  });
+                  if (success) {
                     setConnectionStates((prev) => ({
                       ...prev,
-                      [blockedAction.actionId]: "connecting",
+                      [blockedAction.actionId]: "connected",
                     }));
-                    const success = await createPersonalConnection({
-                      mcpServerId: blockedAction.metadata.mcpServerId || "",
-                      mcpServerDisplayName:
-                        blockedAction.metadata.mcpServerDisplayName || "",
-                      provider: blockedAction.authorizationInfo!.provider,
-                      useCase: "personal_actions",
-                      scope: blockedAction.authorizationInfo!.scope,
-                    });
-                    if (success) {
-                      setConnectionStates((prev) => ({
-                        ...prev,
-                        [blockedAction.actionId]: "connected",
-                      }));
-                      // Check if all authentications are connected and move to next page
-                      const allConnected = authActions.every(
-                        (action) =>
-                          connectionStates[action.actionId] === "connected" ||
-                          connectionStates[action.actionId] === "connecting"
-                      );
-                      if (allConnected) {
-                        onAllConnected();
-                      }
-                    } else {
-                      setConnectionStates((prev) => ({
-                        ...prev,
-                        [blockedAction.actionId]: "idle",
-                      }));
+                    // Check if all authentications are connected and move to next page
+                    const allConnected = authActions.every(
+                      (action) =>
+                        connectionStates[action.actionId] === "connected" ||
+                        connectionStates[action.actionId] === "connecting"
+                    );
+
+                    if (allConnected) {
+                      onAllConnected();
                     }
-                  }}
-                />
-              </div>
+                  } else {
+                    setConnectionStates((prev) => ({
+                      ...prev,
+                      [blockedAction.actionId]: "idle",
+                    }));
+                  }
+                }}
+              />
             )}
           </div>
         </div>
@@ -260,7 +231,7 @@ function useBlockedActionsQueue({
 }) {
   const [blockedActionsQueue, setBlockedActionsQueue] = useState<
     BlockedActionQueueItem[]
-  >([]);
+  >(blockedActions.map((action) => ({ blockedAction: action })));
 
   useEffect(() => {
     if (blockedActions.length > 0) {
@@ -276,7 +247,7 @@ function useBlockedActionsQueue({
         return [...blockedActionsQueue, ...newItems];
       });
     }
-  }, [blockedActions, blockedActionsQueue]);
+  }, [blockedActions]);
 
   const enqueueBlockedAction = useCallback(
     ({
@@ -300,7 +271,7 @@ function useBlockedActionsQueue({
             );
       });
     },
-    [blockedActionsQueue]
+    []
   );
 
   const shiftBlockedActionQueue = useCallback(() => {
@@ -320,7 +291,7 @@ type ActionValidationContextType = {
     blockedAction: BlockedToolExecution;
   }) => void;
   showBlockedActionsDialog: () => void;
-  hasPendingBlockedActions: boolean;
+  hasBlockedActions: boolean;
   totalBlockedActions: number;
 };
 
@@ -361,7 +332,6 @@ export function ActionValidationProvider({
     "ActionValidationProvider - blockedActions from hook:",
     blockedActions
   );
-  console.log("ActionValidationProvider - conversationId:", conversation?.sId);
 
   const { blockedActionsQueue, enqueueBlockedAction } = useBlockedActionsQueue({
     blockedActions,
@@ -386,7 +356,8 @@ export function ActionValidationProvider({
   const pendingAuthentications = useMemo(() => {
     return blockedActionsQueue.filter(
       (action) =>
-        action.blockedAction.status === "blocked_authentication_required"
+        action.blockedAction.status === "blocked_authentication_required" ||
+        action.blockedAction.status === "blocked_child_action_input_required"
     );
   }, [blockedActionsQueue]);
 
@@ -461,15 +432,9 @@ export function ActionValidationProvider({
 
   const hasPendingValidations = pendingValidations.length > 0;
   const hasPendingAuthentications = pendingAuthentications.length > 0;
-  const hasPendingBlockedActions =
-    hasPendingValidations || hasPendingAuthentications;
+  const hasBlockedActions = hasPendingValidations || hasPendingAuthentications;
   const totalBlockedActions =
     pendingValidations.length + pendingAuthentications.length;
-
-  console.log("hasPendingValidations", hasPendingValidations);
-  console.log("hasPendingAuthentications", hasPendingAuthentications);
-  console.log("hasPendingBlockedActions", hasPendingBlockedActions);
-  console.log("totalBlockedActions", totalBlockedActions);
 
   const pages = useMemo(() => {
     const totalCount =
@@ -490,8 +455,8 @@ export function ActionValidationProvider({
 
         return {
           id: index.toString(),
-          title: "Authentication Required",
-          icon: ActionPieChartIcon,
+          title: "Personal authentication required",
+          icon: undefined,
           content: (
             <AuthenticationPage
               authActions={authActions}
@@ -541,7 +506,7 @@ export function ActionValidationProvider({
       value={{
         showBlockedActionsDialog,
         enqueueBlockedAction,
-        hasPendingBlockedActions,
+        hasBlockedActions,
         totalBlockedActions,
       }}
     >
@@ -571,7 +536,7 @@ export function ActionValidationProvider({
                       label="Decline"
                       onClick={() => setIsDialogOpen(false)}
                     >
-                      Decline
+                      Skip
                     </Button>
                   </div>
                 );
