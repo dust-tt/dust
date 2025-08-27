@@ -99,7 +99,6 @@ function getKnowledgeDefaultValues({
     );
   })();
 
-  console.log("SELECTED MCP", selectedMCPServerView);
   const storedName =
     action?.name ??
     presetActionData?.name ??
