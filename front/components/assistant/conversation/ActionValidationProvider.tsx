@@ -445,7 +445,7 @@ export function ActionValidationProvider({
           id: index.toString(),
           title: "Personal authentication required",
           description:
-            "The agent requires authentication for the following tools",
+            "The agent took an action that requires personal authentication",
           icon: undefined,
           content: (
             <AuthenticationPage
