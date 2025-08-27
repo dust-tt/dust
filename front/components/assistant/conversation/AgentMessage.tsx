@@ -102,7 +102,7 @@ export function AgentMessage({
     message.configuration.sId as GLOBAL_AGENTS_SID
   );
 
-  const { showValidationDialog, enqueueValidation } =
+  const { showBlockedActionsDialog, enqueueBlockedAction } =
     useActionValidationContext();
 
   const { mutateMessage } = useConversationMessage({
@@ -123,10 +123,12 @@ export function AgentMessage({
         const eventType = eventPayload.data.type;
 
         if (eventType === "tool_approve_execution") {
-          showValidationDialog();
-          enqueueValidation({
+          showBlockedActionsDialog();
+          enqueueBlockedAction({
             message,
-            validationRequest: {
+            blockedAction: {
+              status: "blocked_validation_required",
+              authorizationInfo: null,
               messageId: eventPayload.data.messageId,
               conversationId: eventPayload.data.conversationId,
               actionId: eventPayload.data.actionId,
@@ -136,8 +138,40 @@ export function AgentMessage({
             },
           });
         }
+        /*
+        if (eventType === "tool_error") {
+          // Handle personal authentication errors
+          if (
+            eventPayload.data.error?.code ===
+            "mcp_server_personal_authentication_required"
+          ) {
+            showBlockedActionsDialog();
+            enqueueBlockedAction({
+              message,
+              blockedAction: {
+                status: "blocked_authentication_required",
+                authorizationInfo: {
+                  supported_use_cases: ["personal_actions"],
+                  provider: eventPayload.data.error.metadata?.provider,
+                  scope: eventPayload.data.error.metadata?.scope,
+                },
+                messageId: eventPayload.data.messageId,
+                conversationId: eventPayload.data.conversationId,
+                actionId: eventPayload.data.actionId || `auth_${Date.now()}`,
+                inputs: {},
+                metadata: {
+                  agentName: message.configuration.name,
+                  toolName: "authentication",
+                  mcpServerName: "authentication",
+                  mcpServerId: eventPayload.data.error.metadata?.mcp_server_id,
+                  mcpServerDisplayName: "authentication",
+                },
+              },
+            });
+          }
+        }*/
       },
-      [showValidationDialog, enqueueValidation, message]
+      [showBlockedActionsDialog, enqueueBlockedAction, message]
     ),
     streamId: `message-${message.sId}`,
   });
