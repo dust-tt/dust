@@ -1,5 +1,5 @@
 import type { InferGetServerSidePropsType } from "next";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { useFinalize } from "@app/lib/swr/oauth";
