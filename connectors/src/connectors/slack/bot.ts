@@ -297,6 +297,41 @@ export async function botValidateToolExecution(
       approved,
     });
 
+    // Retry blocked actions on the main conversation if it differs from the event's conversation.
+    if (
+      slackChatBotMessage.conversationId &&
+      slackChatBotMessage.conversationId !== conversationId
+    ) {
+      const retryRes = await dustAPI.retryMessage({
+        conversationId,
+        messageId,
+        blockedOnly: true,
+      });
+
+      if (retryRes.isErr()) {
+        logger.error(
+          {
+            error: retryRes.error,
+            connectorId: connector.id,
+            mainConversationId: slackChatBotMessage.conversationId,
+            eventConversationId: conversationId,
+            agentMessageId: messageId,
+          },
+          "Failed to retry blocked actions on the main conversation"
+        );
+      } else {
+        logger.info(
+          {
+            connectorId: connector.id,
+            mainConversationId: slackChatBotMessage.conversationId,
+            eventConversationId: conversationId,
+            agentMessageId: messageId,
+          },
+          "Successfully retried blocked actions on the main conversation"
+        );
+      }
+    }
+
     if (responseUrl) {
       // Use response_url to delete the message
       // Deleting is preferred over updating the message (see https://github.com/dust-tt/dust/pull/13268)
