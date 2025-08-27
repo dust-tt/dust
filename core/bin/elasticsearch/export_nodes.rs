@@ -121,7 +121,10 @@ async fn run() -> Result<()> {
     let query = if must_clauses.is_empty() {
         json!({ "match_all": {} })
     } else if must_clauses.len() == 1 {
-        must_clauses.into_iter().next().unwrap()
+        must_clauses
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("Expected at least one clause"))?
     } else {
         json!({
             "bool": {
