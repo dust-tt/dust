@@ -105,16 +105,6 @@ async function handler(
     }
 
     case "POST": {
-      if (!agentConfiguration.canEdit && !auth.isAdmin()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only editors can manage subscribers for this trigger.",
-          },
-        });
-      }
-
       const addResult = await trigger.addToSubscribers(auth);
       if (addResult.isErr()) {
         const statusCode =
