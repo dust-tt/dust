@@ -12,7 +12,10 @@ import {
 } from "@tiptap/react";
 import React, { useState } from "react";
 
-import { OPENING_TAG_REGEX } from "@app/lib/client/agent_builder/instructionBlockUtils";
+import {
+  OPENING_TAG_REGEX,
+  CLOSING_TAG_REGEX,
+} from "@app/lib/client/agent_builder/instructionBlockUtils";
 
 export interface InstructionBlockAttributes {
   type: string;
@@ -146,7 +149,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     const firstChild = node.child(0);
     if (firstChild.type.name === "paragraph") {
       const text = firstChild.textContent.trim();
-      const match = text.match(/^<([A-Za-z_][A-Za-z0-9._:-]*)?>$/);
+      const match = text.match(OPENING_TAG_REGEX);
       if (match) {
         displayType = match[1] || ""; // Empty string for <>
       }
@@ -524,9 +527,7 @@ export const InstructionBlockExtension =
           const isAtEndOfClosingTag =
             paragraphNode &&
             paragraphNode.type.name === "paragraph" &&
-            paragraphNode.textContent.match(
-              /^<\/([A-Za-z_][A-Za-z0-9._:-]*)?>$/
-            ) &&
+            paragraphNode.textContent.match(CLOSING_TAG_REGEX) &&
             $from.parentOffset === paragraphNode.content.size;
 
           if (!isParagraphEmpty && !isAtEndOfClosingTag) {
@@ -583,10 +584,7 @@ export const InstructionBlockExtension =
       ) => {
         if (!para) return null;
         const text = para.textContent.trim();
-        // Allow empty tag name for typing (<>) and a wider set when non-empty
-        const regex = isClosing
-          ? /^<\/([A-Za-z_][A-Za-z0-9._:-]*)?>$/
-          : /^<([A-Za-z_][A-Za-z0-9._:-]*)?>$/;
+        const regex = isClosing ? CLOSING_TAG_REGEX : OPENING_TAG_REGEX;
         const match = text.match(regex);
         return match ? match[1] || "" : null;
       };

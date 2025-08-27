@@ -14,7 +14,9 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 type CompatibleEditor = CoreEditor | ReactEditor;
 
-function isSelectionInInstructionBlock(editor: ReactEditor | CoreEditor | null) {
+function isSelectionInInstructionBlock(
+  editor: ReactEditor | CoreEditor | null
+) {
   if (!editor || ("isDestroyed" in editor && editor.isDestroyed)) {
     return false;
   }

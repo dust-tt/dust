@@ -3,19 +3,23 @@ import type { NodeType } from "@tiptap/pm/model";
 import type { JSONContent } from "@tiptap/react";
 
 /**
- * Regex pattern for matching XML-style instruction blocks
+ * Tag name pattern (XML-like, simplified): start with letter/_ then [A-Za-z0-9._:-]*
  */
-// Support tag names with letters, digits, underscore, dash, dot, and colon.
-// Allow standard XML-like Name production (simplified): start with letter/_ then [A-Za-z0-9._:-]*
-export const INSTRUCTION_BLOCK_REGEX =
-  /<([A-Za-z_][A-Za-z0-9._:-]*)>([\s\S]*?)<\/\1>/g;
+export const TAG_NAME_PATTERN = "[A-Za-z_][A-Za-z0-9._:-]*";
 
 /**
- * Regex pattern for matching opening XML tags (including empty <>).
+ * Regex pattern for matching XML-style instruction blocks
  */
-// Allow empty tag name while typing: <>
-// When non-empty, support letters, digits, underscore, dash, dot, and colon.
-export const OPENING_TAG_REGEX = /<([A-Za-z_][A-Za-z0-9._:-]*)?>$/;
+export const INSTRUCTION_BLOCK_REGEX = new RegExp(
+  `<(${TAG_NAME_PATTERN})>([\\s\\S]*?)<\\/\\1>`,
+  "g"
+);
+
+/**
+ * Regex pattern for matching opening/closing XML tags (including empty <> when typing).
+ */
+export const OPENING_TAG_REGEX = new RegExp(`<(${TAG_NAME_PATTERN})?>$`);
+export const CLOSING_TAG_REGEX = new RegExp(`^</(${TAG_NAME_PATTERN})?>$`);
 
 /**
  * Interface for parsed instruction block match
