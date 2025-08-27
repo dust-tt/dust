@@ -138,38 +138,6 @@ export function AgentMessage({
             },
           });
         }
-        /*
-        if (eventType === "tool_error") {
-          // Handle personal authentication errors
-          if (
-            eventPayload.data.error?.code ===
-            "mcp_server_personal_authentication_required"
-          ) {
-            showBlockedActionsDialog();
-            enqueueBlockedAction({
-              message,
-              blockedAction: {
-                status: "blocked_authentication_required",
-                authorizationInfo: {
-                  supported_use_cases: ["personal_actions"],
-                  provider: eventPayload.data.error.metadata?.provider,
-                  scope: eventPayload.data.error.metadata?.scope,
-                },
-                messageId: eventPayload.data.messageId,
-                conversationId: eventPayload.data.conversationId,
-                actionId: eventPayload.data.actionId || `auth_${Date.now()}`,
-                inputs: {},
-                metadata: {
-                  agentName: message.configuration.name,
-                  toolName: "authentication",
-                  mcpServerName: "authentication",
-                  mcpServerId: eventPayload.data.error.metadata?.mcp_server_id,
-                  mcpServerDisplayName: "authentication",
-                },
-              },
-            });
-          }
-        }*/
       },
       [showBlockedActionsDialog, enqueueBlockedAction, message]
     ),
