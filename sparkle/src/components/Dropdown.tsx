@@ -160,12 +160,14 @@ const ItemWithLabelIconAndDescription = <
         >
           {renderIcon(icon, "sm")}
           <div className={cn("s-flex s-flex-col", truncate && "s-truncate")}>
-            <span className={cn(truncate && "s-truncate")}>{label}</span>
+            <span className={cn(truncate ? "s-truncate" : "s-line-clamp-3")}>
+              {label}
+            </span>
             {description && (
               <span
                 className={cn(
-                  menuStyleClasses.description,
-                  truncate && "s-truncate"
+                  "s-text-xs s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night",
+                  truncate ? "s-truncate" : "s-line-clamp-3"
                 )}
               >
                 {description}

@@ -128,7 +128,7 @@ function SimpleDropdownDemo() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>Open Simple Dropdown</DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent className="s-max-w-[300px]">
         <DropdownMenuLabel label="My Account" />
         <DropdownMenuItem
           icon={() => (
@@ -141,9 +141,10 @@ function SimpleDropdownDemo() {
           onClick={() => {
             console.log("hello");
           }}
-          description="Anthropic's latest Claude 3.5 Sonnet model (200k context)."
+          description="Anthropic's latest Claude 3.5 Sonnet model (200k context). Anthropic's latest Claude 3.5 Sonnet model (200k context). Anthropic's latest Claude 3.5 Sonnet model (200k context)."
         />
         <DropdownMenuItem
+          truncateText
           icon={() => (
             <Avatar
               size="xs"
