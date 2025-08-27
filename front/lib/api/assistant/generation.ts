@@ -180,7 +180,7 @@ export async function constructPromptMultiActions(
 
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
   const hasCanvasServer =
-    featureFlags.includes("canvas_server") &&
+    featureFlags.includes("interactive_content_server") &&
     agentConfiguration.actions.some((action) =>
       isMCPConfigurationForInternalCanvas(action)
     );
