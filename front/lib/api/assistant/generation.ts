@@ -16,7 +16,6 @@ import {
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
-import { visualizationWithCanvasSystemPrompt } from "@app/lib/api/assistant/visualization_with_canvas";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type {
@@ -185,11 +184,8 @@ export async function constructPromptMultiActions(
       isMCPConfigurationForInternalCanvas(action)
     );
 
-  // If canvas server is enabled, use the canvas system prompt over the
-  // visualization system prompt.
-  if (hasCanvasServer) {
-    guidelinesSection += `\n${visualizationWithCanvasSystemPrompt()}\n`;
-  } else if (agentConfiguration.visualizationEnabled) {
+  // Only inject the visualization system prompt if the canvas server is not enabled.
+  if (!hasCanvasServer) {
     guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
   }
 

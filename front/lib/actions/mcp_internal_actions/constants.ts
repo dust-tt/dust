@@ -12,6 +12,7 @@ import {
   JIRA_SERVER_INSTRUCTIONS,
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
+import { CANVAS_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/canvas/instructions";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type {
@@ -732,7 +733,7 @@ The directive should be used to display a clickable version of the agent name in
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
-      instructions: null,
+      instructions: CANVAS_INSTRUCTIONS,
     },
   },
   outlook: {

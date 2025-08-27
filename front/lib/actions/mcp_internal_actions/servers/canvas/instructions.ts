@@ -2,10 +2,10 @@ import {
   CREATE_CANVAS_FILE_TOOL_NAME,
   EDIT_CANVAS_FILE_TOOL_NAME,
   RETRIEVE_CANVAS_FILE_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/canvas";
+} from "@app/lib/actions/mcp_internal_actions/servers/canvas/types";
 import { clientExecutableContentType } from "@app/types";
 
-export const visualizationWithCanvasSystemPrompt = () => `\
+export const CANVAS_INSTRUCTIONS = `\
 ## CREATING VISUALIZATIONS WITH CANVAS
 
 You have access to a canvas system that allows you to create and update executable files. When creating visualizations, you should create files instead of using the :::visualization directive.
