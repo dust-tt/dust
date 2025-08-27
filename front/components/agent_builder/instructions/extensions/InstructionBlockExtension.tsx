@@ -2,8 +2,7 @@ import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/core";
 import { InputRule, mergeAttributes, Node } from "@tiptap/core";
 import type { Node as ProseMirrorNode, Slice } from "@tiptap/pm/model";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
-import { TextSelection } from "@tiptap/pm/state";
+import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import type { NodeViewProps } from "@tiptap/react";
 import {
   NodeViewContent,
@@ -13,8 +12,8 @@ import {
 import React, { useState } from "react";
 
 import {
-  OPENING_TAG_REGEX,
   CLOSING_TAG_REGEX,
+  OPENING_TAG_REGEX,
 } from "@app/lib/client/agent_builder/instructionBlockUtils";
 
 export interface InstructionBlockAttributes {
@@ -101,7 +100,9 @@ function positionCursorInMiddleParagraph(
  * Focus cursor inside the current instruction block
  */
 function focusInsideCurrentInstructionBlock(editor: Editor): void {
-  if (editor.isDestroyed) return;
+  if (editor.isDestroyed) {
+    return;
+  }
 
   const blockPos = getCurrentInstructionBlockPos(editor);
   if (blockPos > -1) {
@@ -113,10 +114,14 @@ function focusInsideCurrentInstructionBlock(editor: Editor): void {
  * Queue a caret move inside the current instruction block (post-render)
  */
 function queueFocusInsideCurrentInstructionBlock(editor: Editor): void {
-  if (editor.isDestroyed || !editor.view) return;
+  if (editor.isDestroyed || !editor.view) {
+    return;
+  }
   requestAnimationFrame(() => {
     // Double-check lifecycle at callback time to avoid acting on a destroyed editor
-    if (editor.isDestroyed || !editor.view) return;
+    if (editor.isDestroyed || !editor.view) {
+      return;
+    }
     focusInsideCurrentInstructionBlock(editor);
   });
 }
@@ -277,7 +282,7 @@ export const InstructionBlockExtension =
 
         insertInstructionBlock:
           (type) =>
-          ({ commands, editor, state, chain }) => {
+          ({ state, chain }) => {
             const { selection } = state;
             const { $from } = selection;
 
@@ -582,7 +587,9 @@ export const InstructionBlockExtension =
         para: ProseMirrorNode | null,
         isClosing: boolean
       ) => {
-        if (!para) return null;
+        if (!para) {
+          return null;
+        }
         const text = para.textContent.trim();
         const regex = isClosing ? CLOSING_TAG_REGEX : OPENING_TAG_REGEX;
         const match = text.match(regex);
@@ -687,7 +694,7 @@ export const InstructionBlockExtension =
             }
 
             // Create transaction to sync the tags
-            let tr = newState.tr;
+            const tr = newState.tr;
             tr.setMeta("instructionBlockTagSync", true);
             tr.setMeta("addToHistory", false); // Don't add to undo history
 
