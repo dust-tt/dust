@@ -196,7 +196,8 @@ async function createActionForTool(
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      action: action.toJSON(),
+      // TODO: cleanup the type field from the public API users and remove everywhere.
+      action: { ...action.toJSON(), type: "tool_action" },
     },
     agentMessageRow,
     {
