@@ -24,6 +24,7 @@ import { useNavigationLock } from "@app/components/assistant_builder/useNavigati
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import { isAuthenticationRequiredBlockedAction } from "@app/lib/actions/mcp";
 import { getIcon } from "@app/lib/actions/mcp_icons";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
 import { useCreatePersonalConnection } from "@app/lib/swr/mcp_servers";
@@ -62,14 +63,16 @@ function AuthenticationDialogPage({
 }: AuthenticationDialogPageProps) {
   const handleConnect = useCallback(
     async (blockedAction: BlockedToolExecution) => {
-      if (!blockedAction.authorizationInfo) {
+      if (!isAuthenticationRequiredBlockedAction(blockedAction)) {
         return;
       }
 
       onConnectionStateChange(blockedAction.actionId, "connecting");
       const success = await createPersonalConnection({
-        mcpServerId: blockedAction.metadata.mcpServerId || "",
-        mcpServerDisplayName: blockedAction.metadata.mcpServerDisplayName || "",
+        mcpServerId: blockedAction.metadata.mcpServerId,
+        mcpServerDisplayName:
+          blockedAction.metadata.mcpServerDisplayName ||
+          blockedAction.metadata.mcpServerName,
         provider: blockedAction.authorizationInfo.provider,
         useCase: "personal_actions",
         scope: blockedAction.authorizationInfo.scope,
@@ -91,7 +94,7 @@ function AuthenticationDialogPage({
   return (
     <div className="flex flex-col gap-4">
       {authActions.map((blockedAction, authIndex) => {
-        if (!blockedAction.authorizationInfo) {
+        if (!isAuthenticationRequiredBlockedAction(blockedAction)) {
           return null;
         }
 
