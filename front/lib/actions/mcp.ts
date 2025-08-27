@@ -50,7 +50,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type {
@@ -60,7 +60,6 @@ import type {
   DustAppRunConfigurationType,
   FunctionCallType,
   FunctionMessageTypeModel,
-  LightWorkspaceType,
   ModelConfigurationType,
   ModelId,
   PersonalAuthenticationRequiredErrorContent,
@@ -389,8 +388,6 @@ export class MCPActionType {
       content: output,
     };
   }
-
-
 }
 
 const MAX_DESCRIPTION_LENGTH = 1024;
