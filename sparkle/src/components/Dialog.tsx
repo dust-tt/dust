@@ -157,11 +157,11 @@ const DialogHeader = ({
     {...props}
   >
     {children}
-    <DialogClose asChild className="s-absolute s-right-3 s-top-3">
-      {!hideButton && (
+    {!hideButton && (
+      <DialogClose asChild className="s-absolute s-right-3 s-top-3">
         <Button icon={XMarkIcon} variant={buttonVariant} size={buttonSize} />
-      )}
-    </DialogClose>
+      </DialogClose>
+    )}
   </div>
 );
 DialogHeader.displayName = "DialogHeader";
