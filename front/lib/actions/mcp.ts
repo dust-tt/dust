@@ -67,8 +67,12 @@ import type {
   TimeFrame,
   ToolErrorEvent,
 } from "@app/types";
-import { isPersonalAuthenticationRequiredErrorContent } from "@app/types";
-import { assertNever, removeNulls } from "@app/types";
+import {
+  assertNever,
+  isPersonalAuthenticationRequiredErrorContent,
+  removeNulls,
+} from "@app/types";
+import type { AgentMCPActionType } from "@app/types/actions";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;
@@ -214,7 +218,8 @@ type MCPParamsEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  action: MCPActionType;
+  // TODO: cleanup this type from the public API users.
+  action: AgentMCPActionType & { type: "tool_action"; output: null };
 };
 
 type MCPSuccessEvent = {
@@ -615,13 +620,13 @@ export async function createMCPAction(
     stepContentId: ModelId;
     stepContext: StepContext;
   }
-): Promise<{ action: AgentMCPActionResource; mcpAction: MCPActionType }> {
+): Promise<AgentMCPActionResource> {
   const toolConfiguration = omit(
     actionConfiguration,
     MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT
   ) as LightMCPToolConfigurationType;
 
-  const action = await AgentMCPActionResource.makeNew(auth, {
+  return AgentMCPActionResource.makeNew(auth, {
     agentMessageId: actionBaseParams.agentMessageId,
     augmentedInputs,
     citationsAllocated: stepContext.citationsCount,
@@ -632,15 +637,6 @@ export async function createMCPAction(
     toolConfiguration,
     version: 0,
   });
-
-  const mcpAction = new MCPActionType({
-    ...actionBaseParams,
-    id: action.id,
-    output: null,
-    type: "tool_action",
-  });
-
-  return { action, mcpAction };
 }
 
 type BaseErrorParams = {

@@ -690,6 +690,7 @@ const MCPActionTypeSchema = z.object({
   internalMCPServerName: z.string().nullable(),
   agentMessageId: ModelIdSchema,
   functionCallName: z.string().nullable(),
+  status: z.string(),
   params: z.record(z.any()),
   output: CallToolResultSchema.shape.content.nullable(),
   type: z.literal("tool_action"),
