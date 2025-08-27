@@ -63,8 +63,10 @@ import type {
   LightWorkspaceType,
   ModelConfigurationType,
   ModelId,
+  PersonalAuthenticationRequiredErrorContent,
   ReasoningModelConfigurationType,
   TimeFrame,
+  ToolErrorEvent,
 } from "@app/types";
 import { isPersonalAuthenticationRequiredErrorContent } from "@app/types";
 import { assertNever, removeNulls } from "@app/types";
@@ -754,7 +756,9 @@ export function isMCPApproveExecutionEvent(
 
 function isToolPersonalAuthRequiredEvent(
   event: unknown
-): event is ToolPersonalAuthRequiredEvent {
+): event is ToolErrorEvent & {
+  error: PersonalAuthenticationRequiredErrorContent;
+} {
   return (
     typeof event === "object" &&
     event !== null &&
