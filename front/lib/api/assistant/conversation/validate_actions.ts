@@ -8,6 +8,7 @@ import {
   isMCPApproveExecutionEvent,
   updateMCPApprovalState,
 } from "@app/lib/actions/mcp";
+import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
@@ -106,6 +107,14 @@ export async function validateAction(
   if (!agentStepContent) {
     return new Err(
       new Error(`Agent step content not found: ${action.stepContentId}`)
+    );
+  }
+
+  if (!isToolExecutionStatusBlocked(action.status)) {
+    return new Err(
+      new Error(
+        `Action is not blocked: ${action.status} for action ${actionId}`
+      )
     );
   }
 
