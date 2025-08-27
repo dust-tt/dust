@@ -321,9 +321,16 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   toJSON(): AgentMCPActionType {
+    assert(
+      this.stepContent.value.type === "function_call",
+      "Action linked to a non-function call step content."
+    );
+
     return {
       agentMessageId: this.agentMessageId,
       citationsAllocated: this.citationsAllocated,
+      functionCallId: this.stepContent.value.value.id,
+      functionCallName: this.stepContent.value.value.name,
       id: this.id,
       internalMCPServerName: this.internalMCPServerName,
       mcpServerConfigurationId: this.mcpServerConfigurationId,

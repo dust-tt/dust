@@ -5,12 +5,14 @@ import type { StepContext } from "@app/lib/actions/types";
 import type { ModelId } from "@app/types/shared/model_id";
 
 export type AgentMCPActionType = {
-  id: ModelId;
   agentMessageId: ModelId;
-  params: Record<string, unknown>;
   citationsAllocated: number;
-  mcpServerConfigurationId: string;
+  functionCallId: string;
+  functionCallName: string;
+  id: ModelId;
   internalMCPServerName: InternalMCPServerNameType | null;
+  mcpServerConfigurationId: string;
+  params: Record<string, unknown>;
   status: ToolExecutionStatus;
   stepContentId: ModelId;
   stepContext: StepContext;
