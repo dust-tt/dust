@@ -412,6 +412,7 @@ async function getConversationDataSourceViews(
               attachment.fileId,
               conversationDataSourceView
             );
+            continue;
           }
 
           // Fetch the datasource view for this conversation
@@ -428,7 +429,6 @@ async function getConversationDataSourceViews(
             continue;
           }
 
-          // Create a minimal conversation object with just the id property
           const childDataSourceView =
             await DataSourceViewResource.fetchByConversation(
               auth,
