@@ -656,6 +656,129 @@ const createServer = (): McpServer => {
     }
   );
 
+  server.tool(
+    "get_service_item",
+    "Gets detailed information about a specific service catalog item including fields and pricing",
+    {
+      item_id: z.number().describe("The ID of the service catalog item"),
+    },
+    async ({ item_id }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `service_catalog/items/${item_id}`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: "Service item retrieved successfully",
+            result: result.service_item,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "request_service_item",
+    "Creates a service request for a catalog item and optionally attaches it to an existing ticket",
+    {
+      item_id: z.number().describe("The ID of the service catalog item to request"),
+      email: z.string().describe("Requester email address"),
+      quantity: z.number().optional().default(1).describe("Quantity of items to request"),
+      requested_for: z.string().optional().describe("Email of the person this is requested for (if different from requester)"),
+      fields: z.record(z.any()).optional().describe("Custom field values for the service request form"),
+      ticket_id: z.number().optional().describe("Optional ticket ID to attach this service request to"),
+    },
+    async ({ item_id, email, quantity, requested_for, fields, ticket_id }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          // First, get the service item details to understand required fields
+          const itemResult = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `service_catalog/items/${item_id}`
+          );
+
+          const serviceItem = itemResult.service_item;
+
+          // Prepare the service request data
+          const requestData: any = {
+            email,
+            quantity,
+            service_item_id: item_id,
+          };
+
+          if (requested_for) {
+            requestData.requested_for = requested_for;
+          }
+
+          if (fields) {
+            requestData.custom_fields = fields;
+          }
+
+          // Create the service request
+          const serviceRequestResult = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            "service_catalog/place_request",
+            {
+              method: "POST",
+              body: JSON.stringify({
+                service_request: requestData,
+              }),
+            }
+          );
+
+          // If a ticket_id is provided, update the ticket to reference the service request
+          let ticketUpdateResult = null;
+          if (ticket_id && serviceRequestResult.service_request) {
+            try {
+              // Add a note to the ticket about the service request
+              const noteBody = `Service Request #${serviceRequestResult.service_request.id} has been created for: ${serviceItem.name}`;
+              
+              await apiRequest(
+                accessToken,
+                freshserviceDomain,
+                `tickets/${ticket_id}/notes`,
+                {
+                  method: "POST",
+                  body: JSON.stringify({
+                    note: {
+                      body: noteBody,
+                      private: false,
+                    },
+                  }),
+                }
+              );
+
+              ticketUpdateResult = {
+                message: `Service request attached to ticket #${ticket_id}`,
+              };
+            } catch (error) {
+              // Non-fatal error - service request was created but couldn't link to ticket
+              ticketUpdateResult = {
+                warning: `Service request created but could not attach to ticket #${ticket_id}: ${error}`,
+              };
+            }
+          }
+
+          return makeMCPToolJSONSuccess({
+            message: `Service request created successfully${ticket_id ? ` and attached to ticket #${ticket_id}` : ""}`,
+            result: {
+              service_request: serviceRequestResult.service_request,
+              service_item: serviceItem,
+              ticket_update: ticketUpdateResult,
+            },
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
   // Solutions (Knowledge Base)
   server.tool(
     "list_solution_categories",
