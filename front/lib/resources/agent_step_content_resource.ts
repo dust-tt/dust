@@ -25,6 +25,7 @@ import {
   ConversationModel,
   Message,
 } from "@app/lib/models/assistant/conversation";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -549,7 +550,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         );
 
         return {
-          sId: MCPActionType.modelIdToSId({
+          sId: AgentMCPActionResource.modelIdToSId({
             id: action.id,
             workspaceId: action.workspaceId,
           }),
