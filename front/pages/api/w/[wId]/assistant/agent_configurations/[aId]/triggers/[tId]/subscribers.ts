@@ -7,6 +7,7 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 import type { UserType } from "@app/types/user";
 
 export interface GetSubscribersResponseBody {
@@ -18,10 +19,9 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetSubscribersResponseBody | void>>,
   auth: Authenticator
 ): Promise<void> {
-  const agentConfigurationId = req.query.aId;
-  const triggerId = req.query.tId;
+  const { aId, tId } = req.query;
 
-  if (typeof agentConfigurationId !== "string") {
+  if (!isString(aId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -31,7 +31,7 @@ async function handler(
     });
   }
 
-  if (typeof triggerId !== "string") {
+  if (!isString(tId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -42,7 +42,7 @@ async function handler(
   }
 
   const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationId,
+    agentId: aId,
     variant: "light",
   });
 
@@ -56,7 +56,7 @@ async function handler(
     });
   }
 
-  const trigger = await TriggerResource.fetchById(auth, triggerId);
+  const trigger = await TriggerResource.fetchById(auth, tId);
   if (!trigger) {
     return apiError(req, res, {
       status_code: 404,
@@ -68,7 +68,7 @@ async function handler(
   }
 
   // Verify the trigger belongs to the specified agent configuration
-  if (trigger.agentConfigurationId !== agentConfigurationId) {
+  if (trigger.agentConfigurationId !== aId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
