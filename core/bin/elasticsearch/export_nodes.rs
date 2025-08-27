@@ -1,9 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use dust::search_stores::search_store::ElasticsearchSearchStore;
-use elasticsearch::{
-    ClearScrollParts, ScrollParts, SearchParts,
-};
+use elasticsearch::{ClearScrollParts, ScrollParts, SearchParts};
 use serde_json::{json, Value};
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -82,19 +80,17 @@ async fn run() -> Result<()> {
         .collect();
 
     // Parse parent filter if provided
-    let parent_ids: Option<Vec<String>> = args.parent_filter.as_ref().map(|p| {
-        p.split(',')
-            .map(|s| s.trim().to_string())
-            .collect()
-    });
+    let parent_ids: Option<Vec<String>> = args
+        .parent_filter
+        .as_ref()
+        .map(|p| p.split(',').map(|s| s.trim().to_string()).collect());
 
     // Get Elasticsearch credentials from environment
-    let url = std::env::var("ELASTICSEARCH_URL")
-        .expect("ELASTICSEARCH_URL must be set");
-    let username = std::env::var("ELASTICSEARCH_USERNAME")
-        .expect("ELASTICSEARCH_USERNAME must be set");
-    let password = std::env::var("ELASTICSEARCH_PASSWORD")
-        .expect("ELASTICSEARCH_PASSWORD must be set");
+    let url = std::env::var("ELASTICSEARCH_URL").expect("ELASTICSEARCH_URL must be set");
+    let username =
+        std::env::var("ELASTICSEARCH_USERNAME").expect("ELASTICSEARCH_USERNAME must be set");
+    let password =
+        std::env::var("ELASTICSEARCH_PASSWORD").expect("ELASTICSEARCH_PASSWORD must be set");
 
     // Create ES client
     let search_store = ElasticsearchSearchStore::new(&url, &username, &password).await?;
@@ -181,7 +177,7 @@ async fn run() -> Result<()> {
 
     // Continue scrolling
     let mut current_scroll_id = scroll_id.to_string();
-    
+
     while processed < total {
         let scroll_response = search_store
             .client
@@ -194,7 +190,7 @@ async fn run() -> Result<()> {
             .await?;
 
         let scroll_body = scroll_response.json::<Value>().await?;
-        
+
         if let Some(hits) = scroll_body["hits"]["hits"].as_array() {
             if hits.is_empty() {
                 break;
@@ -220,7 +216,10 @@ async fn run() -> Result<()> {
         .await;
 
     writer.flush()?;
-    println!("Export complete! {} documents written to {}", processed, args.output);
+    println!(
+        "Export complete! {} documents written to {}",
+        processed, args.output
+    );
 
     Ok(())
 }
@@ -246,7 +245,7 @@ fn process_hits(
                     let field_parts: Vec<&str> = field.split('.').collect();
                     let mut current = source;
                     let mut found = true;
-                    
+
                     for part in field_parts {
                         if let Some(next) = current.get(part) {
                             current = next;
@@ -255,7 +254,7 @@ fn process_hits(
                             break;
                         }
                     }
-                    
+
                     if found {
                         let value = match current {
                             Value::String(s) => s.clone(),
@@ -279,7 +278,7 @@ fn process_hits(
                         values.push("null".to_string());
                     }
                 }
-                
+
                 if fields.len() == 1 {
                     // Single field: output one value per line
                     writeln!(writer, "{}", values[0])?;
