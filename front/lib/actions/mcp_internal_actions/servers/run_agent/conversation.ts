@@ -1,9 +1,19 @@
-import type { ConversationPublicType, DustAPI, Result } from "@dust-tt/client";
+import type {
+  ConversationPublicType,
+  DustAPI,
+  PublicPostContentFragmentRequestBody,
+  Result,
+} from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
 import type { ChildAgentBlob } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { isRunAgentResumeState } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import {
+  isContentNodeAttachmentType,
+  isFileAttachmentType,
+} from "@app/lib/api/assistant/conversation/attachments";
+import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType, ConversationType } from "@app/types";
 
@@ -17,6 +27,7 @@ export async function getOrCreateConversation(
     mainConversation,
     query,
     toolsetsToAdd,
+    fileOrContentFragmentIds,
   }: {
     childAgentBlob: ChildAgentBlob;
     childAgentId: string;
@@ -24,6 +35,7 @@ export async function getOrCreateConversation(
     mainConversation: ConversationType;
     query: string;
     toolsetsToAdd: string[] | null;
+    fileOrContentFragmentIds: string[] | null;
   }
 ): Promise<
   Result<
@@ -54,6 +66,38 @@ export async function getOrCreateConversation(
     });
   }
 
+  const contentFragments: PublicPostContentFragmentRequestBody[] = [];
+
+  if (fileOrContentFragmentIds) {
+    // Get all files from the current conversation and filter which one to pass to the sub agent
+    const attachments = listAttachments(mainConversation);
+    for (const attachment of attachments) {
+      if (
+        isFileAttachmentType(attachment) &&
+        fileOrContentFragmentIds?.includes(attachment.fileId)
+      ) {
+        // Convert file attachment to content fragment
+        contentFragments.push({
+          title: attachment.title,
+          fileId: attachment.fileId,
+          url: null,
+          context: null,
+        });
+      } else if (
+        isContentNodeAttachmentType(attachment) &&
+        fileOrContentFragmentIds?.includes(attachment.contentFragmentId)
+      ) {
+        // Convert content node attachment to content fragment
+        contentFragments.push({
+          title: attachment.title,
+          nodeId: attachment.nodeId,
+          nodeDataSourceViewId: attachment.nodeDataSourceViewId,
+          context: null,
+        });
+      }
+    }
+  }
+
   const convRes = await api.createConversation({
     title: `run_agent ${mainAgent.name} > ${childAgentBlob.name}`,
     visibility: "unlisted",
@@ -72,6 +116,7 @@ export async function getOrCreateConversation(
         selectedMCPServerViewIds: toolsetsToAdd,
       },
     },
+    contentFragments,
     skipToolsValidation: agentMessage.skipToolsValidation ?? false,
     params: {
       // TODO(DURABLE_AGENT 2025-08-20): Remove this if we decided to always use async mode.
