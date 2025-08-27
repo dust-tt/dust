@@ -685,14 +685,34 @@ const createServer = (): McpServer => {
     "request_service_item",
     "Creates a service request for a catalog item and optionally attaches it to an existing ticket",
     {
-      item_id: z.number().describe("The ID of the service catalog item to request"),
+      item_id: z
+        .number()
+        .describe("The ID of the service catalog item to request"),
       email: z.string().describe("Requester email address"),
-      quantity: z.number().optional().default(1).describe("Quantity of items to request"),
-      requested_for: z.string().optional().describe("Email of the person this is requested for (if different from requester)"),
-      fields: z.record(z.any()).optional().describe("Custom field values for the service request form"),
-      ticket_id: z.number().optional().describe("Optional ticket ID to attach this service request to"),
+      quantity: z
+        .number()
+        .optional()
+        .default(1)
+        .describe("Quantity of items to request"),
+      requested_for: z
+        .string()
+        .optional()
+        .describe(
+          "Email of the person this is requested for (if different from requester)"
+        ),
+      fields: z
+        .record(z.any())
+        .optional()
+        .describe("Custom field values for the service request form"),
+      ticket_id: z
+        .number()
+        .optional()
+        .describe("Optional ticket ID to attach this service request to"),
     },
-    async ({ item_id, email, quantity, requested_for, fields, ticket_id }, { authInfo }) => {
+    async (
+      { item_id, email, quantity, requested_for, fields, ticket_id },
+      { authInfo }
+    ) => {
       return withAuth({
         action: async (accessToken, freshserviceDomain) => {
           // First, get the service item details to understand required fields
@@ -738,7 +758,7 @@ const createServer = (): McpServer => {
             try {
               // Add a note to the ticket about the service request
               const noteBody = `Service Request #${serviceRequestResult.service_request.id} has been created for: ${serviceItem.name}`;
-              
+
               await apiRequest(
                 accessToken,
                 freshserviceDomain,
