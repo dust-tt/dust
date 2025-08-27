@@ -145,7 +145,7 @@ async function handler(
           if (token.isOk()) {
             bearerToken = token.value.access_token;
             authorization = {
-              provider: "mcp",
+              provider: token.value.connection.provider,
               supported_use_cases: ["platform_actions", "personal_actions"],
             };
           } else {
