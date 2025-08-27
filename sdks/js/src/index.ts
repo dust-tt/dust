@@ -78,6 +78,7 @@ import {
   PostUserMessageResponseSchema,
   PostWorkspaceSearchResponseBodySchema,
   RegisterMCPResponseSchema,
+  RetryMessageResponseSchema,
   Result,
   RunAppResponseSchema,
   SearchDataSourceViewsResponseSchema,
@@ -1365,6 +1366,35 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.nodes);
+  }
+
+  async retryMessage({
+    conversationId,
+    messageId,
+    blockedOnly = false,
+  }: {
+    conversationId: string;
+    messageId: string;
+    blockedOnly?: boolean;
+  }) {
+    const query = blockedOnly 
+      ? new URLSearchParams({ blocked_only: "true" })
+      : undefined;
+
+    const res = await this.request({
+      method: "POST",
+      path: `assistant/conversations/${conversationId}/messages/${messageId}/retry`,
+      query,
+    });
+
+    const r = await this._resultFromResponse(
+      RetryMessageResponseSchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.message);
   }
 
   private async _fetchWithError(
