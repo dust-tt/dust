@@ -48,6 +48,7 @@ import { ChildAgentSection } from "@app/components/agent_builder/capabilities/sh
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
+import { SelectDataSourcesFilters } from "@app/components/agent_builder/capabilities/shared/SelectDataSourcesFilters";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -535,6 +536,10 @@ export function MCPServerViewsSheet({
                   mcpServerView={mcpServerView}
                   allowNameEdit={!configurationTool.noConfigurationRequired}
                 />
+
+                {requirements.requiresDataSourceConfiguration && (
+                  <SelectDataSourcesFilters />
+                )}
 
                 {requirements.requiresReasoningConfiguration && (
                   <ReasoningModelSection />
