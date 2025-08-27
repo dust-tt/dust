@@ -1,7 +1,6 @@
 import { ContentMessage, Markdown, Separator } from "@dust-tt/sparkle";
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
-import { isMCPActionType } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import type { LightWorkspaceType, ParsedContentItem } from "@app/types";
 
 interface AgentStepProps {
@@ -94,10 +93,6 @@ export function PanelAgentStep({
       {streamingActions.length > 0 && (
         <div className="mt-4">
           {streamingActions.map((action) => {
-            if (!isMCPActionType(action)) {
-              return null;
-            }
-
             const streamProgress = streamActionProgress.get(
               action.id
             )?.progress;

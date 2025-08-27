@@ -9,7 +9,12 @@ import {
   CLEAR_CONTENT_EVENT,
   messageReducer,
 } from "@app/lib/assistant/state/messageReducer";
-import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
+import type {
+  LightAgentMessageType,
+  LightAgentMessageWithActionsType,
+  LightWorkspaceType,
+} from "@app/types";
+import { isLightAgentMessageWithActionsType } from "@app/types";
 import { assertNever } from "@app/types";
 
 type AgentMessageStateWithControlEvent =
@@ -17,19 +22,24 @@ type AgentMessageStateWithControlEvent =
   | { type: "end-of-stream" };
 
 function makeInitialMessageStreamState(
-  message: LightAgentMessageType
+  message: LightAgentMessageType | LightAgentMessageWithActionsType
 ): MessageTemporaryState {
   return {
     actionProgress: new Map(),
     agentState: message.status === "created" ? "thinking" : "done",
     isRetrying: false,
     lastUpdated: new Date(),
-    message,
+    message: {
+      ...message,
+      actions: isLightAgentMessageWithActionsType(message)
+        ? message.actions
+        : [],
+    },
   };
 }
 
 interface UseAgentMessageStreamParams {
-  message: LightAgentMessageType;
+  message: LightAgentMessageType | LightAgentMessageWithActionsType;
   conversationId: string | null;
   owner: LightWorkspaceType;
   mutateMessage?: () => void;

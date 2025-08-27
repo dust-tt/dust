@@ -5,10 +5,9 @@ import type {
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
-import type { ModelId } from "@app/types";
+import type { LightAgentMessageWithActionsType, ModelId } from "@app/types";
 import { assertNever } from "@app/types";
 import type { AgentMCPActionType } from "@app/types/actions";
-import type { LightAgentMessageType } from "@app/types/assistant/conversation";
 
 export type AgentStateClassification =
   | "thinking"
@@ -25,7 +24,7 @@ export type ActionProgressState = Map<
 >;
 
 export interface MessageTemporaryState {
-  message: LightAgentMessageType;
+  message: LightAgentMessageWithActionsType;
   agentState: AgentStateClassification;
   isRetrying: boolean;
   lastUpdated: Date;
@@ -43,9 +42,9 @@ type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
 >;
 
 function updateMessageWithAction(
-  m: LightAgentMessageType,
-  action: MCPActionType | (AgentMCPActionType & { type: "tool_action" })
-): LightAgentMessageType {
+  m: LightAgentMessageWithActionsType,
+  action: AgentMCPActionType
+): LightAgentMessageWithActionsType {
   return {
     ...m,
     chainOfThought: "",
@@ -158,7 +157,10 @@ export function messageReducer(
     case "agent_message_success":
       return {
         ...state,
-        message: getLightAgentMessageFromAgentMessage(event.message),
+        message: {
+          ...getLightAgentMessageFromAgentMessage(event.message),
+          actions: state.message.actions,
+        },
         agentState: "done",
       };
 

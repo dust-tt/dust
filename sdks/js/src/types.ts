@@ -693,7 +693,6 @@ const MCPActionTypeSchema = z.object({
   status: z.string(),
   params: z.record(z.any()),
   output: CallToolResultSchema.shape.content.nullable(),
-  type: z.literal("tool_action"),
 });
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
@@ -1733,7 +1732,9 @@ export type PostUserMessageResponseType = z.infer<
 export const RetryMessageResponseSchema = z.object({
   message: AgentMessageTypeSchema,
 });
-export type RetryMessageResponseType = z.infer<typeof RetryMessageResponseSchema>;
+export type RetryMessageResponseType = z.infer<
+  typeof RetryMessageResponseSchema
+>;
 
 export const GetConversationResponseSchema = z.object({
   conversation: ConversationSchema,
