@@ -270,10 +270,11 @@ export default function AgentBuilder({
   const { isDirty, isSubmitting } = form.formState;
 
   // Disable navigation lock during save process for new agents
-  useNavigationLock(isDirty && !isSaving);
+  useNavigationLock((isDirty || !!duplicateAgentId) && !isSaving);
 
-  const isSaveDisabled =
-    !isDirty || isSubmitting || isActionsLoading || isTriggersLoading;
+  const isSaveDisabled = duplicateAgentId
+    ? false
+    : !isDirty || isSubmitting || isActionsLoading || isTriggersLoading;
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 
