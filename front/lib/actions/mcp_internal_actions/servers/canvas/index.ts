@@ -9,6 +9,8 @@ import {
   EDIT_CANVAS_FILE_TOOL_NAME,
   RETRIEVE_CANVAS_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/canvas/types";
+import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/cat_tool";
+import { registerListTool } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/list_tool";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -281,6 +283,31 @@ const createServer = (
       }
     )
   );
+
+  // Register data source file system tools for canvas server with custom descriptions
+  // tailored for canvas use cases (visual assets and templates).
+  registerListTool(auth, server, agentLoopContext, {
+    toolName: "list_assets",
+    toolDescription:
+      "Browse available visual assets and templates in the connected data sources. " +
+      "Use this to explore folders containing images, icons, slideshow templates, " +
+      "or other resources that can be incorporated into canvas files.\n\n" +
+      "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
+      "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
+      "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
+      "the next step's nodeId. If a node output by this tool has children " +
+      "(hasChildren: true), it means that this tool can be used again on it.",
+  });
+
+  registerCatTool(auth, server, agentLoopContext, {
+    toolName: "cat_assets",
+    toolDescription:
+      "Read template files or asset configurations from the connected data sources. " +
+      "Use this to retrieve slideshow templates, HTML/CSS snippets, React component examples, " +
+      "or configuration files that can serve as a starting point or be incorporated into canvas files.\n\n" +
+      "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). " +
+      "The nodeId can be obtained using the 'list_assets' tool.",
+  });
 
   return server;
 };
