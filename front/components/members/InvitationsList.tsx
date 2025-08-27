@@ -80,7 +80,7 @@ export function InvitationsList({
                   <span className="text-red-500">(expired)</span>
                   <Button
                     size="xs"
-                    variant="primary"
+                    variant="outline"
                     icon={MovingMailIcon}
                     label="Resend"
                     onClick={async (e: React.MouseEvent) => {
