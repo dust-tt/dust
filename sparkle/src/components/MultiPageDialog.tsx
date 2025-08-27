@@ -196,7 +196,7 @@ const MultiPageDialogContent = React.forwardRef<
             className="s-flex-none"
           >
             <div className="s-flex s-items-center s-justify-between">
-              <div className="s-item-center s-flex s-gap-3">
+              <div className="s-flex s-items-center s-gap-3">
                 {showNavigation && showHeaderNavigation && (
                   <div className="s-flex s-items-center s-gap-1">
                     <Button
