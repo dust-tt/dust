@@ -30,6 +30,38 @@ declare module "@tiptap/core" {
 }
 
 /**
+ * Build the three-paragraph content for an instruction block
+ */
+function buildInstructionBlockContent(tag: string) {
+  return [
+    {
+      type: "paragraph",
+      content: [{ type: "text", text: `<${tag}>` }],
+    },
+    { type: "paragraph" },
+    {
+      type: "paragraph",
+      content: [{ type: "text", text: `</${tag}>` }],
+    },
+  ];
+}
+
+/**
+ * Get the position of the current instruction block
+ */
+function getCurrentInstructionBlockPos(editor: Editor): number {
+  const { $from } = editor.state.selection;
+
+  for (let d = $from.depth; d >= 0; d--) {
+    if ($from.node(d).type.name === "instructionBlock") {
+      return $from.before(d);
+    }
+  }
+
+  return -1;
+}
+
+/**
  * Position cursor in the empty paragraph between XML tags
  */
 function positionCursorInMiddleParagraph(
@@ -60,6 +92,28 @@ function positionCursorInMiddleParagraph(
   editor.commands.focus();
 
   return true;
+}
+
+/**
+ * Focus cursor inside the current instruction block
+ */
+function focusInsideCurrentInstructionBlock(editor: Editor): void {
+  if (editor.isDestroyed) return;
+
+  const blockPos = getCurrentInstructionBlockPos(editor);
+  if (blockPos > -1) {
+    positionCursorInMiddleParagraph(editor, blockPos);
+  }
+}
+
+/**
+ * Queue a caret move inside the current instruction block (post-render)
+ */
+function queueFocusInsideCurrentInstructionBlock(editor: Editor): void {
+  if (editor.isDestroyed || !editor.view) return;
+  requestAnimationFrame(() => {
+    focusInsideCurrentInstructionBlock(editor);
+  });
 }
 
 // Define consistent heading styles to match the main editor
@@ -218,48 +272,52 @@ export const InstructionBlockExtension =
 
         insertInstructionBlock:
           (type) =>
-          ({ commands, editor }) => {
-            const success = commands.insertContent({
-              type: this.name,
-              attrs: { type },
-              content: [
-                {
-                  type: "paragraph",
-                  content: [{ type: "text", text: `<${type}>` }],
-                },
-                { type: "paragraph" },
-                {
-                  type: "paragraph",
-                  content: [{ type: "text", text: `</${type}>` }],
-                },
-              ],
-            });
+          ({ commands, editor, state, chain }) => {
+            const { selection } = state;
+            const { $from } = selection;
 
-            if (success) {
-              requestAnimationFrame(() => {
-                if (editor.isDestroyed || !editor.view) {
-                  return;
-                }
+            // Check if we're in an empty paragraph
+            const isEmptyParagraph =
+              $from.parent.type.name === "paragraph" &&
+              $from.parent.content.size === 0;
 
-                const { selection } = editor.state;
-                const $from = selection.$from;
+            const content = buildInstructionBlockContent(type);
 
-                let blockPos = -1;
-                for (let d = $from.depth; d >= 0; d--) {
-                  const node = $from.node(d);
-                  if (node.type.name === this.name) {
-                    blockPos = $from.before(d);
-                    break;
+            if (isEmptyParagraph) {
+              // Replace empty paragraph with instruction block
+              const from = $from.before($from.depth);
+              const to = $from.after($from.depth);
+
+              return chain()
+                .focus()
+                .insertContentAt(
+                  { from, to },
+                  {
+                    type: this.name,
+                    attrs: { type },
+                    content,
                   }
-                }
-
-                if (blockPos > -1) {
-                  positionCursorInMiddleParagraph(editor, blockPos);
-                }
-              });
+                )
+                .command(({ editor }) => {
+                  queueFocusInsideCurrentInstructionBlock(editor);
+                  return true;
+                })
+                .run();
             }
 
-            return success;
+            // Non-empty: insert normally
+            return chain()
+              .focus()
+              .insertContent({
+                type: this.name,
+                attrs: { type },
+                content,
+              })
+              .command(({ editor }) => {
+                queueFocusInsideCurrentInstructionBlock(editor);
+                return true;
+              })
+              .run();
           },
       };
     },
@@ -272,56 +330,55 @@ export const InstructionBlockExtension =
       return [
         new InputRule({
           find: OPENING_TAG_REGEX,
-          handler: ({ range, match, commands }) => {
+          handler: ({ range, match, chain, state }) => {
             const type = match[1] ? match[1].toLowerCase() : "";
+            const tagType = type || "instructions";
 
             if (this.editor.isActive(this.name)) {
               return;
             }
 
-            const tagType = type || "instructions";
+            const { $from } = state.selection;
+            const isEmptyParagraph =
+              $from.parent.type.name === "paragraph" &&
+              $from.parent.textContent === match[0];
 
-            commands.insertContentAt(
-              { from: range.from, to: range.to },
-              {
-                type: this.name,
-                attrs: { type: tagType },
-                content: [
+            if (isEmptyParagraph) {
+              // Replace entire paragraph with instruction block
+              const from = $from.before($from.depth);
+              const to = $from.after($from.depth);
+
+              chain()
+                .focus()
+                .insertContentAt(
+                  { from, to },
                   {
-                    type: "paragraph",
-                    content: [{ type: "text", text: `<${tagType}>` }],
-                  },
-                  { type: "paragraph" },
-                  {
-                    type: "paragraph",
-                    content: [{ type: "text", text: `</${tagType}>` }],
-                  },
-                ],
-              }
-            );
-
-            requestAnimationFrame(() => {
-              // Safety check: ensure editor is still valid
-              if (this.editor.isDestroyed || !this.editor.view) {
-                return;
-              }
-
-              const { selection } = this.editor.state;
-              const $from = selection.$from;
-
-              let blockPos = -1;
-              for (let d = $from.depth; d >= 0; d--) {
-                const node = $from.node(d);
-                if (node.type.name === this.name) {
-                  blockPos = $from.before(d);
-                  break;
-                }
-              }
-
-              if (blockPos > -1) {
-                positionCursorInMiddleParagraph(this.editor, blockPos);
-              }
-            });
+                    type: this.name,
+                    attrs: { type: tagType },
+                    content: buildInstructionBlockContent(tagType),
+                  }
+                )
+                .command(({ editor }) => {
+                  queueFocusInsideCurrentInstructionBlock(editor);
+                  return true;
+                })
+                .run();
+            } else {
+              // Delete the typed text and insert instruction block
+              chain()
+                .focus()
+                .deleteRange({ from: range.from, to: range.to })
+                .insertContent({
+                  type: this.name,
+                  attrs: { type: tagType },
+                  content: buildInstructionBlockContent(tagType),
+                })
+                .command(({ editor }) => {
+                  queueFocusInsideCurrentInstructionBlock(editor);
+                  return true;
+                })
+                .run();
+            }
           },
         }),
       ];
