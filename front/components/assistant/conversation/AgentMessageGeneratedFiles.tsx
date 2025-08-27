@@ -5,6 +5,8 @@ import {
   CitationIcons,
   CitationIndex,
   CitationTitle,
+  Icon,
+  SparklesIcon,
 } from "@dust-tt/sparkle";
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -57,10 +59,14 @@ function getDescriptionForContentType(
 
 interface AgentMessageCanvasGeneratedFilesProps {
   files: LightAgentMessageType["generatedFiles"];
+  onClick?: () => void;
+  variant?: "list" | "grid";
 }
 
 export function AgentMessageCanvasGeneratedFiles({
   files,
+  onClick,
+  variant = "list",
 }: AgentMessageCanvasGeneratedFilesProps) {
   const { openPanel } = useConversationSidePanelContext();
 
@@ -69,7 +75,7 @@ export function AgentMessageCanvasGeneratedFiles({
   }
 
   return (
-    <CitationGrid variant="list">
+    <CitationGrid variant={variant}>
       {files.map((file) => {
         const handleClick = (e: React.MouseEvent) => {
           e.preventDefault();
@@ -77,6 +83,7 @@ export function AgentMessageCanvasGeneratedFiles({
             type: "canvas",
             fileId: file.fileId,
           });
+          onClick?.();
         };
 
         const description = getDescriptionForContentType(file);
@@ -90,13 +97,18 @@ export function AgentMessageCanvasGeneratedFiles({
           >
             <div className="flex flex-row items-center gap-2">
               <CitationTitle>{file.title}</CitationTitle>
-              {description && (
+              {description && variant === "list" && (
                 <CitationTitle className="text-muted-foreground dark:text-muted-foreground-night">
                   {description}
                 </CitationTitle>
               )}
             </div>
-            <CitationDescription>Canvas</CitationDescription>
+            <CitationDescription>
+              <div className="flow-row flex items-center gap-2">
+                <Icon visual={SparklesIcon} size="xs" />
+                Canvas
+              </div>
+            </CitationDescription>
           </Citation>
         );
       })}

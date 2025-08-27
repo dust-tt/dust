@@ -167,7 +167,7 @@ export function ShareCanvasFilePopover({
       <PopoverContent className="flex h-52 w-96 flex-col" align="end">
         <div className="flex flex-col gap-4">
           <div className="text-base font-semibold text-primary dark:text-primary-night">
-            Share this canvas content
+            Share this Canvas
           </div>
 
           <div className="flex flex-1 flex-col">

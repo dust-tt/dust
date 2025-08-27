@@ -12,6 +12,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
+import type { GetConversationFilesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type {
@@ -447,5 +448,33 @@ export function useConversationMessage({
     isMessageLoading: isLoading,
     isValidating,
     mutateMessage: mutate,
+  };
+}
+
+export function useConversationFiles({
+  conversationId,
+  options,
+  owner,
+}: {
+  conversationId: string | null;
+  options?: { disabled?: boolean };
+  owner: LightWorkspaceType;
+}) {
+  const conversationFilesFetcher: Fetcher<GetConversationFilesResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    conversationId
+      ? `/api/w/${owner.sId}/assistant/conversations/${conversationId}/files`
+      : null,
+    conversationFilesFetcher,
+    options
+  );
+
+  return {
+    conversationFiles: useMemo(() => data?.files ?? [], [data]),
+    isConversationFilesLoading: !error && !data,
+    isConversationFilesError: error,
+    mutateConversationFiles: mutate,
   };
 }
