@@ -139,9 +139,9 @@ export function MCPServerSelectionPage({
             />
           ))}
         </div>
-        {nonDefaultMcpServerViews.length && (
+        {nonDefaultMcpServerViews.length ? (
           <span className="text-lg font-semibold">Other tools</span>
-        )}
+        ) : null}
         <div className="grid grid-cols-2 gap-3">
           {nonDefaultMcpServerViews.map((view) => (
             <MCPServerCard
