@@ -1,4 +1,12 @@
-export type ToolPersonalAuthRequiredMetadata = {
+export type MCPServerPersonalAuthenticationRequiredMetadata = {
+  mcp_server_id: string;
+  provider: string;
+  scope?: string;
+  conversationId: string;
+  messageId: string;
+};
+
+type ToolPersonalAuthError = {
   mcpServerId: string;
   provider: string;
   scope?: string;
@@ -16,5 +24,5 @@ export type ToolPersonalAuthRequiredEvent = {
   configurationId: string;
   messageId: string;
   conversationId: string;
-  authError: ToolPersonalAuthRequiredMetadata;
+  authError: ToolPersonalAuthError;
 };

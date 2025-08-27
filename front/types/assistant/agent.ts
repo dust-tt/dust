@@ -3,7 +3,7 @@ import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { ToolPersonalAuthRequiredMetadata } from "@app/lib/actions/mcp_internal_actions/events";
+import type { MCPServerPersonalAuthenticationRequiredMetadata } from "@app/lib/actions/mcp_internal_actions/events";
 import type {
   ReasoningContentType,
   TextContentType,
@@ -220,14 +220,17 @@ export type AgentMessageErrorEvent = {
 };
 
 // Generic type for the content of an agent / tool error.
-export type ErrorContent = {
-  code: string;
-  message: string;
-  metadata:
-    | Record<string, string | number | boolean>
-    | ToolPersonalAuthRequiredMetadata
-    | null;
-};
+export type ErrorContent =
+  | {
+      code: string;
+      message: string;
+      metadata: Record<string, string | number | boolean> | null;
+    }
+  | {
+      code: "mcp_server_personal_authentication_required";
+      message: string;
+      metadata: MCPServerPersonalAuthenticationRequiredMetadata;
+    };
 
 // Generic event sent when an error occurred during the model call.
 export type AgentErrorEvent = {
