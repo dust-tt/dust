@@ -1,9 +1,11 @@
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+
 import type {
   MCPActionType,
   MCPApproveExecutionEvent,
 } from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { AgentMCPActionType, AgentMCPActionWithOutputType } from "@app/types/actions";
 
 import type { ContentFragmentType } from "../content_fragment";
 import type { ModelId } from "../shared/model_id";
@@ -163,7 +165,10 @@ export type AgentMessageType = BaseAgentMessageType & {
   visibility: MessageVisibility;
   configuration: LightAgentConfigurationType;
   skipToolsValidation: boolean;
-  actions: MCPActionType[];
+  actions: (AgentMCPActionType & {
+    type: "tool_action";
+    output: CallToolResult["content"];
+  })[];
   rawContents: Array<{
     step: number;
     content: string;
