@@ -451,10 +451,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
-  static async deleteAllForWorkspace(
-    workspace: LightWorkspaceType,
-    transaction?: Transaction
-  ) {
+  static async deleteAllForWorkspace(auth: Authenticator) {
+    const workspace = auth.getNonNullableWorkspace();
+
     if (workspace.workOSOrganizationId) {
       try {
         const workos = getWorkOS();
@@ -486,7 +485,6 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     return this.model.destroy({
       where: { workspaceId: workspace.id },
-      transaction,
     });
   }
 
