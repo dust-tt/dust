@@ -456,7 +456,9 @@ export default async function createServer(
           finalContent = finalContent.replace(citationRegex, `$1${newRef}$2`);
           newRefs[newRef] = refsFromAgent[refKeyFromAgent];
         } else {
-          // Remove the citation reference and clean up formatting
+          // We run out of available refs, meaning we have more refs in output than
+          // RUN_AGENT_ACTION_NUM_RESULTS, so we remove the remaining citation reference and
+          // clean up formatting.
           const citationRegex = new RegExp(
             `(:cite\\[[^\\]]*\\b)${refKeyFromAgent}\\b(?:,([^\\]]*\\])|([^\\]]*\\]))`,
             "g"

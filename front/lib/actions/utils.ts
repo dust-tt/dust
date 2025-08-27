@@ -27,7 +27,7 @@ import { assertNever } from "@app/types";
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 export const SLACK_SEARCH_ACTION_NUM_RESULTS = 24;
 export const NOTION_SEARCH_ACTION_NUM_RESULTS = 16;
-export const RUN_AGENT_ACTION_NUM_RESULTS = 32;
+export const RUN_AGENT_ACTION_NUM_RESULTS = 64;
 
 export const MCP_SPECIFICATION: ActionSpecification = {
   label: "More...",
