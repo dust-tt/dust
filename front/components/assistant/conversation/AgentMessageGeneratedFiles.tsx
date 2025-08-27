@@ -43,7 +43,7 @@ export function DefaultAgentMessageGeneratedFiles({
   );
 }
 
-// Interactive files.
+// Canvas files.
 
 function getDescriptionForContentType(
   file: LightAgentMessageType["generatedFiles"][number]
@@ -55,13 +55,13 @@ function getDescriptionForContentType(
   return null;
 }
 
-interface InteractiveAgentMessageGeneratedFilesProps {
+interface AgentMessageCanvasGeneratedFilesProps {
   files: LightAgentMessageType["generatedFiles"];
 }
 
-export function InteractiveAgentMessageGeneratedFiles({
+export function AgentMessageCanvasGeneratedFiles({
   files,
-}: InteractiveAgentMessageGeneratedFilesProps) {
+}: AgentMessageCanvasGeneratedFilesProps) {
   const { openPanel } = useConversationSidePanelContext();
 
   if (files.length === 0) {
@@ -74,7 +74,7 @@ export function InteractiveAgentMessageGeneratedFiles({
         const handleClick = (e: React.MouseEvent) => {
           e.preventDefault();
           openPanel({
-            type: "content",
+            type: "canvas",
             fileId: file.fileId,
           });
         };
@@ -96,7 +96,7 @@ export function InteractiveAgentMessageGeneratedFiles({
                 </CitationTitle>
               )}
             </div>
-            <CitationDescription>Interactive Content</CitationDescription>
+            <CitationDescription>Canvas</CitationDescription>
           </Citation>
         );
       })}

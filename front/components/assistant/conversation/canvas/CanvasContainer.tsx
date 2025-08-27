@@ -1,9 +1,9 @@
 import { Spinner } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
-import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
-import { ClientExecutableRenderer } from "@app/components/assistant/conversation/content/ClientExecutableRenderer";
-import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/content/UnsupportedContentRenderer";
+import { CenteredState } from "@app/components/assistant/conversation/canvas/CenteredState";
+import { ClientExecutableRenderer } from "@app/components/assistant/conversation/canvas/ClientExecutableRenderer";
+import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/canvas/UnsupportedContentRenderer";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useFileMetadata } from "@app/lib/swr/files";
 import type {
@@ -12,15 +12,12 @@ import type {
 } from "@app/types";
 import { clientExecutableContentType } from "@app/types";
 
-interface InteractiveContentContainerProps {
+interface CanvasContainerProps {
   conversation: ConversationWithoutContentType | null;
   owner: LightWorkspaceType;
 }
 
-export function InteractiveContentContainer({
-  conversation,
-  owner,
-}: InteractiveContentContainerProps) {
+export function CanvasContainer({ conversation, owner }: CanvasContainerProps) {
   const { data: contentHash } = useConversationSidePanelContext();
 
   const contentId = useMemo(() => {

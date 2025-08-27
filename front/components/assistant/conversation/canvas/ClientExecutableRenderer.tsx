@@ -13,17 +13,16 @@ import {
 import React from "react";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
+import { CanvasHeader } from "@app/components/assistant/conversation/canvas/CanvasHeader";
+import { CenteredState } from "@app/components/assistant/conversation/canvas/CenteredState";
+import { ShareCanvasFilePopover } from "@app/components/assistant/conversation/canvas/ShareCanvasFilePopover";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { isFileUsingConversationFiles } from "@app/lib/files";
 import { useFileContent } from "@app/lib/swr/files";
 import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
 } from "@app/types";
-
-import { useConversationSidePanelContext } from "../ConversationSidePanelContext";
-import { ShareInteractiveFilePopover } from "../ShareInteractiveFilePopover";
-import { InteractiveContentHeader } from "./InteractiveContentHeader";
 
 interface ExportContentDropdownProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;
@@ -99,7 +98,7 @@ export function ClientExecutableRenderer({
     return (
       <CenteredState>
         <Spinner size="sm" />
-        <span>Loading interactive content...</span>
+        <span>Loading canvas...</span>
       </CenteredState>
     );
   }
@@ -114,7 +113,7 @@ export function ClientExecutableRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <InteractiveContentHeader
+      <CanvasHeader
         title={fileName || "Client Executable"}
         subtitle={fileId}
         onClose={closePanel}
@@ -127,17 +126,17 @@ export function ClientExecutableRenderer({
           variant="ghost"
         />
         <ExportContentDropdown iframeRef={iframeRef} />
-        <ShareInteractiveFilePopover
+        <ShareCanvasFilePopover
           fileId={fileId}
           owner={owner}
           disabled={isUsingConversationFiles}
           tooltip={
             isUsingConversationFiles
-              ? "This interactive file uses conversation files. It cannot be shared publicly."
+              ? "This canvas file uses conversation files. It cannot be shared publicly."
               : "Share public link"
           }
         />
-      </InteractiveContentHeader>
+      </CanvasHeader>
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
