@@ -741,7 +741,6 @@ const createServer = (): McpServer => {
           return makeMCPToolJSONSuccess({
             message: `Found ${result.service_items?.length || 0} service items matching '${search_term}'`,
             result: result.service_items || [],
-            meta: result.meta,
           });
         },
         authInfo,
