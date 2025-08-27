@@ -39,7 +39,7 @@ import { asDisplayName } from "@app/types";
 interface AuthenticationDialogPageProps {
   authActions: BlockedToolExecution[];
   connectionStates: Record<string, "connecting" | "connected" | "idle">;
-  onConnect: (
+  onConnectionStateChange: (
     actionId: string,
     status: "connecting" | "connected" | "idle"
   ) => void;
@@ -56,7 +56,7 @@ interface AuthenticationDialogPageProps {
 function AuthenticationDialogPage({
   authActions,
   connectionStates,
-  onConnect,
+  onConnectionStateChange,
   createPersonalConnection,
   errorMessage,
 }: AuthenticationDialogPageProps) {
@@ -66,7 +66,7 @@ function AuthenticationDialogPage({
         return;
       }
 
-      onConnect(blockedAction.actionId, "connecting");
+      onConnectionStateChange(blockedAction.actionId, "connecting");
       const success = await createPersonalConnection({
         mcpServerId: blockedAction.metadata.mcpServerId || "",
         mcpServerDisplayName: blockedAction.metadata.mcpServerDisplayName || "",
@@ -75,12 +75,17 @@ function AuthenticationDialogPage({
         scope: blockedAction.authorizationInfo.scope,
       });
       if (success) {
-        onConnect(blockedAction.actionId, "connected");
+        onConnectionStateChange(blockedAction.actionId, "connected");
       } else {
-        onConnect(blockedAction.actionId, "idle");
+        onConnectionStateChange(blockedAction.actionId, "idle");
       }
     },
-    [authActions, connectionStates, createPersonalConnection, onConnect]
+    [
+      authActions,
+      connectionStates,
+      createPersonalConnection,
+      onConnectionStateChange,
+    ]
   );
 
   return (
@@ -451,7 +456,7 @@ export function ActionValidationProvider({
             <AuthenticationDialogPage
               authActions={authActions}
               connectionStates={connectionStates}
-              onConnect={(actionId, status) =>
+              onConnectionStateChange={(actionId, status) =>
                 setConnectionStates((prev) => ({
                   ...prev,
                   [actionId]: status,
