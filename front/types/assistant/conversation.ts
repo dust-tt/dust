@@ -1,5 +1,3 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-
 import type {
   MCPActionType,
   MCPApproveExecutionEvent,
@@ -165,10 +163,7 @@ export type AgentMessageType = BaseAgentMessageType & {
   visibility: MessageVisibility;
   configuration: LightAgentConfigurationType;
   skipToolsValidation: boolean;
-  actions: (AgentMCPActionType & {
-    type: "tool_action";
-    output: CallToolResult["content"];
-  })[];
+  actions: MCPActionType[];
   rawContents: Array<{
     step: number;
     content: string;
