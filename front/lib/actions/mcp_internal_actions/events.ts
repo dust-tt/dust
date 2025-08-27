@@ -1,3 +1,11 @@
+export type ToolPersonalAuthRequiredMetadata = {
+  mcpServerId: string;
+  provider: string;
+  scope?: string;
+  toolName: string;
+  message: string;
+};
+
 /**
  * Personal authentication required event type from MCP actions.
  * This needs to be defined here to avoid circular dependencies.
@@ -8,11 +16,5 @@ export type ToolPersonalAuthRequiredEvent = {
   configurationId: string;
   messageId: string;
   conversationId: string;
-  authError: {
-    mcpServerId: string;
-    provider: string;
-    scope?: string;
-    toolName: string;
-    message: string;
-  };
+  authError: ToolPersonalAuthRequiredMetadata;
 };
