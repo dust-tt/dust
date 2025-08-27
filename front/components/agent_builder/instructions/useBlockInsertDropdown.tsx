@@ -14,6 +14,19 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 type CompatibleEditor = CoreEditor | ReactEditor;
 
+function isSelectionInInstructionBlock(editor: ReactEditor | CoreEditor | null) {
+  if (!editor || ("isDestroyed" in editor && editor.isDestroyed)) {
+    return false;
+  }
+  const $from = (editor as ReactEditor).state.selection.$from;
+  for (let d = $from.depth; d >= 0; d--) {
+    if ($from.node(d).type.name === "instructionBlock") {
+      return true;
+    }
+  }
+  return false;
+}
+
 export interface BlockSuggestion {
   id: string;
   label: string;
@@ -181,20 +194,9 @@ export const useBlockInsertDropdown = (
         );
       },
       items: ({ query }: { query: string }) => {
-        // We'll detect if we're in an instruction block using the editor reference
-        const editor = editorRef.current;
-        let isInInstructionBlock = false;
-
-        if (editor && !editor.isDestroyed) {
-          const $from = editor.state.selection.$from;
-          for (let d = $from.depth; d >= 0; d--) {
-            if ($from.node(d).type.name === "instructionBlock") {
-              isInInstructionBlock = true;
-              break;
-            }
-          }
-        }
-
+        const isInInstructionBlock = isSelectionInInstructionBlock(
+          editorRef.current
+        );
         return filterSuggestions(query, isInInstructionBlock);
       },
       render: () => {
@@ -211,20 +213,10 @@ export const useBlockInsertDropdown = (
               return;
             }
 
-            const editor = editorRef.current;
-            let isInInstructionBlock = false;
-
-            if (editor && !editor.isDestroyed) {
-              const $from = editor.state.selection.$from;
-              for (let d = $from.depth; d >= 0; d--) {
-                if ($from.node(d).type.name === "instructionBlock") {
-                  isInInstructionBlock = true;
-                  break;
-                }
-              }
-            }
-
-            updateQuery(props.query || "", isInInstructionBlock);
+            updateQuery(
+              props.query || "",
+              isSelectionInInstructionBlock(editorRef.current)
+            );
             setState((prev) => ({
               ...prev,
               isOpen: true,
@@ -240,20 +232,10 @@ export const useBlockInsertDropdown = (
 
             const rect = props.clientRect();
             if (rect) {
-              const editor = editorRef.current;
-              let isInInstructionBlock = false;
-
-              if (editor && !editor.isDestroyed) {
-                const $from = editor.state.selection.$from;
-                for (let d = $from.depth; d >= 0; d--) {
-                  if ($from.node(d).type.name === "instructionBlock") {
-                    isInInstructionBlock = true;
-                    break;
-                  }
-                }
-              }
-
-              updateQuery(props.query || "", isInInstructionBlock);
+              updateQuery(
+                props.query || "",
+                isSelectionInInstructionBlock(editorRef.current)
+              );
               setState((prev) => ({
                 ...prev,
                 triggerRect: rect,
