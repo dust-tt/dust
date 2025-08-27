@@ -60,6 +60,7 @@ import type {
   DataSourceViewType,
   SpaceType,
   TagsFilter,
+  TagsFilterMode,
 } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -153,7 +154,7 @@ type DataSourceBuilderState = StateType & {
    */
   updateSourcesTags: (index: number, tagsFilter: TagsFilter) => void;
 
-  toggleTagsMode: (dataSourceView: DataSourceViewType) => void;
+  toggleInConversationFiltering: (mode: TagsFilterMode) => void;
 
   setSheetPageId: (pageId: ConfigurationPagePageId) => void;
 };
@@ -440,45 +441,35 @@ export function DataSourceBuilderProvider({
       [field]
     );
 
-  const toggleTagsMode: DataSourceBuilderState["toggleTagsMode"] = useCallback(
-    (dataSourceView) => {
-      field.onChange({
-        ...field.value,
-        in: field.value.in.map((source) => {
-          // Check if this source matches the given dataSourceView
-          const isMatchingSource =
-            (source.type === "data_source" &&
-              source.dataSourceView.sId === dataSourceView.sId) ||
-            (source.type === "node" &&
-              source.node.dataSourceView.sId === dataSourceView.sId);
+  const toggleInConversationFiltering: DataSourceBuilderState["toggleInConversationFiltering"] =
+    useCallback(
+      (mode) => {
+        field.onChange({
+          ...field.value,
+          in: field.value.in.map((source) => {
+            if ("tagsFilter" in source) {
+              // Initialize tagsFilter if null
+              const currentTagsFilter = source.tagsFilter || {
+                in: [],
+                not: [],
+                mode: "custom" as const,
+              };
 
-          if (isMatchingSource && "tagsFilter" in source) {
-            // Initialize tagsFilter if null
-            const currentTagsFilter = source.tagsFilter || {
-              in: [],
-              not: [],
-              mode: "custom" as const,
-            };
+              return {
+                ...source,
+                tagsFilter: {
+                  ...currentTagsFilter,
+                  mode,
+                },
+              };
+            }
 
-            // Toggle between "auto" and "custom" modes
-            const newMode =
-              currentTagsFilter.mode === "auto" ? "custom" : "auto";
-
-            return {
-              ...source,
-              tagsFilter: {
-                ...currentTagsFilter,
-                mode: newMode,
-              },
-            };
-          }
-
-          return source;
-        }),
-      });
-    },
-    [field]
-  );
+            return source;
+          }),
+        });
+      },
+      [field]
+    );
 
   const setSheetPageId: DataSourceBuilderState["setSheetPageId"] = useCallback(
     (pageId) => {
@@ -504,7 +495,7 @@ export function DataSourceBuilderProvider({
       addNodeEntry,
       navigateTo,
       updateSourcesTags,
-      toggleTagsMode,
+      toggleInConversationFiltering,
       setSheetPageId,
     }),
     [
@@ -523,7 +514,7 @@ export function DataSourceBuilderProvider({
       setSpaceEntry,
       setDataSourceViewEntry,
       updateSourcesTags,
-      toggleTagsMode,
+      toggleInConversationFiltering,
       setSheetPageId,
     ]
   );
