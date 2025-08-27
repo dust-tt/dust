@@ -1,7 +1,7 @@
 import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/core";
 import { InputRule, mergeAttributes, Node } from "@tiptap/core";
-import type { Slice } from "@tiptap/pm/model";
+import type { Node as ProseMirrorNode, Slice } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { TextSelection } from "@tiptap/pm/state";
 import type { NodeViewProps } from "@tiptap/react";
@@ -553,9 +553,9 @@ export const InstructionBlockExtension =
 
     addProseMirrorPlugins() {
       // Helper function to find first and last paragraph nodes in a block
-      const findFirstLastParagraphs = (blockNode: any) => {
-        let firstPara = null;
-        let lastPara = null;
+      const findFirstLastParagraphs = (blockNode: ProseMirrorNode) => {
+        let firstPara: ProseMirrorNode | null = null;
+        let lastPara: ProseMirrorNode | null = null;
         let firstParaIndex = -1;
         let lastParaIndex = -1;
 
@@ -575,7 +575,10 @@ export const InstructionBlockExtension =
       };
 
       // Helper function to check if a paragraph contains a valid XML tag
-      const getTagFromParagraph = (para: any, isClosing: boolean) => {
+      const getTagFromParagraph = (
+        para: ProseMirrorNode | null,
+        isClosing: boolean
+      ) => {
         if (!para) return null;
         const text = para.textContent.trim();
         // Allow empty tag name for typing (<>) and a wider set when non-empty
