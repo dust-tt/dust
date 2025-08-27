@@ -184,11 +184,18 @@ export default async function createServer(
         )
         .optional()
         .nullable(),
+      filesToAdd: z
+        .array(z.string().regex(new RegExp(`^[_\\w]+$`)))
+        .describe(
+          "The filesId of the files to pass to the agent conversation. If the file is a content node, use the contentFragmentId instead."
+        )
+        .optional()
+        .nullable(),
       childAgent:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
     },
     async (
-      { query, childAgent: { uri }, toolsetsToAdd },
+      { query, childAgent: { uri }, toolsetsToAdd, filesToAdd },
       { sendNotification, _meta }
     ) => {
       assert(
@@ -233,6 +240,7 @@ export default async function createServer(
           mainConversation,
           query,
           toolsetsToAdd: toolsetsToAdd ?? null,
+          filesToAdd: filesToAdd ?? null,
         }
       );
 

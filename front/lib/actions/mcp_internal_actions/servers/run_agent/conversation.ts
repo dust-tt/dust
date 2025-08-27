@@ -27,6 +27,7 @@ export async function getOrCreateConversation(
     mainConversation,
     query,
     toolsetsToAdd,
+    filesToAdd,
   }: {
     childAgentBlob: ChildAgentBlob;
     childAgentId: string;
@@ -34,6 +35,7 @@ export async function getOrCreateConversation(
     mainConversation: ConversationType;
     query: string;
     toolsetsToAdd: string[] | null;
+    filesToAdd: string[] | null;
   }
 ): Promise<
   Result<
@@ -64,27 +66,35 @@ export async function getOrCreateConversation(
     });
   }
 
-  // Get all files from the current conversation to pass to the sub agent
-  const attachments = listAttachments(mainConversation);
   const contentFragments: PublicPostContentFragmentRequestBody[] = [];
 
-  for (const attachment of attachments) {
-    if (isFileAttachmentType(attachment)) {
-      // Convert file attachment to content fragment
-      contentFragments.push({
-        title: attachment.title,
-        fileId: attachment.fileId,
-        url: null,
-        context: null,
-      });
-    } else if (isContentNodeAttachmentType(attachment)) {
-      // Convert content node attachment to content fragment
-      contentFragments.push({
-        title: attachment.title,
-        nodeId: attachment.nodeId,
-        nodeDataSourceViewId: attachment.nodeDataSourceViewId,
-        context: null,
-      });
+  if (filesToAdd) {
+    // Get all files from the current conversation and filter which one to pass to the sub agent
+    const attachments = listAttachments(mainConversation);
+    for (const attachment of attachments) {
+      if (
+        isFileAttachmentType(attachment) &&
+        filesToAdd?.includes(attachment.fileId)
+      ) {
+        // Convert file attachment to content fragment
+        contentFragments.push({
+          title: attachment.title,
+          fileId: attachment.fileId,
+          url: null,
+          context: null,
+        });
+      } else if (
+        isContentNodeAttachmentType(attachment) &&
+        filesToAdd?.includes(attachment.contentFragmentId)
+      ) {
+        // Convert content node attachment to content fragment
+        contentFragments.push({
+          title: attachment.title,
+          nodeId: attachment.nodeId,
+          nodeDataSourceViewId: attachment.nodeDataSourceViewId,
+          context: null,
+        });
+      }
     }
   }
 
