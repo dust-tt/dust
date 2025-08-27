@@ -189,6 +189,25 @@ export type BlockedToolExecution = ToolExecution & {
   authorizationInfo: AuthorizationInfo | null;
 };
 
+export type AuthenticationRequiredBlockedToolExecution = ToolExecution & {
+  status: "blocked_authentication_required";
+  authorizationInfo: AuthorizationInfo;
+  metadata: MCPValidationMetadataType & {
+    mcpServerId: string;
+    mcpServerDisplayName?: string;
+  };
+};
+
+export function isAuthenticationRequiredBlockedAction(
+  action: BlockedToolExecution
+): action is AuthenticationRequiredBlockedToolExecution {
+  return (
+    action.status === "blocked_authentication_required" &&
+    action.authorizationInfo !== null &&
+    action.metadata.mcpServerId !== undefined
+  );
+}
+
 // TODO(durable-agents): cleanup the types of the events.
 export type MCPApproveExecutionEvent = ToolExecution & {
   type: "tool_approve_execution";
