@@ -192,8 +192,8 @@ const MultiPageDialogContent = React.forwardRef<
             hideButton={hideCloseButton || showHeaderNavigation}
             className="s-flex-none"
           >
-            <div className="s-flex s-items-center s-justify-between s-pr-8">
-              <div className="s-flex s-items-center s-gap-3">
+            <div className="s-flex s-items-center s-justify-between">
+              <div className="s-item-center s-flex s-gap-3">
                 {showNavigation && showHeaderNavigation && (
                   <div className="s-flex s-items-center s-gap-1">
                     <Button
@@ -224,7 +224,7 @@ const MultiPageDialogContent = React.forwardRef<
                 )}
                 <div
                   className={cn(
-                    "s-flex s-items-center s-gap-2 s-transition-all s-duration-200 s-ease-out",
+                    "s-flex s-items-center s-gap-3 s-transition-all s-duration-200 s-ease-out",
                     {
                       "s-transform s-opacity-0": isTransitioning,
                       "s-translate-x-1":
@@ -253,7 +253,12 @@ const MultiPageDialogContent = React.forwardRef<
                 </div>
               </div>
               {showNavigation && pages.length > 1 && (
-                <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <div
+                  className={cn(
+                    "s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night",
+                    !hideCloseButton && "s-pr-8"
+                  )}
+                >
                   {currentPageIndex + 1} / {pages.length}
                 </div>
               )}
