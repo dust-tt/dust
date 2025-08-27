@@ -9,7 +9,7 @@ import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
-  ErrorContent,
+  GenericErrorContent,
   LightAgentConfigurationType,
 } from "./agent";
 import type { AgentContentItemType } from "./agent_message_content";
@@ -148,7 +148,7 @@ export type BaseAgentMessageType = {
   status: AgentMessageStatus;
   content: string | null;
   chainOfThought: string | null;
-  error: ErrorContent | null;
+  error: GenericErrorContent | null;
 };
 
 export type ParsedContentItem =
