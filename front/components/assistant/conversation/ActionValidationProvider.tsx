@@ -228,7 +228,6 @@ export function ActionValidationProvider({
     return Array.from({ length: totalCount }, (_, index) => ({
       id: index.toString(),
       title: "Tool Validation Required",
-      description: "Review and approve the tool usage request",
       icon: validationRequest.metadata.icon
         ? getIcon(validationRequest.metadata.icon)
         : ActionPieChartIcon,
