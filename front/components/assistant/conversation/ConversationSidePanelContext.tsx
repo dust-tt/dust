@@ -6,7 +6,7 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
-  INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
+  CANVAS_SIDE_PANEL_TYPE,
   SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
 } from "@app/types/conversation_side_panel";
@@ -17,15 +17,14 @@ type OpenPanelParams =
       messageId: string;
     }
   | {
-      type: "content";
+      type: "canvas";
       fileId: string;
       timestamp?: string;
     };
 
 const isSupportedPanelType = (
   type: string | undefined
-): type is ConversationSidePanelType =>
-  type === "actions" || type === "content";
+): type is ConversationSidePanelType => type === "actions" || type === "canvas";
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
@@ -73,7 +72,7 @@ export function ConversationSidePanelProvider({
     setCurrentPanel(params.type);
 
     switch (params.type) {
-      case AGENT_ACTIONS_SIDE_PANEL_TYPE:
+      case AGENT_ACTIONS_SIDE_PANEL_TYPE: {
         /**
          * If the panel is already open for the same messageId,
          * we close it.
@@ -82,13 +81,17 @@ export function ConversationSidePanelProvider({
           closePanel();
           return;
         }
+
         setData(params.messageId);
         break;
-      case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
+      }
+
+      case CANVAS_SIDE_PANEL_TYPE:
         params.timestamp
           ? setData(`${params.fileId}@${params.timestamp}`)
           : setData(params.fileId);
         break;
+
       default:
         assertNever(params);
     }

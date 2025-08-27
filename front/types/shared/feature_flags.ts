@@ -65,7 +65,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   interactive_content_server: {
     description:
-      "Interactive content MCP server - gives access to the new visualization layout",
+      "Canvas MCP server - gives access to the new visualization layout",
     stage: "on_demand",
   },
   google_ai_studio_experimental_models_feature: {

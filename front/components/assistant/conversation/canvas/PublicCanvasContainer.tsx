@@ -1,24 +1,23 @@
 import { Spinner } from "@dust-tt/sparkle";
 
+import { CenteredState } from "@app/components/assistant/conversation/canvas/CenteredState";
+import { PublicClientExecutableRenderer } from "@app/components/assistant/conversation/canvas/PublicClientExecutableRenderer";
+import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/canvas/UnsupportedContentRenderer";
 import { usePublicFile } from "@app/lib/swr/files";
 import Custom404 from "@app/pages/404";
 import { clientExecutableContentType } from "@app/types";
 
-import { CenteredState } from "./CenteredState";
-import { PublicClientExecutableRenderer } from "./PublicClientExecutableRenderer";
-import { UnsupportedContentRenderer } from "./UnsupportedContentRenderer";
-
-interface PublicInteractiveContentContainerProps {
+interface PublicCanvasContainerProps {
   shareToken: string;
 }
 
 /**
- * Public-specific container for interactive content.
+ * Public-specific container for canvas.
  * Works without authentication, conversation context, or session requirements.
  */
-export function PublicInteractiveContentContainer({
+export function PublicCanvasContainer({
   shareToken,
-}: PublicInteractiveContentContainerProps) {
+}: PublicCanvasContainerProps) {
   const { fileMetadata, isFileLoading, isFileError } = usePublicFile({
     shareToken,
   });

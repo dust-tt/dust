@@ -68,13 +68,13 @@ async function handler(
 
   const { file, content: fileContent, shareScope } = result;
 
-  // Only allow conversation interactive files.
-  if (!file.isInteractive) {
+  // Only allow conversation canvas files.
+  if (!file.isCanvas) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Only interactive content files can be shared publicly.",
+        message: "Only canvas files can be shared publicly.",
       },
     });
   }

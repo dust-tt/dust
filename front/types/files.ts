@@ -317,9 +317,9 @@ export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 export const clientExecutableContentType =
   "application/vnd.dust.client-executable";
 
-// Interactive MIME types for specialized use cases (not exposed via APIs).
-export const INTERACTIVE_FILE_FORMATS = {
-  // Custom for client-executable code files managed by interactive_content MCP server.
+// Canvas MIME types for specialized use cases (not exposed via APIs).
+export const CANVAS_FILE_FORMATS = {
+  // Custom for client-executable code files managed by canvas MCP server.
   // These files are internal-only and should not be exposed via APIs.
   // Limited to JavaScript/TypeScript files that can run in the browser.
   [clientExecutableContentType]: {
@@ -329,22 +329,22 @@ export const INTERACTIVE_FILE_FORMATS = {
   },
 } as const satisfies Record<string, FileFormat>;
 
-export function isInteractiveContentType(contentType: string): boolean {
+export function isCanvasContentType(contentType: string): boolean {
   return contentType === clientExecutableContentType;
 }
 
-// Define a type for interactive file content types.
-export type InteractiveFileContentType = keyof typeof INTERACTIVE_FILE_FORMATS;
+// Define a type for canvas file content types.
+export type CanvasFileContentType = keyof typeof CANVAS_FILE_FORMATS;
 
 export const ALL_FILE_FORMATS = {
+  ...CANVAS_FILE_FORMATS,
   ...FILE_FORMATS,
-  ...INTERACTIVE_FILE_FORMATS,
 };
 
-// Union type for all supported content types (public + interactive).
+// Union type for all supported content types (public + canvas).
 export type AllSupportedFileContentType =
-  | SupportedFileContentType
-  | InteractiveFileContentType;
+  | CanvasFileContentType
+  | SupportedFileContentType;
 
 export type SupportedImageContentType = {
   [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
@@ -382,18 +382,18 @@ export function isSupportedFileContentType(
   return !!FILE_FORMATS[contentType as SupportedFileContentType];
 }
 
-export function isInteractiveFileContentType(
+export function isCanvasFileContentType(
   contentType: string
-): contentType is InteractiveFileContentType {
-  return !!INTERACTIVE_FILE_FORMATS[contentType as InteractiveFileContentType];
+): contentType is CanvasFileContentType {
+  return !!CANVAS_FILE_FORMATS[contentType as CanvasFileContentType];
 }
 
 export function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (
-    isSupportedFileContentType(contentType) ||
-    isInteractiveFileContentType(contentType)
+    isCanvasFileContentType(contentType) ||
+    isSupportedFileContentType(contentType)
   );
 }
 

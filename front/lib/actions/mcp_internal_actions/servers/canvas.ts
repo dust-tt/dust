@@ -13,67 +13,65 @@ import {
   getClientExecutableFileContent,
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
-import type { InteractiveFileContentType } from "@app/types";
+import type { CanvasFileContentType } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { INTERACTIVE_FILE_FORMATS } from "@app/types";
+import { CANVAS_FILE_FORMATS } from "@app/types";
 
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
-export const CREATE_INTERACTIVE_FILE_TOOL_NAME = "create_interactive_file";
-export const EDIT_INTERACTIVE_FILE_TOOL_NAME = "edit_interactive_file";
-export const RETRIEVE_INTERACTIVE_FILE_TOOL_NAME = "retrieve_interactive_file";
+export const CREATE_CANVAS_FILE_TOOL_NAME = "create_canvas_file";
+export const EDIT_CANVAS_FILE_TOOL_NAME = "edit_canvas_file";
+export const RETRIEVE_CANVAS_FILE_TOOL_NAME = "retrieve_canvas_file";
 
 /**
- * Interactive Content Server - Allows the model to create and update interactive content files.
- * Interactive content includes any file that users can execute, run, or interact with directly.
+ * Canvas Server - Allows the model to create and update canvas files.
+ * Canvas includes any file that users can execute, run, or interact with directly.
  * Currently supports client-executable files, with plans to expand to other interactive formats.
- * Files are rendered in an interactive content viewer where users can execute and interact with them.
+ * Files are rendered in a canvas viewer where users can execute and interact with them.
  * We return the file resource only on file creation, as edit updates the existing file.
  */
 const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
-  const server = makeInternalMCPServer("interactive_content");
+  const server = makeInternalMCPServer("canvas");
 
   server.tool(
-    CREATE_INTERACTIVE_FILE_TOOL_NAME,
-    "Create a new interactive content file that users can execute or interact with. Use this for " +
+    CREATE_CANVAS_FILE_TOOL_NAME,
+    "Create a new canvas file that users can execute or interact with. Use this for " +
       "content that provides functionality beyond static viewing.",
     {
       file_name: z
         .string()
         .describe(
-          "The name of the interactive content file to create, including extension (e.g. " +
+          "The name of the canvas file to create, including extension (e.g. " +
             "DataVisualization.tsx)"
         ),
       mime_type: z
-        .enum(
-          Object.keys(INTERACTIVE_FILE_FORMATS) as [InteractiveFileContentType]
-        )
+        .enum(Object.keys(CANVAS_FILE_FORMATS) as [CanvasFileContentType])
         .describe(
-          "The MIME type for the interactive content. Currently supports " +
+          "The MIME type for the canvas. Currently supports " +
             "'application/vnd.dust.client-executable' for client-side executable files."
         ),
       content: z
         .string()
         .max(MAX_FILE_SIZE_BYTES)
         .describe(
-          "The content for the interactive file. Should be complete and ready for execution or " +
+          "The content for the canvas file. Should be complete and ready for execution or " +
             "interaction."
         ),
       description: z
         .string()
         .optional()
         .describe(
-          "Optional description of what this interactive content does (e.g., " +
+          "Optional description of what this canvas does (e.g., " +
             "'Interactive data visualization', 'Executable analysis script', " +
             "'Dynamic dashboard')"
         ),
     },
     withToolLogging(
       auth,
-      { toolName: CREATE_INTERACTIVE_FILE_TOOL_NAME, agentLoopContext },
+      { toolName: CREATE_CANVAS_FILE_TOOL_NAME, agentLoopContext },
       async (
         { file_name, mime_type, content, description },
         { sendNotification, _meta }
@@ -112,9 +110,9 @@ const createServer = (
               total: 1,
               progressToken: _meta?.progressToken,
               data: {
-                label: "Creating interactive content...",
+                label: "Creating canvas...",
                 output: {
-                  type: "interactive_file",
+                  type: "canvas_file",
                   fileId: fileResource.sId,
                   mimeType: fileResource.contentType,
                   title: fileResource.fileName,
@@ -124,7 +122,7 @@ const createServer = (
             },
           };
 
-          // Send a notification to the MCP Client, to display the interactive file.
+          // Send a notification to the MCP Client, to display the canvas file.
           await sendNotification(notification);
         }
 
@@ -147,12 +145,12 @@ const createServer = (
   );
 
   server.tool(
-    EDIT_INTERACTIVE_FILE_TOOL_NAME,
-    "Modifies content within an interactive file by substituting specified text segments. " +
+    EDIT_CANVAS_FILE_TOOL_NAME,
+    "Modifies content within an canvas file by substituting specified text segments. " +
       "Performs single substitution by default, or multiple substitutions when " +
       "`expected_replacements` is defined. This function demands comprehensive contextual " +
       "information surrounding the target modification to ensure accurate targeting. " +
-      `Use the ${RETRIEVE_INTERACTIVE_FILE_TOOL_NAME} tool to review the file's ` +
+      `Use the ${RETRIEVE_CANVAS_FILE_TOOL_NAME} tool to review the file's ` +
       "existing content prior to executing any text substitution. Requirements: " +
       "1. `old_string` MUST contain the precise literal content for substitution " +
       "(preserving all spacing, formatting, line breaks). " +
@@ -163,9 +161,7 @@ const createServer = (
     {
       file_id: z
         .string()
-        .describe(
-          "The ID of the interactive content file to update (e.g., 'fil_abc123')"
-        ),
+        .describe("The ID of the canvas file to update (e.g., 'fil_abc123')"),
       old_string: z
         .string()
         .describe(
@@ -191,7 +187,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: EDIT_INTERACTIVE_FILE_TOOL_NAME, agentLoopContext },
+      { toolName: EDIT_CANVAS_FILE_TOOL_NAME, agentLoopContext },
       async (
         { file_id, old_string, new_string, expected_replacements },
         { sendNotification, _meta }
@@ -224,9 +220,9 @@ const createServer = (
               total: 1,
               progressToken: _meta?.progressToken,
               data: {
-                label: "Updating interactive content...",
+                label: "Updating canvas...",
                 output: {
-                  type: "interactive_file",
+                  type: "canvas_file",
                   fileId: fileResource.sId,
                   mimeType: fileResource.contentType,
                   title: fileResource.fileName,
@@ -236,7 +232,7 @@ const createServer = (
             },
           };
 
-          // Send a notification to the MCP Client, to refresh the interactive file.
+          // Send a notification to the MCP Client, to refresh the canvas file.
           await sendNotification(notification);
         }
 
@@ -251,21 +247,19 @@ const createServer = (
   );
 
   server.tool(
-    RETRIEVE_INTERACTIVE_FILE_TOOL_NAME,
-    "Retrieve the current content of an existing interactive file by its file ID. " +
-      "Use this to read back the content of interactive files you have previously created or " +
-      `updated. Use this tool before calling ${EDIT_INTERACTIVE_FILE_TOOL_NAME} to ` +
+    RETRIEVE_CANVAS_FILE_TOOL_NAME,
+    "Retrieve the current content of an existing canvas file by its file ID. " +
+      "Use this to read back the content of canvas files you have previously created or " +
+      `updated. Use this tool before calling ${EDIT_CANVAS_FILE_TOOL_NAME} to ` +
       "understand the current file state and identify the exact text to replace.",
     {
       file_id: z
         .string()
-        .describe(
-          "The ID of the interactive content file to retrieve (e.g., 'fil_abc123')"
-        ),
+        .describe("The ID of the canvas file to retrieve (e.g., 'fil_abc123')"),
     },
     withToolLogging(
       auth,
-      { toolName: RETRIEVE_INTERACTIVE_FILE_TOOL_NAME, agentLoopContext },
+      { toolName: RETRIEVE_CANVAS_FILE_TOOL_NAME, agentLoopContext },
       async ({ file_id }) => {
         const result = await getClientExecutableFileContent(auth, file_id);
 

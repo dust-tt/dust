@@ -22,7 +22,7 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import { useShareInteractiveFile } from "@app/lib/swr/files";
+import { useShareCanvasFile } from "@app/lib/swr/files";
 import type { FileShareScope, LightWorkspaceType } from "@app/types";
 
 interface FileSharingDropdownProps {
@@ -98,19 +98,19 @@ function FileSharingDropdown({
   );
 }
 
-interface ShareInteractiveFilePopoverProps {
+interface ShareCanvasFilePopoverProps {
+  disabled?: boolean;
   fileId: string;
   owner: LightWorkspaceType;
-  disabled?: boolean;
   tooltip?: string;
 }
 
-export function ShareInteractiveFilePopover({
+export function ShareCanvasFilePopover({
   fileId,
   owner,
   disabled = false,
   tooltip = "Share public link",
-}: ShareInteractiveFilePopoverProps) {
+}: ShareCanvasFilePopoverProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const [isUpdatingShare, setIsUpdatingShare] = React.useState(false);
@@ -119,7 +119,7 @@ export function ShareInteractiveFilePopover({
   );
 
   const { doShare, fileShare, isFileShareLoading, isFileShareError } =
-    useShareInteractiveFile({
+    useShareCanvasFile({
       fileId,
       owner,
     });
@@ -167,7 +167,7 @@ export function ShareInteractiveFilePopover({
       <PopoverContent className="flex h-52 w-96 flex-col" align="end">
         <div className="flex flex-col gap-4">
           <div className="text-base font-semibold text-primary dark:text-primary-night">
-            Share this interactive content
+            Share this canvas content
           </div>
 
           <div className="flex flex-1 flex-col">

@@ -68,7 +68,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "hubspot",
   "image_generation",
   "include_data",
-  "interactive_content",
+  "canvas",
   "jira",
   "missing_action_catcher",
   "monday",
@@ -713,7 +713,7 @@ The directive should be used to display a clickable version of the agent name in
       instructions: JIRA_SERVER_INSTRUCTIONS,
     },
   },
-  interactive_content: {
+  canvas: {
     id: 23,
     availability: "auto",
     allowMultipleInstances: false,
@@ -724,10 +724,10 @@ The directive should be used to display a clickable version of the agent name in
     tools_stakes: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: "interactive_content",
+      name: "canvas",
       version: "1.0.0",
       description:
-        "Create and update interactive content files that users can execute and interact with. Currently supports client-executable code.",
+        "Create and update canvas files that users can execute and interact with. Currently supports client-executable code.",
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,

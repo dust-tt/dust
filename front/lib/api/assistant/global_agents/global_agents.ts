@@ -68,7 +68,7 @@ function getGlobalAgent({
   webSearchBrowseMCPServerView,
   searchMCPServerView,
   dataSourcesFileSystemMCPServerView,
-  interactiveContentMCPServerView,
+  canvasMCPServerView,
   runAgentMCPServerView,
   toolsetsMCPServerView,
   dataWarehousesMCPServerView,
@@ -82,7 +82,7 @@ function getGlobalAgent({
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
   dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-  interactiveContentMCPServerView: MCPServerViewResource | null;
+  canvasMCPServerView: MCPServerViewResource | null;
   runAgentMCPServerView: MCPServerViewResource | null;
   toolsetsMCPServerView: MCPServerViewResource | null;
   dataWarehousesMCPServerView: MCPServerViewResource | null;
@@ -286,7 +286,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         webSearchBrowseMCPServerView,
         dataSourcesFileSystemMCPServerView,
-        interactiveContentMCPServerView,
+        canvasMCPServerView,
         runAgentMCPServerView,
         dataWarehousesMCPServerView,
         toolsetsMCPServerView,
@@ -358,7 +358,7 @@ export async function getGlobalAgents(
     webSearchBrowseMCPServerView,
     searchMCPServerView,
     dataSourcesFileSystemMCPServerView,
-    interactiveContentMCPServerView,
+    canvasMCPServerView,
     runAgentMCPServerView,
     toolsetsMCPServerView,
     dataWarehousesMCPServerView,
@@ -397,7 +397,7 @@ export async function getGlobalAgents(
     variant === "full"
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
-          "interactive_content"
+          "canvas"
         )
       : null,
     variant === "full"
@@ -469,7 +469,7 @@ export async function getGlobalAgents(
       webSearchBrowseMCPServerView,
       searchMCPServerView,
       dataSourcesFileSystemMCPServerView,
-      interactiveContentMCPServerView,
+      canvasMCPServerView,
       runAgentMCPServerView,
       toolsetsMCPServerView,
       dataWarehousesMCPServerView,

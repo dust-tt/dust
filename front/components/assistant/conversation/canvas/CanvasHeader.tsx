@@ -3,7 +3,7 @@ import React from "react";
 
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 
-interface InteractiveContentHeaderProps {
+interface CanvasHeaderProps {
   children?: React.ReactNode;
   onClose?: () => void;
   onShare?: () => void;
@@ -11,13 +11,13 @@ interface InteractiveContentHeaderProps {
   title: string;
 }
 
-export function InteractiveContentHeader({
+export function CanvasHeader({
   children,
   onClose,
   onShare,
   subtitle,
   title,
-}: InteractiveContentHeaderProps) {
+}: CanvasHeaderProps) {
   return (
     <AppLayoutTitle className="bg-gray-50 @container dark:bg-gray-900">
       <div className="flex h-full min-w-0 max-w-full items-center justify-between gap-2">

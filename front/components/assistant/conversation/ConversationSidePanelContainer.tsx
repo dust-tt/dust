@@ -45,7 +45,7 @@ export default function ConversationSidePanelContainer({
           )}
         />
       )}
-      {/* Panel Container - either Interactive Content or Actions */}
+      {/* Panel Container - either Canvas or Actions */}
       <ResizablePanel
         ref={panelRef}
         minSize={20}

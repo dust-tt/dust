@@ -1,8 +1,8 @@
 import { Spinner } from "@dust-tt/sparkle";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
-import { PublicInteractiveContentHeader } from "@app/components/assistant/conversation/content/PublicInteractiveContentHeader";
+import { CenteredState } from "@app/components/assistant/conversation/canvas/CenteredState";
+import { PublicCanvasHeader } from "@app/components/assistant/conversation/canvas/PublicCanvasHeader";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { usePublicFile } from "@app/lib/swr/files";
 
@@ -26,7 +26,7 @@ export function PublicClientExecutableRenderer({
     return (
       <CenteredState>
         <Spinner size="sm" />
-        <span>Loading interactive content...</span>
+        <span>Loading canvas...</span>
       </CenteredState>
     );
   }
@@ -41,8 +41,8 @@ export function PublicClientExecutableRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <PublicInteractiveContentHeader
-        title={formatFilenameForDisplay(fileName ?? "Interactive Content")}
+      <PublicCanvasHeader
+        title={formatFilenameForDisplay(fileName ?? "Canvas")}
       />
 
       {/* Content */}
