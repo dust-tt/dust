@@ -12,22 +12,40 @@ import { useState } from "react";
 import { useController } from "react-hook-form";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { EditorsSheet } from "@app/components/agent_builder/settings/EditorsSheet";
 import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 
 export function AccessSection() {
-  const { field } = useController<AgentBuilderFormData, "agentSettings.scope">({
+  const { field: scope } = useController<
+    AgentBuilderFormData,
+    "agentSettings.scope"
+  >({
     name: "agentSettings.scope",
   });
+
+  const {
+    field: { value: slackProvider },
+  } = useController<AgentBuilderFormData, "agentSettings.slackProvider">({
+    name: "agentSettings.slackProvider",
+  });
+
   const [showSlackSettings, setShowSlackSettings] = useState(false);
+
+  const { supportedDataSourceViews } = useDataSourceViewsContext();
+
   const getDisplayValue = () => {
-    return field.value === "visible" ? "Published" : "Unpublished";
+    return scope.value === "visible" ? "Published" : "Unpublished";
   };
 
   const getDisplayIcon = () => {
-    return field.value === "visible" ? EyeIcon : EyeSlashIcon;
+    return scope.value === "visible" ? EyeIcon : EyeSlashIcon;
   };
+
+  const slackDataSource = supportedDataSourceViews.find(
+    (dsv) => dsv.dataSource.connectorProvider === slackProvider
+  )?.dataSource;
 
   return (
     <SettingSectionContainer title="Access">
@@ -49,28 +67,33 @@ export function AccessSection() {
               label="Published"
               description="Visible & usable by all members of the workspace."
               icon={EyeIcon}
-              onClick={() => field.onChange("visible")}
+              onClick={() => scope.onChange("visible")}
             />
             <DropdownMenuItem
               label="Unpublished"
               description="Visible & usable by editors only."
               icon={EyeSlashIcon}
-              onClick={() => field.onChange("hidden")}
+              onClick={() => scope.onChange("hidden")}
             />
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button
-          className={field.value === "visible" ? "" : "hidden"}
-          variant="outline"
-          label="Slack preferences"
-          icon={SlackLogo}
-          onClick={() => setShowSlackSettings(true)}
-          type="button"
-        />
-        <SlackSettingsSheet
-          isOpen={showSlackSettings}
-          onOpenChange={() => setShowSlackSettings(false)}
-        />
+
+        {scope.value === "visible" && slackDataSource && (
+          <>
+            <Button
+              variant="outline"
+              label="Slack preferences"
+              icon={SlackLogo}
+              onClick={() => setShowSlackSettings(true)}
+              type="button"
+            />
+            <SlackSettingsSheet
+              isOpen={showSlackSettings}
+              onOpenChange={() => setShowSlackSettings(false)}
+              slackDataSource={slackDataSource}
+            />
+          </>
+        )}
       </div>
     </SettingSectionContainer>
   );

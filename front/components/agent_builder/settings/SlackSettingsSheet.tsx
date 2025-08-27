@@ -19,7 +19,6 @@ import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 
@@ -185,14 +184,16 @@ function SlackChannelsList({
 interface SlackSettingsSheetProps {
   isOpen: boolean;
   onOpenChange: () => void;
+  slackDataSource: DataSourceType;
 }
 
 export function SlackSettingsSheet({
   isOpen,
   onOpenChange,
+  slackDataSource,
 }: SlackSettingsSheetProps) {
   const { owner } = useAgentBuilderContext();
-  const { supportedDataSourceViews } = useDataSourceViewsContext();
+
   const [localSlackChannels, setLocalSlackChannels] = useState<SlackChannel[]>(
     []
   );
@@ -201,12 +202,6 @@ export function SlackSettingsSheet({
     field: { onChange, value: slackChannels },
   } = useController<AgentBuilderFormData, "agentSettings.slackChannels">({
     name: "agentSettings.slackChannels",
-  });
-
-  const {
-    field: { value: slackProvider },
-  } = useController<AgentBuilderFormData, "agentSettings.slackProvider">({
-    name: "agentSettings.slackProvider",
   });
 
   useEffect(() => {
@@ -247,30 +242,6 @@ export function SlackSettingsSheet({
 
     return Array.from(currentChannelIds).some((id) => !localChannelIds.has(id));
   }, [slackChannels, localSlackChannels]);
-
-  if (!slackProvider) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          No Slack integration configured for this workspace.
-        </p>
-      </div>
-    );
-  }
-
-  const slackDataSource = supportedDataSourceViews.find(
-    (dsv) => dsv.dataSource.connectorProvider === slackProvider
-  )?.dataSource;
-
-  if (!slackDataSource) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Slack data source not found.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
