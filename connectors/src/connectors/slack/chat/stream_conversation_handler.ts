@@ -26,6 +26,7 @@ import {
 } from "@connectors/connectors/slack/chat/blocks";
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
 import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
+import { isWebAPIRateLimitedError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
@@ -422,7 +423,6 @@ async function postSlackMessageUpdate(
 
   if (adhereToRateLimit) {
     const shouldSkip = shouldSkipSlackUpdate({ updateCount, lastUpdateTime });
-
     if (shouldSkip) {
       logger.info(
         {
@@ -437,25 +437,44 @@ async function postSlackMessageUpdate(
     }
   }
 
-  const response = await slackClient.chat.update({
-    ...makeMessageUpdateBlocksAndText(
-      conversationUrl,
-      connector.workspaceId,
-      messageUpdate
-    ),
-    channel: slackChannelId,
-    ts: mainMessage.ts as string,
-  });
+  try {
+    const response = await slackClient.chat.update({
+      ...makeMessageUpdateBlocksAndText(
+        conversationUrl,
+        connector.workspaceId,
+        messageUpdate
+      ),
+      channel: slackChannelId,
+      ts: mainMessage.ts as string,
+    });
 
-  if (response.error) {
-    logger.error(
-      {
-        connectorId: connector.id,
-        conversationId: conversation.sId,
-        err: response.error,
-      },
-      "Failed to update Slack message."
-    );
+    if (response.error) {
+      logger.error(
+        {
+          connectorId: connector.id,
+          conversationId: conversation.sId,
+          err: response.error,
+        },
+        "Failed to update Slack message."
+      );
+    }
+  } catch (error) {
+    // When adhering to rate limits, swallow rate limit errors gracefully to avoid displaying the
+    // SLACK_RATE_LIMIT_ERROR_MESSAGE.
+    if (adhereToRateLimit && isWebAPIRateLimitedError(error)) {
+      logger.info(
+        {
+          connectorId: connector.id,
+          conversationId: conversation.sId,
+          updateCount,
+          rateLimitError: true,
+        },
+        "Swallowing Slack rate limit error when adhering to rate limits"
+      );
+    } else {
+      // Re-throw non-rate-limit errors or rate-limit errors when not adhering to rate limits.
+      throw error;
+    }
   }
 
   // Always update state when we make an API call (regardless of success or adhereToRateLimit).
