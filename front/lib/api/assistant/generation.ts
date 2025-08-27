@@ -185,7 +185,7 @@ export async function constructPromptMultiActions(
     );
 
   // Only inject the visualization system prompt if the canvas server is not enabled.
-  if (!hasCanvasServer) {
+  if (agentConfiguration.visualizationEnabled && !hasCanvasServer) {
     guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
   }
 
