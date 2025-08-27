@@ -7,7 +7,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 export type AgentMCPActionType = {
   id: ModelId;
   agentMessageId: ModelId;
-  augmentedInputs: Record<string, unknown>;
+  params: Record<string, unknown>;
   citationsAllocated: number;
   mcpServerConfigurationId: string;
   internalMCPServerName: InternalMCPServerNameType | null;

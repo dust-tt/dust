@@ -324,7 +324,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return {
       id: this.id,
       agentMessageId: this.agentMessageId,
-      augmentedInputs: this.augmentedInputs,
+      params: this.augmentedInputs,
       citationsAllocated: this.citationsAllocated,
       internalMCPServerName: this.internalMCPServerName,
       mcpServerConfigurationId: this.mcpServerConfigurationId,
