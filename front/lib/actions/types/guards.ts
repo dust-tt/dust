@@ -54,12 +54,12 @@ export function isMCPConfigurationWithDataSource(
   );
 }
 
-export function isMCPConfigurationForInternalInteractiveContent(
+export function isMCPConfigurationForInternalCanvas(
   arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "interactive_content")
+    isInternalMCPServerOfName(arg.internalMCPServerId, "canvas")
   );
 }
 
