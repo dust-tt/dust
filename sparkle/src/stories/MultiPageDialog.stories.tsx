@@ -835,7 +835,6 @@ export const ScrollableContent: Story = {
       {
         id: "summary",
         title: "Summary",
-        description: "Review your information",
         icon: Cog6ToothIcon,
         content: (
           <div className="s-space-y-4">
@@ -908,8 +907,7 @@ export const ActionValidation: Story = {
     const validationPages = [
       {
         id: "0",
-        title: "Email Validation Required",
-        description: "Review and approve email sending",
+        title: "Tool Validation Required",
         icon: GmailLogo,
         content: (
           <div className="s-space-y-6 s-pt-4">
@@ -924,7 +922,7 @@ export const ActionValidation: Story = {
               <div className="s-space-y-3">
                 <CollapsibleComponent
                   triggerChildren={
-                    <span className="s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    <span className="s-text-sm s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
                       Details
                     </span>
                   }
@@ -959,8 +957,9 @@ export const ActionValidation: Story = {
                 )}
 
                 <div className="s-mt-4">
-                  <label className="s-copy-sm s-flex s-w-fit s-cursor-pointer s-flex-row s-items-center s-gap-2 s-py-2 s-pr-2 s-font-normal">
+                  <label className="s-copy-xs s-flex s-w-fit s-cursor-pointer s-flex-row s-items-center s-gap-2 s-py-2 s-pr-2 s-font-normal">
                     <Checkbox
+                      size="xs"
                       checked={neverAskAgain}
                       onCheckedChange={(check) => {
                         setNeverAskAgain(!!check);
@@ -992,7 +991,7 @@ export const ActionValidation: Story = {
               <div className="s-space-y-3">
                 <CollapsibleComponent
                   triggerChildren={
-                    <span className="s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    <span className="s-text-sm s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
                       Details
                     </span>
                   }
@@ -1051,7 +1050,7 @@ export const ActionValidation: Story = {
               <div className="s-space-y-3">
                 <CollapsibleComponent
                   triggerChildren={
-                    <span className="s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    <span className="s-text-sm s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
                       Details
                     </span>
                   }
@@ -1131,7 +1130,7 @@ export const ActionValidation: Story = {
           pages={validationPages}
           currentPageId={currentPageId}
           onPageChange={setCurrentPageId}
-          size="lg"
+          size="md"
           isAlertDialog
           showNavigation={true}
           showHeaderNavigation={false}
@@ -1140,14 +1139,14 @@ export const ActionValidation: Story = {
             <div className="s-flex s-flex-row s-justify-end s-gap-2">
               <Button
                 variant="outline"
-                label={isLastPage ? "Decline" : "Skip"}
+                label={"Decline"}
                 onClick={handleDecline}
                 disabled={isValidating}
                 isLoading={isValidating}
               />
               <Button
                 variant="highlight"
-                label={isLastPage ? "Allow" : "Next"}
+                label={"Allow"}
                 autoFocus
                 onClick={handleApprove}
                 disabled={isValidating}

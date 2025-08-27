@@ -2,7 +2,7 @@ import { cva } from "class-variance-authority";
 import * as React from "react";
 import { useState } from "react";
 
-import { Button, Icon, ScrollArea, Separator } from "@sparkle/components";
+import { Avatar, Button, ScrollArea, Separator } from "@sparkle/components";
 import {
   Dialog,
   DialogClose,
@@ -51,7 +51,10 @@ const MultiPageDialogFooter = ({
 }: MultiPageDialogFooterProps) => {
   const content = (
     <div
-      className={cn("s-flex s-flex-none s-flex-col s-gap-3 s-p-4", className)}
+      className={cn(
+        "s-flex s-flex-none s-flex-col s-gap-3 s-px-4 s-py-2",
+        className
+      )}
       {...props}
     >
       {children}
@@ -235,15 +238,16 @@ const MultiPageDialogContent = React.forwardRef<
                     }
                   )}
                 >
-                  {currentPage.icon && (
-                    <Icon
-                      visual={currentPage.icon}
-                      size="lg"
-                      className="s-text-foreground"
-                    />
-                  )}
                   <div>
-                    <DialogTitle>{currentPage.title}</DialogTitle>
+                    <DialogTitle
+                      visual={
+                        currentPage.icon ? (
+                          <Avatar icon={currentPage.icon} size="sm" />
+                        ) : undefined
+                      }
+                    >
+                      {currentPage.title}
+                    </DialogTitle>
                     {currentPage.description && (
                       <DialogDescription>
                         {currentPage.description}
@@ -255,11 +259,11 @@ const MultiPageDialogContent = React.forwardRef<
               {showNavigation && pages.length > 1 && (
                 <div
                   className={cn(
-                    "s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night",
+                    "s-text-xs s-font-semibold s-text-muted-foreground-night",
                     !hideCloseButton && "s-pr-8"
                   )}
                 >
-                  {currentPageIndex + 1} / {pages.length}
+                  {currentPageIndex + 1}/{pages.length}
                 </div>
               )}
             </div>
@@ -291,7 +295,7 @@ const MultiPageDialogContent = React.forwardRef<
               <ScrollArea
                 className={currentPage.fixedContent ? "s-flex-1" : "s-h-full"}
               >
-                <div className="s-flex s-flex-col s-gap-2 s-px-5 s-py-4">
+                <div className="s-flex s-flex-col s-gap-2 s-px-5">
                   {currentPage.content}
                 </div>
               </ScrollArea>
