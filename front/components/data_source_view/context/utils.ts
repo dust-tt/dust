@@ -297,6 +297,26 @@ export function getLatestNodeFromNavigationHistory(
   return null;
 }
 
+export function getSpaceNameFromTreeItem(
+  item: DataSourceBuilderTreeItemType,
+  spaces: SpaceType[]
+): string | null {
+  // Direct space access if the item is a space type
+  if (item.type === "space") {
+    return item.space.name;
+  }
+
+  // For other types, extract space ID from path structure
+  const pathParts = item.path.split("/");
+  if (pathParts.length > 1) {
+    const spaceId = pathParts[1];
+    const space = spaces.find((s) => s.sId === spaceId);
+    return space?.name ?? null;
+  }
+
+  return null;
+}
+
 export function getVisualForTreeItem(
   item: DataSourceBuilderTreeItemType,
   isDark = false

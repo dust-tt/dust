@@ -9,6 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useWatch } from "react-hook-form";
 
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { DataSourceViewTagsFilterDropdown } from "@app/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { CONFIGURATION_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";

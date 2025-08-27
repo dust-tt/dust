@@ -4,16 +4,21 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
   ContextItem,
+  Icon,
   LoadingBlock,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
-import { getVisualForTreeItem } from "@app/components/data_source_view/context/utils";
+import {
+  getSpaceNameFromTreeItem,
+  getVisualForTreeItem,
+} from "@app/components/data_source_view/context/utils";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useNodePath } from "@app/hooks/useNodePath";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
@@ -22,28 +27,40 @@ import { pluralize, removeNulls } from "@app/types";
 
 function KnowledgeFooterItemReadablePath({
   node,
+  item,
 }: {
-  node: DataSourceViewContentNode;
+  node?: DataSourceViewContentNode;
+  item: DataSourceBuilderTreeItemType;
 }) {
   const { owner } = useAgentBuilderContext();
+  const { spaces } = useSpacesContext();
   const { fullPath, isLoading } = useNodePath({
     node,
     owner,
   });
+  const spaceName = getSpaceNameFromTreeItem(item, spaces);
 
   return (
     <div>
-      {isLoading ? (
+      {node && isLoading ? (
         <LoadingBlock className="h-4 w-[250px]" />
       ) : (
         <span className="text-xs">
-          {removeNulls(
-            fullPath.map((node, index) =>
-              index === 0
-                ? getDataSourceNameFromView(node.dataSourceView)
-                : node.parentTitle
-            )
-          ).join("/")}
+          {item.type === "data_source" ? (
+            spaceName || ""
+          ) : (
+            <>
+              {spaceName && `${spaceName} / `}
+              {node &&
+                removeNulls(
+                  fullPath.map((node, index) =>
+                    index === 0
+                      ? getDataSourceNameFromView(node.dataSourceView)
+                      : node.parentTitle
+                  )
+                ).join(" / ")}
+            </>
+          )}
         </span>
       )}
     </div>
@@ -63,7 +80,7 @@ function KnowledgeFooterItem({
     <ContextItem
       key={item.path}
       title={item.name}
-      visual={<ContextItem.Visual visual={VisualComponent} />}
+      visual={<Icon size="sm" visual={VisualComponent} />}
       action={
         <Button
           size="mini"
@@ -73,8 +90,11 @@ function KnowledgeFooterItem({
         />
       }
       subElement={
-        item.type === "node" && (
-          <KnowledgeFooterItemReadablePath node={item.node} />
+        (item.type === "node" || item.type === "data_source") && (
+          <KnowledgeFooterItemReadablePath
+            node={item.type === "node" ? item.node : undefined}
+            item={item}
+          />
         )
       }
     />
