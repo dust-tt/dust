@@ -682,7 +682,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "list_solution_articles",
-    "Lists solution articles",
+    "Lists solution articles (returns metadata only, use get_solution_article for full content)",
     {
       folder_id: z.number().optional().describe("Filter by folder ID"),
       category_id: z.number().optional().describe("Filter by category ID"),
@@ -710,9 +710,48 @@ const createServer = (): McpServer => {
             `solutions/articles?${params.toString()}`
           );
 
+          // Filter out article content to reduce response size
+          const articles = result.articles || [];
+          const articlesMetadata = articles.map((article: any) => ({
+            id: article.id,
+            title: article.title,
+            folder_id: article.folder_id,
+            category_id: article.category_id,
+            status: article.status,
+            tags: article.tags,
+            created_at: article.created_at,
+            updated_at: article.updated_at,
+            // Exclude description/description_text to reduce payload
+          }));
+
           return makeMCPToolJSONSuccess({
-            message: `Retrieved ${result.articles?.length || 0} solution articles`,
-            result: result.articles || [],
+            message: `Retrieved ${articlesMetadata.length} solution articles (metadata only)`,
+            result: articlesMetadata,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_solution_article",
+    "Gets detailed information about a specific solution article including its full content",
+    {
+      article_id: z.number().describe("The ID of the solution article"),
+    },
+    async ({ article_id }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `solutions/articles/${article_id}`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: "Solution article retrieved successfully",
+            result: result.article,
           });
         },
         authInfo,
