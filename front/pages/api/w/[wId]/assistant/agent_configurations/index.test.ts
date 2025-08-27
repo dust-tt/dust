@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -15,27 +15,6 @@ import handler from "./index";
 
 let testAgents: LightAgentConfigurationType[];
 let workspaceId: string;
-
-// Mock Redis
-vi.mock("@app/lib/api/redis", () => ({
-  runOnRedis: vi
-    .fn()
-    .mockImplementation(
-      async (opts: unknown, fn: (client: any) => Promise<unknown>) => {
-        // Mock Redis client
-        const mockRedisClient = {
-          get: vi.fn(),
-          set: vi.fn(),
-          ttl: vi.fn(),
-          zAdd: vi.fn(),
-          expire: vi.fn(),
-          zRange: vi.fn(),
-          hGetAll: vi.fn().mockResolvedValue([]),
-        };
-        return fn(mockRedisClient);
-      }
-    ),
-}));
 
 export async function setupAgentOwner(
   workspace: LightWorkspaceType,
