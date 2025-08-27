@@ -9,6 +9,8 @@ import { Op } from "sequelize";
 
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
   isToolExecutionStatusBlocked,
@@ -48,14 +50,16 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     model: ModelStaticWorkspaceAware<AgentMCPActionModel>,
     blob: Attributes<AgentMCPActionModel>,
     // TODO(DURABLE-AGENTS, 2025-08-21): consider using the resource instead of the model.
-    readonly stepContent: NonAttribute<AgentStepContentModel>
+    readonly stepContent: NonAttribute<AgentStepContentModel>,
+    readonly internalMCPServerName: InternalMCPServerNameType | null
   ) {
     super(model, blob);
   }
 
   private static async baseFetch(
     auth: Authenticator,
-    { where, limit, order }: ResourceFindOptions<AgentMCPActionModel> = {}
+    { where, limit, order }: ResourceFindOptions<AgentMCPActionModel>,
+    transaction?: Transaction
   ): Promise<AgentMCPActionResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
@@ -66,6 +70,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       },
       limit,
       order,
+      transaction,
     });
 
     const stepContents = await AgentStepContentModel.findAll({
@@ -84,7 +89,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
       // Each action must have a step content.
       assert(stepContent, "Step content not found.");
-      return new this(this.model, a.get(), stepContent);
+      const internalMCPServerName = getInternalMCPServerNameFromSId(
+        a.toolConfiguration.toolServerId
+      );
+
+      return new this(this.model, a.get(), stepContent, internalMCPServerName);
     });
   }
 
@@ -94,6 +103,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<AgentMCPActionResource> {
     const workspace = auth.getNonNullableWorkspace();
+    const internalMCPServerName = getInternalMCPServerNameFromSId(
+      blob.toolConfiguration.toolServerId
+    );
+
     const action = await AgentMCPActionModel.create(
       {
         ...blob,
@@ -111,7 +124,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
     assert(stepContent, "Step content not found.");
 
-    return new this(this.model, action.get(), stepContent);
+    return new this(
+      this.model,
+      action.get(),
+      stepContent,
+      internalMCPServerName
+    );
   }
 
   static async fetchByModelIdWithAuth(
@@ -333,6 +351,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       agentMessageId: this.agentMessageId,
       augmentedInputs: this.augmentedInputs,
       citationsAllocated: this.citationsAllocated,
+      internalMCPServerName: this.internalMCPServerName,
       mcpServerConfigurationId: this.mcpServerConfigurationId,
       status: this.status,
       stepContentId: this.stepContentId,
