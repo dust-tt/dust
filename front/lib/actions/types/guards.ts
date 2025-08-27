@@ -169,6 +169,15 @@ export function isMCPInternalWebsearch(
   );
 }
 
+export function isMCPInternalRunAgent(
+  arg: MCPToolConfigurationType
+): arg is ServerSideMCPToolConfigurationType {
+  return (
+    isServerSideMCPToolConfiguration(arg) &&
+    isInternalMCPServerOfName(arg.internalMCPServerId, "run_agent")
+  );
+}
+
 export function isMCPInternalSlack(
   arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
