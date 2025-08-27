@@ -15,14 +15,7 @@ export function listGeneratedFiles(
         action.getGeneratedFiles()
       );
 
-      for (const file of generatedFiles) {
-        files.push({
-          fileId: file.fileId,
-          title: file.title,
-          contentType: file.contentType,
-          snippet: file.snippet,
-        });
-      }
+      files.push(...generatedFiles);
     }
   }
 
