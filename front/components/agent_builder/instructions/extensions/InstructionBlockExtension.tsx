@@ -112,6 +112,8 @@ function focusInsideCurrentInstructionBlock(editor: Editor): void {
 function queueFocusInsideCurrentInstructionBlock(editor: Editor): void {
   if (editor.isDestroyed || !editor.view) return;
   requestAnimationFrame(() => {
+    // Double-check lifecycle at callback time to avoid acting on a destroyed editor
+    if (editor.isDestroyed || !editor.view) return;
     focusInsideCurrentInstructionBlock(editor);
   });
 }
