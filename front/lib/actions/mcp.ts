@@ -582,7 +582,6 @@ export async function* runToolWithStreaming(
       action,
       agentConfiguration,
       agentMessage,
-      actionBaseParams,
       status,
       errorMessage,
     });
@@ -653,12 +652,25 @@ export async function createMCPAction(
 
 type HandleErrorParams = {
   action: AgentMCPActionResource;
-  actionBaseParams: ActionBaseParams;
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
   errorMessage: string;
   status: ToolExecutionStatus;
 };
+
+// Yields tool_error (stops conversation) - for auth/validation failures.
+type YieldAsErrorParams = BaseErrorParams & {
+  yieldAsError: true;
+  errorCode?: string;
+  errorMetadata?: Record<string, string | number | boolean> | null;
+};
+
+// Yields tool_success (continues conversation) - for timeouts/denials/execution errors.
+type YieldAsSuccessParams = BaseErrorParams & {
+  yieldAsError: false;
+};
+
+type HandleErrorParams = YieldAsErrorParams | YieldAsSuccessParams;
 
 /**
  * Handles MCP action errors with type-safe discriminated union based on error severity.
@@ -666,14 +678,13 @@ type HandleErrorParams = {
 export async function handleMCPActionError(
   params: HandleErrorParams
 ): Promise<MCPErrorEvent | MCPSuccessEvent> {
-  const { agentConfiguration, agentMessage, errorMessage, status } = params;
+  const { action, agentConfiguration, agentMessage, errorMessage, status } =
+    params;
 
   const outputContent: CallToolResult["content"][number] = {
     type: "text",
     text: errorMessage,
   };
-
-  const { action } = params;
 
   await AgentMCPActionOutputItem.create({
     workspaceId: action.workspaceId,
