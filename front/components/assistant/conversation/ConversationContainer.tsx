@@ -1,8 +1,14 @@
-import { Page } from "@dust-tt/sparkle";
+import {
+  ContentMessageAction,
+  ContentMessageInline,
+  InformationCircleIcon,
+  Page,
+} from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import { useActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowserContainer";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
@@ -34,7 +40,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { conjugate, Err, Ok, pluralize, removeNulls } from "@app/types";
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
@@ -57,14 +63,19 @@ export function ConversationContainer({
   const { animate, setAnimate, setSelectedAssistant } =
     useContext(InputBarContext);
 
+  const {
+    hasPendingValidations,
+    totalPendingValidations,
+    showValidationDialog,
+  } = useActionValidationContext();
+
   const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
   const { scrollConversationsToTop } = useConversationsNavigation();
 
   const router = useRouter();
 
-  // TODO(DURABLE_AGENT 2025-07-22): Remove this once we have a proper way to handle
-  // asynchronous loops.
-  const { async } = router.query;
+  const { execution } = router.query;
+  const executionMode = typeof execution === "string" ? execution : "auto";
 
   const sendNotification = useSendNotification();
 
@@ -75,13 +86,13 @@ export function ConversationContainer({
     },
   });
 
-  const { mutateMessages } = useConversationMessages({
+  const { mutateMessages, isMessagesError } = useConversationMessages({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
     limit: 50,
   });
 
-  const setInputbarMention = useCallback(
+  const setInputBarMention = useCallback(
     (agentId: string) => {
       setSelectedAssistant({ configurationId: agentId });
       setAnimate(true);
@@ -91,9 +102,9 @@ export function ConversationContainer({
 
   useEffect(() => {
     if (agentIdToMention) {
-      setInputbarMention(agentIdToMention);
+      setInputBarMention(agentIdToMention);
     }
-  }, [agentIdToMention, setInputbarMention]);
+  }, [agentIdToMention, setInputBarMention]);
 
   useEffect(() => {
     if (animate) {
@@ -134,7 +145,7 @@ export function ConversationContainer({
             user,
             conversationId: activeConversationId,
             messageData,
-            forceAsync: async === "true",
+            executionMode,
           });
 
           // Replace placeholder message with API response.
@@ -226,7 +237,7 @@ export function ConversationContainer({
           clientSideMCPServerIds: removeNulls([serverId]),
           selectedMCPServerViewIds,
         },
-        forceAsync: async === "true",
+        executionMode,
       });
 
       setIsSubmitting(false);
@@ -261,7 +272,7 @@ export function ConversationContainer({
       }
     },
     [
-      async,
+      executionMode,
       isSubmitting,
       mutateConversations,
       owner,
@@ -282,7 +293,7 @@ export function ConversationContainer({
       const observer = new IntersectionObserver(
         () => {
           if (assistantToMention.current) {
-            setInputbarMention(assistantToMention.current.sId);
+            setInputBarMention(assistantToMention.current.sId);
             assistantToMention.current = null;
           }
         },
@@ -297,7 +308,7 @@ export function ConversationContainer({
       }
     };
     router.events.on("routeChangeComplete", handleRouteChange);
-  }, [setAnimate, setInputbarMention, router, setSelectedAssistant]);
+  }, [setAnimate, setInputBarMention, router, setSelectedAssistant]);
 
   const [greeting, setGreeting] = useState<string>("");
   useEffect(() => {
@@ -312,6 +323,23 @@ export function ConversationContainer({
   );
 
   const { startConversationRef } = useWelcomeTourGuide();
+
+  if (isMessagesError) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <div className="flex flex-col gap-3 text-center">
+          <div>
+            <span className="text-4xl leading-10 text-foreground dark:text-foreground-night">
+              🚫
+            </span>
+            <p className="copy-sm leading-tight text-muted-foreground dark:text-muted-foreground-night">
+              You don't have access to this conversation.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <DropzoneContainer
@@ -337,6 +365,26 @@ export function ConversationContainer({
         </div>
       )}
 
+      {activeConversationId && hasPendingValidations && (
+        <ContentMessageInline
+          icon={InformationCircleIcon}
+          variant="primary"
+          className="mb-5 flex max-h-screen w-full sm:w-full sm:max-w-3xl"
+        >
+          <span className="font-bold">
+            {totalPendingValidations} action
+            {pluralize(totalPendingValidations)}
+          </span>{" "}
+          require{conjugate(totalPendingValidations)} manual approval
+          <ContentMessageAction
+            label="Review actions"
+            variant="outline"
+            size="xs"
+            onClick={() => showValidationDialog()}
+          />
+        </ContentMessageInline>
+      )}
+
       <FixedAssistantInputBar
         owner={owner}
         onSubmit={
@@ -344,11 +392,12 @@ export function ConversationContainer({
         }
         stickyMentions={stickyMentions}
         conversationId={activeConversationId}
+        disable={activeConversationId !== null && hasPendingValidations}
       />
 
       {!activeConversationId && (
         <AssistantBrowserContainer
-          onAgentConfigurationClick={setInputbarMention}
+          onAgentConfigurationClick={setInputBarMention}
           setAssistantToMention={(assistant) => {
             assistantToMention.current = assistant;
           }}

@@ -67,7 +67,7 @@ export function WorkspaceInfoTable({
     <div className="flex justify-between gap-3">
       <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-md flex-grow pb-4 font-bold">Workspace info:</h2>
+          <h2 className="text-md flex-grow pb-4 font-bold">Workspace info</h2>
         </div>
         <PokeTable>
           <PokeTableBody>
@@ -131,6 +131,9 @@ export function WorkspaceInfoTable({
                     ? "⚠️"
                     : "❌"}
               </PokeTableCell>
+            </PokeTableRow>
+            <PokeTableRow>
+              <PokeTableCell>Verified Domains</PokeTableCell>
               <PokeTableCell>
                 {workspaceVerifiedDomains.map((d) => d.domain).join(", ")}
               </PokeTableCell>

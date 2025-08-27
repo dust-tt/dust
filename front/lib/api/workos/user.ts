@@ -24,7 +24,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
-import { Err, normalizeError, Ok, sha256 } from "@app/types";
+import { Err, Ok, sha256 } from "@app/types";
 
 export type SessionCookie = {
   sessionData: string;
@@ -38,23 +38,6 @@ export function getUserNicknameFromEmail(email: string) {
   return email.split("@")[0] ?? "";
 }
 
-export function getDomainCookieClauseFromRequest(
-  req: NextApiRequest | GetServerSidePropsContext["req"]
-) {
-  // Get domain from request URL, falling back to host header if not available
-  const host = req.headers.host;
-  if (host) {
-    const [hostName] = host.split(":");
-
-    if (hostName.endsWith("dust.tt")) {
-      return "dust.tt";
-    }
-
-    return hostName;
-  }
-  return "";
-}
-
 export async function getWorkOSSession(
   req: NextApiRequest | GetServerSidePropsContext["req"],
   res: NextApiResponse | GetServerSidePropsContext["res"]
@@ -62,28 +45,29 @@ export async function getWorkOSSession(
   const workOSSessionCookie = req.cookies["workos_session"];
   if (workOSSessionCookie) {
     const result = await getWorkOSSessionFromCookie(workOSSessionCookie);
-    const domain = getDomainCookieClauseFromRequest(req);
+    const domain = config.getWorkOSSessionCookieDomain();
     if (result.cookie === "") {
       if (domain) {
         res.setHeader("Set-Cookie", [
-          "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
-          `workos_session=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
-          `workos_session=; Domain=.${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
-          "sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
-          `sessionType=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
-          `sessionType=; Domain=.${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+          "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax",
+          `workos_session=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax`,
         ]);
       } else {
         res.setHeader("Set-Cookie", [
-          "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax",
-          "sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
+          "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax",
         ]);
       }
     } else if (result.cookie) {
-      res.setHeader("Set-Cookie", [
-        `workos_session=${result.cookie}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
-        `sessionType=workos; Path=/; Secure; SameSite=Lax; Max-Age=2592000`,
-      ]);
+      if (domain) {
+        res.setHeader("Set-Cookie", [
+          "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax",
+          `workos_session=${result.cookie}; Domain=${domain}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+        ]);
+      } else {
+        res.setHeader("Set-Cookie", [
+          `workos_session=${result.cookie}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+        ]);
+      }
     }
 
     return result.session;
@@ -190,6 +174,7 @@ export async function getWorkOSSessionFromCookie(
       session: {
         type: "workos" as const,
         sessionId: r.sessionId,
+        region,
         user: {
           email: r.user.email,
           email_verified: r.user.emailVerified,
@@ -350,16 +335,4 @@ export async function fetchOrCreateWorkOSUserWithEmail({
   localLogger.info("Found WorkOS user for webhook event.");
 
   return new Ok(existingUser);
-}
-
-export async function deleteUserFromWorkOS(
-  userId: string
-): Promise<Result<undefined, Error>> {
-  try {
-    await getWorkOS().userManagement.deleteUser(userId);
-    return new Ok(undefined);
-  } catch (error) {
-    logger.error({ error }, "Failed to delete user from WorkOS");
-    return new Err(normalizeError(error));
-  }
 }

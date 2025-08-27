@@ -12,11 +12,11 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 
 type AgentBuilderRightPanelTabType = "testing" | "performance" | "template";
 
@@ -75,7 +75,7 @@ function PanelHeader({
           </ScrollArea>
         </div>
       ) : (
-        <div className="flex h-full w-full items-end justify-center">
+        <div className="flex h-full w-full items-end justify-center pb-3.5">
           <Button
             icon={SidebarRightOpenIcon}
             size="sm"
@@ -127,18 +127,21 @@ function CollapsedTabs({ onTabSelect, hasTemplate }: CollapsedTabsProps) {
 interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
   agentConfigurationSId?: string;
-  assistantTemplate: FetchAssistantTemplateResponse | null;
 }
 
 function ExpandedContent({
   selectedTab,
   agentConfigurationSId,
-  assistantTemplate,
 }: ExpandedContentProps) {
+  const { assistantTemplate, setPresetActionToAdd } = useAgentBuilderContext();
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {selectedTab === "template" && assistantTemplate && (
-        <AgentBuilderTemplate assistantTemplate={assistantTemplate} />
+        <AgentBuilderTemplate
+          assistantTemplate={assistantTemplate}
+          onAddPresetAction={setPresetActionToAdd}
+        />
       )}
       {selectedTab === "testing" && (
         <div className="min-h-0 flex-1">
@@ -158,15 +161,14 @@ function ExpandedContent({
 
 interface AgentBuilderRightPanelProps {
   agentConfigurationSId?: string;
-  assistantTemplate: FetchAssistantTemplateResponse | null;
 }
 
 export function AgentBuilderRightPanel({
   agentConfigurationSId,
-  assistantTemplate,
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
+  const { assistantTemplate } = useAgentBuilderContext();
 
   const hasTemplate = !!assistantTemplate;
 
@@ -200,7 +202,6 @@ export function AgentBuilderRightPanel({
         <ExpandedContent
           selectedTab={selectedTab}
           agentConfigurationSId={agentConfigurationSId}
-          assistantTemplate={assistantTemplate}
         />
       ) : (
         <CollapsedTabs

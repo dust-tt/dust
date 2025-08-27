@@ -17,7 +17,10 @@ import type {
   ReadTableChunkParams,
   RelocationBlob,
 } from "@app/temporal/relocation/activities/types";
-import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
+import {
+  withJSONSerializationRetry,
+  writeToRelocationStorage,
+} from "@app/temporal/relocation/lib/file_storage/relocation";
 import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
 import type { ModelId } from "@app/types";
@@ -163,6 +166,11 @@ export async function readFrontTableChunk({
 
   localLogger.info("[SQL Table] Reading table chunk");
 
+  let realLimit = limit;
+  if (tableName === "agent_mcp_action_output_items" && limit > 100) {
+    realLimit = 100;
+  }
+
   const workspace = await getWorkspaceInfos(workspaceId);
   assert(workspace, "Workspace not found");
 
@@ -174,7 +182,7 @@ export async function readFrontTableChunk({
      ORDER BY id
      LIMIT :limit`,
     {
-      replacements: { workspaceId: workspace.id, limit },
+      replacements: { workspaceId: workspace.id, limit: realLimit },
       type: QueryTypes.SELECT,
       raw: true,
     }
@@ -188,23 +196,42 @@ export async function readFrontTableChunk({
     },
   };
 
-  const dataPath = await writeToRelocationStorage(blob, {
-    workspaceId,
-    type: "front",
-    operation: `read_table_chunk_${tableName}`,
-    fileName,
-  });
+  return withJSONSerializationRetry<{
+    dataPath: string | null;
+    hasMore: boolean;
+    lastId: number | undefined;
+    nextLimit: number | null;
+  }>(
+    async () => {
+      const dataPath = await writeToRelocationStorage(blob, {
+        workspaceId,
+        type: "front",
+        operation: `read_table_chunk_${tableName}`,
+        fileName,
+      });
 
-  localLogger.info(
-    {
-      dataPath,
+      localLogger.info(
+        {
+          dataPath,
+        },
+        "[SQL Table] Table chunk read successfully"
+      );
+
+      return {
+        dataPath,
+        hasMore: rows.length === realLimit,
+        lastId: rows[rows.length - 1]?.id ?? lastId,
+        nextLimit: null,
+      };
     },
-    "[SQL Table] Table chunk read successfully"
+    {
+      fallbackResult: {
+        dataPath: null,
+        hasMore: true,
+        lastId,
+      },
+      limit: realLimit,
+      localLogger,
+    }
   );
-
-  return {
-    dataPath,
-    hasMore: rows.length === limit,
-    lastId: rows[rows.length - 1]?.id ?? lastId,
-  };
 }

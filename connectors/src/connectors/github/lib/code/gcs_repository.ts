@@ -168,6 +168,18 @@ export class GCSRepositoryManager {
     const gcsPath = `${gcsBasePath}/${dirPath}/${DIRECTORY_PLACEHOLDER_FILE}`;
 
     try {
+      // Check if the file already exists before creating it
+      const file = this.bucket.file(gcsPath);
+      const [exists] = await file.exists();
+
+      if (exists) {
+        logger.info(
+          { dirPath, gcsPath },
+          "Directory placeholder already exists, skipping creation"
+        );
+        return;
+      }
+
       await this.uploadFile(gcsPath, "", {
         contentType: "text/plain",
         metadata: {

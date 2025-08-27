@@ -12,10 +12,10 @@ import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import logger from "@app/logger/logger";
+import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
 import type { ConversationType, Result } from "@app/types";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
 
@@ -86,9 +86,6 @@ export async function validateAction(
     "Tool validation request"
   );
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const hasAsyncLoopFeature = featureFlags.includes("async_loop");
-
   const {
     agentMessageId,
     agentMessageVersion,
@@ -98,7 +95,7 @@ export async function validateAction(
     messageId,
   });
 
-  const action = await getMCPAction(actionId);
+  const action = await getMCPAction(auth, actionId);
   if (!action) {
     return new Err(new Error(`Action not found: ${actionId}`));
   }
@@ -112,10 +109,36 @@ export async function validateAction(
     );
   }
 
+  if (action.status !== "blocked_validation_required") {
+    return new Err(new Error(`Action is not blocked: ${action.status}`));
+  }
+
   const actionUpdated = await updateMCPApprovalState(
     action,
     getMCPApprovalStateFromUserApprovalState(approvalState)
   );
+
+  if (approvalState === "always_approved") {
+    const user = auth.user();
+    if (user) {
+      const toolServerId = action.toolConfiguration?.toolServerId;
+      const actionBaseParams = await buildActionBaseParams({
+        agentMessageId: action.agentMessageId,
+        citationsAllocated: action.citationsAllocated,
+        mcpServerConfigurationId: action.mcpServerConfigurationId,
+        mcpServerId: action.toolConfiguration.toolServerId,
+        step: agentStepContent.step,
+        stepContentId: action.stepContentId,
+        status: action.status,
+      });
+      const toolName = actionBaseParams.functionCallName;
+
+      await user.appendToMetadata(
+        `toolsValidations:${toolServerId}`,
+        `${toolName}`
+      );
+    }
+  }
 
   if (!actionUpdated) {
     logger.info(
@@ -167,7 +190,6 @@ export async function validateAction(
       inMemoryData: runAgentDataRes.value,
     },
     {
-      forceAsynchronousLoop: hasAsyncLoopFeature,
       // Resume from the step where the action was created.
       startStep: agentStepContent.step,
     }

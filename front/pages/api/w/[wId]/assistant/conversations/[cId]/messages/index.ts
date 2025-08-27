@@ -10,7 +10,6 @@ import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { statsDClient } from "@app/logger/statsDClient";
 import { apiError } from "@app/logger/withlogging";
@@ -20,6 +19,7 @@ import type {
   WithAPIErrorResponse,
 } from "@app/types";
 import { InternalPostMessagesRequestBodySchema } from "@app/types";
+import { ExecutionModeSchema } from "@app/types/assistant/agent_run";
 
 async function handler(
   req: NextApiRequest,
@@ -44,11 +44,13 @@ async function handler(
 
   const conversationId = req.query.cId;
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const hasAsyncLoopFeature = featureFlags.includes("async_loop");
-  const forceAsynchronousLoop =
-    req.query.async === "true" ||
-    (req.query.async !== "false" && hasAsyncLoopFeature);
+  const executionModeParseResult = ExecutionModeSchema.safeParse(
+    req.query.execution
+  );
+
+  const executionMode = executionModeParseResult.success
+    ? executionModeParseResult.data
+    : undefined;
 
   switch (req.method) {
     case "GET":
@@ -164,7 +166,7 @@ async function handler(
         },
         // For now we never skip tools when interacting with agents from the web client.
         skipToolsValidation: false,
-        forceAsynchronousLoop,
+        executionMode,
       });
 
       if (messageRes.isErr()) {

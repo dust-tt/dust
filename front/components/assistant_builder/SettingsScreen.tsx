@@ -1,8 +1,11 @@
 import {
   Avatar,
   Button,
+  CardGrid,
+  ClockIcon,
   Collapsible,
   CollapsibleContent,
+  EmptyCTA,
   Icon,
   Input,
   Page,
@@ -23,11 +26,14 @@ import React, {
   useState,
 } from "react";
 
+import { ScheduleEditionModal } from "@app/components/agent_builder/triggers/ScheduleEditionModal";
+import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard";
 import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
 import {
   buildSelectedEmojiType,
   makeUrlForEmojiAndBackground,
 } from "@app/components/assistant_builder/avatar_picker/utils";
+import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
@@ -35,18 +41,20 @@ import {
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
 import { TagsSelector } from "@app/components/assistant_builder/TagsSelector";
-import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
-import { useBuilderActionInfo } from "@app/components/assistant_builder/useBuilderActionInfo";
+import type { AssistantBuilderTriggerType } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MembersList } from "@app/components/members/MembersList";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { emptyArray } from "@app/lib/swr/swr";
 import { useTags } from "@app/lib/swr/tags";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { debounce } from "@app/lib/utils/debounce";
 import type {
   APIError,
   BuilderEmojiSuggestionsType,
   BuilderSuggestionsType,
   DataSourceType,
+  LightWorkspaceType,
   Result,
   UserType,
   WorkspaceType,
@@ -150,33 +158,36 @@ type SettingsScreenProps = {
   owner: WorkspaceType;
   agentConfigurationId: string | null;
   baseUrl: string;
-  builderState: AssistantBuilderState;
   initialHandle: string | undefined;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
   assistantHandleError: string | null;
   descriptionError: string | null;
   slackChannelSelected: SlackChannel[];
   slackDataSource: DataSourceType | undefined;
   setSelectedSlackChannels: (channels: SlackChannel[]) => void;
   currentUser: UserType | null;
+  isTriggersLoading: boolean;
 };
 
 export default function SettingsScreen({
   owner,
-  builderState,
   initialHandle,
-  setBuilderState,
-  setEdited,
   assistantHandleError,
   descriptionError,
   slackChannelSelected,
   slackDataSource,
   setSelectedSlackChannels,
   currentUser,
+  isTriggersLoading,
 }: SettingsScreenProps) {
+  const {
+    nonGlobalSpacesUsedInActions,
+    builderState,
+    setBuilderState,
+    setEdited,
+  } = useAssistantBuilderContext();
+
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
@@ -201,8 +212,6 @@ export default function SettingsScreen({
       setNameSuggestions(nameSuggestions.value);
     }
   }, [owner, builderState.instructions, builderState.description]);
-
-  const { nonGlobalSpacesUsedInActions } = useBuilderActionInfo(builderState);
 
   const updateEmojiFromSuggestions = useCallback(async () => {
     let avatarUrl: string | null = null;
@@ -521,13 +530,14 @@ export default function SettingsScreen({
             </div>
           </div>
         </div>
-        <TagsSection
-          owner={owner}
-          builderState={builderState}
-          setBuilderState={setBuilderState}
-          setEdited={setEdited}
-        />
+        <TagsSection owner={owner} />
 
+        {hasFeature("hootl") && (
+          <TriggersSection
+            owner={owner}
+            isTriggersLoading={isTriggersLoading}
+          />
+        )}
         <div className="flex flex-row gap-4">
           <div className="flex flex-[1_0_0] flex-col gap-2">
             <Page.SectionHeader title="Access" />
@@ -624,9 +634,6 @@ export default function SettingsScreen({
           currentUser={currentUser}
           isVisible={isVisible}
           owner={owner}
-          builderState={builderState}
-          setBuilderState={setBuilderState}
-          setEdited={setEdited}
         />
       </div>
     </>
@@ -753,20 +760,16 @@ const onRowClick = () => {};
 function EditorsMembersList({
   currentUser,
   owner,
-  builderState,
-  setBuilderState,
-  setEdited,
   isVisible,
 }: {
   currentUser: UserType | null;
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
+
   isVisible: boolean;
 }) {
+  const { builderState, setBuilderState, setEdited } =
+    useAssistantBuilderContext();
+
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -787,7 +790,9 @@ function EditorsMembersList({
   );
 
   const members = useMemo(
-    () => builderState.editors?.map((m) => ({ ...m, workspace: owner })) ?? [],
+    () =>
+      builderState.editors?.map((m) => ({ ...m, workspace: owner })) ??
+      emptyArray(),
     [builderState, owner]
   );
 
@@ -847,19 +852,133 @@ function EditorsMembersList({
   );
 }
 
-function TagsSection({
+function TriggersSection({
   owner,
-  builderState,
-  setBuilderState,
-  setEdited,
+  isTriggersLoading,
 }: {
-  owner: WorkspaceType;
-  builderState: AssistantBuilderState;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
+  owner: LightWorkspaceType;
+  isTriggersLoading: boolean;
 }) {
+  const { builderState, setBuilderState, setEdited } =
+    useAssistantBuilderContext();
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [triggers, setTriggers] = useState(builderState.triggers || []);
+
+  const [editedTrigger, setEditedTrigger] = useState<{
+    trigger: AssistantBuilderTriggerType;
+    index: number;
+  } | null>(null);
+
+  const handleCreateTrigger = () => {
+    setEditedTrigger(null);
+    setIsOpen(true);
+  };
+
+  const handleTriggerEdit = (
+    trigger: AssistantBuilderTriggerType,
+    index: number
+  ) => {
+    setEditedTrigger({ trigger, index });
+    setIsOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setEditedTrigger(null);
+    setIsOpen(false);
+  };
+
+  const handleTriggerSave = (trigger: AssistantBuilderTriggerType) => {
+    if (editedTrigger) {
+      const updatedTriggers = [...triggers];
+      updatedTriggers[editedTrigger.index] = trigger;
+      setTriggers(updatedTriggers);
+    } else {
+      setTriggers([...triggers, trigger]);
+    }
+    setEdited(true);
+    handleCloseModal();
+  };
+
+  const handleTriggerRemove = (index: number) => {
+    const updatedTriggers = [...triggers];
+    updatedTriggers.splice(index, 1);
+    setTriggers(updatedTriggers);
+    setEdited(true);
+  };
+
+  useEffect(() => {
+    setEdited(true);
+    setBuilderState((state) => ({
+      ...state,
+      triggers,
+    }));
+  }, [triggers, setBuilderState, setEdited]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      {isTriggersLoading ? (
+        <Spinner />
+      ) : (
+        <>
+          <Page.SectionHeader
+            title="Triggers"
+            description="Triggers are used to automate actions based on events."
+            action={
+              triggers.length > 0
+                ? {
+                    label: "Add Schedule",
+                    icon: ClockIcon,
+                    onClick: handleCreateTrigger,
+                    variant: "primary",
+                  }
+                : undefined
+            }
+          />
+          <div className="flex-1">
+            {triggers.length === 0 ? (
+              <EmptyCTA
+                action={
+                  <Button
+                    label="Add Schedule"
+                    variant="primary"
+                    icon={ClockIcon}
+                    onClick={handleCreateTrigger}
+                  />
+                }
+                className="py-4"
+              />
+            ) : (
+              <CardGrid>
+                {triggers.map((trigger, index) => (
+                  <TriggerCard
+                    key={trigger.sId || index}
+                    trigger={trigger}
+                    onRemove={() => handleTriggerRemove(index)}
+                    onEdit={() => handleTriggerEdit(trigger, index)}
+                  />
+                ))}
+              </CardGrid>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Create/Edit Schedule Modal */}
+      <ScheduleEditionModal
+        owner={owner}
+        trigger={editedTrigger?.trigger}
+        isOpen={editedTrigger !== null || isOpen}
+        onClose={handleCloseModal}
+        onSave={handleTriggerSave}
+      />
+    </div>
+  );
+}
+
+function TagsSection({ owner }: { owner: WorkspaceType }) {
+  const { builderState } = useAssistantBuilderContext();
+
   const { tags } = useTags({ owner });
   const [isTagsSuggestionLoading, setTagsSuggestionsLoading] = useState(false);
 
@@ -912,19 +1031,11 @@ function TagsSection({
       <Page.SectionHeader title="Tags" />
       {tagsSuggestions.status === "ok" &&
         filteredTagsSuggestions.length > 0 && (
-          <TagsSuggestions
-            builderState={builderState}
-            setBuilderState={setBuilderState}
-            setEdited={setEdited}
-            tagsSuggestions={filteredTagsSuggestions}
-          />
+          <TagsSuggestions tagsSuggestions={filteredTagsSuggestions} />
         )}
       <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
         <TagsSelector
           owner={owner}
-          builderState={builderState}
-          setBuilderState={setBuilderState}
-          setEdited={setEdited}
           suggestionButton={
             <Button
               label="Suggest"
@@ -941,19 +1052,10 @@ function TagsSection({
   );
 }
 
-function TagsSuggestions({
-  builderState,
-  setBuilderState,
-  setEdited,
-  tagsSuggestions,
-}: {
-  builderState: AssistantBuilderState;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
-  tagsSuggestions: TagType[];
-}) {
+function TagsSuggestions({ tagsSuggestions }: { tagsSuggestions: TagType[] }) {
+  const { builderState, setBuilderState, setEdited } =
+    useAssistantBuilderContext();
+
   const addTag = async (tag: TagType) => {
     const isTagInAssistant =
       builderState.tags.findIndex((t) => t.sId === tag.sId) !== -1;

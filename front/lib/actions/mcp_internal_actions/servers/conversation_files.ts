@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { computeTextByteSize } from "@app/lib/actions/action_output_limits";
@@ -6,14 +6,16 @@ import {
   DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeInternalMCPServer,
+  makeMCPToolTextError,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   conversationAttachmentId,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -41,20 +43,12 @@ const MAX_FILE_SIZE_FOR_INCLUDE = 1024 * 1024; // 1MB.
  * the legacy action system, but this server provides the MCP implementation
  * for future migration.
  */
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "conversation_files",
-  version: "1.0.0",
-  description: "Include files from conversation attachments",
-  icon: "ActionDocumentTextIcon",
-  authorization: null,
-  documentationUrl: null,
-};
 
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer("conversation_files");
 
   server.tool(
     DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,

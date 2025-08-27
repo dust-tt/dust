@@ -5,6 +5,7 @@ import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/co
 import { default as agentManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_management";
 import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
+import { default as canvasServer } from "@app/lib/actions/mcp_internal_actions/servers/canvas";
 import { default as conversationFilesServer } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
 import { default as dataWarehousesServer } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/server";
@@ -17,7 +18,6 @@ import { default as sheetsServer } from "@app/lib/actions/mcp_internal_actions/s
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/server";
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
-import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira/server";
 import { default as missingActionCatcherServer } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher";
 import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday/server";
@@ -35,6 +35,7 @@ import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/se
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
+import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
@@ -70,8 +71,10 @@ export async function getInternalMCPServer(
   auth: Authenticator,
   {
     internalMCPServerName,
+    mcpServerId,
   }: {
     internalMCPServerName: InternalMCPServerNameType;
+    mcpServerId: string;
   },
   agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> {
@@ -84,8 +87,8 @@ export async function getInternalMCPServer(
       return imageGenerationDallEServer(auth);
     case "file_generation":
       return generateFileServer(auth);
-    case "interactive_content":
-      return interactiveContentServer(auth, agentLoopContext);
+    case "canvas":
+      return canvasServer(auth, agentLoopContext);
     case "query_tables":
       return tablesQueryServer(auth, agentLoopContext);
     case "query_tables_v2":
@@ -135,7 +138,7 @@ export async function getInternalMCPServer(
     case "monday":
       return mondayServer();
     case "slack":
-      return slackServer(auth, agentLoopContext);
+      return slackServer(auth, mcpServerId, agentLoopContext);
     case "agent_memory":
       return agentMemoryServer(auth, agentLoopContext);
     case "outlook":
@@ -148,6 +151,8 @@ export async function getInternalMCPServer(
       return freshserviceServer();
     case "data_warehouses":
       return dataWarehousesServer(auth, agentLoopContext);
+    case "toolsets":
+      return toolsetsServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

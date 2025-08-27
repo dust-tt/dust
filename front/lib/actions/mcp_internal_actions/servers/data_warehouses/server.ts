@@ -1,8 +1,14 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
+  DATA_WAREHOUSES_FIND_TOOL_NAME,
+  DATA_WAREHOUSES_LIST_TOOL_NAME,
+  DATA_WAREHOUSES_QUERY_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   getAvailableWarehouses,
@@ -17,10 +23,10 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
 import { executeQuery } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
 import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
@@ -31,26 +37,14 @@ const TABLES_FILESYSTEM_TOOL_NAME = "tables_filesystem_navigation";
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "data_warehouses",
-  version: "1.0.0",
-  description:
-    "Comprehensive tables navigation toolkit for browsing data warehouses and tables. Provides Unix-like " +
-    "browsing (ls, find) to help agents efficiently explore and discover tables organized in a " +
-    "warehouse-centric hierarchy. Each warehouse contains schemas/databases which contain tables.",
-  authorization: null,
-  icon: "ActionTableIcon",
-  documentationUrl: null,
-};
-
 const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer("data_warehouses");
 
   server.tool(
-    "list",
+    DATA_WAREHOUSES_LIST_TOOL_NAME,
     "List the direct contents of a warehouse, database, or schema. Can be used to see what is inside a " +
       "specific location in the tables hierarchy, like 'ls' in Unix. If no nodeId is provided, lists " +
       "all available data warehouses at the root level. Hierarchy supports: warehouse → database → schema → " +
@@ -144,7 +138,7 @@ const createServer = (
   );
 
   server.tool(
-    "find",
+    DATA_WAREHOUSES_FIND_TOOL_NAME,
     "Find tables, schemas and databases based on their name starting from a specific node in the tables hierarchy. " +
       "Can be used to search for tables by name across warehouses, databases, and schemas. " +
       "The query supports partial matching - for example, searching for 'sales' will find " +
@@ -241,7 +235,7 @@ const createServer = (
   );
 
   server.tool(
-    "describe_tables",
+    DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
     "Get detailed schema information for one or more tables. Provides DBML schema definitions, " +
       "SQL dialect-specific query guidelines, and example rows. All tables must be from the same " +
       "warehouse - cross-warehouse schema requests are not supported. Use this to understand table " +
@@ -293,7 +287,7 @@ const createServer = (
 
         const { validatedNodes, dataSourceId } = validationResult.value;
 
-        const dataSource = await DataSourceResource.fetchByDustAPIDataSourceId(
+        const dataSource = await DataSourceResource.fetchById(
           auth,
           dataSourceId
         );
@@ -329,10 +323,10 @@ const createServer = (
   );
 
   server.tool(
-    "query",
+    DATA_WAREHOUSES_QUERY_TOOL_NAME,
     "Execute SQL queries on tables from the same warehouse. You MUST call describe_tables at least once " +
       "before attempting to query tables to understand their structure. The query must respect the SQL dialect " +
-      "and guidelines provided by describe_tables. All tables in a single query must be from the same warehouse.",
+      `and guidelines provided by ${DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME}. All tables in a single query must be from the same warehouse.`,
     {
       dataSources:
         ConfigurableToolInputSchemas[
@@ -396,7 +390,7 @@ const createServer = (
 
         const { validatedNodes, dataSourceId } = validationResult.value;
 
-        const dataSource = await DataSourceResource.fetchByDustAPIDataSourceId(
+        const dataSource = await DataSourceResource.fetchById(
           auth,
           dataSourceId
         );

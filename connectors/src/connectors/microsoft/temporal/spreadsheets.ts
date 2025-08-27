@@ -301,9 +301,10 @@ export async function handleSpreadSheet({
   const documentId = getDriveItemInternalId(file);
 
   const worksheetsRes = await wrapMicrosoftGraphAPIWithResult(() =>
-    getAllPaginatedEntities((nextLink) =>
-      getWorksheets(localLogger, client, documentId, nextLink)
-    )
+    getAllPaginatedEntities(async (nextLink) => {
+      await heartbeat();
+      return getWorksheets(localLogger, client, documentId, nextLink);
+    })
   );
 
   if (worksheetsRes.isErr()) {
@@ -313,6 +314,11 @@ export async function handleSpreadSheet({
     );
     return worksheetsRes;
   }
+
+  localLogger.info(
+    { worksheets: worksheetsRes.value.length },
+    "[Spreadsheet] Found worksheets."
+  );
 
   const spreadsheet = await upsertSpreadsheetInDb(
     connector,
@@ -374,6 +380,8 @@ export async function handleSpreadSheet({
       connectorId,
     });
   }
+
+  localLogger.info("[Spreadsheet] Done.");
 
   return new Ok(null);
 }

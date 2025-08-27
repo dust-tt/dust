@@ -7,7 +7,7 @@ import {
 } from "@dust-tt/sparkle";
 import { LightbulbIcon } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import React from "react";
 import { useWatch } from "react-hook-form";
 
@@ -40,40 +40,91 @@ export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
   const [status, setStatus] = useState<TipStatus>("loaded");
   const [error, setError] = useState<APIError | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [shouldPulse, setShouldPulse] = useState(false);
+  const lastInstructionsRef = useRef("");
 
-  const fetchTips = async () => {
-    setStatus("loading");
-    setError(null);
+  // Reset pulse after animation completes so it can trigger again
+  useEffect(() => {
+    if (shouldPulse) {
+      const timer = setTimeout(() => {
+        setShouldPulse(false);
+      }, 1500);
 
-    const result = await getRankedSuggestions({
-      owner,
-      currentInstructions: instructions,
-      formerSuggestions: [],
-    });
+      return () => clearTimeout(timer);
+    }
+  }, [shouldPulse]);
 
-    if (result.isErr()) {
-      setError(result.error);
-      setStatus("error");
+  const fetchTips = useCallback(
+    async (currentInstructions: string) => {
+      if (!currentInstructions.trim()) {
+        setTips(STATIC_TIPS);
+        setStatus("loaded");
+        return;
+      }
+
+      setStatus("loading");
+      setError(null);
+
+      const result = await getRankedSuggestions({
+        owner,
+        currentInstructions,
+        formerSuggestions: [],
+      });
+
+      if (result.isErr()) {
+        setError(result.error);
+        setStatus("error");
+        return;
+      }
+
+      if (result.value.status === "ok" && result.value.suggestions?.length) {
+        const newTips = result.value.suggestions.slice(0, 3);
+        setTips(newTips);
+
+        // Pulse if we got new suggestions and instructions changed
+        const shouldTriggerPulse =
+          lastInstructionsRef.current !== currentInstructions &&
+          newTips.some((tip) => !STATIC_TIPS.includes(tip));
+
+        if (shouldTriggerPulse) {
+          setShouldPulse(true);
+        }
+      } else {
+        // Fallback to static tips
+        setTips(STATIC_TIPS);
+      }
+
+      lastInstructionsRef.current = currentInstructions;
+      setStatus("loaded");
+    },
+    [owner]
+  );
+
+  function onOpenChange(isOpen: boolean) {
+    setIsOpen(isOpen);
+    if (isOpen) {
+      setShouldPulse(false); // Reset pulse when popover opens
+    }
+  }
+
+  // Debounced fetch tips when instructions change
+  useEffect(() => {
+    const currentInstructions = instructions || "";
+
+    // Skip if too short or same as last
+    if (
+      currentInstructions.length < 10 ||
+      currentInstructions === lastInstructionsRef.current
+    ) {
       return;
     }
 
-    if (result.value.status === "ok" && result.value.suggestions?.length) {
-      // Take first 3 suggestions
-      setTips(result.value.suggestions.slice(0, 3));
-    } else {
-      // Fallback to static tips
-      setTips(STATIC_TIPS);
-    }
+    const timer = setTimeout(() => {
+      void fetchTips(currentInstructions);
+    }, 500);
 
-    setStatus("loaded");
-  };
-
-  function onOpenChange(isOpen: boolean) {
-    if (isOpen) {
-      void fetchTips();
-    }
-    setIsOpen(isOpen);
-  }
+    return () => clearTimeout(timer);
+  }, [instructions, fetchTips]);
 
   return (
     <PopoverRoot open={isOpen} onOpenChange={onOpenChange}>
@@ -83,6 +134,7 @@ export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
           size="sm"
           icon={LightbulbIcon}
           aria-label="View instruction tips"
+          briefPulse={shouldPulse}
         />
       </PopoverTrigger>
       <PopoverContent className="w-80 p-4" side="bottom" align="start">

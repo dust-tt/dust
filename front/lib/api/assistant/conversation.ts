@@ -84,6 +84,7 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+import type { ExecutionMode } from "@app/types/assistant/agent_run";
 
 // Soft assumption that we will not have more than 10 mentions in the same user message.
 const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;
@@ -198,6 +199,66 @@ export async function deleteConversation(
   if (destroy) {
     await conversation.delete(auth);
   } else {
+    await conversation.updateVisibilityToDeleted();
+  }
+  return new Ok({ success: true });
+}
+
+/**
+ * Delete-or-Leave:
+ * - If the user has access to the conversation: perform a soft-delete
+ *   (update visibility to "deleted").
+ * - If the user lacks access: perform a leave (remove participation) so the
+ *   entry disappears from their history without returning 403. If the
+ *   conversation becomes empty after the leave, soft-delete it for
+ *   consistency with delete() when destroy=false.
+ */
+export async function deleteOrLeaveConversation(
+  auth: Authenticator,
+  {
+    conversationId,
+  }: {
+    conversationId: string;
+  }
+): Promise<Result<{ success: true }, Error>> {
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId,
+    {
+      includeDeleted: true,
+    }
+  );
+
+  if (!conversation) {
+    return new Err(new ConversationError("conversation_not_found"));
+  }
+
+  const hasAccess = ConversationResource.canAccessConversation(
+    auth,
+    conversation
+  );
+
+  if (hasAccess) {
+    const del = await deleteConversation(auth, { conversationId });
+    if (del.isErr()) {
+      return new Err(del.error);
+    }
+    return new Ok({ success: true });
+  }
+
+  // User does not have access to the conversation, so we need to leave it.
+  const user = auth.user();
+  if (!user) {
+    return new Err(
+      new Error("Cannot leave conversation: user not authenticated.")
+    );
+  }
+  const leaveRes = await conversation.leaveConversation(auth);
+  if (leaveRes.isErr()) {
+    return new Err(leaveRes.error);
+  }
+  // If the conversation is empty after the leave, soft-delete it.
+  if (leaveRes.value.affectedCount > 0 && leaveRes.value.isConversationEmpty) {
     await conversation.updateVisibilityToDeleted();
   }
   return new Ok({ success: true });
@@ -339,14 +400,14 @@ export async function postUserMessage(
     mentions,
     context,
     skipToolsValidation,
-    forceAsynchronousLoop = false,
+    executionMode,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
     skipToolsValidation: boolean;
-    forceAsynchronousLoop?: boolean;
+    executionMode?: ExecutionMode;
   }
 ): Promise<
   Result<
@@ -699,7 +760,7 @@ export async function postUserMessage(
       void runAgentLoop(
         auth,
         { sync: true, inMemoryData },
-        { forceAsynchronousLoop, startStep: 0 }
+        { executionMode, startStep: 0 }
       );
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
@@ -1148,11 +1209,7 @@ export async function editUserMessage(
         agentMessageRow,
       };
 
-      void runAgentLoop(
-        auth,
-        { sync: true, inMemoryData },
-        { forceAsynchronousLoop: false, startStep: 0 }
-      );
+      void runAgentLoop(auth, { sync: true, inMemoryData }, { startStep: 0 });
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
   );
@@ -1378,11 +1435,7 @@ export async function retryAgentMessage(
     agentMessageRow,
   };
 
-  void runAgentLoop(
-    auth,
-    { sync: true, inMemoryData },
-    { forceAsynchronousLoop: false, startStep: 0 }
-  );
+  void runAgentLoop(auth, { sync: true, inMemoryData }, { startStep: 0 });
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -

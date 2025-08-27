@@ -15,6 +15,7 @@ import type { ReactElement } from "react";
 
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { listsAgentConfigurationVersions } from "@app/lib/api/assistant/configuration/agent";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
@@ -65,48 +66,55 @@ const AssistantDetailsPage = ({
   const { isDark } = useTheme();
   return (
     <div>
-      <div className="flex flex-row justify-between gap-4">
+      <div className="flex flex-row items-center gap-4">
         <h3 className="text-xl font-bold">
-          Agent of workspace:{" "}
+          Agent from workspace{" "}
           <a href={`/poke/${workspace.sId}`} className="text-highlight-500">
             {workspace.name}
           </a>
         </h3>
-        <div className="flex flex-row gap-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                icon={UserGroupIcon}
-                onClick={(e: any) => {
-                  e.currentTarget.focus();
-                }}
-                label={`Editors`}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              onCloseAutoFocus={(event) => {
-                event.preventDefault();
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={UserGroupIcon}
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                e.currentTarget.focus();
               }}
-            >
-              {lastVersionEditors.length === 0 && (
-                <DropdownMenuItem label="No editors found!" />
-              )}
-              {lastVersionEditors.map((editor) => (
-                <DropdownMenuItem
-                  key={editor.id}
-                  label={`${editor.fullName} (${editor.email})`}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <PluginList
-            pluginResourceTarget={{
-              resourceId: agentConfigurations[0].sId,
-              resourceType: "agents",
-              workspace: workspace,
+              label={`Editors`}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
             }}
-          />
-        </div>
+          >
+            {lastVersionEditors.length === 0 && (
+              <DropdownMenuItem label="No editors found!" />
+            )}
+            {lastVersionEditors.map((editor) => (
+              <DropdownMenuItem
+                key={editor.id}
+                label={`${editor.fullName} (${editor.email})`}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <div className="mt-4">
+        <PluginList
+          pluginResourceTarget={{
+            resourceId: agentConfigurations[0].sId,
+            resourceType: "agents",
+            workspace: workspace,
+          }}
+        />
+      </div>
+
+      <div className="mt-4">
+        <TriggerDataTable
+          owner={workspace}
+          agentId={agentConfigurations[0].sId}
+        />
       </div>
 
       <Page.Vertical align="stretch">

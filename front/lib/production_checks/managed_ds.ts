@@ -4,8 +4,9 @@ import {
   getCoreReplicaDbConnection,
   getFrontReplicaDbConnection,
 } from "@app/lib/production_checks/utils";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, Ok, withRetries } from "@app/types";
 
 export type CoreDSDocument = {
   id: number;
@@ -14,7 +15,7 @@ export type CoreDSDocument = {
 
 const CORE_DOCUMENT_BATCH_SIZE = 1000;
 
-export async function getCoreDocuments(
+async function _getCoreDocuments(
   frontDataSourceId: number
 ): Promise<Result<CoreDSDocument[], Error>> {
   const coreReplica = getCoreReplicaDbConnection();
@@ -91,3 +92,8 @@ export async function getCoreDocuments(
 
   return new Ok(coreDocuments);
 }
+
+export const getCoreDocuments = withRetries(logger, _getCoreDocuments, {
+  retries: 3,
+  delayBetweenRetriesMs: 1000,
+});

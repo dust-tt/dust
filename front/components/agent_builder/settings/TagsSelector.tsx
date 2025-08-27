@@ -2,11 +2,10 @@ import {
   Button,
   Chip,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
-  DropdownMenuTagItem,
-  DropdownMenuTagList,
   DropdownMenuTrigger,
   PlusIcon,
   SparklesIcon,
@@ -58,17 +57,14 @@ export const TagsSelector = ({
     }
   };
 
+  const currentTagIds = new Set(tags.map((t) => t.sId));
+
   const filteredTags = useMemo(() => {
-    const currentTagIds = new Set(tags.map((t) => t.sId));
     return allTags
-      .filter(
-        (t) =>
-          !currentTagIds.has(t.sId) &&
-          t.name.toLowerCase().includes(searchText.toLowerCase())
-      )
+      .filter((t) => t.name.toLowerCase().includes(searchText.toLowerCase()))
       .filter((t) => isBuilder(owner) || t.kind !== "protected")
       .sort(tagsSorter);
-  }, [allTags, tags, searchText, owner]);
+  }, [allTags, searchText, owner]);
 
   const sortedTags = tags.toSorted(tagsSorter);
 
@@ -93,57 +89,66 @@ export const TagsSelector = ({
                 variant="outline"
                 label="Add"
                 isSelect
+                size="sm"
                 tooltip="Select a tag"
               />
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="h-96 w-96" side="top" align="start">
-              <div className="flex h-full flex-col">
-                <div className="flex-shrink-0">
-                  <DropdownMenuSearchbar
-                    autoFocus
-                    placeholder="Search"
-                    name="input"
-                    value={searchText}
-                    onChange={setSearchText}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && filteredTags.length > 0) {
-                        onAddTag(filteredTags[0]);
-                        onMenuOpenChange(false);
+            <DropdownMenuContent className="w-96" side="top" align="start">
+              <DropdownMenuSearchbar
+                autoFocus
+                placeholder="Choose an option"
+                name="input"
+                value={searchText}
+                onChange={setSearchText}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && filteredTags.length > 0) {
+                    const firstUnselected = filteredTags.find(
+                      (tag) => !currentTagIds.has(tag.sId)
+                    );
+                    if (firstUnselected) {
+                      onAddTag(firstUnselected);
+                    }
+                  }
+                }}
+              />
+              <DropdownMenuSeparator />
+              <div className="max-h-80 overflow-auto">
+                {filteredTags.map((tag) => (
+                  <DropdownMenuCheckboxItem
+                    key={tag.sId}
+                    label={tag.name}
+                    checked={currentTagIds.has(tag.sId)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        onAddTag(tag);
+                      } else {
+                        onRemoveTag(tag.sId);
                       }
                     }}
-                    button={
-                      isAdmin(owner) ? (
-                        <Button
-                          label="Create"
-                          variant="primary"
-                          icon={PlusIcon}
-                          onClick={() => {
-                            onMenuOpenChange(false);
-                            setIsDialogOpen(true);
-                          }}
-                        />
-                      ) : undefined
-                    }
+                    onSelect={(event) => {
+                      event.preventDefault();
+                    }}
                   />
+                ))}
+              </div>
+              {(isAdmin(owner) || onSuggestTags) && (
+                <>
                   <DropdownMenuSeparator />
-                </div>
-                <div className="flex-1 overflow-auto">
-                  <DropdownMenuTagList>
-                    {filteredTags.map((tag) => (
-                      <DropdownMenuTagItem
-                        color="golden"
-                        key={tag.sId}
-                        label={tag.name}
+                  <div className="flex gap-2 p-2">
+                    {isAdmin(owner) && (
+                      <Button
+                        label="Create new tag"
+                        variant="outline"
+                        icon={PlusIcon}
+                        size="sm"
+                        className="flex-1"
                         onClick={() => {
-                          onAddTag(tag);
+                          onMenuOpenChange(false);
+                          setIsDialogOpen(true);
                         }}
                       />
-                    ))}
-                  </DropdownMenuTagList>
-                </div>
-                {onSuggestTags && (
-                  <div className="flex w-full flex-shrink-0 flex-row items-end justify-end">
-                    <div className="px-2 py-2">
+                    )}
+                    {onSuggestTags && (
                       <Button
                         icon={
                           isSuggestLoading
@@ -151,17 +156,17 @@ export const TagsSelector = ({
                             : SparklesIcon
                         }
                         variant="outline"
-                        size="xs"
+                        size="sm"
                         disabled={isSuggestDisabled}
                         tooltip={suggestTooltip}
                         onClick={async () => {
                           await onSuggestTags();
                         }}
                       />
-                    </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

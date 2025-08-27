@@ -38,15 +38,21 @@ export function MCPTablesQueryActionDetails({
   return (
     <ActionDetailsWrapper
       viewType={viewType}
-      actionName="Query tables"
+      actionName={
+        viewType === "conversation" ? "Querying tables" : "Query tables"
+      }
       visual={TableIcon}
     >
       {viewType === "conversation" ? (
-        <div className="flex flex-col gap-4 pl-6 pt-4">
-          {thinkingBlocks.map((block) => (
-            <div key={block.text}>{block.text}</div>
-          ))}
-        </div>
+        <>
+          {thinkingBlocks.length > 0 && (
+            <div className="flex flex-col gap-4 pl-6 pt-4">
+              {thinkingBlocks.map((block) => (
+                <div key={block.text}>{block.text}</div>
+              ))}
+            </div>
+          )}
+        </>
       ) : (
         <div className="flex flex-col gap-4 pl-6 pt-4">
           {thinkingBlocks.length > 0 && (

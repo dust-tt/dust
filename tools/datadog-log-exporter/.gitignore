@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local env/config
+.env
+.env.*
+
+# Runtime artifacts
+*.log
+*.csv
+*.state.json
+
+# OS/editor noise
+.DS_Store
+*.swp
+*.swo
+

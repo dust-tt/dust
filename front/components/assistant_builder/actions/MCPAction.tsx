@@ -13,7 +13,9 @@ import { JsonSchemaConfigurationSection } from "@app/components/assistant_builde
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
 import { DataDescription } from "@app/components/assistant_builder/actions/DataDescription";
+import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import type {
   AssistantBuilderMCPConfiguration,
   AssistantBuilderMCPOrVizState,
@@ -28,7 +30,6 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   LightWorkspaceType,
   Result,
-  SpaceType,
   TimeFrame,
   WhitelistableFeature,
   WorkspaceType,
@@ -78,7 +79,6 @@ function NoActionAvailable({ owner }: NoActionAvailableProps) {
 
 interface MCPActionProps {
   owner: LightWorkspaceType;
-  allowedSpaces: SpaceType[];
   hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
   action: AssistantBuilderMCPOrVizState;
   isEditing: boolean;
@@ -89,7 +89,7 @@ interface MCPActionProps {
       old: AssistantBuilderMCPConfiguration["configuration"]
     ) => AssistantBuilderMCPConfiguration["configuration"];
   }) => void;
-  setEdited: (edited: boolean) => void;
+
   setShowInvalidActionDescError: (
     showInvalidActionDescError: string | null
   ) => void;
@@ -100,18 +100,19 @@ interface MCPActionProps {
 // please use the `ConfigurationSectionContainer` component and wrap the section in it.
 export function MCPAction({
   owner,
-  allowedSpaces,
   hasFeature,
   action,
   updateAction,
-  setEdited,
   setShowInvalidActionDescError,
   showInvalidActionDescError,
 }: MCPActionProps) {
+  const { setEdited } = useAssistantBuilderContext();
+
   const actionConfiguration =
     action.configuration as AssistantBuilderMCPServerConfiguration;
 
   const { mcpServerViews } = useMCPServerViewsContext();
+  const { spaces } = useSpacesContext();
 
   const noMCPServerView = mcpServerViews.length === 0;
 
@@ -178,7 +179,7 @@ export function MCPAction({
   // Because it's redundant with the tool description.
   const hasOnlyOneTool = selectedMCPServerView?.server.tools.length === 1;
 
-  const spaceName = allowedSpaces.find(
+  const spaceName = spaces.find(
     (space) => space.sId === selectedMCPServerView?.spaceId
   )?.name;
 
@@ -201,7 +202,6 @@ export function MCPAction({
           initialDataSourceConfigurations={
             actionConfiguration.dataSourceConfigurations ?? {}
           }
-          allowedSpaces={allowedSpaces}
           viewType={isDataWarehouseConfig ? "data_warehouse" : "document"}
         />
       )}
@@ -218,7 +218,6 @@ export function MCPAction({
           initialDataSourceConfigurations={
             actionConfiguration.tablesConfigurations ?? {}
           }
-          allowedSpaces={allowedSpaces}
           viewType="table"
         />
       )}
@@ -278,7 +277,6 @@ export function MCPAction({
       {requirements.requiresDustAppConfiguration && (
         <DustAppConfigurationSection
           owner={owner}
-          allowedSpaces={allowedSpaces}
           selectedConfig={actionConfiguration.dustAppConfiguration}
           onConfigSelect={(dustAppConfig) => {
             handleConfigUpdate((old) => ({
@@ -301,7 +299,6 @@ export function MCPAction({
           instructions={action.description}
           description={action.description}
           sectionConfigurationDescription="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
-          setEdited={setEdited}
           onConfigUpdate={({ jsonSchema, _jsonSchemaString }) => {
             handleConfigUpdate((old) => ({
               ...old,
@@ -438,6 +435,11 @@ export function hasErrorActionMCP(
       }
     }
     for (const key in requirements.requiredEnums) {
+      if (!(key in action.configuration.additionalConfiguration)) {
+        missingFields.push(key);
+      }
+    }
+    for (const key in requirements.requiredLists) {
       if (!(key in action.configuration.additionalConfiguration)) {
         missingFields.push(key);
       }

@@ -24,10 +24,10 @@ import {
 } from "@app/components/assistant/conversation/input_bar/editor/extensions/AgentBuilderInstructionsAutoCompleteExtension";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
+import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import { InstructionDiffExtension } from "@app/components/assistant_builder/instructions/InstructionDiffExtension";
 import { InstructionHistory } from "@app/components/assistant_builder/instructions/InstructionsHistory";
 import { InstructionSuggestions } from "@app/components/assistant_builder/instructions/InstructionSuggestions";
-import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
@@ -37,6 +37,7 @@ import { useUserMetadata } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { classNames } from "@app/lib/utils";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
   ModelConfigurationType,
@@ -73,9 +74,7 @@ const BASE_EXTENSIONS: Extensions = [
 
 export function InstructionScreen({
   owner,
-  builderState,
-  setBuilderState,
-  setEdited,
+
   resetAt,
   isUsingTemplate,
   instructionsError,
@@ -87,11 +86,6 @@ export function InstructionScreen({
   setIsInstructionDiffMode,
 }: {
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
-  setBuilderState: (
-    statefn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
   resetAt: number | null;
   isUsingTemplate: boolean;
   instructionsError: string | null;
@@ -102,6 +96,9 @@ export function InstructionScreen({
   isInstructionDiffMode: boolean;
   setIsInstructionDiffMode: (isDiffMode: boolean) => void;
 }) {
+  const { builderState, setBuilderState, setEdited } =
+    useAssistantBuilderContext();
+
   const { metadata, isMetadataLoading } = useUserMetadata(
     TEMPLATE_CALLOUT_METADATA_KEY
   );
@@ -110,6 +107,7 @@ export function InstructionScreen({
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
+  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
 
   const extensions = useMemo(() => {
     return getAgentBuilderInstructionsExtensionsForWorkspace(
@@ -339,7 +337,12 @@ export function InstructionScreen({
                 size="xs"
                 onClick={() => {
                   void router.push(
-                    `/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`
+                    getAgentBuilderRoute(
+                      owner.sId,
+                      "create",
+                      hasAgentBuilderV2,
+                      "flow=personal_assistants"
+                    )
                   );
                 }}
                 label="Browse templates"
@@ -368,7 +371,11 @@ export function InstructionScreen({
                   You can also use one of our{" "}
                   <Hoverable
                     variant="highlight"
-                    href={`/w/${owner.sId}/builder/assistants/create`}
+                    href={getAgentBuilderRoute(
+                      owner.sId,
+                      "create",
+                      hasAgentBuilderV2
+                    )}
                     target="_blank"
                   >
                     templates

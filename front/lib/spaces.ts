@@ -8,7 +8,7 @@ import {
   PlanetIcon,
   ServerIcon,
 } from "@dust-tt/sparkle";
-import { groupBy } from "lodash";
+import groupBy from "lodash/groupBy";
 import type React from "react";
 
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";

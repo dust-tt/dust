@@ -1,4 +1,5 @@
 import type { ConnectorProvider } from "@dust-tt/client";
+import type { Logger, LogLevel } from "@temporalio/common/lib/logger";
 import { Runtime } from "@temporalio/worker/lib/runtime";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -26,6 +27,27 @@ import { errorFromAny } from "./lib/error";
 import logger from "./logger/logger";
 
 setupGlobalErrorHandler(logger);
+
+const pinoAdapter: Logger = {
+  log: (level: LogLevel, msg: string, meta: object) =>
+    ({
+      TRACE: logger.trace,
+      DEBUG: logger.debug,
+      INFO: logger.info,
+      WARN: logger.warn,
+      ERROR: logger.error,
+    })[level](meta ?? {}, msg),
+  info: (msg: string, meta: object) => logger.info(meta ?? {}, msg),
+  warn: (msg: string, meta: object) => logger.warn(meta ?? {}, msg),
+  error: (msg: string, meta: object) => logger.error(meta ?? {}, msg),
+  debug: (msg: string, meta: object) => logger.debug(meta ?? {}, msg),
+  trace: (msg: string, meta: object) => logger.trace(meta ?? {}, msg),
+};
+
+// Install once per process — before creating Worker/Client
+Runtime.install({
+  logger: pinoAdapter,
+});
 
 type WorkerType =
   | Exclude<ConnectorProvider, "slack_bot">

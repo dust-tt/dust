@@ -1,7 +1,7 @@
 import type { Icon } from "@dust-tt/sparkle";
 import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { uniqueId } from "lodash";
+import uniqueId from "lodash/uniqueId";
 import type React from "react";
 import type { SVGProps } from "react";
 
@@ -13,6 +13,7 @@ import {
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
   AgentConfigurationScope,
@@ -21,7 +22,6 @@ import type {
   DataSourceViewSelectionConfigurations,
   DustAppRunConfigurationType,
   LightAgentConfigurationType,
-  PlanType,
   ReasoningModelConfigurationType,
   SubscriptionType,
   SupportedModel,
@@ -58,6 +58,18 @@ export type AssistantBuilderTagsFilter = {
   in: string[];
 };
 
+export type AssistantBuilderTriggerType = {
+  sId?: string;
+  name: string;
+  kind: "schedule";
+  customPrompt: string | null;
+  editor: UserType["id"] | null;
+  configuration: {
+    cron: string;
+    timezone: string;
+  } | null;
+};
+
 // MCP configuration
 export type AssistantBuilderMCPServerConfiguration = {
   mcpServerViewId: string;
@@ -66,7 +78,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   childAgentId: string | null;
   reasoningModel: ReasoningModelConfigurationType | null;
   timeFrame: TimeFrame | null;
-  additionalConfiguration: Record<string, boolean | number | string>;
+  additionalConfiguration: AdditionalConfigurationType;
   dustAppConfiguration: DustAppRunConfigurationType | null;
   jsonSchema: JSONSchema | null;
   _jsonSchemaString: string | null;
@@ -158,6 +170,7 @@ export type AssistantBuilderState = {
     responseFormat?: string;
   };
   actions: AssistantBuilderMCPOrVizState[];
+  triggers: AssistantBuilderTriggerType[];
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
@@ -177,6 +190,7 @@ export type AssistantBuilderInitialState = {
     responseFormat?: string;
   } | null;
   actions: AssistantBuilderActionAndDataVisualizationConfiguration[];
+  triggers: AssistantBuilderTriggerType[];
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
@@ -199,6 +213,7 @@ export type ActionSpecificationWithType = ActionSpecification & {
 export function getDefaultAssistantState() {
   return {
     actions: [],
+    triggers: [],
     handle: null,
     scope: "hidden",
     description: null,
@@ -294,12 +309,10 @@ export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 type AssistantBuilderPropsBase<T> = {
   agentConfiguration: T | null;
   baseUrl: string;
-  defaultIsEdited?: boolean;
   defaultTemplate: FetchAssistantTemplateResponse | null;
   flow: BuilderFlow;
   initialBuilderState: AssistantBuilderInitialState | null;
   owner: WorkspaceType;
-  plan: PlanType;
   subscription: SubscriptionType;
   duplicateAgentId?: string | null;
 };

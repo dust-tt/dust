@@ -2,6 +2,7 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentChildAgentConfiguration,
@@ -63,6 +64,14 @@ export const destroyMCPServerViewDependencies = async (
   });
 
   await AgentMCPServerConfiguration.destroy({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      mcpServerViewId: mcpServerViewId,
+    },
+    transaction,
+  });
+
+  await ConversationMCPServerViewModel.destroy({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
       mcpServerViewId: mcpServerViewId,

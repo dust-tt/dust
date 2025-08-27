@@ -16,14 +16,20 @@ import {
   DataSourceNodeContentDetails,
   FilesystemPathDetails,
 } from "@app/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
+import { MCPDataWarehousesBrowseDetails } from "@app/components/actions/mcp/details/MCPDataWarehousesBrowseDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
+import { MCPListToolsActionDetails } from "@app/components/actions/mcp/details/MCPListToolsActionDetails";
 import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
+  DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
+  DATA_WAREHOUSES_FIND_TOOL_NAME,
+  DATA_WAREHOUSES_LIST_TOOL_NAME,
+  DATA_WAREHOUSES_QUERY_TOOL_NAME,
   EXECUTE_DATABASE_QUERY_TOOL_NAME,
   FILESYSTEM_CAT_TOOL_NAME,
   FILESYSTEM_FIND_TOOL_NAME,
@@ -31,7 +37,6 @@ import {
   FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
   GET_DATABASE_SCHEMA_TOOL_NAME,
   INCLUDE_TOOL_NAME,
-  isInternalMCPServerOfName,
   PROCESS_TOOL_NAME,
   QUERY_TABLES_TOOL_NAME,
   SEARCH_TOOL_NAME,
@@ -64,14 +69,17 @@ export interface MCPActionDetailsProps {
 
 export function MCPActionDetails(props: MCPActionDetailsProps) {
   const {
-    action: { output, functionCallName, mcpServerId, params },
+    action: { output, functionCallName, internalMCPServerName, params },
     viewType,
   } = props;
 
   const parts = functionCallName ? functionCallName.split("__") : [];
   const toolName = parts[parts.length - 1];
 
-  if (isInternalMCPServerOfName(mcpServerId, "search")) {
+  if (
+    internalMCPServerName === "search" ||
+    internalMCPServerName === "data_sources_file_system"
+  ) {
     if (toolName === SEARCH_TOOL_NAME) {
       const timeFrame = parseTimeFrame(params.relativeTimeFrame as string);
       const queryResource = makeQueryResource({
@@ -86,7 +94,9 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
         <SearchResultDetails
           viewType={viewType}
           defaultQuery={queryResource.text}
-          actionName="Search data"
+          actionName={
+            viewType === "conversation" ? "Searching data" : "Search data"
+          }
           actionOutput={output}
           visual={MagnifyingGlassIcon}
         />
@@ -100,7 +110,11 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
       return (
         <SearchResultDetails
           viewType={viewType}
-          actionName="Browse data sources"
+          actionName={
+            viewType === "conversation"
+              ? "Browsing data sources"
+              : "Browse data sources"
+          }
           actionOutput={output}
           visual={ActionDocumentTextIcon}
         />
@@ -116,12 +130,14 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "include_data")) {
+  if (internalMCPServerName === "include_data") {
     if (toolName === INCLUDE_TOOL_NAME) {
       return (
         <SearchResultDetails
           viewType={viewType}
-          actionName="Include data"
+          actionName={
+            viewType === "conversation" ? "Including data" : "Include data"
+          }
           actionOutput={output}
           visual={ClockIcon}
         />
@@ -129,13 +145,15 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "web_search_&_browse")) {
+  if (internalMCPServerName === "web_search_&_browse") {
     if (toolName === WEBSEARCH_TOOL_NAME) {
       return (
         <SearchResultDetails
           viewType={viewType}
           defaultQuery={params.query as string}
-          actionName="Web search"
+          actionName={
+            viewType === "conversation" ? "Searching the web" : "Web search"
+          }
           actionOutput={output}
           visual={GlobeAltIcon}
         />
@@ -146,13 +164,13 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "query_tables")) {
+  if (internalMCPServerName === "query_tables") {
     if (toolName === QUERY_TABLES_TOOL_NAME) {
       return <MCPTablesQueryActionDetails {...props} />;
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "query_tables_v2")) {
+  if (internalMCPServerName === "query_tables_v2") {
     if (toolName === GET_DATABASE_SCHEMA_TOOL_NAME) {
       return <MCPGetDatabaseSchemaActionDetails {...props} />;
     }
@@ -161,22 +179,42 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "reasoning")) {
+  if (internalMCPServerName === "reasoning") {
     return <MCPReasoningActionDetails {...props} />;
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "extract_data")) {
+  if (internalMCPServerName === "extract_data") {
     if (toolName === PROCESS_TOOL_NAME) {
       return <MCPExtractActionDetails {...props} />;
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "run_agent")) {
+  if (internalMCPServerName === "run_agent") {
     return <MCPRunAgentActionDetails {...props} />;
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "agent_management")) {
+  if (internalMCPServerName === "toolsets") {
+    return <MCPListToolsActionDetails {...props} />;
+  }
+
+  if (internalMCPServerName === "agent_management") {
     return <MCPAgentManagementActionDetails {...props} />;
+  }
+
+  if (internalMCPServerName === "data_warehouses") {
+    if (
+      [DATA_WAREHOUSES_LIST_TOOL_NAME, DATA_WAREHOUSES_FIND_TOOL_NAME].includes(
+        toolName
+      )
+    ) {
+      return <MCPDataWarehousesBrowseDetails {...props} />;
+    }
+    if (toolName === DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME) {
+      return <MCPGetDatabaseSchemaActionDetails {...props} />;
+    }
+    if (toolName === DATA_WAREHOUSES_QUERY_TOOL_NAME) {
+      return <MCPTablesQueryActionDetails {...props} />;
+    }
   }
 
   return <GenericActionDetails {...props} />;
@@ -192,12 +230,16 @@ export function GenericActionDetails({
       ? JSON.stringify(action.params, undefined, 2)
       : null;
 
+  const actionName =
+    (viewType === "conversation" ? "Running a tool" : "Run a tool") +
+    (action.functionCallName
+      ? `: ${asDisplayName(action.functionCallName)}`
+      : "");
+
   return (
     <ActionDetailsWrapper
       viewType={viewType}
-      actionName={
-        asDisplayName(action.functionCallName) ?? "Calling MCP Server"
-      }
+      actionName={actionName}
       visual={MCP_SPECIFICATION.cardIcon}
     >
       {viewType !== "conversation" && (

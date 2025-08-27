@@ -1,7 +1,20 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type {
   CallToolResult,
   TextContent,
 } from "@modelcontextprotocol/sdk/types.js";
+
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
+
+export function makeInternalMCPServer(
+  serverName: InternalMCPServerNameType
+): McpServer {
+  const { serverInfo } = INTERNAL_MCP_SERVERS[serverName];
+  return new McpServer(serverInfo, {
+    instructions: serverInfo.instructions ?? undefined,
+  });
+}
 
 export function makeMCPToolTextError(text: string): {
   isError: true;

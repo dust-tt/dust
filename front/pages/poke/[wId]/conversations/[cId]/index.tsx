@@ -208,8 +208,8 @@ const AgentMessageView = ({
                   }
                 />
               )}
-              action: step={a.step}{" "}
-              <b className="px-1">{a.functionCallName}()</b>{" "}
+              {a.created && <>{new Date(a.created).toLocaleTimeString()}: </>}
+              step {a.step}: <b className="px-1">{a.functionCallName}()</b>{" "}
               <i>
                 [{a.type}, {a.functionCallId}]
               </i>
@@ -291,7 +291,7 @@ const ConversationPage = ({
       {conversation && (
         <div className="max-w-4xl">
           <h3 className="text-xl font-bold">
-            Conversation of workspace:{" "}
+            Conversation in workspace{" "}
             <a href={`/poke/${workspaceId}`} className="text-highlight-500">
               {workspace.name}
             </a>

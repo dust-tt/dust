@@ -32,7 +32,7 @@ import type {
 import {
   assertNever,
   Err,
-  isInteractiveFileContentType,
+  isCanvasFileContentType,
   isSupportedImageContentType,
   Ok,
   slugify,
@@ -416,8 +416,8 @@ const getProcessingFunction = ({
     return undefined;
   }
 
-  // Interactive files should not be processed.
-  if (isInteractiveFileContentType(contentType)) {
+  // Canvas files should not be processed.
+  if (isCanvasFileContentType(contentType)) {
     return undefined;
   }
 

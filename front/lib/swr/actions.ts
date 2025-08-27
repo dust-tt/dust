@@ -1,7 +1,8 @@
-import { uniqueId } from "lodash";
+import uniqueId from "lodash/uniqueId";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
+import type { AssistantBuilderMCPConfigurationWithId } from "@app/components/assistant_builder/types";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetActionsResponseBody } from "@app/pages/api/w/[wId]/builder/assistants/[aId]/actions";
 
@@ -44,12 +45,12 @@ export function useAgentConfigurationActions(
     }
   );
 
-  const actionsWithIds = useMemo(
+  const actionsWithIds: AssistantBuilderMCPConfigurationWithId[] = useMemo(
     () =>
       data?.actions.map((action) => ({
         ...action,
         id: uniqueId(),
-      })),
+      })) ?? emptyArray(),
     [data?.actions]
   );
 

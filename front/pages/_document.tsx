@@ -60,7 +60,7 @@ class MyDocument extends Document {
                  ],
                  traceSampleRate: 5,
                  traceContextInjection: 'sampled',
-                 sessionSampleRate: 100,
+                 sessionSampleRate: 20,
                  sessionReplaySampleRate: 5,
                  defaultPrivacyLevel: 'mask-user-input',
                  beforeSend: function (event) {
@@ -96,6 +96,29 @@ class MyDocument extends Document {
                });
              })
            `}
+          </Script>
+          {/* Privacy mask initialization script */}
+          <Script id="privacy-mask-init" strategy="beforeInteractive">
+            {`
+              (function() {
+                // Initialize privacy mask state from localStorage on page load.
+                function initPrivacyMask() {
+                  const stored = localStorage.getItem('privacy-mask');
+                  const isEnabled = stored === 'true';
+                  
+                  if (isEnabled) {
+                    document.body.classList.add('privacy-mask-enabled');
+                  }
+                }
+                
+                // Run on DOM ready.
+                if (document.readyState === 'loading') {
+                  document.addEventListener('DOMContentLoaded', initPrivacyMask);
+                } else {
+                  initPrivacyMask();
+                }
+              })();
+            `}
           </Script>
         </body>
       </Html>

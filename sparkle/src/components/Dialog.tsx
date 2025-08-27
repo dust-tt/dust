@@ -3,7 +3,12 @@ import { FocusScope } from "@radix-ui/react-focus-scope";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 
-import { Button, ButtonProps, ScrollArea } from "@sparkle/components";
+import {
+  Button,
+  ButtonProps,
+  ScrollArea,
+  Separator,
+} from "@sparkle/components";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
@@ -73,6 +78,8 @@ interface DialogContentProps
   height?: DialogHeightType;
   trapFocusScope?: boolean;
   isAlertDialog?: boolean;
+  preventAutoFocusOnClose?: boolean;
+  mountPortalContainer?: HTMLElement;
 }
 
 const DialogContent = React.forwardRef<
@@ -87,26 +94,44 @@ const DialogContent = React.forwardRef<
       height,
       trapFocusScope,
       isAlertDialog,
+      preventAutoFocusOnClose = true,
+      onCloseAutoFocus,
+      mountPortalContainer,
       ...props
     },
     ref
-  ) => (
-    <DialogPortal>
-      <DialogOverlay />
-      <FocusScope trapped={trapFocusScope} asChild>
-        <DialogPrimitive.Content
-          ref={ref}
-          className={cn(dialogVariants({ size, height }), className)}
-          onInteractOutside={
-            isAlertDialog ? (e) => e.preventDefault() : props.onInteractOutside
-          }
-          {...props}
-        >
-          {children}
-        </DialogPrimitive.Content>
-      </FocusScope>
-    </DialogPortal>
-  )
+  ) => {
+    const handleCloseAutoFocus = React.useCallback(
+      (event: Event) => {
+        if (preventAutoFocusOnClose) {
+          event.preventDefault();
+        }
+        onCloseAutoFocus?.(event);
+      },
+      [preventAutoFocusOnClose, onCloseAutoFocus]
+    );
+
+    return (
+      <DialogPortal container={mountPortalContainer}>
+        <DialogOverlay />
+        <FocusScope trapped={trapFocusScope} asChild>
+          <DialogPrimitive.Content
+            ref={ref}
+            className={cn(dialogVariants({ size, height }), className)}
+            onInteractOutside={
+              isAlertDialog
+                ? (e) => e.preventDefault()
+                : props.onInteractOutside
+            }
+            onCloseAutoFocus={handleCloseAutoFocus}
+            {...props}
+          >
+            {children}
+          </DialogPrimitive.Content>
+        </FocusScope>
+      </DialogPortal>
+    );
+  }
 );
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
@@ -141,20 +166,40 @@ const DialogHeader = ({
 );
 DialogHeader.displayName = "DialogHeader";
 
-const DialogContainer = ({
-  children,
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <ScrollArea className="s-w-full s-flex-grow">
-    <div
-      className={cn(
-        "s-copy-base s-relative s-flex s-flex-col s-gap-2 s-px-5 s-py-4 s-text-left",
-        "s-text-foreground dark:s-text-foreground-night"
-      )}
-    >
-      {children}
-    </div>
-  </ScrollArea>
-);
+interface DialogContainerProps extends React.HTMLAttributes<HTMLDivElement> {
+  fixedContent?: React.ReactNode;
+}
+
+const DialogContainer = ({ children, fixedContent }: DialogContainerProps) => {
+  const contentStyles = cn(
+    "s-copy-base s-px-5 s-py-4 s-text-foreground dark:s-text-foreground-night"
+  );
+
+  const scrollableContent = (
+    <ScrollArea className="s-w-full s-flex-grow">
+      <div
+        className={cn(
+          contentStyles,
+          "s-relative s-flex s-flex-col s-gap-2 s-text-left"
+        )}
+      >
+        {children}
+      </div>
+    </ScrollArea>
+  );
+
+  if (fixedContent) {
+    return (
+      <div className="s-flex s-flex-grow s-flex-col s-overflow-hidden">
+        <div className={cn(contentStyles, "s-flex-none")}>{fixedContent}</div>
+        <Separator />
+        {scrollableContent}
+      </div>
+    );
+  }
+
+  return scrollableContent;
+};
 DialogContainer.displayName = "DialogContainer";
 
 interface DialogFooterProps extends React.HTMLAttributes<HTMLDivElement> {

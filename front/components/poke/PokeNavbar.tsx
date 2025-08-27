@@ -2,7 +2,7 @@ import { Button, Logo } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { PokeRegion } from "@app/components/poke/PokeRegion";
+import { PokeRegionDropdown } from "@app/components/poke/PokeRegionDropdown";
 import {
   PokeCommandDialog,
   PokeCommandInput,
@@ -16,9 +16,10 @@ import { isDevelopment } from "@app/types";
 
 interface PokeNavbarProps {
   currentRegion?: RegionType;
+  regionUrls?: Record<RegionType, string>;
 }
 
-function PokeNavbar({ currentRegion }: PokeNavbarProps) {
+function PokeNavbar({ currentRegion, regionUrls }: PokeNavbarProps) {
   return (
     <nav
       className={classNames(
@@ -38,7 +39,12 @@ function PokeNavbar({ currentRegion }: PokeNavbarProps) {
         </div>
       </div>
       <div className="items-right flex gap-6">
-        {currentRegion && <PokeRegion currentRegion={currentRegion} />}
+        {currentRegion && (
+          <PokeRegionDropdown
+            currentRegion={currentRegion}
+            regionUrls={regionUrls}
+          />
+        )}
         <PokeSearchCommand />
       </div>
     </nav>

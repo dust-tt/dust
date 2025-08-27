@@ -1,9 +1,9 @@
 /**
  * Run agent arguments
  */
-
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import { z } from "zod";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -22,6 +22,9 @@ import {
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 
+export const ExecutionModeSchema = z.enum(["sync", "async", "auto"]);
+export type ExecutionMode = z.infer<typeof ExecutionModeSchema>;
+
 export type RunAgentAsynchronousArgs = {
   agentMessageId: string;
   agentMessageVersion: number;
@@ -39,7 +42,7 @@ export type RunAgentExecutionData = {
   userMessage: UserMessageType;
 };
 
-export type RunAgentArgs =
+export type RunAgentArgsInput =
   | {
       sync: true;
       inMemoryData: RunAgentExecutionData;
@@ -50,9 +53,13 @@ export type RunAgentArgs =
       idArgs: RunAgentAsynchronousArgs;
     };
 
+export type RunAgentArgs = RunAgentArgsInput & {
+  initialStartTime: number;
+};
+
 export async function getRunAgentData(
   authType: AuthenticatorType,
-  runAgentArgs: RunAgentArgs
+  runAgentArgs: RunAgentArgsInput
 ): Promise<Result<RunAgentExecutionData & { auth: Authenticator }, Error>> {
   const auth = await Authenticator.fromJSON(authType);
 
@@ -85,7 +92,11 @@ export async function getRunAgentData(
   for (let i = conversation.content.length - 1; i >= 0 && !agentMessage; i--) {
     const messageGroup = conversation.content[i];
     for (const msg of messageGroup) {
-      if (isAgentMessageType(msg)) {
+      if (
+        isAgentMessageType(msg) &&
+        msg.sId === agentMessageId &&
+        msg.version === agentMessageVersion
+      ) {
         agentMessage = msg;
         break;
       }
@@ -97,8 +108,8 @@ export async function getRunAgentData(
   }
 
   // Find the user message group by searching in reverse order.
-  const userMessageGroup = conversation.content.findLast(
-    (messageGroup) => messageGroup[0]?.sId === userMessageId
+  const userMessageGroup = conversation.content.findLast((messageGroup) =>
+    messageGroup.some((m) => m.sId === userMessageId)
   );
 
   // We assume that the message group is ordered by version ASC. Message version starts from 0.

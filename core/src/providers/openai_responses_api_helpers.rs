@@ -858,7 +858,7 @@ async fn streamed_responses_api_completion(
                             handle_response_completed(&mut state, event_data, &event_sender)?;
                             break 'stream;
                         }
-                        "response.error" | "response.failed" => {
+                        "response.failed" | "response.incomplete" => {
                             handle_response_error(event_data, &provider_name, &request_id)?;
                             break 'stream;
                         }
@@ -1134,12 +1134,32 @@ fn handle_response_error(
     provider_name: &str,
     request_id: &Option<String>,
 ) -> Result<()> {
-    let error_msg = if let Some(error) = event.error {
-        format!("Response error: {:?}", error)
-    } else if let Some(reason) = event.reason {
-        format!("Response failed: {}", reason)
-    } else {
-        "Unknown error in response".to_string()
+    let response = match event.response {
+        Some(response) => response,
+        None => {
+            info!("Missing response in error event: {:?}", event);
+            Err(anyhow!("Missing response in error event"))?
+        }
+    };
+
+    let error_msg = {
+        // Check for error field (response.failed event)
+        if let Some(error) = response.get("error") {
+            match error.get("message").and_then(|m| m.as_str()) {
+                Some(message) => format!("Response failed: {}", message),
+                None => format!("Response failed: {:?}", error),
+            }
+        }
+        // Check for incomplete_details (response.incomplete event)
+        else if let Some(incomplete) = response.get("incomplete_details") {
+            match incomplete.get("reason").and_then(|r| r.as_str()) {
+                Some(reason) => format!("Response incomplete: {}", reason),
+                None => format!("Response incomplete: {:?}", incomplete),
+            }
+        } else {
+            info!("Unknown error in OpenAI Responses API: {:?}", response);
+            "Unknown error in response".to_string()
+        }
     };
 
     Err(ModelError {

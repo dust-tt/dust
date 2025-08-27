@@ -26,19 +26,23 @@ export function MCPGetDatabaseSchemaActionDetails({
   return (
     <ActionDetailsWrapper
       viewType={viewType}
-      actionName="Get database schema"
+      actionName={
+        viewType === "conversation"
+          ? "Getting database schema"
+          : "Get database schema"
+      }
       visual={TableIcon}
     >
-      <div className="flex flex-col gap-4 pl-6 pt-4">
-        {viewType === "sidebar" && (
+      {viewType === "sidebar" && (
+        <div className="flex flex-col gap-4 pl-6 pt-4">
           <>
             <DatabaseSchemaSection schemas={schemaBlocks} />
             {exampleRowsBlocks.length > 0 && (
               <ExampleRowsSection examples={exampleRowsBlocks} />
             )}
           </>
-        )}
-      </div>
+        </div>
+      )}
     </ActionDetailsWrapper>
   );
 }

@@ -1,68 +1,119 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import set from "lodash/set";
 import { useRouter } from "next/router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  AdditionalConfigurationInBuilderType,
+  AgentBuilderFormData,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
+import {
+  AgentBuilderFormContext,
+  agentBuilderFormSchema,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import {
+  PersonalConnectionRequiredDialog,
+  useAwaitableDialog,
+} from "@app/components/agent_builder/PersonalConnectionRequiredDialog";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
   getDefaultAgentFormData,
   transformAgentConfigurationToFormData,
+  transformDuplicateAgentToFormData,
   transformTemplateToFormData,
 } from "@app/components/agent_builder/transformAgentConfiguration";
+import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import type { AssistantBuilderMCPConfigurationWithId } from "@app/components/assistant_builder/types";
+import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
+import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
+import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useEditors } from "@app/lib/swr/editors";
 import { emptyArray } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { LightAgentConfigurationType } from "@app/types";
+import { removeNulls } from "@app/types";
+
+function processActionsFromStorage(
+  actions: AssistantBuilderMCPConfigurationWithId[]
+): AgentBuilderAction[] {
+  return actions.map((action) => {
+    if (action.type === "MCP") {
+      return {
+        ...action,
+        configuration: {
+          ...action.configuration,
+          additionalConfiguration: processAdditionalConfigurationFromStorage(
+            action.configuration.additionalConfiguration
+          ),
+        },
+      };
+    }
+    return action;
+  });
+}
+
+function processAdditionalConfigurationFromStorage(
+  config: AdditionalConfigurationType
+): AdditionalConfigurationInBuilderType {
+  const additionalConfig: AdditionalConfigurationInBuilderType = {};
+
+  for (const [key, value] of Object.entries(config)) {
+    set(additionalConfig, key, value);
+  }
+
+  return additionalConfig;
+}
 
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
-  assistantTemplate: FetchAssistantTemplateResponse | null;
+  duplicateAgentId?: string | null;
 }
 
 export default function AgentBuilder({
   agentConfiguration,
-  assistantTemplate,
+  duplicateAgentId,
 }: AgentBuilderProps) {
-  const { owner, user } = useAgentBuilderContext();
+  const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   const router = useRouter();
   const sendNotification = useSendNotification();
+  const [isSaving, setIsSaving] = useState(false);
 
   const { actions, isActionsLoading } = useAgentConfigurationActions(
     owner.sId,
-    agentConfiguration?.sId ?? null
+    duplicateAgentId ?? agentConfiguration?.sId ?? null
   );
+
+  const { triggers, isTriggersLoading } = useAgentTriggers({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
+  });
 
   const { editors } = useEditors({
     owner,
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
 
-  const defaultValues = useMemo((): AgentBuilderFormData => {
-    if (agentConfiguration) {
-      return transformAgentConfigurationToFormData(agentConfiguration);
-    }
-
-    if (assistantTemplate) {
-      return transformTemplateToFormData(assistantTemplate, user);
-    }
-
-    return getDefaultAgentFormData(user);
-  }, [agentConfiguration, assistantTemplate, user]);
+  const { slackChannels: slackChannelsLinkedWithAgent } =
+    useSlackChannelsLinkedWithAgent({
+      workspaceId: owner.sId,
+      disabled: !agentConfiguration,
+    });
 
   const slackProvider = useMemo(() => {
     const slackBotProvider = supportedDataSourceViews.find(
@@ -78,23 +129,90 @@ export default function AgentBuilder({
     return slackProvider ? "slack" : null;
   }, [supportedDataSourceViews]);
 
+  const processedActions = useMemo(() => {
+    return processActionsFromStorage(actions ?? emptyArray());
+  }, [actions]);
+
+  const agentSlackChannels = useMemo(() => {
+    if (!agentConfiguration || !slackChannelsLinkedWithAgent.length) {
+      return [];
+    }
+
+    return slackChannelsLinkedWithAgent
+      .filter(
+        (channel) => channel.agentConfigurationId === agentConfiguration.sId
+      )
+      .map((channel) => ({
+        slackChannelId: channel.slackChannelId,
+        slackChannelName: channel.slackChannelName,
+      }));
+  }, [agentConfiguration, slackChannelsLinkedWithAgent]);
+
+  const formValues = useMemo((): AgentBuilderFormData => {
+    let baseValues: AgentBuilderFormData;
+
+    if (duplicateAgentId && agentConfiguration) {
+      // Handle agent duplication case
+      baseValues = transformDuplicateAgentToFormData(agentConfiguration, user);
+    } else if (agentConfiguration) {
+      baseValues = transformAgentConfigurationToFormData(agentConfiguration);
+    } else if (assistantTemplate) {
+      baseValues = transformTemplateToFormData(assistantTemplate, user);
+    } else {
+      baseValues = getDefaultAgentFormData(user);
+    }
+
+    return {
+      ...baseValues,
+      actions: processedActions,
+      triggers: triggers ?? emptyArray(),
+      agentSettings: {
+        ...baseValues.agentSettings,
+        slackProvider,
+        editors: editors ?? emptyArray(),
+        slackChannels: agentSlackChannels,
+      },
+    };
+  }, [
+    agentConfiguration,
+    assistantTemplate,
+    user,
+    duplicateAgentId,
+    processedActions,
+    slackProvider,
+    editors,
+    triggers,
+    agentSlackChannels,
+  ]);
+
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
-    defaultValues,
-    values: {
-      ...defaultValues,
-      actions: actions ?? emptyArray(),
-      agentSettings: {
-        ...defaultValues.agentSettings,
-        slackProvider,
-        editors,
-      },
+    values: formValues,
+    resetOptions: {
+      keepDirtyValues: true,
+      keepErrors: true,
     },
-    resetOptions: { keepDefaultValues: true },
+  });
+
+  const { showDialog, ...dialogProps } = useAwaitableDialog({
+    owner,
+    mcpServerViewToCheckIds: removeNulls(
+      form
+        .getValues("actions")
+        .map((a) => (a.type === "MCP" ? a.configuration.mcpServerViewId : null))
+    ),
+    mcpServerViews,
   });
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
     try {
+      setIsSaving(true);
+      const confirmed = await showDialog();
+      if (!confirmed) {
+        setIsSaving(false);
+        return;
+      }
+
       const result = await submitAgentBuilderForm({
         formData,
         owner,
@@ -110,6 +228,7 @@ export default function AgentBuilder({
           description: result.error.message,
           type: "error",
         });
+        setIsSaving(false);
         return;
       }
 
@@ -123,11 +242,20 @@ export default function AgentBuilder({
       });
 
       if (!agentConfiguration && createdAgent.sId) {
+        // For new agents, navigate immediately - form will be clean after navigation
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
-        window.history.replaceState(null, "", newUrl);
+        await router.replace(newUrl, undefined, { shallow: true });
+      } else {
+        // For existing agents, just reset form state
+        form.reset(form.getValues(), {
+          keepValues: true,
+        });
       }
+
+      setIsSaving(false);
     } catch (error) {
       logger.error("Unexpected error:", error);
+      setIsSaving(false);
     }
   };
 
@@ -141,7 +269,12 @@ export default function AgentBuilder({
 
   const { isDirty, isSubmitting } = form.formState;
 
-  const isSaveDisabled = !isDirty || isSubmitting || isActionsLoading;
+  // Disable navigation lock during save process for new agents
+  useNavigationLock((isDirty || !!duplicateAgentId) && !isSaving);
+
+  const isSaveDisabled = duplicateAgentId
+    ? false
+    : !isDirty || isSubmitting || isActionsLoading || isTriggersLoading;
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 
@@ -150,32 +283,43 @@ export default function AgentBuilder({
     : "Create new agent";
 
   return (
-    <FormProvider form={form}>
-      <AgentBuilderLayout
-        leftPanel={
-          <AgentBuilderLeftPanel
-            title={title}
-            onCancel={handleCancel}
-            saveButtonProps={{
-              size: "sm",
-              label: saveLabel,
-              variant: "highlight",
-              onClick: handleSave,
-              disabled: isSaveDisabled,
-            }}
-            agentConfigurationId={agentConfiguration?.sId || null}
-            isActionsLoading={isActionsLoading}
-          />
-        }
-        rightPanel={
-          <ConversationSidePanelProvider>
-            <AgentBuilderRightPanel
-              agentConfigurationSId={agentConfiguration?.sId}
-              assistantTemplate={assistantTemplate}
+    <AgentBuilderFormContext.Provider value={form}>
+      <FormProvider form={form}>
+        <PersonalConnectionRequiredDialog
+          owner={owner}
+          mcpServerViewsWithPersonalConnections={
+            dialogProps.mcpServerViewsWithPersonalConnections
+          }
+          isOpen={dialogProps.isOpen}
+          onCancel={dialogProps.onCancel}
+          onClose={dialogProps.onClose}
+        />
+        <AgentBuilderLayout
+          leftPanel={
+            <AgentBuilderLeftPanel
+              title={title}
+              onCancel={handleCancel}
+              saveButtonProps={{
+                size: "sm",
+                label: saveLabel,
+                variant: "highlight",
+                onClick: handleSave,
+                disabled: isSaveDisabled,
+              }}
+              agentConfigurationId={agentConfiguration?.sId || null}
+              isActionsLoading={isActionsLoading}
+              isTriggersLoading={isTriggersLoading}
             />
-          </ConversationSidePanelProvider>
-        }
-      />
-    </FormProvider>
+          }
+          rightPanel={
+            <ConversationSidePanelProvider>
+              <AgentBuilderRightPanel
+                agentConfigurationSId={agentConfiguration?.sId}
+              />
+            </ConversationSidePanelProvider>
+          }
+        />
+      </FormProvider>
+    </AgentBuilderFormContext.Provider>
   );
 }

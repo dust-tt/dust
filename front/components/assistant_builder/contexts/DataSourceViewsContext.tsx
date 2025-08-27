@@ -11,11 +11,9 @@ interface DataSourceViewsContextType {
   isDataSourceViewsError: boolean;
 }
 
-const DataSourceViewsContext = createContext<DataSourceViewsContextType>({
-  dataSourceViews: [],
-  isDataSourceViewsLoading: false,
-  isDataSourceViewsError: false,
-});
+const DataSourceViewsContext = createContext<
+  DataSourceViewsContextType | undefined
+>(undefined);
 
 export const useDataSourceViewsContext = () => {
   const context = useContext(DataSourceViewsContext);

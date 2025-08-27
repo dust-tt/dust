@@ -1,4 +1,7 @@
-import type { MCPActionType } from "@app/lib/actions/mcp";
+import type {
+  MCPActionType,
+  MCPApproveExecutionEvent,
+} from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 
 import type { ContentFragmentType } from "../content_fragment";
@@ -6,7 +9,7 @@ import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
-  ErrorContent,
+  GenericErrorContent,
   LightAgentConfigurationType,
 } from "./agent";
 import type { AgentContentItemType } from "./agent_message_content";
@@ -91,6 +94,7 @@ export type UserMessageContext = {
   profilePictureUrl: string | null;
   origin?: UserMessageOrigin | null;
   clientSideMCPServerIds?: string[];
+  selectedMCPServerViewIds?: string[];
 };
 
 export type UserMessageType = {
@@ -144,7 +148,7 @@ export type BaseAgentMessageType = {
   status: AgentMessageStatus;
   content: string | null;
   chainOfThought: string | null;
-  error: ErrorContent | null;
+  error: GenericErrorContent | null;
 };
 
 export type ParsedContentItem =
@@ -200,7 +204,11 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
  * when a user 'tests' an agent not in their list using the "test" button:
  * those conversations do not show in users' histories.
  */
-export type ConversationVisibility = "unlisted" | "deleted" | "test";
+export type ConversationVisibility =
+  | "unlisted"
+  | "triggered"
+  | "deleted"
+  | "test";
 
 /**
  * A lighter version of Conversation without the content (for menu display).
@@ -332,3 +340,8 @@ export type ConversationMCPServerViewType = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export type MCPActionValidationRequest = Omit<
+  MCPApproveExecutionEvent,
+  "type" | "created" | "configurationId"
+>;

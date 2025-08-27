@@ -1,4 +1,5 @@
 const path = require("path");
+const { destination } = require("pino");
 
 const showReactScan =
   process.env.NODE_ENV === "development" && process.env.REACT_SCAN === "true";
@@ -61,6 +62,62 @@ module.exports = {
         source: "/w/:wId/u/chat/:cId",
         destination: "/w/:wId/assistant/:cId",
         permanent: false,
+      },
+      {
+        source: "/contact",
+        destination: "/home/contact",
+        permanent: true,
+      },
+      {
+        source: "/pricing",
+        destination: "/home/pricing",
+        permanent: true,
+      },
+      {
+        source: "/security",
+        destination: "/home/security",
+        permanent: true,
+      },
+      // Redirect all solutions pages from /solutions/* to /home/solutions/*
+      {
+        source: "/solutions/customer-support",
+        destination: "/home/solutions/customer-support",
+        permanent: true,
+      },
+      {
+        source: "/solutions/data-analytics",
+        destination: "/home/solutions/data-analytics",
+        permanent: true,
+      },
+      {
+        source: "/solutions/dust-platform",
+        destination: "/home/solutions/dust-platform",
+        permanent: true,
+      },
+      {
+        source: "/solutions/engineering",
+        destination: "/home/solutions/engineering",
+        permanent: true,
+      },
+      {
+        source: "/solutions/knowledge",
+        destination: "/home/solutions/knowledge",
+        permanent: true,
+      },
+      {
+        source: "/solutions/marketing",
+        destination: "/home/solutions/marketing",
+        permanent: true,
+      },
+      {
+        source: "/solutions/recruiting-people",
+        destination: "/home/solutions/recruiting-people",
+        permanent: true,
+      },
+      {
+        source: "/solutions/sales",
+        destination: "/home/solutions/sales",
+        permanent: true,
       },
     ];
   },

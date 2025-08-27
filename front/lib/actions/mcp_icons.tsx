@@ -1,3 +1,4 @@
+import type { Icon } from "@dust-tt/sparkle";
 import {
   ActionBrainIcon,
   ActionCloudArrowLeftRightIcon,
@@ -32,7 +33,7 @@ import {
   StripeLogo,
 } from "@dust-tt/sparkle";
 import type React from "react";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ComponentType } from "react";
 
 import type { MCPServerType } from "@app/lib/api/mcp";
 
@@ -91,17 +92,27 @@ export const isInternalAllowedIcon = (
 export const getAvatar = (
   mcpServer: MCPServerType,
   size: ComponentProps<typeof Avatar>["size"] = "sm"
-): React.ReactNode => {
+) => {
   return getAvatarFromIcon(mcpServer.icon, size);
 };
 
 export const getAvatarFromIcon = (
   icon: InternalAllowedIconType | CustomServerIconType,
   size: ComponentProps<typeof Avatar>["size"] = "sm"
-): React.ReactNode => {
+) => {
   if (isCustomServerIconType(icon)) {
     return <Avatar icon={ActionIcons[icon]} size={size} />;
   }
 
   return <Avatar icon={InternalActionIcons[icon]} size={size} />;
+};
+
+export const getIcon = (
+  icon: InternalAllowedIconType | CustomServerIconType
+): ComponentType<ComponentProps<typeof Icon>> => {
+  if (isCustomServerIconType(icon)) {
+    return ActionIcons[icon];
+  }
+
+  return InternalActionIcons[icon];
 };

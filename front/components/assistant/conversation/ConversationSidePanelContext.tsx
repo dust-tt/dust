@@ -1,12 +1,12 @@
 import { assertNever } from "@dust-tt/client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
+import type { ImperativePanelHandle } from "react-resizable-panels";
 
 import { useHashParam } from "@app/hooks/useHashParams";
-import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
-  INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
+  CANVAS_SIDE_PANEL_TYPE,
   SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
 } from "@app/types/conversation_side_panel";
@@ -15,32 +15,24 @@ type OpenPanelParams =
   | {
       type: "actions";
       messageId: string;
-      metadata: AgentActionState;
     }
   | {
-      type: "content";
+      type: "canvas";
       fileId: string;
       timestamp?: string;
-      metadata?: never;
     };
-
-interface AgentActionState {
-  actionProgress: ActionProgressState;
-}
-
-type SidePanelMetadata = OpenPanelParams["metadata"] | undefined;
 
 const isSupportedPanelType = (
   type: string | undefined
-): type is ConversationSidePanelType =>
-  type === "actions" || type === "content";
+): type is ConversationSidePanelType => type === "actions" || type === "canvas";
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
   openPanel: (params: OpenPanelParams) => void;
   closePanel: () => void;
+  onPanelClosed: () => void;
+  setPanelRef: (ref: ImperativePanelHandle | null) => void;
   data: string | undefined;
-  metadata: SidePanelMetadata;
 }
 
 const ConversationSidePanelContext = React.createContext<
@@ -69,13 +61,18 @@ export function ConversationSidePanelProvider({
   const [currentPanel, setCurrentPanel] = useHashParam(
     SIDE_PANEL_TYPE_HASH_PARAM
   );
-  const [metadata, setMetadata] = useState<SidePanelMetadata>(undefined);
+
+  const panelRef = React.useRef<ImperativePanelHandle | null>(null);
+
+  const setPanelRef = (ref: ImperativePanelHandle | null) => {
+    panelRef.current = ref;
+  };
 
   const openPanel = (params: OpenPanelParams) => {
     setCurrentPanel(params.type);
 
     switch (params.type) {
-      case AGENT_ACTIONS_SIDE_PANEL_TYPE:
+      case AGENT_ACTIONS_SIDE_PANEL_TYPE: {
         /**
          * If the panel is already open for the same messageId,
          * we close it.
@@ -84,23 +81,30 @@ export function ConversationSidePanelProvider({
           closePanel();
           return;
         }
+
         setData(params.messageId);
-        setMetadata(params.metadata);
         break;
-      case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
+      }
+
+      case CANVAS_SIDE_PANEL_TYPE:
         params.timestamp
           ? setData(`${params.fileId}@${params.timestamp}`)
           : setData(params.fileId);
-        setMetadata(undefined);
         break;
+
       default:
         assertNever(params);
     }
   };
 
   const closePanel = () => {
+    if (panelRef && panelRef.current) {
+      panelRef.current.collapse();
+    }
+  };
+
+  const onPanelClosed = () => {
     setData(undefined);
-    setMetadata(undefined);
     setCurrentPanel(undefined);
   };
 
@@ -108,17 +112,10 @@ export function ConversationSidePanelProvider({
   useEffect(() => {
     if (data && currentPanel) {
       setCurrentPanel(currentPanel);
-
-      // Set default metadata for actions panel when opened from URL
-      if (currentPanel === "actions" && !metadata) {
-        setMetadata({
-          actionProgress: new Map(),
-        });
-      }
     } else if (!data) {
-      setCurrentPanel(undefined);
+      closePanel();
     }
-  }, [data, currentPanel, setCurrentPanel, metadata]);
+  }, [data, currentPanel, setCurrentPanel]);
 
   return (
     <ConversationSidePanelContext.Provider
@@ -128,8 +125,9 @@ export function ConversationSidePanelProvider({
           : undefined,
         openPanel,
         closePanel,
+        onPanelClosed,
+        setPanelRef,
         data,
-        metadata,
       }}
     >
       {children}

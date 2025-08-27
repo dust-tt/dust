@@ -43,6 +43,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
   baseUrl: string;
   templateId: string | null;
+  duplicateAgentId: string | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -54,7 +55,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("agent_builder_v2") || !auth.isBuilder()) {
+  if (!featureFlags.includes("agent_builder_v2")) {
     return {
       notFound: true,
     };
@@ -106,6 +107,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       subscription,
       templateId,
+      duplicateAgentId: duplicate,
       user,
     },
   };
@@ -116,6 +118,7 @@ export default function CreateAgent({
   owner,
   user,
   templateId,
+  duplicateAgentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({ templateId });
 
@@ -128,14 +131,18 @@ export default function CreateAgent({
   }
 
   return (
-    <AgentBuilderProvider owner={owner} user={user}>
+    <AgentBuilderProvider
+      owner={owner}
+      user={user}
+      assistantTemplate={assistantTemplate}
+    >
       <AgentBuilder
         agentConfiguration={
           agentConfiguration && "sId" in agentConfiguration
             ? agentConfiguration
             : undefined
         }
-        assistantTemplate={assistantTemplate}
+        duplicateAgentId={duplicateAgentId}
       />
     </AgentBuilderProvider>
   );

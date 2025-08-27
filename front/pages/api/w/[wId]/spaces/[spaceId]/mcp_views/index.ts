@@ -21,6 +21,16 @@ export type PostMCPServerViewResponseBody = {
   serverView: MCPServerViewType;
 };
 
+const GetQueryParamsSchema = t.type({
+  availability: t.union([
+    t.undefined,
+    t.literal("manual"),
+    t.literal("auto"),
+    t.literal("auto_hidden_builder"),
+    t.literal("all"),
+  ]),
+});
+
 const PostQueryParamsSchema = t.type({
   mcpServerId: t.string,
 });
@@ -41,6 +51,20 @@ async function handler(
 
   switch (method) {
     case "GET": {
+      const r = GetQueryParamsSchema.decode(req.query);
+
+      if (isLeft(r)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid query parameters.",
+          },
+        });
+      }
+
+      const { availability = "manual" } = r.right;
+
       const mcpServerViews = await MCPServerViewResource.listBySpace(
         auth,
         space
@@ -49,7 +73,10 @@ async function handler(
         success: true,
         serverViews: mcpServerViews
           .map((mcpServerView) => mcpServerView.toJSON())
-          .filter((s) => s.server.availability === "manual"),
+          .filter(
+            (s) =>
+              availability === "all" || s.server.availability === availability
+          ),
       });
     }
     case "POST": {

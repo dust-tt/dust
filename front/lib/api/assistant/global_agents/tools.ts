@@ -22,7 +22,7 @@ export async function getDataSourcesAndWorkspaceIdForGlobalAgents(
   auth: Authenticator
 ): Promise<PrefetchedDataSourcesType> {
   const owner = auth.getNonNullableWorkspace();
-  const dsvs = await DataSourceViewResource.listAssistantDefaultSelected(auth);
+  const dsvs = await DataSourceViewResource.listAllInGlobalGroup(auth);
 
   return {
     dataSourceViews: dsvs.map((dsv) => {
@@ -57,6 +57,39 @@ export function _getDefaultWebActionsForGlobalAgent({
       description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
       mcpServerViewId: webSearchBrowseMCPServerView.sId,
       internalMCPServerId: webSearchBrowseMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+    },
+  ];
+}
+
+export function _getToolsetsToolsConfiguration({
+  agentId,
+  toolsetsMcpServerView,
+}: {
+  agentId: GLOBAL_AGENTS_SID;
+  toolsetsMcpServerView: MCPServerViewResource | null;
+}): ServerSideMCPServerConfigurationType[] {
+  if (!toolsetsMcpServerView) {
+    return [];
+  }
+
+  return [
+    {
+      id: -1,
+      sId: agentId + "-toolsets",
+      type: "mcp_server_configuration",
+      name: "toolsets",
+      description:
+        "List the available tools with their names and descriptions.",
+      mcpServerViewId: toolsetsMcpServerView.sId,
+      internalMCPServerId: toolsetsMcpServerView.internalMCPServerId,
       dataSources: null,
       tables: null,
       childAgentId: null,

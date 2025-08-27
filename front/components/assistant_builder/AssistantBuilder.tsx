@@ -9,16 +9,21 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import assert from "assert";
-import { uniqueId } from "lodash";
+import uniqueId from "lodash/uniqueId";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useState } from "react";
 
+import {
+  PersonalConnectionRequiredDialog,
+  useAwaitableDialog,
+} from "@app/components/agent_builder/PersonalConnectionRequiredDialog";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import ActionsScreen, {
   hasActionError,
 } from "@app/components/assistant_builder/ActionsScreen";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { BuilderLayout } from "@app/components/assistant_builder/BuilderLayout";
+import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { usePreviewPanelContext } from "@app/components/assistant_builder/contexts/PreviewPanelContext";
 import {
@@ -31,18 +36,13 @@ import SettingsScreen, {
 } from "@app/components/assistant_builder/SettingsScreen";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
-  AssistantBuilderInitialState,
   AssistantBuilderLightProps,
-  AssistantBuilderPendingAction,
-  AssistantBuilderSetActionType,
-  AssistantBuilderState,
   BuilderScreen,
 } from "@app/components/assistant_builder/types";
 import {
   BUILDER_SCREENS,
   BUILDER_SCREENS_INFOS,
   getDataVisualizationActionConfiguration,
-  getDefaultAssistantState,
 } from "@app/components/assistant_builder/types";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { useSlackChannel } from "@app/components/assistant_builder/useSlackChannels";
@@ -56,16 +56,13 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAssistantConfigurationActions } from "@app/lib/swr/actions";
+import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
 import { useUser } from "@app/lib/swr/user";
-import type { AgentConfigurationScope, PlanType } from "@app/types";
 import {
   assertNever,
-  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
-  GPT_4_1_MINI_MODEL_CONFIG,
   isAdmin,
   isBuilder,
   SUPPORTED_MODEL_CONFIGS,
@@ -75,53 +72,12 @@ function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
 }
 
-function getDefaultBuilderState(
-  initialBuilderState: AssistantBuilderInitialState | null,
-  defaultScope: Exclude<AgentConfigurationScope, "global">,
-  plan: PlanType
-) {
-  if (initialBuilderState) {
-    // We fetch actions on the client side, but in case of duplicating an agent,
-    // we need to use the actions from the original agent.
-    const duplicatedActions = initialBuilderState.actions.map((action) => ({
-      id: uniqueId(),
-      ...action,
-    }));
-
-    // We need to add data viz as a fake action if it's enabled.
-    if (initialBuilderState.visualizationEnabled) {
-      duplicatedActions.push(getDataVisualizationActionConfiguration());
-    }
-
-    return {
-      ...initialBuilderState,
-      generationSettings: initialBuilderState.generationSettings ?? {
-        ...getDefaultAssistantState().generationSettings,
-      },
-      actions: duplicatedActions,
-    };
-  }
-
-  return {
-    ...getDefaultAssistantState(),
-    scope: defaultScope,
-    generationSettings: {
-      ...getDefaultAssistantState().generationSettings,
-      modelSettings: !isUpgraded(plan)
-        ? GPT_4_1_MINI_MODEL_CONFIG
-        : CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
-    },
-  };
-}
-
 export default function AssistantBuilder({
   owner,
   subscription,
-  plan,
   initialBuilderState,
   agentConfiguration,
   flow,
-  defaultIsEdited,
   baseUrl,
   defaultTemplate,
   duplicateAgentId,
@@ -135,7 +91,8 @@ export default function AssistantBuilder({
 
   const isSavingDisabled = killSwitches?.includes("save_agent_configurations");
 
-  const defaultScope = flow === "personal_assistants" ? "hidden" : "visible";
+  const { builderState, setBuilderState, edited, setEdited } =
+    useAssistantBuilderContext();
 
   const [currentTab, setCurrentTab] = useHashParam(
     "selectedTab",
@@ -144,7 +101,7 @@ export default function AssistantBuilder({
   const [screen, setScreen] = useState<BuilderScreen>(
     currentTab && isValidTab(currentTab) ? currentTab : "instructions"
   );
-  const [edited, setEdited] = useState(defaultIsEdited ?? false);
+  //const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [disableUnsavedChangesPrompt, setDisableUnsavedChangesPrompt] =
     useState(false);
@@ -168,6 +125,11 @@ export default function AssistantBuilder({
     duplicateAgentId ?? agentConfiguration?.sId ?? null
   );
 
+  const { triggers, isTriggersLoading } = useAgentTriggers({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
+  });
+
   useEffect(() => {
     if (error) {
       sendNotification({
@@ -190,18 +152,16 @@ export default function AssistantBuilder({
           ? [getDataVisualizationActionConfiguration()]
           : []),
       ],
+      triggers: triggers.map((trigger) => ({
+        sId: uniqueId(),
+        kind: trigger.kind,
+        name: trigger.name,
+        configuration: trigger.configuration,
+        editor: trigger.editor,
+        customPrompt: trigger.customPrompt ?? "",
+      })),
     }));
-  }, [actions, error, sendNotification]);
-
-  const [builderState, setBuilderState] = useState<AssistantBuilderState>(() =>
-    getDefaultBuilderState(initialBuilderState, defaultScope, plan)
-  );
-
-  const [pendingAction, setPendingAction] =
-    useState<AssistantBuilderPendingAction>({
-      action: null,
-      previousActionName: null,
-    });
+  }, [actions, triggers, error, sendNotification, setBuilderState]);
 
   const {
     template,
@@ -262,6 +222,7 @@ export default function AssistantBuilder({
     owner,
     agentConfiguration?.sId,
     initialBuilderState,
+    setBuilderState,
   ]);
 
   const formValidation = useCallback(async () => {
@@ -341,33 +302,13 @@ export default function AssistantBuilder({
     }
   }, [currentTab]);
 
-  const setAction = useCallback(
-    (p: AssistantBuilderSetActionType) => {
-      if (p.type === "pending") {
-        setPendingAction({ action: p.action, previousActionName: null });
-      } else if (p.type === "edit") {
-        setPendingAction({
-          action: p.action,
-          previousActionName: p.action.name,
-        });
-      } else if (p.type === "clear_pending") {
-        setPendingAction({ action: null, previousActionName: null });
-      } else if (p.type === "insert") {
-        if (builderState.actions.some((a) => a.name === p.action.name)) {
-          return;
-        }
-
-        setEdited(true);
-        setBuilderState((state) => {
-          return {
-            ...state,
-            actions: [...state.actions, p.action],
-          };
-        });
-      }
-    },
-    [builderState, setBuilderState, setEdited]
-  );
+  const { showDialog, ...dialogProps } = useAwaitableDialog({
+    owner,
+    mcpServerViewToCheckIds: builderState.actions.map(
+      (a) => a.configuration.mcpServerViewId
+    ),
+    mcpServerViews,
+  });
 
   const onAssistantSave = async () => {
     // Redirect to the right screen if there are errors.
@@ -378,6 +319,11 @@ export default function AssistantBuilder({
     } else if (assistantHandleError || descriptionError) {
       setCurrentTab("settings");
     } else {
+      const confirmed = await showDialog();
+      if (!confirmed) {
+        return;
+      }
+
       setDisableUnsavedChangesPrompt(true);
       setIsSavingOrDeleting(true);
       const res = await submitAssistantBuilderForm({
@@ -420,7 +366,7 @@ export default function AssistantBuilder({
   };
 
   const [doTypewriterEffect, setDoTypewriterEffect] = useState(
-    Boolean(template !== null && builderState.instructions)
+    Boolean(template !== null && initialBuilderState?.instructions)
   );
 
   const modalTitle = agentConfiguration
@@ -429,6 +375,15 @@ export default function AssistantBuilder({
 
   return (
     <>
+      <PersonalConnectionRequiredDialog
+        owner={owner}
+        mcpServerViewsWithPersonalConnections={
+          dialogProps.mcpServerViewsWithPersonalConnections
+        }
+        isOpen={dialogProps.isOpen}
+        onCancel={dialogProps.onCancel}
+        onClose={dialogProps.onClose}
+      />
       <AppContentLayout subscription={subscription} hideSidebar owner={owner}>
         <div className="flex h-full flex-col">
           {!edited ? (
@@ -500,9 +455,6 @@ export default function AssistantBuilder({
                           return (
                             <InstructionScreen
                               owner={owner}
-                              builderState={builderState}
-                              setBuilderState={setBuilderState}
-                              setEdited={setEdited}
                               resetAt={instructionsResetAt}
                               isUsingTemplate={template !== null}
                               instructionsError={instructionsError}
@@ -522,12 +474,7 @@ export default function AssistantBuilder({
                           return (
                             <ActionsScreen
                               owner={owner}
-                              builderState={builderState}
                               reasoningModels={reasoningModels}
-                              setBuilderState={setBuilderState}
-                              setEdited={setEdited}
-                              setAction={setAction}
-                              pendingAction={pendingAction}
                               isFetchingActions={isActionsLoading}
                             />
                           );
@@ -540,10 +487,7 @@ export default function AssistantBuilder({
                               }
                               baseUrl={baseUrl}
                               owner={owner}
-                              builderState={builderState}
                               initialHandle={initialBuilderState?.handle}
-                              setBuilderState={setBuilderState}
-                              setEdited={setEdited}
                               assistantHandleError={assistantHandleError}
                               descriptionError={descriptionError}
                               slackChannelSelected={selectedSlackChannels || []}
@@ -552,6 +496,7 @@ export default function AssistantBuilder({
                                 setSelectedSlackChannels
                               }
                               currentUser={user}
+                              isTriggersLoading={isTriggersLoading}
                             />
                           );
                         default:
@@ -584,9 +529,7 @@ export default function AssistantBuilder({
                     setEdited(true);
                   }}
                   owner={owner}
-                  builderState={builderState}
                   agentConfiguration={agentConfiguration}
-                  setAction={setAction}
                 />
               </ConversationSidePanelProvider>
             }

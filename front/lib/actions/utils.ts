@@ -214,9 +214,10 @@ export function computeStepContexts({
     });
 
     stepContexts.push({
-      retrievalTopK,
-      citationsOffset: currentOffset,
       citationsCount,
+      citationsOffset: currentOffset,
+      resumeState: null,
+      retrievalTopK,
       websearchResultCount: websearchResults,
     });
 
@@ -244,14 +245,14 @@ export async function getExecutionStatusFromConfig(
   agentMessage: AgentMessageType
 ): Promise<{
   stake?: MCPToolStakeLevelType;
-  status: "allowed_implicitly" | "pending";
+  status: "ready_allowed_implicitly" | "blocked_validation_required";
   serverId?: string;
 }> {
   // If the agent message is marked as "skipToolsValidation" we skip all tools validation
   // irrespective of the `actionConfiguration.permission`. This is set when the agent message was
   // created by an API call where the caller explicitly set `skipToolsValidation` to true.
   if (agentMessage.skipToolsValidation) {
-    return { status: "allowed_implicitly" };
+    return { status: "ready_allowed_implicitly" };
   }
 
   // Permissions:
@@ -261,7 +262,7 @@ export async function getExecutionStatusFromConfig(
   // - undefined: Use default permission ("never_ask" for default tools, "high" for other tools)
   switch (actionConfiguration.permission) {
     case "never_ask":
-      return { status: "allowed_implicitly" };
+      return { status: "ready_allowed_implicitly" };
     case "low": {
       // The user may not be populated, notably when using the public API.
       const user = auth.user();
@@ -273,12 +274,12 @@ export async function getExecutionStatusFromConfig(
         neverAskSetting &&
         neverAskSetting.value.includes(`${actionConfiguration.name}`)
       ) {
-        return { status: "allowed_implicitly" };
+        return { status: "ready_allowed_implicitly" };
       }
-      return { status: "pending" };
+      return { status: "blocked_validation_required" };
     }
     case "high":
-      return { status: "pending" };
+      return { status: "blocked_validation_required" };
     default:
       assertNever(actionConfiguration.permission);
   }

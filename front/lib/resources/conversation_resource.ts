@@ -371,6 +371,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const includedConversationVisibilities: ConversationVisibility[] = [
       "unlisted",
+      "triggered",
     ];
 
     if (options?.includeDeleted) {
@@ -621,6 +622,31 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
       transaction
     );
+  }
+
+  async leaveConversation(
+    auth: Authenticator
+  ): Promise<
+    Result<{ isConversationEmpty: boolean; affectedCount: number }, Error>
+  > {
+    const user = auth.user();
+    if (!user) {
+      return new Err(new Error("user_not_authenticated"));
+    }
+    const affectedCount = await ConversationParticipantModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: this.id,
+        userId: user.id,
+      },
+    });
+    const remaining = await ConversationParticipantModel.count({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: this.id,
+      },
+    });
+    return new Ok({ isConversationEmpty: remaining === 0, affectedCount });
   }
 
   async delete(

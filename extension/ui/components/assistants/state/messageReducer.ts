@@ -13,20 +13,25 @@ import type {
 } from "@dust-tt/client";
 import { assertNever } from "@dust-tt/client";
 
-export type AgentStateClassification = "thinking" | "acting" | "done";
+export type AgentStateClassification =
+  | "thinking"
+  | "acting"
+  | "writing"
+  | "done";
 
+export type ActionProgressState = Map<
+  number,
+  {
+    action: AgentActionPublicType;
+    progress?: ToolNotificationProgress;
+  }
+>;
 export interface MessageTemporaryState {
   message: AgentMessagePublicType;
   agentState: AgentStateClassification;
   isRetrying: boolean;
   lastUpdated: Date;
-  actionProgress: Map<
-    number,
-    {
-      action: AgentActionPublicType;
-      progress?: ToolNotificationProgress;
-    }
-  >;
+  actionProgress: ActionProgressState;
 }
 
 export type AgentMessageStateEvent =
@@ -88,7 +93,6 @@ export function messageReducer(
       return {
         ...state,
         message: updateMessageWithAction(state.message, event.action),
-        agentState: "thinking",
         // Clean up progress for this specific action.
         actionProgress: new Map(
           Array.from(state.actionProgress.entries()).filter(
@@ -139,15 +143,16 @@ export function messageReducer(
         case "tokens":
           newState.message.content =
             (newState.message.content || "") + event.text;
+          newState.agentState = "writing";
+
           break;
         case "chain_of_thought":
           newState.message.chainOfThought =
             (newState.message.chainOfThought || "") + event.text;
+          newState.agentState = "thinking";
+
           break;
-        default:
-          assertNever(event.classification);
       }
-      newState.agentState = "thinking";
       return newState;
     }
     case "tool_params":

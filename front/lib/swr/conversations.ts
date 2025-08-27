@@ -21,7 +21,6 @@ import type {
 } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/tools";
 import type {
   ConversationError,
-  ConversationType,
   ConversationWithoutContentType,
   FetchConversationMessagesResponse,
   LightWorkspaceType,
@@ -36,13 +35,14 @@ export function useConversation({
   workspaceId: string;
   options?: { disabled: boolean };
 }): {
-  conversation: ConversationType | null;
+  conversation: ConversationWithoutContentType | null;
   isConversationLoading: boolean;
   conversationError: ConversationError;
   mutateConversation: () => void;
 } {
-  const conversationFetcher: Fetcher<{ conversation: ConversationType }> =
-    fetcher;
+  const conversationFetcher: Fetcher<{
+    conversation: ConversationWithoutContentType;
+  }> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     conversationId

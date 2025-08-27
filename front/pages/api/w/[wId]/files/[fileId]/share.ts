@@ -68,13 +68,13 @@ async function handler(
     }
   }
 
-  // Only allow sharing interactive files.
-  if (!file.isInteractive) {
+  // Only allow sharing canvas files.
+  if (!file.isCanvas) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Only interactive content files can be shared publicly.",
+        message: "Only canvas files can be shared publicly.",
       },
     });
   }
@@ -113,7 +113,7 @@ async function handler(
             api_error: {
               type: "invalid_request_error",
               message:
-                "Interactive files that use files from the conversation cannot be shared publicly.",
+                "Canvas files that use files from the conversation cannot be shared publicly.",
             },
           });
         }

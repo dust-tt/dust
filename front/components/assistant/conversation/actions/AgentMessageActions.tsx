@@ -25,7 +25,7 @@ interface AgentMessageActionsProps {
   owner: LightWorkspaceType;
 }
 
-function isMCPActionType(
+export function isMCPActionType(
   action: { type: "tool_action"; id: number } | undefined
 ): action is MCPActionType {
   return action !== undefined && "functionCallName" in action;
@@ -40,27 +40,27 @@ export function AgentMessageActions({
   const { openPanel } = useConversationSidePanelContext();
 
   const lastAction = agentMessage.actions[agentMessage.actions.length - 1];
-  const hasActions = agentMessage.actions.length > 0;
+  const hasSidePanelContent =
+    agentMessage.actions.length > 0 || agentMessage.chainOfThought;
   const chainOfThought = agentMessage.chainOfThought || "";
   const onClick = () => {
     openPanel({
       type: "actions",
       messageId: agentMessage.sId,
-      metadata: {
-        actionProgress,
-      },
     });
   };
 
-  if (lastAgentStateClassification === "done" && !hasActions) {
+  if (lastAgentStateClassification === "done" && !hasSidePanelContent) {
     return null;
   }
+
+  const lastNotification = actionProgress.get(lastAction?.id)?.progress ?? null;
 
   return lastAgentStateClassification !== "done" ? (
     <div
       onClick={onClick}
       className={cn(
-        "flex max-w-[500px] flex-col gap-y-4",
+        "flex flex-col gap-y-4",
         lastAction ? "cursor-pointer" : ""
       )}
     >
@@ -71,12 +71,13 @@ export function AgentMessageActions({
             viewType="conversation"
             action={lastAction}
             owner={owner}
-            lastNotification={null}
+            lastNotification={lastNotification}
+            messageStatus={agentMessage.status}
           />
         </Card>
       ) : (
         <div>
-          <ContentMessage variant="primary">
+          <ContentMessage variant="primary" className="max-w-[1000px] p-3">
             <div className="flex w-full flex-row">
               {!chainOfThought ? (
                 <AnimatedText variant="primary">Thinking...</AnimatedText>
@@ -85,12 +86,12 @@ export function AgentMessageActions({
                   content={chainOfThought}
                   isStreaming={false}
                   forcedTextSize="text-sm"
-                  textColor="text-muted-foreground"
+                  textColor="text-muted-foreground dark:text-muted-foreground-night"
                   isLastMessage={false}
                 />
               )}
               <span className="flex-grow"></span>
-              <div className="w-8 self-start pl-4">
+              <div className="w-8 self-start pl-4 pt-0.5">
                 {lastAgentStateClassification === "thinking" && (
                   <Spinner size="xs" />
                 )}
@@ -104,7 +105,7 @@ export function AgentMessageActions({
     <div className="flex flex-col items-start gap-y-4">
       <Button
         size="sm"
-        label="Tools inspection"
+        label="Message Breakdown"
         icon={CommandLineIcon}
         variant="outline"
         onClick={onClick}

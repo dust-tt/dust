@@ -1,4 +1,4 @@
-import { EnvironmentConfig } from "@app/types";
+import { EnvironmentConfig, isDevelopment } from "@app/types";
 
 export const PRODUCTION_DUST_API = "https://dust.tt";
 
@@ -243,10 +243,14 @@ const config = {
   getWorkOSActionSigningSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_ACTION_SIGNING_SECRET");
   },
+  getWorkOSSessionCookieDomain: (): string | undefined => {
+    return isDevelopment()
+      ? undefined
+      : EnvironmentConfig.getEnvVariable("WORKOS_SESSION_COOKIE_DOMAIN");
+  },
   getWorkOSEnvironmentId: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_ENVIRONMENT_ID");
   },
-
   // Profiler.
   getProfilerSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
@@ -261,9 +265,6 @@ const config = {
     return EnvironmentConfig.getOptionalEnvVariable(
       "UNTRUSTED_EGRESS_PROXY_PORT"
     );
-  },
-  getFileShareSecret: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_FILE_SHARE_SECRET");
   },
 };
 

@@ -35,7 +35,7 @@ import type {
 import {
   ALL_FILE_FORMATS,
   Err,
-  isInteractiveContentType,
+  isCanvasFileContentType,
   normalizeError,
   Ok,
   removeNulls,
@@ -300,9 +300,9 @@ export class FileResource extends BaseResource<FileModel> {
 
     const updateResult = await this.update({ status: "ready" });
 
-    // For interactive conversation files, automatically create a ShareableFileModel with default
+    // For canvas conversation files, automatically create a ShareableFileModel with default
     // conversation_participants scope.
-    if (this.isInteractive) {
+    if (this.isCanvas) {
       await ShareableFileModel.upsert({
         fileId: this.id,
         shareScope: "conversation_participants",
@@ -332,10 +332,10 @@ export class FileResource extends BaseResource<FileModel> {
     return this.updatedAt.getTime();
   }
 
-  get isInteractive(): boolean {
+  get isCanvas(): boolean {
     return (
       this.useCase === "conversation" &&
-      isInteractiveContentType(this.contentType)
+      isCanvasFileContentType(this.contentType)
     );
   }
 
@@ -522,9 +522,9 @@ export class FileResource extends BaseResource<FileModel> {
     auth: Authenticator,
     scope: FileShareScope
   ): Promise<void> {
-    // Only interactive files can be shared.
-    if (!this.isInteractive) {
-      throw new Error("Only interactive files can be shared");
+    // Only canvas files can be shared.
+    if (!this.isCanvas) {
+      throw new Error("Only canvas files can be shared");
     }
 
     const user = auth.getNonNullableUser();
@@ -551,7 +551,7 @@ export class FileResource extends BaseResource<FileModel> {
     sharedAt: Date;
     shareUrl: string;
   } | null> {
-    if (!this.isInteractive) {
+    if (!this.isCanvas) {
       return null;
     }
 

@@ -70,8 +70,6 @@ export class ActivityInboundLogInterceptor
       `provider:${this.provider}`,
     ];
 
-    this.context.metricMeter.withTags({ provider: this.provider });
-
     // startToClose timeouts do not log an error by default; this code
     // ensures that the error is logged and the activity is marked as
     // failed.

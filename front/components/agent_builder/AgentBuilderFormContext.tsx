@@ -1,4 +1,6 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { createContext } from "react";
+import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
 import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
@@ -29,8 +31,23 @@ export const mcpServerViewIdSchema = z.string();
 export const childAgentIdSchema = z.string().nullable();
 
 export const additionalConfigurationSchema = z.record(
-  z.union([z.boolean(), z.number(), z.string()])
+  z.string(),
+  z.union([
+    z.boolean(),
+    z.number(),
+    z.string(),
+    z.array(z.string()),
+    // Allow only one level of nesting
+    z.record(
+      z.string(),
+      z.union([z.boolean(), z.number(), z.string(), z.array(z.string())])
+    ),
+  ])
 );
+
+export type AdditionalConfigurationInBuilderType = z.infer<
+  typeof additionalConfigurationSchema
+>;
 
 export const dustAppConfigurationSchema = z
   .object({
@@ -56,14 +73,13 @@ const tagsFilterSchema = z
   })
   .nullable();
 
-const dataSourceViewSelectionConfigurationSchema = z
-  .object({
-    dataSourceView: z.custom<DataSourceViewType>(),
-    selectedResources: z.array(z.custom<DataSourceViewContentNode>()),
-    isSelectAll: z.boolean(),
-    tagsFilter: tagsFilterSchema,
-  })
-  .nullable();
+const dataSourceViewSelectionConfigurationSchema = z.object({
+  dataSourceView: z.custom<DataSourceViewType>(),
+  selectedResources: z.array(z.custom<DataSourceViewContentNode>()),
+  excludedResources: z.array(z.custom<DataSourceViewContentNode>()),
+  isSelectAll: z.boolean(),
+  tagsFilter: tagsFilterSchema,
+});
 
 export const dataSourceConfigurationSchema = z
   .record(z.string(), dataSourceViewSelectionConfigurationSchema)
@@ -112,11 +128,11 @@ export const mcpServerConfigurationSchema = z.object({
   dataSourceConfigurations: dataSourceConfigurationSchema,
   tablesConfigurations: dataSourceConfigurationSchema,
   childAgentId: childAgentIdSchema,
-  reasoningModel: reasoningModelSchema,
   timeFrame: mcpTimeFrameSchema,
   additionalConfiguration: additionalConfigurationSchema,
   dustAppConfiguration: dustAppConfigurationSchema,
   jsonSchema: jsonSchemaFieldSchema,
+  reasoningModel: reasoningModelSchema,
   _jsonSchemaString: jsonSchemaStringSchema,
 });
 
@@ -166,19 +182,43 @@ const agentSettingsSchema = z.object({
   tags: z.array(tagSchema),
 });
 
+const scheduleConfigSchema = z.object({
+  cron: z.string(),
+  timezone: z.string(),
+});
+
+const triggerSchema = z.object({
+  sId: z.string().optional(),
+  name: z.string(),
+  kind: z.enum(["schedule"]),
+  customPrompt: z.string().nullable(),
+  configuration: z.union([scheduleConfigSchema, z.null()]),
+  editor: z.number().nullable(),
+});
+
 export const agentBuilderFormSchema = z.object({
   agentSettings: agentSettingsSchema,
   instructions: z.string().min(1, "Instructions are required"),
   generationSettings: generationSettingsSchema,
   actions: z.array(actionSchema),
+  triggers: z.array(triggerSchema),
   maxStepsPerRun: z
     .number()
     .min(1, "Max steps per run must be at least 1")
     .default(8),
 });
 
+export const scheduleFormSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255, "Name is too long"),
+  cron: z.string().min(9, "Cron expression is required"),
+  timezone: z.string().min(1, "Timezone is required"),
+  customPrompt: z.string(),
+});
+export type ScheduleFormData = z.infer<typeof scheduleFormSchema>;
+
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
+export type AgentBuilderTriggerType = z.infer<typeof triggerSchema>;
 export type AgentBuilderAction = z.infer<typeof actionSchema>;
 export type AgentBuilderDataVizAction = z.infer<
   typeof dataVisualizationActionSchema
@@ -198,9 +238,12 @@ export interface MCPFormData {
       duration: number;
       unit: "hour" | "day" | "week" | "month" | "year";
     } | null;
-    additionalConfiguration: Record<string, boolean | number | string>;
+    additionalConfiguration: AdditionalConfigurationInBuilderType;
     dustAppConfiguration: any;
     jsonSchema: any;
     _jsonSchemaString: string | null;
   };
 }
+
+export const AgentBuilderFormContext =
+  createContext<UseFormReturn<AgentBuilderFormData> | null>(null);

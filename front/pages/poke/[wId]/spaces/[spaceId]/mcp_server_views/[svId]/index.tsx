@@ -47,14 +47,14 @@ export default function MCPServerViewPage({
   return (
     <>
       <h3 className="text-xl font-bold">
-        MCP Server View: {getMcpServerViewDisplayName(mcpServerView)} in space:{" "}
+        MCP Server View {getMcpServerViewDisplayName(mcpServerView)} in space{" "}
         <a
           href={`/poke/${owner.sId}/spaces/${mcpServerView.spaceId}`}
           className="text-highlight-500"
         >
           {mcpServerView.space?.name || mcpServerView.spaceId}
         </a>{" "}
-        of workspace:{" "}
+        within workspace{" "}
         <a href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </a>

@@ -46,6 +46,12 @@ export function pluralize(count: number) {
   return count !== 1 ? "s" : "";
 }
 
+// Conjugates a verb based on a count, assuming it only comes down to adding an
+// "s" at the end, which does not work for all words (e.g., do -> does != dos).
+export function conjugate(count: number) {
+  return count === 1 ? "s" : "";
+}
+
 export function sanitizeString(rawString: string) {
   return rawString.trim().toLowerCase();
 }

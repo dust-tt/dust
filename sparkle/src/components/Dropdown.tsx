@@ -160,12 +160,14 @@ const ItemWithLabelIconAndDescription = <
         >
           {renderIcon(icon, "sm")}
           <div className={cn("s-flex s-flex-col", truncate && "s-truncate")}>
-            <span className={cn(truncate && "s-truncate")}>{label}</span>
+            <span className={cn(truncate ? "s-truncate" : "s-line-clamp-3")}>
+              {label}
+            </span>
             {description && (
               <span
                 className={cn(
-                  menuStyleClasses.description,
-                  truncate && "s-truncate"
+                  "s-text-xs s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night",
+                  truncate ? "s-truncate" : "s-line-clamp-3"
                 )}
               >
                 {description}
@@ -244,6 +246,7 @@ interface DropdownMenuContentProps
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
   dropdownHeaders?: React.ReactNode;
+  preventAutoFocusOnClose?: boolean;
   onOpenAutoFocus?: (e: React.FocusEvent<HTMLDivElement>) => void;
 }
 
@@ -258,11 +261,23 @@ const DropdownMenuContent = React.forwardRef<
       mountPortal = true,
       mountPortalContainer,
       dropdownHeaders,
+      preventAutoFocusOnClose = true,
+      onCloseAutoFocus,
       children,
       ...props
     },
     ref
   ) => {
+    const handleCloseAutoFocus = React.useCallback(
+      (event: Event) => {
+        if (preventAutoFocusOnClose) {
+          event.preventDefault();
+        }
+        onCloseAutoFocus?.(event);
+      },
+      [preventAutoFocusOnClose, onCloseAutoFocus]
+    );
+
     const content = (
       <DropdownMenuPrimitive.Content
         ref={ref}
@@ -273,6 +288,7 @@ const DropdownMenuContent = React.forwardRef<
           dropdownHeaders && "s-h-80 xs:s-h-96", // We use dropdownHeaders for putting search bar, so we can set the height for the container
           className
         )}
+        onCloseAutoFocus={handleCloseAutoFocus}
         {...props}
       >
         <div className="s-sticky s-top-0 s-bg-background dark:s-bg-background-night">
@@ -356,25 +372,25 @@ const DropdownMenuItem = React.forwardRef<
     ref
   ) => {
     return (
-      <DropdownMenuPrimitive.Item
-        ref={ref}
-        className={cn(
-          menuStyleClasses.item({ variant }),
-          inset ? menuStyleClasses.inset : "",
-          className
-        )}
-        {...props}
-        asChild={asChild}
+      <LinkWrapper
+        href={href}
+        target={target}
+        rel={rel}
+        replace={replace}
+        shallow={shallow}
+        prefetch={prefetch}
       >
-        <div className="s-h-full s-w-full">
-          <LinkWrapper
-            href={href}
-            target={target}
-            rel={rel}
-            replace={replace}
-            shallow={shallow}
-            prefetch={prefetch}
-          >
+        <DropdownMenuPrimitive.Item
+          ref={ref}
+          className={cn(
+            menuStyleClasses.item({ variant }),
+            inset ? menuStyleClasses.inset : "",
+            className
+          )}
+          {...props}
+          asChild={asChild}
+        >
+          <div className="s-h-full s-w-full">
             <ItemWithLabelIconAndDescription
               label={label}
               icon={icon}
@@ -384,9 +400,9 @@ const DropdownMenuItem = React.forwardRef<
             >
               {children}
             </ItemWithLabelIconAndDescription>
-          </LinkWrapper>
-        </div>
-      </DropdownMenuPrimitive.Item>
+          </div>
+        </DropdownMenuPrimitive.Item>
+      </LinkWrapper>
     );
   }
 );
@@ -646,6 +662,7 @@ const DropdownMenuSearchbar = React.forwardRef<
     return (
       <div className={cn("s-flex s-gap-1.5 s-p-1.5", className)}>
         <SearchInput
+          className="w-full"
           ref={internalRef}
           placeholder={placeholder}
           name={name}

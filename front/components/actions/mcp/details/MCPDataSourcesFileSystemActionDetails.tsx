@@ -31,7 +31,11 @@ export function DataSourceNodeContentDetails({
   return (
     <ActionDetailsWrapper
       viewType={viewType}
-      actionName="Retrieve file content"
+      actionName={
+        viewType === "conversation"
+          ? "Retrieving file content"
+          : "Retrieve file content"
+      }
       visual={DocumentIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
@@ -103,7 +107,7 @@ export function FilesystemPathDetails({
   return (
     <ActionDetailsWrapper
       viewType={viewType}
-      actionName="Locate item"
+      actionName={viewType === "conversation" ? "Locating item" : "Locate item"}
       visual={ActionPinDistanceIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">

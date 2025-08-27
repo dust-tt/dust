@@ -10,6 +10,10 @@ import {
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/deepseek";
 import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust";
+import {
+  _getDustDeepGlobalAgent,
+  _getDustTaskGlobalAgent,
+} from "@app/lib/api/assistant/global_agents/configurations/dust-deep";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import {
   _getHelperGlobalAgent,
@@ -30,7 +34,6 @@ import {
   _getO3GlobalAgent,
   _getO3MiniGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/openai";
-import { _getResearchGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/research";
 import {
   _getGithubGlobalAgent,
   _getGoogleDriveGlobalAgent,
@@ -65,6 +68,10 @@ function getGlobalAgent({
   webSearchBrowseMCPServerView,
   searchMCPServerView,
   dataSourcesFileSystemMCPServerView,
+  canvasMCPServerView,
+  runAgentMCPServerView,
+  toolsetsMCPServerView,
+  dataWarehousesMCPServerView,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -75,11 +82,29 @@ function getGlobalAgent({
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
   dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
+  canvasMCPServerView: MCPServerViewResource | null;
+  runAgentMCPServerView: MCPServerViewResource | null;
+  toolsetsMCPServerView: MCPServerViewResource | null;
+  dataWarehousesMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
 
   let agentConfiguration: AgentConfigurationType | null = null;
+
+  // We use only default selected global datasources for all global agents except `@dust-deep` and
+  // `@dust-task`
+  // We use all global datasources for `@dust-deep` and `@dust-task`
+  const defaultSelectedPrefetchedDataSources: PrefetchedDataSourcesType | null =
+    !preFetchedDataSources
+      ? null
+      : {
+          dataSourceViews: preFetchedDataSources.dataSourceViews.filter(
+            (dsv) => dsv.dataSource.assistantDefaultSelected
+          ),
+          workspaceId: preFetchedDataSources.workspaceId,
+        };
+
   switch (sId) {
     case GLOBAL_AGENTS_SID.HELPER:
       agentConfiguration = _getHelperGlobalAgent({
@@ -214,53 +239,66 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.SLACK:
       agentConfiguration = _getSlackGlobalAgent(auth, {
         settings,
-        preFetchedDataSources,
+        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
         searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GOOGLE_DRIVE:
       agentConfiguration = _getGoogleDriveGlobalAgent(auth, {
         settings,
-        preFetchedDataSources,
+        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
         searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.NOTION:
       agentConfiguration = _getNotionGlobalAgent(auth, {
         settings,
-        preFetchedDataSources,
+        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
         searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GITHUB:
       agentConfiguration = _getGithubGlobalAgent(auth, {
         settings,
-        preFetchedDataSources,
+        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
         searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.INTERCOM:
       agentConfiguration = _getIntercomGlobalAgent(auth, {
         settings,
-        preFetchedDataSources,
+        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
         searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST:
       agentConfiguration = _getDustGlobalAgent(auth, {
         settings,
-        preFetchedDataSources,
+        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
         agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
         searchMCPServerView,
       });
       break;
-    case GLOBAL_AGENTS_SID.RESEARCH:
-      agentConfiguration = _getResearchGlobalAgent(auth, {
+    case GLOBAL_AGENTS_SID.DUST_DEEP:
+      agentConfiguration = _getDustDeepGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
         webSearchBrowseMCPServerView,
         dataSourcesFileSystemMCPServerView,
+        canvasMCPServerView,
+        runAgentMCPServerView,
+        dataWarehousesMCPServerView,
+        toolsetsMCPServerView,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_TASK:
+      agentConfiguration = _getDustTaskGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        webSearchBrowseMCPServerView,
+        dataSourcesFileSystemMCPServerView,
+        dataWarehousesMCPServerView,
       });
       break;
     default:
@@ -288,6 +326,8 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.NOTION,
   GLOBAL_AGENTS_SID.O1_MINI,
   GLOBAL_AGENTS_SID.SLACK,
+  // Hidden helper sub-agent, only invoked via run_agent by dust-deep
+  GLOBAL_AGENTS_SID.DUST_TASK,
 ];
 
 export async function getGlobalAgents(
@@ -318,6 +358,10 @@ export async function getGlobalAgents(
     webSearchBrowseMCPServerView,
     searchMCPServerView,
     dataSourcesFileSystemMCPServerView,
+    canvasMCPServerView,
+    runAgentMCPServerView,
+    toolsetsMCPServerView,
+    dataWarehousesMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -348,6 +392,30 @@ export async function getGlobalAgents(
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
           "data_sources_file_system"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "canvas"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "run_agent"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "toolsets"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "data_warehouses"
         )
       : null,
   ]);
@@ -384,7 +452,7 @@ export async function getGlobalAgents(
 
   if (!flags.includes("research_agent")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.RESEARCH
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_DEEP
     );
   }
 
@@ -401,6 +469,10 @@ export async function getGlobalAgents(
       webSearchBrowseMCPServerView,
       searchMCPServerView,
       dataSourcesFileSystemMCPServerView,
+      canvasMCPServerView,
+      runAgentMCPServerView,
+      toolsetsMCPServerView,
+      dataWarehousesMCPServerView,
     })
   );
 

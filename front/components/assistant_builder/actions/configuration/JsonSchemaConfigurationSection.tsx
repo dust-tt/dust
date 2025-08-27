@@ -3,6 +3,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useState } from "react";
 
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
+import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { Result } from "@app/types";
@@ -16,7 +17,6 @@ interface JsonSchemaConfigurationSectionProps {
   // user.
   sectionConfigurationDescription: string;
   initialSchema: string | null;
-  setEdited: (edited: boolean) => void;
   onConfigUpdate: ({
     _jsonSchemaString,
     jsonSchema,
@@ -34,10 +34,10 @@ export function JsonSchemaConfigurationSection({
   description,
   sectionConfigurationDescription,
   initialSchema,
-  setEdited,
   onConfigUpdate,
   generateSchema,
 }: JsonSchemaConfigurationSectionProps) {
+  const { setEdited } = useAssistantBuilderContext();
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
   const sendNotification = useSendNotification();
   const [extractSchema, setExtractSchema] = useState(initialSchema);

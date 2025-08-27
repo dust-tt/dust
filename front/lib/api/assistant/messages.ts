@@ -277,8 +277,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         (a) => a.sId === agentMessage.agentConfigurationId
       );
       if (!agentConfiguration) {
-        throw new Error(
-          "Unreachable: agent configuration must be found for agent message"
+        return new Err(
+          new ConversationError("conversation_with_unavailable_agent")
         );
       }
 
@@ -387,19 +387,36 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       } satisfies AgentMessageType;
 
       if (viewType === "full") {
-        return { m, rank: message.rank, version: message.version };
+        return new Ok({ m, rank: message.rank, version: message.version });
       } else {
-        return {
+        return new Ok({
           m: getLightAgentMessageFromAgentMessage(m),
           rank: message.rank,
           version: message.version,
-        };
+        });
       }
     })
   );
 
+  const errors = renderedMessages.filter((m): m is Err<ConversationError> =>
+    m.isErr()
+  );
+  if (errors.length > 0) {
+    return errors[0];
+  }
+
   return new Ok(
-    renderedMessages as V extends "full"
+    renderedMessages
+      .filter(
+        (
+          m
+        ): m is Ok<{
+          m: AgentMessageType;
+          rank: number;
+          version: number;
+        }> => m.isOk()
+      )
+      .map((m) => m.value) as V extends "full"
       ? { m: AgentMessageType; rank: number; version: number }[]
       : { m: LightAgentMessageType; rank: number; version: number }[]
   );

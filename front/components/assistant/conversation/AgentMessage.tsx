@@ -12,18 +12,18 @@ import {
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { marked } from "marked";
-import React from "react";
+import React, { useCallback } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
-import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { useActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
 import {
+  AgentMessageCanvasGeneratedFiles,
   DefaultAgentMessageGeneratedFiles,
-  InteractiveAgentMessageGeneratedFiles,
 } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { AssistantHandle } from "@app/components/assistant/conversation/AssistantHandle";
-import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/content/useAutoOpenInteractiveContent";
+import { useAutoOpenCanvas } from "@app/components/assistant/conversation/canvas/useAutoOpenCanvas";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -48,29 +48,22 @@ import {
   visualizationDirective,
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useEventSource } from "@app/hooks/useEventSource";
+import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type {
-  AgentMessageStateEvent,
-  MessageTemporaryState,
-} from "@app/lib/assistant/state/messageReducer";
-import {
-  CLEAR_CONTENT_EVENT,
-  messageReducer,
-} from "@app/lib/assistant/state/messageReducer";
+import { RETRY_BLOCKED_ACTIONS_STARTED_EVENT } from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type {
   LightAgentMessageType,
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { isPersonalAuthenticationRequiredErrorContent } from "@app/types";
+import { isString } from "@app/types";
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
-  isInteractiveFileContentType,
-  isOAuthProvider,
+  isCanvasFileContentType,
   isSupportedImageContentType,
-  isValidScope,
 } from "@app/types";
 
 interface AgentMessageProps {
@@ -80,22 +73,6 @@ interface AgentMessageProps {
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
-}
-
-type AgentMessageStateWithControlEvent =
-  | AgentMessageStateEvent
-  | { type: "end-of-stream" };
-
-function makeInitialMessageStreamState(
-  message: LightAgentMessageType
-): MessageTemporaryState {
-  return {
-    actionProgress: new Map(),
-    agentState: message.status === "created" ? "thinking" : "done",
-    isRetrying: false,
-    lastUpdated: new Date(),
-    message,
-  };
 }
 
 /**
@@ -113,29 +90,6 @@ export function AgentMessage({
 }: AgentMessageProps) {
   const { isDark } = useTheme();
 
-  const [messageStreamState, dispatch] = React.useReducer(
-    messageReducer,
-    message,
-    makeInitialMessageStreamState
-  );
-
-  const shouldStream = React.useMemo(() => {
-    if (message.status !== "created") {
-      return false;
-    }
-
-    switch (messageStreamState.message.status) {
-      case "succeeded":
-      case "failed":
-      case "cancelled":
-        return false;
-      case "created":
-        return true;
-      default:
-        assertNever(messageStreamState.message.status);
-    }
-  }, [message.status, messageStreamState.message.status]);
-
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     React.useState<boolean>(false);
 
@@ -148,32 +102,8 @@ export function AgentMessage({
     message.configuration.sId as GLOBAL_AGENTS_SID
   );
 
-  // Track if this is a fresh mount (no lastEventId) with existing content
-  const isFreshMountWithContent = React.useRef(
-    message.status === "created" &&
-      (!!message.content || !!message.chainOfThought)
-  );
-
-  const buildEventSourceURL = React.useCallback(
-    (lastEvent: string | null) => {
-      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
-      let lastEventId = "";
-      if (lastEvent) {
-        const eventPayload: {
-          eventId: string;
-        } = JSON.parse(lastEvent);
-        lastEventId = eventPayload.eventId;
-        // We have a lastEventId, so this is not a fresh mount
-        isFreshMountWithContent.current = false;
-      }
-      const url = esURL + "?lastEventId=" + lastEventId;
-
-      return url;
-    },
-    [conversationId, message.sId, owner.sId]
-  );
-
-  const { showValidationDialog } = React.useContext(ActionValidationContext);
+  const { showValidationDialog, enqueueValidation } =
+    useActionValidationContext();
 
   const { mutateMessage } = useConversationMessage({
     conversationId,
@@ -182,72 +112,35 @@ export function AgentMessage({
     options: { disabled: true },
   });
 
-  const onEventCallback = React.useCallback(
-    (eventStr: string) => {
-      const eventPayload: {
-        eventId: string;
-        data: AgentMessageStateWithControlEvent;
-      } = JSON.parse(eventStr);
-      const eventType = eventPayload.data.type;
+  const { messageStreamState, dispatch, shouldStream } = useAgentMessageStream({
+    message,
+    conversationId,
+    owner,
+    mutateMessage,
+    onEventCallback: useCallback(
+      (eventStr: string) => {
+        const eventPayload = JSON.parse(eventStr);
+        const eventType = eventPayload.data.type;
 
-      // Handle validation dialog separately.
-      if (eventType === "tool_approve_execution") {
-        showValidationDialog({
-          messageId: eventPayload.data.messageId,
-          conversationId: eventPayload.data.conversationId,
-          actionId: eventPayload.data.actionId,
-          inputs: eventPayload.data.inputs,
-          stake: eventPayload.data.stake,
-          metadata: eventPayload.data.metadata,
-          // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
-          action: eventPayload.data.action,
-        });
-
-        return;
-      }
-
-      // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
-      // end of the stream to the client. The message reducer does not, and should not, handle this
-      // event, so we just return.
-      if (eventType === "end-of-stream") {
-        return;
-      }
-
-      // If this is a fresh mount with existing content and we're getting generation_tokens,
-      // we need to clear the content first to avoid duplication
-      if (
-        isFreshMountWithContent.current &&
-        eventType === "generation_tokens" &&
-        (eventPayload.data.classification === "tokens" ||
-          eventPayload.data.classification === "chain_of_thought")
-      ) {
-        // Clear the existing content from the state
-        dispatch(CLEAR_CONTENT_EVENT);
-        isFreshMountWithContent.current = false;
-      }
-
-      const shouldRefresh = [
-        "agent_action_success",
-        "agent_error",
-        "agent_message_success",
-        "agent_generation_cancelled",
-      ].includes(eventType);
-
-      if (shouldRefresh) {
-        void mutateMessage();
-      }
-
-      dispatch(eventPayload.data);
-    },
-    [showValidationDialog, mutateMessage]
-  );
-
-  useEventSource(
-    buildEventSourceURL,
-    onEventCallback,
-    `message-${message.sId}`,
-    { isReadyToConsumeStream: shouldStream }
-  );
+        if (eventType === "tool_approve_execution") {
+          showValidationDialog();
+          enqueueValidation({
+            message,
+            validationRequest: {
+              messageId: eventPayload.data.messageId,
+              conversationId: eventPayload.data.conversationId,
+              actionId: eventPayload.data.actionId,
+              inputs: eventPayload.data.inputs,
+              stake: eventPayload.data.stake,
+              metadata: eventPayload.data.metadata,
+            },
+          });
+        }
+      },
+      [showValidationDialog, enqueueValidation, message]
+    ),
+    streamId: `message-${message.sId}`,
+  });
 
   const agentMessageToRender = ((): LightAgentMessageType => {
     switch (message.status) {
@@ -344,14 +237,14 @@ export function AgentMessage({
     conversationId,
   ]);
 
-  // Auto-open interactive content drawer when interactive files are available.
-  const { interactiveFiles } = useAutoOpenInteractiveContent({
+  // Auto-open canvas drawer when canvas files are available.
+  const { canvasFiles } = useAutoOpenCanvas({
     messageStreamState,
     agentMessageToRender,
     isLastMessage,
   });
 
-  const PopoverContent = React.useCallback(
+  const PopoverContent = useCallback(
     () => (
       <FeedbackSelectorPopoverContent
         owner={owner}
@@ -444,7 +337,10 @@ export function AgentMessage({
             variant="outline"
             size="xs"
             onClick={() => {
-              void retryHandler(agentMessageToRender);
+              void retryHandler({
+                conversationId,
+                messageId: agentMessageToRender.sId,
+              });
             }}
             icon={ArrowPathIcon}
             className="text-muted-foreground"
@@ -553,22 +449,38 @@ export function AgentMessage({
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
     if (agentMessage.status === "failed") {
-      if (
-        agentMessage.error &&
-        agentMessage.error.code ===
-          "mcp_server_personal_authentication_required" &&
-        typeof agentMessage.error.metadata?.mcp_server_id === "string" &&
-        agentMessage.error.metadata?.mcp_server_id.length > 0 &&
-        isOAuthProvider(agentMessage.error.metadata?.provider) &&
-        isValidScope(agentMessage.error.metadata?.scope)
-      ) {
+      const { error } = agentMessage;
+      if (isPersonalAuthenticationRequiredErrorContent(error)) {
         return (
           <MCPServerPersonalAuthenticationRequired
             owner={owner}
-            mcpServerId={agentMessage.error.metadata.mcp_server_id}
-            provider={agentMessage.error.metadata.provider}
-            scope={agentMessage.error.metadata.scope}
-            retryHandler={async () => retryHandler(agentMessage)}
+            mcpServerId={error.metadata.mcp_server_id}
+            provider={error.metadata.provider}
+            scope={error.metadata.scope}
+            retryHandler={async () => {
+              // Dispatch retry event to reset failed state and re-enable streaming.
+              dispatch(RETRY_BLOCKED_ACTIONS_STARTED_EVENT);
+              // Retry on the event's conversationId, which may be coming from a subagent.
+              // TODO(durable-agents): typeguard on a proper type here.
+              if (
+                error.metadata &&
+                isString(error.metadata.messageId) &&
+                isString(error.metadata.conversationId) &&
+                error.metadata.conversationId !== conversationId
+              ) {
+                await retryHandler({
+                  conversationId: error.metadata.conversationId,
+                  messageId: error.metadata.messageId,
+                  blockedOnly: true,
+                });
+              }
+              // Retry on the main conversation.
+              await retryHandler({
+                conversationId,
+                messageId: agentMessage.sId,
+                blockedOnly: true,
+              });
+            }}
           />
         );
       }
@@ -581,7 +493,9 @@ export function AgentMessage({
               metadata: {},
             }
           }
-          retryHandler={async () => retryHandler(agentMessage)}
+          retryHandler={async () =>
+            retryHandler({ conversationId, messageId: agentMessage.sId })
+          }
         />
       );
     }
@@ -607,20 +521,18 @@ export function AgentMessage({
     const generatedFiles = agentMessage.generatedFiles.filter(
       (file) =>
         !isSupportedImageContentType(file.contentType) &&
-        !isInteractiveFileContentType(file.contentType)
+        !isCanvasFileContentType(file.contentType)
     );
 
     return (
       <div className="flex flex-col gap-y-4">
-        <div className="flex flex-col gap-2">
-          <AgentMessageActions
-            agentMessage={agentMessage}
-            lastAgentStateClassification={messageStreamState.agentState}
-            actionProgress={messageStreamState.actionProgress}
-            owner={owner}
-          />
-        </div>
-        <InteractiveAgentMessageGeneratedFiles files={interactiveFiles} />
+        <AgentMessageActions
+          agentMessage={agentMessage}
+          lastAgentStateClassification={messageStreamState.agentState}
+          actionProgress={messageStreamState.actionProgress}
+          owner={owner}
+        />
+        <AgentMessageCanvasGeneratedFiles files={canvasFiles} />
         {(inProgressImages.length > 0 || completedImages.length > 0) && (
           <InteractiveImageGrid
             images={[
@@ -694,10 +606,18 @@ export function AgentMessage({
     );
   }
 
-  async function retryHandler(agentMessage: LightAgentMessageType) {
+  async function retryHandler({
+    conversationId,
+    messageId,
+    blockedOnly = false,
+  }: {
+    conversationId: string;
+    messageId: string;
+    blockedOnly?: boolean;
+  }) {
     setIsRetryHandlerProcessing(true);
     await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry`,
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=${blockedOnly}`,
       {
         method: "POST",
         headers: {
@@ -705,6 +625,7 @@ export function AgentMessage({
         },
       }
     );
+
     setIsRetryHandlerProcessing(false);
   }
 }
