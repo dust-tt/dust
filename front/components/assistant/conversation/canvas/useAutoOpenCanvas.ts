@@ -76,7 +76,7 @@ export function useAutoOpenCanvas({
         lastOpenedFileIdRef.current = firstFile.fileId;
         // Always use updatedAt for real-time updates to trigger refresh.
         openPanel({
-          type: "content",
+          type: "canvas",
           fileId: firstFile.fileId,
           timestamp: firstFile.updatedAt,
         });
@@ -91,7 +91,7 @@ export function useAutoOpenCanvas({
         lastOpenedFileIdRef.current = firstFile.fileId;
         // Skip updatedAt for completed files since they're final state.
         openPanel({
-          type: "content",
+          type: "canvas",
           fileId: firstFile.fileId,
         });
       }
