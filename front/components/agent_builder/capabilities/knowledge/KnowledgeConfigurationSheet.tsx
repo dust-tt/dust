@@ -5,8 +5,6 @@ import uniqueId from "lodash/uniqueId";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
-import { ConfirmContext } from "@app/components/Confirm";
-
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { KnowledgeFooter } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeFooter";
@@ -36,6 +34,7 @@ import {
   capabilityFormSchema,
   CONFIGURATION_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
+import { ConfirmContext } from "@app/components/Confirm";
 import {
   DataSourceBuilderProvider,
   useDataSourceBuilderContext,
