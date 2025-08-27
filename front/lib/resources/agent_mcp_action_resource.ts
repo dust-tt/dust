@@ -51,7 +51,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     blob: Attributes<AgentMCPActionModel>,
     // TODO(DURABLE-AGENTS, 2025-08-21): consider using the resource instead of the model.
     readonly stepContent: NonAttribute<AgentStepContentModel>,
-    readonly internalMCPServerName: InternalMCPServerNameType | null
+    readonly metadata: {
+      internalMCPServerName: InternalMCPServerNameType | null;
+    }
   ) {
     super(model, blob);
   }
@@ -93,7 +95,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         a.toolConfiguration.toolServerId
       );
 
-      return new this(this.model, a.get(), stepContent, internalMCPServerName);
+      return new this(this.model, a.get(), stepContent, {
+        internalMCPServerName,
+      });
     });
   }
 
@@ -124,12 +128,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
     assert(stepContent, "Step content not found.");
 
-    return new this(
-      this.model,
-      action.get(),
-      stepContent,
-      internalMCPServerName
-    );
+    return new this(this.model, action.get(), stepContent, {
+      internalMCPServerName,
+    });
   }
 
   static async fetchByModelIdWithAuth(
@@ -332,7 +333,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       functionCallId: this.stepContent.value.value.id,
       functionCallName: this.stepContent.value.value.name,
       id: this.id,
-      internalMCPServerName: this.internalMCPServerName,
+      internalMCPServerName: this.metadata.internalMCPServerName,
       mcpServerConfigurationId: this.mcpServerConfigurationId,
       params: this.augmentedInputs,
       status: this.status,
