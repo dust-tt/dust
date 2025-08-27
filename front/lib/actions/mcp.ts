@@ -219,7 +219,7 @@ type MCPParamsEvent = {
   configurationId: string;
   messageId: string;
   // TODO: cleanup this type from the public API users.
-  action: AgentMCPActionType & { type: "tool_action" };
+  action: AgentMCPActionType & { type: "tool_action"; output: null };
 };
 
 type MCPSuccessEvent = {
