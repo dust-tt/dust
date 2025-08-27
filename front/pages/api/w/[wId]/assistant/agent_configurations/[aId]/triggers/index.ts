@@ -17,7 +17,10 @@ import type {
 import { TriggerSchema } from "@app/types/assistant/triggers";
 
 export interface GetTriggersResponseBody {
-  triggers: TriggerType[];
+  triggers: (TriggerType & {
+    isSubscriber: boolean;
+    isEditor: boolean;
+  })[];
 }
 
 export interface PatchTriggersRequestBody {
@@ -69,8 +72,16 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
+      const triggersWithIsSubscriber = await Promise.all(
+        triggers.map(async (trigger) => ({
+          ...trigger.toJSON(),
+          isSubscriber: await trigger.isSubscriber(auth),
+          isEditor: trigger.editor === auth.getNonNullableUser().id,
+        }))
+      );
+
       return res.status(200).json({
-        triggers: triggers.map((trigger) => trigger.toJSON()),
+        triggers: triggersWithIsSubscriber,
       });
     }
 
