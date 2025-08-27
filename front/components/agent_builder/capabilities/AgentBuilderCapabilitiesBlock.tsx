@@ -9,7 +9,6 @@ import {
   ContentMessage,
   EmptyCTA,
   Hoverable,
-  ListAddIcon,
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -259,7 +258,7 @@ export function AgentBuilderCapabilitiesBlock({
         type="button"
         onClick={() => setDialogMode({ type: "add" })}
         label="Add tools"
-        icon={ListAddIcon}
+        icon={BoltIcon}
         variant="outline"
       />
     </div>

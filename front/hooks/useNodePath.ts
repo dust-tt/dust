@@ -8,20 +8,20 @@ export function useNodePath({
   owner,
   disabled = false,
 }: {
-  node: DataSourceViewContentNode;
+  node?: DataSourceViewContentNode;
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
   const { nodes: parentNodes, isNodesLoading } = useDataSourceViewContentNodes({
     owner,
-    dataSourceView: node.dataSourceView,
-    internalIds: node.parentInternalIds ?? [],
+    dataSourceView: node?.dataSourceView,
+    internalIds: node?.parentInternalIds ?? [],
     viewType: "all",
-    disabled: disabled || !node.parentInternalIds?.length,
+    disabled: disabled || !node || !node.parentInternalIds?.length,
   });
 
   const fullPath = useMemo(() => {
-    if (disabled || !node.parentInternalIds?.length) {
+    if (disabled || !node || !node.parentInternalIds?.length) {
       return [];
     }
 
@@ -36,7 +36,7 @@ export function useNodePath({
       .reverse();
 
     return sortedParentNodes;
-  }, [disabled, node.parentInternalIds, isNodesLoading, parentNodes]);
+  }, [disabled, node, isNodesLoading, parentNodes]);
 
   return {
     fullPath,

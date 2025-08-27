@@ -10,6 +10,7 @@ import {
 import { useWatch } from "react-hook-form";
 
 import { DataSourceViewTagsFilterDropdown } from "@app/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { CONFIGURATION_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
@@ -32,6 +33,9 @@ function DataSourceFilterContextItem({
 }: DataSourceFilterContextItemProps) {
   const { isDark } = useTheme();
   const { toggleTagsMode } = useDataSourceBuilderContext();
+  const { spaces } = useSpacesContext();
+
+  const spaceName = spaces.find((s) => s.sId === dataSourceView.spaceId)?.name;
 
   return (
     <ContextItem
@@ -45,6 +49,7 @@ function DataSourceFilterContextItem({
           })}
         />
       }
+      subElement={spaceName && <span className="text-xs">{spaceName}</span>}
       action={
         <PopoverRoot>
           <PopoverTrigger asChild>

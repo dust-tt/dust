@@ -134,7 +134,7 @@ export const DataSourceBuilderSelector = ({
 
   return (
     <div className="relative flex h-full flex-1 flex-col gap-4">
-      {breadcrumbItems.length > 0 && <Breadcrumbs items={breadcrumbItems} />}
+      {breadcrumbItems.length > 1 && <Breadcrumbs items={breadcrumbItems} />}
 
       {currentNavigationEntry.type === "root" ? (
         <DataSourceSpaceSelector spaces={filteredSpaces} />
@@ -170,7 +170,7 @@ function getBreadcrumbConfig(
   switch (entry.type) {
     case "root":
       return {
-        label: "Knowledge",
+        label: "Spaces",
       };
     case "space":
       return {
