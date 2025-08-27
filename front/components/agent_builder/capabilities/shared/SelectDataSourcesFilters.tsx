@@ -1,12 +1,4 @@
-import {
-  Button,
-  ContextItem,
-  MoreIcon,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-  SliderToggle,
-} from "@dust-tt/sparkle";
+import { Button, ContextItem } from "@dust-tt/sparkle";
 import { useWatch } from "react-hook-form";
 
 import { DataSourceViewTagsFilterDropdown } from "@app/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown";
@@ -17,10 +9,9 @@ import { useDataSourceBuilderContext } from "@app/components/data_source_view/co
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
-import type { DataSourceViewType, TagsFilter } from "@app/types";
+import type { DataSourceViewType } from "@app/types";
 
 type DataSourceFilterItem = {
-  mode: NonNullable<TagsFilter>["mode"];
   dataSourceView: DataSourceViewType;
 };
 
@@ -29,10 +20,9 @@ type DataSourceFilterContextItemProps = {
 };
 
 function DataSourceFilterContextItem({
-  item: { dataSourceView, mode },
+  item: { dataSourceView },
 }: DataSourceFilterContextItemProps) {
   const { isDark } = useTheme();
-  const { toggleTagsMode } = useDataSourceBuilderContext();
   const { spaces } = useSpacesContext();
 
   const spaceName = spaces.find((s) => s.sId === dataSourceView.spaceId)?.name;
@@ -50,28 +40,6 @@ function DataSourceFilterContextItem({
         />
       }
       subElement={spaceName && <span className="text-xs">{spaceName}</span>}
-      action={
-        <PopoverRoot>
-          <PopoverTrigger asChild>
-            <Button icon={MoreIcon} variant="ghost" size="mini" />
-          </PopoverTrigger>
-
-          <PopoverContent align="end" className="w-72 text-sm">
-            <div className="mb-1 font-semibold">In-conversation filtering</div>
-            <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-              Allow agents to determine filters to apply based on conversation
-              context.
-            </div>
-            <div className="mt-2 flex flex-row items-center justify-between">
-              <SliderToggle
-                selected={mode === "auto"}
-                onClick={() => toggleTagsMode(dataSourceView)}
-              />
-              <div className="font-medium">Enable in converation filtering</div>
-            </div>
-          </PopoverContent>
-        </PopoverRoot>
-      }
     />
   );
 }
@@ -85,12 +53,10 @@ export function SelectDataSourcesFilters() {
       if (source.type === "data_source") {
         acc[source.dataSourceView.dataSource.dustAPIDataSourceId] = {
           dataSourceView: source.dataSourceView,
-          mode: source.tagsFilter?.mode ?? "custom",
         };
       } else if (source.type === "node") {
         acc[source.node.dataSourceView.dataSource.dustAPIDataSourceId] = {
           dataSourceView: source.node.dataSourceView,
-          mode: source.tagsFilter?.mode ?? "custom",
         };
       }
 

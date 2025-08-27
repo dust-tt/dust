@@ -4,6 +4,7 @@ import {
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
+  SliderToggle,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 import { useWatch } from "react-hook-form";
@@ -12,11 +13,17 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { TagSearchSection } from "@app/components/assistant_builder/tags/TagSearchSection";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
-import type { DataSourceTag, DataSourceViewType, TagsFilter } from "@app/types";
+import type {
+  DataSourceTag,
+  DataSourceViewType,
+  TagsFilter,
+  TagsFilterMode,
+} from "@app/types";
 
 export function DataSourceViewTagsFilterDropdown() {
   const { owner } = useAgentBuilderContext();
-  const { updateSourcesTags } = useDataSourceBuilderContext();
+  const { updateSourcesTags, toggleInConversationFiltering } =
+    useDataSourceBuilderContext();
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
 
   const dataSourceViews = sources.in.reduce((acc, source) => {
@@ -100,9 +107,11 @@ export function DataSourceViewTagsFilterDropdown() {
     [sources.in, updateSourcesTags]
   );
 
-  const { tagsIn, tagsNotIn } = useMemo(() => {
+  const { tagsIn, tagsNotIn, mode } = useMemo(() => {
     return sources.in.reduce(
       ({ tagsIn, tagsNotIn }, source) => {
+        let mode: TagsFilterMode = "custom";
+
         if (source.type === "data_source") {
           if (source.tagsFilter !== null) {
             tagsIn.push(
@@ -124,6 +133,7 @@ export function DataSourceViewTagsFilterDropdown() {
                   source.dataSourceView.dataSource.connectorProvider,
               }))
             );
+            mode = source.tagsFilter.mode;
           }
         } else if (source.type === "node") {
           if (source.tagsFilter !== null) {
@@ -146,17 +156,20 @@ export function DataSourceViewTagsFilterDropdown() {
                   source.node.dataSourceView.dataSource.connectorProvider,
               }))
             );
+            mode = source.tagsFilter.mode;
           }
         }
 
         return {
           tagsIn,
           tagsNotIn,
+          mode,
         };
       },
-      { tagsIn: [], tagsNotIn: [] } as {
+      { tagsIn: [], tagsNotIn: [], mode: "custom" } as {
         tagsIn: DataSourceTag[];
         tagsNotIn: DataSourceTag[];
+        mode: TagsFilterMode;
       }
     );
   }, [sources.in]);
@@ -203,6 +216,28 @@ export function DataSourceViewTagsFilterDropdown() {
             operation="not"
             showChipIcons
           />
+
+          <div className="text-sm">
+            <div className="mb-1 font-semibold">In-conversation filtering</div>
+            <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+              Allow agents to determine filters to apply based on conversation
+              context.
+            </div>
+            <div className="mt-2 flex flex-row items-center space-x-4">
+              <SliderToggle
+                selected={mode === "auto"}
+                onClick={() =>
+                  toggleInConversationFiltering(
+                    mode === "custom" ? "auto" : "custom"
+                  )
+                }
+              />
+              <div className="font-medium">
+                {mode === "custom" ? "Enable" : "Disable"} in conversation
+                filtering
+              </div>
+            </div>
+          </div>
         </div>
       </PopoverContent>
     </PopoverRoot>
