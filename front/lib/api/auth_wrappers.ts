@@ -3,7 +3,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
-import { findWorkOSOrganizationsForUserId } from "@app/lib/api/workos/organization_membership";
 import {
   Authenticator,
   getAPIKey,
