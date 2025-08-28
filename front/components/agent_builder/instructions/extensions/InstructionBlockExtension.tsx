@@ -208,18 +208,24 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
             <ChevronIcon className="h-4 w-4" />
           </button>
           {isCollapsed ? (
-            <div 
-              contentEditable={false} 
-              className="cursor-pointer mt-[0.5px]"
+            <div
+              contentEditable={false}
+              className="mt-[0.5px] cursor-pointer"
               onClick={handleToggle}
             >
-              <Chip size="mini" className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+              <Chip
+                size="mini"
+                className="bg-gray-100 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+              >
                 {displayType ? displayType.toUpperCase() : " "}
               </Chip>
             </div>
           ) : (
             <div className="mt-0.5">
-              <NodeViewContent className={instructionBlockContentStyles} as="div" />
+              <NodeViewContent
+                className={instructionBlockContentStyles}
+                as="div"
+              />
             </div>
           )}
         </div>
@@ -609,19 +615,23 @@ export const InstructionBlockExtension =
           props: {
             decorations(state) {
               const decorations: Decoration[] = [];
-              
+
               state.doc.descendants((node, pos) => {
                 if (node.type.name === "instructionBlock") {
                   let childPos = pos + 1;
-                  
+
                   node.forEach((child) => {
                     if (child.type.name === "paragraph") {
                       const text = child.textContent.trim();
                       const isOpeningTag = text.match(OPENING_TAG_REGEX);
                       const isClosingTag = text.match(CLOSING_TAG_REGEX);
-                      
+
                       if (isOpeningTag || isClosingTag) {
-                        const marginClass = isOpeningTag ? "mb-2" : isClosingTag ? "mt-2" : "";
+                        const marginClass = isOpeningTag
+                          ? "mb-2"
+                          : isClosingTag
+                            ? "mt-2"
+                            : "";
                         decorations.push(
                           Decoration.node(childPos, childPos + child.nodeSize, {
                             class: `block w-fit px-1.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-xs font-medium uppercase ${marginClass}`,
@@ -633,7 +643,7 @@ export const InstructionBlockExtension =
                   });
                 }
               });
-              
+
               return DecorationSet.create(state.doc, decorations);
             },
           },
