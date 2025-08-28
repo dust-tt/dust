@@ -1,6 +1,7 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { Client } from "@microsoft/microsoft-graph-client";
+import { GraphError } from "@microsoft/microsoft-graph-client";
 import type { WorkbookWorksheet } from "@microsoft/microsoft-graph-types";
 import { stringify } from "csv-stringify/sync";
 
@@ -165,13 +166,18 @@ async function processSheet({
       "[Spreadsheet] Failed to fetch sheet content."
     );
 
-    await markInternalIdAsSkipped({
-      internalId: worksheetInternalId,
-      connectorId: connector.id,
-      parentInternalId: spreadsheetInternalId,
-      reason: "error_fetching_content",
-      file: spreadsheet,
-    });
+    if (
+      content.error instanceof GraphError &&
+      content.error.statusCode === 504
+    ) {
+      await markInternalIdAsSkipped({
+        internalId: worksheetInternalId,
+        connectorId: connector.id,
+        parentInternalId: spreadsheetInternalId,
+        reason: "error_fetching_content",
+        file: spreadsheet,
+      });
+    }
 
     return content;
   }
@@ -324,6 +330,20 @@ export async function handleSpreadSheet({
       { error: worksheetsRes.error },
       "[Spreadsheet] Failed to fetch worksheets."
     );
+
+    if (
+      worksheetsRes.error instanceof GraphError &&
+      worksheetsRes.error.statusCode === 504
+    ) {
+      await markInternalIdAsSkipped({
+        internalId: documentId,
+        connectorId,
+        parentInternalId,
+        reason: "error_fetching_worksheets",
+        file,
+      });
+    }
+
     return worksheetsRes;
   }
 
