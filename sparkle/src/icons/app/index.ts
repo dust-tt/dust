@@ -120,6 +120,7 @@ export { default as SuitcaseIcon } from "./Suitcase";
 export { default as SunIcon } from "./Sun";
 export { default as TableIcon } from "./Table";
 export { default as TagIcon } from "./Tag";
+export { default as TelescopeIcon } from "./Telescope";
 export { default as TestTubeIcon } from "./TestTube";
 export { default as TimeIcon } from "./Time";
 export { default as TranslateIcon } from "./Translate";
