@@ -4,7 +4,7 @@ import {
   EDIT_CANVAS_FILE_TOOL_NAME,
   RETRIEVE_CANVAS_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/canvas/types";
-import { clientExecutableContentType, slideshowContentType } from "@app/types";
+import { clientExecutableContentType } from "@app/types";
 
 export const CANVAS_INSTRUCTIONS = `\
 ## CREATING VISUALIZATIONS WITH CANVAS
@@ -13,8 +13,7 @@ You have access to a Canvas system that allows you to create and update executab
 
 ### File Management Guidelines:
 - Use the \`${CREATE_CANVAS_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files
-- Use  MIME type \`${slideshowContentType}\` for: presentations, slide decks, step-by-step content
-- Use  MIME type \`${clientExecutableContentType}\` for: data visualizations, dashboards, interactive tools and all other cases
+- Use MIME type \`${clientExecutableContentType}\`
 - Supported file extensions: .js, .jsx, .ts, .tsx
 - Files are automatically made available to the user for execution
 

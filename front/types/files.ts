@@ -317,8 +317,6 @@ export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 export const clientExecutableContentType =
   "application/vnd.dust.client-executable";
 
-export const slideshowContentType = "application/vnd.dust.slideshow";
-
 // Canvas MIME types for specialized use cases (not exposed via APIs).
 export const CANVAS_FILE_FORMATS = {
   // Custom for client-executable code files managed by canvas MCP server.
@@ -327,11 +325,6 @@ export const CANVAS_FILE_FORMATS = {
   [clientExecutableContentType]: {
     cat: "code",
     exts: [".js", ".jsx", ".ts", ".tsx"],
-    isSafeToDisplay: true,
-  },
-  [slideshowContentType]: {
-    cat: "code",
-    exts: [".tsx"],
     isSafeToDisplay: true,
   },
 } as const satisfies Record<string, FileFormat>;
