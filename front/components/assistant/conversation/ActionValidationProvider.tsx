@@ -24,7 +24,6 @@ import { useNavigationLock } from "@app/components/assistant_builder/useNavigati
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
-import { isAuthenticationRequiredBlockedAction } from "@app/lib/actions/mcp";
 import { getIcon } from "@app/lib/actions/mcp_icons";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
 import { useCreatePersonalConnection } from "@app/lib/swr/mcp_servers";
@@ -37,8 +36,19 @@ import type {
 } from "@app/types";
 import { asDisplayName } from "@app/types";
 
+type AuthenticationRequiredBlockedAction = Extract<
+  BlockedToolExecution,
+  { status: "blocked_authentication_required" }
+>;
+
+function isAuthenticationRequiredBlockedAction(
+  blockedAction: BlockedToolExecution
+): blockedAction is AuthenticationRequiredBlockedAction {
+  return blockedAction.status === "blocked_authentication_required";
+}
+
 interface AuthenticationDialogPageProps {
-  authActions: BlockedToolExecution[];
+  authActions: AuthenticationRequiredBlockedAction[];
   connectionStates: Record<string, "connecting" | "connected" | "idle">;
   onConnectionStateChange: (
     actionId: string,
@@ -62,11 +72,7 @@ function AuthenticationDialogPage({
   errorMessage,
 }: AuthenticationDialogPageProps) {
   const handleConnect = useCallback(
-    async (blockedAction: BlockedToolExecution) => {
-      if (!isAuthenticationRequiredBlockedAction(blockedAction)) {
-        return;
-      }
-
+    async (blockedAction: AuthenticationRequiredBlockedAction) => {
       onConnectionStateChange(blockedAction.actionId, "connecting");
       const success = await createPersonalConnection({
         mcpServerId: blockedAction.metadata.mcpServerId,
@@ -83,21 +89,12 @@ function AuthenticationDialogPage({
         onConnectionStateChange(blockedAction.actionId, "idle");
       }
     },
-    [
-      authActions,
-      connectionStates,
-      createPersonalConnection,
-      onConnectionStateChange,
-    ]
+    [createPersonalConnection, onConnectionStateChange]
   );
 
   return (
     <div className="flex flex-col gap-4">
       {authActions.map((blockedAction, authIndex) => {
-        if (!isAuthenticationRequiredBlockedAction(blockedAction)) {
-          return null;
-        }
-
         return (
           <div key={authIndex} className="rounded-md">
             <div className="flex items-center justify-between">
@@ -445,9 +442,9 @@ export function ActionValidationProvider({
     return Array.from({ length: totalCount }, (_, index) => {
       if (hasPendingAuthentications && index === 0) {
         // Create a combined authentication page with all pending authentications
-        const authActions = pendingAuthentications.map(
-          (item) => item.blockedAction
-        );
+        const authActions = pendingAuthentications
+          .map((item) => item.blockedAction)
+          .filter(isAuthenticationRequiredBlockedAction);
 
         return {
           id: index.toString(),
