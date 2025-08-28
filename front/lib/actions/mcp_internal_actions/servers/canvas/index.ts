@@ -300,16 +300,18 @@ const createServer = (
   // descriptions tailored for Canvas use cases (visual assets and templates).
   registerListTool(auth, server, agentLoopContext, {
     name: "list_assets",
-    extraDescription: "Browse available visual assets and templates in the connected data sources. " +
+    extraDescription:
+      "Browse available visual assets and templates in the connected data sources. " +
       "Use this to explore folders containing images, icons, slideshow templates, " +
-      "or other resources that can be incorporated into Canvas files."
+      "or other resources that can be incorporated into Canvas files.",
   });
 
   registerCatTool(auth, server, agentLoopContext, {
     name: "cat_assets",
-    extraDescription: "Read template files or asset configurations from the connected data sources. " +
+    extraDescription:
+      "Read template files or asset configurations from the connected data sources. " +
       "Use this to retrieve slideshow templates, HTML/CSS snippets, React component examples, " +
-      "or configuration files that can serve as a starting point or be incorporated into Canvas files."
+      "or configuration files that can serve as a starting point or be incorporated into Canvas files.",
   });
 
   return server;
