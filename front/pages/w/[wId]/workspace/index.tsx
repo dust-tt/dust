@@ -409,7 +409,7 @@ function InteractiveContentToggle({ owner }: { owner: WorkspaceType }) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
 
-  const isEnabled = owner.metadata?.allowInteractiveContentSharing !== false;
+  const isEnabled = owner.metadata?.allowCanvasFileSharing !== false;
 
   const toggleInteractiveContent = async () => {
     setIsChanging(true);
@@ -420,7 +420,7 @@ function InteractiveContentToggle({ owner }: { owner: WorkspaceType }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          allowInteractiveContentSharing: !isEnabled,
+          allowCanvasFileSharing: !isEnabled,
         }),
       });
 

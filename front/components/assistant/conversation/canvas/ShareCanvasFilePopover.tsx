@@ -118,8 +118,7 @@ export function ShareCanvasFilePopover({
     "conversation_participants"
   );
 
-  const isSharingForbidden =
-    owner.metadata?.allowInteractiveContentSharing === false;
+  const isSharingForbidden = owner.metadata?.allowCanvasFileSharing === false;
 
   const { doShare, fileShare, isFileShareLoading, isFileShareError } =
     useShareCanvasFile({
