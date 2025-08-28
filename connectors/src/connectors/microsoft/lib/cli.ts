@@ -387,59 +387,59 @@ export const microsoft = async ({
     case "skip-file": {
       const connector = await getConnector(args);
       const logger = getActivityLogger(connector);
-      if (!args.internalId) {
-        throw new Error("Missing --internalId argument");
-      }
+      const { internalId, idsFile } = args;
 
-      const { nodeType, itemAPIPath } = typeAndPathFromInternalId(
-        args.internalId
-      );
-      if (nodeType !== "file") {
-        throw new Error(`Can only skip file, got ${nodeType} / ${itemAPIPath}`);
-      }
+      const internalIds = parseInternalIds(idsFile, internalId);
 
       const client = await getClient(connector.connectionId);
-      const file = (await getItem(
-        logger,
-        client,
-        itemAPIPath + `?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
-      )) as DriveItem;
 
-      if (!file) {
-        throw new Error(
-          `Could not find file with internalId ${args.internalId}`
+      for (const internalId of internalIds) {
+        const { nodeType, itemAPIPath } = typeAndPathFromInternalId(internalId);
+        if (nodeType !== "file") {
+          throw new Error(
+            `Can only skip file, got ${nodeType} / ${itemAPIPath}`
+          );
+        }
+
+        const file = (await getItem(
+          logger,
+          client,
+          itemAPIPath + `?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
+        )) as DriveItem;
+
+        if (!file) {
+          throw new Error(`Could not find file with internalId ${internalId}`);
+        }
+
+        if (!file.parentReference) {
+          throw new Error(`No parentReference found`);
+        }
+
+        const parentInternalId = getParentReferenceInternalId(
+          file.parentReference
         );
-      }
 
-      if (!file.parentReference) {
-        throw new Error(`No parentReference found`);
-      }
+        const existingFile = await MicrosoftNodeResource.fetchByInternalId(
+          connector.id,
+          internalId
+        );
 
-      const parentInternalId = getParentReferenceInternalId(
-        file.parentReference
-      );
-
-      file.parentReference?.driveId, file.parentReference?.id;
-      const existingFile = await MicrosoftNodeResource.fetchByInternalId(
-        connector.id,
-        args.internalId
-      );
-
-      if (existingFile) {
-        await existingFile.update({
-          skipReason: args.reason || "blacklisted",
-        });
-      } else {
-        await MicrosoftNodeResource.makeNew({
-          internalId: args.internalId,
-          connectorId: connector.id,
-          nodeType: "file",
-          name: file.name ?? "unknown",
-          mimeType: file.file?.mimeType ?? "unknown",
-          parentInternalId,
-          skipReason: args.reason || "blacklisted",
-          webUrl: file.webUrl ?? null,
-        });
+        if (existingFile) {
+          await existingFile.update({
+            skipReason: args.reason || "blacklisted",
+          });
+        } else {
+          await MicrosoftNodeResource.makeNew({
+            internalId: internalId,
+            connectorId: connector.id,
+            nodeType: "file",
+            name: file.name ?? "unknown",
+            mimeType: file.file?.mimeType ?? "unknown",
+            parentInternalId,
+            skipReason: args.reason || "blacklisted",
+            webUrl: file.webUrl ?? null,
+          });
+        }
       }
 
       return { success: true };
