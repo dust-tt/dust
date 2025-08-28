@@ -147,7 +147,6 @@ export const useAuthHook = () => {
       workspaceId: workspace.sId,
     });
     if (!isValidEnterpriseConnection(updatedUser, workspace)) {
-      await redirectToSSOLogin(workspace);
       return;
     }
 
