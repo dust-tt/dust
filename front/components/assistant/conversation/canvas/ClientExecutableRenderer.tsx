@@ -129,12 +129,7 @@ export function ClientExecutableRenderer({
         <ShareCanvasFilePopover
           fileId={fileId}
           owner={owner}
-          disabled={isUsingConversationFiles}
-          tooltip={
-            isUsingConversationFiles
-              ? "This canvas file uses conversation files. It cannot be shared publicly."
-              : "Share public link"
-          }
+          isUsingConversationFiles={isUsingConversationFiles}
         />
       </CanvasHeader>
 
