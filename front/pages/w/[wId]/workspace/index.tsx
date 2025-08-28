@@ -407,7 +407,9 @@ function SlackBotToggle({
 }
 
 function CanvasSharingToggle({ owner }: { owner: WorkspaceType }) {
-  const { isEnabled, isChanging, toggleCanvasSharing } = useCanvasSharingToggle(owner);
+  const { isEnabled, isChanging, toggleCanvasSharing } = useCanvasSharingToggle(
+    { owner }
+  );
 
   return (
     <ContextItem.List>
