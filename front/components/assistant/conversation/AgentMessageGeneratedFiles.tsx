@@ -5,6 +5,8 @@ import {
   CitationIcons,
   CitationIndex,
   CitationTitle,
+  Icon,
+  SparklesIcon,
 } from "@dust-tt/sparkle";
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -43,7 +45,7 @@ export function DefaultAgentMessageGeneratedFiles({
   );
 }
 
-// Interactive files.
+// Canvas files.
 
 function getDescriptionForContentType(
   file: LightAgentMessageType["generatedFiles"][number]
@@ -55,13 +57,17 @@ function getDescriptionForContentType(
   return null;
 }
 
-interface InteractiveAgentMessageGeneratedFilesProps {
+interface AgentMessageCanvasGeneratedFilesProps {
   files: LightAgentMessageType["generatedFiles"];
+  onClick?: () => void;
+  variant?: "list" | "grid";
 }
 
-export function InteractiveAgentMessageGeneratedFiles({
+export function AgentMessageCanvasGeneratedFiles({
   files,
-}: InteractiveAgentMessageGeneratedFilesProps) {
+  onClick,
+  variant = "list",
+}: AgentMessageCanvasGeneratedFilesProps) {
   const { openPanel } = useConversationSidePanelContext();
 
   if (files.length === 0) {
@@ -69,14 +75,15 @@ export function InteractiveAgentMessageGeneratedFiles({
   }
 
   return (
-    <CitationGrid variant="list">
+    <CitationGrid variant={variant}>
       {files.map((file) => {
         const handleClick = (e: React.MouseEvent) => {
           e.preventDefault();
           openPanel({
-            type: "content",
+            type: "canvas",
             fileId: file.fileId,
           });
+          onClick?.();
         };
 
         const description = getDescriptionForContentType(file);
@@ -90,13 +97,18 @@ export function InteractiveAgentMessageGeneratedFiles({
           >
             <div className="flex flex-row items-center gap-2">
               <CitationTitle>{file.title}</CitationTitle>
-              {description && (
+              {description && variant === "list" && (
                 <CitationTitle className="text-muted-foreground dark:text-muted-foreground-night">
                   {description}
                 </CitationTitle>
               )}
             </div>
-            <CitationDescription>Interactive Content</CitationDescription>
+            <CitationDescription>
+              <div className="flow-row flex items-center gap-2">
+                <Icon visual={SparklesIcon} size="xs" />
+                Canvas
+              </div>
+            </CitationDescription>
           </Citation>
         );
       })}

@@ -4,6 +4,7 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -16,6 +17,12 @@ import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type { TimeFrame } from "@app/types";
 import { isTimeFrame } from "@app/types";
 
+// Note, in storage, we store the path using "." in the key of the record.
+export type AdditionalConfigurationType = Record<
+  string,
+  boolean | number | string | string[]
+>;
+
 export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPServerConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -25,7 +32,7 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
   declare sId: string;
 
   declare timeFrame: TimeFrame | null;
-  declare additionalConfiguration: Record<string, boolean | number | string>;
+  declare additionalConfiguration: AdditionalConfigurationType;
   declare jsonSchema: JSONSchema | null;
 
   declare appId: string | null;
@@ -179,23 +186,16 @@ AgentMCPServerConfiguration.belongsTo(MCPServerViewModel, {
   as: "mcpServerView",
 });
 
-export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
+export class AgentMCPActionModel extends WorkspaceAwareModel<AgentMCPActionModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare mcpServerConfigurationId: string;
-
   declare version: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
 
-  declare isError: boolean;
-  declare executionState:
-    | "pending"
-    | "timeout"
-    | "allowed_explicitly"
-    | "allowed_implicitly"
-    | "denied";
+  declare status: ToolExecutionStatus;
 
   declare citationsAllocated: number;
   declare augmentedInputs: Record<string, unknown>;
@@ -203,10 +203,11 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare stepContext: StepContext;
 
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
+
   declare agentMessage?: NonAttribute<AgentMessage>;
 }
 
-AgentMCPAction.init(
+AgentMCPActionModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -227,25 +228,10 @@ AgentMCPAction.init(
       allowNull: false,
       defaultValue: 0,
     },
-    executionState: {
+    status: {
       type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        isIn: [
-          [
-            "pending",
-            "timeout",
-            "allowed_explicitly",
-            "allowed_implicitly",
-            "denied",
-          ],
-        ],
-      },
-    },
-    isError: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
+      allowNull: true,
+      defaultValue: "succeeded",
     },
     citationsAllocated: {
       type: DataTypes.INTEGER,
@@ -287,30 +273,30 @@ AgentMCPAction.init(
         concurrently: true,
       },
       {
-        fields: ["workspaceId", "agentMessageId", "executionState"],
-        name: "agent_mcp_action_workspace_agent_message_execution_state",
+        fields: ["workspaceId", "agentMessageId", "status"],
+        name: "agent_mcp_action_workspace_agent_message_status",
         concurrently: true,
       },
     ],
   }
 );
 
-AgentMCPAction.belongsTo(AgentMessage, {
+AgentMCPActionModel.belongsTo(AgentMessage, {
   foreignKey: { name: "agentMessageId", allowNull: false },
   as: "agentMessage",
 });
 
-AgentMessage.hasMany(AgentMCPAction, {
+AgentMessage.hasMany(AgentMCPActionModel, {
   foreignKey: { name: "agentMessageId", allowNull: false },
 });
 
-AgentMCPAction.belongsTo(AgentStepContentModel, {
+AgentMCPActionModel.belongsTo(AgentStepContentModel, {
   foreignKey: { name: "stepContentId", allowNull: false },
   as: "stepContent",
   onDelete: "RESTRICT",
 });
 
-AgentStepContentModel.hasMany(AgentMCPAction, {
+AgentStepContentModel.hasMany(AgentMCPActionModel, {
   foreignKey: { name: "stepContentId", allowNull: false },
   as: "agentMCPActions",
 });
@@ -319,7 +305,7 @@ export class AgentMCPActionOutputItem extends WorkspaceAwareModel<AgentMCPAction
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare agentMCPActionId: ForeignKey<AgentMCPAction["id"]>;
+  declare agentMCPActionId: ForeignKey<AgentMCPActionModel["id"]>;
   declare content: CallToolResult["content"][number];
   declare fileId: ForeignKey<FileModel["id"]> | null;
 
@@ -374,13 +360,13 @@ AgentMCPActionOutputItem.init(
   }
 );
 
-AgentMCPAction.hasMany(AgentMCPActionOutputItem, {
+AgentMCPActionModel.hasMany(AgentMCPActionOutputItem, {
   foreignKey: { name: "agentMCPActionId", allowNull: false },
   as: "outputItems",
   onDelete: "CASCADE",
 });
 
-AgentMCPActionOutputItem.belongsTo(AgentMCPAction, {
+AgentMCPActionOutputItem.belongsTo(AgentMCPActionModel, {
   foreignKey: { name: "agentMCPActionId", allowNull: false },
 });
 

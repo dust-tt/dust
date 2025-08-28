@@ -4,6 +4,7 @@ import {
   RocketIcon,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
+import Link from "next/link";
 
 import type {
   BenefitsProps,
@@ -207,19 +208,21 @@ export const salesFAQItems = [
       <>
         Most sales automation tools treat every company the same way, applying
         generic rules that ignore what makes{" "}
-        <strong>YOUR business unique</strong>. Salesforce Einstein, HubSpot AI,
-        and traditional CRM automation apply the same one-size-fits-all logic to
-        your unique market and customers, delivering generic results for
-        everyone.
+        <strong>YOUR business unique</strong>.
+        <br />
+        Salesforce Einstein, HubSpot AI, and traditional CRM automation apply
+        the same one-size-fits-all logic to your unique market and customers,
+        delivering generic results for everyone.
         <br />
         <strong>Dust's AI sales agents work differently.</strong> They're
         custom-built to understand your specific business. They connect to your
-        CRM, knowledge base, and team expertise to adapt how you approach your
-        sales process.
+        CRM, sales tools like <strong>Gong</strong> and{" "}
+        <strong>Intercom</strong>, your knowledge base, and team expertise to
+        adapt how you approach your sales process.
         <br />
-        AI sales agents learn from each conversation, handle the mundane tasks,
-        and let your sales team do what humans do best:{" "}
-        <strong>build relationships and close deals</strong>.
+        AI sales agents access your company playbooks to understand how you
+        operate, handle the mundane tasks, and let your sales team do what
+        humans do best: <strong>build relationships and close deals</strong>.
       </>
     ),
   },
@@ -227,21 +230,22 @@ export const salesFAQItems = [
     question: "How do AI sales agents actually work?",
     answer: (
       <>
-        Most AI tools follow basic rules.{" "}
-        <strong>AI sales agents learn your business.</strong> They figure out
-        what works in your sales process and adapt to it, rather than forcing
-        you to change how you sell.
+        Most AI tools follow basic rules. AI sales agents access your business
+        context and can retain information within conversations. They work
+        within your existing sales process rather than forcing you to change how
+        you sell.
         <br />
         <h3>They connect all your tools</h3>
         While Salesforce AI only knows Salesforce data and HubSpot's AI stays
-        within HubSpot's walls, AI sales agents break down these silos entirely.
-        They connect across your entire sales ecosystem:
+        within HubSpot's walls, Dust AI sales agents break down these silos
+        entirely. They connect across your entire sales ecosystem:
         <ul>
           <li>CRM records</li>
           <li>Support tickets</li>
           <li>Product documentation</li>
           <li>Competitive intelligence</li>
           <li>Past presentations</li>
+          <li>Call transcripts</li>
           <li>Team knowledge</li>
         </ul>
         <strong>Result:</strong> Insights that no single platform could deliver.
@@ -256,18 +260,20 @@ export const salesFAQItems = [
           <li>Build talking points that match how you sell</li>
         </ul>
         <h3>They work where you work</h3>
-        AI sales agents integrate with your whole stack:{" "}
+        AI sales agents integrate with your whole stack:
         <strong>
-          Salesforce, HubSpot, Zendesk, Slack, Notion, Google Drive
+          {" "}
+          Salesforce, HubSpot, Gong, Intercom, Zendesk, Slack, Notion, Google
+          Drive, Google Meet
         </strong>
-        , and more. They bring insights to your existing workflow, not the other
-        way around.
+        , etc. They bring insights to your existing workflow, not the other way
+        around.
         <br />
         <h3>They start smart, then get smarter</h3>
         Begin with templates like <strong>accountSnapshot</strong> for meeting
         prep or <strong>prospectQuestions</strong> for RFPs. Connect your data,
         adjust the template using plain language prompts to match your process,
-        and watch the agent learn from every interaction.
+        and refine them based on feedback and results.
       </>
     ),
   },
@@ -276,48 +282,43 @@ export const salesFAQItems = [
     answer: (
       <>
         <h3>Lead qualification</h3>
-        Using Dust's <strong>@ProspectIQ</strong> template alongside{" "}
-        <strong>@SignupRadar</strong> and <strong>@CompanySearch</strong>{" "}
-        integrations, AI sales agents:
-        <ul>
-          <li>Research company backgrounds</li>
-          <li>Analyze funding status</li>
-          <li>Assess technology stacks</li>
-          <li>Score prospects against your ideal customer profile</li>
-        </ul>
+        Using Dust's <strong>@ProspectIQ</strong> template alongside
+        <strong> @SignupRadar</strong> and <strong>@CompanySearch</strong>, AI
+        sales agents research company backgrounds, analyze funding status,
+        assess technology stacks, and score prospects against your ideal
+        customer profile.
         <h3>Meeting preparation</h3>
         The <strong>@salesAccountSummary</strong> template pulls data from your
         CRM, support tickets, product usage analytics, and market intelligence
         to create <strong>comprehensive account briefings in minutes</strong>.
-        <br />
-        <strong>Real results:</strong> Sales teams at PayFit and Alan use this
-        capability to prepare for meetings and account handovers faster than
-        manual research could ever achieve.
-        <h3>RFP handling</h3>
-        Dust's <strong>@securitySam</strong> template for RFPs and{" "}
-        <strong>@salesCopilot</strong> for prospect requests access your:
-        <ul>
-          <li>Product specifications</li>
-          <li>Compliance documentation</li>
-          <li>Previous successful responses</li>
-        </ul>
-        <strong>Result:</strong> Generate accurate, consistent answers. Kyriba's
-        team saves <strong>over 3 hours weekly per person</strong> using this
-        capability.
+        Sales teams at PayFit and Alan use this capability to prepare for
+        meetings and account handovers faster than manual research could ever
+        achieve.{" "}
+        <a
+          href="https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/"
+          target="_blank"
+          rel="noreferrer"
+          className="underline underline-offset-4"
+        >
+          See how these teams gained 20% productivity
+        </a>
+        .<h3>RFP handling</h3>
+        Dust's <strong>@securitySam</strong> template for RFPs and
+        <strong> @salesCopilot</strong> for prospect requests access your
+        product specifications, compliance documentation, and previous
+        successful responses to generate accurate, consistent answers. Kyriba's
+        team saves
+        <strong> over 3 hours weekly per person</strong> using this capability.
         <h3>Call analysis</h3>
-        The <strong>@transcriptInsights</strong> template for managers and{" "}
-        <strong>@salescoach</strong> for individual reps analyze call recordings
-        to:
-        <ul>
-          <li>Identify successful objection handling</li>
-          <li>Spot coaching opportunities</li>
-          <li>Surface winning narratives</li>
-        </ul>
+        The <strong>@transcriptInsights</strong> agent for managers and
+        <strong> @salescoach</strong> for individual reps analyze call
+        recordings to identify successful objection handling, spot coaching
+        opportunities, and surface winning narratives.
         <h3>Follow-ups</h3>
-        Using <strong>@FollowUpAgent</strong> and{" "}
-        <strong>@salesOutboundDraft</strong> templates, AI sales agents generate{" "}
-        <strong>personalized follow-up emails</strong> from call transcripts,
-        CRM data, and relevant product information.
+        Using <strong>@FollowUpAgent</strong> and
+        <strong> @salesOutboundDraft</strong> templates, AI sales agents
+        generate <strong>personalized follow-up emails</strong> from call
+        transcripts, CRM data, and relevant product information.
       </>
     ),
   },
@@ -330,7 +331,7 @@ export const salesFAQItems = [
         process work.
         <br />
         <h3>Data stays trapped</h3>
-        Sales tools should connect information. Instead, they create more walls:
+        Sales tools should connect information. Instead, they create more walls.
         <ul>
           <li>
             <strong>Salesforce's AI</strong> only sees Salesforce data
@@ -339,28 +340,17 @@ export const salesFAQItems = [
             <strong>HubSpot AI</strong> stays in HubSpot
           </li>
           <li>Your team ends up copying information between tools</li>
-          <li>
-            <strong>Result:</strong> Wasting time they could spend selling
-          </li>
+          <li>Wasting time they could spend selling</li>
         </ul>
         <h3>No room to be different</h3>
         You can change templates in generic tools, but you can't change how they
-        think. They don't learn:
-        <ul>
-          <li>Your market position</li>
-          <li>Your success stories</li>
-          <li>Why customers choose you</li>
-        </ul>
+        think. They don't learn your market position, your success stories, or
+        why customers choose you.
         <h3>Dust's template advantage</h3>
-        Start with proven frameworks like <strong>coldEmailer</strong> or{" "}
-        <strong>salesMeetingRecap</strong>, then make them yours. These
-        templates:
-        <ul>
-          <li>Adapt to your terminology</li>
-          <li>Match your sales approach</li>
-          <li>Can be shared across teams</li>
-          <li>Allow each team to add their specific needs</li>
-        </ul>
+        Start with proven frameworks like <strong>coldEmailer</strong> or
+        <strong> salesMeetingRecap</strong>, then make them yours. These
+        templates adapt to your terminology and sales approach, and can be
+        shared across teams—with each team adding their specific needs.
       </>
     ),
   },
@@ -385,24 +375,23 @@ export const salesFAQItems = [
           </li>
         </ul>
         <h3>Step 2: Connect your tools</h3>
-        One-click connections to{" "}
-        <strong>Salesforce, HubSpot, Slack, Notion</strong>, and more. Your
-        agent immediately accesses your:
-        <ul>
-          <li>CRM data</li>
-          <li>Support tickets</li>
-          <li>Documentation</li>
-        </ul>
+        One-click connections to
+        <strong> Salesforce, HubSpot, Slack, Notion</strong>, and more. Your
+        agent immediately accesses your CRM, support tickets, and documentation.
         <h3>Step 3: Make it yours</h3>
         Describe your sales process in plain English using Dust's visual
         interface.
         <h3>Step 4: Use it anywhere</h3>
-        Your agent works where you do:
-        <ul>
-          <li>In your browser (with the extension)</li>
-          <li>Slack conversations</li>
-          <li>Connected to your other tools</li>
-        </ul>
+        Your agent works where you do: in your browser with the{" "}
+        <Link
+          href="/home/chrome-extension"
+          target="_blank"
+          rel="noreferrer"
+          className="underline underline-offset-4"
+        >
+          Chrome extension
+        </Link>
+        , Slack conversations, or connected to your other tools.
         <h3>Step 5: Improve over time</h3>
         Watch what works, collect feedback, and refine. Add more capabilities as
         your needs grow.
@@ -410,6 +399,15 @@ export const salesFAQItems = [
         <strong>Getting started:</strong> Most teams start with one template
         during a free trial. As they see results, they expand to cover more of
         their sales process.
+        <br />
+        <br />
+        <strong>Want to try it out?</strong>
+        <br /> Take a look at how other teams use these agents, try Dust for
+        free today or{" "}
+        <Link href="/home/pricing" className="underline underline-offset-4">
+          talk to our sales team
+        </Link>{" "}
+        to see how AI sales agents can improve your process.
       </>
     ),
   },

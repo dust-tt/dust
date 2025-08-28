@@ -49,6 +49,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -298,7 +299,7 @@ export async function deleteAppsActivity({
     }
   }
 
-  await KeyResource.deleteAllForWorkspace(workspace);
+  await KeyResource.deleteAllForWorkspace(auth);
 
   await Provider.destroy({
     where: {
@@ -386,9 +387,7 @@ export const deleteRemoteMCPServersActivity = async ({
 }) => {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
-  await MCPServerConnectionResource.deleteAllForWorkspace(
-    auth.getNonNullableWorkspace()
-  );
+  await MCPServerConnectionResource.deleteAllForWorkspace(auth);
 
   const remoteMCPServers = await RemoteMCPServerResource.listByWorkspace(auth);
   for (const remoteMCPServer of remoteMCPServers) {
@@ -568,9 +567,10 @@ export async function deleteWorkspaceActivity({
       workspaceId: workspace.id,
     },
   });
-  await FileResource.deleteAllForWorkspace(workspace);
-  await RunResource.deleteAllForWorkspace(workspace);
-  await MembershipResource.deleteAllForWorkspace(workspace);
+  await TriggerResource.deleteAllForWorkspace(auth);
+  await FileResource.deleteAllForWorkspace(auth);
+  await RunResource.deleteAllForWorkspace(auth);
+  await MembershipResource.deleteAllForWorkspace(auth);
   await WorkspaceHasDomainModel.destroy({
     where: { workspaceId: workspace.id },
   });

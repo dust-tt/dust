@@ -2,7 +2,6 @@ import { cn, ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
-import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
@@ -19,6 +18,7 @@ import { FileDropProvider } from "@app/components/assistant/conversation/FileUpl
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
@@ -56,17 +56,15 @@ export default function ConversationLayout({
     <ConversationsNavigationProvider
       initialConversationId={pageProps.conversationId}
     >
-      <ActionValidationProvider owner={owner}>
-        <ConversationLayoutContent
-          baseUrl={baseUrl}
-          owner={owner}
-          subscription={subscription}
-          user={user}
-          isAdmin={isAdmin}
-        >
-          {children}
-        </ConversationLayoutContent>
-      </ActionValidationProvider>
+      <ConversationLayoutContent
+        baseUrl={baseUrl}
+        owner={owner}
+        subscription={subscription}
+        user={user}
+        isAdmin={isAdmin}
+      >
+        {children}
+      </ConversationLayoutContent>
     </ConversationsNavigationProvider>
   );
 }
@@ -130,53 +128,55 @@ const ConversationLayoutContent = ({
   };
 
   return (
-    <InputBarProvider>
-      <AppContentLayout
-        hasTitle={!!activeConversationId}
-        subscription={subscription}
-        owner={owner}
-        pageTitle={
-          conversation?.title
-            ? `Dust - ${conversation?.title}`
-            : `Dust - New Conversation`
-        }
-        navChildren={<AssistantSidebarMenu owner={owner} />}
-      >
-        <AssistantDetails
+    <ActionValidationProvider owner={owner} conversation={conversation}>
+      <InputBarProvider>
+        <AppContentLayout
+          hasTitle={!!activeConversationId}
+          subscription={subscription}
           owner={owner}
-          user={user}
-          assistantId={assistantSId}
-          onClose={() => onOpenChangeAssistantModal(false)}
-        />
-        <CoEditionProvider
-          owner={owner}
-          hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
+          pageTitle={
+            conversation?.title
+              ? `Dust - ${conversation?.title}`
+              : `Dust - New Conversation`
+          }
+          navChildren={<AssistantSidebarMenu owner={owner} />}
         >
-          <ConversationSidePanelProvider>
-            <ConversationInnerLayout
-              activeConversationId={activeConversationId}
-              baseUrl={baseUrl}
-              conversation={conversation}
-              conversationError={conversationError}
-              owner={owner}
-            >
-              {children}
-            </ConversationInnerLayout>
-          </ConversationSidePanelProvider>
-        </CoEditionProvider>
-        {shouldDisplayWelcomeTourGuide && (
-          <WelcomeTourGuide
+          <AssistantDetails
             owner={owner}
             user={user}
-            isAdmin={isAdmin}
-            startConversationRef={startConversationRef}
-            spaceMenuButtonRef={spaceMenuButtonRef}
-            createAgentButtonRef={createAgentButtonRef}
-            onTourGuideEnd={onTourGuideEnd}
+            assistantId={assistantSId}
+            onClose={() => onOpenChangeAssistantModal(false)}
           />
-        )}
-      </AppContentLayout>
-    </InputBarProvider>
+          <CoEditionProvider
+            owner={owner}
+            hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
+          >
+            <ConversationSidePanelProvider>
+              <ConversationInnerLayout
+                activeConversationId={activeConversationId}
+                baseUrl={baseUrl}
+                conversation={conversation}
+                conversationError={conversationError}
+                owner={owner}
+              >
+                {children}
+              </ConversationInnerLayout>
+            </ConversationSidePanelProvider>
+          </CoEditionProvider>
+          {shouldDisplayWelcomeTourGuide && (
+            <WelcomeTourGuide
+              owner={owner}
+              user={user}
+              isAdmin={isAdmin}
+              startConversationRef={startConversationRef}
+              spaceMenuButtonRef={spaceMenuButtonRef}
+              createAgentButtonRef={createAgentButtonRef}
+              onTourGuideEnd={onTourGuideEnd}
+            />
+          )}
+        </AppContentLayout>
+      </InputBarProvider>
+    </ActionValidationProvider>
   );
 };
 

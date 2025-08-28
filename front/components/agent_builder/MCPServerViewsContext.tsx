@@ -1,4 +1,4 @@
-import { groupBy } from "lodash";
+import groupBy from "lodash/groupBy";
 import type { ReactNode } from "react";
 import React, { createContext, useContext, useMemo } from "react";
 
@@ -49,14 +49,9 @@ interface MCPServerViewsContextType {
   isMCPServerViewsError: boolean;
 }
 
-const MCPServerViewsContext = createContext<MCPServerViewsContextType>({
-  mcpServerViews: [],
-  mcpServerViewsWithKnowledge: [],
-  defaultMCPServerViews: [],
-  nonDefaultMCPServerViews: [],
-  isMCPServerViewsLoading: false,
-  isMCPServerViewsError: false,
-});
+const MCPServerViewsContext = createContext<
+  MCPServerViewsContextType | undefined
+>(undefined);
 
 function getGroupedMCPServerViews({
   mcpServerViews,
@@ -108,10 +103,16 @@ function getGroupedMCPServerViews({
     groupBy(mcpServerViewsWithLabel, (view) => {
       const requirements = getMCPServerRequirements(view);
 
+      // Special handling for canvas server:
+      // The canvas server includes list and cat tools for convenience, but its primary purpose is
+      // not data source operations. We don't want it to be classified as requiring knowledge.
+      const isCanvasServer = view.server.name === "canvas";
+
       const isWithKnowledge =
-        requirements.requiresDataSourceConfiguration ||
-        requirements.requiresDataWarehouseConfiguration ||
-        requirements.requiresTableConfiguration;
+        !isCanvasServer &&
+        (requirements.requiresDataSourceConfiguration ||
+          requirements.requiresDataWarehouseConfiguration ||
+          requirements.requiresTableConfiguration);
 
       return isWithKnowledge
         ? "mcpServerViewsWithKnowledge"
@@ -153,12 +154,14 @@ export const MCPServerViewsProvider = ({
 }: MCPServerViewsProviderProps) => {
   const { spaces, isSpacesLoading } = useSpacesContext();
 
-  // TODO: we should only fetch it on mount.
   const {
     serverViews: mcpServerViews,
     isLoading,
     isError: isMCPServerViewsError,
-  } = useMCPServerViewsFromSpaces(owner, spaces);
+  } = useMCPServerViewsFromSpaces(owner, spaces, {
+    revalidateIfStale: false,
+    revalidateOnFocus: false,
+  });
 
   const sortedMCPServerViews = useMemo(
     () => mcpServerViews.sort(mcpServerViewSortingFn),

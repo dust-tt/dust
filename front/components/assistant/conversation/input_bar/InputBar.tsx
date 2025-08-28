@@ -53,7 +53,7 @@ interface AssistantInputBarProps {
   disableAutoFocus: boolean;
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
-  disableButton?: boolean;
+  disable?: boolean;
 }
 
 /**
@@ -71,9 +71,9 @@ export function AssistantInputBar({
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   isFloating = true,
-  disableButton = false,
+  disable = false,
 }: AssistantInputBarProps) {
-  const [disableSendButton, setDisableSendButton] = useState(disableButton);
+  const [disableSendButton, setDisableSendButton] = useState(disable);
   const [isFocused, setIsFocused] = useState(false);
   const rainbowEffectRef = useRef<HTMLDivElement>(null);
 
@@ -346,8 +346,8 @@ export function AssistantInputBar({
   }, [isStopping, generationContext.generatingMessages, conversationId]);
 
   useEffect(() => {
-    setDisableSendButton(disableButton);
-  }, [disableButton]);
+    setDisableSendButton(disable);
+  }, [disable]);
 
   return (
     <div className="flex w-full flex-col">
@@ -356,7 +356,6 @@ export function AssistantInputBar({
       ) && (
         <div className="flex justify-center px-4 pb-4">
           <Button
-            className="mt-4"
             variant="outline"
             label={isStopping ? "Stopping generation..." : "Stop generation"}
             icon={StopIcon}
@@ -371,17 +370,18 @@ export function AssistantInputBar({
           className="w-full"
           containerClassName="w-full"
           size={isFocused ? "large" : "medium"}
-          disabled={!isFloating}
+          disabled={disable || !isFloating}
         >
           <div
             className={classNames(
-              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-3 sm:flex-row",
+              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch sm:flex-row",
               "rounded-2xl transition-all",
               "bg-muted-background dark:bg-muted-background-night",
               "border",
               "border-border-dark dark:border-border-dark-night",
               "sm:border-border-dark/50 sm:focus-within:border-border-dark",
               "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
+              disable && "cursor-not-allowed opacity-75",
               isFloating
                 ? classNames(
                     "focus-within:ring-1 dark:focus-within:ring-1",
@@ -417,6 +417,7 @@ export function AssistantInputBar({
                 disableSendButton={
                   disableSendButton || fileUploaderService.isProcessingFiles
                 }
+                disableTextInput={disable}
                 onNodeSelect={handleNodesAttachmentSelect}
                 onNodeUnselect={handleNodesAttachmentRemove}
                 selectedMCPServerViewIds={selectedMCPServerViewIds}
@@ -440,6 +441,7 @@ export function FixedAssistantInputBar({
   additionalAgentConfiguration,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
+  disable = false,
 }: {
   owner: WorkspaceType;
   onSubmit: (
@@ -453,6 +455,7 @@ export function FixedAssistantInputBar({
   additionalAgentConfiguration?: LightAgentConfigurationType;
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus?: boolean;
+  disable?: boolean;
 }) {
   return (
     <div
@@ -470,6 +473,7 @@ export function FixedAssistantInputBar({
         additionalAgentConfiguration={additionalAgentConfiguration}
         actions={actions}
         disableAutoFocus={disableAutoFocus}
+        disable={disable}
       />
     </div>
   );

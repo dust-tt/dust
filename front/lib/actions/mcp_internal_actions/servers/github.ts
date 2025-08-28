@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Octokit } from "@octokit/core";
 import type {
   RequestInfo as UndiciRequestInfo,
@@ -8,10 +8,10 @@ import { fetch as undiciFetch, ProxyAgent } from "undici";
 import { z } from "zod";
 
 import {
+  makeInternalMCPServer,
   makeMCPToolTextError,
   makeMCPToolTextSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { EnvironmentConfig, normalizeError } from "@app/types";
@@ -47,20 +47,8 @@ const createOctokit = async (
   });
 };
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "github",
-  version: "1.0.0",
-  description: "GitHub tools to manage issues and pull requests.",
-  authorization: {
-    provider: "github" as const,
-    supported_use_cases: ["platform_actions"] as const,
-  },
-  icon: "GithubLogo",
-  documentationUrl: null,
-};
-
 const createServer = (auth: Authenticator): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer("github");
 
   server.tool(
     "create_issue",

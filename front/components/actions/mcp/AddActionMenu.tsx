@@ -21,7 +21,7 @@ import type { WorkspaceType } from "@app/types";
 
 type AddActionMenuProps = {
   owner: WorkspaceType;
-  enabledMCPServers: { id: string; name: string }[];
+  enabledMCPServers: MCPServerType[];
   buttonVariant?: "primary" | "outline";
   createInternalMCPServer: (mcpServer: MCPServerType) => void;
   createRemoteMCPServer: (
@@ -81,7 +81,10 @@ export const AddActionMenu = ({
           .filter(
             (mcpServer) =>
               mcpServer.allowMultipleInstances ||
-              !enabledMCPServers.some((enabled) => enabled.id === mcpServer.sId)
+              !enabledMCPServers.some(
+                // The comparison by names here is safe because names are shared between multiple instance of the same MCP server (sIds are not).
+                (enabledMCPServer) => enabledMCPServer.name === mcpServer.name
+              )
           )
           .filter((mcpServer) => filterMCPServer(mcpServer, searchText))
           .map((mcpServer) => (

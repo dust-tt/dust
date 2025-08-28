@@ -1,27 +1,9 @@
-import {
-  ActionIcons,
-  BookOpenIcon,
-  Button,
-  Card,
-  CardGrid,
-  Chip,
-  cn,
-  Icon,
-  PlusIcon,
-} from "@dust-tt/sparkle";
+import { ActionIcons, BookOpenIcon, ToolCard } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
-import { useAgentBuilderFormActions } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsDialog";
-import {
-  DISABLED_REASON,
-  getAllowedSpaces,
-  getSpaceIdToActionsMap,
-} from "@app/components/agent_builder/get_allowed_spaces";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type { ActionSpecification } from "@app/components/agent_builder/types";
-import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import {
   InternalActionIcons,
@@ -29,71 +11,6 @@ import {
 } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { removeNulls } from "@app/types";
-
-const FADE_TRANSITION_CLASSES = "transition-opacity duration-300 ease-in-out";
-
-interface BaseToolCardProps {
-  icon: React.ComponentType;
-  label: string;
-  description: string;
-  isSelected: boolean;
-  canAdd: boolean;
-  cantAddReason?: string;
-  onClick: () => void;
-}
-
-function BaseToolCard({
-  icon,
-  label,
-  description,
-  isSelected,
-  canAdd,
-  cantAddReason,
-  onClick,
-}: BaseToolCardProps) {
-  return (
-    <Card
-      variant={isSelected ? "secondary" : "primary"}
-      onClick={canAdd ? onClick : undefined}
-      disabled={!canAdd}
-      className="h-32 p-3"
-    >
-      <div className="flex h-full w-full flex-col text-sm">
-        <div className="mb-2 flex h-7 items-center gap-2">
-          <Icon visual={icon} size="sm" />
-          <span className="text-sm font-medium">{label}</span>
-          <div
-            className={cn(
-              FADE_TRANSITION_CLASSES,
-              isSelected ? "opacity-100" : "opacity-0"
-            )}
-          >
-            {isSelected && <Chip size="xs" color="green" label="ADDED" />}
-          </div>
-        </div>
-        <div className="line-clamp-2 min-h-0 flex-1 overflow-hidden text-xs text-gray-600">
-          {description}
-        </div>
-        <div className="mt-2 flex-shrink-0">
-          <div
-            className={cn(
-              FADE_TRANSITION_CLASSES,
-              canAdd ? "opacity-100" : "opacity-0"
-            )}
-          >
-            {canAdd && (
-              <Button size="xs" variant="outline" icon={PlusIcon} label="Add" />
-            )}
-          </div>
-          {!canAdd && cantAddReason && (
-            <div className="text-xs italic text-gray-600">{cantAddReason}</div>
-          )}
-        </div>
-      </div>
-    </Card>
-  );
-}
 
 interface DataVisualizationCardProps {
   specification: ActionSpecification;
@@ -107,7 +24,7 @@ function DataVisualizationCard({
   onClick,
 }: DataVisualizationCardProps) {
   return (
-    <BaseToolCard
+    <ToolCard
       icon={specification.dropDownIcon}
       label={specification.label}
       description={specification.description}
@@ -121,96 +38,90 @@ function DataVisualizationCard({
 interface MCPServerCardProps {
   view: MCPServerViewTypeWithLabel;
   isSelected: boolean;
-  isSpaceAllowed: boolean;
   onClick: () => void;
 }
 
-function MCPServerCard({
-  view,
-  isSelected,
-  isSpaceAllowed,
-  onClick,
-}: MCPServerCardProps) {
+function MCPServerCard({ view, isSelected, onClick }: MCPServerCardProps) {
   const requirement = getMCPServerRequirements(view);
-  const canAdd =
-    isSpaceAllowed && (requirement.noRequirement ? !isSelected : true);
+  const canAdd = requirement.noRequirement ? !isSelected : true;
 
   const icon = isCustomServerIconType(view.server.icon)
     ? ActionIcons[view.server.icon]
     : InternalActionIcons[view.server.icon] || BookOpenIcon;
 
   return (
-    <BaseToolCard
+    <ToolCard
       icon={icon}
       label={view.label}
       description={getMcpServerViewDescription(view)}
       isSelected={isSelected}
       canAdd={canAdd}
-      cantAddReason={!isSpaceAllowed ? DISABLED_REASON : undefined}
       onClick={onClick}
     />
   );
 }
 
 interface MCPServerSelectionPageProps {
-  mcpServerViews: MCPServerViewTypeWithLabel[];
+  defaultMcpServerViews: MCPServerViewTypeWithLabel[];
+  nonDefaultMcpServerViews: MCPServerViewTypeWithLabel[];
   onItemClick: (mcpServerView: MCPServerViewType) => void;
   dataVisualization?: ActionSpecification | null;
   onDataVisualizationClick?: () => void;
-  selectedToolsInDialog?: SelectedTool[];
+  selectedToolsInSheet?: SelectedTool[];
 }
 
 export function MCPServerSelectionPage({
-  mcpServerViews = [],
+  defaultMcpServerViews,
+  nonDefaultMcpServerViews,
   onItemClick,
   dataVisualization,
   onDataVisualizationClick,
-  selectedToolsInDialog = [],
+  selectedToolsInSheet = [],
 }: MCPServerSelectionPageProps) {
   // Optimize selection lookup with Set-based approach
   const selectedMCPIds = useMemo(() => {
     const mcpIds = new Set<string>();
-    selectedToolsInDialog.forEach((tool) => {
+    selectedToolsInSheet.forEach((tool) => {
       if (tool.type === "MCP") {
         mcpIds.add(tool.view.sId);
       }
     });
     return mcpIds;
-  }, [selectedToolsInDialog]);
+  }, [selectedToolsInSheet]);
 
-  // Already added actions.
-  const { actions: alreadyAddedActions } = useAgentBuilderFormActions();
-
-  // Currently selected actions.
-  const selectedActions = useMemo(() => {
-    return removeNulls(
-      selectedToolsInDialog.map((tool) =>
-        tool.type === "MCP"
-          ? tool.configuredAction ?? getDefaultMCPAction(tool.view)
-          : null
-      )
-    );
-  }, [selectedToolsInDialog]);
-
-  const { spaces } = useSpacesContext();
-  const spaceIdToActions = getSpaceIdToActionsMap(
-    [...alreadyAddedActions, ...selectedActions],
-    mcpServerViews
-  );
-  const allowedSpaces = getAllowedSpaces({
-    spaces,
-    spaceIdToActions,
-  });
-
-  const isDataVisualizationSelected = selectedToolsInDialog.some(
+  const isDataVisualizationSelected = selectedToolsInSheet.some(
     (tool) => tool.type === "DATA_VISUALIZATION"
   );
 
+  const hasDataVisualization = dataVisualization && onDataVisualizationClick;
+  const hasDefaultViews = defaultMcpServerViews.length > 0;
+  const hasNonDefaultViews = nonDefaultMcpServerViews.length > 0;
+  const hasAnyResults =
+    hasDataVisualization || hasDefaultViews || hasNonDefaultViews;
+
+  if (!hasAnyResults) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="px-4 text-center">
+          <div className="mb-2 text-lg font-medium text-foreground">
+            No tool matches your search
+          </div>
+          <div className="max-w-sm text-muted-foreground">
+            No tools found. Try a different search term.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
-      {(mcpServerViews.length > 0 ||
-        (dataVisualization && onDataVisualizationClick)) && (
-        <CardGrid>
+      <div className="flex flex-col gap-4">
+        {((dataVisualization && onDataVisualizationClick) ||
+          defaultMcpServerViews) && (
+          <span className="text-lg font-semibold">Top tools</span>
+        )}
+        <div className="grid grid-cols-2 gap-3">
           {dataVisualization && onDataVisualizationClick && (
             <DataVisualizationCard
               key="data-visualization"
@@ -219,19 +130,29 @@ export function MCPServerSelectionPage({
               onClick={onDataVisualizationClick}
             />
           )}
-          {mcpServerViews.map((view) => (
+          {defaultMcpServerViews.map((view) => (
             <MCPServerCard
               key={view.id}
               view={view}
               isSelected={selectedMCPIds.has(view.sId)}
-              isSpaceAllowed={
-                !!allowedSpaces.find((space) => space.sId === view.spaceId)
-              }
               onClick={() => onItemClick(view)}
             />
           ))}
-        </CardGrid>
-      )}
+        </div>
+        {nonDefaultMcpServerViews.length ? (
+          <span className="text-lg font-semibold">Other tools</span>
+        ) : null}
+        <div className="grid grid-cols-2 gap-3">
+          {nonDefaultMcpServerViews.map((view) => (
+            <MCPServerCard
+              key={view.id}
+              view={view}
+              isSelected={selectedMCPIds.has(view.sId)}
+              onClick={() => onItemClick(view)}
+            />
+          ))}
+        </div>
+      </div>
     </>
   );
 }

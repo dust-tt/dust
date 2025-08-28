@@ -24,7 +24,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     className={cn(
       "s-fixed s-inset-0 s-z-50 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0",
-      "s-bg-muted-foreground/75 dark:s-bg-muted-foreground-night/75",
+      "s-bg-muted-foreground/75 dark:s-bg-muted-background-night/75",
       className
     )}
     {...props}
@@ -79,6 +79,7 @@ interface DialogContentProps
   trapFocusScope?: boolean;
   isAlertDialog?: boolean;
   preventAutoFocusOnClose?: boolean;
+  mountPortalContainer?: HTMLElement;
 }
 
 const DialogContent = React.forwardRef<
@@ -95,6 +96,7 @@ const DialogContent = React.forwardRef<
       isAlertDialog,
       preventAutoFocusOnClose = true,
       onCloseAutoFocus,
+      mountPortalContainer,
       ...props
     },
     ref
@@ -110,7 +112,7 @@ const DialogContent = React.forwardRef<
     );
 
     return (
-      <DialogPortal>
+      <DialogPortal container={mountPortalContainer}>
         <DialogOverlay />
         <FocusScope trapped={trapFocusScope} asChild>
           <DialogPrimitive.Content
@@ -155,11 +157,11 @@ const DialogHeader = ({
     {...props}
   >
     {children}
-    <DialogClose asChild className="s-absolute s-right-3 s-top-3">
-      {!hideButton && (
+    {!hideButton && (
+      <DialogClose asChild className="s-absolute s-right-3 s-top-3">
         <Button icon={XMarkIcon} variant={buttonVariant} size={buttonSize} />
-      )}
-    </DialogClose>
+      </DialogClose>
+    )}
   </div>
 );
 DialogHeader.displayName = "DialogHeader";

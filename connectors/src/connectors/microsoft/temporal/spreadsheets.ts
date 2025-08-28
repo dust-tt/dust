@@ -1,6 +1,7 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { Client } from "@microsoft/microsoft-graph-client";
+import { GraphError } from "@microsoft/microsoft-graph-client";
 import type { WorkbookWorksheet } from "@microsoft/microsoft-graph-types";
 import { stringify } from "csv-stringify/sync";
 
@@ -14,7 +15,10 @@ import {
   wrapMicrosoftGraphAPIWithResult,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
-import { getColumnsFromListItem } from "@connectors/connectors/microsoft/lib/utils";
+import {
+  getColumnsFromListItem,
+  markInternalIdAsSkipped,
+} from "@connectors/connectors/microsoft/lib/utils";
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -161,6 +165,20 @@ async function processSheet({
       { ...loggerArgs, error: content.error },
       "[Spreadsheet] Failed to fetch sheet content."
     );
+
+    if (
+      content.error instanceof GraphError &&
+      content.error.statusCode === 504
+    ) {
+      await markInternalIdAsSkipped({
+        internalId: worksheetInternalId,
+        connectorId: connector.id,
+        parentInternalId: spreadsheetInternalId,
+        reason: "error_fetching_content",
+        file: spreadsheet,
+      });
+    }
+
     return content;
   }
 
@@ -301,9 +319,10 @@ export async function handleSpreadSheet({
   const documentId = getDriveItemInternalId(file);
 
   const worksheetsRes = await wrapMicrosoftGraphAPIWithResult(() =>
-    getAllPaginatedEntities((nextLink) =>
-      getWorksheets(localLogger, client, documentId, nextLink)
-    )
+    getAllPaginatedEntities(async (nextLink) => {
+      await heartbeat();
+      return getWorksheets(localLogger, client, documentId, nextLink);
+    })
   );
 
   if (worksheetsRes.isErr()) {
@@ -311,8 +330,27 @@ export async function handleSpreadSheet({
       { error: worksheetsRes.error },
       "[Spreadsheet] Failed to fetch worksheets."
     );
+
+    if (
+      worksheetsRes.error instanceof GraphError &&
+      worksheetsRes.error.statusCode === 504
+    ) {
+      await markInternalIdAsSkipped({
+        internalId: documentId,
+        connectorId,
+        parentInternalId,
+        reason: "error_fetching_worksheets",
+        file,
+      });
+    }
+
     return worksheetsRes;
   }
+
+  localLogger.info(
+    { worksheets: worksheetsRes.value.length },
+    "[Spreadsheet] Found worksheets."
+  );
 
   const spreadsheet = await upsertSpreadsheetInDb(
     connector,
@@ -374,6 +412,8 @@ export async function handleSpreadSheet({
       connectorId,
     });
   }
+
+  localLogger.info("[Spreadsheet] Done.");
 
   return new Ok(null);
 }

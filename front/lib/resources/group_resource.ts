@@ -370,7 +370,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Use with care as this gives access to all groups in the workspace.
   static async internalFetchAllWorkspaceGroups({
     workspaceId,
-    groupKinds = ["global", "regular", "system"],
+    groupKinds = ["global", "regular", "system", "provisioned"],
     transaction,
   }: {
     workspaceId: ModelId;
@@ -392,7 +392,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async listWorkspaceGroupsFromKey(
     key: KeyResource,
-    groupKinds: GroupKind[] = ["global", "regular", "system"]
+    groupKinds: GroupKind[] = ["global", "regular", "system", "provisioned"]
   ): Promise<GroupResource[]> {
     let groups: GroupModel[] = [];
 

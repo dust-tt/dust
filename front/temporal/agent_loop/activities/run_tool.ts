@@ -3,9 +3,10 @@ import assert from "assert";
 import { MCPActionType, runToolWithStreaming } from "@app/lib/actions/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
+import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
@@ -23,8 +24,9 @@ export async function runToolActivity(
     runAgentArgs: RunAgentArgs;
     step: number;
   }
-): Promise<void> {
+): Promise<ToolExecutionResult> {
   const auth = await Authenticator.fromJSON(authType);
+  const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
@@ -51,7 +53,10 @@ export async function runToolActivity(
       step: step + 1,
     });
 
-  const action = await AgentMCPAction.findByPk(actionId);
+  const action = await AgentMCPActionResource.fetchByModelIdWithAuth(
+    auth,
+    actionId
+  );
   assert(action, "Action not found");
 
   const mcpServerId = action.toolConfiguration.toolServerId;
@@ -63,13 +68,12 @@ export async function runToolActivity(
     mcpServerId,
     step,
     stepContentId: action.stepContentId,
+    status: action.status,
   });
 
   const mcpAction = new MCPActionType({
     ...actionBaseParams,
     id: action.id,
-    isError: action.isError,
-    executionState: action.executionState,
     type: "tool_action",
     output: null,
   });
@@ -81,23 +85,25 @@ export async function runToolActivity(
     agentMessage,
     conversation,
     mcpAction,
-    stepContext: action.stepContext,
   });
 
   for await (const event of eventStream) {
     switch (event.type) {
       case "tool_error":
+        // For tool errors, send immediately.
         await updateResourceAndPublishEvent(
           {
             type: "tool_error",
             created: event.created,
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
+            conversationId: conversation.sId,
             error: {
               code: event.error.code,
               message: event.error.message,
               metadata: event.error.metadata,
             },
+            isLastBlockingEventForStep: true,
           },
           agentMessageRow,
           {
@@ -105,7 +111,24 @@ export async function runToolActivity(
             step,
           }
         );
-        return;
+
+        return { deferredEvents };
+
+      case "tool_personal_auth_required":
+      case "tool_approve_execution":
+        // Defer personal auth events to be sent after all tools complete.
+        deferredEvents.push({
+          event,
+          context: {
+            agentMessageId: agentMessage.sId,
+            agentMessageRowId: agentMessageRow.id,
+            conversationId: conversation.sId,
+            step,
+          },
+          shouldPauseAgentLoop: true,
+        });
+
+        return { deferredEvents };
 
       case "tool_success":
         await updateResourceAndPublishEvent(
@@ -136,14 +159,13 @@ export async function runToolActivity(
           // Replace existing action with updated one.
           agentMessage.actions[existingActionIndex] = event.action;
         } else {
-          // Add new action if it doesn't exist.
+          // Add the new action if it doesn't exist.
           agentMessage.actions.push(event.action);
         }
 
         break;
 
       case "tool_params":
-      case "tool_approve_execution":
       case "tool_notification":
         await updateResourceAndPublishEvent(event, agentMessageRow, {
           conversationId: conversation.sId,
@@ -155,4 +177,6 @@ export async function runToolActivity(
         assertNever(event);
     }
   }
+
+  return { deferredEvents };
 }

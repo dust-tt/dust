@@ -130,6 +130,7 @@ export {
 export * from "./NavigationList";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
+export { NotificationButton } from "./NotificationButton";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
 export { Pagination } from "./Pagination";
@@ -173,6 +174,7 @@ export { default as Spinner } from "./Spinner";
 export { FlexSplitButton, SplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
+export { ToolCard } from "./ToolCard";
 export {
   Tooltip,
   TooltipContent,

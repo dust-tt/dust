@@ -8,10 +8,7 @@ import {
   getTemporalWorkerConnection,
   TEMPORAL_MAXED_CACHED_WORKFLOWS,
 } from "@connectors/lib/temporal";
-import {
-  ActivityInboundLogInterceptor,
-  ActivityOutboundLogInterceptor,
-} from "@connectors/lib/temporal_monitoring";
+import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
 
 import * as activities from "./activities";
@@ -32,7 +29,6 @@ export async function runMicrosoftWorker() {
       activity: [
         (ctx: Context) => ({
           inbound: new ActivityInboundLogInterceptor(ctx, logger, "microsoft"),
-          outbound: new ActivityOutboundLogInterceptor("microsoft"),
         }),
         () => ({
           inbound: new MicrosoftCastKnownErrorsInterceptor(),

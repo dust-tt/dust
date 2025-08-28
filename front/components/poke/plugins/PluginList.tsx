@@ -72,7 +72,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
 
   return (
     <div className="border-material-200 flex min-h-48 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
-      <div className="flex justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
+      <div className="flex items-center justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
         <h2 className="text-md font-bold">Plugins</h2>
         <div className="max-w-xs flex-1">
           <Input

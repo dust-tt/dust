@@ -1,12 +1,14 @@
 import type { ButtonProps } from "@dust-tt/sparkle";
 import { BarFooter, BarHeader, Button, ScrollArea } from "@dust-tt/sparkle";
+import { XMarkIcon } from "@dust-tt/sparkle";
 import React from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
-import { AgentAccessPublicationDialog } from "@app/components/agent_builder/settings/AgentAccessPublicationDialog";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
-import { ConfirmContext } from "@app/components/Confirm";
+import { AgentBuilderTriggersBlock } from "@app/components/agent_builder/triggers/AgentBuilderTriggersBlock";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface AgentBuilderLeftPanelProps {
   title: string;
@@ -14,6 +16,7 @@ interface AgentBuilderLeftPanelProps {
   agentConfigurationId: string | null;
   saveButtonProps?: ButtonProps;
   isActionsLoading: boolean;
+  isTriggersLoading?: boolean;
 }
 
 export function AgentBuilderLeftPanel({
@@ -22,21 +25,13 @@ export function AgentBuilderLeftPanel({
   agentConfigurationId,
   saveButtonProps,
   isActionsLoading,
+  isTriggersLoading,
 }: AgentBuilderLeftPanelProps) {
-  const confirm = React.useContext(ConfirmContext);
+  const { owner } = useAgentBuilderContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const handleCancel = async () => {
-    const confirmed = await confirm({
-      title: "Confirm Exit",
-      message:
-        "Are you sure you want to exit? Any unsaved changes will be lost.",
-      validateLabel: "Yes",
-      validateVariant: "warning",
-    });
-
-    if (confirmed) {
-      onCancel();
-    }
+    onCancel();
   };
   return (
     <div className="flex h-full flex-col">
@@ -44,14 +39,22 @@ export function AgentBuilderLeftPanel({
         variant="default"
         className="mx-4"
         title={title}
-        rightActions={<AgentAccessPublicationDialog />}
+        rightActions={
+          <Button icon={XMarkIcon} onClick={handleCancel} variant="ghost" />
+        }
       />
       <ScrollArea className="flex-1">
-        <div className="space-y-10 p-4">
+        <div className="mx-auto space-y-10 p-4 2xl:max-w-5xl">
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
           <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
+          {hasFeature("hootl") && (
+            <AgentBuilderTriggersBlock
+              owner={owner}
+              isTriggersLoading={isTriggersLoading}
+            />
+          )}
           <AgentBuilderSettingsBlock
             isSettingBlocksOpen={!agentConfigurationId}
           />
@@ -61,7 +64,12 @@ export function AgentBuilderLeftPanel({
         variant="default"
         className="mx-4 justify-between"
         leftActions={
-          <Button variant="outline" label="Close" onClick={handleCancel} />
+          <Button
+            variant="outline"
+            label="Cancel"
+            onClick={handleCancel}
+            type="button"
+          />
         }
         rightActions={
           <BarFooter.ButtonBar

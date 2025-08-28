@@ -2,7 +2,7 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 import assert from "assert";
-import { keyBy } from "lodash";
+import keyBy from "lodash/keyBy";
 import type {
   Attributes,
   CreationAttributes,
@@ -37,7 +37,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
-  ConversationType,
+  ConversationWithoutContentType,
   DataSourceViewCategory,
   DataSourceViewType,
   ModelId,
@@ -329,6 +329,27 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     });
   }
 
+  static async listAllInGlobalGroup(auth: Authenticator) {
+    const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    assert(globalGroup.isOk(), "Failed to fetch global group");
+
+    const spaces = await SpaceResource.listForGroups(auth, [globalGroup.value]);
+
+    return this.baseFetch(auth, undefined, {
+      includes: [
+        {
+          model: DataSourceModel,
+          as: "dataSourceForView",
+          required: true,
+        },
+      ],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: spaces.map((s) => s.id),
+      },
+    });
+  }
+
   static async listForDataSourcesInSpace(
     auth: Authenticator,
     dataSources: DataSourceResource[],
@@ -421,7 +442,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
   static async fetchByConversation(
     auth: Authenticator,
-    conversation: ConversationType
+    conversation: ConversationWithoutContentType
   ): Promise<DataSourceViewResource | null> {
     // Fetch the data source view associated with the datasource that is associated with the conversation.
     const dataSource = await DataSourceResource.fetchByConversation(

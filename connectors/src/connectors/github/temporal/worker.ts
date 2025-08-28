@@ -9,14 +9,12 @@ import {
   getTemporalWorkerConnection,
   TEMPORAL_MAXED_CACHED_WORKFLOWS,
 } from "@connectors/lib/temporal";
-import {
-  ActivityInboundLogInterceptor,
-  ActivityOutboundLogInterceptor,
-} from "@connectors/lib/temporal_monitoring";
+import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
 
 export async function runGithubWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
+
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities: {
@@ -33,7 +31,6 @@ export async function runGithubWorker() {
       activity: [
         (ctx: Context) => ({
           inbound: new ActivityInboundLogInterceptor(ctx, logger, "github"),
-          outbound: new ActivityOutboundLogInterceptor("github"),
         }),
         () => ({
           inbound: new GithubCastKnownErrorsInterceptor(),

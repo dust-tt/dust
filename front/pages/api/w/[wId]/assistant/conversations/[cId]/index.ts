@@ -4,7 +4,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
-  deleteConversation,
+  deleteOrLeaveConversation,
   updateConversationTitle,
 } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -16,6 +16,7 @@ import type {
   ConversationWithoutContentType,
   WithAPIErrorResponse,
 } from "@app/types";
+import { isString } from "@app/types";
 
 export const PatchConversationsRequestBodySchema = t.type({
   title: t.string,
@@ -32,7 +33,8 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (!(typeof req.query.cId === "string")) {
+  const { cId } = req.query;
+  if (!isString(cId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -42,26 +44,23 @@ async function handler(
     });
   }
 
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      req.query.cId
-    );
-
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
-  }
-
-  const conversation = conversationRes.value;
-
   switch (req.method) {
-    case "GET":
+    case "GET": {
+      const conversationRes =
+        await ConversationResource.fetchConversationWithoutContent(auth, cId);
+
+      if (conversationRes.isErr()) {
+        return apiErrorForConversation(req, res, conversationRes.error);
+      }
+
+      const conversation = conversationRes.value;
       res.status(200).json({ conversation });
       return;
+    }
 
     case "DELETE": {
-      const result = await deleteConversation(auth, {
-        conversationId: conversation.sId,
+      const result = await deleteOrLeaveConversation(auth, {
+        conversationId: cId,
       });
       if (result.isErr()) {
         return apiErrorForConversation(req, res, result.error);
@@ -72,6 +71,14 @@ async function handler(
     }
 
     case "PATCH": {
+      const conversationRes =
+        await ConversationResource.fetchConversationWithoutContent(auth, cId);
+
+      if (conversationRes.isErr()) {
+        return apiErrorForConversation(req, res, conversationRes.error);
+      }
+
+      const conversation = conversationRes.value;
       const bodyValidation = PatchConversationsRequestBodySchema.decode(
         req.body
       );

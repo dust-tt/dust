@@ -1,4 +1,19 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import {
+  DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
+  DEFAULT_AGENT_ROUTER_ACTION_NAME,
+} from "@app/lib/actions/constants";
+import {
+  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+  DEFAULT_WEBSEARCH_ACTION_NAME,
+} from "@app/lib/actions/constants";
+import {
+  FRESHSERVICE_SERVER_INSTRUCTIONS,
+  JIRA_SERVER_INSTRUCTIONS,
+  SALESFORCE_SERVER_INSTRUCTIONS,
+} from "@app/lib/actions/mcp_internal_actions/instructions";
+import { CANVAS_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/canvas/instructions";
+import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type {
   ModelId,
@@ -18,13 +33,21 @@ export const QUERY_TABLES_TOOL_NAME = "query_tables";
 export const GET_DATABASE_SCHEMA_TOOL_NAME = "get_database_schema";
 export const EXECUTE_DATABASE_QUERY_TOOL_NAME = "execute_database_query";
 export const PROCESS_TOOL_NAME = "extract_information_from_documents";
-export const RUN_AGENT_TOOL_NAME = "run_agent";
 export const CREATE_AGENT_TOOL_NAME = "create_agent";
 export const FIND_TAGS_TOOL_NAME = "find_tags";
 export const FILESYSTEM_CAT_TOOL_NAME = "cat";
 export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
+export const DATA_WAREHOUSES_LIST_TOOL_NAME = "list";
+export const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
+export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
+export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
+
+export const SEARCH_SERVER_NAME = "search";
+export const TABLE_QUERY_SERVER_NAME = "query_tables";
+export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2";
+export const DATA_WAREHOUSE_SERVER_NAME = "data_warehouses";
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
@@ -32,39 +55,40 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
   "agent_management",
+  "agent_memory",
   "agent_router",
   "conversation_files",
   "data_sources_file_system",
+  DATA_WAREHOUSE_SERVER_NAME,
   "extract_data",
   "file_generation",
   "freshservice",
-  "interactive_content",
   "github",
   "gmail",
+  "google_calendar",
   "google_sheets",
   "hubspot",
   "image_generation",
   "include_data",
+  "canvas",
   "jira",
   "missing_action_catcher",
   "monday",
   "notion",
+  "outlook_calendar",
   "outlook",
   "primitive_types_debugger",
-  "query_tables",
-  "query_tables_v2",
   "reasoning",
   "run_agent",
   "run_dust_app",
   "salesforce",
-  "search",
-  "think",
-  "web_search_&_browse",
-  "google_calendar",
-  "outlook_calendar",
   "slack",
-  "agent_memory",
-  "data_warehouses",
+  "think",
+  "toolsets",
+  "web_search_&_browse",
+  SEARCH_SERVER_NAME,
+  TABLE_QUERY_SERVER_NAME,
+  TABLE_QUERY_V2_SERVER_NAME,
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -76,14 +100,6 @@ const MCP_SERVER_AVAILABILITY = [
 ] as const;
 export type MCPServerAvailability = (typeof MCP_SERVER_AVAILABILITY)[number];
 
-export const isMCPServerAvailability = (
-  availability: string
-): availability is MCPServerAvailability => {
-  return MCP_SERVER_AVAILABILITY.includes(
-    availability as MCPServerAvailability
-  );
-};
-
 export const INTERNAL_MCP_SERVERS = {
   // Note:
   // ids should be stable, do not change them when moving internal servers to production as it would break existing agents.
@@ -91,8 +107,7 @@ export const INTERNAL_MCP_SERVERS = {
   github: {
     id: 1,
     availability: "manual",
-    // Github only allows one instance of the same app per user.
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -104,6 +119,18 @@ export const INTERNAL_MCP_SERVERS = {
       get_issue: "never_ask",
     },
     timeoutMs: undefined,
+    serverInfo: {
+      name: "github",
+      version: "1.0.0",
+      description: "GitHub tools to manage issues and pull requests.",
+      authorization: {
+        provider: "github" as const,
+        supported_use_cases: ["platform_actions"] as const,
+      },
+      icon: "GithubLogo",
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   image_generation: {
     id: 2,
@@ -113,6 +140,15 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: "image_generation",
+      version: "1.0.0",
+      description: "Agent can generate images (GPT Image 1).",
+      icon: "ActionImageIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   file_generation: {
     id: 3,
@@ -122,8 +158,17 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: "file_generation",
+      version: "1.0.0",
+      description: "Agent can generate and convert files.",
+      authorization: null,
+      icon: "ActionDocumentTextIcon",
+      documentationUrl: null,
+      instructions: null,
+    },
   },
-  query_tables: {
+  [TABLE_QUERY_SERVER_NAME]: {
     id: 4,
     availability: "auto",
     allowMultipleInstances: false,
@@ -131,8 +176,17 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: TABLE_QUERY_SERVER_NAME,
+      version: "1.0.0",
+      description: "Tables, Spreadsheets, Notion DBs (quantitative).",
+      icon: "ActionTableIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
   },
-  "web_search_&_browse": {
+  [DEFAULT_WEBSEARCH_ACTION_NAME]: {
     id: 5,
     availability: "auto",
     allowMultipleInstances: false,
@@ -140,6 +194,15 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: DEFAULT_WEBSEARCH_ACTION_NAME,
+      version: "1.0.0",
+      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+      icon: "ActionGlobeAltIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   think: {
     id: 6,
@@ -151,11 +214,20 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: true,
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: "think",
+      version: "1.0.0",
+      description: "Expand thinking and reasoning capabilities.",
+      icon: "ActionBrainIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   hubspot: {
     id: 7,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -199,8 +271,23 @@ export const INTERNAL_MCP_SERVERS = {
       remove_association: "high",
     },
     timeoutMs: undefined,
+    serverInfo: {
+      name: "hubspot",
+      version: "1.0.0",
+      description:
+        "Comprehensive HubSpot CRM integration supporting all object types (contacts, companies, deals) and ALL engagement types (tasks, notes, meetings, calls, emails). " +
+        "Features advanced user activity tracking, owner search and listing, association management, and enhanced search capabilities with owner filtering. " +
+        "Perfect for CRM data management and user activity analysis.",
+      authorization: {
+        provider: "hubspot" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
+      icon: "HubspotLogo",
+      documentationUrl: null,
+      instructions: null,
+    },
   },
-  agent_router: {
+  [DEFAULT_AGENT_ROUTER_ACTION_NAME]: {
     id: 8,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
@@ -208,6 +295,17 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: DEFAULT_AGENT_ROUTER_ACTION_NAME,
+      version: "1.0.0",
+      description: DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
+      icon: "ActionRobotIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: `These tools provide discoverability to published agents available in the workspace.
+The tools return agents with their "mention" markdown directive.
+The directive should be used to display a clickable version of the agent name in the response.`,
+    },
   },
   include_data: {
     id: 9,
@@ -217,6 +315,16 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: "include_data",
+      version: "1.0.0",
+      description:
+        "Always includes specific documents in full for every conversation with this agent.",
+      icon: "ActionTimeIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   run_dust_app: {
     id: 10,
@@ -226,11 +334,20 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: "run_dust_app",
+      version: "1.0.0",
+      description: "Run Dust Apps with specified parameters",
+      icon: "CommandLineIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   notion: {
     id: 11,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -256,6 +373,18 @@ export const INTERNAL_MCP_SERVERS = {
       update_schema_database: "low",
     },
     timeoutMs: undefined,
+    serverInfo: {
+      name: "notion",
+      version: "1.0.0",
+      description: "Notion tools to manage pages and databases.",
+      authorization: {
+        provider: "notion" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
+      icon: "NotionLogo",
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   extract_data: {
     id: 12,
@@ -265,6 +394,16 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: "extract_data",
+      version: "1.0.0",
+      description:
+        "Extracts structured information from unstructured data using your defined schema.",
+      icon: "ActionScanIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   missing_action_catcher: {
     id: 13,
@@ -274,11 +413,20 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: "missing_action_catcher",
+      version: "1.0.0",
+      description: "To be used to catch errors and avoid erroring.",
+      authorization: null,
+      icon: "ActionDocumentTextIcon",
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   salesforce: {
     id: 14,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags, plan }) => {
       const isInPlan = plan.limits.connections.isSalesforceAllowed;
       const hasFeatureFlag = featureFlags.includes("salesforce_tool");
@@ -292,11 +440,23 @@ export const INTERNAL_MCP_SERVERS = {
       describe_object: "never_ask",
     },
     timeoutMs: undefined,
+    serverInfo: {
+      name: "salesforce",
+      version: "1.0.0",
+      description: "Salesforce tools.",
+      authorization: {
+        provider: "salesforce" as const,
+        supported_use_cases: ["personal_actions", "platform_actions"] as const,
+      },
+      icon: "SalesforceLogo",
+      documentationUrl: "https://docs.dust.tt/docs/salesforce",
+      instructions: SALESFORCE_SERVER_INSTRUCTIONS,
+    },
   },
   gmail: {
     id: 15,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -306,11 +466,25 @@ export const INTERNAL_MCP_SERVERS = {
       create_reply_draft: "low",
     },
     timeoutMs: undefined,
+    serverInfo: {
+      name: "gmail",
+      version: "1.0.0",
+      description: "Gmail tools for reading emails and managing email drafts.",
+      authorization: {
+        provider: "google_drive" as const,
+        supported_use_cases: ["personal_actions"] as const,
+        scope:
+          "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose" as const,
+      },
+      icon: "GmailLogo",
+      documentationUrl: "https://docs.dust.tt/docs/gmail-tool-setup",
+      instructions: null,
+    },
   },
   google_calendar: {
     id: 16,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -323,6 +497,20 @@ export const INTERNAL_MCP_SERVERS = {
       check_availability: "never_ask",
     },
     timeoutMs: undefined,
+    serverInfo: {
+      name: "google_calendar",
+      version: "1.0.0",
+      description: "Tools for managing Google calendars and events.",
+      authorization: {
+        provider: "google_drive",
+        supported_use_cases: ["personal_actions"] as const,
+        scope:
+          "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events" as const,
+      },
+      icon: "GcalLogo",
+      documentationUrl: "https://docs.dust.tt/docs/google-calendar",
+      instructions: null,
+    },
   },
   conversation_files: {
     id: 17,
@@ -332,11 +520,20 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: "conversation_files",
+      version: "1.0.0",
+      description: "Include files from conversation attachments",
+      icon: "ActionDocumentTextIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   slack: {
     id: 18,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -346,13 +543,29 @@ export const INTERNAL_MCP_SERVERS = {
       list_public_channels: "never_ask",
       list_threads: "never_ask",
       post_message: "low",
+      get_user: "never_ask",
     },
     timeoutMs: undefined,
+    serverInfo: {
+      name: "slack",
+      version: "1.0.0",
+      description: "Slack tools for searching and posting messages.",
+      authorization: {
+        provider: "slack" as const,
+        supported_use_cases: ["personal_actions"] as const,
+      },
+      icon: "SlackLogo",
+      documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
+      instructions:
+        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message." +
+        "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
+        "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
+    },
   },
   google_sheets: {
     id: 19,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("google_sheets_tool");
     },
@@ -370,11 +583,25 @@ export const INTERNAL_MCP_SERVERS = {
       format_cells: "low",
     },
     timeoutMs: undefined,
+    serverInfo: {
+      name: "google_sheets",
+      version: "1.0.0",
+      description: "Tools for managing Google Sheets spreadsheets and data.",
+      authorization: {
+        provider: "gmail",
+        supported_use_cases: ["personal_actions"] as const,
+        scope:
+          "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly" as const,
+      },
+      icon: "GoogleSpreadsheetLogo",
+      documentationUrl: "https://docs.dust.tt/docs/google-sheets",
+      instructions: null,
+    },
   },
   monday: {
     id: 20,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("monday_tool");
     },
@@ -410,6 +637,20 @@ export const INTERNAL_MCP_SERVERS = {
       delete_group: "high",
     },
     timeoutMs: undefined,
+    serverInfo: {
+      name: "monday",
+      version: "1.0.0",
+      description:
+        "Monday.com integration providing CRM-like operations for boards, items, and updates. Enables reading and managing Monday.com boards and items through the GraphQL API.",
+      authorization: {
+        provider: "monday" as const,
+        supported_use_cases: ["personal_actions", "platform_actions"] as const,
+      },
+      icon: "MondayLogo",
+      documentationUrl:
+        "https://developer.monday.com/api-reference/docs/introduction-to-graphql",
+      instructions: null,
+    },
   },
   agent_memory: {
     id: 21,
@@ -419,11 +660,20 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: "agent_memory",
+      version: "1.0.0",
+      description: "User-scoped long-term memory tools for agents.",
+      authorization: null,
+      icon: "ActionLightbulbIcon",
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   jira: {
     id: 22,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("jira_tool");
     },
@@ -451,8 +701,21 @@ export const INTERNAL_MCP_SERVERS = {
       delete_issue_link: "low",
     },
     timeoutMs: undefined,
+    serverInfo: {
+      name: "jira",
+      version: "1.0.0",
+      description:
+        "Comprehensive JIRA integration providing full issue management capabilities including create, read, update, comment, workflow transitions, and issue linking operations using the JIRA REST API.",
+      authorization: {
+        provider: "jira" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
+      icon: "JiraLogo",
+      documentationUrl: null,
+      instructions: JIRA_SERVER_INSTRUCTIONS,
+    },
   },
-  interactive_content: {
+  canvas: {
     id: 23,
     availability: "auto",
     allowMultipleInstances: false,
@@ -462,11 +725,21 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: true,
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: "canvas",
+      version: "1.0.0",
+      description:
+        "Create and update canvas files that users can execute and interact with. Currently supports client-executable code.",
+      authorization: null,
+      icon: "ActionDocumentTextIcon",
+      documentationUrl: null,
+      instructions: CANVAS_INSTRUCTIONS,
+    },
   },
   outlook: {
     id: 24,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -480,11 +753,26 @@ export const INTERNAL_MCP_SERVERS = {
       update_contact: "high",
     },
     timeoutMs: undefined,
+    serverInfo: {
+      name: "outlook",
+      version: "1.0.0",
+      description:
+        "Outlook tools for reading emails, managing email drafts, and managing contacts.",
+      authorization: {
+        provider: "microsoft_tools" as const,
+        supported_use_cases: ["personal_actions"] as const,
+        scope:
+          "Mail.ReadWrite Mail.ReadWrite.Shared Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read offline_access" as const,
+      },
+      icon: "OutlookLogo",
+      documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
+      instructions: null,
+    },
   },
   outlook_calendar: {
     id: 25,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
@@ -497,11 +785,25 @@ export const INTERNAL_MCP_SERVERS = {
       check_availability: "never_ask",
     },
     timeoutMs: undefined,
+    serverInfo: {
+      name: "outlook_calendar",
+      version: "1.0.0",
+      description: "Tools for managing Outlook calendars and events.",
+      authorization: {
+        provider: "microsoft_tools" as const,
+        supported_use_cases: ["personal_actions"] as const,
+        scope:
+          "Calendars.ReadWrite Calendars.ReadWrite.Shared User.Read offline_access" as const,
+      },
+      icon: "OutlookLogo",
+      documentationUrl: "https://docs.dust.tt/docs/outlook-calendar-tool-setup",
+      instructions: null,
+    },
   },
   freshservice: {
     id: 26,
     availability: "manual",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("freshservice_tool");
     },
@@ -516,11 +818,13 @@ export const INTERNAL_MCP_SERVERS = {
       list_oncall_schedules: "never_ask",
       list_service_items: "never_ask",
       list_solution_categories: "never_ask",
+      list_solution_folders: "never_ask",
       list_solution_articles: "never_ask",
       list_requesters: "never_ask",
       get_requester: "never_ask",
       list_purchase_orders: "never_ask",
       list_sla_policies: "never_ask",
+      get_solution_article: "never_ask",
 
       // Write operations - low/high stakes
       create_ticket: "low",
@@ -529,8 +833,23 @@ export const INTERNAL_MCP_SERVERS = {
       create_solution_article: "high",
     },
     timeoutMs: undefined,
+    serverInfo: {
+      name: "freshservice",
+      icon: "FreshserviceLogo",
+      version: "1.0.0",
+      description:
+        "Freshservice integration supporting ticket management, service catalog, solutions, departments, " +
+        "on-call schedules, and more. Provides comprehensive access to Freshservice resources with " +
+        "OAuth authentication and secure API access.",
+      authorization: {
+        provider: "freshservice" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
+      documentationUrl: null,
+      instructions: FRESHSERVICE_SERVER_INSTRUCTIONS,
+    },
   },
-  search: {
+  [SEARCH_SERVER_NAME]: {
     id: 1006,
     availability: "auto",
     allowMultipleInstances: false,
@@ -538,6 +857,16 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: SEARCH_SERVER_NAME,
+      version: "1.0.0",
+      description:
+        "Searches through selected data sources to surface the best content for answering user queries.",
+      icon: "ActionMagnifyingGlassIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   run_agent: {
     id: 1008,
@@ -547,6 +876,15 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: 10 * 60 * 1000, // 10 minutes
+    serverInfo: {
+      name: "run_agent",
+      version: "1.0.0",
+      description: "Run a child agent (agent as tool).",
+      icon: "ActionRobotIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   primitive_types_debugger: {
     id: 1004,
@@ -558,6 +896,16 @@ export const INTERNAL_MCP_SERVERS = {
     },
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: "primitive_types_debugger",
+      version: "1.0.0",
+      description:
+        "Demo server showing a basic interaction with various configurable blocks.",
+      icon: "ActionEmotionLaughIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   reasoning: {
     id: 1007,
@@ -567,6 +915,16 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: "reasoning",
+      version: "1.0.0",
+      description:
+        "Agent can decide to trigger a reasoning model for complex tasks.",
+      icon: "ActionLightbulbIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   query_tables_v2: {
     id: 1009,
@@ -579,6 +937,16 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: true,
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: "query_tables_v2",
+      version: "1.0.0",
+      description:
+        "Transforms your questions into SQL queries for analyzing data. (quantitative) (mcp, exploded).",
+      icon: "ActionTableIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   data_sources_file_system: {
     id: 1010,
@@ -590,6 +958,20 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: "data_sources_file_system",
+      version: "1.0.0",
+      description:
+        "Comprehensive content navigation toolkit for browsing user data sources. Provides Unix-like " +
+        "browsing (ls, find) and smart search tools to help agents efficiently explore and discover " +
+        "content from manually uploaded files or data synced from SaaS products (Notion, Slack, Github" +
+        ", etc.) organized in a filesystem-like hierarchy. Each item in this tree-like hierarchy is " +
+        "called a node, nodes are referenced by a nodeId.",
+      authorization: null,
+      icon: "ActionDocumentTextIcon",
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   agent_management: {
     id: 1011,
@@ -603,8 +985,17 @@ export const INTERNAL_MCP_SERVERS = {
       create_agent: "high",
     },
     timeoutMs: undefined,
+    serverInfo: {
+      name: "agent_management",
+      version: "1.0.0",
+      description: "Tools for managing agent configurations",
+      authorization: null,
+      icon: "ActionRobotIcon",
+      documentationUrl: null,
+      instructions: null,
+    },
   },
-  data_warehouses: {
+  [DATA_WAREHOUSE_SERVER_NAME]: {
     id: 1012,
     availability: "auto",
     allowMultipleInstances: false,
@@ -614,11 +1005,44 @@ export const INTERNAL_MCP_SERVERS = {
     },
     tools_stakes: undefined,
     timeoutMs: undefined,
+    serverInfo: {
+      name: DATA_WAREHOUSE_SERVER_NAME,
+      version: "1.0.0",
+      description:
+        "Comprehensive tables navigation toolkit for browsing data warehouses and tables. Provides Unix-like " +
+        "browsing (ls, find) to help agents efficiently explore and discover tables organized in a " +
+        "warehouse-centric hierarchy. Each warehouse contains schemas/databases which contain tables.",
+      authorization: null,
+      icon: "ActionTableIcon",
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  toolsets: {
+    id: 1013,
+    availability: "auto",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("toolsets_tool");
+    },
+    tools_stakes: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "toolsets",
+      version: "1.0.0",
+      description:
+        "Comprehensive navigation toolkit for browsing available toolsets. " +
+        "Toolsets provide functions for the agent to use.",
+      authorization: null,
+      icon: "ActionLightbulbIcon",
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   // Using satisfies here instead of : type to avoid typescript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
-} satisfies Record<
-  InternalMCPServerNameType,
-  {
+} satisfies {
+  [K in InternalMCPServerNameType]: {
     id: number;
     availability: MCPServerAvailability;
     allowMultipleInstances: boolean;
@@ -631,8 +1055,9 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: boolean;
     tools_stakes: Record<string, MCPToolStakeLevelType> | undefined;
     timeoutMs: number | undefined;
-  }
->;
+    serverInfo: InternalMCPServerDefinitionType & { name: K };
+  };
+};
 
 export type InternalMCPServerNameType =
   (typeof AVAILABLE_INTERNAL_MCP_SERVER_NAMES)[number];
@@ -675,7 +1100,7 @@ export const getAvailabilityOfInternalMCPServerById = (
 export const allowsMultipleInstancesOfInternalMCPServerByName = (
   name: InternalMCPServerNameType
 ): boolean => {
-  return !!INTERNAL_MCP_SERVERS[name].allowMultipleInstances;
+  return INTERNAL_MCP_SERVERS[name].allowMultipleInstances;
 };
 
 export const allowsMultipleInstancesOfInternalMCPServerById = (

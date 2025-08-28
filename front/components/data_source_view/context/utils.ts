@@ -35,6 +35,7 @@ function isParentOrSamePath(parentPath: string, childPath: string): boolean {
 /**
  * Adds a path to the tree by adding it to the 'in' array and removing it from 'notIn' if present.
  * If a parent path is already included, don't add child paths to avoid redundancy.
+ * When adding a parent path, removes any child paths from 'in' to avoid redundancy.
  *
  * @returns New tree with the node added
  */
@@ -75,7 +76,11 @@ export function addNodeToTree(
     };
   }
 
-  const newIn = [...tree.in, item];
+  const newIn = tree.in.filter(
+    ({ path: inPath }) => !inPath.startsWith(pathPrefix)
+  );
+
+  newIn.push(item);
 
   return {
     in: newIn,
@@ -287,6 +292,26 @@ export function getLatestNodeFromNavigationHistory(
 
   if (latestEntry.type === "node") {
     return latestEntry.node;
+  }
+
+  return null;
+}
+
+export function getSpaceNameFromTreeItem(
+  item: DataSourceBuilderTreeItemType,
+  spaces: SpaceType[]
+): string | null {
+  // Direct space access if the item is a space type
+  if (item.type === "space") {
+    return item.space.name;
+  }
+
+  // For other types, extract space ID from path structure
+  const pathParts = item.path.split("/");
+  if (pathParts.length > 1) {
+    const spaceId = pathParts[1];
+    const space = spaces.find((s) => s.sId === spaceId);
+    return space?.name ?? null;
   }
 
   return null;

@@ -1,4 +1,5 @@
 import { Button } from "@dust-tt/sparkle";
+import Head from "next/head";
 import Link from "next/link";
 import type { ReactElement } from "react";
 
@@ -53,6 +54,16 @@ const GRID_SECTION_CLASSES = classNames(
 export default function Sales() {
   return (
     <>
+      <Head>
+        <title key="title">
+          AI sales Agents: build custom agents in minutes | Dust
+        </title>
+        <meta
+          key="description"
+          name="description"
+          content="Build custom AI sales agents that integrate with your CRM and tools. Automate RFPs, personalize outreach, boost team performance. Deploy in minutes, no coding required. Start free."
+        />
+      </Head>
       <div className="container flex w-full flex-col gap-16 px-2 py-2 pb-12">
         <HeroSection {...Hero} accentColor={pageSettings.accentColor} />
         <Grid>

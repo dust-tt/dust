@@ -7,27 +7,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
-import React from "react";
+import type { ReactNode } from "react";
+import { createContext, useEffect, useRef, useState } from "react";
 
 export type ConfirmDataType = {
   title: string;
-  message: string | React.ReactNode;
+  message: string | ReactNode;
   validateLabel?: string;
   validateVariant?: "primary" | "warning";
 };
 
-export const ConfirmContext = React.createContext<
+export const ConfirmContext = createContext<
   (n: ConfirmDataType) => Promise<boolean>
 >((n) => new Promise((resolve) => resolve(!!n))); // dummy function
 
-export function ConfirmPopupArea({ children }: { children: React.ReactNode }) {
-  const [confirmData, setConfirmData] = React.useState<ConfirmDataType | null>(
-    null
-  );
+export function ConfirmPopupArea({ children }: { children: ReactNode }) {
+  const [confirmData, setConfirmData] = useState<ConfirmDataType | null>(null);
 
-  const resolveConfirmRef = React.useRef<(result: boolean) => void>(
-    () => undefined
-  );
+  const resolveConfirmRef = useRef<(result: boolean) => void>(() => undefined);
 
   const confirm = (confirm: ConfirmDataType) => {
     setConfirmData(confirm);
@@ -42,14 +39,14 @@ export function ConfirmPopupArea({ children }: { children: React.ReactNode }) {
       <ConfirmDialog
         confirmData={confirmData}
         resolveConfirm={resolveConfirmRef.current}
-        closeDialogFn={() => setConfirmData(null)}
+        clearConfirmData={() => setConfirmData(null)}
       />
     </ConfirmContext.Provider>
   );
 }
 
 interface ConfirmDialogProps {
-  closeDialogFn: () => void;
+  clearConfirmData: () => void;
   confirmData: ConfirmDataType | null;
   resolveConfirm: (result: boolean) => void;
 }
@@ -57,19 +54,33 @@ interface ConfirmDialogProps {
 export function ConfirmDialog({
   confirmData,
   resolveConfirm,
-  closeDialogFn,
+  clearConfirmData,
 }: ConfirmDialogProps) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  useEffect(() => {
+    setIsDialogOpen(confirmData != null);
+  }, [confirmData]);
+
+  // To avoid content flickering, we clear out the current validation when closing animation ends
+  // instead of right after clicking on one of the buttons.
+  const onDialogAnimationEnd = () => {
+    if (!isDialogOpen) {
+      clearConfirmData();
+    }
+  };
+
   return (
     <Dialog
-      open={confirmData != null}
+      open={isDialogOpen}
       onOpenChange={(open) => {
         if (!open) {
           resolveConfirm(false);
-          closeDialogFn();
         }
+        setIsDialogOpen(open);
       }}
     >
-      <DialogContent size="md">
+      <DialogContent size="md" onAnimationEnd={onDialogAnimationEnd}>
         <DialogHeader hideButton>
           <DialogTitle>{confirmData?.title ?? ""}</DialogTitle>
         </DialogHeader>
@@ -82,18 +93,12 @@ export function ConfirmDialog({
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
-            onClick: () => {
-              resolveConfirm(false);
-              closeDialogFn();
-            },
+            onClick: () => resolveConfirm(false),
           }}
           rightButtonProps={{
             label: confirmData?.validateLabel ?? "OK",
             variant: confirmData?.validateVariant ?? "warning",
-            onClick: async () => {
-              resolveConfirm(true);
-              closeDialogFn();
-            },
+            onClick: () => resolveConfirm(true),
           }}
         />
       </DialogContent>

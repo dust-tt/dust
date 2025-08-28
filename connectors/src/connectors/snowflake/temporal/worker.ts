@@ -10,10 +10,7 @@ import {
   getTemporalWorkerConnection,
   TEMPORAL_MAXED_CACHED_WORKFLOWS,
 } from "@connectors/lib/temporal";
-import {
-  ActivityInboundLogInterceptor,
-  ActivityOutboundLogInterceptor,
-} from "@connectors/lib/temporal_monitoring";
+import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
 
 export async function runSnowflakeWorker() {
@@ -31,7 +28,6 @@ export async function runSnowflakeWorker() {
       activity: [
         (ctx: Context) => ({
           inbound: new ActivityInboundLogInterceptor(ctx, logger, "snowflake"),
-          outbound: new ActivityOutboundLogInterceptor("snowflake"),
         }),
         () => ({
           inbound: new SnowflakeCastKnownErrorsInterceptor(),

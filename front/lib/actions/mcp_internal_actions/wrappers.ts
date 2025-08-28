@@ -98,6 +98,7 @@ export function withToolLogging<T>(
           "Tool execution error"
         );
       }
+
       return {
         isError: true,
         content: [

@@ -16,14 +16,20 @@ import {
   DataSourceNodeContentDetails,
   FilesystemPathDetails,
 } from "@app/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
+import { MCPDataWarehousesBrowseDetails } from "@app/components/actions/mcp/details/MCPDataWarehousesBrowseDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
+import { MCPListToolsActionDetails } from "@app/components/actions/mcp/details/MCPListToolsActionDetails";
 import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
+  DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
+  DATA_WAREHOUSES_FIND_TOOL_NAME,
+  DATA_WAREHOUSES_LIST_TOOL_NAME,
+  DATA_WAREHOUSES_QUERY_TOOL_NAME,
   EXECUTE_DATABASE_QUERY_TOOL_NAME,
   FILESYSTEM_CAT_TOOL_NAME,
   FILESYSTEM_FIND_TOOL_NAME,
@@ -187,8 +193,28 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     return <MCPRunAgentActionDetails {...props} />;
   }
 
+  if (internalMCPServerName === "toolsets") {
+    return <MCPListToolsActionDetails {...props} />;
+  }
+
   if (internalMCPServerName === "agent_management") {
     return <MCPAgentManagementActionDetails {...props} />;
+  }
+
+  if (internalMCPServerName === "data_warehouses") {
+    if (
+      [DATA_WAREHOUSES_LIST_TOOL_NAME, DATA_WAREHOUSES_FIND_TOOL_NAME].includes(
+        toolName
+      )
+    ) {
+      return <MCPDataWarehousesBrowseDetails {...props} />;
+    }
+    if (toolName === DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME) {
+      return <MCPGetDatabaseSchemaActionDetails {...props} />;
+    }
+    if (toolName === DATA_WAREHOUSES_QUERY_TOOL_NAME) {
+      return <MCPTablesQueryActionDetails {...props} />;
+    }
   }
 
   return <GenericActionDetails {...props} />;

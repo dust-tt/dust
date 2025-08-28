@@ -115,10 +115,12 @@ export async function createConversation(
     title,
     visibility,
     depth = 0,
+    triggerId,
   }: {
     title: string | null;
     visibility: ConversationVisibility;
     depth?: number;
+    triggerId?: ModelId | null;
   }
 ): Promise<ConversationType> {
   const owner = auth.getNonNullableWorkspace();
@@ -128,6 +130,7 @@ export async function createConversation(
     title,
     visibility,
     depth,
+    triggerId,
     requestedGroupIds: [],
   });
 
@@ -139,6 +142,7 @@ export async function createConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     depth: conversation.depth,
+    triggerId: conversation.triggerId,
     content: [],
     requestedGroupIds:
       conversation.getConversationRequestedGroupIdsFromModel(auth),
@@ -199,6 +203,66 @@ export async function deleteConversation(
   if (destroy) {
     await conversation.delete(auth);
   } else {
+    await conversation.updateVisibilityToDeleted();
+  }
+  return new Ok({ success: true });
+}
+
+/**
+ * Delete-or-Leave:
+ * - If the user has access to the conversation: perform a soft-delete
+ *   (update visibility to "deleted").
+ * - If the user lacks access: perform a leave (remove participation) so the
+ *   entry disappears from their history without returning 403. If the
+ *   conversation becomes empty after the leave, soft-delete it for
+ *   consistency with delete() when destroy=false.
+ */
+export async function deleteOrLeaveConversation(
+  auth: Authenticator,
+  {
+    conversationId,
+  }: {
+    conversationId: string;
+  }
+): Promise<Result<{ success: true }, Error>> {
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId,
+    {
+      includeDeleted: true,
+    }
+  );
+
+  if (!conversation) {
+    return new Err(new ConversationError("conversation_not_found"));
+  }
+
+  const hasAccess = ConversationResource.canAccessConversation(
+    auth,
+    conversation
+  );
+
+  if (hasAccess) {
+    const del = await deleteConversation(auth, { conversationId });
+    if (del.isErr()) {
+      return new Err(del.error);
+    }
+    return new Ok({ success: true });
+  }
+
+  // User does not have access to the conversation, so we need to leave it.
+  const user = auth.user();
+  if (!user) {
+    return new Err(
+      new Error("Cannot leave conversation: user not authenticated.")
+    );
+  }
+  const leaveRes = await conversation.leaveConversation(auth);
+  if (leaveRes.isErr()) {
+    return new Err(leaveRes.error);
+  }
+  // If the conversation is empty after the leave, soft-delete it.
+  if (leaveRes.value.affectedCount > 0 && leaveRes.value.isConversationEmpty) {
     await conversation.updateVisibilityToDeleted();
   }
   return new Ok({ success: true });
@@ -413,7 +477,10 @@ export async function postUserMessage(
         return;
       }
 
-      return ConversationResource.upsertParticipation(auth, conversation);
+      return ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "posted",
+      });
     })(),
   ]);
 
@@ -832,7 +899,10 @@ export async function editUserMessage(
         })
       )
     ),
-    ConversationResource.upsertParticipation(auth, conversation),
+    ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+    }),
   ]);
 
   const agentConfigurations = removeNulls(results[0]);

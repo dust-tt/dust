@@ -4,7 +4,7 @@ import type { Node } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
-import { debounce } from "lodash";
+import debounce from "lodash/debounce";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 

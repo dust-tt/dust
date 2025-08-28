@@ -1,4 +1,4 @@
-import { cloneDeep } from "lodash";
+import cloneDeep from "lodash/cloneDeep";
 
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
@@ -98,9 +98,11 @@ export function getUpdatedParticipantsFromEvent(
       return participants;
     } else {
       participants.participants.users.push({
+        sId: user.sId,
         username: user.username,
         fullName: user.fullName,
         pictureUrl: user.image,
+        action: "posted",
       });
     }
   } else if (isAgentMessageType(message)) {

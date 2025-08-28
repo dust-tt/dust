@@ -10,12 +10,13 @@ import {
   SparklesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
+import { AccessSection } from "@app/components/agent_builder/settings/AccessSection";
 import { AvatarPicker } from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker";
 import {
   DROID_AVATAR_URLS,
@@ -195,13 +196,14 @@ function AgentDescriptionInput() {
   const sendNotification = useSendNotification();
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const hasSuggestedRef = useRef(false);
 
   const { field, fieldState } = useController<
     AgentBuilderFormData,
     "agentSettings.description"
   >({ name: "agentSettings.description" });
 
-  const handleGenerateDescription = async () => {
+  const handleGenerateDescription = useCallback(async () => {
     if (
       isGenerating ||
       !instructions ||
@@ -245,7 +247,27 @@ function AgentDescriptionInput() {
       });
     }
     setIsGenerating(false);
-  };
+  }, [isGenerating, instructions, owner, name, field, sendNotification]);
+
+  useEffect(() => {
+    if (
+      !field.value &&
+      !hasSuggestedRef.current &&
+      instructions &&
+      instructions.length >= MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+    ) {
+      hasSuggestedRef.current = true;
+      void handleGenerateDescription();
+    }
+
+    // Reset the flag if instructions become too short again
+    if (
+      instructions &&
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+    ) {
+      hasSuggestedRef.current = false;
+    }
+  }, [field.value, instructions, handleGenerateDescription]);
 
   return (
     <SettingSectionContainer title="Description">
@@ -282,6 +304,7 @@ function AgentDescriptionInput() {
 function AgentPictureInput() {
   const { owner } = useAgentBuilderContext();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const hasSuggestedRef = useRef(false);
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
     name: "instructions",
   });
@@ -326,10 +349,20 @@ function AgentPictureInput() {
   useEffect(() => {
     if (
       !field.value &&
+      !hasSuggestedRef.current &&
       instructions &&
       instructions.length >= MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
     ) {
+      hasSuggestedRef.current = true;
       void updateEmojiFromSuggestions();
+    }
+
+    // Reset the flag if instructions become too short again
+    if (
+      instructions &&
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+    ) {
+      hasSuggestedRef.current = false;
     }
   }, [field.value, instructions, updateEmojiFromSuggestions]);
 
@@ -380,6 +413,7 @@ export function AgentBuilderSettingsBlock({
           <AgentPictureInput />
         </div>
         <AgentDescriptionInput />
+        <AccessSection />
         <TagsSection />
       </div>
     </AgentBuilderSectionContainer>

@@ -3,6 +3,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { Ajv } from "ajv";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import zip from "lodash/zip";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -178,6 +179,16 @@ function generateConfiguredInput({
         );
       }
       return { value, mimeType };
+    }
+
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.LIST: {
+      const value = actionConfiguration.additionalConfiguration[keyPath];
+      if (!Array.isArray(value) || value.some((v) => typeof v !== "string")) {
+        throw new Error(
+          `Expected array of string values for key ${keyPath}, got ${typeof value} for mime type ${mimeType}`
+        );
+      }
+      return { values: value, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP: {
@@ -380,6 +391,7 @@ export interface MCPServerRequirements {
   requiredNumbers: string[];
   requiredBooleans: string[];
   requiredEnums: Record<string, string[]>;
+  requiredLists: Record<string, Record<string, string>>;
   requiresDustAppConfiguration: boolean;
   noRequirement: boolean;
 }
@@ -400,6 +412,7 @@ export function getMCPServerRequirements(
       requiredNumbers: [],
       requiredBooleans: [],
       requiredEnums: {},
+      requiredLists: {},
       requiresDustAppConfiguration: false,
       noRequirement: false,
     };
@@ -494,6 +507,49 @@ export function getMCPServerRequirements(
     })
   );
 
+  const requiredLists = Object.fromEntries(
+    Object.entries(
+      findPathsToConfiguration({
+        mcpServer: server,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
+      })
+    ).map(([key, schema]) => {
+      const optionsProperty = schema.properties?.options;
+
+      if (!optionsProperty || !isJSONSchemaObject(optionsProperty)) {
+        return [key, []];
+      }
+
+      const values =
+        optionsProperty.anyOf?.map(
+          (v) =>
+            isJSONSchemaObject(v) &&
+            isJSONSchemaObject(v.properties?.value) &&
+            v.properties.value.const
+        ) ?? [];
+      const labels =
+        optionsProperty.anyOf?.map(
+          (v) =>
+            isJSONSchemaObject(v) &&
+            isJSONSchemaObject(v.properties?.label) &&
+            v.properties.label.const
+        ) ?? [];
+
+      if (values.length !== labels.length) {
+        throw new Error(
+          `Expected the same number of values and labels for key ${key}, got ${values.length} values and ${labels.length} labels`
+        );
+      }
+
+      // Create a record of values to labels
+      const valueToLabel: Record<string, string> = Object.fromEntries(
+        zip(labels, values).map(([label, value]) => [value, label])
+      );
+
+      return [key, valueToLabel];
+    })
+  );
+
   const requiredDustAppConfiguration =
     Object.keys(
       findPathsToConfiguration({
@@ -514,6 +570,7 @@ export function getMCPServerRequirements(
     requiredNumbers,
     requiredBooleans,
     requiredEnums,
+    requiredLists,
     requiresDustAppConfiguration: requiredDustAppConfiguration,
     noRequirement:
       !requiresDataSourceConfiguration &&
@@ -526,7 +583,8 @@ export function getMCPServerRequirements(
       requiredStrings.length === 0 &&
       requiredNumbers.length === 0 &&
       requiredBooleans.length === 0 &&
-      Object.keys(requiredEnums).length === 0,
+      Object.keys(requiredEnums).length === 0 &&
+      Object.keys(requiredLists).length === 0,
   };
 }
 
@@ -537,23 +595,42 @@ function isSchemaConfigurable(
   schema: JSONSchema,
   mimeType: InternalToolInputMimeType
 ): boolean {
+  if (mimeType === INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM) {
+    // We only check that the schema has a `value` property and a `mimeType` property with the correct value.
+    const mimeTypeProperty = schema.properties?.mimeType;
+    if (
+      schema.properties?.value &&
+      mimeTypeProperty &&
+      isJSONSchemaObject(mimeTypeProperty)
+    ) {
+      return (
+        mimeTypeProperty.type === "string" &&
+        mimeTypeProperty.const === mimeType
+      );
+    }
+    return false;
+  }
+
+  if (mimeType === INTERNAL_MIME_TYPES.TOOL_INPUT.LIST) {
+    // We only check that the schema has a `options` property, a `values` property and a `mimeType` property with the correct value.
+    const mimeTypeProperty = schema.properties?.mimeType;
+
+    if (
+      schema.properties?.options &&
+      schema.properties?.values &&
+      mimeTypeProperty &&
+      isJSONSchemaObject(mimeTypeProperty)
+    ) {
+      return (
+        mimeTypeProperty.type === "string" &&
+        mimeTypeProperty.const === mimeType
+      );
+    }
+    return false;
+  }
+
   // If the mime type has a static configuration schema, we check that the schema matches it.
-  if (mimeType !== INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM) {
-    return areSchemasEqual(schema, ConfigurableToolInputJSONSchemas[mimeType]);
-  }
-  // If the mime type does not have a static configuration schema, it supports flexible schemas.
-  // We only check that the schema has a `value` property and a `mimeType` property with the correct value.
-  const mimeTypeProperty = schema.properties?.mimeType;
-  if (
-    schema.properties?.value &&
-    mimeTypeProperty &&
-    isJSONSchemaObject(mimeTypeProperty)
-  ) {
-    return (
-      mimeTypeProperty.type === "string" && mimeTypeProperty.const === mimeType
-    );
-  }
-  return false;
+  return areSchemasEqual(schema, ConfigurableToolInputJSONSchemas[mimeType]);
 }
 
 /**

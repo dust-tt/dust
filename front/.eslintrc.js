@@ -60,6 +60,7 @@ module.exports = {
     "dust/no-unverified-workspace-bypass": "error",
     "dust/too-long-index-name": "error",
     "dust/no-direct-sparkle-notification": "warn",
+    "dust/no-bulk-lodash": "error",
   },
   overrides: [
     {

@@ -1,5 +1,5 @@
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodRawShape } from "zod";
 import { z } from "zod";
@@ -16,7 +16,10 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeInternalMCPServer,
+  makeMCPToolTextError,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isMCPConfigurationForDustAppRun } from "@app/lib/actions/types/guards";
@@ -24,7 +27,6 @@ import { isMCPInternalDustAppRun } from "@app/lib/actions/types/guards";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { getDatasetSchema } from "@app/lib/api/datasets";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
@@ -50,15 +52,6 @@ import {
 import { ConfigurableToolInputSchemas } from "../input_schemas";
 
 const MIN_GENERATION_TOKENS = 2048;
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "run_dust_app",
-  version: "1.0.0",
-  description: "Run Dust Apps with specified parameters",
-  icon: "CommandLineIcon",
-  authorization: null,
-  documentationUrl: null,
-};
 
 interface DustFileOutput {
   __dust_file?: {
@@ -343,7 +336,7 @@ export default async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer("run_dust_app");
   const owner = auth.getNonNullableWorkspace();
 
   if (agentLoopContext && agentLoopContext.listToolsContext) {

@@ -11,7 +11,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
-import { capitalize } from "lodash";
+import capitalize from "lodash/capitalize";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React, { useMemo } from "react";

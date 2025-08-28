@@ -6,6 +6,11 @@ import {
 } from "@dust-tt/sparkle";
 
 import { DESCRIPTION_MAX_LENGTH } from "@app/components/agent_builder/types";
+import {
+  DATA_WAREHOUSE_SERVER_NAME,
+  TABLE_QUERY_SERVER_NAME,
+  TABLE_QUERY_V2_SERVER_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 
 export interface CapabilityConfig {
   icon: React.ComponentType;
@@ -15,7 +20,6 @@ export interface CapabilityConfig {
     title: string;
     description: string;
     placeholder: string;
-    helpText?: string;
     maxLength?: number;
   };
 }
@@ -30,8 +34,6 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
       description:
         "Provide a brief description of the data content and context to help the agent determine when to utilize it effectively.",
       placeholder: "This data contains…",
-      helpText:
-        "This description helps the agent understand what to search for.",
     },
   },
   include_data: {
@@ -44,8 +46,6 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
         "Describe what type of data you want to include from your selected data sources to provide context to the agent.",
       placeholder:
         "Describe what data you want to include from your selected data sources...",
-      helpText:
-        "This description helps the agent understand what type of data to include as context.",
     },
   },
   extract_data: {
@@ -61,7 +61,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
       maxLength: DESCRIPTION_MAX_LENGTH,
     },
   },
-  query_tables: {
+  [TABLE_QUERY_SERVER_NAME]: {
     icon: TableIcon,
     configPageTitle: "Configure Query Tables",
     configPageDescription: "Describe how you want to query the selected tables",
@@ -70,8 +70,28 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
       description:
         "Describe what kind of queries you want to run against your selected tables. The agent will use this context to generate appropriate SQL queries.",
       placeholder: "Describe what you want to query from your tables...",
-      helpText:
-        "This description helps the agent understand what kind of SQL queries to generate based on your conversation context.",
+    },
+  },
+  [TABLE_QUERY_V2_SERVER_NAME]: {
+    icon: TableIcon,
+    configPageTitle: "Configure Query Tables v2",
+    configPageDescription: "Describe how you want to query the selected tables",
+    descriptionConfig: {
+      title: "Query Description",
+      description:
+        "Describe what kind of queries you want to run against your selected tables. The agent will use this context to generate appropriate SQL queries.",
+      placeholder: "Describe what you want to query from your tables...",
+    },
+  },
+  [DATA_WAREHOUSE_SERVER_NAME]: {
+    icon: TableIcon,
+    configPageTitle: "Configure Data Warehouse",
+    configPageDescription: "Describe how you want to query the selected tables",
+    descriptionConfig: {
+      title: "Query Description",
+      description:
+        "Describe what kind of queries you want to run against your selected tables. The agent will use this context to generate appropriate SQL queries.",
+      placeholder: "Describe what you want to query from your tables...",
     },
   },
 };

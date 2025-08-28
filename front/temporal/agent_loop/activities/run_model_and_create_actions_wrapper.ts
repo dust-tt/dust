@@ -1,10 +1,12 @@
 import assert from "assert";
 
+import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPAction as AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import logger from "@app/logger/logger";
+import { logAgentLoopStepStart } from "@app/temporal/agent_loop/activities/instrumentation";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { runModelActivity } from "@app/temporal/agent_loop/lib/run_model";
@@ -49,6 +51,14 @@ export async function runModelAndCreateActionsActivity({
   }
 
   const { auth, ...runAgentData } = runAgentDataRes.value;
+
+  // Log step start.
+  logAgentLoopStepStart({
+    agentMessageId: runAgentData.agentMessage.sId,
+    conversationId: runAgentData.conversation.sId,
+    executionMode: runAgentArgs.sync ? "sync" : "async",
+    step,
+  });
 
   if (checkForResume) {
     // Check if actions already exist for this step. If so, we are resuming from tool validation.
@@ -158,10 +168,14 @@ async function getExistingActionsAndBlobs(
         "Unexpected: step content is not a function call"
       );
 
-      actionBlobs.push({
-        actionId: mcpAction.id,
-        needsApproval: mcpAction.executionState === "pending",
-      });
+      // If the tool is not already in a final state we must add it to the list of actions to run.
+      if (!isToolExecutionStatusFinal(mcpAction.status)) {
+        actionBlobs.push({
+          actionId: mcpAction.id,
+          actionStatus: mcpAction.status,
+          needsApproval: mcpAction.status === "blocked_validation_required",
+        });
+      }
     }
   }
 

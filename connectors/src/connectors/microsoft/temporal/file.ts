@@ -121,7 +121,7 @@ export async function syncOneFile({
       startSyncTs,
     })
   ) {
-    return true;
+    return false;
   }
 
   if (fileResource?.skipReason) {
@@ -133,6 +133,7 @@ export async function syncOneFile({
   }
 
   localLogger.info("Syncing file");
+  await heartbeat();
 
   const client = await getClient(connector.connectionId);
   const { itemAPIPath } = typeAndPathFromInternalId(documentId);
@@ -530,6 +531,10 @@ export async function deleteFolder({
     internalId
   );
 
+  if (!folder) {
+    return false;
+  }
+
   logger.info(
     {
       connectorId,
@@ -576,7 +581,7 @@ export async function deleteFile({
   );
 
   if (!file) {
-    return;
+    return false;
   }
 
   logger.info({ connectorId, file }, `Deleting Microsoft file.`);
@@ -595,7 +600,10 @@ export async function deleteFile({
   } else {
     await deleteDataSourceDocument(dataSourceConfig, internalId);
   }
-  return file.delete();
+
+  const deletedRes = await file.delete();
+
+  return deletedRes.isOk();
 }
 
 export function isAlreadySeenItem({
