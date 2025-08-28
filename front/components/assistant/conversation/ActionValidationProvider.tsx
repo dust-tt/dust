@@ -476,7 +476,8 @@ export function ActionValidationProvider({
           pendingAuthentications
             .map((item) => item.blockedAction)
             .filter(
-              (item) => item.status === "blocked_authentication_required"
+              (item): item is AuthenticationRequiredBlockedAction =>
+                item.status === "blocked_authentication_required"
             );
 
         return {
