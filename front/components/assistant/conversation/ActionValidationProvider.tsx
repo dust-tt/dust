@@ -373,10 +373,13 @@ export function ActionValidationProvider({
 
   // Close the dialog when there are no more blocked actions
   useEffect(() => {
-    if (blockedActionsQueue.length === 0 && isDialogOpen && !isValidating) {
+    if (blockedActionsQueue.length > 0 && !isDialogOpen) {
+      setValidatedActions(0);
+      setIsDialogOpen(true);
+    } else if (blockedActionsQueue.length === 0 && isDialogOpen) {
       setIsDialogOpen(false);
     }
-  }, [blockedActionsQueue.length, isDialogOpen, isValidating]);
+  }, [blockedActionsQueue.length, isDialogOpen]);
 
   const submitValidation = async (status: MCPValidationOutputType) => {
     setSubmitStatus(status);
