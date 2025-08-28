@@ -20,11 +20,7 @@ import {
   ConfigurableToolInputSchemas,
   JsonSchemaSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import {
-  findTagsSchema,
-  makeFindTagsDescription,
-  makeFindTagsTool,
-} from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
+import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
   getDataSourceConfiguration,
   shouldAutoGenerateTags,
@@ -223,7 +219,7 @@ function makeExtractInformationFromDocumentsTool(
 export function registerProcessTool(
   auth: Authenticator,
   server: McpServer,
-  agentLoopContext?: AgentLoopContextType,
+  agentLoopContext: AgentLoopContextType | undefined,
   { name, extraDescription }: { name: string; extraDescription?: string }
 ) {
   const isJsonSchemaConfigured =
@@ -305,12 +301,15 @@ export function registerProcessTool(
           .default(null),
   };
 
-  const baseDescription = "Extract structured information from documents in reverse chronological order, according to the needs described by the objective and specified by a" +
+  const baseDescription =
+    "Extract structured information from documents in reverse chronological order, according to the needs described by the objective and specified by a" +
     (isJsonSchemaConfigured ? " user-configured" : "") +
     " JSON schema. This tool retrieves content" +
     " from data sources already pre-configured by the user, ensuring the latest information is included.";
-  
-  const toolDescription = extraDescription ? baseDescription + " " + extraDescription : baseDescription;
+
+  const toolDescription = extraDescription
+    ? baseDescription + " " + extraDescription
+    : baseDescription;
 
   const toolImplementation = makeExtractInformationFromDocumentsTool(
     auth,
@@ -330,15 +329,10 @@ export function registerProcessTool(
 
     registerFindTagsTool(auth, server, agentLoopContext, {
       name: FIND_TAGS_TOOL_NAME,
-      extraDescription: `for use with ${name}`
+      extraDescription: `for use with ${name}`,
     });
   } else {
-    server.tool(
-      name,
-      toolDescription,
-      commonInputsSchema,
-      toolImplementation
-    );
+    server.tool(name, toolDescription, commonInputsSchema, toolImplementation);
   }
 }
 
@@ -349,7 +343,7 @@ function createServer(
   const server = makeInternalMCPServer("extract_data");
 
   registerProcessTool(auth, server, agentLoopContext, {
-    name: PROCESS_TOOL_NAME
+    name: PROCESS_TOOL_NAME,
   });
 
   return server;
