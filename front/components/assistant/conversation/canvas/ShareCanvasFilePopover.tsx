@@ -178,6 +178,7 @@ export function ShareCanvasFilePopover({
                 <Spinner size="sm" />
               </div>
             )}
+            {/* Warning if sharing is disabled. */}
             {!isFileShareLoading &&
               (isSharingForbidden || isUsingConversationFiles) && (
                 <ContentMessage
@@ -190,13 +191,13 @@ export function ShareCanvasFilePopover({
                   icon={InformationCircleIcon}
                 >
                   {isSharingForbidden
-                    ? "Your workspace administrator has turned off sharing of Canvases"
+                    ? "Your workspace administrator has turned off sharing of Canvases."
                     : "Sharing is disabled to protect company information. You can view this privately."}
                 </ContentMessage>
               )}
+            {/* File sharing link. */}
             {!isFileShareLoading && (
               <div className="mt-4 flex flex-col gap-3">
-                {/* Scope Selection Dropdown - always visible */}
                 <FileSharingDropdown
                   selectedScope={selectedScope}
                   onScopeChange={handleScopeChange}
