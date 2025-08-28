@@ -26,6 +26,7 @@ import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
+import { useCanvasSharingToggle } from "@app/hooks/useCanvasSharingToggle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -406,39 +407,7 @@ function SlackBotToggle({
 }
 
 function CanvasSharingToggle({ owner }: { owner: WorkspaceType }) {
-  const [isChanging, setIsChanging] = useState(false);
-  const sendNotification = useSendNotification();
-
-  const isEnabled = owner.metadata?.allowCanvasFileSharing !== false;
-
-  const toggleInteractiveContent = async () => {
-    setIsChanging(true);
-    try {
-      const res = await fetch(`/api/w/${owner.sId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          allowCanvasFileSharing: !isEnabled,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to update interactive content setting");
-      }
-
-      window.location.reload();
-    } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update interactive content setting",
-        description:
-          "Could not update the interactive content sharing setting.",
-      });
-      setIsChanging(false);
-    }
-  };
+  const { isEnabled, isChanging, toggleCanvasSharing } = useCanvasSharingToggle(owner);
 
   return (
     <ContextItem.List>
@@ -452,7 +421,7 @@ function CanvasSharingToggle({ owner }: { owner: WorkspaceType }) {
           <SliderToggle
             selected={isEnabled}
             disabled={isChanging}
-            onClick={toggleInteractiveContent}
+            onClick={toggleCanvasSharing}
           />
         }
       />
