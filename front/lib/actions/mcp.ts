@@ -244,8 +244,8 @@ type MCPSuccessEvent = {
   configurationId: string;
   messageId: string;
   action: AgentMCPActionType & {
-    generatedFiles: ActionGeneratedFileType[];
     output: CallToolResult["content"];
+    generatedFiles: ActionGeneratedFileType[];
   };
 };
 
