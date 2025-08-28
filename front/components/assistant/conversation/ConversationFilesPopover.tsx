@@ -21,7 +21,7 @@ import type {
   AllSupportedFileContentType,
   LightWorkspaceType,
 } from "@app/types";
-import { clientExecutableContentType, slideshowContentType } from "@app/types";
+import { clientExecutableContentType } from "@app/types";
 
 interface FileGroup {
   contentType: AllSupportedFileContentType | "other";
@@ -33,7 +33,6 @@ interface FileGroup {
 // Configuration for content types that get their own groups.
 const GROUPED_CONTENT_TYPES = {
   [clientExecutableContentType]: "Canvas",
-  [slideshowContentType]: "Slideshow",
   "application/json": "JSON",
   "text/csv": "Tables",
   "text/plain": "Text",
