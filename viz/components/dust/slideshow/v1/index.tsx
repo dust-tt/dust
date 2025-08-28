@@ -1,5 +1,6 @@
 import React, { PropsWithChildren } from "react";
 import { cn } from "@viz/lib/utils";
+
 import {
   Sidebar,
   SidebarContent,
@@ -17,6 +18,8 @@ import {
 import { SlideshowNavigation } from "@viz/components/dust/slideshow/v1/navigation";
 
 // Internal components.
+
+const NAVIGATION_HIDE_DELAY = 3000; // Milliseconds before navigation auto-hides.
 
 interface SlidePreviewProps {
   index: number;
@@ -160,6 +163,8 @@ export function Slideshow({ children, className }: SlideshowProps) {
   }, [children]);
 
   const [activeIndex, setActiveIndex] = React.useState(0);
+  const [showNavigation, setShowNavigation] = React.useState(true);
+  const hideTimeoutRef = React.useRef<NodeJS.Timeout>();
 
   const goToSlide = React.useCallback(
     (index: number) => {
@@ -175,6 +180,26 @@ export function Slideshow({ children, className }: SlideshowProps) {
   const prevSlide = React.useCallback(() => {
     setActiveIndex((current) => Math.max(current - 1, 0));
   }, []);
+
+  // Auto-hide navigation functionality
+  const resetHideTimer = React.useCallback(() => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+    }
+    setShowNavigation(true);
+    hideTimeoutRef.current = setTimeout(() => {
+      setShowNavigation(false);
+    }, NAVIGATION_HIDE_DELAY);
+  }, []);
+
+  React.useEffect(() => {
+    resetHideTimer();
+    return () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, [resetHideTimer, activeIndex]); // Reset timer when slide changes.
 
   if (slides.length === 0) {
     return (
@@ -200,17 +225,26 @@ export function Slideshow({ children, className }: SlideshowProps) {
         </div>
         <SidebarInset>
           <main
-            className="flex flex-1 items-center justify-center px-16 py-4 relative"
+            className="flex flex-1 items-center justify-center relative"
             aria-live="polite"
             aria-label={`Slide ${activeIndex + 1} of ${slides.length}`}
+            onMouseMove={resetHideTimer}
+            onKeyDown={resetHideTimer}
+            onClick={resetHideTimer}
           >
             {slides[activeIndex]}
-            <SlideshowNavigation
-              index={activeIndex}
-              total={slides.length}
-              prev={prevSlide}
-              next={nextSlide}
-            />
+            <div
+              className={`transition-opacity duration-300 ${
+                showNavigation ? "opacity-100" : "opacity-0 pointer-events-none"
+              }`}
+            >
+              <SlideshowNavigation
+                index={activeIndex}
+                total={slides.length}
+                prev={prevSlide}
+                next={nextSlide}
+              />
+            </div>
           </main>
         </SidebarInset>
       </SidebarProvider>
