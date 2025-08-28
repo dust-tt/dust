@@ -109,7 +109,12 @@ export async function* executeMCPTool({
           configurationId: agentConfiguration.sId,
           conversationId: conversation.sId,
           messageId: agentMessage.sId,
-          action: action.toJSON(),
+          action: {
+            ...action.toJSON(),
+            // TODO(2025-08-29 aubin): cleanup as soon as the SDK type is updated.
+            output: null,
+            generatedFiles: [],
+          },
           notification: notification.params,
         };
       }

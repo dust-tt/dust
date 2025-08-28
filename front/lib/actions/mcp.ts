@@ -260,7 +260,8 @@ export type ToolNotificationEvent = {
   configurationId: string;
   conversationId: string;
   messageId: string;
-  action: AgentMCPActionType;
+  // TODO(2025-08-29 aubin): replace with AgentMCPActionType as soon as the SDK type is updated.
+  action: AgentMCPActionWithOutputType;
   notification: ProgressNotificationContentType;
 };
 
