@@ -59,8 +59,8 @@ export const useDataSourceColumns = () => {
   } = useDataSourceBuilderContext();
   const confirm = useContext(ConfirmContext);
 
-  const columns: ColumnDef<DataSourceRowData>[] = useMemo(() => {
-    return [
+  const columns: ColumnDef<DataSourceRowData>[] = useMemo(
+    () => [
       {
         id: "select",
         enableSorting: false,
@@ -168,18 +168,19 @@ export const useDataSourceColumns = () => {
           sizeRatio: 70,
         },
       },
-    ];
-  }, [
-    confirm,
-    isCurrentNavigationEntrySelected,
-    isRowSelectable,
-    isRowSelected,
-    navigationHistory,
-    removeCurrentNavigationEntry,
-    removeNode,
-    selectCurrentNavigationEntry,
-    selectNode,
-  ]);
+    ],
+    [
+      confirm,
+      isCurrentNavigationEntrySelected,
+      isRowSelectable,
+      isRowSelected,
+      navigationHistory,
+      removeCurrentNavigationEntry,
+      removeNode,
+      selectCurrentNavigationEntry,
+      selectNode,
+    ]
+  );
 
   return columns;
 };
