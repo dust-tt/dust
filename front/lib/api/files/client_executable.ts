@@ -5,6 +5,7 @@ import type { CanvasFileContentType, Result } from "@app/types";
 import {
   CANVAS_FILE_FORMATS,
   clientExecutableContentType,
+  isCanvasContentType,
   normalizeError,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -24,7 +25,7 @@ export async function createClientExecutableFile(
     const workspace = auth.getNonNullableWorkspace();
 
     // Validate that the MIME type is supported.
-    if (mimeType !== clientExecutableContentType) {
+    if (!isCanvasContentType(mimeType)) {
       const supportedTypes = Object.keys(CANVAS_FILE_FORMATS).join(", ");
 
       return new Err(

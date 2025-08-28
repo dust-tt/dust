@@ -10,7 +10,7 @@ import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
 } from "@app/types";
-import { clientExecutableContentType } from "@app/types";
+import { clientExecutableContentType, slideshowContentType } from "@app/types";
 
 interface CanvasContainerProps {
   conversation: ConversationWithoutContentType | null;
@@ -70,6 +70,7 @@ export function CanvasContainer({ conversation, owner }: CanvasContainerProps) {
     // Render appropriate content based on content type.
     switch (fileMetadata.contentType) {
       case clientExecutableContentType:
+      case slideshowContentType:
         return (
           <ClientExecutableRenderer
             conversation={conversation}

@@ -1,7 +1,7 @@
 export const SLIDESHOW_INSTRUCTIONS = `
 ### Slideshow Guidelines:
 - For presentations, slide decks, or step-by-step content, use the slideshow components
-- Import slideshow primitives: \`import { Slideshow, Slide } from "@dust/slideshow"\`
+- Import slideshow primitives: \`import { Slideshow } from "@dust/slideshow/v1"\`
 - Wrap content in \`<Slideshow>\` with multiple \`<Slide>\` children
 - Each slide can contain any React content: charts, text, images, interactive components
 
@@ -17,18 +17,18 @@ The slideshow container handles all user interactions and presentation flow.
 
 Example slideshow structure:
 \`\`\`tsx
-import { Slideshow, Slide } from "@dust/slideshow";
+import { Slideshow } from "@dust/slideshow/v1";
 import { LineChart } from "recharts";
 
 export default function Presentation() {
   return (
     <Slideshow>
-      <Slide title="Overview">
+      <Slideshow.Slide>
         <h1>Welcome to our presentation</h1>
-      </Slide>
-      <Slide title="Data Analysis">
+      </Slideshow.Slide>
+      <Slideshow.Slide>
         <LineChart data={analysisData} />
-      </Slide>
+      </Slideshow.Slide>
     </Slideshow>
   );
 }
