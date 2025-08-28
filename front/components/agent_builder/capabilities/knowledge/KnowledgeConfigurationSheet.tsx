@@ -6,7 +6,6 @@ import uniqueId from "lodash/uniqueId";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { KnowledgeFooter } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeFooter";
 import {
@@ -328,8 +327,6 @@ function KnowledgeConfigurationSheetContent({
     return getMCPServerRequirements(mcpServerView);
   }, [mcpServerView]);
 
-  const { owner } = useAgentBuilderContext();
-
   const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
       setSheetPageId(pageId);
@@ -383,7 +380,7 @@ function KnowledgeConfigurationSheetContent({
         : "Choose the data sources to include in your knowledge base",
       icon: undefined,
       noScroll: true,
-      content: <DataSourceBuilderSelector owner={owner} viewType="all" />,
+      content: <DataSourceBuilderSelector viewType="all" />,
       footerContent: hasSourceSelection ? <KnowledgeFooter /> : undefined,
     },
     {

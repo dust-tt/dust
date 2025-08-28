@@ -9,6 +9,7 @@ import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import React from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceNavigationView } from "@app/components/agent_builder/capabilities/knowledge/DataSourceNavigationView";
 import { DataSourceSearchResults } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSearchResults";
 import { DataSourceSpaceSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector";
@@ -21,18 +22,17 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpacesSearch, useSystemSpace } from "@app/lib/swr/spaces";
-import type { ContentNodesViewType, LightWorkspaceType } from "@app/types";
+import type { ContentNodesViewType } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 type DataSourceBuilderSelectorProps = {
-  owner: LightWorkspaceType;
   viewType: ContentNodesViewType;
 };
 
 export const DataSourceBuilderSelector = ({
-  owner,
   viewType,
 }: DataSourceBuilderSelectorProps) => {
+  const { owner } = useAgentBuilderContext();
   const { spaces } = useSpacesContext();
   const { supportedDataSourceViews: dataSourceViews } =
     useDataSourceViewsContext();
