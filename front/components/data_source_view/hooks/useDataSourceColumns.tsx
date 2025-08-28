@@ -4,6 +4,9 @@ import { useMemo } from "react";
 
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
+import { isRemoteDatabase } from "@app/lib/data_sources";
+
+import { findDataSourceViewFromNavigationHistory } from "../context/utils";
 
 export type DataSourceRowData = {
   id: string;
@@ -15,6 +18,7 @@ export type DataSourceRowData = {
 
 export const useDataSourceColumns = () => {
   const {
+    navigationHistory,
     selectNode,
     selectCurrentNavigationEntry,
     removeNode,
@@ -24,14 +28,29 @@ export const useDataSourceColumns = () => {
     isCurrentNavigationEntrySelected,
   } = useDataSourceBuilderContext();
 
-  const columns: ColumnDef<DataSourceRowData>[] = useMemo(
-    () => [
+  const columns: ColumnDef<DataSourceRowData>[] = useMemo(() => {
+    const entry = findDataSourceViewFromNavigationHistory(navigationHistory);
+
+    return [
       {
         id: "select",
         enableSorting: false,
         enableHiding: false,
         header: () => {
           const selectionState = isCurrentNavigationEntrySelected();
+          const currentEntry = navigationHistory[navigationHistory.length - 1];
+          const shouldHideSelectColumn =
+            (entry !== null &&
+              isRemoteDatabase(entry.dataSource) &&
+              currentEntry.type === "node" &&
+              currentEntry.node.type === "folder") ||
+            (currentEntry.type === "data_source" &&
+              isRemoteDatabase(currentEntry.dataSourceView.dataSource));
+
+          if (shouldHideSelectColumn && selectionState !== "partial") {
+            return undefined;
+          }
+
           return (
             <Checkbox
               key={`header-${selectionState}`}
@@ -52,6 +71,17 @@ export const useDataSourceColumns = () => {
         },
         cell: ({ row }) => {
           const selectionState = isRowSelected(row.original.id);
+          const shouldHideSelect =
+            (entry != null &&
+              isRemoteDatabase(entry.dataSource) &&
+              row.original.entry.type === "node" &&
+              row.original.entry.node.type === "folder") ||
+            (row.original.entry.type === "data_source" &&
+              isRemoteDatabase(row.original.entry.dataSourceView.dataSource));
+
+          if (shouldHideSelect && selectionState !== "partial") {
+            return undefined;
+          }
 
           return (
             <div className="flex h-full w-full items-center">
@@ -90,17 +120,17 @@ export const useDataSourceColumns = () => {
           sizeRatio: 70,
         },
       },
-    ],
-    [
-      isCurrentNavigationEntrySelected,
-      isRowSelectable,
-      isRowSelected,
-      removeCurrentNavigationEntry,
-      removeNode,
-      selectCurrentNavigationEntry,
-      selectNode,
-    ]
-  );
+    ];
+  }, [
+    isCurrentNavigationEntrySelected,
+    isRowSelectable,
+    isRowSelected,
+    navigationHistory,
+    removeCurrentNavigationEntry,
+    removeNode,
+    selectCurrentNavigationEntry,
+    selectNode,
+  ]);
 
   return columns;
 };
