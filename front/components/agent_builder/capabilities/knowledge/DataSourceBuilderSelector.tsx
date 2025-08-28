@@ -1,6 +1,13 @@
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
-import { Breadcrumbs, SearchInput } from "@dust-tt/sparkle";
+import {
+  Breadcrumbs,
+  Button,
+  CloudArrowLeftRightIcon,
+  SearchInput,
+} from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
+import React from "react";
 
 import { DataSourceNavigationView } from "@app/components/agent_builder/capabilities/knowledge/DataSourceNavigationView";
 import { DataSourceSearchResults } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSearchResults";
@@ -12,7 +19,7 @@ import { findSpaceFromNavigationHistory } from "@app/components/data_source_view
 import { useDebounce } from "@app/hooks/useDebounce";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
-import { useSpacesSearch } from "@app/lib/swr/spaces";
+import { useSpacesSearch, useSystemSpace } from "@app/lib/swr/spaces";
 import type {
   ContentNodesViewType,
   DataSourceViewType,
@@ -33,6 +40,8 @@ export const DataSourceBuilderSelector = ({
 }: DataSourceBuilderSelectorProps) => {
   const { spaces } = useSpacesContext();
   const { navigationHistory, navigateTo } = useDataSourceBuilderContext();
+  const router = useRouter();
+  const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });
   const currentNavigationEntry =
     navigationHistory[navigationHistory.length - 1];
 
@@ -104,6 +113,12 @@ export const DataSourceBuilderSelector = ({
   }, [shouldShowSearch, showSearch]);
 
   // Breadcrumbs with search context - defined after showSearch state
+  const handleConnectDataClick = () => {
+    if (systemSpace) {
+      void router.push(`/w/${owner.sId}/spaces/${systemSpace.sId}`);
+    }
+  };
+
   const breadcrumbItems: BreadcrumbItem[] = useMemo(() => {
     if (showSearch && currentSpace) {
       // When searching, only show path up to space level
@@ -129,7 +144,26 @@ export const DataSourceBuilderSelector = ({
   }, [navigationHistory, navigateTo, showSearch, currentSpace]);
 
   if (filteredSpaces.length === 0) {
-    return <div>No spaces with data sources available.</div>;
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="flex flex-col gap-2 px-4 text-center">
+          <div className="text-lg font-medium text-foreground">
+            No spaces with data sources available
+          </div>
+          <div className="max-w-sm text-muted-foreground">
+            Connect data sources or ask your admin to set them up
+          </div>
+          <div>
+            <Button
+              icon={CloudArrowLeftRightIcon}
+              label="Connect data"
+              variant="primary"
+              onClick={handleConnectDataClick}
+            />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
