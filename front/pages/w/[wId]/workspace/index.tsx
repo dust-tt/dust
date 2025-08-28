@@ -229,6 +229,10 @@ export default function WorkspaceAdmin({
             <ProviderManagementModal owner={owner} plan={subscription.plan} />
           </div>
         </Page.Vertical>
+        <Page.Vertical align="stretch" gap="md">
+          <Page.H variant="h4">Capabilities</Page.H>
+          <InteractiveContentToggle owner={owner} />
+        </Page.Vertical>
         {!isSlackDataSourceBotEnabled && (
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Integrations</Page.H>
@@ -394,6 +398,65 @@ function SlackBotToggle({
               }}
             />
           </div>
+        }
+      />
+    </ContextItem.List>
+  );
+}
+
+function InteractiveContentToggle({ owner }: { owner: WorkspaceType }) {
+  const [isChanging, setIsChanging] = useState(false);
+  const sendNotification = useSendNotification();
+
+  const isEnabled = owner.metadata?.allowInteractiveContentSharing !== false;
+
+  const toggleInteractiveContent = async () => {
+    setIsChanging(true);
+    try {
+      const res = await fetch(`/api/w/${owner.sId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          allowInteractiveContentSharing: !isEnabled,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update interactive content setting");
+      }
+
+      window.location.reload();
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update interactive content setting",
+        description:
+          "Could not update the interactive content sharing setting.",
+      });
+      setIsChanging(false);
+    }
+  };
+
+  return (
+    <ContextItem.List>
+      <div className="h-full border-b border-border dark:border-border-night" />
+      <ContextItem
+        title="Canvas sharing"
+        subElement="Disable Canvas files sharing."
+        visual={
+          <div className="flex h-6 w-6 items-center justify-center rounded bg-background dark:bg-background-night">
+            <div className="h-4 w-4 rounded bg-muted-foreground dark:bg-muted-background-night" />
+          </div>
+        }
+        hasSeparatorIfLast={true}
+        action={
+          <SliderToggle
+            selected={isEnabled !== isChanging}
+            disabled={isChanging}
+            onClick={toggleInteractiveContent}
+          />
         }
       />
     </ContextItem.List>
