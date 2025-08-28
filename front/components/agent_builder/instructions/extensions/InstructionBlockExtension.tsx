@@ -620,7 +620,7 @@ export const InstructionBlockExtension =
                         const marginClass = isOpeningTag ? "mb-2" : isClosingTag ? "mt-2" : "";
                         decorations.push(
                           Decoration.node(childPos, childPos + child.nodeSize, {
-                            class: `block w-fit px-1.5 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs font-medium uppercase ${marginClass}`,
+                            class: `block w-fit px-1.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-xs font-medium uppercase ${marginClass}`,
                           })
                         );
                       }
