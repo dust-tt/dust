@@ -137,7 +137,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
-  static async fetchByModelIdWithAuth(
+  static async fetchById(
     auth: Authenticator,
     id: ModelId,
     transaction?: Transaction
@@ -385,12 +385,16 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     };
   }
 
-  async updateStatus(
-    status: ToolExecutionStatus
-  ): Promise<[affectedCount: number]> {
-    return this.update({
+  async updateStatus(status: ToolExecutionStatus): Promise<boolean> {
+    if (this.status === status) {
+      return false;
+    }
+
+    await this.update({
       status,
     });
+
+    return true;
   }
 
   async updateStepContext(

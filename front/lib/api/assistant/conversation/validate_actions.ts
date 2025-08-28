@@ -3,10 +3,8 @@ import { Err, Ok } from "@dust-tt/client";
 import assert from "assert";
 
 import {
-  getMCPAction,
   getMCPApprovalStateFromUserApprovalState,
   isMCPApproveExecutionEvent,
-  updateMCPApprovalState,
 } from "@app/lib/actions/mcp";
 import { setUserAlwaysApprovedTool } from "@app/lib/actions/utils";
 import { runAgentLoop } from "@app/lib/api/assistant/agent";
@@ -14,7 +12,9 @@ import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { Message } from "@app/lib/models/assistant/conversation";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
 import type { ConversationType, Result } from "@app/types";
@@ -96,7 +96,11 @@ export async function validateAction(
     messageId,
   });
 
-  const action = await getMCPAction(auth, actionId);
+  const id = getResourceIdFromSId(actionId);
+  if (!id) {
+    throw new Error(`Invalid action ID: ${actionId}`);
+  }
+  const action = await AgentMCPActionResource.fetchById(auth, id);
   if (!action) {
     return new Err(new Error(`Action not found: ${actionId}`));
   }
@@ -114,8 +118,7 @@ export async function validateAction(
     return new Err(new Error(`Action is not blocked: ${action.status}`));
   }
 
-  const actionUpdated = await updateMCPApprovalState(
-    action,
+  const actionUpdated = await action.updateStatus(
     getMCPApprovalStateFromUserApprovalState(approvalState)
   );
 

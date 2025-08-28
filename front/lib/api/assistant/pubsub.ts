@@ -1,4 +1,4 @@
-import type { AgentActionRunningEvents } from "@app/lib/actions/mcp";
+import type { AgentActionRunningEvents } from "@app/lib/api/actions/error";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisClient } from "@app/lib/api/redis";
