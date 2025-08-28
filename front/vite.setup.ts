@@ -33,6 +33,16 @@ beforeEach(async (c) => {
       ),
   }));
 
+  // Mock Temporal
+  vi.mock("@app/lib/temporal", () => ({
+    getTemporalClientForAgentNamespace: vi.fn().mockResolvedValue({
+      schedule: {
+        getHandle: vi.fn().mockReturnValue({
+          update: vi.fn(),
+        }),
+      },
+    }),
+  }));
   const namespace = cls.createNamespace("test-namespace");
 
   // We use CLS to create a namespace and a transaction to isolate each test.

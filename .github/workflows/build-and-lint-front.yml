@@ -62,7 +62,7 @@ jobs:
           flaky_summary: true
           group_suite: true
           check_name: Tests Report
-  tsc-lint:
+  tsc:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -82,4 +82,25 @@ jobs:
         run: npm ci
       - name: Typecheck and Lint
         working-directory: front
-        run: npx tsc --version && npm run tsc && npm run lint && npm run format:check && npm run docs:check
+        run: npx tsc --version && npm run tsc
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20.13.0
+          cache: "npm"
+          cache-dependency-path: |
+            ./front/package-lock.json
+            ./types/package-lock.json
+            ./sdks/js/package-lock.json
+      - name: Install SDK/JS
+        working-directory: sdks/js
+        run: npm install
+      - name: Install Front
+        working-directory: front
+        run: npm install
+      - name: Typecheck and Lint
+        working-directory: front
+        run: npm run lint && npm run format:check && npm run docs:check

@@ -8,7 +8,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 
-describe.skip("TriggerResource", () => {
+describe("TriggerResource", () => {
   describe("addToSubscribers", () => {
     it("should successfully add user to subscribers", async () => {
       const {
