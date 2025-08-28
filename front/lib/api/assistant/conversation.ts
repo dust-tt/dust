@@ -473,7 +473,10 @@ export async function postUserMessage(
         return;
       }
 
-      return ConversationResource.upsertParticipation(auth, conversation);
+      return ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "posted",
+      });
     })(),
   ]);
 
@@ -892,7 +895,10 @@ export async function editUserMessage(
         })
       )
     ),
-    ConversationResource.upsertParticipation(auth, conversation),
+    ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+    }),
   ]);
 
   const agentConfigurations = removeNulls(results[0]);
