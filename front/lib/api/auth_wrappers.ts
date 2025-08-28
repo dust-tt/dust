@@ -526,7 +526,7 @@ export function withTokenAuthentication<T>(
         );
 
         const orgId = workOSDecoded.value.org_id;
-        if (orgId && "workspaces" in userWithWorkspaces) {
+        if (orgId) {
           const workspace = userWithWorkspaces.workspaces.find(
             (w) => w.workOSOrganizationId === orgId
           );
