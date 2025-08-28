@@ -174,7 +174,7 @@ export function ShareCanvasFilePopover({
 
           <div className="flex flex-col">
             {isFileShareLoading && (
-              <div className="mb-4 flex h-full items-center justify-center">
+              <div className="flex h-full items-center justify-center">
                 <Spinner size="sm" />
               </div>
             )}
@@ -182,6 +182,7 @@ export function ShareCanvasFilePopover({
             {!isFileShareLoading &&
               (isSharingForbidden || isUsingConversationFiles) && (
                 <ContentMessage
+                  className="mb-4"
                   title={
                     isSharingForbidden
                       ? "Sharing disabled by admin"
