@@ -68,7 +68,7 @@ import {
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 const ITEMS_PER_PAGE = 50;
-const PAGE_SIZE = 2000;
+const PAGE_SIZE = 10;
 
 const getUseResourceHook =
   (
