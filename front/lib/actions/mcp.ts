@@ -260,9 +260,7 @@ export type ToolNotificationEvent = {
   configurationId: string;
   conversationId: string;
   messageId: string;
-  action: AgentMCPActionType & {
-    output: null;
-  };
+  action: AgentMCPActionType;
   notification: ProgressNotificationContentType;
 };
 

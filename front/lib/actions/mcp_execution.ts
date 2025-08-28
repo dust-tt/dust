@@ -109,10 +109,7 @@ export async function* executeMCPTool({
           configurationId: agentConfiguration.sId,
           conversationId: conversation.sId,
           messageId: agentMessage.sId,
-          action: {
-            ...action.toJSON(),
-            output: null,
-          },
+          action: action.toJSON(),
           notification: notification.params,
         };
       }
