@@ -170,7 +170,7 @@ export const markInternalIdAsSkipped = async ({
   internalId,
   connectorId,
   parentInternalId,
-  reason,
+  reason = "blacklisted",
   file,
 }: {
   internalId: string;
@@ -186,7 +186,7 @@ export const markInternalIdAsSkipped = async ({
 
   if (existingFile) {
     await existingFile.update({
-      skipReason: reason || "blacklisted",
+      skipReason: reason,
     });
   } else {
     await MicrosoftNodeResource.makeNew({
@@ -196,7 +196,7 @@ export const markInternalIdAsSkipped = async ({
       name: file.name ?? "unknown",
       mimeType: file.file?.mimeType ?? "unknown",
       parentInternalId,
-      skipReason: reason || "blacklisted",
+      skipReason: reason,
       webUrl: file.webUrl ?? null,
     });
   }
