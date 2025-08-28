@@ -92,39 +92,7 @@ function SlidePreview({ slide, index, isActive, onClick }: SlidePreviewProps) {
   );
 }
 
-interface SidebarPreviewProps {
-  activeIndex: number;
-  onSlideSelect: (index: number) => void;
-  slides: React.ReactElement[];
-}
-
-function SidebarPreview({
-  activeIndex,
-  onSlideSelect,
-  slides,
-}: SidebarPreviewProps) {
-  return (
-    <SidebarContent className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroup>
-        <SidebarGroupContent className="space-y-2">
-          <SidebarMenu className="gap-2">
-            {slides.map((slide, i) => (
-              <SlidePreview
-                key={`slide-preview-${i}`}
-                slide={slide}
-                index={i}
-                isActive={i === activeIndex}
-                onClick={() => onSlideSelect(i)}
-              />
-            ))}
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-    </SidebarContent>
-  );
-}
-
-export function AppSidebar({
+export function SlideshowPreviewSidebar({
   slides,
   activeIndex,
   onSlideSelect,
@@ -147,11 +115,23 @@ export function AppSidebar({
         </span>
         <SidebarTrigger className="-ml-1" />
       </SidebarHeader>
-      <SidebarPreview
-        slides={slides}
-        activeIndex={activeIndex}
-        onSlideSelect={onSlideSelect}
-      />
+      <SidebarContent className="group-data-[collapsible=icon]:hidden">
+        <SidebarGroup>
+          <SidebarGroupContent className="space-y-2">
+            <SidebarMenu className="gap-2">
+              {slides.map((slide, i) => (
+                <SlidePreview
+                  key={`slide-preview-${i}`}
+                  slide={slide}
+                  index={i}
+                  isActive={i === activeIndex}
+                  onClick={() => onSlideSelect(i)}
+                />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
       <SidebarRail />
     </Sidebar>
   );
@@ -209,7 +189,7 @@ export function Slideshow({ children }: PropsWithChildren) {
     >
       <SidebarProvider>
         <div className="hidden @xl:block">
-          <AppSidebar
+          <SlideshowPreviewSidebar
             slides={slides}
             activeIndex={activeIndex}
             onSlideSelect={goToSlide}
