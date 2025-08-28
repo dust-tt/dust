@@ -1,5 +1,6 @@
 import React, { PropsWithChildren } from "react";
 import { cn } from "@viz/lib/utils";
+
 import {
   Sidebar,
   SidebarContent,
@@ -140,6 +141,8 @@ type SlideshowProps = PropsWithChildren<{
   className?: string;
 }>;
 
+const NAVIGATION_HIDE_DELAY = 3000; // Milliseconds before navigation auto-hides
+
 export function Slideshow({ children, className }: SlideshowProps) {
   const slides = React.useMemo(() => {
     const childArray = React.Children.toArray(children) as React.ReactElement[];
@@ -160,6 +163,18 @@ export function Slideshow({ children, className }: SlideshowProps) {
   }, [children]);
 
   const [activeIndex, setActiveIndex] = React.useState(0);
+  const [isNavigationVisible, setIsNavigationVisible] = React.useState(true);
+  const hideTimeoutRef = React.useRef<NodeJS.Timeout>();
+
+  const resetHideTimer = React.useCallback(() => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+    }
+    setIsNavigationVisible(true);
+    hideTimeoutRef.current = setTimeout(() => {
+      setIsNavigationVisible(false);
+    }, NAVIGATION_HIDE_DELAY);
+  }, []);
 
   const goToSlide = React.useCallback(
     (index: number) => {
@@ -176,6 +191,22 @@ export function Slideshow({ children, className }: SlideshowProps) {
     setActiveIndex((current) => Math.max(current - 1, 0));
   }, []);
 
+  React.useEffect(() => {
+    // Start the hide timer on mount.
+    resetHideTimer();
+
+    return () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, [resetHideTimer]);
+
+  // Reset timer when slide changes.
+  React.useEffect(() => {
+    resetHideTimer();
+  }, [activeIndex, resetHideTimer]);
+
   if (slides.length === 0) {
     return (
       <div className="@container h-full w-full flex items-center justify-center">
@@ -189,6 +220,8 @@ export function Slideshow({ children, className }: SlideshowProps) {
       className={cn("@container h-full w-full", className)}
       role="region"
       aria-label="Slideshow"
+      onMouseMove={resetHideTimer}
+      onClick={resetHideTimer}
     >
       <SidebarProvider>
         <div className="hidden @xl:block">
@@ -200,13 +233,14 @@ export function Slideshow({ children, className }: SlideshowProps) {
         </div>
         <SidebarInset>
           <main
-            className="flex flex-1 items-center justify-center px-16 py-4 relative"
+            className="flex flex-1 items-center justify-center relative"
             aria-live="polite"
             aria-label={`Slide ${activeIndex + 1} of ${slides.length}`}
           >
             {slides[activeIndex]}
             <SlideshowNavigation
               index={activeIndex}
+              isVisible={isNavigationVisible}
               total={slides.length}
               prev={prevSlide}
               next={nextSlide}
