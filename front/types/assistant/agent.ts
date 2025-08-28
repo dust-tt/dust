@@ -4,6 +4,7 @@ import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
+import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { OAuthProvider } from "@app/types";
 import type { AgentMCPActionType } from "@app/types/actions";
 import type {
@@ -315,6 +316,7 @@ export type AgentActionSuccessEvent = {
   configurationId: string;
   messageId: string;
   action: AgentMCPActionType & {
+    generatedFiles: ActionGeneratedFileType[];
     output: CallToolResult["content"];
   };
 };

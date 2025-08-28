@@ -245,6 +245,7 @@ type MCPSuccessEvent = {
   messageId: string;
   action: AgentMCPActionType & {
     output: CallToolResult["content"];
+    generatedFiles: ActionGeneratedFileType[];
   };
 };
 
@@ -590,7 +591,7 @@ export async function* runToolWithStreaming(
     return;
   }
 
-  const { outputItems } = await processToolResults(auth, {
+  const { outputItems, generatedFiles } = await processToolResults(auth, {
     action,
     conversation,
     localLogger,
@@ -610,6 +611,7 @@ export async function* runToolWithStreaming(
     action: {
       ...action.toJSON(),
       output: removeNulls(outputItems.map(hideFileFromActionOutput)),
+      generatedFiles,
     },
   };
 }
@@ -693,6 +695,7 @@ export async function handleMCPActionError(
     action: {
       ...action.toJSON(),
       output: [outputContent],
+      generatedFiles: [],
     },
   };
 }
