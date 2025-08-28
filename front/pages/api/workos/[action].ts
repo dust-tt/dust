@@ -54,7 +54,7 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       organizationIdToUse = organizationId;
     }
 
-    let enterpriseParams: { organizationId?: string; connectionId?: string } =
+    const enterpriseParams: { organizationId?: string; connectionId?: string } =
       {};
     if (organizationIdToUse) {
       enterpriseParams.organizationId = organizationIdToUse;
