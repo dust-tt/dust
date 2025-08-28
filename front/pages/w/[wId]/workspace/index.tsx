@@ -1,4 +1,5 @@
 import {
+  ActionDocumentTextIcon,
   ArrowPathIcon,
   Button,
   ContextItem,
@@ -443,13 +444,10 @@ function InteractiveContentToggle({ owner }: { owner: WorkspaceType }) {
     <ContextItem.List>
       <div className="h-full border-b border-border dark:border-border-night" />
       <ContextItem
-        title="Canvas sharing"
-        subElement="Disable Canvas files sharing."
-        visual={
-          <div className="flex h-6 w-6 items-center justify-center rounded bg-background dark:bg-background-night">
-            <div className="h-4 w-4 rounded bg-muted-foreground dark:bg-muted-background-night" />
-          </div>
-        }
+        title="Canvas file sharing"
+        subElement="Disable Canvas files sharing"
+        // TODO: find a better icon.
+        visual={<ActionDocumentTextIcon className="h-6 w-6" />}
         hasSeparatorIfLast={true}
         action={
           <SliderToggle
