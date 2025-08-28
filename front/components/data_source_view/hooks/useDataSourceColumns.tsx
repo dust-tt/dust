@@ -59,6 +59,11 @@ export const useDataSourceColumns = () => {
               disabled={!isRowSelectable()}
               onClick={(event) => event.stopPropagation()}
               onCheckedChange={(state) => {
+                if (shouldHideSelectColumn && selectionState === "partial") {
+                  removeCurrentNavigationEntry();
+                  return;
+                }
+
                 // When clicking a partial checkbox, select all
                 if (selectionState === "partial" || state) {
                   selectCurrentNavigationEntry();
@@ -92,6 +97,11 @@ export const useDataSourceColumns = () => {
                 disabled={!isRowSelectable(row.original.id)}
                 onClick={(event) => event.stopPropagation()}
                 onCheckedChange={(state) => {
+                  if (shouldHideSelect && selectionState === "partial") {
+                    removeNode(row.original.entry);
+                    return;
+                  }
+
                   // When clicking a partial checkbox, select all
                   if (selectionState === "partial" || state) {
                     selectNode(row.original.entry);
