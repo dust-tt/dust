@@ -9,6 +9,7 @@ import {
   EDIT_CANVAS_FILE_TOOL_NAME,
   RETRIEVE_CANVAS_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/canvas/types";
+import { validateTailwindCode } from "@app/lib/actions/mcp_internal_actions/servers/canvas/validation";
 import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/cat_tool";
 import { registerListTool } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/list_tool";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -79,6 +80,11 @@ const createServer = (
         { file_name, mime_type, content, description },
         { sendNotification, _meta }
       ) => {
+        const validationResult = validateTailwindCode(content);
+        if (validationResult.isErr()) {
+          return new Err(new MCPError(validationResult.error.message));
+        }
+
         const { conversation } = agentLoopContext?.runContext ?? {};
         if (!conversation) {
           return new Err(
