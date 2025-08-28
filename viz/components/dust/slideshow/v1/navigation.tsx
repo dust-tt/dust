@@ -4,6 +4,7 @@ import React from "react";
 
 interface SlideshowNavigationProps {
   index: number;
+  isVisible: boolean;
   next: () => void;
   prev: () => void;
   total: number;
@@ -11,6 +12,7 @@ interface SlideshowNavigationProps {
 
 export function SlideshowNavigation({
   index,
+  isVisible,
   next,
   prev,
   total,
@@ -25,12 +27,18 @@ export function SlideshowNavigation({
     };
 
     window.addEventListener("keydown", handleKeyDown);
-
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [prev, next]);
 
   return (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
+    <div
+      className={cn(
+        "absolute bottom-6 left-1/2 -translate-x-1/2 transition-opacity duration-300",
+        isVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+      )}
+    >
       <div
         className={cn(
           "w-44 inline-flex justify-between items-center overflow-hidden rounded bg-card shadow",

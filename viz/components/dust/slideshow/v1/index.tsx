@@ -19,8 +19,6 @@ import { SlideshowNavigation } from "@viz/components/dust/slideshow/v1/navigatio
 
 // Internal components.
 
-const NAVIGATION_HIDE_DELAY = 3000; // Milliseconds before navigation auto-hides.
-
 interface SlidePreviewProps {
   index: number;
   isActive: boolean;
@@ -143,6 +141,8 @@ type SlideshowProps = PropsWithChildren<{
   className?: string;
 }>;
 
+const NAVIGATION_HIDE_DELAY = 3000; // Milliseconds before navigation auto-hides
+
 export function Slideshow({ children, className }: SlideshowProps) {
   const slides = React.useMemo(() => {
     const childArray = React.Children.toArray(children) as React.ReactElement[];
@@ -163,8 +163,18 @@ export function Slideshow({ children, className }: SlideshowProps) {
   }, [children]);
 
   const [activeIndex, setActiveIndex] = React.useState(0);
-  const [showNavigation, setShowNavigation] = React.useState(true);
+  const [isNavigationVisible, setIsNavigationVisible] = React.useState(true);
   const hideTimeoutRef = React.useRef<NodeJS.Timeout>();
+
+  const resetHideTimer = React.useCallback(() => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+    }
+    setIsNavigationVisible(true);
+    hideTimeoutRef.current = setTimeout(() => {
+      setIsNavigationVisible(false);
+    }, NAVIGATION_HIDE_DELAY);
+  }, []);
 
   const goToSlide = React.useCallback(
     (index: number) => {
@@ -181,25 +191,21 @@ export function Slideshow({ children, className }: SlideshowProps) {
     setActiveIndex((current) => Math.max(current - 1, 0));
   }, []);
 
-  // Auto-hide navigation functionality
-  const resetHideTimer = React.useCallback(() => {
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current);
-    }
-    setShowNavigation(true);
-    hideTimeoutRef.current = setTimeout(() => {
-      setShowNavigation(false);
-    }, NAVIGATION_HIDE_DELAY);
-  }, []);
-
   React.useEffect(() => {
+    // Start the hide timer on mount.
     resetHideTimer();
+
     return () => {
       if (hideTimeoutRef.current) {
         clearTimeout(hideTimeoutRef.current);
       }
     };
-  }, [resetHideTimer, activeIndex]); // Reset timer when slide changes.
+  }, [resetHideTimer]);
+
+  // Reset timer when slide changes.
+  React.useEffect(() => {
+    resetHideTimer();
+  }, [activeIndex, resetHideTimer]);
 
   if (slides.length === 0) {
     return (
@@ -214,6 +220,8 @@ export function Slideshow({ children, className }: SlideshowProps) {
       className={cn("@container h-full w-full", className)}
       role="region"
       aria-label="Slideshow"
+      onMouseMove={resetHideTimer}
+      onClick={resetHideTimer}
     >
       <SidebarProvider>
         <div className="hidden @xl:block">
@@ -228,23 +236,15 @@ export function Slideshow({ children, className }: SlideshowProps) {
             className="flex flex-1 items-center justify-center relative"
             aria-live="polite"
             aria-label={`Slide ${activeIndex + 1} of ${slides.length}`}
-            onMouseMove={resetHideTimer}
-            onKeyDown={resetHideTimer}
-            onClick={resetHideTimer}
           >
             {slides[activeIndex]}
-            <div
-              className={`transition-opacity duration-300 ${
-                showNavigation ? "opacity-100" : "opacity-0 pointer-events-none"
-              }`}
-            >
-              <SlideshowNavigation
-                index={activeIndex}
-                total={slides.length}
-                prev={prevSlide}
-                next={nextSlide}
-              />
-            </div>
+            <SlideshowNavigation
+              index={activeIndex}
+              isVisible={isNavigationVisible}
+              total={slides.length}
+              prev={prevSlide}
+              next={nextSlide}
+            />
           </main>
         </SidebarInset>
       </SidebarProvider>
