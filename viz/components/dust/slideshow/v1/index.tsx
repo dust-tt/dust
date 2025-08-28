@@ -80,7 +80,7 @@ function SlidePreview({ slide, index, isActive, onClick }: SlidePreviewProps) {
             {/* Slide number overlay */}
             <span
               className={cn(
-                "absolute bottom-1 right-1 text-[10px] opacity-70 bg-background/80 px-1 rounded z-10"
+                "absolute bottom-1 right-1 text-xs opacity-70 bg-background/80 px-1 rounded z-10"
               )}
             >
               {index + 1}
