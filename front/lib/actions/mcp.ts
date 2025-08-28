@@ -36,8 +36,8 @@ import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type {
   ActionGeneratedFileType,
   AgentLoopRunContextType,
+  StepContext,
 } from "@app/lib/actions/types";
-import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
   DataSourceConfiguration,
@@ -228,11 +228,7 @@ type MCPParamsEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  // TODO: cleanup this type from the public API users.
-  action: AgentMCPActionWithOutputType & {
-    output: null;
-    generatedFiles: never[];
-  };
+  action: AgentMCPActionWithOutputType;
 };
 
 type MCPSuccessEvent = {
@@ -240,7 +236,7 @@ type MCPSuccessEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  action: MCPActionType;
+  action: AgentMCPActionWithOutputType;
 };
 
 type MCPErrorEvent = {
@@ -579,7 +575,6 @@ export async function* runToolWithStreaming(
       action,
       agentConfiguration,
       agentMessage,
-      actionBaseParams,
       status,
       errorMessage,
     });
@@ -603,14 +598,11 @@ export async function* runToolWithStreaming(
     created: Date.now(),
     configurationId: agentConfiguration.sId,
     messageId: agentMessage.sId,
-    action: new MCPActionType({
-      ...actionBaseParams,
-      generatedFiles,
-      status: "succeeded",
-      id: action.id,
+    action: {
+      ...action.toJSON(),
       output: removeNulls(outputItems.map(hideFileFromActionOutput)),
-      type: "tool_action",
-    }),
+      generatedFiles,
+    },
   };
 }
 
@@ -653,7 +645,6 @@ export async function createMCPAction(
 
 type HandleErrorParams = {
   action: AgentMCPActionResource;
-  actionBaseParams: ActionBaseParams;
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
   errorMessage: string;
@@ -666,14 +657,13 @@ type HandleErrorParams = {
 export async function handleMCPActionError(
   params: HandleErrorParams
 ): Promise<MCPErrorEvent | MCPSuccessEvent> {
-  const { agentConfiguration, agentMessage, errorMessage, status } = params;
+  const { action, agentConfiguration, agentMessage, errorMessage, status } =
+    params;
 
   const outputContent: CallToolResult["content"][number] = {
     type: "text",
     text: errorMessage,
   };
-
-  const { action, actionBaseParams } = params;
 
   await AgentMCPActionOutputItem.create({
     workspaceId: action.workspaceId,
@@ -692,14 +682,11 @@ export async function handleMCPActionError(
     created: Date.now(),
     configurationId: agentConfiguration.sId,
     messageId: agentMessage.sId,
-    action: new MCPActionType({
-      ...actionBaseParams,
-      generatedFiles: [],
-      status,
-      id: action.id,
+    action: {
+      ...action.toJSON(),
       output: [outputContent],
-      type: "tool_action",
-    }),
+      generatedFiles: [],
+    },
   };
 }
 
