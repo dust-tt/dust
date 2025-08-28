@@ -5,7 +5,7 @@ import { PublicClientExecutableRenderer } from "@app/components/assistant/conver
 import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/canvas/UnsupportedContentRenderer";
 import { usePublicFile } from "@app/lib/swr/files";
 import Custom404 from "@app/pages/404";
-import { clientExecutableContentType } from "@app/types";
+import { clientExecutableContentType, slideshowContentType } from "@app/types";
 
 interface PublicCanvasContainerProps {
   shareToken: string;
@@ -38,6 +38,7 @@ export function PublicCanvasContainer({
 
     switch (fileMetadata.contentType) {
       case clientExecutableContentType:
+      case slideshowContentType:
         return (
           <PublicClientExecutableRenderer
             fileId={fileMetadata.sId}
