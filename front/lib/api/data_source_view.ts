@@ -251,11 +251,11 @@ export async function getContentNodesForDataSourceView(
           index,
           parentInternalId,
         ] of node.parentInternalIds.entries()) {
-          if ((dataSourceView.parentsIn || []).includes(parentInternalId)) {
+          const parentsInSet = new Set(dataSourceView.parentsIn || []);
+          if (parentsInSet.has(parentInternalId)) {
             deepestValidIndex = index;
           }
         }
-
         // If no valid parent found, keep the original parentInternalIds
         // If found, slice from that index to keep only the relevant hierarchy
         return deepestValidIndex >= 0
