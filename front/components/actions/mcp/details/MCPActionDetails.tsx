@@ -58,9 +58,10 @@ import {
   isSupportedImageContentType,
   parseTimeFrame,
 } from "@app/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 export interface MCPActionDetailsProps {
-  action: MCPActionType;
+  action: MCPActionType | AgentMCPActionWithOutputType;
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
   messageStatus?: "created" | "succeeded" | "failed" | "cancelled";

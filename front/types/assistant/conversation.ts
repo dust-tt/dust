@@ -3,6 +3,7 @@ import type {
   MCPApproveExecutionEvent,
 } from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 import type { ContentFragmentType } from "../content_fragment";
 import type { ModelId } from "../shared/model_id";
@@ -180,14 +181,23 @@ export type LightAgentMessageType = BaseAgentMessageType & {
     canRead: boolean;
     requestedGroupIds: string[][];
   };
-  actions: {
-    // TODO(2025-07-24 aubin): remove the type here.
-    type: "tool_action";
-    id: ModelId;
-  }[];
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
 };
+
+// This type represents the agent message we can reconstruct by accumulating streaming events
+// in a conversation.
+export type LightAgentMessageWithActionsType = LightAgentMessageType & {
+  actions: AgentMCPActionWithOutputType[];
+};
+
+export function isLightAgentMessageWithActionsType(
+  message: LightAgentMessageType | LightAgentMessageWithActionsType
+): message is LightAgentMessageWithActionsType {
+  // This check relies on the fact that `message` is already either a LightAgentMessageType or a
+  // LightAgentMessageWithActionsType; message.actions can therefore only be a AgentMCPActionType[].
+  return "actions" in message;
+}
 
 export type AgentMessageWithRankType = WithRank<AgentMessageType>;
 
