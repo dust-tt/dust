@@ -30,7 +30,7 @@ const { microsoftDeletionActivity, microsoftGarbageCollectionActivity } =
 
 const { syncDeltaForRootNodesInDrive } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minutes",
-  heartbeatTimeout: "5 minutes",
+  heartbeatTimeout: "10 minutes",
 });
 
 const { reportInitialSyncProgress, syncSucceeded, syncStarted } =
