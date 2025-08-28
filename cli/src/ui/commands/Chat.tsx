@@ -703,6 +703,18 @@ const CliChat: FC<CliChatProps> = ({
             throw new Error(`Agent error: ${event.error.message}`);
           } else if (event.type === "user_message_error") {
             throw new Error(`User message error: ${event.error.message}`);
+          } else if (event.type === "agent_generation_cancelled") {
+            // Handle generation cancellation
+            if (updateIntervalRef.current) {
+              clearInterval(updateIntervalRef.current);
+            }
+            setError(null);
+            pushFullLinesToConversationItems(false);
+            chainOfThoughtRef.current = "";
+            contentRef.current = contentRef.current || "[Cancelled]";
+            pushFullLinesToConversationItems(false);
+            contentRef.current = "";
+            break;
           } else if (event.type === "agent_message_success") {
             if (updateIntervalRef.current) {
               clearInterval(updateIntervalRef.current);

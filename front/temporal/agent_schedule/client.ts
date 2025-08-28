@@ -1,20 +1,17 @@
+import type { ScheduleOptions } from "@temporalio/client";
 import {
-  Client,
-  ScheduleHandle,
   ScheduleNotFoundError,
-  ScheduleOptions,
   ScheduleOverlapPolicy,
 } from "@temporalio/client";
 
+import type { AuthenticatorType } from "@app/lib/auth";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
-
 import { QUEUE_NAME } from "@app/temporal/agent_schedule/config";
 import { agentScheduleWorkflow } from "@app/temporal/agent_schedule/workflows";
-import { AuthenticatorType } from "@app/lib/auth";
-import { TriggerType } from "@app/types/assistant/triggers";
+import type { Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
+import type { TriggerType } from "@app/types/assistant/triggers";
 
 function getScheduleOptions(
   authType: AuthenticatorType,

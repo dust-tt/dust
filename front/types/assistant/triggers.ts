@@ -1,7 +1,8 @@
-import { AgentConfigurationType } from "@app/types/assistant/agent";
-import { ModelId } from "@app/types/shared/model_id";
-import { UserType } from "@app/types/user";
 import * as t from "io-ts";
+
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { UserType } from "@app/types/user";
 
 export type ScheduleConfig = {
   cron: string;
@@ -22,6 +23,8 @@ export type TriggerType = {
   agentConfigurationId: AgentConfigurationType["sId"];
   editor: UserType["id"];
   customPrompt: string | null;
+  enabled: boolean;
+  createdAt: number;
 } & TriggerConfiguration;
 
 export type TriggerKind = TriggerType["kind"];
@@ -38,5 +41,6 @@ const ScheduleConfigSchema = t.type({
 export const TriggerSchema = t.type({
   name: t.string,
   kind: t.literal("schedule"),
+  customPrompt: t.string,
   configuration: ScheduleConfigSchema,
 });

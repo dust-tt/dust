@@ -7,6 +7,12 @@ import type {
   SpaceType,
 } from "@app/types";
 
+const tagsFilter = z.object({
+  in: z.string().array(),
+  not: z.string().array(),
+  mode: z.union([z.literal("custom"), z.literal("auto")]),
+});
+
 const navigationHistoryEntry = z.discriminatedUnion("type", [
   z.object({ type: z.literal("root") }),
   z.object({ type: z.literal("space"), space: z.custom<SpaceType>() }),
@@ -17,10 +23,12 @@ const navigationHistoryEntry = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("data_source"),
     dataSourceView: z.custom<DataSourceViewType>(),
+    tagsFilter: tagsFilter.nullable(),
   }),
   z.object({
     type: z.literal("node"),
     node: z.custom<DataSourceViewContentNode>(),
+    tagsFilter: tagsFilter.nullable(),
   }),
 ]);
 

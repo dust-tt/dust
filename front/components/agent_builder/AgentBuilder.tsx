@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import set from "lodash/set";
 import { useRouter } from "next/router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -17,10 +17,16 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import {
+  PersonalConnectionRequiredDialog,
+  useAwaitableDialog,
+} from "@app/components/agent_builder/PersonalConnectionRequiredDialog";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
   getDefaultAgentFormData,
   transformAgentConfigurationToFormData,
+  transformDuplicateAgentToFormData,
   transformTemplateToFormData,
 } from "@app/components/agent_builder/transformAgentConfiguration";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
@@ -38,6 +44,7 @@ import { useEditors } from "@app/lib/swr/editors";
 import { emptyArray } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types";
+import { removeNulls } from "@app/types";
 
 function processActionsFromStorage(
   actions: AssistantBuilderMCPConfigurationWithId[]
@@ -72,20 +79,24 @@ function processAdditionalConfigurationFromStorage(
 
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
+  duplicateAgentId?: string | null;
 }
 
 export default function AgentBuilder({
   agentConfiguration,
+  duplicateAgentId,
 }: AgentBuilderProps) {
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   const router = useRouter();
   const sendNotification = useSendNotification();
+  const [isSaving, setIsSaving] = useState(false);
 
   const { actions, isActionsLoading } = useAgentConfigurationActions(
     owner.sId,
-    agentConfiguration?.sId ?? null
+    duplicateAgentId ?? agentConfiguration?.sId ?? null
   );
 
   const { triggers, isTriggersLoading } = useAgentTriggers({
@@ -140,7 +151,10 @@ export default function AgentBuilder({
   const formValues = useMemo((): AgentBuilderFormData => {
     let baseValues: AgentBuilderFormData;
 
-    if (agentConfiguration) {
+    if (duplicateAgentId && agentConfiguration) {
+      // Handle agent duplication case
+      baseValues = transformDuplicateAgentToFormData(agentConfiguration, user);
+    } else if (agentConfiguration) {
       baseValues = transformAgentConfigurationToFormData(agentConfiguration);
     } else if (assistantTemplate) {
       baseValues = transformTemplateToFormData(assistantTemplate, user);
@@ -163,6 +177,7 @@ export default function AgentBuilder({
     agentConfiguration,
     assistantTemplate,
     user,
+    duplicateAgentId,
     processedActions,
     slackProvider,
     editors,
@@ -179,8 +194,25 @@ export default function AgentBuilder({
     },
   });
 
+  const { showDialog, ...dialogProps } = useAwaitableDialog({
+    owner,
+    mcpServerViewToCheckIds: removeNulls(
+      form
+        .getValues("actions")
+        .map((a) => (a.type === "MCP" ? a.configuration.mcpServerViewId : null))
+    ),
+    mcpServerViews,
+  });
+
   const handleSubmit = async (formData: AgentBuilderFormData) => {
     try {
+      setIsSaving(true);
+      const confirmed = await showDialog();
+      if (!confirmed) {
+        setIsSaving(false);
+        return;
+      }
+
       const result = await submitAgentBuilderForm({
         formData,
         owner,
@@ -196,6 +228,7 @@ export default function AgentBuilder({
           description: result.error.message,
           type: "error",
         });
+        setIsSaving(false);
         return;
       }
 
@@ -209,12 +242,20 @@ export default function AgentBuilder({
       });
 
       if (!agentConfiguration && createdAgent.sId) {
+        // For new agents, navigate immediately - form will be clean after navigation
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
-        // willingly using window to not trigger next navigation events
-        window.history.replaceState(null, "", newUrl);
+        await router.replace(newUrl, undefined, { shallow: true });
+      } else {
+        // For existing agents, just reset form state
+        form.reset(form.getValues(), {
+          keepValues: true,
+        });
       }
+
+      setIsSaving(false);
     } catch (error) {
       logger.error("Unexpected error:", error);
+      setIsSaving(false);
     }
   };
 
@@ -228,10 +269,12 @@ export default function AgentBuilder({
 
   const { isDirty, isSubmitting } = form.formState;
 
-  useNavigationLock(isDirty);
+  // Disable navigation lock during save process for new agents
+  useNavigationLock((isDirty || !!duplicateAgentId) && !isSaving);
 
-  const isSaveDisabled =
-    !isDirty || isSubmitting || isActionsLoading || isTriggersLoading;
+  const isSaveDisabled = duplicateAgentId
+    ? false
+    : !isDirty || isSubmitting || isActionsLoading || isTriggersLoading;
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 
@@ -242,6 +285,15 @@ export default function AgentBuilder({
   return (
     <AgentBuilderFormContext.Provider value={form}>
       <FormProvider form={form}>
+        <PersonalConnectionRequiredDialog
+          owner={owner}
+          mcpServerViewsWithPersonalConnections={
+            dialogProps.mcpServerViewsWithPersonalConnections
+          }
+          isOpen={dialogProps.isOpen}
+          onCancel={dialogProps.onCancel}
+          onClose={dialogProps.onClose}
+        />
         <AgentBuilderLayout
           leftPanel={
             <AgentBuilderLeftPanel

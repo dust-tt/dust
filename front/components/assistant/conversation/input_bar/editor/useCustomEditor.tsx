@@ -196,7 +196,6 @@ export interface CustomEditorProps {
     setLoading: (loading: boolean) => void
   ) => void;
   suggestions: EditorSuggestions;
-  resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
   suggestionHandler: {
@@ -211,7 +210,6 @@ export interface CustomEditorProps {
 
 const useCustomEditor = ({
   onEnterKeyDown,
-  resetEditorContainerSize,
   suggestions,
   disableAutoFocus,
   onUrlDetected,
@@ -300,7 +298,6 @@ const useCustomEditor = ({
 
           const clearEditor = () => {
             editor.commands.clearContent();
-            resetEditorContainerSize();
           };
 
           const setLoading = (loading: boolean) => {

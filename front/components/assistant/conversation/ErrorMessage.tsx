@@ -9,11 +9,11 @@ import {
 } from "@dust-tt/sparkle";
 
 import { useSubmitFunction } from "@app/lib/client/utils";
-import type { ErrorContent } from "@app/types";
+import type { GenericErrorContent } from "@app/types";
 import { isAgentErrorCategory } from "@app/types";
 
 interface ErrorMessageProps {
-  error: ErrorContent;
+  error: GenericErrorContent;
   retryHandler: () => void;
 }
 

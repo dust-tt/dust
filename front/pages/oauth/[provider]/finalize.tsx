@@ -1,5 +1,5 @@
 import type { InferGetServerSidePropsType } from "next";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { useFinalize } from "@app/lib/swr/oauth";
@@ -33,16 +33,15 @@ export default function Finalize({
   queryParams,
   provider,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [error, setError] = useState<string | null>(null);
   const doFinalize = useFinalize();
   // Finalize the connection on component mount.
   useEffect(() => {
     async function finalizeOAuth() {
+      // You can end up here when you directly edit the configuration
+      // (e.g. go to GitHub and configure repositories from Dust App in Settings, hence no opener).
+      // We cannot really do anything here, so we simply redirect to Dust homepage.
       if (!window.opener) {
-        setError(
-          "This URL was unexpectedly visited outside of the Dust Connections setup flow. " +
-            "Please close this window and try again from Dust."
-        );
+        window.location.href = window.location.origin;
       } else {
         const res = await doFinalize(provider, queryParams);
         // Send a message `connection_finalized` to the window that opened
@@ -69,5 +68,5 @@ export default function Finalize({
     void finalizeOAuth();
   }, [queryParams, provider, doFinalize]);
 
-  return error ? <p>{error}</p> : null; // Render nothing.
+  return null; // Render nothing.
 }

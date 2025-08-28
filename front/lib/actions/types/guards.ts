@@ -54,12 +54,12 @@ export function isMCPConfigurationWithDataSource(
   );
 }
 
-export function isMCPConfigurationForInternalInteractiveContent(
+export function isMCPConfigurationForInternalCanvas(
   arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "interactive_content")
+    isInternalMCPServerOfName(arg.internalMCPServerId, "canvas")
   );
 }
 
@@ -169,6 +169,15 @@ export function isMCPInternalWebsearch(
   );
 }
 
+export function isMCPInternalRunAgent(
+  arg: MCPToolConfigurationType
+): arg is ServerSideMCPToolConfigurationType {
+  return (
+    isServerSideMCPToolConfiguration(arg) &&
+    isInternalMCPServerOfName(arg.internalMCPServerId, "run_agent")
+  );
+}
+
 export function isMCPInternalSlack(
   arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
@@ -252,8 +261,6 @@ function isMCPActionType(action: unknown): action is MCPActionType {
     "output" in action &&
     "step" in action &&
     typeof action.step === "number" &&
-    "isError" in action &&
-    typeof action.isError === "boolean" &&
     "citationsAllocated" in action &&
     typeof action.citationsAllocated === "number"
   );

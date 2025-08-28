@@ -353,7 +353,7 @@ export default function ActionsScreen({
             <Chip
               color="info"
               size="sm"
-              label={`Based on the sources you selected, this agent can only be used by users with access to space${nonGlobalSpacesUsedInActions.length > 1 ? "s" : ""} : ${nonGlobalSpacesUsedInActions.map((v) => v.name).join(", ")}.`}
+              label={`Based on your selection, this agent can only be used by users with access to space${nonGlobalSpacesUsedInActions.length > 1 ? "s" : ""} : ${nonGlobalSpacesUsedInActions.map((v) => v.name).join(", ")}.`}
             />
           </div>
         )}

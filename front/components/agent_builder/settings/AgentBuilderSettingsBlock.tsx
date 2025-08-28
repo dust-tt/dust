@@ -16,6 +16,7 @@ import { useController, useWatch } from "react-hook-form";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
+import { AccessSection } from "@app/components/agent_builder/settings/AccessSection";
 import { AvatarPicker } from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker";
 import {
   DROID_AVATAR_URLS,
@@ -27,7 +28,6 @@ import {
   getDescriptionSuggestion,
   getNameSuggestions,
 } from "@app/components/agent_builder/settings/utils";
-import { VisibilitySection } from "@app/components/agent_builder/settings/VisibilitySection";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import {
   buildSelectedEmojiType,
@@ -196,13 +196,14 @@ function AgentDescriptionInput() {
   const sendNotification = useSendNotification();
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const hasSuggestedRef = useRef(false);
 
   const { field, fieldState } = useController<
     AgentBuilderFormData,
     "agentSettings.description"
   >({ name: "agentSettings.description" });
 
-  const handleGenerateDescription = async () => {
+  const handleGenerateDescription = useCallback(async () => {
     if (
       isGenerating ||
       !instructions ||
@@ -246,7 +247,27 @@ function AgentDescriptionInput() {
       });
     }
     setIsGenerating(false);
-  };
+  }, [isGenerating, instructions, owner, name, field, sendNotification]);
+
+  useEffect(() => {
+    if (
+      !field.value &&
+      !hasSuggestedRef.current &&
+      instructions &&
+      instructions.length >= MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+    ) {
+      hasSuggestedRef.current = true;
+      void handleGenerateDescription();
+    }
+
+    // Reset the flag if instructions become too short again
+    if (
+      instructions &&
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+    ) {
+      hasSuggestedRef.current = false;
+    }
+  }, [field.value, instructions, handleGenerateDescription]);
 
   return (
     <SettingSectionContainer title="Description">
@@ -392,7 +413,7 @@ export function AgentBuilderSettingsBlock({
           <AgentPictureInput />
         </div>
         <AgentDescriptionInput />
-        <VisibilitySection />
+        <AccessSection />
         <TagsSection />
       </div>
     </AgentBuilderSectionContainer>

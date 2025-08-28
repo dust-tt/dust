@@ -134,7 +134,7 @@ export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
           size="sm"
           icon={LightbulbIcon}
           aria-label="View instruction tips"
-          pulseOnce={shouldPulse}
+          briefPulse={shouldPulse}
         />
       </PopoverTrigger>
       <PopoverContent className="w-80 p-4" side="bottom" align="start">

@@ -49,14 +49,9 @@ interface MCPServerViewsContextType {
   isMCPServerViewsError: boolean;
 }
 
-const MCPServerViewsContext = createContext<MCPServerViewsContextType>({
-  mcpServerViews: [],
-  mcpServerViewsWithKnowledge: [],
-  defaultMCPServerViews: [],
-  nonDefaultMCPServerViews: [],
-  isMCPServerViewsLoading: false,
-  isMCPServerViewsError: false,
-});
+const MCPServerViewsContext = createContext<
+  MCPServerViewsContextType | undefined
+>(undefined);
 
 function getGroupedMCPServerViews({
   mcpServerViews,
@@ -108,10 +103,16 @@ function getGroupedMCPServerViews({
     groupBy(mcpServerViewsWithLabel, (view) => {
       const requirements = getMCPServerRequirements(view);
 
+      // Special handling for canvas server:
+      // The canvas server includes list and cat tools for convenience, but its primary purpose is
+      // not data source operations. We don't want it to be classified as requiring knowledge.
+      const isCanvasServer = view.server.name === "canvas";
+
       const isWithKnowledge =
-        requirements.requiresDataSourceConfiguration ||
-        requirements.requiresDataWarehouseConfiguration ||
-        requirements.requiresTableConfiguration;
+        !isCanvasServer &&
+        (requirements.requiresDataSourceConfiguration ||
+          requirements.requiresDataWarehouseConfiguration ||
+          requirements.requiresTableConfiguration);
 
       return isWithKnowledge
         ? "mcpServerViewsWithKnowledge"

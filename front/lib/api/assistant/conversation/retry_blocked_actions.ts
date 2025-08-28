@@ -1,4 +1,7 @@
+import { isBlockedActionEvent } from "@app/lib/actions/mcp";
 import { runAgentLoop } from "@app/lib/api/assistant/agent";
+import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
+import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -61,6 +64,15 @@ async function findUserMessageForRetry(
   if (blockedActions.length === 0) {
     return new Err(new Error("No blocked actions found"));
   }
+
+  // Purge blocked actions event message from the stream:
+  // - remove tool_approve_execution events (watch out as those events are not republished).
+  // - remove tool_personal_auth_required events.
+  await getRedisHybridManager().removeEvent((event) => {
+    const payload = JSON.parse(event.message["payload"]);
+
+    return isBlockedActionEvent(payload);
+  }, getMessageChannelId(messageId));
 
   return new Ok({
     agentMessageId: agentMessage.sId,

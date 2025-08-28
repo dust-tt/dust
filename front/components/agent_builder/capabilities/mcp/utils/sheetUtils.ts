@@ -235,9 +235,14 @@ export function shouldGenerateUniqueName(
   defaultFormValues: MCPFormData,
   formData: MCPFormData
 ): boolean {
-  return (
-    mode?.type === "add" ||
-    mode?.type === "configure" ||
-    (mode?.type === "edit" && defaultFormValues.name !== formData.name)
-  );
+  if (mode?.type === "add" || mode?.type === "configure") {
+    return true; // Always generate unique names for new actions
+  }
+
+  if (mode?.type === "edit") {
+    // For editing, only generate a unique name if the user actually changed it
+    return defaultFormValues.name !== formData.name;
+  }
+
+  return false;
 }

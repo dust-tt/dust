@@ -3,18 +3,21 @@ import type { JSONContent } from "@tiptap/react";
 import {
   createInstructionBlockNode,
   splitTextAroundBlocks,
-  textToParagraphNodes,
 } from "@app/lib/client/agent_builder/instructionBlockUtils";
 
 function serializeNodeToText(node: JSONContent): string {
   if (node.type === "instructionBlock") {
-    const type = node.attrs?.type as string;
-    const tagName = type?.toUpperCase() || "INFO";
-
-    // Serialize content inside the block
     const content = node.content?.map(serializeNodeToText).join("") || "";
+    return content;
+  }
 
-    return `<${tagName}>\n${content}</${tagName}>\n`;
+  if (node.type === "heading") {
+    // Preserve the original heading level in markdown (support H1–H6)
+    const level = node.attrs?.level || 1;
+    const safeLevel = Math.max(1, Math.min(level, 6));
+    const prefix = "#".repeat(safeLevel) + " ";
+    const content = node.content?.map(serializeNodeToText).join("") || "";
+    return `${prefix}${content}\n`;
   }
 
   if (node.type === "paragraph") {
@@ -26,7 +29,6 @@ function serializeNodeToText(node: JSONContent): string {
       return `${node.content[0].text}\n`;
     }
 
-    // Handle multiple nodes in paragraph
     const text = node.content.map(serializeNodeToText).join("");
     return text ? `${text}\n` : "\n";
   }
@@ -35,7 +37,13 @@ function serializeNodeToText(node: JSONContent): string {
     return node.text || "";
   }
 
-  // Handle other node types by recursing into their content
+  if (node.type === "codeBlock") {
+    // Convert code blocks to markdown format with triple backticks
+    const language = node.attrs?.language || "";
+    const code = node.content?.map(serializeNodeToText).join("") || "";
+    return `\`\`\`${language}\n${code}\`\`\`\n`;
+  }
+
   if (node.content) {
     return node.content.map(serializeNodeToText).join("");
   }
@@ -57,11 +65,34 @@ function parseInstructionBlocks(text: string): JSONContent[] {
 
   segments.forEach((segment) => {
     if (segment.type === "text") {
-      // Add text as paragraphs
-      const paragraphs = textToParagraphNodes(segment.content);
-      content.push(...paragraphs);
+      // Parse code blocks from the text
+      const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
+      let lastIndex = 0;
+      let match;
+
+      while ((match = codeBlockRegex.exec(segment.content)) !== null) {
+        if (match.index > lastIndex) {
+          const textBefore = segment.content.slice(lastIndex, match.index);
+          const nodes = parseTextWithHeadings(textBefore);
+          content.push(...nodes);
+        }
+        const language = match[1] || "";
+        const code = match[2];
+        content.push({
+          type: "codeBlock",
+          attrs: { language },
+          content: code ? [{ type: "text", text: code }] : [],
+        });
+
+        lastIndex = match.index + match[0].length;
+      }
+
+      if (lastIndex < segment.content.length) {
+        const remainingText = segment.content.slice(lastIndex);
+        const nodes = parseTextWithHeadings(remainingText);
+        content.push(...nodes);
+      }
     } else if (segment.type === "block" && segment.blockType) {
-      // Add instruction block
       const blockNode = createInstructionBlockNode(
         segment.blockType,
         segment.content
@@ -71,6 +102,31 @@ function parseInstructionBlocks(text: string): JSONContent[] {
   });
 
   return content;
+}
+
+function parseTextWithHeadings(text: string): JSONContent[] {
+  const nodes: JSONContent[] = [];
+  const lines = text.split("\n");
+
+  for (const line of lines) {
+    const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+    if (headingMatch) {
+      const level = headingMatch[1].length; // Preserve original level (1–6)
+      const content = headingMatch[2].trim();
+      nodes.push({
+        type: "heading",
+        attrs: { level }, // Keep the original heading level
+        content: content ? [{ type: "text", text: content }] : [],
+      });
+    } else {
+      nodes.push({
+        type: "paragraph",
+        content: line.trim() ? [{ type: "text", text: line.trim() }] : [],
+      });
+    }
+  }
+
+  return nodes;
 }
 
 export function tipTapContentFromPlainText(text: string): JSONContent {

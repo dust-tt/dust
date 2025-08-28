@@ -1,7 +1,10 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
-import { _getDefaultWebActionsForGlobalAgent } from "@app/lib/api/assistant/global_agents/tools";
+import {
+  _getDefaultWebActionsForGlobalAgent,
+  _getToolsetsToolsConfiguration,
+} from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
@@ -62,19 +65,22 @@ If the request requires some internal company data, use the semantic search tool
 
 If the request requires general information that is likely more recent than your knowledge cutoff, use the web tools (search and browse) to answer the request.
 
-Do not use sub-agents for simple requests.
+Do not use sub-agents for simple requests, unless you need to use a tool that is only available for sub agents.
 </simple_request_guidelines>
 
 <complex_request_guidelines>
 For complex requests, you must must act as a "research coordinator", focusing on planning. Heavily bias towards delegating sub tasks to the sub-agent. Ask the sub-agent to find specific documents node IDs on your behalf.
 You can also use parallel tool calls to spawn several sub tasks concurrently in order to speed-up the overall process.
+</complex_request_guidelines>
 
+<sub_agent_guidelines>
 The sub-agents you spawn are each independent, they do not have any prior context on the request your are trying to solve and they do not have any memory of previous interactions you had with sub agents.
 Queries that you provide to sub agents must be comprehensive, clear and fully self-contained. The sub agents you spawn have access to the web tools (search / browse), the company data file system and the data warehouses (if any).
+It can also have access to any tool that you may find useful for the task, using the toolsetsToAdd parameter. You can get the list of available tools using the toolsets tool priori to call the sub agent.
 Tasks that you give to sub-agents must be small and granular. Bias towards breaking down a large task into several smaller tasks.
 
 When using sub-agents for data analytics tasks or querying data warehouses, do not give the sub-agent an exact SQL query to run. Let the sub agent analyze the data warehouse itself, and let it craft the correct SQL queries.
-</complex_request_guidelines>
+</sub_agent_guidelines>
 `;
 
 const toolsPrompt = `<company_data_guidelines>
@@ -100,6 +106,10 @@ You can use the Data Warehouses tools to:
 
 In order to properly use the data warehouses, it is useful to also search through company data in case there is some documentation available about the tables, some additional semantic layer, or some code that may define how the tables are built in the first place.
 </data_warehouses_guidelines>
+
+<additional_tools>
+If you need a capability that is not available in the tools you have access to, you can call the toolsets tool to get the list of all available tools of the platform, and then call a sub-agent with the tool you need.
+</additional_tools>
 `;
 
 const outputPrompt = `<output_guidelines>
@@ -193,7 +203,7 @@ function getCompanyDataAction(
 
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.RESEARCH + "-company-data-action",
+    sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-company-data-action",
     type: "mcp_server_configuration",
     name: "company_data",
     description: "The user's internal company data.",
@@ -232,7 +242,7 @@ function getCompanyDataWarehousesAction(
 
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.RESEARCH + "-data-warehouses-action",
+    sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-data-warehouses-action",
     type: "mcp_server_configuration",
     name: "data_warehouses",
     description: "The user's data warehouses.",
@@ -260,27 +270,29 @@ export function _getDustDeepGlobalAgent(
     preFetchedDataSources,
     webSearchBrowseMCPServerView,
     dataSourcesFileSystemMCPServerView,
-    interactiveContentMCPServerView,
+    canvasMCPServerView,
     runAgentMCPServerView,
     dataWarehousesMCPServerView,
+    toolsetsMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-    interactiveContentMCPServerView: MCPServerViewResource | null;
+    canvasMCPServerView: MCPServerViewResource | null;
     runAgentMCPServerView: MCPServerViewResource | null;
     dataWarehousesMCPServerView: MCPServerViewResource | null;
+    toolsetsMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
 
   const name = "dust-deep";
   const description =
-    "Deep research with company data, web search/browse, interactive content, and data warehouses.";
+    "Deep research with company data, web search/browse, canvas, and data warehouses.";
 
   const pictureUrl =
-    "https://dust.tt/static/systemavatar/research_avatar_full.png";
+    "https://dust.tt/static/systemavatar/dust-deep_avatar_full.png";
 
   const modelConfig = getModelConfig(owner, "anthropic");
 
@@ -289,7 +301,7 @@ export function _getDustDeepGlobalAgent(
     "status" | "maxStepsPerRun" | "actions"
   > = {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.RESEARCH,
+    sId: GLOBAL_AGENTS_SID.DUST_DEEP,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -338,8 +350,12 @@ export function _getDustDeepGlobalAgent(
 
   actions.push(
     ..._getDefaultWebActionsForGlobalAgent({
-      agentId: GLOBAL_AGENTS_SID.RESEARCH,
+      agentId: GLOBAL_AGENTS_SID.DUST_DEEP,
       webSearchBrowseMCPServerView,
+    }),
+    ..._getToolsetsToolsConfiguration({
+      agentId: GLOBAL_AGENTS_SID.DUST_TASK,
+      toolsetsMcpServerView: toolsetsMCPServerView,
     })
   );
 
@@ -352,16 +368,16 @@ export function _getDustDeepGlobalAgent(
     actions.push(dataWarehousesAction);
   }
 
-  // Add interactive content tool
-  if (interactiveContentMCPServerView) {
+  // Add canvas tool
+  if (canvasMCPServerView) {
     actions.push({
       id: -1,
-      sId: GLOBAL_AGENTS_SID.RESEARCH + "-interactive-content",
+      sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-canvas",
       type: "mcp_server_configuration",
-      name: "interactive_content" satisfies InternalMCPServerNameType,
-      description: "Create & update interactive content files.",
-      mcpServerViewId: interactiveContentMCPServerView.sId,
-      internalMCPServerId: interactiveContentMCPServerView.internalMCPServerId,
+      name: "canvas" satisfies InternalMCPServerNameType,
+      description: "Create & update canvas files.",
+      mcpServerViewId: canvasMCPServerView.sId,
+      internalMCPServerId: canvasMCPServerView.internalMCPServerId,
       dataSources: null,
       tables: null,
       childAgentId: null,
@@ -377,7 +393,7 @@ export function _getDustDeepGlobalAgent(
   if (runAgentMCPServerView) {
     actions.push({
       id: -1,
-      sId: GLOBAL_AGENTS_SID.RESEARCH + "-run-agent-dust-task",
+      sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-run-agent-dust-task",
       type: "mcp_server_configuration",
       name: "sub_agent",
       description: "Run the dust-task sub-agent for focused tasks.",
@@ -427,10 +443,10 @@ export function _getDustTaskGlobalAgent(
 
   const name = "dust-task";
   const description =
-    "Focused research sub-agent. Same data/web tools as dust-deep, without interactive content or spawning sub-agents.";
+    "Focused research sub-agent. Same data/web tools as dust-deep, without canvas or spawning sub-agents.";
 
   const pictureUrl =
-    "https://dust.tt/static/systemavatar/research_avatar_full.png";
+    "https://dust.tt/static/systemavatar/dust-task_avatar_full.png";
 
   const dustTaskAgent: Omit<
     AgentConfigurationType,

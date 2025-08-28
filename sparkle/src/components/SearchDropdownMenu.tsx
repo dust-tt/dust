@@ -41,6 +41,7 @@ export function SearchDropdownMenu({
           ref={searchInputRef}
           name="search"
           placeholder="Search"
+          className="w-full"
           value={searchInputValue}
           disabled={disabled}
           onFocus={() => {

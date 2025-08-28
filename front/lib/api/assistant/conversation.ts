@@ -115,10 +115,12 @@ export async function createConversation(
     title,
     visibility,
     depth = 0,
+    triggerId,
   }: {
     title: string | null;
     visibility: ConversationVisibility;
     depth?: number;
+    triggerId?: ModelId | null;
   }
 ): Promise<ConversationType> {
   const owner = auth.getNonNullableWorkspace();
@@ -128,6 +130,7 @@ export async function createConversation(
     title,
     visibility,
     depth,
+    triggerId,
     requestedGroupIds: [],
   });
 
@@ -139,6 +142,7 @@ export async function createConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     depth: conversation.depth,
+    triggerId: conversation.triggerId,
     content: [],
     requestedGroupIds:
       conversation.getConversationRequestedGroupIdsFromModel(auth),

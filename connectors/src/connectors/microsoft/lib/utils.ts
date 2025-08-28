@@ -7,6 +7,7 @@ import type {
 } from "@microsoft/microsoft-graph-types";
 
 import { clientApiGet } from "@connectors/connectors/microsoft/lib/graph_api";
+import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import { cacheWithRedis } from "@connectors/types";
 
 import type { DriveItem, MicrosoftNodeType } from "./types";
@@ -162,5 +163,41 @@ export const getColumnsFromListItem = async (
   } catch (e) {
     logger.error({ error: e }, "Error while getting columns from list item.");
     return [];
+  }
+};
+
+export const markInternalIdAsSkipped = async ({
+  internalId,
+  connectorId,
+  parentInternalId,
+  reason = "blacklisted",
+  file,
+}: {
+  internalId: string;
+  connectorId: number;
+  parentInternalId?: string;
+  reason?: string;
+  file: DriveItem;
+}) => {
+  const existingFile = await MicrosoftNodeResource.fetchByInternalId(
+    connectorId,
+    internalId
+  );
+
+  if (existingFile) {
+    await existingFile.update({
+      skipReason: reason,
+    });
+  } else {
+    await MicrosoftNodeResource.makeNew({
+      internalId: internalId,
+      connectorId: connectorId,
+      nodeType: "file",
+      name: file.name ?? "unknown",
+      mimeType: file.file?.mimeType ?? "unknown",
+      parentInternalId,
+      skipReason: reason,
+      webUrl: file.webUrl ?? null,
+    });
   }
 };

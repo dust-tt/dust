@@ -8,7 +8,6 @@ interface DescriptionSectionProps {
   description: string;
   label?: string;
   placeholder: string;
-  helpText?: string;
   maxLength?: number;
 }
 
@@ -19,7 +18,6 @@ export function DescriptionSection({
   description,
   label,
   placeholder,
-  helpText,
 }: DescriptionSectionProps) {
   const { register } = useFormContext();
   const { fieldState } = useController<CapabilityFormData, typeof FIELD_NAME>({
@@ -44,11 +42,6 @@ export function DescriptionSection({
           showErrorLabel={true}
           error={fieldState.error?.message}
         />
-        {helpText && (
-          <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-            {helpText}
-          </p>
-        )}
       </div>
     </div>
   );

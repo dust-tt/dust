@@ -68,8 +68,9 @@ function getGlobalAgent({
   webSearchBrowseMCPServerView,
   searchMCPServerView,
   dataSourcesFileSystemMCPServerView,
-  interactiveContentMCPServerView,
+  canvasMCPServerView,
   runAgentMCPServerView,
+  toolsetsMCPServerView,
   dataWarehousesMCPServerView,
 }: {
   auth: Authenticator;
@@ -81,8 +82,9 @@ function getGlobalAgent({
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
   dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-  interactiveContentMCPServerView: MCPServerViewResource | null;
+  canvasMCPServerView: MCPServerViewResource | null;
   runAgentMCPServerView: MCPServerViewResource | null;
+  toolsetsMCPServerView: MCPServerViewResource | null;
   dataWarehousesMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType | null {
   const settings =
@@ -278,15 +280,16 @@ function getGlobalAgent({
         searchMCPServerView,
       });
       break;
-    case GLOBAL_AGENTS_SID.RESEARCH:
+    case GLOBAL_AGENTS_SID.DUST_DEEP:
       agentConfiguration = _getDustDeepGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
         webSearchBrowseMCPServerView,
         dataSourcesFileSystemMCPServerView,
-        interactiveContentMCPServerView,
+        canvasMCPServerView,
         runAgentMCPServerView,
         dataWarehousesMCPServerView,
+        toolsetsMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_TASK:
@@ -355,8 +358,9 @@ export async function getGlobalAgents(
     webSearchBrowseMCPServerView,
     searchMCPServerView,
     dataSourcesFileSystemMCPServerView,
-    interactiveContentMCPServerView,
+    canvasMCPServerView,
     runAgentMCPServerView,
+    toolsetsMCPServerView,
     dataWarehousesMCPServerView,
   ] = await Promise.all([
     variant === "full"
@@ -393,13 +397,19 @@ export async function getGlobalAgents(
     variant === "full"
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
-          "interactive_content"
+          "canvas"
         )
       : null,
     variant === "full"
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
           "run_agent"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "toolsets"
         )
       : null,
     variant === "full"
@@ -442,7 +452,7 @@ export async function getGlobalAgents(
 
   if (!flags.includes("research_agent")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.RESEARCH
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_DEEP
     );
   }
 
@@ -459,8 +469,9 @@ export async function getGlobalAgents(
       webSearchBrowseMCPServerView,
       searchMCPServerView,
       dataSourcesFileSystemMCPServerView,
-      interactiveContentMCPServerView,
+      canvasMCPServerView,
       runAgentMCPServerView,
+      toolsetsMCPServerView,
       dataWarehousesMCPServerView,
     })
   );
@@ -497,11 +508,9 @@ export async function upsertGlobalAgentSettings(
   {
     agentId,
     status,
-    guidelines,
   }: {
     agentId: string;
-    status: GlobalAgentStatus | undefined;
-    guidelines: string | undefined;
+    status: GlobalAgentStatus;
   }
 ): Promise<boolean> {
   const owner = auth.getNonNullableWorkspace();
@@ -515,13 +524,12 @@ export async function upsertGlobalAgentSettings(
   });
 
   if (settings) {
-    await settings.update({ status, guidelines });
+    await settings.update({ status });
   } else {
     await GlobalAgentSettings.create({
       workspaceId: owner.id,
       agentId,
-      status: status ?? "disabled_by_admin",
-      guidelines,
+      status,
     });
   }
 

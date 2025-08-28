@@ -6,6 +6,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   useCreatePersonalConnection,
@@ -65,12 +66,13 @@ export function MCPServerPersonalAuthenticationRequired({
             disabled={isConnecting}
             onClick={async () => {
               setIsConnecting(true);
-              const success = await createPersonalConnection(
-                mcpServer,
+              const success = await createPersonalConnection({
+                mcpServerId: mcpServer.sId,
+                mcpServerDisplayName: getMcpServerDisplayName(mcpServer),
                 provider,
-                "personal_actions",
-                scope
-              );
+                useCase: "personal_actions",
+                scope,
+              });
               setIsConnecting(false);
               if (!success) {
                 setIsConnected(false);

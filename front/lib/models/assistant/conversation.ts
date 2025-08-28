@@ -3,6 +3,7 @@ import { DataTypes } from "sequelize";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
+import type { TriggerModel } from "@app/lib/models/assistant/triggers";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -23,6 +24,7 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare title: string | null;
   declare visibility: CreationOptional<ConversationVisibility>;
   declare depth: CreationOptional<number>;
+  declare triggerId: ForeignKey<TriggerModel["id"]> | null;
 
   declare requestedGroupIds: number[][];
 }
@@ -61,6 +63,11 @@ ConversationModel.init(
       type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
       allowNull: false,
       defaultValue: [],
+    },
+    triggerId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

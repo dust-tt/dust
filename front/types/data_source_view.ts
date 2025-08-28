@@ -45,10 +45,11 @@ export type DataSourceViewSelectionConfiguration = {
   tagsFilter: TagsFilter;
 };
 
+export type TagsFilterMode = "custom" | "auto";
 export type TagsFilter = {
   in: string[];
   not: string[];
-  mode: "custom" | "auto";
+  mode: TagsFilterMode;
 } | null;
 
 export function defaultSelectionConfiguration(

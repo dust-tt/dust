@@ -151,24 +151,26 @@ export function ToolGeneratedFileDetails({
           <CitationTitle>{resource.title}</CitationTitle>
         </Citation>
       </div>
-      <CollapsibleComponent
-        rootProps={{ defaultOpen: false }}
-        triggerChildren={
-          <span className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
-            Preview
-          </span>
-        }
-        contentChildren={
-          <div className="py-2">
-            <CodeBlock
-              className="language-csv max-h-60 overflow-y-auto"
-              wrapLongLines={true}
-            >
-              {resource.snippet}
-            </CodeBlock>
-          </div>
-        }
-      />
+      {resource.snippet && (
+        <CollapsibleComponent
+          rootProps={{ defaultOpen: false }}
+          triggerChildren={
+            <span className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
+              Preview
+            </span>
+          }
+          contentChildren={
+            <div className="py-2">
+              <CodeBlock
+                className="language-csv max-h-60 overflow-y-auto"
+                wrapLongLines={true}
+              >
+                {resource.snippet}
+              </CodeBlock>
+            </div>
+          }
+        />
+      )}
     </>
   );
 }

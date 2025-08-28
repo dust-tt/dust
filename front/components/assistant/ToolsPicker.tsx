@@ -119,7 +119,7 @@ export function ToolsPicker({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className="h-96 w-96"
-        align="end"
+        align="start"
         dropdownHeaders={
           <>
             <DropdownMenuSearchbar

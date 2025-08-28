@@ -1,11 +1,11 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import {
+  makeInternalMCPServer,
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
 const OutlookEmailAddressSchema = z.object({
@@ -68,23 +68,8 @@ const OutlookContactSchema = z.object({
 type OutlookMessage = z.infer<typeof OutlookMessageSchema>;
 type OutlookContact = z.infer<typeof OutlookContactSchema>;
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "outlook",
-  version: "1.0.0",
-  description:
-    "Outlook tools for reading emails, managing email drafts, and managing contacts.",
-  authorization: {
-    provider: "microsoft_tools" as const,
-    supported_use_cases: ["personal_actions"] as const,
-    scope:
-      "Mail.ReadWrite Mail.ReadWrite.Shared Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read offline_access" as const,
-  },
-  icon: "OutlookLogo",
-  documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
-};
-
 const createServer = (): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer("outlook");
 
   server.tool(
     "get_messages",

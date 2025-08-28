@@ -91,6 +91,7 @@ export function SlackIntegration({
   return (
     <ContentNodeTree
       // not limited to those synced with Dust.
+      isTitleFilterEnabled={true}
       selectedNodes={selectedNodes}
       setSelectedNodes={(updater) => {
         const newModel = updater(selectedNodes);
@@ -174,7 +175,7 @@ export function SlackAssistantDefaultManager({
               Set this agent as the default agent on one or several of your
               Slack channels. It will answer by default when the{" "}
               <span className="font-bold">{assistantHandle}</span> Slack bot is
-              mentionned in these channels.
+              mentioned in these channels.
             </div>
 
             {!isAdmin(owner) && (

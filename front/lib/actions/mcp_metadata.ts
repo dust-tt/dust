@@ -300,7 +300,7 @@ export const connectToMCPServer = async (
                 return new Err(
                   new MCPServerPersonalAuthenticationRequiredError(
                     params.mcpServerId,
-                    "mcp"
+                    remoteMCPServer.authorization.provider
                   )
                 );
               } else {

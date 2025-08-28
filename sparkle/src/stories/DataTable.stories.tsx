@@ -607,6 +607,67 @@ export const ScrollableDataTableExample = () => {
   );
 };
 
+export const ScrollableDataTableFullHeightExample = () => {
+  const [filter, setFilter] = useState("");
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [data, setData] = useState(() => createData(0, 50));
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load more data when user scrolls to bottom
+  const loadMore = useCallback(() => {
+    setIsLoading(true);
+
+    // Simulate API call delay
+    setTimeout(() => {
+      setData((prevData) => [...prevData, ...createData(prevData.length, 50)]);
+      setIsLoading(false);
+    }, 1000);
+  }, []);
+
+  const columnsWithSize = columns.map((column, index) => {
+    return { ...column, meta: { sizeRatio: index % 2 === 0 ? 15 : 10 } };
+  });
+
+  const columnsWithSelection: ColumnDef<Data>[] = useMemo(
+    () => [createSelectionColumn<Data>(), ...columnsWithSize],
+    []
+  );
+  return (
+    <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
+      <h3 className="s-text-lg s-font-medium">
+        Virtualized ScrollableDataTable with Infinite Scrolling based on parent
+        height
+      </h3>
+
+      <div className="s-flex s-h-[400px] s-flex-col s-gap-4">
+        <Input
+          name="filter"
+          placeholder="Filter"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+
+        <ScrollableDataTable
+          data={data}
+          filter={filter}
+          filterColumn="name"
+          columns={columnsWithSelection}
+          onLoadMore={loadMore}
+          isLoading={isLoading}
+          maxHeight
+          rowSelection={rowSelection}
+          setRowSelection={setRowSelection}
+          enableRowSelection={true}
+        />
+
+        <div className="s-text-sm s-text-muted-foreground">
+          Loaded {data.length} rows. Scroll to the bottom to load more.
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const DataTableWithRowSelectionExample = () => {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [data] = useState<Data[]>(() => createData(0, 10));

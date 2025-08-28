@@ -47,7 +47,7 @@ export async function getConnectionForMCPServer(
       );
     }
   } else {
-    logger.warn(
+    logger.info(
       {
         workspaceId: auth.getNonNullableWorkspace().sId,
         mcpServerId,

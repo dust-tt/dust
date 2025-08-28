@@ -44,7 +44,7 @@ export function AgentBuilderInstructionsBlock({
       return;
     }
 
-    setValue("instructions", text, { shouldDirty: true });
+    setValue("instructions", text, { shouldDirty: true, shouldValidate: true });
     setCompareVersion(null);
     setIsInstructionDiffMode(false);
   };

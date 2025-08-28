@@ -18,7 +18,7 @@ import type {
   SupportedFileContentType,
   SupportedImageContentType,
 } from "@app/types";
-import { isInteractiveFileContentType, normalizeError } from "@app/types";
+import { isCanvasFileContentType, normalizeError } from "@app/types";
 import {
   assertNever,
   Err,
@@ -271,8 +271,8 @@ const getProcessingFunction = ({
   contentType: AllSupportedFileContentType;
   useCase: FileUseCase;
 }): ProcessingFunction | undefined => {
-  // Interactive file types are not processed.
-  if (isInteractiveFileContentType(contentType)) {
+  // Canvas file types are not processed.
+  if (isCanvasFileContentType(contentType)) {
     return undefined;
   }
 

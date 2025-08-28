@@ -201,7 +201,6 @@ export class GlobalAgentSettings extends WorkspaceAwareModel<GlobalAgentSettings
   declare agentId: string;
 
   declare status: GlobalAgentStatus;
-  declare guidelines: string | null;
 }
 GlobalAgentSettings.init(
   {
@@ -223,10 +222,6 @@ GlobalAgentSettings.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "disabled",
-    },
-    guidelines: {
-      type: DataTypes.TEXT,
-      allowNull: true,
     },
   },
   {

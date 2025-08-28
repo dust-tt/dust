@@ -4,20 +4,9 @@ import { z } from "zod";
 
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "primitive_types_debugger",
-  version: "1.0.0",
-  description:
-    "Demo server showing a basic interaction with various configurable blocks.",
-  icon: "ActionEmotionLaughIcon",
-  authorization: null,
-  documentationUrl: null,
-};
 
 function createServer(): McpServer {
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer("primitive_types_debugger");
 
   server.tool(
     "pass_through",

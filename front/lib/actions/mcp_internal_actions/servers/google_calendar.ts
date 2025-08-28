@@ -9,25 +9,10 @@ import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "google_calendar",
-  version: "1.0.0",
-  description: "Tools for managing Google calendars and events.",
-  authorization: {
-    provider: "google_drive",
-    supported_use_cases: ["personal_actions"] as const,
-    scope:
-      "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events" as const,
-  },
-  icon: "GcalLogo",
-  documentationUrl: "https://docs.dust.tt/docs/google-calendar",
-};
-
 const createServer = (): McpServer => {
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer("google_calendar");
 
   async function getCalendarClient(authInfo?: AuthInfo) {
     const accessToken = authInfo?.token;

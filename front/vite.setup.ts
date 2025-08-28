@@ -10,6 +10,29 @@ import { frontSequelize } from "@app/lib/resources/storage";
 
 beforeEach(async (c) => {
   vi.clearAllMocks();
+
+  // Mock Redis
+  vi.mock("@app/lib/api/redis", () => ({
+    runOnRedis: vi
+      .fn()
+      .mockImplementation(
+        async (opts: unknown, fn: (client: any) => Promise<unknown>) => {
+          // Mock Redis client
+          const mockRedisClient = {
+            get: vi.fn(),
+            set: vi.fn(),
+            ttl: vi.fn(),
+            zAdd: vi.fn(),
+            expire: vi.fn(),
+            zRange: vi.fn(),
+            hGetAll: vi.fn().mockResolvedValue([]),
+          };
+
+          return fn(mockRedisClient);
+        }
+      ),
+  }));
+
   const namespace = cls.createNamespace("test-namespace");
 
   // We use CLS to create a namespace and a transaction to isolate each test.

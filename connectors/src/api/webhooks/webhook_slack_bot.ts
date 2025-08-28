@@ -70,7 +70,7 @@ const _webhookSlackBotAPIHandler = async (
           type: "connector_configuration_not_found",
           message: `Slack configuration not found for teamId ${teamId}`,
         },
-        status_code: 404,
+        status_code: 421,
       });
     }
 
@@ -116,7 +116,7 @@ const _webhookSlackBotAPIHandler = async (
                   type: "connector_configuration_not_found",
                   message: `Slack configuration not found for teamId ${teamId}. Are you sure the bot is not enabled?`,
                 },
-                status_code: 404,
+                status_code: 421,
               });
             }
             const connector = await ConnectorResource.fetchById(

@@ -1,4 +1,4 @@
-const WORKFLOW_VERSION = 47;
+const WORKFLOW_VERSION = 48;
 export const QUEUE_NAME = `notion-queue-v${WORKFLOW_VERSION}`;
 export const GARBAGE_COLLECT_QUEUE_NAME = `notion-gc-queue-v${WORKFLOW_VERSION}`;
 
@@ -9,7 +9,7 @@ export const SYNC_PERIOD_DURATION_MS = 60_000;
 export const INTERVAL_BETWEEN_SYNCS_MS = 60_000; // 1 minute
 
 export const MAX_CONCURRENT_CHILD_WORKFLOWS = 1;
-export const MAX_PAGE_IDS_PER_CHILD_WORKFLOW = 100;
+export const MAX_PAGE_IDS_PER_CHILD_WORKFLOW = 64;
 
 export const MAX_PENDING_UPSERT_ACTIVITIES_PER_CHILD_WORKFLOW = 5;
 

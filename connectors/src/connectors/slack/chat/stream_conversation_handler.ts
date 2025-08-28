@@ -26,6 +26,7 @@ import {
 } from "@connectors/connectors/slack/chat/blocks";
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
 import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
+import { isWebAPIRateLimitedError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
@@ -78,13 +79,13 @@ interface SlackUpdateState {
  *
  * The strategy uses exponential backoff:
  * - First 3 updates: no delay (instant feedback)
- * - Updates 4-6: 500ms minimum spacing
- * - Updates 7-10: 2s minimum spacing
- * - Updates 11-15: 4s minimum spacing
- * - Updates 16-20: 8s minimum spacing
- * - Updates 21+: 10s minimum spacing
+ * - Updates 4-5: 1s minimum spacing
+ * - Updates 6-8: 3s minimum spacing
+ * - Updates 9-11: 6s minimum spacing
+ * - Updates 12-15: 10s minimum spacing
+ * - Updates 16+: 15s minimum spacing
  *
- * This results in ~20-21 updates max per minute, well below Slack's rate limits (50/min).
+ * This results in ~12-14 updates max per minute.
  *
  * @param updateCount - Number of updates sent so far in this conversation
  * @param lastUpdateTime - Timestamp of the last update (ms since epoch)
@@ -98,16 +99,16 @@ function shouldSkipSlackUpdate({
 
   // Determine minimum spacing based on update count (exponential backoff).
   let minSpacing = 0;
-  if (updateCount >= 21) {
+  if (updateCount >= 16) {
+    minSpacing = 15_000; // 15s.
+  } else if (updateCount >= 12) {
     minSpacing = 10_000; // 10s.
-  } else if (updateCount >= 16) {
-    minSpacing = 8_000; // 8s.
-  } else if (updateCount >= 11) {
-    minSpacing = 4_000; // 4s.
-  } else if (updateCount >= 7) {
-    minSpacing = 2_000; // 2s.
+  } else if (updateCount >= 9) {
+    minSpacing = 6_000; // 6s.
+  } else if (updateCount >= 6) {
+    minSpacing = 3_000; // 3s.
   } else if (updateCount >= 4) {
-    minSpacing = 500; // 500ms.
+    minSpacing = 1_000; // 1s.
   }
   // Updates 1-3: no delay (minSpacing = 0).
 
@@ -209,6 +210,7 @@ async function streamAgentAnswerToSlack(
           {
             connectorId: connector.id,
             conversationId: conversation.sId,
+            eventConversationId: event.conversationId,
             messageId: event.messageId,
             actionId: event.actionId,
             toolName: event.metadata.toolName,
@@ -219,7 +221,7 @@ async function streamAgentAnswerToSlack(
 
         const blockId = SlackBlockIdToolValidationSchema.encode({
           workspaceId: connector.workspaceId,
-          conversationId: conversation.sId,
+          conversationId: event.conversationId,
           messageId: event.messageId,
           actionId: event.actionId,
           slackThreadTs: mainMessage.message?.thread_ts,
@@ -375,6 +377,34 @@ async function streamAgentAnswerToSlack(
         return new Ok(undefined);
       }
 
+      case "agent_generation_cancelled": {
+        // Handle generation cancellation by showing a cancelled message
+        const cancelledMessage = "_Message generation was cancelled._";
+        const { formattedContent, footnotes } = annotateCitations(
+          answer || cancelledMessage,
+          actions
+        );
+        const slackContent = slackifyMarkdown(
+          normalizeContentForSlack(formattedContent)
+        );
+
+        await postSlackMessageUpdate(
+          {
+            messageUpdate: {
+              text: slackContent,
+              assistantName,
+              agentConfigurations,
+              footnotes,
+            },
+            ...conversationData,
+            updateState,
+          },
+          { adhereToRateLimit: false }
+        );
+
+        return new Ok(undefined);
+      }
+
       default:
         assertNever(event);
     }
@@ -422,7 +452,6 @@ async function postSlackMessageUpdate(
 
   if (adhereToRateLimit) {
     const shouldSkip = shouldSkipSlackUpdate({ updateCount, lastUpdateTime });
-
     if (shouldSkip) {
       logger.info(
         {
@@ -437,25 +466,44 @@ async function postSlackMessageUpdate(
     }
   }
 
-  const response = await slackClient.chat.update({
-    ...makeMessageUpdateBlocksAndText(
-      conversationUrl,
-      connector.workspaceId,
-      messageUpdate
-    ),
-    channel: slackChannelId,
-    ts: mainMessage.ts as string,
-  });
+  try {
+    const response = await slackClient.chat.update({
+      ...makeMessageUpdateBlocksAndText(
+        conversationUrl,
+        connector.workspaceId,
+        messageUpdate
+      ),
+      channel: slackChannelId,
+      ts: mainMessage.ts as string,
+    });
 
-  if (response.error) {
-    logger.error(
-      {
-        connectorId: connector.id,
-        conversationId: conversation.sId,
-        err: response.error,
-      },
-      "Failed to update Slack message."
-    );
+    if (response.error) {
+      logger.error(
+        {
+          connectorId: connector.id,
+          conversationId: conversation.sId,
+          err: response.error,
+        },
+        "Failed to update Slack message."
+      );
+    }
+  } catch (error) {
+    // When adhering to rate limits, swallow rate limit errors gracefully to avoid displaying the
+    // SLACK_RATE_LIMIT_ERROR_MESSAGE.
+    if (adhereToRateLimit && isWebAPIRateLimitedError(error)) {
+      logger.info(
+        {
+          connectorId: connector.id,
+          conversationId: conversation.sId,
+          updateCount,
+          rateLimitError: true,
+        },
+        "Swallowing Slack rate limit error when adhering to rate limits"
+      );
+    } else {
+      // Re-throw non-rate-limit errors or rate-limit errors when not adhering to rate limits.
+      throw error;
+    }
   }
 
   // Always update state when we make an API call (regardless of success or adhereToRateLimit).

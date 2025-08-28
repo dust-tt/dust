@@ -21,7 +21,7 @@ import React, {
   useState,
 } from "react";
 
-import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
+import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";

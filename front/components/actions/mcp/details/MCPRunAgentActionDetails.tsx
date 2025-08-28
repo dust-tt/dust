@@ -9,6 +9,7 @@ import {
   CitationTitle,
   CollapsibleComponent,
   ContentMessage,
+  DocumentIcon,
   Markdown,
   RobotIcon,
 } from "@dust-tt/sparkle";
@@ -19,6 +20,7 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
+import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import {
   CitationsContext,
   CiteBlock,
@@ -36,6 +38,7 @@ import {
   isRunAgentQueryProgressOutput,
   isRunAgentQueryResourceType,
   isRunAgentResultResourceType,
+  isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
@@ -64,6 +67,7 @@ export function MCPRunAgentActionDetails({
   const { serverViews: mcpServerViews } = useMCPServerViews({
     owner,
     space: spaces.find((s) => s.kind === "global"),
+    availability: "all",
     disabled: addedMCPServerViewIds.length === 0,
   });
 
@@ -72,6 +76,9 @@ export function MCPRunAgentActionDetails({
 
   const resultResource =
     action.output?.find(isRunAgentResultResourceType) || null;
+
+  const generatedFiles =
+    action.output?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
 
   const childAgentId = useMemo(() => {
     if (queryResource) {
@@ -149,12 +156,8 @@ export function MCPRunAgentActionDetails({
     if (resultResource) {
       return resultResource.resource.uri;
     }
-    const output = lastNotification?.data.output;
-    if (isRunAgentProgressOutput(output)) {
-      return `/w/${owner.sId}/assistant/${output.conversationId}`;
-    }
     return null;
-  }, [resultResource, lastNotification, owner.sId]);
+  }, [resultResource]);
 
   const references = useMemo(() => {
     if (!resultResource?.resource.refs) {
@@ -348,6 +351,18 @@ export function MCPRunAgentActionDetails({
                   </div>
                 }
               />
+            )}
+            {generatedFiles.length > 0 && (
+              <div className="flex flex-col gap-2">
+                {generatedFiles.map((file) => (
+                  <ToolGeneratedFileDetails
+                    key={file.fileId}
+                    resource={file}
+                    icon={DocumentIcon}
+                    owner={owner}
+                  />
+                ))}
+              </div>
             )}
           </div>
           <div>

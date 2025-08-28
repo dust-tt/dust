@@ -14,17 +14,20 @@ import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
 
-import { SCOPE_INFO } from "@app/components/assistant/AssistantDetails";
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
+import { SCOPE_INFO } from "@app/components/assistant/details/AssistantDetails";
 import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useTags } from "@app/lib/swr/tags";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   classNames,
   formatTimestampToFriendlyDate,
   tagsSorter,
 } from "@app/lib/utils";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type {
   AgentConfigurationScope,
   AgentUsageType,
@@ -278,6 +281,13 @@ export function AssistantsTable({
     agentConfiguration: undefined,
   });
   const router = useRouter();
+  const { pagination, setPagination } = usePaginationFromUrl({});
+
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
+
   const rows: RowData[] = useMemo(
     () =>
       agents.map((agentConfiguration) => {
@@ -345,13 +355,16 @@ export function AssistantsTable({
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void router.push(
-                        `/w/${owner.sId}/builder/assistants/${
-                          agentConfiguration.sId
-                        }?flow=${
-                          agentConfiguration.scope
-                            ? "workspace_assistants"
-                            : "personal_assistants"
-                        }`
+                        getAgentBuilderRoute(
+                          owner.sId,
+                          agentConfiguration.sId,
+                          hasAgentBuilderV2,
+                          `flow=${
+                            agentConfiguration.scope
+                              ? "workspace_assistants"
+                              : "personal_assistants"
+                          }`
+                        )
                       );
                     },
                     kind: "item" as const,
@@ -388,7 +401,12 @@ export function AssistantsTable({
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void router.push(
-                        `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
+                        getAgentBuilderRoute(
+                          owner.sId,
+                          "new",
+                          hasAgentBuilderV2,
+                          `flow=personal_assistants&duplicate=${agentConfiguration.sId}`
+                        )
                       );
                     },
                     kind: "item" as const,
@@ -410,11 +428,11 @@ export function AssistantsTable({
               : [],
         };
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleToggleAgentStatus & router are not stable, mutating the agents list which prevent pagination to work
     [
       agents,
-      handleToggleAgentStatus,
+      hasAgentBuilderV2,
       owner,
-      router,
       setShowDetails,
       setShowDisabledFreeWorkspacePopup,
       showDisabledFreeWorkspacePopup,
@@ -448,6 +466,8 @@ export function AssistantsTable({
               isBatchEdit,
               mutateAgentConfigurations,
             })}
+            pagination={pagination}
+            setPagination={setPagination}
           />
         )}
       </div>

@@ -332,6 +332,21 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
+
+  "assistant-builder-cron-rule-generator": {
+    app: {
+      appId: "I0f9t05qlZ",
+      appHash:
+        "589b73fa1ce8c6af9782bb9ece92f3cd421b1e8d94711b1cfbcb4c043206379c",
+    },
+    config: {
+      CREATE_CRON: {
+        function_call: "set_schedule",
+        use_cache: false,
+        use_stream: true,
+      },
+    },
+  },
 };
 
 export type DustRegistryActionName = keyof typeof BaseDustProdActionRegistry;

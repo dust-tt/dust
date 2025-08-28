@@ -26,22 +26,9 @@ import {
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { NOTION_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import type { TimeFrame } from "@app/types";
 import { normalizeError, parseTimeFrame, timeFrameFromNow } from "@app/types";
-
-const serverInfo = {
-  name: "notion",
-  version: "1.0.0",
-  description: "Notion tools to manage pages and databases.",
-  authorization: {
-    provider: "notion" as const,
-    supported_use_cases: ["platform_actions", "personal_actions"] as const,
-  },
-  icon: "NotionLogo",
-  documentationUrl: null,
-} satisfies InternalMCPServerDefinitionType;
 
 const uuidRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -276,7 +263,7 @@ async function withNotionClient<T>(
   try {
     const accessToken = authInfo?.token;
     if (!accessToken) {
-      return makePersonalAuthenticationError({ serverInfo });
+      return makePersonalAuthenticationError("notion");
     }
     const notion = new Client({ auth: accessToken });
 
@@ -294,7 +281,7 @@ const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer("notion");
 
   server.tool(
     "search",
@@ -321,7 +308,7 @@ const createServer = (
 
       const accessToken = authInfo?.token;
       if (!accessToken) {
-        return makePersonalAuthenticationError({ serverInfo });
+        return makePersonalAuthenticationError("notion");
       }
       const notion = new Client({ auth: accessToken });
 

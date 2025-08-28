@@ -7,7 +7,6 @@ import {
   makeInternalMCPServer,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -21,17 +20,8 @@ const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 w
 const DEFAULT_IMAGE_OUTPUT_FORMAT = "png";
 const DEFAULT_IMAGE_MIME_TYPE = "image/png";
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "image_generation",
-  version: "1.0.0",
-  description: "Agent can generate images (GPT Image 1).",
-  icon: "ActionImageIcon",
-  authorization: null,
-  documentationUrl: null,
-};
-
 const createServer = (auth: Authenticator): McpServer => {
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer("image_generation");
 
   server.tool(
     "generate_image",

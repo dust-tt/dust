@@ -1,17 +1,3 @@
-// TODO(2025-08-20 aubin): remove this (consolidated into a single column).
-export type MCPExecutionState =
-  | "allowed_explicitly"
-  | "allowed_implicitly"
-  | "denied"
-  | "pending";
-
-// TODO(2025-08-20 aubin): remove this (consolidated into a single column).
-export type MCPRunningState =
-  | "not_started"
-  | "running"
-  | "completed"
-  | "errored";
-
 const TOOL_EXECUTION_FINAL_STATUSES = [
   "succeeded",
   "errored",
@@ -23,6 +9,7 @@ type ToolExecutionFinalStatus = (typeof TOOL_EXECUTION_FINAL_STATUSES)[number];
 export const TOOL_EXECUTION_BLOCKED_STATUSES = [
   "blocked_authentication_required",
   "blocked_validation_required",
+  "blocked_child_action_input_required",
 ] as const;
 
 export type ToolExecutionBlockedStatus =

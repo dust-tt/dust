@@ -1,5 +1,5 @@
 import { INTERNAL_MIME_TYPES, removeNulls } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import _ from "lodash";
@@ -29,6 +29,7 @@ import {
   getDataSourceConfiguration,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
@@ -40,7 +41,6 @@ import {
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -62,15 +62,6 @@ import { applyDataSourceFilters, getExtractFileTitle } from "./utils";
 type ProcessActionOutputsType = {
   data: unknown[];
   total_documents?: number;
-};
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "extract_data",
-  version: "1.0.0",
-  description: "Structured extraction",
-  icon: "ActionScanIcon",
-  authorization: null,
-  documentationUrl: null,
 };
 
 const EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION =
@@ -233,7 +224,7 @@ function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer("extract_data");
 
   const isJsonSchemaConfigured =
     (agentLoopContext?.listToolsContext &&

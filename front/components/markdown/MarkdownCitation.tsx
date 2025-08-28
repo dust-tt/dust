@@ -22,7 +22,7 @@ export function getCitationIcon(type: string, isDark?: boolean) {
   }
 }
 
-// TODO(INTERACTIVE_CONTENT): Use proper and distinct types for interactive content.
+// TODO(CANVAS 2025-08-27): Use proper and distinct types for canvas content.
 export interface MarkdownCitation {
   description?: string;
   href?: string;

@@ -6,14 +6,14 @@ import {
   Card,
   CardActionButton,
   CardGrid,
+  ContentMessage,
   EmptyCTA,
   Hoverable,
-  ListAddIcon,
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import isEmpty from "lodash/isEmpty";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 import type {
@@ -25,7 +25,9 @@ import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capab
 import type { SheetMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import { MCPServerViewsSheet } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import { usePresetActionHandler } from "@app/components/agent_builder/capabilities/usePresetActionHandler";
+import { getSpaceIdToActionsMap } from "@app/components/agent_builder/get_spaceid_to_actions_map";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
   getDefaultMCPAction,
@@ -39,7 +41,7 @@ import {
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
-import { asDisplayName } from "@app/types";
+import { asDisplayName, pluralize } from "@app/types";
 
 const dataVisualizationAction = {
   type: "DATA_VISUALIZATION",
@@ -152,8 +154,13 @@ export function AgentBuilderCapabilitiesBlock({
     name: "actions",
   });
 
-  const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
-    useMCPServerViewsContext();
+  const {
+    mcpServerViewsWithKnowledge,
+    mcpServerViews,
+    isMCPServerViewsLoading,
+  } = useMCPServerViewsContext();
+
+  const { spaces } = useSpacesContext();
 
   const [dialogMode, setDialogMode] = useState<SheetMode | null>(null);
   const [knowledgeAction, setKnowledgeAction] = useState<{
@@ -226,6 +233,15 @@ export function AgentBuilderCapabilitiesBlock({
       index: null,
     });
   };
+  const actions = getValues("actions");
+  const spaceIdToActions = useMemo(() => {
+    return getSpaceIdToActionsMap(actions, mcpServerViews);
+  }, [actions, mcpServerViews]);
+
+  const nonGlobalSpacesUsedInActions = useMemo(() => {
+    const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
+    return nonGlobalSpaces.filter((s) => spaceIdToActions[s.sId]?.length > 0);
+  }, [spaceIdToActions, spaces]);
 
   const getAgentInstructions = () => getValues("instructions");
 
@@ -242,7 +258,7 @@ export function AgentBuilderCapabilitiesBlock({
         type="button"
         onClick={() => setDialogMode({ type: "add" })}
         label="Add tools"
-        icon={ListAddIcon}
+        icon={BoltIcon}
         variant="outline"
       />
     </div>
@@ -296,16 +312,31 @@ export function AgentBuilderCapabilitiesBlock({
             style={BACKGROUND_IMAGE_STYLE_PROPS}
           />
         ) : (
-          <CardGrid>
-            {fields.map((field, index) => (
-              <ActionCard
-                key={field.id}
-                action={field}
-                onRemove={() => remove(index)}
-                onEdit={() => handleActionEdit(field, index)}
-              />
-            ))}
-          </CardGrid>
+          <>
+            {nonGlobalSpacesUsedInActions.length > 0 && (
+              <div className="mb-4 w-full">
+                <ContentMessage variant="golden" size="lg">
+                  Based on your selection, this agent can only be used by users
+                  with access to space
+                  {pluralize(nonGlobalSpacesUsedInActions.length)} :{" "}
+                  <strong>
+                    {nonGlobalSpacesUsedInActions.map((v) => v.name).join(", ")}
+                  </strong>
+                  .
+                </ContentMessage>
+              </div>
+            )}
+            <CardGrid>
+              {fields.map((field, index) => (
+                <ActionCard
+                  key={field.id}
+                  action={field}
+                  onRemove={() => remove(index)}
+                  onEdit={() => handleActionEdit(field, index)}
+                />
+              ))}
+            </CardGrid>
+          </>
         )}
       </div>
       <KnowledgeConfigurationSheet

@@ -95,6 +95,25 @@ function isSnowflakeRoleNotFoundError(
   );
 }
 
+interface SnowflakeSuspendedError extends Error {
+  name: "OperationFailedError";
+}
+
+function isSnowflakeSuspendedError(
+  err: unknown
+): err is SnowflakeSuspendedError {
+  const maybeSuspendedError = err as {
+    name: "OperationFailedError";
+    message: string;
+  };
+  return (
+    "name" in maybeSuspendedError &&
+    maybeSuspendedError.name === "OperationFailedError" &&
+    "message" in maybeSuspendedError &&
+    maybeSuspendedError.message.includes("suspended")
+  );
+}
+
 export class SnowflakeCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
@@ -111,7 +130,8 @@ export class SnowflakeCastKnownErrorsInterceptor
         // we add it here to make the user aware that getting locked out of his account blocks the connection
         isSnowflakeAccountLockedError(err) ||
         isSnowflakeIncorrectCredentialsError(err) ||
-        isSnowflakeRoleNotFoundError(err)
+        isSnowflakeRoleNotFoundError(err) ||
+        isSnowflakeSuspendedError(err)
       ) {
         throw new ExternalOAuthTokenError(err);
       }

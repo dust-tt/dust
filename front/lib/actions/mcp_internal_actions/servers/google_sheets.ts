@@ -8,25 +8,10 @@ import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "google_sheets",
-  version: "1.0.0",
-  description: "Tools for managing Google Sheets spreadsheets and data.",
-  authorization: {
-    provider: "gmail",
-    supported_use_cases: ["personal_actions"] as const,
-    scope:
-      "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly" as const,
-  },
-  icon: "GoogleSpreadsheetLogo",
-  documentationUrl: "https://docs.dust.tt/docs/google-sheets",
-};
-
 const createServer = (): McpServer => {
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer("google_sheets");
 
   async function getSheetsClient(authInfo?: AuthInfo) {
     const accessToken = authInfo?.token;

@@ -1,6 +1,11 @@
 import { getBucketInstance } from "@app/lib/file_storage";
+import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
 import config from "@app/temporal/relocation/activities/config";
+import {
+  isJSONStringifyRangeError,
+  isStringTooLongError,
+} from "@app/temporal/relocation/activities/types";
 import { isDevelopment } from "@app/types";
 
 const RELOCATION_PATH_PREFIX = "relocations";
@@ -67,4 +72,43 @@ export async function deleteFromRelocationStorage(dataPath: string) {
   });
 
   await relocationBucket.delete(dataPath, { ignoreNotFound: true });
+}
+
+export async function withJSONSerializationRetry<
+  T extends { nextLimit: number | null },
+>(
+  operation: () => Promise<T>,
+  options: {
+    fallbackResult: Omit<T, "nextLimit">;
+    limit: number;
+    localLogger: Logger;
+  }
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (err) {
+    if (isStringTooLongError(err) || isJSONStringifyRangeError(err)) {
+      const { fallbackResult, limit, localLogger } = options;
+      const nextLimit: number | null = Math.floor(limit / 2);
+      if (nextLimit === 0) {
+        localLogger.error(
+          { error: err, fallbackResult },
+          "[Relocation storage] Failed to serialize data, string too long."
+        );
+        throw err;
+      } else {
+        const r = {
+          ...fallbackResult,
+          nextLimit,
+        };
+        logger.error(
+          { limit, result: r },
+          "[Relocation storage] Failed to serialize data, string too long - retrying with smaller limit."
+        );
+        // Keep the same page cursor, but try to reduce the limit.
+        return r as T;
+      }
+    }
+    throw err;
+  }
 }

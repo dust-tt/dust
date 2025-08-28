@@ -1,6 +1,7 @@
 import {
+  Button,
+  Card,
   CommandLineIcon,
-  createRadioSelectionColumn,
   DataTable,
   DropdownMenu,
   DropdownMenuContent,
@@ -9,8 +10,8 @@ import {
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import { Button } from "@dust-tt/sparkle";
-import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
+import { PencilIcon } from "@heroicons/react/20/solid";
+import type { ColumnDef } from "@tanstack/react-table";
 import sortBy from "lodash/sortBy";
 import React, { useEffect, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
@@ -18,6 +19,7 @@ import { useController } from "react-hook-form";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useApps } from "@app/lib/swr/apps";
 import type {
   AppType,
@@ -26,22 +28,15 @@ import type {
 } from "@app/types";
 
 interface AppTableData extends AppType {
-  onClick?: () => void;
+  onClick: () => void;
 }
 
 interface AppSelectionTableProps {
   tableData: AppTableData[];
   columns: ColumnDef<AppTableData>[];
-  rowSelection: RowSelectionState;
-  handleRowSelectionChange: (newSelection: RowSelectionState) => void;
 }
 
-function AppSelectionTable({
-  tableData,
-  columns,
-  rowSelection,
-  handleRowSelectionChange,
-}: AppSelectionTableProps) {
+function AppSelectionTable({ tableData, columns }: AppSelectionTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   return (
     <div className="flex flex-col gap-2">
@@ -54,10 +49,6 @@ function AppSelectionTable({
       <DataTable
         data={tableData}
         columns={columns}
-        enableRowSelection
-        enableMultiRowSelection={false}
-        rowSelection={rowSelection}
-        setRowSelection={handleRowSelectionChange}
         getRowId={(row, index) => index.toString()}
         filter={searchQuery}
         filterColumn="name"
@@ -66,11 +57,7 @@ function AppSelectionTable({
   );
 }
 
-interface DustAppSectionProps {
-  allowedSpaces: SpaceType[];
-}
-
-export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
+export function DustAppSection() {
   const { owner } = useAgentBuilderContext();
   const { field, fieldState } = useController<
     MCPFormData,
@@ -79,8 +66,10 @@ export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
     name: "configuration.dustAppConfiguration",
   });
 
+  const { spaces } = useSpacesContext();
+
   const [selectedSpace, setSelectedSpace] = useState<SpaceType>(
-    () => allowedSpaces[0]
+    () => spaces[0]
   );
 
   const { apps, isAppsLoading } = useApps({
@@ -96,15 +85,15 @@ export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
 
     const appInCurrentSpace = apps.find((app) => app.sId === configuredAppId);
     if (!appInCurrentSpace && selectedSpace) {
-      const currentIndex = allowedSpaces.findIndex(
+      const currentIndex = spaces.findIndex(
         (space) => space.sId === selectedSpace.sId
       );
-      const nextSpace = allowedSpaces[currentIndex + 1];
+      const nextSpace = spaces[currentIndex + 1];
       if (nextSpace) {
         setSelectedSpace(nextSpace);
       }
     }
-  }, [field.value?.appId, apps, isAppsLoading, selectedSpace, allowedSpaces]);
+  }, [field.value?.appId, apps, isAppsLoading, selectedSpace, spaces]);
 
   const availableApps = useMemo(
     () =>
@@ -115,30 +104,21 @@ export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
     [apps]
   );
 
-  const rowSelection: RowSelectionState = field.value?.appId
-    ? (() => {
-        const selectedIndex = availableApps.findIndex(
-          (app) => app.sId === field.value.appId
-        );
-        return selectedIndex >= 0 ? { [selectedIndex]: true } : {};
-      })()
-    : {};
+  const handleRowClick = (app: AppType) => {
+    const config: DustAppRunConfigurationType = {
+      id: app.id,
+      sId: app.sId,
+      appId: app.sId,
+      appWorkspaceId: owner.sId,
+      name: app.name,
+      description: app.description,
+      type: "dust_app_run_configuration",
+    };
+    field.onChange(config);
+  };
 
-  const handleRowSelectionChange = (newSelection: RowSelectionState) => {
-    const selectedIndex = Object.keys(newSelection)[0];
-    const selectedApp = availableApps[parseInt(selectedIndex, 10)];
-    if (selectedApp) {
-      const config: DustAppRunConfigurationType = {
-        id: selectedApp.id,
-        sId: selectedApp.sId,
-        appId: selectedApp.sId,
-        appWorkspaceId: owner.sId,
-        name: selectedApp.name,
-        description: selectedApp.description,
-        type: "dust_app_run_configuration",
-      };
-      field.onChange(config);
-    }
+  const handleEditClick = () => {
+    field.onChange(null);
   };
 
   const handleSpaceChange = (space: SpaceType) => {
@@ -146,10 +126,12 @@ export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
     field.onChange(null); // Clear selection when changing space
   };
 
-  const tableData: AppTableData[] = availableApps.map((app) => ({ ...app }));
+  const tableData: AppTableData[] = availableApps.map((app) => ({
+    ...app,
+    onClick: () => handleRowClick(app),
+  }));
 
   const columns: ColumnDef<AppTableData>[] = [
-    createRadioSelectionColumn<AppTableData>(),
     {
       id: "name",
       accessorKey: "name",
@@ -203,7 +185,7 @@ export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-full">
-              {allowedSpaces.map((space) => (
+              {spaces.map((space) => (
                 <DropdownMenuItem
                   key={space.sId}
                   onClick={() => handleSpaceChange(space)}
@@ -218,15 +200,31 @@ export function DustAppSection({ allowedSpaces }: DustAppSectionProps) {
           <div className="flex h-full w-full items-center justify-center">
             <Spinner />
           </div>
-        ) : allowedSpaces.length > 0 &&
-          selectedSpace &&
-          availableApps.length > 0 ? (
-          <AppSelectionTable
-            tableData={tableData}
-            columns={columns}
-            rowSelection={rowSelection}
-            handleRowSelectionChange={handleRowSelectionChange}
-          />
+        ) : field.value ? (
+          <Card size="sm" className="w-full">
+            <div className="flex w-full p-3">
+              <div className="flex w-full flex-grow flex-col gap-2 overflow-hidden">
+                <div className="flex items-center gap-2">
+                  <CommandLineIcon className="h-6 w-6 text-muted-foreground" />
+                  <div className="text-md font-medium">{field.value.name}</div>
+                </div>
+                <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  {field.value.description || "No description available"}
+                </div>
+              </div>
+              <div className="ml-4 self-start">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={PencilIcon}
+                  label="Edit app"
+                  onClick={handleEditClick}
+                />
+              </div>
+            </div>
+          </Card>
+        ) : spaces.length > 0 && selectedSpace && availableApps.length > 0 ? (
+          <AppSelectionTable tableData={tableData} columns={columns} />
         ) : (
           <div className="flex flex-1 items-center justify-center">
             <div className="px-4 text-center">

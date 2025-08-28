@@ -1,3 +1,4 @@
+import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 
 /**
@@ -5,13 +6,14 @@ import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_interna
  * These are events that might need to be sent after all tools in a step complete,
  * rather than immediately when they occur.
  */
-type DeferrableEvent = ToolPersonalAuthRequiredEvent;
+type DeferrableEvent = MCPApproveExecutionEvent | ToolPersonalAuthRequiredEvent;
 
 /**
  * Context information needed to send a deferred event.
  * This captures the temporal workflow context at the time the event was deferred.
  */
 type DeferredEventContext = {
+  agentMessageId: string;
   agentMessageRowId: number;
   conversationId: string;
   step: number;

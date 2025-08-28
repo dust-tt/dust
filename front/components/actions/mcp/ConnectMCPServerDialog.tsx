@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
+  getMcpServerDisplayName,
   getMcpServerViewDisplayName,
   getServerTypeAndIdFromSId,
   isRemoteMCPServerType,
@@ -169,7 +170,8 @@ export function ConnectMCPServerDialog({
     // Then associate connection.
     await createMCPServerConnection({
       connectionId: cRes.value.connection_id,
-      mcpServer: mcpServerView.server,
+      mcpServerId: mcpServerView.server.sId,
+      mcpServerDisplayName: getMcpServerDisplayName(mcpServerView.server),
       provider: authorization.provider,
     });
 

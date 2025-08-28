@@ -2,6 +2,7 @@ import assert from "assert";
 import { hash as blake3 } from "blake3";
 
 import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs_repository";
+import { MAX_FILE_SIZE_BYTES } from "@connectors/connectors/github/lib/code/tar_extraction";
 import {
   getRepoUrl,
   inferParentsFromGcsPath,
@@ -18,8 +19,9 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
-// Only allow documents up to 2mb to be processed.
-const MAX_DOCUMENT_TXT_LEN = 2 * 1000 * 1000; // 5MB
+// Use for max text length the file size bytes we allow to be
+// downloaded.
+const MAX_DOCUMENT_TXT_LEN = MAX_FILE_SIZE_BYTES;
 
 export async function formatCodeContentForUpsert(
   dataSourceConfig: DataSourceConfig,

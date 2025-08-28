@@ -1,5 +1,5 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { createContext, useContext } from "react";
+import { createContext } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
@@ -191,7 +191,9 @@ const triggerSchema = z.object({
   sId: z.string().optional(),
   name: z.string(),
   kind: z.enum(["schedule"]),
+  customPrompt: z.string().nullable(),
   configuration: z.union([scheduleConfigSchema, z.null()]),
+  editor: z.number().nullable(),
 });
 
 export const agentBuilderFormSchema = z.object({
@@ -208,14 +210,9 @@ export const agentBuilderFormSchema = z.object({
 
 export const scheduleFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),
-  cron: z
-    .string()
-    .min(1, "Cron expression is required")
-    .regex(
-      /^(\*|([0-5]?\d)) (\*|([01]?\d|2[0-3])) (\*|([01]?\d|2[0-9]|3[01])) (\*|(1[0-2]|0?[1-9])) (\*|([0-6]))$/,
-      "Invalid cron expression (expected 5 fields: min hour day month weekday)"
-    ),
+  cron: z.string().min(9, "Cron expression is required"),
   timezone: z.string().min(1, "Timezone is required"),
+  customPrompt: z.string(),
 });
 export type ScheduleFormData = z.infer<typeof scheduleFormSchema>;
 
@@ -250,16 +247,3 @@ export interface MCPFormData {
 
 export const AgentBuilderFormContext =
   createContext<UseFormReturn<AgentBuilderFormData> | null>(null);
-
-export const useAgentBuilderFormActions = () => {
-  const context = useContext(AgentBuilderFormContext);
-  if (!context) {
-    throw new Error("AgentBuilderFormContext not found");
-  }
-
-  const actions = context.getValues("actions");
-
-  return {
-    actions,
-  };
-};

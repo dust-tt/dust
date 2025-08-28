@@ -1,29 +1,15 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import * as OutlookApi from "@app/lib/actions/mcp_internal_actions/servers/outlook/outlook_api_helper";
 import {
+  makeInternalMCPServer,
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "outlook_calendar",
-  version: "1.0.0",
-  description: "Tools for managing Outlook calendars and events.",
-  authorization: {
-    provider: "microsoft_tools" as const,
-    supported_use_cases: ["personal_actions"] as const,
-    scope:
-      "Calendars.ReadWrite Calendars.ReadWrite.Shared User.Read offline_access" as const,
-  },
-  icon: "OutlookLogo",
-  documentationUrl: "https://docs.dust.tt/docs/outlook-calendar-tool-setup",
-};
 
 const createServer = (): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer("outlook_calendar");
 
   server.tool(
     "list_calendars",

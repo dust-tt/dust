@@ -126,6 +126,7 @@ export async function getConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     depth: conversation.depth,
+    triggerId: conversation.triggerId,
     content,
     requestedGroupIds:
       conversation.getConversationRequestedGroupIdsFromModel(auth),

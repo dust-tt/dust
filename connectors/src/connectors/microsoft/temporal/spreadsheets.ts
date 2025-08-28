@@ -14,7 +14,10 @@ import {
   wrapMicrosoftGraphAPIWithResult,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
-import { getColumnsFromListItem } from "@connectors/connectors/microsoft/lib/utils";
+import {
+  getColumnsFromListItem,
+  markInternalIdAsSkipped,
+} from "@connectors/connectors/microsoft/lib/utils";
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -161,6 +164,15 @@ async function processSheet({
       { ...loggerArgs, error: content.error },
       "[Spreadsheet] Failed to fetch sheet content."
     );
+
+    await markInternalIdAsSkipped({
+      internalId: worksheetInternalId,
+      connectorId: connector.id,
+      parentInternalId: spreadsheetInternalId,
+      reason: "error_fetching_content",
+      file: spreadsheet,
+    });
+
     return content;
   }
 

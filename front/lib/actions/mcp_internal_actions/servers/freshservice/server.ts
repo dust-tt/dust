@@ -1,41 +1,17 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import {
+  makeInternalMCPServer,
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 
 import type { FreshserviceTicket } from "./freshservice_api_helper";
 import { FreshserviceTicketSchema } from "./freshservice_api_helper";
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "freshservice",
-  icon: "FreshserviceLogo",
-  version: "1.0.0",
-  description:
-    "Freshservice integration supporting ticket management, service catalog, solutions, departments, " +
-    "on-call schedules, and more. Provides comprehensive access to Freshservice resources with " +
-    "OAuth authentication and secure API access.",
-  authorization: {
-    provider: "freshservice" as const,
-    supported_use_cases: ["platform_actions", "personal_actions"] as const,
-  },
-  documentationUrl: null,
-};
-
 const createServer = (): McpServer => {
-  const server = new McpServer(serverInfo, {
-    instructions: `
-     **Best Practices:**
-      - Use specific filters when listing tickets to narrow down results
-      - By default, \`list_tickets\` returns minimal fields (id, subject, status) for performance
-      - By default, \`get_ticket\` returns essential fields for detailed information
-      - Use \`get_ticket_read_fields\` only if you need additional custom fields
-      - Use \`include\` parameter with \`get_ticket\` to get related data like conversations, requester info, etc.
-    `,
-  });
+  const server = makeInternalMCPServer("freshservice");
 
   // Helper function to make authenticated API calls
   const withAuth = async <T>({
@@ -641,15 +617,50 @@ const createServer = (): McpServer => {
 
   // Service catalog
   server.tool(
-    "list_service_items",
-    "Lists service catalog items",
+    "list_service_categories",
+    "Lists service catalog categories. Use this first to get category IDs for filtering service items.",
     {
-      category_id: z.number().optional().describe("Filter by category ID"),
-      search: z.string().optional().describe("Search term"),
       page: z.number().optional().default(1),
       per_page: z.number().optional().default(30),
     },
-    async ({ category_id, search, page, per_page }, { authInfo }) => {
+    async ({ page, per_page }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const params = new URLSearchParams({
+            page: page.toString(),
+            per_page: per_page.toString(),
+          });
+
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `service_catalog/categories?${params.toString()}`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: `Retrieved ${result.service_categories?.length || 0} service categories`,
+            result: result.service_categories || [],
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "list_service_items",
+    "Lists service catalog items. To filter by category: 1) Use list_service_categories to get category IDs, 2) Use the category_id parameter here.",
+    {
+      category_id: z
+        .number()
+        .optional()
+        .describe(
+          "Filter by category ID - use list_service_categories to get available category IDs"
+        ),
+      page: z.number().optional().default(1),
+      per_page: z.number().optional().default(30),
+    },
+    async ({ category_id, page, per_page }, { authInfo }) => {
       return withAuth({
         action: async (accessToken, freshserviceDomain) => {
           const params = new URLSearchParams({
@@ -659,9 +670,6 @@ const createServer = (): McpServer => {
 
           if (category_id) {
             params.append("category_id", category_id.toString());
-          }
-          if (search) {
-            params.append("search", search);
           }
 
           const result = await apiRequest(
@@ -680,18 +688,229 @@ const createServer = (): McpServer => {
     }
   );
 
-  // Solutions (Knowledge Base)
   server.tool(
-    "list_solution_categories",
-    "Lists solution categories",
-    {},
-    async (_, { authInfo }) => {
+    "search_service_items",
+    "Searches for service items from the service catalog for a given search term. Only use this when specifically searching for items by keyword.",
+    {
+      search_term: z
+        .string()
+        .describe(
+          "The keywords for which the service items have to be searched (e.g. 'VPN issue', 'Adobe')"
+        ),
+      workspace_id: z
+        .number()
+        .optional()
+        .describe(
+          "ID of the workspace to which the service item belongs. Applicable only to accounts on Employee Support Mode."
+        ),
+      user_email: z
+        .string()
+        .email()
+        .optional()
+        .describe(
+          "By default, the API will search items for the user whose API key is provided. If you want to search items for a different user, provide their user_email."
+        ),
+      page: z.number().optional().default(1),
+      per_page: z.number().optional().default(30),
+    },
+    async (
+      { search_term, workspace_id, user_email, page, per_page },
+      { authInfo }
+    ) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const params = new URLSearchParams({
+            search_term,
+            page: page.toString(),
+            per_page: per_page.toString(),
+          });
+
+          if (workspace_id) {
+            params.append("workspace_id", workspace_id.toString());
+          }
+          if (user_email) {
+            params.append("user_email", user_email);
+          }
+
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `service_catalog/items/search?${params.toString()}`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: `Found ${result.service_items?.length || 0} service items matching '${search_term}'`,
+            result: result.service_items || [],
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_service_item",
+    "Gets detailed information about a specific service catalog item including fields and pricing",
+    {
+      item_id: z.number().describe("The ID of the service catalog item"),
+    },
+    async ({ item_id }, { authInfo }) => {
       return withAuth({
         action: async (accessToken, freshserviceDomain) => {
           const result = await apiRequest(
             accessToken,
             freshserviceDomain,
-            "solutions/categories"
+            `service_catalog/items/${item_id}`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: "Service item retrieved successfully",
+            result: result.service_item,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "request_service_item",
+    "Creates a service request for a catalog item and optionally attaches it to an existing ticket",
+    {
+      item_id: z
+        .number()
+        .describe("The ID of the service catalog item to request"),
+      email: z.string().describe("Requester email address"),
+      quantity: z
+        .number()
+        .optional()
+        .default(1)
+        .describe("Quantity of items to request"),
+      requested_for: z
+        .string()
+        .optional()
+        .describe(
+          "Email of the person this is requested for (if different from requester)"
+        ),
+      fields: z
+        .record(z.any())
+        .optional()
+        .describe("Custom field values for the service request form"),
+      ticket_id: z
+        .number()
+        .optional()
+        .describe("Optional ticket ID to attach this service request to"),
+    },
+    async (
+      { item_id, email, quantity, requested_for, fields, ticket_id },
+      { authInfo }
+    ) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          // First, get the service item details to understand required fields
+          const itemResult = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `service_catalog/items/${item_id}`
+          );
+
+          const serviceItem = itemResult.service_item;
+
+          // Prepare the service request data
+          const requestData: any = {
+            email,
+            quantity,
+            service_item_id: item_id,
+          };
+
+          if (requested_for) {
+            requestData.requested_for = requested_for;
+          }
+
+          if (fields) {
+            requestData.custom_fields = fields;
+          }
+
+          // Create the service request
+          const serviceRequestResult = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            "service_catalog/place_request",
+            {
+              method: "POST",
+              body: JSON.stringify({
+                service_request: requestData,
+              }),
+            }
+          );
+
+          // If a ticket_id is provided, update the ticket to reference the service request
+          let ticketUpdateResult = null;
+          if (ticket_id && serviceRequestResult.service_request) {
+            try {
+              // Add a note to the ticket about the service request
+              const noteBody = `Service Request #${serviceRequestResult.service_request.id} has been created for: ${serviceItem.name}`;
+
+              await apiRequest(
+                accessToken,
+                freshserviceDomain,
+                `tickets/${ticket_id}/notes`,
+                {
+                  method: "POST",
+                  body: JSON.stringify({
+                    note: {
+                      body: noteBody,
+                      private: false,
+                    },
+                  }),
+                }
+              );
+
+              ticketUpdateResult = {
+                message: `Service request attached to ticket #${ticket_id}`,
+              };
+            } catch (error) {
+              // Non-fatal error - service request was created but couldn't link to ticket
+              ticketUpdateResult = {
+                warning: `Service request created but could not attach to ticket #${ticket_id}: ${error}`,
+              };
+            }
+          }
+
+          return makeMCPToolJSONSuccess({
+            message: `Service request created successfully${ticket_id ? ` and attached to ticket #${ticket_id}` : ""}`,
+            result: {
+              service_request: serviceRequestResult.service_request,
+              service_item: serviceItem,
+              ticket_update: ticketUpdateResult,
+            },
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  // Solutions (Knowledge Base)
+  server.tool(
+    "list_solution_categories",
+    "Lists solution categories. These are used to organize solution folders, which are mandatory for ticket listing.",
+    {
+      page: z.number().optional().default(1),
+      per_page: z.number().optional().default(30),
+    },
+    async ({ page, per_page }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const params = new URLSearchParams({
+            page: page.toString(),
+            per_page: per_page.toString(),
+          });
+
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `solutions/categories?${params.toString()}`
           );
 
           return makeMCPToolJSONSuccess({
@@ -705,11 +924,54 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "list_solution_articles",
-    "Lists solution articles",
+    "list_solution_folders",
+    "Lists solution folders within categories. Solution folders are mandatory for ticket listing. Use list_solution_categories first to get category IDs, then filter folders by category_id.",
     {
-      folder_id: z.number().optional().describe("Filter by folder ID"),
       category_id: z.number().optional().describe("Filter by category ID"),
+      page: z.number().optional().default(1),
+      per_page: z.number().optional().default(30),
+    },
+    async ({ category_id, page, per_page }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const params = new URLSearchParams({
+            page: page.toString(),
+            per_page: per_page.toString(),
+          });
+
+          if (category_id) {
+            params.append("category_id", category_id.toString());
+          }
+
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `solutions/folders?${params.toString()}`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: `Retrieved ${result.folders?.length || 0} solution folders`,
+            result: result.folders || [],
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "list_solution_articles",
+    "Lists solution articles within a specific folder (returns metadata only, use get_solution_article for full content). To get folder_id: 1) Use list_solution_categories to get category IDs, 2) Use list_solution_folders with category_id to get folder IDs, 3) Use the folder_id here.",
+    {
+      folder_id: z
+        .number()
+        .describe(
+          "Folder ID (required) - use list_solution_folders to get available folder IDs"
+        ),
+      category_id: z
+        .number()
+        .optional()
+        .describe("Filter by category ID (optional additional filter)"),
       page: z.number().optional().default(1),
       per_page: z.number().optional().default(30),
     },
@@ -719,11 +981,9 @@ const createServer = (): McpServer => {
           const params = new URLSearchParams({
             page: page.toString(),
             per_page: per_page.toString(),
+            folder_id: folder_id.toString(),
           });
 
-          if (folder_id) {
-            params.append("folder_id", folder_id.toString());
-          }
           if (category_id) {
             params.append("category_id", category_id.toString());
           }
@@ -734,9 +994,48 @@ const createServer = (): McpServer => {
             `solutions/articles?${params.toString()}`
           );
 
+          // Filter out article content to reduce response size
+          const articles = result.articles || [];
+          const articlesMetadata = articles.map((article: any) => ({
+            id: article.id,
+            title: article.title,
+            folder_id: article.folder_id,
+            category_id: article.category_id,
+            status: article.status,
+            tags: article.tags,
+            created_at: article.created_at,
+            updated_at: article.updated_at,
+            // Exclude description/description_text to reduce payload
+          }));
+
           return makeMCPToolJSONSuccess({
-            message: `Retrieved ${result.articles?.length || 0} solution articles`,
-            result: result.articles || [],
+            message: `Retrieved ${articlesMetadata.length} solution articles (metadata only)`,
+            result: articlesMetadata,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_solution_article",
+    "Gets detailed information about a specific solution article including its full content",
+    {
+      article_id: z.number().describe("The ID of the solution article"),
+    },
+    async ({ article_id }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `solutions/articles/${article_id}`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: "Solution article retrieved successfully",
+            result: result.article,
           });
         },
         authInfo,
@@ -746,11 +1045,15 @@ const createServer = (): McpServer => {
 
   server.tool(
     "create_solution_article",
-    "Creates a new solution article",
+    "Creates a new solution article in a specific folder. To get folder_id: 1) Use list_solution_categories to get category IDs, 2) Use list_solution_folders with category_id to get folder IDs, 3) Use the folder_id here.",
     {
       title: z.string().describe("Article title"),
       description: z.string().describe("Article content"),
-      folder_id: z.number().describe("Folder ID to place the article in"),
+      folder_id: z
+        .number()
+        .describe(
+          "Folder ID to place the article in (required) - use list_solution_folders to get available folder IDs"
+        ),
       status: z
         .enum(["1", "2"])
         .optional()
@@ -923,4 +1226,3 @@ const createServer = (): McpServer => {
 };
 
 export default createServer;
-export { serverInfo };

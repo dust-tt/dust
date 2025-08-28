@@ -2,7 +2,7 @@ import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/action
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentChildAgentConfiguration,
-  AgentMCPAction,
+  AgentMCPActionModel,
   AgentMCPActionOutputItem,
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
@@ -31,6 +31,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
+import { TriggerSubscriberModel } from "@app/lib/models/assistant/trigger_subscriber";
 import { TriggerModel } from "@app/lib/models/assistant/triggers";
 import {
   TrackerConfigurationModel,
@@ -141,6 +142,7 @@ async function main() {
   await RemoteMCPServerToolMetadataModel.sync({ alter: true });
 
   await TriggerModel.sync({ alter: true });
+  await TriggerSubscriberModel.sync({ alter: true });
 
   await ConversationMCPServerViewModel.sync({ alter: true });
 
@@ -160,7 +162,7 @@ async function main() {
 
   await AgentDataRetentionModel.sync({ alter: true });
   await AgentStepContentModel.sync({ alter: true });
-  await AgentMCPAction.sync({ alter: true });
+  await AgentMCPActionModel.sync({ alter: true });
   await AgentMCPActionOutputItem.sync({ alter: true });
   await AgentChildAgentConfiguration.sync({ alter: true });
 

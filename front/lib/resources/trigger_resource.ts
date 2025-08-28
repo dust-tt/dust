@@ -9,17 +9,19 @@ import type {
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
+import { TriggerSubscriberModel } from "@app/lib/models/assistant/trigger_subscriber";
 import { TriggerModel } from "@app/lib/models/assistant/triggers";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   createOrUpdateAgentScheduleWorkflow,
   deleteAgentScheduleWorkflow,
 } from "@app/temporal/agent_schedule/client";
-import type { WorkspaceType } from "@app/types";
-import { normalizeError } from "@app/types";
+import { errorToString, normalizeError } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -47,7 +49,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
 
     const resource = new this(TriggerModel, trigger.get());
-    const r = await resource.postRegistration(auth);
+    const r = await resource.upsertTemporalWorkflow(auth);
     if (r.isErr()) {
       return r;
     }
@@ -100,6 +102,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
+  static listByWorkspace(auth: Authenticator) {
+    return this.baseFetch(auth);
+  }
+
   static async update(
     auth: Authenticator,
     sId: string,
@@ -112,7 +118,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     await trigger.update(blob, transaction);
-    const r = await trigger.postRegistration(auth);
+    const r = await trigger.upsertTemporalWorkflow(auth);
     if (r.isErr()) {
       return r;
     }
@@ -126,12 +132,18 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   ): Promise<Result<undefined, Error>> {
     const owner = auth.getNonNullableWorkspace();
 
-    const r = await this.preDeletion(auth);
+    const r = await this.removeTemporalWorkflow(auth);
     if (r.isErr()) {
       return r;
     }
 
     try {
+      await TriggerSubscriberModel.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          triggerId: this.id,
+        },
+      });
       await TriggerModel.destroy({
         where: {
           sId: this.sId,
@@ -146,14 +158,9 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   static async deleteAllForWorkspace(
-    workspace: WorkspaceType
+    auth: Authenticator
   ): Promise<Result<undefined, Error>> {
-    const triggers = await TriggerModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-      },
-    });
-
+    const triggers = await this.listByWorkspace(auth);
     if (triggers.length === 0) {
       return new Ok(undefined);
     }
@@ -161,17 +168,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     const r = await concurrentExecutor(
       triggers,
       async (trigger) => {
-        const r = await deleteAgentScheduleWorkflow({
-          workspaceId: workspace.sId,
-          triggerId: trigger.sId,
-        });
-        if (r.isErr()) {
-          return r;
-        }
-
         try {
-          await trigger.destroy();
-          return new Ok(undefined);
+          return await trigger.delete(auth);
         } catch (error) {
           return new Err(normalizeError(error));
         }
@@ -191,7 +189,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
-  async postRegistration(auth: Authenticator) {
+  async upsertTemporalWorkflow(auth: Authenticator) {
     switch (this.kind) {
       case "schedule":
         return createOrUpdateAgentScheduleWorkflow({
@@ -203,7 +201,9 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
   }
 
-  async preDeletion(auth: Authenticator) {
+  async removeTemporalWorkflow(
+    auth: Authenticator
+  ): Promise<Result<void, Error>> {
     switch (this.kind) {
       case "schedule":
         return deleteAgentScheduleWorkflow({
@@ -215,6 +215,144 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
   }
 
+  async enable(auth: Authenticator): Promise<Result<undefined, Error>> {
+    if (this.enabled) {
+      return new Ok(undefined);
+    }
+
+    await this.update({ enabled: true });
+
+    // Re-register the temporal workflow
+    const r = await this.upsertTemporalWorkflow(auth);
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(undefined);
+  }
+
+  async disable(auth: Authenticator): Promise<Result<undefined, Error>> {
+    if (!this.enabled) {
+      return new Ok(undefined);
+    }
+
+    await this.update({ enabled: false });
+
+    // Remove the temporal workflow
+    const r = await this.removeTemporalWorkflow(auth);
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(undefined);
+  }
+
+  async addToSubscribers(
+    auth: Authenticator
+  ): Promise<
+    Result<
+      undefined,
+      DustError<"unauthorized" | "internal_error" | "internal_error">
+    >
+  > {
+    if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
+      return new Err(
+        new DustError("unauthorized", "User do not have access to this trigger")
+      );
+    }
+
+    if (auth.getNonNullableUser().id === this.editor) {
+      return new Err(
+        new DustError("internal_error", "User is the editor of the trigger")
+      );
+    }
+
+    try {
+      await TriggerSubscriberModel.create({
+        workspaceId: auth.getNonNullableWorkspace().id,
+        triggerId: this.id,
+        userId: auth.getNonNullableUser().id,
+      });
+
+      return new Ok(undefined);
+    } catch (error) {
+      return new Err(new DustError("internal_error", errorToString(error)));
+    }
+  }
+
+  async removeFromSubscribers(
+    auth: Authenticator
+  ): Promise<Result<undefined, DustError<"unauthorized" | "internal_error">>> {
+    if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
+      return new Err(
+        new DustError("unauthorized", "User do not have access to this trigger")
+      );
+    }
+
+    try {
+      await TriggerSubscriberModel.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          triggerId: this.id,
+          userId: auth.getNonNullableUser().id,
+        },
+      });
+
+      return new Ok(undefined);
+    } catch (error) {
+      return new Err(new DustError("internal_error", errorToString(error)));
+    }
+  }
+
+  async getSubscribers(
+    auth: Authenticator
+  ): Promise<
+    Result<UserResource[], DustError<"unauthorized" | "internal_error">>
+  > {
+    if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
+      return new Err(
+        new DustError("unauthorized", "User do not have access to this trigger")
+      );
+    }
+
+    try {
+      const subscribers = await TriggerSubscriberModel.findAll({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          triggerId: this.id,
+        },
+      });
+
+      const userResources = await UserResource.fetchByModelIds(
+        subscribers.map((subscriber) => subscriber.userId)
+      );
+
+      return new Ok(userResources);
+    } catch (error) {
+      return new Err(new DustError("internal_error", errorToString(error)));
+    }
+  }
+
+  async isSubscriber(auth: Authenticator): Promise<boolean> {
+    if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
+      return false;
+    }
+
+    if (auth.getNonNullableUser().id === this.editor) {
+      return false;
+    }
+
+    const nbSubscribers = await TriggerSubscriberModel.count({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        triggerId: this.id,
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+
+    return nbSubscribers > 0;
+  }
+
   toJSON(): TriggerType {
     return {
       id: this.id,
@@ -223,8 +361,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       agentConfigurationId: this.agentConfigurationId,
       editor: this.editor,
       customPrompt: this.customPrompt,
+      enabled: this.enabled,
       kind: this.kind,
       configuration: this.configuration,
+      createdAt: this.createdAt.getTime(),
     };
   }
 }

@@ -6,7 +6,7 @@ import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,
 } from "./mcp_icon_types";
-import { NotificationInteractiveFileContentSchema } from "./output_schemas";
+import { NotificationCanvasFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
 
 type StringLiteral<T> = T extends string
@@ -690,6 +690,7 @@ const MCPActionTypeSchema = z.object({
   internalMCPServerName: z.string().nullable(),
   agentMessageId: ModelIdSchema,
   functionCallName: z.string().nullable(),
+  status: z.string(),
   params: z.record(z.any()),
   output: CallToolResultSchema.shape.content.nullable(),
   type: z.literal("tool_action"),
@@ -1045,10 +1046,10 @@ const NotificationRunAgentGenerationTokensSchema = z.object({
 });
 
 const NotificationContentSchema = z.union([
+  NotificationCanvasFileContentSchema,
   NotificationImageContentSchema,
-  NotificationInteractiveFileContentSchema,
-  NotificationRunAgentContentSchema,
   NotificationRunAgentChainOfThoughtSchema,
+  NotificationRunAgentContentSchema,
   NotificationRunAgentGenerationTokensSchema,
   NotificationTextContentSchema,
   NotificationToolApproveBubbleUpContentSchema,
@@ -1085,6 +1086,7 @@ export type MCPValidationMetadataPublicType = z.infer<
 const ToolExecutionBlockedStatusSchema = z.enum([
   "blocked_authentication_required",
   "blocked_validation_required",
+  "blocked_child_action_input_required",
 ]);
 
 export type ToolExecutionBlockedStatusType = z.infer<
@@ -1104,20 +1106,28 @@ const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
   status: ToolExecutionBlockedStatusSchema,
 });
 
-export type BlockedActionExecutionType = z.infer<typeof BlockedActionExecutionSchema>;
+export type BlockedActionExecutionType = z.infer<
+  typeof BlockedActionExecutionSchema
+>;
 
 const MCPApproveExecutionEventSchema = ToolExecutionMetadataSchema.extend({
   type: z.literal("tool_approve_execution"),
-  created: z.number(),
   configurationId: z.string(),
-  messageId: z.string(),
   conversationId: z.string(),
+  created: z.number(),
+  isLastBlockingEventForStep: z.boolean().optional(),
+  messageId: z.string(),
 });
+
+export type MCPApproveExecutionEvent = z.infer<
+  typeof MCPApproveExecutionEventSchema
+>;
 
 const ToolErrorEventSchema = z.object({
   type: z.literal("tool_error"),
   created: z.number(),
   configurationId: z.string(),
+  isLastBlockingEventForStep: z.boolean().optional(),
   messageId: z.string(),
   error: z.object({
     code: z.string(),
@@ -1719,6 +1729,11 @@ export const PostUserMessageResponseSchema = z.object({
 export type PostUserMessageResponseType = z.infer<
   typeof PostUserMessageResponseSchema
 >;
+
+export const RetryMessageResponseSchema = z.object({
+  message: AgentMessageTypeSchema,
+});
+export type RetryMessageResponseType = z.infer<typeof RetryMessageResponseSchema>;
 
 export const GetConversationResponseSchema = z.object({
   conversation: ConversationSchema,

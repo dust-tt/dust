@@ -86,7 +86,7 @@ export function ConversationContainer({
     },
   });
 
-  const { mutateMessages } = useConversationMessages({
+  const { mutateMessages, isMessagesError } = useConversationMessages({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
     limit: 50,
@@ -324,6 +324,23 @@ export function ConversationContainer({
 
   const { startConversationRef } = useWelcomeTourGuide();
 
+  if (isMessagesError) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <div className="flex flex-col gap-3 text-center">
+          <div>
+            <span className="text-4xl leading-10 text-foreground dark:text-foreground-night">
+              🚫
+            </span>
+            <p className="copy-sm leading-tight text-muted-foreground dark:text-muted-foreground-night">
+              You don't have access to this conversation.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <DropzoneContainer
       description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
@@ -348,7 +365,7 @@ export function ConversationContainer({
         </div>
       )}
 
-      {hasPendingValidations && (
+      {activeConversationId && hasPendingValidations && (
         <ContentMessageInline
           icon={InformationCircleIcon}
           variant="primary"
@@ -375,7 +392,7 @@ export function ConversationContainer({
         }
         stickyMentions={stickyMentions}
         conversationId={activeConversationId}
-        disable={hasPendingValidations}
+        disable={activeConversationId !== null && hasPendingValidations}
       />
 
       {!activeConversationId && (

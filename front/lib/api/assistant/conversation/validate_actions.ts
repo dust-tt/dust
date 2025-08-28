@@ -95,7 +95,7 @@ export async function validateAction(
     messageId,
   });
 
-  const action = await getMCPAction(actionId);
+  const action = await getMCPAction(auth, actionId);
   if (!action) {
     return new Err(new Error(`Action not found: ${actionId}`));
   }
@@ -107,6 +107,10 @@ export async function validateAction(
     return new Err(
       new Error(`Agent step content not found: ${action.stepContentId}`)
     );
+  }
+
+  if (action.status !== "blocked_validation_required") {
+    return new Err(new Error(`Action is not blocked: ${action.status}`));
   }
 
   const actionUpdated = await updateMCPApprovalState(

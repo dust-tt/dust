@@ -2,19 +2,9 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "think",
-  version: "1.0.0",
-  description: "Expand thinking and reasoning capabilities.",
-  icon: "ActionBrainIcon",
-  authorization: null,
-  documentationUrl: null,
-};
 
 const createServer = (): McpServer => {
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer("think");
 
   const describePlanToolPrompt = `Use this tool when you need to outline a detailed plan for solving a complex problem. It will not obtain new information or make any changes to the repository, but will log your plan for reference throughout the conversation.
 

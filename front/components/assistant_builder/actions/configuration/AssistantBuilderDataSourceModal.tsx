@@ -10,6 +10,7 @@ import type { SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useDataSourceViewsContext } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import {
@@ -21,14 +22,12 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ContentNodesViewType,
   DataSourceViewSelectionConfigurations,
-  SpaceType,
   WorkspaceType,
 } from "@app/types";
 import { assertNever } from "@app/types";
 
 interface AssistantBuilderDataSourceModalProps {
   initialDataSourceConfigurations: DataSourceViewSelectionConfigurations;
-  allowedSpaces: SpaceType[];
   isOpen: boolean;
   onSave: (dsConfigs: DataSourceViewSelectionConfigurations) => void;
   owner: WorkspaceType;
@@ -38,7 +37,6 @@ interface AssistantBuilderDataSourceModalProps {
 
 export default function AssistantBuilderDataSourceModal({
   initialDataSourceConfigurations,
-  allowedSpaces,
   isOpen,
   onSave,
   owner,
@@ -46,6 +44,7 @@ export default function AssistantBuilderDataSourceModal({
   viewType,
 }: AssistantBuilderDataSourceModalProps) {
   const { dataSourceViews } = useDataSourceViewsContext();
+  const { spaces } = useSpacesContext();
   const [hasChanged, setHasChanged] = useState(false);
 
   const [selectionConfigurations, setSelectionConfigurations] =
@@ -130,12 +129,12 @@ export default function AssistantBuilderDataSourceModal({
             <DataSourceViewsSpaceSelector
               useCase="assistantBuilder"
               dataSourceViews={supportedDataSourceViewsForViewType}
-              allowedSpaces={allowedSpaces}
               owner={owner}
               selectionConfigurations={selectionConfigurations}
               setSelectionConfigurations={setSelectionConfigurationsCallback}
               viewType={viewType}
               isRootSelectable={true}
+              allowedSpaces={spaces}
             />
           </div>
         </SheetContainer>
