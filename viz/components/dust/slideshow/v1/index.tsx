@@ -16,30 +16,7 @@ import {
 } from "@viz/components/ui";
 import { SlideshowNavigation } from "@viz/components/dust/slideshow/v1/navigation";
 
-type SlideProps = PropsWithChildren<{
-  className?: string;
-  isPreview?: boolean;
-}>;
-
-export function Slide({ children, className, isPreview = false }: SlideProps) {
-  const ref = React.useRef<HTMLDivElement>(null);
-
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        "w-full h-full flex items-start justify-center overflow-hidden",
-        className
-      )}
-    >
-      {isPreview ? (
-        <div className="p-2 w-full h-full">{children}</div>
-      ) : (
-        <div className="p-8 w-full">{children}</div>
-      )}
-    </div>
-  );
-}
+// Internal components.
 
 interface SlidePreviewProps {
   index: number;
@@ -66,16 +43,14 @@ function SlidePreview({ slide, index, isActive, onClick }: SlidePreviewProps) {
           >
             {/* Scaled down version of the slide */}
             <div
-              className="w-full origin-top-left pointer-events-none"
+              className="w-full h-full origin-top-left pointer-events-none"
               style={{
-                transform: "scale(0.25)",
-                width: "400%",
-                height: "400%",
+                transform: "scale(0.15)",
+                width: "667%",
+                height: "667%",
               }}
             >
-              <div className="w-full flex items-center justify-center">
-                {React.cloneElement(slide, { isPreview: true })}
-              </div>
+              {React.cloneElement(slide, { isPreview: true })}
             </div>
             {/* Slide number overlay */}
             <span
@@ -92,23 +67,19 @@ function SlidePreview({ slide, index, isActive, onClick }: SlidePreviewProps) {
   );
 }
 
-export function SlideshowPreviewSidebar({
-  slides,
-  activeIndex,
-  onSlideSelect,
-  ...props
-}: React.ComponentProps<typeof Sidebar> & {
-  slides: React.ReactElement[];
+interface SlideshowPreviewSidebarProps {
   activeIndex: number;
   onSlideSelect: (index: number) => void;
-}) {
+  slides: React.ReactElement[];
+}
+
+export function SlideshowPreviewSidebar({
+  activeIndex,
+  onSlideSelect,
+  slides,
+}: SlideshowPreviewSidebarProps) {
   return (
-    <Sidebar
-      variant="inset"
-      collapsible="icon"
-      className="bg-gray-50"
-      {...props}
-    >
+    <Sidebar variant="inset" collapsible="icon" className="bg-gray-50">
       <SidebarHeader className="flex flex-row items-center gap-2 justify-between group-data-[collapsible=icon]:justify-center">
         <span className="font-semibold group-data-[collapsible=icon]:hidden">
           Preview
@@ -137,7 +108,39 @@ export function SlideshowPreviewSidebar({
   );
 }
 
-export function Slideshow({ children }: PropsWithChildren) {
+// Exposed components.
+
+type SlideProps = PropsWithChildren<{
+  className?: string;
+  isPreview?: boolean;
+}>;
+
+export function Slide({ children, className, isPreview = false }: SlideProps) {
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "w-full h-full flex items-start justify-center overflow-hidden",
+        className
+      )}
+      style={{ fontFamily: "var(--font-geist)" }}
+    >
+      {isPreview ? (
+        <div className="p-2 w-full h-full">{children}</div>
+      ) : (
+        <div className="p-8 w-full">{children}</div>
+      )}
+    </div>
+  );
+}
+
+type SlideshowProps = PropsWithChildren<{
+  className?: string;
+}>;
+
+export function Slideshow({ children, className }: SlideshowProps) {
   const slides = React.useMemo(() => {
     const childArray = React.Children.toArray(children) as React.ReactElement[];
 
@@ -183,7 +186,7 @@ export function Slideshow({ children }: PropsWithChildren) {
 
   return (
     <div
-      className="@container h-full w-full"
+      className={cn("@container h-full w-full", className)}
       role="region"
       aria-label="Slideshow"
     >
@@ -215,4 +218,45 @@ export function Slideshow({ children }: PropsWithChildren) {
   );
 }
 
+// Typography components.
+
+export const Title = ({
+  children,
+  className,
+}: PropsWithChildren<{ className?: string }>) => (
+  <h1
+    className={cn("font-semibold text-7xl leading-tight m-0 mb-6", className)}
+    style={{ fontFamily: "var(--font-geist-mono)" }}
+  >
+    {children}
+  </h1>
+);
+
+export const Heading = ({
+  children,
+  className,
+}: PropsWithChildren<{ className?: string }>) => (
+  <h2
+    className={cn("font-semibold text-5xl leading-tight m-0 mb-4", className)}
+    style={{ fontFamily: "var(--font-geist-mono)" }}
+  >
+    {children}
+  </h2>
+);
+
+export const Text = ({
+  children,
+  className,
+}: PropsWithChildren<{ className?: string }>) => (
+  <p
+    className={cn("font-normal text-sm m-0", className)}
+    style={{ fontFamily: "var(--font-geist)" }}
+  >
+    {children}
+  </p>
+);
+
 Slideshow.Slide = Slide;
+Slideshow.Title = Title;
+Slideshow.Heading = Heading;
+Slideshow.Text = Text;
