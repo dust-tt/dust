@@ -28,6 +28,7 @@ import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getIcon } from "@app/lib/actions/mcp_icons";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
 import { useCreatePersonalConnection } from "@app/lib/swr/mcp_servers";
+import logger from "@app/logger/logger";
 import type {
   ConversationWithoutContentType,
   LightAgentMessageType,
@@ -37,16 +38,12 @@ import type {
 } from "@app/types";
 import { asDisplayName } from "@app/types";
 
+type ConnectionState = "connecting" | "connected" | "idle";
+
 type AuthenticationRequiredBlockedAction = Extract<
   BlockedToolExecution,
   { status: "blocked_authentication_required" }
 >;
-
-function isAuthenticationRequiredBlockedAction(
-  blockedAction: BlockedToolExecution
-): blockedAction is AuthenticationRequiredBlockedAction {
-  return blockedAction.status === "blocked_authentication_required";
-}
 
 interface AuthenticationDialogPageProps {
   authActions: AuthenticationRequiredBlockedAction[];
@@ -77,9 +74,7 @@ function AuthenticationDialogPage({
       onConnectionStateChange(blockedAction.actionId, "connecting");
       const success = await createPersonalConnection({
         mcpServerId: blockedAction.metadata.mcpServerId,
-        mcpServerDisplayName:
-          blockedAction.metadata.mcpServerDisplayName ||
-          blockedAction.metadata.mcpServerName,
+        mcpServerDisplayName: blockedAction.metadata.mcpServerDisplayName,
         provider: blockedAction.authorizationInfo.provider,
         useCase: "personal_actions",
         scope: blockedAction.authorizationInfo.scope,
@@ -87,6 +82,15 @@ function AuthenticationDialogPage({
       if (success) {
         onConnectionStateChange(blockedAction.actionId, "connected");
       } else {
+        logger.error(
+          {
+            mcpServerId: blockedAction.metadata.mcpServerId,
+            mcpServerDisplayName: blockedAction.metadata.mcpServerDisplayName,
+            provider: blockedAction.authorizationInfo.provider,
+            scope: blockedAction.authorizationInfo.scope,
+          },
+          "Failed to connect to MCP server"
+        );
         onConnectionStateChange(blockedAction.actionId, "idle");
       }
     },
@@ -106,8 +110,7 @@ function AuthenticationDialogPage({
                   ) : null}
                 </div>
                 <div className="font-medium">
-                  {blockedAction.metadata.mcpServerDisplayName ||
-                    blockedAction.metadata.mcpServerName}
+                  {blockedAction.metadata.mcpServerDisplayName}
                 </div>
               </div>
               <Button
@@ -117,7 +120,7 @@ function AuthenticationDialogPage({
                     : "Connect"
                 }
                 className={cn(
-                  "text-black",
+                  "text-foreground dark:text-foreground-night",
                   connectionStates[blockedAction.actionId] === "connected" &&
                     "bg-green-100 hover:bg-green-100/80 dark:bg-green-100-night dark:hover:bg-green-100-night/80"
                 )}
@@ -349,7 +352,7 @@ export function ActionValidationProvider({
 
   // Track connection states for each authentication item
   const [connectionStates, setConnectionStates] = useState<
-    Record<string, "connecting" | "connected" | "idle">
+    Record<string, ConnectionState>
   >({});
 
   const pendingValidations = useMemo(() => {
@@ -387,11 +390,6 @@ export function ActionValidationProvider({
   useNavigationLock(isDialogOpen);
 
   useEffect(() => {
-    // Open the dialog when there are blocked actions
-    if (blockedActionsQueue.length > 0 && !isDialogOpen) {
-      setIsDialogOpen(true);
-    }
-
     // Close the dialog when there are no more blocked actions
     if (blockedActionsQueue.length === 0 && isDialogOpen && !isValidating) {
       setIsDialogOpen(false);
@@ -476,7 +474,7 @@ export function ActionValidationProvider({
         // Create a combined authentication page with all pending authentications
         const authActions = pendingAuthentications
           .map((item) => item.blockedAction)
-          .filter(isAuthenticationRequiredBlockedAction);
+          .filter((item) => item.status === "blocked_authentication_required");
 
         return {
           id: index.toString(),
