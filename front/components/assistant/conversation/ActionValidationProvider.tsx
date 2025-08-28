@@ -472,9 +472,12 @@ export function ActionValidationProvider({
     return Array.from({ length: totalCount }, (_, index) => {
       if (hasPendingAuthentications && index === 0) {
         // Create a combined authentication page with all pending authentications
-        const authActions = pendingAuthentications
-          .map((item) => item.blockedAction)
-          .filter((item) => item.status === "blocked_authentication_required");
+        const authActions: AuthenticationRequiredBlockedAction[] =
+          pendingAuthentications
+            .map((item) => item.blockedAction)
+            .filter(
+              (item) => item.status === "blocked_authentication_required"
+            );
 
         return {
           id: index.toString(),
