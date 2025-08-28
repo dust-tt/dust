@@ -264,28 +264,58 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         ? mcpServerViewMap.get(action.toolConfiguration.mcpServerViewId)
         : null;
 
-      blockedActionsList.push({
-        messageId: agentMessage.message.sId,
-        conversationId,
-        actionId: this.modelIdToSId({
-          id: action.id,
-          workspaceId: owner.id,
-        }),
-        inputs: action.augmentedInputs,
-        stake: action.toolConfiguration.permission,
-        metadata: {
-          toolName: action.toolConfiguration.originalName,
-          mcpServerName: action.toolConfiguration.mcpServerName,
-          agentName: agentConfiguration.name,
-          icon: action.toolConfiguration.icon,
-          mcpServerId: mcpServerView?.mcpServerId,
-          mcpServerDisplayName: mcpServerView
-            ? getMcpServerViewDisplayName(mcpServerView.toJSON())
-            : undefined,
-        },
-        status: action.status,
-        authorizationInfo: mcpServerView?.toJSON().server.authorization ?? null,
-      });
+      if (action.status === "blocked_authentication_required") {
+        const authorizationInfo = mcpServerView?.toJSON().server.authorization;
+        assert(mcpServerView, "MCP server view not found.");
+        assert(authorizationInfo, "Authorization not found.");
+
+        blockedActionsList.push({
+          messageId: agentMessage.message.sId,
+          conversationId,
+          actionId: this.modelIdToSId({
+            id: action.id,
+            workspaceId: owner.id,
+          }),
+          inputs: action.augmentedInputs,
+          stake: action.toolConfiguration.permission,
+          status: action.status,
+          metadata: {
+            toolName: action.toolConfiguration.originalName,
+            mcpServerName: action.toolConfiguration.mcpServerName,
+            agentName: agentConfiguration.name,
+            icon: action.toolConfiguration.icon,
+            mcpServerId: mcpServerView.mcpServerId,
+            mcpServerDisplayName: getMcpServerViewDisplayName(
+              mcpServerView.toJSON()
+            ),
+            authorizationInfo,
+          },
+        });
+      } else {
+        blockedActionsList.push({
+          messageId: agentMessage.message.sId,
+          conversationId,
+          actionId: this.modelIdToSId({
+            id: action.id,
+            workspaceId: owner.id,
+          }),
+          inputs: action.augmentedInputs,
+          stake: action.toolConfiguration.permission,
+          metadata: {
+            toolName: action.toolConfiguration.originalName,
+            mcpServerName: action.toolConfiguration.mcpServerName,
+            agentName: agentConfiguration.name,
+            icon: action.toolConfiguration.icon,
+            mcpServerId: mcpServerView?.mcpServerId,
+            mcpServerDisplayName: mcpServerView
+              ? getMcpServerViewDisplayName(mcpServerView.toJSON())
+              : undefined,
+          },
+          status: action.status,
+          authorizationInfo:
+            mcpServerView?.toJSON().server.authorization ?? null,
+        });
+      }
     }
 
     return blockedActionsList;
