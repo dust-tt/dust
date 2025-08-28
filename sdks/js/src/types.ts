@@ -927,7 +927,7 @@ const AgentMessageFeedbackSchema = z.object({
 });
 
 const ConversationVisibilitySchema = FlexibleEnumSchema<
-  "unlisted" | "triggered" | "workspace" | "deleted" | "test"
+  "unlisted" | "workspace" | "deleted" | "test"
 >();
 
 export type ConversationVisibility = z.infer<

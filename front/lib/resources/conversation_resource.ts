@@ -342,6 +342,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       title: conversation.title,
       visibility: conversation.visibility,
       depth: conversation.depth,
+      triggerId: conversation.triggerId,
       requestedGroupIds:
         conversation.getConversationRequestedGroupIdsFromModel(auth),
     });
@@ -371,7 +372,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const includedConversationVisibilities: ConversationVisibility[] = [
       "unlisted",
-      "triggered",
     ];
 
     if (options?.includeDeleted) {
@@ -421,6 +421,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           title: c.title,
           visibility: c.visibility,
           depth: c.depth,
+          triggerId: c.triggerId,
           requestedGroupIds: new this(
             this.model,
             c.get()
