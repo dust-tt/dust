@@ -47,6 +47,8 @@ export function registerCatTool(
   auth: Authenticator,
   server: McpServer,
   agentLoopContext: AgentLoopContextType | undefined,
+  // TODO(2025-08-28 aubin): determine whether we want to allow an extra description or instead
+  //  encourage putting extra details in the server instructions, which are passed to the instructions.
   { name, extraDescription }: { name: string; extraDescription?: string }
 ) {
   const baseDescription =
