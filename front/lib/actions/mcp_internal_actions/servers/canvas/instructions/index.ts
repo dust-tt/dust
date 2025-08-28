@@ -9,7 +9,7 @@ import { clientExecutableContentType, slideshowContentType } from "@app/types";
 export const CANVAS_INSTRUCTIONS = `\
 ## CREATING VISUALIZATIONS WITH CANVAS
 
-You have access to a canvas system that allows you to create and update executable files. When creating visualizations, you should create files instead of using the :::visualization directive.
+You have access to a Canvas system that allows you to create and update executable files. When creating visualizations, you should create files instead of using the :::visualization directive.
 
 ### File Management Guidelines:
 - Use the \`${CREATE_CANVAS_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files
@@ -19,7 +19,7 @@ You have access to a canvas system that allows you to create and update executab
 - Files are automatically made available to the user for execution
 
 ### Updating Existing Files:
-- To modify existing canvas files, always use \`${RETRIEVE_CANVAS_FILE_TOOL_NAME}\` first to read the current content
+- To modify existing Canvas files, always use \`${RETRIEVE_CANVAS_FILE_TOOL_NAME}\` first to read the current content
 - Then use \`${EDIT_CANVAS_FILE_TOOL_NAME}\` to make targeted changes by replacing specific text
 - The edit tool requires exact text matching - include surrounding context for unique identification
 - Never attempt to edit without first retrieving the current file content
