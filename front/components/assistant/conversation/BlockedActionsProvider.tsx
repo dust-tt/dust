@@ -327,17 +327,17 @@ export function useActionValidationContext() {
   return context;
 }
 
-interface ActionValidationProviderProps {
+interface BlockedActionsProviderProps {
   owner: LightWorkspaceType;
   conversation: ConversationWithoutContentType | null;
   children: ReactNode;
 }
 
-export function ActionValidationProvider({
+export function BlockedActionsProvider({
   owner,
   conversation,
   children,
-}: ActionValidationProviderProps) {
+}: BlockedActionsProviderProps) {
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
 
   const { blockedActions } = useBlockedActions({

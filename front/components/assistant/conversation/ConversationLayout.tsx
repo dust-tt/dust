@@ -2,7 +2,7 @@ import { cn, ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
-import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
@@ -128,7 +128,7 @@ const ConversationLayoutContent = ({
   };
 
   return (
-    <ActionValidationProvider owner={owner} conversation={conversation}>
+    <BlockedActionsProvider owner={owner} conversation={conversation}>
       <InputBarProvider>
         <AppContentLayout
           hasTitle={!!activeConversationId}
@@ -176,7 +176,7 @@ const ConversationLayoutContent = ({
           )}
         </AppContentLayout>
       </InputBarProvider>
-    </ActionValidationProvider>
+    </BlockedActionsProvider>
   );
 };
 
