@@ -138,7 +138,7 @@ async function handler(
           const existingTrigger = currentTriggersMap.get(triggerData.sId)!;
           const updatedTrigger = await TriggerResource.update(
             auth,
-            existingTrigger.sId,
+            existingTrigger.sId(),
             validatedTrigger
           );
           if (updatedTrigger.isErr()) {

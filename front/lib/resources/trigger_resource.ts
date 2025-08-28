@@ -214,7 +214,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       case "schedule":
         return deleteAgentScheduleWorkflow({
           workspaceId: auth.getNonNullableWorkspace().sId,
-          triggerId: this.sId,
+          triggerId: this.sId(),
         });
       default:
         assertNever(this.kind);
@@ -372,7 +372,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
-  get sId(): string {
+  sId(): string {
     return TriggerResource.modelIdToSId({
       id: this.id,
       workspaceId: this.workspaceId,
@@ -382,7 +382,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   toJSON(): TriggerType {
     return {
       id: this.id,
-      sId: this.sId,
+      sId: this.sId(),
       name: this.name,
       agentConfigurationId: this.agentConfigurationId,
       editor: this.editor,
