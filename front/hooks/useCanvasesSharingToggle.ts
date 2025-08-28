@@ -3,7 +3,11 @@ import { useState } from "react";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { LightWorkspaceType } from "@app/types";
 
-export function useCanvasesSharingToggle({ owner }: { owner: WorkspaceType }) {
+export function useCanvasesSharingToggle({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
 
