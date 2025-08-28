@@ -3,6 +3,7 @@ import type { Editor } from "@tiptap/core";
 import { InputRule, mergeAttributes, Node } from "@tiptap/core";
 import type { Node as ProseMirrorNode, Slice } from "@tiptap/pm/model";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { NodeViewProps } from "@tiptap/react";
 import {
   NodeViewContent,
@@ -596,6 +597,41 @@ export const InstructionBlockExtension =
       };
 
       return [
+        // Plugin to style XML tags with chip appearance
+        new Plugin({
+          key: new PluginKey("instructionBlockTagDecoration"),
+          props: {
+            decorations(state) {
+              const decorations: Decoration[] = [];
+              
+              state.doc.descendants((node, pos) => {
+                if (node.type.name === "instructionBlock") {
+                  let childPos = pos + 1;
+                  
+                  node.forEach((child) => {
+                    if (child.type.name === "paragraph") {
+                      const text = child.textContent.trim();
+                      const isOpeningTag = text.match(OPENING_TAG_REGEX);
+                      const isClosingTag = text.match(CLOSING_TAG_REGEX);
+                      
+                      if (isOpeningTag || isClosingTag) {
+                        const marginClass = isOpeningTag ? "mb-2" : isClosingTag ? "mt-2" : "";
+                        decorations.push(
+                          Decoration.node(childPos, childPos + child.nodeSize, {
+                            class: `inline-block px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs font-medium uppercase ${marginClass}`,
+                          })
+                        );
+                      }
+                    }
+                    childPos += child.nodeSize;
+                  });
+                }
+              });
+              
+              return DecorationSet.create(state.doc, decorations);
+            },
+          },
+        }),
         new Plugin({
           key: new PluginKey("instructionBlockTagSync"),
           appendTransaction: (transactions, oldState, newState) => {
