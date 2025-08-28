@@ -111,7 +111,6 @@ export async function* executeMCPTool({
           messageId: agentMessage.sId,
           action: {
             ...action.toJSON(),
-            type: "tool_action",
             output: null,
           },
           notification: notification.params,
