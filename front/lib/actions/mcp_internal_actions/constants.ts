@@ -66,6 +66,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "github",
   "gmail",
   "google_calendar",
+  "google_drive",
   "google_sheets",
   "hubspot",
   "image_generation",
@@ -847,6 +848,35 @@ The directive should be used to display a clickable version of the agent name in
       },
       documentationUrl: null,
       instructions: FRESHSERVICE_SERVER_INSTRUCTIONS,
+    },
+  },
+  google_drive: {
+    id: 27,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("google_drive_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      list_drives: "never_ask",
+      search_files: "never_ask",
+      get_file_content: "never_ask",
+    },
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "google_drive",
+      version: "1.0.0",
+      description:
+        "Tools for searching and reading content from Google Drive files (Docs, Sheets, Presentations, text files).",
+      authorization: {
+        provider: "google_drive" as const,
+        supported_use_cases: ["personal_actions"] as const,
+        scope: "https://www.googleapis.com/auth/drive.readonly" as const,
+      },
+      icon: "DriveLogo",
+      documentationUrl: "https://docs.dust.tt/docs/google-drive",
+      instructions: null,
     },
   },
   [SEARCH_SERVER_NAME]: {

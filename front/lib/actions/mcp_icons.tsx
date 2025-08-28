@@ -17,6 +17,7 @@ import {
   ActionTimeIcon,
   Avatar,
   CommandLineIcon,
+  DriveLogo,
   FreshserviceLogo,
   GcalLogo,
   GithubLogo,
@@ -71,6 +72,7 @@ export const InternalActionIcons = {
   SalesforceLogo,
   SlackLogo,
   StripeLogo,
+  DriveLogo,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);
