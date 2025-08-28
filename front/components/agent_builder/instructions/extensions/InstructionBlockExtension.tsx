@@ -214,7 +214,9 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
               </Chip>
             </div>
           ) : (
-            <NodeViewContent className={instructionBlockContentStyles} as="div" />
+            <div className="mt-0.5">
+              <NodeViewContent className={instructionBlockContentStyles} as="div" />
+            </div>
           )}
         </div>
       </div>
@@ -618,7 +620,7 @@ export const InstructionBlockExtension =
                         const marginClass = isOpeningTag ? "mb-2" : isClosingTag ? "mt-2" : "";
                         decorations.push(
                           Decoration.node(childPos, childPos + child.nodeSize, {
-                            class: `inline-block px-1.5 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs font-medium uppercase ${marginClass}`,
+                            class: `block w-fit px-1.5 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs font-medium uppercase ${marginClass}`,
                           })
                         );
                       }
