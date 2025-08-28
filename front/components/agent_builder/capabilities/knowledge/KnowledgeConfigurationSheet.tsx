@@ -419,7 +419,6 @@ function KnowledgeConfigurationSheetContent({
       pages={pages}
       currentPageId={currentPageId}
       onPageChange={handlePageChange}
-      onSave={onSave}
       size="xl"
       showHeaderNavigation={false}
       showNavigation={false}

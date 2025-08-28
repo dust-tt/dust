@@ -35,7 +35,7 @@ export const useDataSourceColumns = () => {
           return (
             <Checkbox
               key={`header-${selectionState}`}
-              size="xs"
+              size="sm"
               checked={selectionState}
               disabled={!isRowSelectable()}
               onClick={(event) => event.stopPropagation()}
@@ -57,7 +57,7 @@ export const useDataSourceColumns = () => {
             <div className="flex h-full w-full items-center">
               <Checkbox
                 key={`${row.original.id}-${selectionState}`}
-                size="xs"
+                size="sm"
                 checked={selectionState}
                 disabled={!isRowSelectable(row.original.id)}
                 onClick={(event) => event.stopPropagation()}
