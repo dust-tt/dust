@@ -3,6 +3,7 @@ import {
   Button,
   Checkbox,
   CloudArrowLeftRightIcon,
+  cn,
   CodeBlock,
   CollapsibleComponent,
   Icon,
@@ -115,9 +116,18 @@ function AuthenticationDialogPage({
                     ? "Connected"
                     : "Connect"
                 }
-                variant="outline"
+                className={cn(
+                  "text-black",
+                  connectionStates[blockedAction.actionId] === "connected" &&
+                    "bg-green-100 hover:bg-green-100/80 dark:bg-green-100-night dark:hover:bg-green-100-night/80"
+                )}
+                variant="ghost"
                 size="xs"
-                icon={CloudArrowLeftRightIcon}
+                icon={
+                  connectionStates[blockedAction.actionId] === "connected"
+                    ? undefined
+                    : CloudArrowLeftRightIcon
+                }
                 disabled={
                   connectionStates[blockedAction.actionId] === "connecting" ||
                   connectionStates[blockedAction.actionId] === "connected"
@@ -275,10 +285,17 @@ function useBlockedActionsQueue({
     setBlockedActionsQueue((prevQueue) => prevQueue.slice(1));
   }, []);
 
+  const removeCompletedAction = useCallback((actionId: string) => {
+    setBlockedActionsQueue((prevQueue) =>
+      prevQueue.filter((item) => item.blockedAction.actionId !== actionId)
+    );
+  }, []);
+
   return {
     blockedActionsQueue,
     enqueueBlockedAction,
     shiftBlockedActionQueue,
+    removeCompletedAction,
   };
 }
 
@@ -325,9 +342,10 @@ export function ActionValidationProvider({
     workspaceId: owner.sId,
   });
 
-  const { blockedActionsQueue, enqueueBlockedAction } = useBlockedActionsQueue({
-    blockedActions,
-  });
+  const { blockedActionsQueue, enqueueBlockedAction, removeCompletedAction } =
+    useBlockedActionsQueue({
+      blockedActions,
+    });
 
   // Track connection states for each authentication item
   const [connectionStates, setConnectionStates] = useState<
@@ -368,8 +386,13 @@ export function ActionValidationProvider({
 
   useNavigationLock(isDialogOpen);
 
-  // Close the dialog when there are no more blocked actions
   useEffect(() => {
+    // Open the dialog when there are blocked actions
+    if (blockedActionsQueue.length > 0 && !isDialogOpen) {
+      setIsDialogOpen(true);
+    }
+
+    // Close the dialog when there are no more blocked actions
     if (blockedActionsQueue.length === 0 && isDialogOpen && !isValidating) {
       setIsDialogOpen(false);
     }
@@ -408,6 +431,15 @@ export function ActionValidationProvider({
       setIsDialogOpen(true);
     }
   }, [blockedActionsQueue.length]);
+
+  // Remove all completed authentication actions from the queue
+  // We want to wait until all authentication actions are connected to remove them from the queue
+  const handleDone = useCallback(() => {
+    pendingAuthentications.forEach((item) => {
+      removeCompletedAction(item.blockedAction.actionId);
+    });
+    setIsDialogOpen(false);
+  }, [pendingAuthentications, removeCompletedAction]);
 
   const hasPendingValidations = pendingValidations.length > 0;
   const hasPendingAuthentications = pendingAuthentications.length > 0;
@@ -535,11 +567,9 @@ export function ActionValidationProvider({
                     <Button
                       variant="highlight"
                       label="Done"
-                      onClick={() => setIsDialogOpen(false)}
+                      onClick={handleDone}
                       disabled={!areAllAuthenticationsConnected}
-                    >
-                      Skip
-                    </Button>
+                    />
                   </div>
                 );
               }
@@ -563,9 +593,7 @@ export function ActionValidationProvider({
                     onClick={() => submitValidation("approved")}
                     disabled={isValidating}
                     isLoading={submitStatus === "approved"}
-                  >
-                    Allow
-                  </Button>
+                  />
                 </div>
               );
             })()}
