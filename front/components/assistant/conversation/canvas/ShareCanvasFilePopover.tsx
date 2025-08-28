@@ -192,7 +192,7 @@ export function ShareCanvasFilePopover({
                 >
                   {isSharingForbidden
                     ? "Your workspace administrator has turned off sharing of Canvas files."
-                    : "The Canvas file relies on conversation files, sharing is therefore disabled " +
+                    : "The Canvas relies on conversation files, sharing is therefore disabled " +
                       "to protect company information."}
                 </ContentMessage>
               )}
