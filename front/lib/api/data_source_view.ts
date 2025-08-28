@@ -1,12 +1,6 @@
 import config from "@app/lib/api/config";
-import {
-  FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
-  getContentNodeFromCoreNode,
-} from "@app/lib/api/content_nodes";
-import type {
-  CursorPaginationParams,
-  SortingParams,
-} from "@app/lib/api/pagination";
+import { FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES, getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
+import type { CursorPaginationParams, SortingParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -237,8 +231,31 @@ export async function getContentNodesForDataSourceView(
         nodes.filter((node) => node.internalId === id)
       );
 
+  // Filter parentInternalIds based on the dataSourceView's parentsIn configuration
+  const filteredNodes = !dataSourceView.parentsIn
+    ? sortedNodes
+    : sortedNodes.map((node) => {
+        if (!node.parentInternalIds || node.parentInternalIds.length === 0) {
+          return node;
+        }
+
+        // Find the deepest parent that is included in the view's parentsIn
+        let deepestValidIndex = -1;
+        for (const [index, parentInternalId] of node.parentInternalIds.entries()) {
+          if ((dataSourceView.parentsIn || []).includes(parentInternalId)) {
+            deepestValidIndex = index;
+          }
+        }
+
+        // If no valid parent found, keep the original parentInternalIds
+        // If found, slice from that index to keep only the relevant hierarchy
+        return deepestValidIndex >= 0
+          ? { ...node, parentInternalIds: node.parentInternalIds.slice(0, deepestValidIndex + 1) }
+          : node;
+      });
+
   return new Ok({
-    nodes: sortedNodes,
+    nodes: filteredNodes,
     total: hitCount - hiddenNodesCount, // Deducing the number of folders we hid from the total count.
     totalIsAccurate,
     nextPageCursor: nextPageCursor,
