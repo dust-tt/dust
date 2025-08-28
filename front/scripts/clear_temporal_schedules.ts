@@ -1,6 +1,3 @@
-import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
-import logger from "@app/logger/logger";
-
 import { makeScript } from "./helpers";
 
 makeScript(
@@ -8,8 +5,8 @@ makeScript(
     namespace: {
       alias: "n",
       describe: "Temporal namespace to clear schedules from",
-      type: "string" as const,
-      choices: ["agent", "front", "connectors"] as const,
+      type: "string",
+      choices: ["agent", "front", "connectors"],
       default: "agent",
     },
   },
