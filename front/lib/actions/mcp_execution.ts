@@ -14,7 +14,6 @@ import {
 } from "@app/lib/actions/action_output_limits";
 import type {
   LightMCPToolConfigurationType,
-  MCPActionType,
   MCPApproveExecutionEvent,
   MCPToolConfigurationType,
   ToolNotificationEvent,
