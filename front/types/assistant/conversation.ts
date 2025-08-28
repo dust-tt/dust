@@ -3,7 +3,7 @@ import type {
   MCPApproveExecutionEvent,
 } from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import type { AgentMCPActionType, AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 import type { ContentFragmentType } from "../content_fragment";
 import type { ModelId } from "../shared/model_id";
