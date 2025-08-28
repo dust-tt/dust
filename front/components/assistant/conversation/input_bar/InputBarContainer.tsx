@@ -1,4 +1,4 @@
-import { ArrowUpIcon, Button, SparklesIcon, Tooltip } from "@dust-tt/sparkle";
+import { ArrowUpIcon, Button, SparklesIcon } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import React, {
@@ -395,49 +395,52 @@ const InputBarContainer = ({
             )}
             {(actions.includes("assistants-list") ||
               actions.includes("assistants-list-with-actions")) && (
-              <>
-                <AssistantPicker
-                  owner={owner}
-                  size="xs"
-                  onItemClick={(c) => {
-                    editorService.insertMention({ id: c.sId, label: c.name });
-                  }}
-                  assistants={allAssistants}
-                  showDropdownArrow={false}
-                  showFooterButtons={actions.includes(
-                    "assistants-list-with-actions"
-                  )}
-                  disabled={disableTextInput}
-                />
-                {showDeepResearchToggle && (
-                  <Button
-                    size="xs"
-                    icon={SparklesIcon}
-                    // Base variant ghost; apply light blue override when in deep mode
-                    variant="ghost"
-                    onClick={() => {
-                      handleDeepResearchToggle();
-                    }}
-                    className={classNames(
-                      "ml-1 s-!transition-none",
-                      isInDeepMode &&
-                        "s-!bg-blue-100 s-!text-blue-900 dark:s-!bg-blue-100-night dark:s-!text-blue-900-night"
-                    )}
-                    aria-pressed={isInDeepMode}
-                    aria-label={
-                      isInDeepMode
-                        ? "Switch to regular Dust mode"
-                        : "Switch to Deep Research mode"
-                    }
-                    disabled={disableTextInput}
-                    title={
-                      isInDeepMode
-                        ? "Switch to regular Dust mode"
-                        : "Switch to Deep Research mode"
-                    }
-                  />
+              <AssistantPicker
+                owner={owner}
+                size="xs"
+                onItemClick={(c) => {
+                  editorService.insertMention({ id: c.sId, label: c.name });
+                }}
+                assistants={allAssistants}
+                showDropdownArrow={false}
+                showFooterButtons={actions.includes(
+                  "assistants-list-with-actions"
                 )}
-              </>
+                disabled={disableTextInput}
+              />
+            )}
+
+            {showDeepResearchToggle && (
+              <Button
+                size="xs"
+                icon={SparklesIcon}
+                variant="ghost"
+                onClick={() => {
+                  handleDeepResearchToggle();
+                }}
+                className={classNames(
+                  "ml-1 s-transition-none",
+                  isInDeepMode &&
+                    [
+                      "s-bg-blue-100 s-text-blue-900",
+                      "hover:s-bg-blue-100 active:s-bg-blue-100",
+                      "dark:s-bg-blue-100-night dark:s-text-blue-900-night",
+                      "dark:hover:s-bg-blue-100-night dark:active:s-bg-blue-100-night",
+                    ].join(" ")
+                )}
+                aria-pressed={isInDeepMode}
+                aria-label={
+                  isInDeepMode
+                    ? "Switch to regular Dust mode"
+                    : "Switch to Deep Research mode"
+                }
+                disabled={disableTextInput}
+                title={
+                  isInDeepMode
+                    ? "Switch to regular Dust mode"
+                    : "Switch to Deep Research mode"
+                }
+              />
             )}
           </div>
           <Button
