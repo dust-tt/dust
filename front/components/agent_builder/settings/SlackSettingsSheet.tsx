@@ -196,7 +196,6 @@ export function SlackSettingsSheet({
   slackDataSource,
 }: SlackSettingsSheetProps) {
   const { owner } = useAgentBuilderContext();
-  const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const [localSlackChannels, setLocalSlackChannels] = useState<SlackChannel[]>(
     []
@@ -264,7 +263,7 @@ export function SlackSettingsSheet({
     }
 
     const channelSelectionChanged = Array.from(currentChannelIds).some(
-      (id) => !localChannelIds.has(id)
+      (id) => !localChannelIds.has(id as string)
     );
 
     const currentAutoRespondWithoutMention =
@@ -274,30 +273,6 @@ export function SlackSettingsSheet({
 
     return channelSelectionChanged || autoRespondWithoutMentionChanged;
   }, [slackChannels, localSlackChannels, autoRespondWithoutMentionEnabled]);
-
-  if (!slackProvider) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          No Slack integration configured for this workspace.
-        </p>
-      </div>
-    );
-  }
-
-  const slackDataSource = supportedDataSourceViews.find(
-    (dsv) => dsv.dataSource.connectorProvider === slackProvider
-  )?.dataSource;
-
-  if (!slackDataSource) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Slack data source not found.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
@@ -327,7 +302,7 @@ export function SlackSettingsSheet({
               owner={owner}
               slackDataSource={slackDataSource}
             />
-            {hasFeature("enhanced_default_agent") && (
+            {hasFeature("slack_enhanced_default_agent") && (
               <div className="flex flex-col gap-2 border-t pt-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex min-w-0 flex-1 flex-col gap-1">

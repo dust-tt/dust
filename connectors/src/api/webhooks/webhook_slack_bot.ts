@@ -13,7 +13,6 @@ import {
   isSlackWebhookEventReqBody,
   withTrace,
 } from "@connectors/api/webhooks/slack/utils";
-import { botAnswerMessage } from "@connectors/connectors/slack/bot";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
@@ -152,11 +151,10 @@ const _webhookSlackBotAPIHandler = async (
             if (
               !event.bot_id &&
               event.channel &&
+              event.ts &&
               event.user &&
               !event.subtype
             ) {
-              res.status(200).send();
-
               const slackConfig =
                 await SlackConfigurationResource.fetchByActiveBot(teamId);
               if (slackConfig) {
@@ -178,40 +176,10 @@ const _webhookSlackBotAPIHandler = async (
                     "Found enhanced default agent for channel - processing message"
                   );
 
-                  try {
-                    const botRes = await botAnswerMessage(event.text || "", {
-                      slackTeamId: teamId,
-                      slackChannel: event.channel || "",
-                      slackUserId: event.user || "",
-                      slackBotId: event.bot_id || undefined,
-                      slackMessageTs: event.ts || "",
-                      slackThreadTs: event.thread_ts || event.ts,
-                    });
-
-                    if (botRes.isErr()) {
-                      logger.error(
-                        {
-                          error: botRes.error,
-                          slackUserId: event.user,
-                          agentConfigurationId: channel.agentConfigurationId,
-                          channel: event.channel,
-                        },
-                        "Failed to process enhanced default agent message"
-                      );
-                    }
-                  } catch (error) {
-                    logger.error(
-                      {
-                        error,
-                        slackUserId: event.user,
-                        agentConfigurationId: channel.agentConfigurationId,
-                        channel: event.channel,
-                      },
-                      "Exception in enhanced default agent message processing"
-                    );
-                  }
-
-                  return;
+                  await withTrace({
+                    "slack.team_id": teamId,
+                    "slack.app": "slack_bot",
+                  })(handleChatBot)(req, res, logger);
                 }
               }
             }

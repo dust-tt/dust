@@ -51,7 +51,7 @@ async function handler(
   ) {
     const owner = auth.getNonNullableWorkspace();
     const featureFlags = await getFeatureFlags(owner);
-    if (!featureFlags.includes("enhanced_default_agent")) {
+    if (!featureFlags.includes("slack_enhanced_default_agent")) {
       return apiError(req, res, {
         status_code: 403,
         api_error: {

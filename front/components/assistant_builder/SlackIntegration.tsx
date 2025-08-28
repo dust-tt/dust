@@ -223,7 +223,7 @@ export function SlackAssistantDefaultManager({
               />
             )}
 
-            {hasFeature("enhanced_default_agent") &&
+            {hasFeature("slack_enhanced_default_agent") &&
               selectedChannels.length > 0 && (
                 <div className="flex flex-col gap-2 border-t pt-4">
                   <div className="flex items-start justify-between gap-4">
