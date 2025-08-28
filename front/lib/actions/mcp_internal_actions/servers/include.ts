@@ -17,11 +17,7 @@ import type {
   WarningResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
-import {
-  findTagsSchema,
-  makeFindTagsDescription,
-  makeFindTagsTool,
-} from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
+import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
   checkConflictingTags,
   getCoreSearchArgs,
@@ -287,12 +283,10 @@ function createServer(
       )
     );
 
-    server.tool(
-      FIND_TAGS_TOOL_NAME,
-      makeFindTagsDescription(INCLUDE_TOOL_NAME),
-      findTagsSchema,
-      makeFindTagsTool(auth)
-    );
+    registerFindTagsTool(auth, server, agentLoopContext, {
+      name: FIND_TAGS_TOOL_NAME,
+      extraDescription: `for use with ${INCLUDE_TOOL_NAME}`,
+    });
   }
 
   return server;

@@ -299,26 +299,17 @@ const createServer = (
   // Register data source file system tools for the Canvas server with custom
   // descriptions tailored for Canvas use cases (visual assets and templates).
   registerListTool(auth, server, agentLoopContext, {
-    toolName: "list_assets",
-    toolDescription:
-      "Browse available visual assets and templates in the connected data sources. " +
+    name: "list_assets",
+    extraDescription: "Browse available visual assets and templates in the connected data sources. " +
       "Use this to explore folders containing images, icons, slideshow templates, " +
-      "or other resources that can be incorporated into Canvas files.\n\n" +
-      "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
-      "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
-      "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
-      "the next step's nodeId. If a node output by this tool has children " +
-      "(hasChildren: true), it means that this tool can be used again on it.",
+      "or other resources that can be incorporated into Canvas files."
   });
 
   registerCatTool(auth, server, agentLoopContext, {
-    toolName: "cat_assets",
-    toolDescription:
-      "Read template files or asset configurations from the connected data sources. " +
+    name: "cat_assets",
+    extraDescription: "Read template files or asset configurations from the connected data sources. " +
       "Use this to retrieve slideshow templates, HTML/CSS snippets, React component examples, " +
-      "or configuration files that can serve as a starting point or be incorporated into Canvas files.\n\n" +
-      "Read the contents of a document, referred to by its nodeId (named after the 'cat' Unix tool). " +
-      "The nodeId can be obtained using the 'list_assets' tool.",
+      "or configuration files that can serve as a starting point or be incorporated into Canvas files."
   });
 
   return server;

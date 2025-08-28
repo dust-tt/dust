@@ -18,6 +18,7 @@ import {
   findTagsSchema,
   makeFindTagsDescription,
   makeFindTagsTool,
+  registerFindTagsTool,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
   checkConflictingTags,
@@ -290,12 +291,10 @@ function createServer(
       )
     );
 
-    server.tool(
-      FIND_TAGS_TOOL_NAME,
-      makeFindTagsDescription(SEARCH_TOOL_NAME),
-      findTagsSchema,
-      makeFindTagsTool(auth)
-    );
+    registerFindTagsTool(auth, server, agentLoopContext, {
+      name: FIND_TAGS_TOOL_NAME,
+      extraDescription: `for use with ${SEARCH_TOOL_NAME}`
+    });
   }
 
   return server;

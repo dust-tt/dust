@@ -43,25 +43,21 @@ const catToolInputSchema = {
     ),
 };
 
-interface CatToolOptions {
-  toolName?: string;
-  toolDescription?: string;
-}
-
 export function registerCatTool(
   auth: Authenticator,
   server: McpServer,
-  agentLoopContext?: AgentLoopContextType,
-  options: CatToolOptions = {}
+  agentLoopContext: AgentLoopContextType | undefined,
+  { name, extraDescription }: { name: string; extraDescription?: string }
 ) {
-  const toolName = options.toolName || FILESYSTEM_CAT_TOOL_NAME;
-  const toolDescription =
-    options.toolDescription ||
+  const baseDescription =
     "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). " +
-      "The nodeId can be obtained using the 'find', 'list' or 'search' tools.";
+    "The nodeId can be obtained using the 'find', 'list' or 'search' tools.";
+  const toolDescription = extraDescription
+    ? baseDescription + "\n" + extraDescription
+    : baseDescription;
 
   server.tool(
-    toolName,
+    name,
     toolDescription,
     catToolInputSchema,
     withToolLogging(
