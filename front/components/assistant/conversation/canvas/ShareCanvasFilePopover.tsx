@@ -174,7 +174,7 @@ export function ShareCanvasFilePopover({
 
           <div className="flex flex-col">
             {isFileShareLoading && (
-              <div className="flex h-full items-center justify-center">
+              <div className="mb-4 flex h-full items-center justify-center">
                 <Spinner size="sm" />
               </div>
             )}
@@ -197,7 +197,7 @@ export function ShareCanvasFilePopover({
               )}
             {/* File sharing link. */}
             {!isFileShareLoading && (
-              <div className="mt-4 flex flex-col gap-3">
+              <div className="flex flex-col gap-3">
                 <FileSharingDropdown
                   selectedScope={selectedScope}
                   onScopeChange={handleScopeChange}
