@@ -155,7 +155,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
       const text = firstChild.textContent.trim();
       const match = text.match(OPENING_TAG_REGEX);
       if (match) {
-        displayType = match[1] || ""; // Empty string for <>
+        displayType = match[0] || ""; // Full match including < and >
       }
     }
   }
@@ -210,7 +210,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
           {isCollapsed ? (
             <div contentEditable={false}>
               <Chip size="mini" className="bg-gray-100 dark:bg-gray-800">
-                {displayType.toUpperCase() || " "}
+                {displayType ? displayType.toUpperCase() : " "}
               </Chip>
             </div>
           ) : (
@@ -618,7 +618,7 @@ export const InstructionBlockExtension =
                         const marginClass = isOpeningTag ? "mb-2" : isClosingTag ? "mt-2" : "";
                         decorations.push(
                           Decoration.node(childPos, childPos + child.nodeSize, {
-                            class: `inline-block px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs font-medium uppercase ${marginClass}`,
+                            class: `inline-block px-1.5 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs font-medium uppercase ${marginClass}`,
                           })
                         );
                       }
