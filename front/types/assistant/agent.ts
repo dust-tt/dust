@@ -1,17 +1,14 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-
 import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { OAuthProvider } from "@app/types";
-import type { AgentMCPActionType } from "@app/types/actions";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
+  FunctionCallContentType,
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
-import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -315,10 +312,7 @@ export type AgentActionSuccessEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  action: AgentMCPActionType & {
-    output: CallToolResult["content"];
-    generatedFiles: ActionGeneratedFileType[];
-  };
+  action: AgentMCPActionWithOutputType;
 };
 
 // Event sent to stop the generation.
