@@ -124,7 +124,17 @@ const createServer = (): McpServer => {
           ? `(${mimetypeQuery}) and (${query})`
           : `(${mimetypeQuery})`;
 
-        const requestParams: any = {
+        const requestParams: {
+          q: string;
+          pageToken?: string;
+          pageSize?: number;
+          fields: string;
+          orderBy?: string;
+          driveId?: string;
+          includeItemsFromAllDrives?: boolean;
+          supportsAllDrives?: boolean;
+          corpora?: string;
+        } = {
           q: searchQuery,
           pageToken,
           pageSize: pageSize ? Math.min(pageSize, 1000) : undefined,
