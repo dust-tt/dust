@@ -53,6 +53,7 @@ export function useSlackChannel({
           .map((channel) => ({
             slackChannelId: channel.slackChannelId,
             slackChannelName: channel.slackChannelName,
+            autoRespondWithoutMention: channel.autoRespondWithoutMention,
           }))
       );
       setSlackChannelsInitialized(true);

@@ -217,6 +217,10 @@ export async function submitAgentBuilderForm({
     // If the user selected channels that were already routed to a different agent, the current behavior is to
     // unlink them from the previous agent and link them to this one.
     if (slackProvider) {
+      const autoRespondWithoutMention =
+        slackChannels.length > 0
+          ? slackChannels[0].autoRespondWithoutMention
+          : undefined;
       const slackLinkRes = await fetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/linked_slack_channels`,
         {
@@ -229,6 +233,7 @@ export async function submitAgentBuilderForm({
             slack_channel_internal_ids: slackChannels.map(
               ({ slackChannelId }) => slackChannelId
             ),
+            auto_respond_without_mention: autoRespondWithoutMention,
           }),
         }
       );
