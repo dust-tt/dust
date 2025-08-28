@@ -622,6 +622,9 @@ export function AgentMessage({
   }
 }
 
+/**
+ * Reconstructs the agent message to render based on the message fetched and the data streamed.
+ */
 function getAgentMessageToRender({
   message,
   messageStreamState,
