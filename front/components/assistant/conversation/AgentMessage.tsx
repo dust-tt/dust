@@ -50,19 +50,21 @@ import {
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
 import { RETRY_BLOCKED_ACTIONS_STARTED_EVENT } from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type {
   LightAgentMessageType,
+  LightAgentMessageWithActionsType,
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { isPersonalAuthenticationRequiredErrorContent } from "@app/types";
-import { isString } from "@app/types";
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
   isCanvasFileContentType,
+  isPersonalAuthenticationRequiredErrorContent,
+  isString,
   isSupportedImageContentType,
 } from "@app/types";
 
@@ -144,22 +146,10 @@ export function AgentMessage({
     streamId: `message-${message.sId}`,
   });
 
-  const agentMessageToRender = ((): LightAgentMessageType => {
-    switch (message.status) {
-      case "succeeded":
-      case "failed":
-        return message;
-      case "cancelled":
-        if (messageStreamState.message.status === "created") {
-          return { ...messageStreamState.message, status: "cancelled" };
-        }
-        return messageStreamState.message;
-      case "created":
-        return messageStreamState.message;
-      default:
-        assertNever(message.status);
-    }
-  })();
+  const agentMessageToRender = getAgentMessageToRender({
+    message,
+    messageStreamState,
+  });
 
   const references = Object.entries(
     agentMessageToRender.citations ?? {}
@@ -629,6 +619,29 @@ export function AgentMessage({
     );
 
     setIsRetryHandlerProcessing(false);
+  }
+}
+
+function getAgentMessageToRender({
+  message,
+  messageStreamState,
+}: {
+  message: LightAgentMessageType;
+  messageStreamState: MessageTemporaryState;
+}): LightAgentMessageType | LightAgentMessageWithActionsType {
+  switch (message.status) {
+    case "succeeded":
+    case "failed":
+      return message;
+    case "cancelled":
+      if (messageStreamState.message.status === "created") {
+        return { ...messageStreamState.message, status: "cancelled" };
+      }
+      return messageStreamState.message;
+    case "created":
+      return messageStreamState.message;
+    default:
+      assertNever(message.status);
   }
 }
 
