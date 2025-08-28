@@ -35,5 +35,5 @@ export default function Presentation() {
 \`\`\`
 
 - When to use slideshows: presentations, tutorials, step-by-step analysis, before/after comparisons
-- When to use regular canvas: single visualizations, dashboards, interactive tools
+- When to use regular Canvas: single visualizations, dashboards, interactive tools
 `;
