@@ -38,11 +38,6 @@ type YieldAsSuccessParams = BaseErrorParams & {
 
 type HandleErrorParams = YieldAsErrorParams | YieldAsSuccessParams;
 
-export type AgentActionRunningEvents =
-  | MCPParamsEvent
-  | MCPApproveExecutionEvent
-  | ToolNotificationEvent;
-
 export type MCPSuccessEvent = {
   type: "tool_success";
   created: number;
@@ -61,15 +56,6 @@ export type MCPErrorEvent = {
     message: string;
     metadata: Record<string, string | number | boolean> | null;
   };
-};
-
-export type MCPParamsEvent = {
-  type: "tool_params";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  // TODO: cleanup this type from the public API users.
-  action: AgentMCPActionType & { type: "tool_action"; output: null };
 };
 
 /**

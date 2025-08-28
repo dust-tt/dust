@@ -1,4 +1,4 @@
-import type { AgentActionRunningEvents } from "@app/lib/api/actions/error";
+import type { AgentActionRunningEvents } from "@app/lib/actions/mcp";
 import type {
   AgentActionSuccessEvent,
   AgentErrorEvent,

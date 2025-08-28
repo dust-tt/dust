@@ -3,6 +3,7 @@ import { removeNulls } from "@dust-tt/client";
 import type {
   ActionBaseParams,
   MCPApproveExecutionEvent,
+  MCPParamsEvent,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
 import { MCPActionType } from "@app/lib/actions/mcp";
@@ -18,7 +19,6 @@ import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import type {
   MCPErrorEvent,
-  MCPParamsEvent,
   MCPSuccessEvent,
 } from "@app/lib/api/actions/error";
 import { handleMCPActionError } from "@app/lib/api/actions/error";

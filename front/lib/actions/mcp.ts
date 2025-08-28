@@ -48,7 +48,10 @@ import {
   isPersonalAuthenticationRequiredErrorContent,
   removeNulls,
 } from "@app/types";
-import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type {
+  AgentMCPActionType,
+  AgentMCPActionWithOutputType,
+} from "@app/types/actions";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;
@@ -371,6 +374,20 @@ export function buildToolSpecification(
     inputSchema: filteredInputSchema,
   };
 }
+
+export type MCPParamsEvent = {
+  type: "tool_params";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  // TODO: cleanup this type from the public API users.
+  action: AgentMCPActionType & { type: "tool_action"; output: null };
+};
+
+export type AgentActionRunningEvents =
+  | MCPParamsEvent
+  | MCPApproveExecutionEvent
+  | ToolNotificationEvent;
 
 /**
  * Creates an MCP action in the database and returns both the DB record and the type object.
