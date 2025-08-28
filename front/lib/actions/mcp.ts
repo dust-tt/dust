@@ -36,8 +36,8 @@ import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type {
   ActionGeneratedFileType,
   AgentLoopRunContextType,
+  StepContext,
 } from "@app/lib/actions/types";
-import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
   DataSourceConfiguration,
@@ -69,7 +69,10 @@ import {
   isPersonalAuthenticationRequiredErrorContent,
   removeNulls,
 } from "@app/types";
-import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type {
+  AgentMCPActionType,
+  AgentMCPActionWithOutputType,
+} from "@app/types/actions";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;
@@ -241,7 +244,6 @@ type MCPSuccessEvent = {
   configurationId: string;
   messageId: string;
   action: AgentMCPActionType & {
-    type: "tool_action";
     output: CallToolResult["content"];
   };
 };
@@ -608,7 +610,6 @@ export async function* runToolWithStreaming(
     action: {
       ...action.toJSON(),
       output: removeNulls(outputItems.map(hideFileFromActionOutput)),
-      type: "tool_action",
     },
   };
 }
@@ -658,20 +659,6 @@ type HandleErrorParams = {
   status: ToolExecutionStatus;
 };
 
-// Yields tool_error (stops conversation) - for auth/validation failures.
-type YieldAsErrorParams = BaseErrorParams & {
-  yieldAsError: true;
-  errorCode?: string;
-  errorMetadata?: Record<string, string | number | boolean> | null;
-};
-
-// Yields tool_success (continues conversation) - for timeouts/denials/execution errors.
-type YieldAsSuccessParams = BaseErrorParams & {
-  yieldAsError: false;
-};
-
-type HandleErrorParams = YieldAsErrorParams | YieldAsSuccessParams;
-
 /**
  * Handles MCP action errors with type-safe discriminated union based on error severity.
  */
@@ -706,7 +693,6 @@ export async function handleMCPActionError(
     action: {
       ...action.toJSON(),
       output: [outputContent],
-      type: "tool_action",
     },
   };
 }

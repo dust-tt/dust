@@ -315,7 +315,6 @@ export type AgentActionSuccessEvent = {
   configurationId: string;
   messageId: string;
   action: AgentMCPActionType & {
-    type: "tool_action";
     output: CallToolResult["content"];
   };
 };
