@@ -53,7 +53,7 @@ export async function createOrUpdateAgentScheduleWorkflow({
     return new Err(new Error("Workspace ID is required"));
   }
 
-  const scheduleId = makeScheduleId(workspace.sId, trigger.sId);
+  const scheduleId = makeScheduleId(workspace.sId, trigger.sId());
 
   const childLogger = logger.child({
     workspaceId: workspace.sId,
