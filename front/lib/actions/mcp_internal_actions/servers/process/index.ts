@@ -20,11 +20,7 @@ import {
   ConfigurableToolInputSchemas,
   JsonSchemaSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import {
-  findTagsSchema,
-  makeFindTagsDescription,
-  makeFindTagsTool,
-} from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
+import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
   getDataSourceConfiguration,
   shouldAutoGenerateTags,
@@ -327,12 +323,10 @@ function createServer(
       toolImplementation
     );
 
-    server.tool(
-      FIND_TAGS_TOOL_NAME,
-      makeFindTagsDescription(PROCESS_TOOL_NAME),
-      findTagsSchema,
-      makeFindTagsTool(auth)
-    );
+    registerFindTagsTool(auth, server, agentLoopContext, {
+      name: FIND_TAGS_TOOL_NAME,
+      extraDescription: `This tool is meant to be used before the ${PROCESS_TOOL_NAME} tool.`,
+    });
   } else {
     server.tool(
       PROCESS_TOOL_NAME,
