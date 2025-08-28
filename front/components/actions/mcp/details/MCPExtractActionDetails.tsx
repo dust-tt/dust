@@ -17,10 +17,11 @@ import {
   isExtractQueryResourceType,
   isExtractResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
 
 interface MCPExtractActionQueryProps {
-  action: MCPActionType;
+  action: MCPActionType | AgentMCPActionWithOutputType;
   queryResource?: {
     text: string;
     mimeType: string;

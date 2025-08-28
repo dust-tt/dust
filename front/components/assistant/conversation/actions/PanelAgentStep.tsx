@@ -2,13 +2,14 @@ import { ContentMessage, Markdown, Separator } from "@dust-tt/sparkle";
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import type { LightWorkspaceType, ParsedContentItem } from "@app/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 interface AgentStepProps {
   stepNumber: number;
   entries?: ParsedContentItem[];
   reasoningContent?: string;
   isStreaming?: boolean;
-  streamingActions?: Array<{ type: "tool_action"; id: number }>;
+  streamingActions?: AgentMCPActionWithOutputType[];
   streamActionProgress: Map<number, any>;
   owner: LightWorkspaceType;
   messageStatus: "created" | "succeeded" | "failed" | "cancelled";

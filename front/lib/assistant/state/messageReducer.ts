@@ -7,7 +7,7 @@ import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/cit
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import type { LightAgentMessageWithActionsType, ModelId } from "@app/types";
 import { assertNever } from "@app/types";
-import type { AgentMCPActionType } from "@app/types/actions";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 export type AgentStateClassification =
   | "thinking"
@@ -43,7 +43,7 @@ type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
 
 function updateMessageWithAction(
   m: LightAgentMessageWithActionsType,
-  action: AgentMCPActionType
+  action: AgentMCPActionWithOutputType
 ): LightAgentMessageWithActionsType {
   return {
     ...m,
