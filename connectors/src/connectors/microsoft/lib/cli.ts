@@ -13,6 +13,7 @@ import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
 import { DRIVE_ITEM_EXPANDS_AND_SELECTS } from "@connectors/connectors/microsoft/lib/types";
 import {
   getColumnsFromListItem,
+  markInternalIdAsSkipped,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
 import { syncFiles } from "@connectors/connectors/microsoft/temporal/activities";
@@ -419,27 +420,13 @@ export const microsoft = async ({
           file.parentReference
         );
 
-        const existingFile = await MicrosoftNodeResource.fetchByInternalId(
-          connector.id,
-          internalId
-        );
-
-        if (existingFile) {
-          await existingFile.update({
-            skipReason: args.reason || "blacklisted",
-          });
-        } else {
-          await MicrosoftNodeResource.makeNew({
-            internalId: internalId,
-            connectorId: connector.id,
-            nodeType: "file",
-            name: file.name ?? "unknown",
-            mimeType: file.file?.mimeType ?? "unknown",
-            parentInternalId,
-            skipReason: args.reason || "blacklisted",
-            webUrl: file.webUrl ?? null,
-          });
-        }
+        await markInternalIdAsSkipped({
+          internalId,
+          connectorId: connector.id,
+          parentInternalId,
+          reason: args.reason,
+          file,
+        });
       }
 
       return { success: true };
