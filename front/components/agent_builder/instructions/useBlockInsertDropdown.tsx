@@ -14,6 +14,21 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 type CompatibleEditor = CoreEditor | ReactEditor;
 
+function isSelectionInInstructionBlock(
+  editor: ReactEditor | CoreEditor | null
+) {
+  if (!editor || ("isDestroyed" in editor && editor.isDestroyed)) {
+    return false;
+  }
+  const $from = (editor as ReactEditor).state.selection.$from;
+  for (let d = $from.depth; d >= 0; d--) {
+    if ($from.node(d).type.name === "instructionBlock") {
+      return true;
+    }
+  }
+  return false;
+}
+
 export interface BlockSuggestion {
   id: string;
   label: string;
@@ -85,20 +100,32 @@ export const useBlockInsertDropdown = (
   const currentStateRef = useRef(state);
   currentStateRef.current = state;
 
-  const filterSuggestions = useCallback((query: string) => {
-    if (!query) {
-      return BLOCK_SUGGESTIONS;
-    }
+  const filterSuggestions = useCallback(
+    (query: string, isInInstructionBlock: boolean) => {
+      let suggestions = BLOCK_SUGGESTIONS;
 
-    const lowerQuery = query.toLowerCase();
-    return BLOCK_SUGGESTIONS.filter((item) =>
-      item.label.toLowerCase().includes(lowerQuery)
-    );
-  }, []);
+      // Filter out XML block suggestion if we're already inside an instruction block
+      if (isInInstructionBlock) {
+        suggestions = BLOCK_SUGGESTIONS.filter(
+          (item) => item.id !== "xml-block"
+        );
+      }
+
+      if (!query) {
+        return suggestions;
+      }
+
+      const lowerQuery = query.toLowerCase();
+      return suggestions.filter((item) =>
+        item.label.toLowerCase().includes(lowerQuery)
+      );
+    },
+    []
+  );
 
   const updateQuery = useCallback(
-    (query: string) => {
-      const filtered = filterSuggestions(query);
+    (query: string, isInInstructionBlock: boolean) => {
+      const filtered = filterSuggestions(query, isInInstructionBlock);
       setState((prev) => ({
         ...prev,
         query,
@@ -150,11 +177,6 @@ export const useBlockInsertDropdown = (
         if ($from.parent.type.name === "codeBlock") {
           return false;
         }
-        for (let d = $from.depth; d >= 0; d--) {
-          if ($from.node(d).type.name === "instructionBlock") {
-            return false;
-          }
-        }
 
         return true;
       },
@@ -174,7 +196,10 @@ export const useBlockInsertDropdown = (
         );
       },
       items: ({ query }: { query: string }) => {
-        return filterSuggestions(query);
+        const isInInstructionBlock = isSelectionInInstructionBlock(
+          editorRef.current
+        );
+        return filterSuggestions(query, isInInstructionBlock);
       },
       render: () => {
         return {
@@ -190,7 +215,10 @@ export const useBlockInsertDropdown = (
               return;
             }
 
-            updateQuery(props.query || "");
+            updateQuery(
+              props.query || "",
+              isSelectionInInstructionBlock(editorRef.current)
+            );
             setState((prev) => ({
               ...prev,
               isOpen: true,
@@ -206,7 +234,10 @@ export const useBlockInsertDropdown = (
 
             const rect = props.clientRect();
             if (rect) {
-              updateQuery(props.query || "");
+              updateQuery(
+                props.query || "",
+                isSelectionInInstructionBlock(editorRef.current)
+              );
               setState((prev) => ({
                 ...prev,
                 triggerRect: rect,
@@ -283,7 +314,13 @@ export const useBlockInsertDropdown = (
         };
       },
     };
-  }, [closeDropdown, filterSuggestions, selectSuggestion, updateQuery]);
+  }, [
+    closeDropdown,
+    filterSuggestions,
+    selectSuggestion,
+    updateQuery,
+    editorRef,
+  ]);
 
   return {
     isOpen: state.isOpen,
