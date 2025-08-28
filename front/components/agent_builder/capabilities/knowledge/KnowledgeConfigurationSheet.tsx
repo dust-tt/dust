@@ -329,7 +329,6 @@ function KnowledgeConfigurationSheetContent({
   }, [mcpServerView]);
 
   const { owner } = useAgentBuilderContext();
-  const { supportedDataSourceViews } = useDataSourceViewsContext();
 
   const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
@@ -384,13 +383,7 @@ function KnowledgeConfigurationSheetContent({
         : "Choose the data sources to include in your knowledge base",
       icon: undefined,
       noScroll: true,
-      content: (
-        <DataSourceBuilderSelector
-          dataSourceViews={supportedDataSourceViews}
-          owner={owner}
-          viewType="all"
-        />
-      ),
+      content: <DataSourceBuilderSelector owner={owner} viewType="all" />,
       footerContent: hasSourceSelection ? <KnowledgeFooter /> : undefined,
     },
     {
