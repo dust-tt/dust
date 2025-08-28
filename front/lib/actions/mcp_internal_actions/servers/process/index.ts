@@ -216,12 +216,12 @@ function makeExtractInformationFromDocumentsTool(
   );
 }
 
-export function registerProcessTool(
+function createServer(
   auth: Authenticator,
-  server: McpServer,
-  agentLoopContext: AgentLoopContextType | undefined,
-  { name, extraDescription }: { name: string; extraDescription?: string }
-) {
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
+  const server = makeInternalMCPServer("extract_data");
+
   const isJsonSchemaConfigured =
     (agentLoopContext?.listToolsContext &&
       isServerSideMCPServerConfiguration(
@@ -301,15 +301,11 @@ export function registerProcessTool(
           .default(null),
   };
 
-  const baseDescription =
+  const toolDescription =
     "Extract structured information from documents in reverse chronological order, according to the needs described by the objective and specified by a" +
     (isJsonSchemaConfigured ? " user-configured" : "") +
     " JSON schema. This tool retrieves content" +
     " from data sources already pre-configured by the user, ensuring the latest information is included.";
-
-  const toolDescription = extraDescription
-    ? baseDescription + " " + extraDescription
-    : baseDescription;
 
   const toolImplementation = makeExtractInformationFromDocumentsTool(
     auth,
@@ -318,7 +314,7 @@ export function registerProcessTool(
 
   if (areTagsDynamic) {
     server.tool(
-      name,
+      PROCESS_TOOL_NAME,
       toolDescription,
       {
         ...commonInputsSchema,
@@ -329,22 +325,15 @@ export function registerProcessTool(
 
     registerFindTagsTool(auth, server, agentLoopContext, {
       name: FIND_TAGS_TOOL_NAME,
-      extraDescription: `for use with ${name}`,
     });
   } else {
-    server.tool(name, toolDescription, commonInputsSchema, toolImplementation);
+    server.tool(
+      PROCESS_TOOL_NAME,
+      toolDescription,
+      commonInputsSchema,
+      toolImplementation
+    );
   }
-}
-
-function createServer(
-  auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer("extract_data");
-
-  registerProcessTool(auth, server, agentLoopContext, {
-    name: PROCESS_TOOL_NAME,
-  });
 
   return server;
 }
