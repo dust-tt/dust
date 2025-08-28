@@ -128,9 +128,7 @@ function queueFocusInsideCurrentInstructionBlock(editor: Editor): void {
 
 // Define consistent heading styles to match the main editor
 const instructionBlockContentStyles = cn(
-  "prose prose-sm mt-2",
-  // Add left padding to align with the chip (chevron button width + gap)
-  "ml-6",
+  "prose prose-sm",
   // Override for all headings to match the editor's heading style
   "[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:text-xl",
   "[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:font-semibold",
@@ -199,24 +197,25 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
   return (
     <NodeViewWrapper className="my-2">
       <div className={containerClasses} onClick={handleBlockClick}>
-        <div
-          className="flex select-none items-center gap-1"
-          contentEditable={false}
-        >
+        <div className="flex items-start gap-1">
           <button
             onClick={handleToggle}
-            className="rounded p-0.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="mt-[3px] rounded p-0.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
             type="button"
+            contentEditable={false}
           >
             <ChevronIcon className="h-4 w-4" />
           </button>
-          <Chip size="mini" className="bg-gray-100 dark:bg-gray-800">
-            {displayType.toUpperCase() || " "}
-          </Chip>
+          {isCollapsed ? (
+            <div contentEditable={false}>
+              <Chip size="mini" className="bg-gray-100 dark:bg-gray-800">
+                {displayType.toUpperCase() || " "}
+              </Chip>
+            </div>
+          ) : (
+            <NodeViewContent className={instructionBlockContentStyles} as="div" />
+          )}
         </div>
-        {!isCollapsed && (
-          <NodeViewContent className={instructionBlockContentStyles} as="div" />
-        )}
       </div>
     </NodeViewWrapper>
   );
