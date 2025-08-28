@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
+import { findWorkOSOrganizationsForUserId } from "@app/lib/api/workos/organization_membership";
 import {
   Authenticator,
   getAPIKey,
@@ -524,6 +525,14 @@ export function withTokenAuthentication<T>(
           user,
           isFromExtension
         );
+
+        const orgId = workOSDecoded.value.org_id;
+        if (orgId && "workspaces" in userWithWorkspaces) {
+          const workspace = userWithWorkspaces.workspaces.find(
+            (w) => w.workOSOrganizationId === orgId
+          );
+          userWithWorkspaces.selectedWorkspace = workspace?.sId;
+        }
 
         return await handler(req, res, userWithWorkspaces);
       } catch (error) {

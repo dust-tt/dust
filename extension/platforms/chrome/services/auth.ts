@@ -97,11 +97,16 @@ export class ChromeAuthService extends AuthService {
         return res;
       }
       const workspaces = res.value.user.workspaces;
+
+      const selectedWorkspace =
+        workspaces.find((w) => w.sId === res.value.user.selectedWorkspace) ||
+        workspaces[0];
+
       const user = await this.saveUser({
         ...res.value.user,
         ...connectionDetails,
         dustDomain,
-        selectedWorkspace: workspaces.length === 1 ? workspaces[0].sId : null,
+        selectedWorkspace: selectedWorkspace?.sId ?? null,
       });
       datadogLogs.setUser({
         id: user.sId,
