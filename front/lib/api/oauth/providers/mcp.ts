@@ -233,6 +233,7 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
           client_id: connection.metadata.client_id,
           token_endpoint: connection.metadata.token_endpoint,
           authorization_endpoint: connection.metadata.authorization_endpoint,
+          scope: connection.metadata.scope,
           code_verifier,
           code_challenge,
           ...restConfig,
