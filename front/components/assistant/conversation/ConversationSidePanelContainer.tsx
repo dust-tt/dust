@@ -38,9 +38,9 @@ export default function ConversationSidePanelContainer({
       <div
         className={cn(
           // Smooth transition animation similar to sidebar
-          "flex-0 overflow-hidden rounded-xl bg-background shadow-lg transition-all duration-300 ease-out",
+          "flex-0 overflow-hidden rounded-xl bg-background shadow-md transition-all duration-300 ease-out",
           !currentPanel && "hidden w-0 md:block",
-          currentPanel && "w-100",
+          currentPanel && "w-[30%]",
           "md:relative"
         )}
       >

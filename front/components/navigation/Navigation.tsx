@@ -29,6 +29,7 @@ interface NavigationProps {
   subNavigation?: SidebarNavigation[] | null;
   isNavigationBarOpen: boolean;
   setNavigationBarOpen: (isOpen: boolean) => void;
+  currentPanel: boolean;
 }
 
 export function Navigation({
@@ -39,6 +40,7 @@ export function Navigation({
   subNavigation,
   isNavigationBarOpen,
   setNavigationBarOpen,
+  currentPanel,
 }: NavigationProps) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
 
@@ -53,7 +55,7 @@ export function Navigation({
       className={cn(
         "flex shrink-0 overflow-x-hidden",
         "rounded-xl",
-        "shadow-lg"
+        "shadow-md"
       )}
     >
       {/* Mobile sidebar */}
@@ -88,7 +90,7 @@ export function Navigation({
       <div
         className={cn(
           "transition-width hidden flex-none overflow-hidden duration-150 ease-out lg:flex lg:flex-col",
-          isNavigationBarOpen ? "w-80" : "w-0"
+          currentPanel ? "w-0 md:w-80" : isNavigationBarOpen ? "w-80" : "w-0"
         )}
       >
         <div className="hidden flex-1 bg-muted-background dark:bg-muted-background-night lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">

@@ -92,22 +92,23 @@ export default function AppContentLayout({
       <Head>
         <title>{pageTitle || `Dust - ${owner.name}`}</title>
       </Head>
-      <div className="flex h-full w-full flex-row gap-4 bg-muted p-4">
+      <div className="flex h-full w-full flex-row gap-4 p-4">
         <Navigation
           hideSidebar={hideSidebar}
-          isNavigationBarOpen={isNavigationBarOpen && !currentPanel}
+          isNavigationBarOpen={isNavigationBarOpen}
           setNavigationBarOpen={setIsNavigationBarOpen}
           owner={owner}
           subscription={subscription}
           navChildren={navChildren}
           subNavigation={subNavigation}
+          currentPanel={!!currentPanel}
         />
         <div
           className={cn(
             "relative h-full w-full flex-1 overflow-hidden",
             "bg-background text-foreground",
             "dark:bg-background-night dark:text-foreground-night",
-            "rounded-xl shadow-lg"
+            "rounded-xl shadow-md"
           )}
         >
           {/* Temporary measure to preserve title existence on smaller screens.
