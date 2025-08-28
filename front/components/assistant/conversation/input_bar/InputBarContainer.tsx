@@ -419,7 +419,7 @@ const InputBarContainer = ({
                   handleDeepResearchToggle();
                 }}
                 className={classNames(
-                  "ml-1 s-transition-none",
+                  "ml-1 s-!transition-none",
                   isInDeepMode &&
                     [
                       "s-bg-blue-100 s-text-blue-900",
