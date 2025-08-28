@@ -1,4 +1,4 @@
-import { ArrowUpIcon, Button, SparklesIcon } from "@dust-tt/sparkle";
+import { ArrowUpIcon, Button, TelescopeIcon } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import React, {
@@ -413,7 +413,7 @@ const InputBarContainer = ({
             {showDeepResearchToggle && (
               <Button
                 size="xs"
-                icon={SparklesIcon}
+                icon={TelescopeIcon}
                 variant="ghost"
                 onClick={() => {
                   handleDeepResearchToggle();
