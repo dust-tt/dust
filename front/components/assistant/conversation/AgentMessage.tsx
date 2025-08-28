@@ -102,7 +102,7 @@ export function AgentMessage({
     message.configuration.sId as GLOBAL_AGENTS_SID
   );
 
-  const { showValidationDialog, enqueueValidation } =
+  const { showBlockedActionsDialog, enqueueBlockedAction } =
     useActionValidationContext();
 
   const { mutateMessage } = useConversationMessage({
@@ -123,10 +123,12 @@ export function AgentMessage({
         const eventType = eventPayload.data.type;
 
         if (eventType === "tool_approve_execution") {
-          showValidationDialog();
-          enqueueValidation({
+          showBlockedActionsDialog();
+          enqueueBlockedAction({
             message,
-            validationRequest: {
+            blockedAction: {
+              status: "blocked_validation_required",
+              authorizationInfo: null,
               messageId: eventPayload.data.messageId,
               conversationId: eventPayload.data.conversationId,
               actionId: eventPayload.data.actionId,
@@ -137,7 +139,7 @@ export function AgentMessage({
           });
         }
       },
-      [showValidationDialog, enqueueValidation, message]
+      [showBlockedActionsDialog, enqueueBlockedAction, message]
     ),
     streamId: `message-${message.sId}`,
   });
