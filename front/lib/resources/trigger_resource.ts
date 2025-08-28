@@ -79,7 +79,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   static async fetchByIds(auth: Authenticator, sIds: string[]) {
     const ids = sIds
       .map((sId) => getResourceIdFromSId(sId))
-      .filter((id) => id !== null);
+      .filter((id): id is number => id !== null);
 
     return this.baseFetch(auth, {
       where: {
