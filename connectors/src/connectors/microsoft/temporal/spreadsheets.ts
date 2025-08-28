@@ -169,7 +169,7 @@ async function processSheet({
       internalId: worksheetInternalId,
       connectorId: connector.id,
       parentInternalId: spreadsheetInternalId,
-      reason: "Could not fetch sheet content",
+      reason: "error_fetching_content",
       file: spreadsheet,
     });
 
