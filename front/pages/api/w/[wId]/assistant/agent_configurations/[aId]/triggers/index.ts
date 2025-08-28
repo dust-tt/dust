@@ -5,7 +5,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -155,9 +154,7 @@ async function handler(
           resultTriggers.push(updatedTrigger.value.toJSON());
           currentTriggersMap.delete(triggerData.sId);
         } else {
-          const sId = generateRandomModelSId();
           const newTrigger = await TriggerResource.makeNew(auth, {
-            sId,
             workspaceId: workspace.id,
             agentConfigurationId,
             name: validatedTrigger.name,
