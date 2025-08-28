@@ -208,8 +208,12 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
             <ChevronIcon className="h-4 w-4" />
           </button>
           {isCollapsed ? (
-            <div contentEditable={false}>
-              <Chip size="mini" className="bg-gray-100 dark:bg-gray-800">
+            <div 
+              contentEditable={false} 
+              className="cursor-pointer mt-[0.5px]"
+              onClick={handleToggle}
+            >
+              <Chip size="mini" className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                 {displayType ? displayType.toUpperCase() : " "}
               </Chip>
             </div>
