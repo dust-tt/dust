@@ -35,10 +35,11 @@ import {
   CONFIGURATION_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
+import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import {
-  DataSourceBuilderProvider,
-  useDataSourceBuilderContext,
-} from "@app/components/data_source_view/context/DataSourceBuilderContext";
+  KnowledgePageProvider,
+  useKnowledgePageContext,
+} from "@app/components/data_source_view/context/PageContext";
 import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
 import { SEARCH_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -277,16 +278,15 @@ function KnowledgeConfigurationSheetForm({
 
   return (
     <FormProvider {...form}>
-      <DataSourceBuilderProvider
-        spaces={spaces}
-        initialPageId={getInitialPageId(isEditing)}
-      >
-        <KnowledgeConfigurationSheetContent
-          onSave={form.handleSubmit(handleSave)}
-          onClose={onClose}
-          getAgentInstructions={getAgentInstructions}
-          isEditing={isEditing}
-        />
+      <DataSourceBuilderProvider spaces={spaces}>
+        <KnowledgePageProvider initialPageId={getInitialPageId(isEditing)}>
+          <KnowledgeConfigurationSheetContent
+            onSave={form.handleSubmit(handleSave)}
+            onClose={onClose}
+            getAgentInstructions={getAgentInstructions}
+            isEditing={isEditing}
+          />
+        </KnowledgePageProvider>
       </DataSourceBuilderProvider>
     </FormProvider>
   );
@@ -305,7 +305,7 @@ function KnowledgeConfigurationSheetContent({
   getAgentInstructions,
   isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
-  const { currentPageId, setSheetPageId } = useDataSourceBuilderContext();
+  const { currentPageId, setSheetPageId } = useKnowledgePageContext();
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
