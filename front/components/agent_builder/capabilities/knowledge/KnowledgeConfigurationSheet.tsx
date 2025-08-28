@@ -286,6 +286,7 @@ function KnowledgeConfigurationSheetForm({
           onSave={form.handleSubmit(handleSave)}
           onClose={onClose}
           getAgentInstructions={getAgentInstructions}
+          isEditing={isEditing}
         />
       </DataSourceBuilderProvider>
     </FormProvider>
@@ -296,12 +297,14 @@ interface KnowledgeConfigurationSheetContentProps {
   onSave: () => void;
   onClose: () => void;
   getAgentInstructions: () => string;
+  isEditing: boolean;
 }
 
 function KnowledgeConfigurationSheetContent({
   onSave,
   onClose,
   getAgentInstructions,
+  isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
   const { currentPageId, setSheetPageId } = useDataSourceBuilderContext();
 
@@ -337,13 +340,18 @@ function KnowledgeConfigurationSheetContent({
   const getFooterButtons = () => {
     const isDataSourcePage =
       currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
+    const isConfigurationPage =
+      currentPageId === CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION;
 
     return {
       leftButton: {
-        label: isDataSourcePage ? "Cancel" : "Back",
+        label:
+          isDataSourcePage || (isConfigurationPage && isEditing)
+            ? "Cancel"
+            : "Back",
         variant: "outline",
         onClick: () => {
-          if (isDataSourcePage) {
+          if (isDataSourcePage || (isConfigurationPage && isEditing)) {
             onClose();
           } else {
             setSheetPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
