@@ -579,7 +579,6 @@ export async function* runToolWithStreaming(
       actionBaseParams,
       status,
       errorMessage,
-      yieldAsError: false,
     });
     return;
   }
@@ -649,7 +648,7 @@ export async function createMCPAction(
   });
 }
 
-type BaseErrorParams = {
+type HandleErrorParams = {
   action: AgentMCPActionResource;
   actionBaseParams: ActionBaseParams;
   agentConfiguration: AgentConfigurationType;
@@ -657,21 +656,6 @@ type BaseErrorParams = {
   errorMessage: string;
   status: ToolExecutionStatus;
 };
-
-// Yields tool_error (stops conversation) - for auth/validation failures.
-type YieldAsErrorParams = BaseErrorParams & {
-  yieldAsError: true;
-  errorCode?: string;
-  errorMetadata?: Record<string, string | number | boolean> | null;
-};
-
-// Yields tool_success (continues conversation) - for timeouts/denials/execution errors.
-type YieldAsSuccessParams = BaseErrorParams & {
-  yieldAsError: false;
-  actionBaseParams: ActionBaseParams;
-};
-
-type HandleErrorParams = YieldAsErrorParams | YieldAsSuccessParams;
 
 /**
  * Handles MCP action errors with type-safe discriminated union based on error severity.
@@ -693,24 +677,6 @@ export async function handleMCPActionError(
     agentMCPActionId: action.id,
     content: outputContent,
   });
-
-  // Yields tool_error to stop conversation.
-  if (params.yieldAsError) {
-    // Update the action to mark it as having an error.
-    await action.updateStatus("errored");
-
-    return {
-      type: "tool_error",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: params.errorCode ?? "tool_error",
-        message: errorMessage,
-        metadata: params.errorMetadata ?? null,
-      },
-    };
-  }
 
   // If the tool is not already in a final state, we set it to errored (could be denied).
   if (!isToolExecutionStatusFinal(status)) {
