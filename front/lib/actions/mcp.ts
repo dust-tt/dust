@@ -31,10 +31,7 @@ import {
   hideFileFromActionOutput,
   rewriteContentForModel,
 } from "@app/lib/actions/mcp_utils";
-import type {
-  ToolExecutionBlockedStatus,
-  ToolExecutionStatus,
-} from "@app/lib/actions/statuses";
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type {
   ActionGeneratedFileType,
@@ -181,14 +178,12 @@ export type ToolExecution = {
   };
 };
 
-export type BlockedToolExecution = ToolExecution & {
-  status: ToolExecutionBlockedStatus;
-} & (
+export type BlockedToolExecution = ToolExecution &
+  (
     | {
-        status: Exclude<
-          ToolExecutionBlockedStatus,
-          "blocked_authentication_required"
-        >;
+        status:
+          | "blocked_validation_required"
+          | "blocked_child_action_input_required";
         authorizationInfo: AuthorizationInfo | null;
       }
     | {
@@ -196,8 +191,8 @@ export type BlockedToolExecution = ToolExecution & {
         metadata: MCPValidationMetadataType & {
           mcpServerId: string;
           mcpServerDisplayName: string;
-          authorizationInfo: AuthorizationInfo;
         };
+        authorizationInfo: AuthorizationInfo;
       }
   );
 

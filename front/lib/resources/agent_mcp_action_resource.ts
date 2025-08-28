@@ -28,6 +28,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { removeNulls } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
@@ -264,56 +265,69 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         ? mcpServerViewMap.get(action.toolConfiguration.mcpServerViewId)
         : null;
 
+      const authorizationInfo =
+        mcpServerView?.toJSON().server.authorization ?? null;
+
+      const mcpServerId = mcpServerView?.mcpServerId;
+      const mcpServerDisplayName = mcpServerView
+        ? getMcpServerViewDisplayName(mcpServerView.toJSON())
+        : undefined;
+
+      const baseActionParams: Omit<
+        BlockedToolExecution,
+        "status" | "authorizationInfo"
+      > = {
+        messageId: agentMessage.message.sId,
+        conversationId,
+        actionId: this.modelIdToSId({
+          id: action.id,
+          workspaceId: owner.id,
+        }),
+        inputs: action.augmentedInputs,
+        stake: action.toolConfiguration.permission,
+        metadata: {
+          toolName: action.toolConfiguration.originalName,
+          mcpServerName: action.toolConfiguration.mcpServerName,
+          agentName: agentConfiguration.name,
+          icon: action.toolConfiguration.icon,
+        },
+      };
+
       if (action.status === "blocked_authentication_required") {
-        const authorizationInfo = mcpServerView?.toJSON().server.authorization;
-        assert(mcpServerView, "MCP server view not found.");
-        assert(authorizationInfo, "Authorization not found.");
+        if (!mcpServerId || !mcpServerDisplayName || !authorizationInfo) {
+          logger.warn(
+            {
+              actionId: action.id,
+              conversationId,
+              messageId: agentMessage.message.sId,
+              workspaceId: owner.id,
+            },
+            `MCP server view or authorization info not found for blocked action ${action.id}`
+          );
+
+          continue;
+        }
 
         blockedActionsList.push({
-          messageId: agentMessage.message.sId,
-          conversationId,
-          actionId: this.modelIdToSId({
-            id: action.id,
-            workspaceId: owner.id,
-          }),
-          inputs: action.augmentedInputs,
-          stake: action.toolConfiguration.permission,
+          ...baseActionParams,
           status: action.status,
+          authorizationInfo,
           metadata: {
-            toolName: action.toolConfiguration.originalName,
-            mcpServerName: action.toolConfiguration.mcpServerName,
-            agentName: agentConfiguration.name,
-            icon: action.toolConfiguration.icon,
-            mcpServerId: mcpServerView.mcpServerId,
-            mcpServerDisplayName: getMcpServerViewDisplayName(
-              mcpServerView.toJSON()
-            ),
-            authorizationInfo,
+            ...baseActionParams.metadata,
+            mcpServerId,
+            mcpServerDisplayName,
           },
         });
       } else {
         blockedActionsList.push({
-          messageId: agentMessage.message.sId,
-          conversationId,
-          actionId: this.modelIdToSId({
-            id: action.id,
-            workspaceId: owner.id,
-          }),
-          inputs: action.augmentedInputs,
-          stake: action.toolConfiguration.permission,
-          metadata: {
-            toolName: action.toolConfiguration.originalName,
-            mcpServerName: action.toolConfiguration.mcpServerName,
-            agentName: agentConfiguration.name,
-            icon: action.toolConfiguration.icon,
-            mcpServerId: mcpServerView?.mcpServerId,
-            mcpServerDisplayName: mcpServerView
-              ? getMcpServerViewDisplayName(mcpServerView.toJSON())
-              : undefined,
-          },
+          ...baseActionParams,
           status: action.status,
-          authorizationInfo:
-            mcpServerView?.toJSON().server.authorization ?? null,
+          metadata: {
+            ...baseActionParams.metadata,
+            mcpServerId,
+            mcpServerDisplayName,
+          },
+          authorizationInfo: null,
         });
       }
     }

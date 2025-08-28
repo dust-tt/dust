@@ -22,13 +22,9 @@ import {
 
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { useValidateAction } from "@app/hooks/useValidateAction";
-import type {
-  MCPValidationMetadataType,
-  MCPValidationOutputType,
-} from "@app/lib/actions/constants";
+import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getIcon } from "@app/lib/actions/mcp_icons";
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
 import { useCreatePersonalConnection } from "@app/lib/swr/mcp_servers";
 import type {
@@ -40,22 +36,15 @@ import type {
 } from "@app/types";
 import { asDisplayName } from "@app/types";
 
-type AuthenticationRequiredBlockedAction = BlockedToolExecution & {
-  status: "blocked_authentication_required";
-  metadata: MCPValidationMetadataType & {
-    mcpServerId: string;
-    mcpServerDisplayName: string;
-    authorizationInfo: AuthorizationInfo;
-  };
-};
+type AuthenticationRequiredBlockedAction = Extract<
+  BlockedToolExecution,
+  { status: "blocked_authentication_required" }
+>;
 
 function isAuthenticationRequiredBlockedAction(
   blockedAction: BlockedToolExecution
 ): blockedAction is AuthenticationRequiredBlockedAction {
-  return (
-    blockedAction.status === "blocked_authentication_required" &&
-    "authorizationInfo" in blockedAction.metadata
-  );
+  return blockedAction.status === "blocked_authentication_required";
 }
 
 interface AuthenticationDialogPageProps {
@@ -88,9 +77,9 @@ function AuthenticationDialogPage({
       const success = await createPersonalConnection({
         mcpServerId: blockedAction.metadata.mcpServerId,
         mcpServerDisplayName: blockedAction.metadata.mcpServerDisplayName,
-        provider: blockedAction.metadata.authorizationInfo.provider,
+        provider: blockedAction.authorizationInfo.provider,
         useCase: "personal_actions",
-        scope: blockedAction.metadata.authorizationInfo.scope,
+        scope: blockedAction.authorizationInfo.scope,
       });
       if (success) {
         onConnectionStateChange(blockedAction.actionId, "connected");
@@ -98,12 +87,7 @@ function AuthenticationDialogPage({
         onConnectionStateChange(blockedAction.actionId, "idle");
       }
     },
-    [
-      authActions,
-      connectionStates,
-      createPersonalConnection,
-      onConnectionStateChange,
-    ]
+    [createPersonalConnection, onConnectionStateChange]
   );
 
   return (
