@@ -3,13 +3,13 @@ import { useState } from "react";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { LightWorkspaceType } from "@app/types";
 
-export function useCanvasSharingToggle({ owner }: { owner: WorkspaceType }) {
+export function useCanvasesSharingToggle({ owner }: { owner: WorkspaceType }) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
 
   const isEnabled = owner.metadata?.allowCanvasFileSharing !== false;
 
-  const toggleCanvasSharing = async () => {
+  const doToggleCanvasesSharing = async () => {
     setIsChanging(true);
     try {
       const res = await fetch(`/api/w/${owner.sId}`, {
@@ -40,6 +40,6 @@ export function useCanvasSharingToggle({ owner }: { owner: WorkspaceType }) {
   return {
     isEnabled,
     isChanging,
-    toggleCanvasSharing,
+    doToggleCanvasesSharing,
   };
 }

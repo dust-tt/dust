@@ -26,7 +26,7 @@ import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
-import { useCanvasSharingToggle } from "@app/hooks/useCanvasSharingToggle";
+import { useCanvasesSharingToggle } from "@app/hooks/useCanvasesSharingToggle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -407,9 +407,8 @@ function SlackBotToggle({
 }
 
 function CanvasSharingToggle({ owner }: { owner: WorkspaceType }) {
-  const { isEnabled, isChanging, toggleCanvasSharing } = useCanvasSharingToggle(
-    { owner }
-  );
+  const { isEnabled, isChanging, doToggleCanvasesSharing } =
+    useCanvasesSharingToggle({ owner });
 
   return (
     <ContextItem.List>
@@ -423,7 +422,7 @@ function CanvasSharingToggle({ owner }: { owner: WorkspaceType }) {
           <SliderToggle
             selected={isEnabled}
             disabled={isChanging}
-            onClick={toggleCanvasSharing}
+            onClick={doToggleCanvasesSharing}
           />
         }
       />
