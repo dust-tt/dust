@@ -953,7 +953,7 @@ export function DataSourceViewSelector({
             <Button
               variant="ghost"
               size="xs"
-              disabled={rootNodes.length === 0}
+              disabled={rootNodes.length === 0 || isLoadingMore}
               className="mr-4 text-xs"
               label={hasActiveSelection ? "Unselect All" : "Select All"}
               icon={ListCheckIcon}
