@@ -193,8 +193,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     switch (this.kind) {
       case "schedule":
         return createOrUpdateAgentScheduleWorkflow({
-          authType: auth.toJSON(),
-          trigger: this.toJSON(),
+          auth,
+          trigger: this,
         });
       default:
         assertNever(this.kind);

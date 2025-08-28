@@ -4,25 +4,25 @@ import {
   ScheduleOverlapPolicy,
 } from "@temporalio/client";
 
-import type { AuthenticatorType } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/agent_schedule/config";
 import { agentScheduleWorkflow } from "@app/temporal/agent_schedule/workflows";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
-import type { TriggerType } from "@app/types/assistant/triggers";
 
 function getScheduleOptions(
-  authType: AuthenticatorType,
-  trigger: TriggerType,
+  auth: Authenticator,
+  trigger: TriggerResource,
   scheduleId: string
 ): ScheduleOptions {
   return {
     action: {
       type: "startWorkflow",
       workflowType: agentScheduleWorkflow,
-      args: [authType, trigger],
+      args: [auth.toJSON(), trigger.toJSON()],
       taskQueue: QUEUE_NAME,
     },
     scheduleId,
@@ -41,32 +41,33 @@ function makeScheduleId(workspaceId: string, triggerId: string): string {
 }
 
 export async function createOrUpdateAgentScheduleWorkflow({
-  authType,
+  auth,
   trigger,
 }: {
-  authType: AuthenticatorType;
-  trigger: TriggerType;
+  auth: Authenticator;
+  trigger: TriggerResource;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClientForAgentNamespace();
-  if (!authType.workspaceId) {
+  const workspace = auth.workspace();
+  if (!workspace) {
     return new Err(new Error("Workspace ID is required"));
   }
 
-  const scheduleId = makeScheduleId(authType.workspaceId, trigger.sId);
+  const scheduleId = makeScheduleId(workspace.sId, trigger.sId);
 
   const childLogger = logger.child({
-    workspaceId: authType.workspaceId,
+    workspaceId: workspace.sId,
+    scheduleId,
+    triggerId: trigger.sId,
+    trigger: trigger.toJSON(),
   });
 
   if (trigger.kind !== "schedule") {
-    childLogger.error(
-      { triggerConfig: trigger.configuration },
-      "Trigger is not a schedule."
-    );
+    childLogger.error("Trigger is not a schedule.");
     return new Err(new Error("Trigger is not a schedule"));
   }
 
-  const scheduleOptions = getScheduleOptions(authType, trigger, scheduleId);
+  const scheduleOptions = getScheduleOptions(auth, trigger, scheduleId);
 
   /**
    * First, we try to get and update the existing schedule
@@ -80,14 +81,11 @@ export async function createOrUpdateAgentScheduleWorkflow({
       };
     });
 
-    childLogger.info({ scheduleId, trigger }, "Updated existing schedule.");
+    childLogger.info("Updated existing schedule.");
     return new Ok(scheduleId);
   } catch (err) {
     if (!(err instanceof ScheduleNotFoundError)) {
-      childLogger.error(
-        { err, scheduleId, trigger },
-        "Failed to update existing schedule."
-      );
+      childLogger.error({ err }, "Failed to update existing schedule.");
       return new Err(normalizeError(err));
     }
   }
@@ -98,13 +96,10 @@ export async function createOrUpdateAgentScheduleWorkflow({
    */
   try {
     await client.schedule.create(scheduleOptions);
-    childLogger.info({ scheduleId, trigger }, "Created new schedule.");
+    childLogger.info("Created new schedule.");
     return new Ok(scheduleId);
   } catch (error) {
-    childLogger.error(
-      { error, scheduleId, trigger },
-      "Failed to create new schedule."
-    );
+    childLogger.error({ error }, "Failed to create new schedule.");
     return new Err(normalizeError(error));
   }
 }

@@ -25,6 +25,7 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
+  ParticipantActionType,
   Result,
 } from "@app/types";
 import { ConversationError, Err, normalizeError, Ok } from "@app/types";
@@ -392,7 +393,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         userId: user.id,
         workspaceId: owner.id,
-        action: "posted",
       },
       include: [
         {
@@ -435,7 +435,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async upsertParticipation(
     auth: Authenticator,
-    conversation: ConversationType
+    {
+      conversation,
+      action,
+    }: {
+      conversation: ConversationType;
+      action: ParticipantActionType;
+    }
   ) {
     const user = auth.user();
     if (!user) {
@@ -456,7 +462,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         participant.changed("updatedAt", true);
         await participant.update(
           {
-            action: "posted",
+            action,
             updatedAt: new Date(),
           },
           { transaction: t }
@@ -465,7 +471,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         await ConversationParticipantModel.create(
           {
             conversationId: conversation.id,
-            action: "posted",
+            action,
             userId: user.id,
             workspaceId: conversation.owner.id,
             unread: false,

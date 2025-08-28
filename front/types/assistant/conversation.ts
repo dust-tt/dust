@@ -245,9 +245,11 @@ export interface AgentParticipantType {
 }
 
 export interface UserParticipantType {
+  sId: string;
   fullName: string | null;
   pictureUrl: string | null;
   username: string;
+  action: ParticipantActionType;
 }
 
 export interface ConversationParticipantsType {
