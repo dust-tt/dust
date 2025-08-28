@@ -57,6 +57,8 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
     let enterpriseParams: { organizationId?: string; connectionId?: string } =
       {};
     if (organizationIdToUse) {
+      enterpriseParams.organizationId = organizationIdToUse;
+
       // TODO(workos): We will want to cache this data
       const connections = await getWorkOS().sso.listConnections({
         organizationId: organizationIdToUse,
@@ -71,10 +73,7 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
           : undefined;
 
       if (connection) {
-        enterpriseParams = {
-          organizationId: organizationIdToUse,
-          connectionId: connection.id,
-        };
+        enterpriseParams.connectionId = connection.id;
       }
     }
 
