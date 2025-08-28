@@ -288,7 +288,7 @@ function createServer(
 
     registerFindTagsTool(auth, server, agentLoopContext, {
       name: FIND_TAGS_TOOL_NAME,
-      extraDescription: `for use with ${SEARCH_TOOL_NAME}`,
+      extraDescription: `This tool is meant to be used before the ${SEARCH_TOOL_NAME} tool.`,
     });
   }
 
