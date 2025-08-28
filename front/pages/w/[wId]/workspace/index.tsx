@@ -444,7 +444,7 @@ function InteractiveContentToggle({ owner }: { owner: WorkspaceType }) {
     <ContextItem.List>
       <div className="h-full border-b border-border dark:border-border-night" />
       <ContextItem
-        title="Allow canvas file sharing"
+        title="Canvas file sharing"
         subElement="Enable Canvas files sharing"
         // TODO: find a better icon.
         visual={<ActionDocumentTextIcon className="h-6 w-6" />}
