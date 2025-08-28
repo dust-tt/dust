@@ -16,7 +16,7 @@ const SUPPORTED_MIMETYPES = [
   "application/vnd.google-apps.spreadsheet",
   "text/plain",
   "text/markdown",
-] as const;
+];
 
 const MAX_CONTENT_SIZE = 50000; // Max characters to return for file content
 
@@ -202,10 +202,7 @@ const createServer = (): McpServer => {
         });
 
         const file = fileMetadata.data;
-        if (
-          !file.mimeType ||
-          !SUPPORTED_MIMETYPES.includes(file.mimeType as any)
-        ) {
+        if (!file.mimeType || !SUPPORTED_MIMETYPES.includes(file.mimeType)) {
           return makeMCPToolTextError(
             `Unsupported file type: ${file.mimeType}. Supported types: ${SUPPORTED_MIMETYPES.join(", ")}`
           );
@@ -224,8 +221,12 @@ const createServer = (): McpServer => {
             fileId,
             mimeType: "text/plain",
           });
-
-          content = exportResponse.data as string;
+          if (typeof exportResponse.data !== "string") {
+            return makeMCPToolTextError(
+              "Failed to export file content as text/plain"
+            );
+          }
+          content = exportResponse.data;
         } else if (
           file.mimeType === "text/plain" ||
           file.mimeType === "text/markdown"
@@ -236,7 +237,12 @@ const createServer = (): McpServer => {
             alt: "media",
           });
 
-          content = downloadResponse.data as string;
+          if (typeof downloadResponse.data !== "string") {
+            return makeMCPToolTextError(
+              "Failed to download file content as text"
+            );
+          }
+          content = downloadResponse.data;
         } else {
           return makeMCPToolTextError(
             `Unsupported file type: ${file.mimeType}`
