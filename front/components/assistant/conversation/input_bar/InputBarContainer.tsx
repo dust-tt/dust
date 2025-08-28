@@ -414,7 +414,7 @@ const InputBarContainer = ({
               <Button
                 size="xs"
                 icon={TelescopeIcon}
-                variant="ghost"
+                variant="ghost-secondary"
                 onClick={() => {
                   handleDeepResearchToggle();
                 }}
