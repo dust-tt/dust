@@ -8,7 +8,6 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   FIND_TAGS_TOOL_NAME,
   INCLUDE_TOOL_NAME,
-  SEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
