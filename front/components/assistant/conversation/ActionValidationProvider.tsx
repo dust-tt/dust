@@ -237,7 +237,7 @@ export function ActionValidationProvider({
         ? getIcon(validationRequest.metadata.icon)
         : ActionPieChartIcon,
       content: (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 text-foreground dark:text-foreground-night">
           <div>
             Allow{" "}
             <span className="font-semibold">

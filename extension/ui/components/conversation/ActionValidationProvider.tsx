@@ -192,7 +192,7 @@ export function ActionValidationProvider({
             </DialogTitle>
           </DialogHeader>
           <DialogContainer>
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 text-foreground dark:text-foreground-night">
               <div>
                 Allow <b>@{currentValidation?.metadata.agentName}</b> to use the
                 tool{" "}
