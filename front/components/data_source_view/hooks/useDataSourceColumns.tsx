@@ -1,12 +1,15 @@
 import { Checkbox, DataTable, Hoverable } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useContext, useMemo } from "react";
 
+import { ConfirmContext } from "@app/components/Confirm";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
+import {
+  findDataSourceViewFromNavigationHistory,
+  navigationHistoryEntryTitle,
+} from "@app/components/data_source_view/context/utils";
 import { isRemoteDatabase } from "@app/lib/data_sources";
-
-import { findDataSourceViewFromNavigationHistory } from "../context/utils";
 
 export type DataSourceRowData = {
   id: string;
@@ -15,6 +18,33 @@ export type DataSourceRowData = {
   icon?: React.ComponentType;
   entry: NavigationHistoryEntryType;
 };
+
+function shouldHideColumn(
+  navigationHistory: NavigationHistoryEntryType[],
+  entry: NavigationHistoryEntryType
+): boolean {
+  if (entry.type === "category") {
+    return true;
+  }
+  if (
+    entry.type === "data_source" &&
+    isRemoteDatabase(entry.dataSourceView.dataSource)
+  ) {
+    return true;
+  }
+
+  const dataSourceEntry =
+    findDataSourceViewFromNavigationHistory(navigationHistory);
+  if (dataSourceEntry === null) {
+    return false;
+  }
+
+  return (
+    isRemoteDatabase(dataSourceEntry.dataSource) &&
+    entry.type === "node" &&
+    entry.node.type === "folder"
+  );
+}
 
 export const useDataSourceColumns = () => {
   const {
@@ -27,10 +57,9 @@ export const useDataSourceColumns = () => {
     isRowSelectable,
     isCurrentNavigationEntrySelected,
   } = useDataSourceBuilderContext();
+  const confirm = useContext(ConfirmContext);
 
   const columns: ColumnDef<DataSourceRowData>[] = useMemo(() => {
-    const entry = findDataSourceViewFromNavigationHistory(navigationHistory);
-
     return [
       {
         id: "select",
@@ -39,15 +68,13 @@ export const useDataSourceColumns = () => {
         header: () => {
           const selectionState = isCurrentNavigationEntrySelected();
           const currentEntry = navigationHistory[navigationHistory.length - 1];
-          const shouldHideSelectColumn =
-            (entry !== null &&
-              isRemoteDatabase(entry.dataSource) &&
-              currentEntry.type === "node" &&
-              currentEntry.node.type === "folder") ||
-            (currentEntry.type === "data_source" &&
-              isRemoteDatabase(currentEntry.dataSourceView.dataSource));
+          if (!currentEntry) {
+            return null;
+          }
 
-          if (shouldHideSelectColumn && selectionState !== "partial") {
+          const hideColumn = shouldHideColumn(navigationHistory, currentEntry);
+
+          if (hideColumn && selectionState !== "partial") {
             return undefined;
           }
 
@@ -58,14 +85,21 @@ export const useDataSourceColumns = () => {
               checked={selectionState}
               disabled={!isRowSelectable()}
               onClick={(event) => event.stopPropagation()}
-              onCheckedChange={(state) => {
-                if (shouldHideSelectColumn && selectionState === "partial") {
-                  removeCurrentNavigationEntry();
-                  return;
+              onCheckedChange={async (state) => {
+                if (selectionState === "partial") {
+                  const confirmed = await confirm({
+                    title: "Are you sure?",
+                    message: `Do you want to unselect all of "${navigationHistoryEntryTitle(currentEntry)}"?`,
+                    validateLabel: "Unselect all",
+                    validateVariant: "warning",
+                  });
+                  if (!confirmed) {
+                    return;
+                  }
                 }
 
                 // When clicking a partial checkbox, select all
-                if (selectionState === "partial" || state) {
+                if (selectionState !== "partial" || !state) {
                   selectCurrentNavigationEntry();
                 } else {
                   removeCurrentNavigationEntry();
@@ -76,15 +110,12 @@ export const useDataSourceColumns = () => {
         },
         cell: ({ row }) => {
           const selectionState = isRowSelected(row.original.id);
-          const shouldHideSelect =
-            (entry != null &&
-              isRemoteDatabase(entry.dataSource) &&
-              row.original.entry.type === "node" &&
-              row.original.entry.node.type === "folder") ||
-            (row.original.entry.type === "data_source" &&
-              isRemoteDatabase(row.original.entry.dataSourceView.dataSource));
+          const hideColumn = shouldHideColumn(
+            navigationHistory,
+            row.original.entry
+          );
 
-          if (shouldHideSelect && selectionState !== "partial") {
+          if (hideColumn && selectionState !== "partial") {
             return undefined;
           }
 
@@ -96,14 +127,21 @@ export const useDataSourceColumns = () => {
                 checked={selectionState}
                 disabled={!isRowSelectable(row.original.id)}
                 onClick={(event) => event.stopPropagation()}
-                onCheckedChange={(state) => {
-                  if (shouldHideSelect && selectionState === "partial") {
-                    removeNode(row.original.entry);
-                    return;
+                onCheckedChange={async (state) => {
+                  if (selectionState === "partial") {
+                    const confirmed = await confirm({
+                      title: "Are you sure?",
+                      message: `Do you want to unselect all of "${navigationHistoryEntryTitle(row.original.entry)}"?`,
+                      validateLabel: "Unselect all",
+                      validateVariant: "warning",
+                    });
+                    if (!confirmed) {
+                      return;
+                    }
                   }
 
                   // When clicking a partial checkbox, select all
-                  if (selectionState === "partial" || state) {
+                  if (selectionState !== "partial" && state) {
                     selectNode(row.original.entry);
                   } else {
                     removeNode(row.original.entry);
@@ -132,6 +170,7 @@ export const useDataSourceColumns = () => {
       },
     ];
   }, [
+    confirm,
     isCurrentNavigationEntrySelected,
     isRowSelectable,
     isRowSelected,
