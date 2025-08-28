@@ -61,11 +61,20 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       const connections = await getWorkOS().sso.listConnections({
         organizationId: organizationIdToUse,
       });
-      enterpriseParams = {
-        organizationId: organizationIdToUse,
-        connectionId:
-          connections.data.length > 0 ? connections.data[0]?.id : undefined,
-      };
+      /**
+       * We only want to check active enterprise connection.
+       */
+      const connection =
+        connections.data.length > 0 ? connections.data[0] : undefined;
+
+      if (connection && connection.state === "active") {
+        enterpriseParams = {
+          organizationId: organizationIdToUse,
+          connectionId: connection.id,
+        };
+      } else {
+        organizationIdToUse = undefined;
+      }
     }
 
     const state = {
