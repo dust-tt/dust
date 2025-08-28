@@ -7,11 +7,11 @@ import type {
 } from "@microsoft/microsoft-graph-types";
 
 import { clientApiGet } from "@connectors/connectors/microsoft/lib/graph_api";
+import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import { cacheWithRedis } from "@connectors/types";
 
 import type { DriveItem, MicrosoftNodeType } from "./types";
 import { isValidNodeType } from "./types";
-import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 
 export function internalIdFromTypeAndPath({
   nodeType,
