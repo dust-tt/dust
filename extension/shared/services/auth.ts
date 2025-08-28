@@ -71,6 +71,7 @@ export abstract class AuthService {
 
   // Shared methods with implementation
   async saveTokens(rawTokens: OAuthAuthorizeResponse) {
+    console.log("======================", rawTokens);
     const tokens: StoredTokens = {
       accessToken: rawTokens.accessToken,
       refreshToken: rawTokens.refreshToken,
@@ -117,7 +118,7 @@ export abstract class AuthService {
 
   abstract logout(): Promise<boolean>;
 
-  abstract getAccessToken(): Promise<string | null>;
+  abstract getAccessToken(forceRefresh?: boolean): Promise<string | null>;
 
   abstract refreshToken(
     tokens: StoredTokens | null
