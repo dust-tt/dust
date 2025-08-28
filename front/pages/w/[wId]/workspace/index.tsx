@@ -444,14 +444,14 @@ function InteractiveContentToggle({ owner }: { owner: WorkspaceType }) {
     <ContextItem.List>
       <div className="h-full border-b border-border dark:border-border-night" />
       <ContextItem
-        title="Canvas file sharing"
-        subElement="Disable Canvas files sharing"
+        title="Allow canvas file sharing"
+        subElement="Enable Canvas files sharing"
         // TODO: find a better icon.
         visual={<ActionDocumentTextIcon className="h-6 w-6" />}
         hasSeparatorIfLast={true}
         action={
           <SliderToggle
-            selected={isEnabled !== isChanging}
+            selected={isEnabled}
             disabled={isChanging}
             onClick={toggleInteractiveContent}
           />
