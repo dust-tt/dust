@@ -13,7 +13,10 @@ import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { DustError } from "@app/lib/error";
 import { getSpaceIcon } from "@app/lib/spaces";
-import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import {
+  useAgentConfigurations,
+  useUnifiedAgentConfigurations,
+} from "@app/lib/swr/assistants";
 import {
   useAddDeleteConversationTool,
   useConversation,
@@ -125,6 +128,14 @@ export function AssistantInputBar({
     useUnifiedAgentConfigurations({
       workspaceId: owner.sId,
     });
+  
+  // Also fetch global agents to ensure dust-deep is included
+  const { agentConfigurations: globalAgentConfigurations } = 
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "global",
+      disabled: false,
+    });
 
   // Files upload.
 
@@ -147,16 +158,28 @@ export function AssistantInputBar({
   }, [droppedFiles, setDroppedFiles, fileUploaderService]);
 
   const agentConfigurations = useMemo(() => {
-    if (
-      baseAgentConfigurations.find(
-        (a) => a.sId === additionalAgentConfiguration?.sId
-      ) ||
-      !additionalAgentConfiguration
-    ) {
-      return baseAgentConfigurations;
+    // Start with base configurations
+    const configs = [...baseAgentConfigurations];
+    
+    // Add global agents that aren't already included (like dust-deep)
+    if (globalAgentConfigurations) {
+      globalAgentConfigurations.forEach(globalAgent => {
+        if (!configs.find(a => a.sId === globalAgent.sId)) {
+          configs.push(globalAgent);
+        }
+      });
     }
-    return [...baseAgentConfigurations, additionalAgentConfiguration];
-  }, [baseAgentConfigurations, additionalAgentConfiguration]);
+    
+    // Add additional configuration if provided and not already present
+    if (
+      additionalAgentConfiguration &&
+      !configs.find(a => a.sId === additionalAgentConfiguration.sId)
+    ) {
+      configs.push(additionalAgentConfiguration);
+    }
+    
+    return configs;
+  }, [baseAgentConfigurations, globalAgentConfigurations, additionalAgentConfiguration]);
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const { animate, selectedAssistant } = useContext(InputBarContext);

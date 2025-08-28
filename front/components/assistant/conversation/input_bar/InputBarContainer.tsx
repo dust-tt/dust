@@ -1,4 +1,4 @@
-import { ArrowUpIcon, Button } from "@dust-tt/sparkle";
+import { ArrowUpIcon, Button, SparklesIcon, Tooltip } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import React, {
@@ -86,6 +86,7 @@ const InputBarContainer = ({
   onMCPServerViewDeselect,
   selectedMCPServerViewIds,
 }: InputBarContainerProps) => {
+  // Deep research toggle UI has no animation; keep state minimal
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
@@ -236,6 +237,92 @@ const InputBarContainer = ({
     disableAutoFocus
   );
 
+  // Track current mentions for Deep Research toggle
+  const [currentMentions, setCurrentMentions] = useState<string[]>([]);
+  
+  useEffect(() => {
+    if (!editor) return;
+    
+    // Update mentions whenever editor content changes
+    const updateMentions = () => {
+      const { mentions } = editorService.getMarkdownAndMentions();
+      setCurrentMentions(mentions.map(m => m.id));
+    };
+    
+    editor.on('update', updateMentions);
+    updateMentions(); // Initial update
+    
+    return () => {
+      editor.off('update', updateMentions);
+    };
+  }, [editor, editorService]);
+  
+  const hasDustMention = currentMentions.includes("dust");
+  const hasDustDeepMention = currentMentions.includes("dust-deep");
+  
+  // Check if dust and dust-deep agents are available
+  const dustAgent = useMemo(() => {
+    return agentConfigurations.find((agent) => agent.sId === "dust");
+  }, [agentConfigurations]);
+  
+  const dustDeepAgent = useMemo(() => {
+    return agentConfigurations.find((agent) => agent.sId === "dust-deep");
+  }, [agentConfigurations]);
+  
+  // Show button if either dust or dust-deep is mentioned and both agents are available
+  const showDeepResearchToggle =
+    (hasDustMention || hasDustDeepMention) && dustAgent && dustDeepAgent;
+  // Consider deep mode active if any dust-deep pill is present
+  const isInDeepMode = hasDustDeepMention;
+  
+
+  const handleDeepResearchToggle = useCallback(() => {
+    if (!editor || !dustDeepAgent || !dustAgent) return;
+
+
+    const { mentions } = editorService.getMarkdownAndMentions();
+
+    // Get current editor content as JSON
+    const json = editor.getJSON();
+
+    // Determine direction based on latest editor state (not cached state)
+    const hasDustNow = mentions.some((m) => m.id === "dust");
+    const fromId = hasDustNow ? "dust" : "dust-deep";
+    const toAgent = hasDustNow ? dustDeepAgent : dustAgent;
+    
+    // Function to recursively replace mentions
+    const replaceMentions = (node: any): any => {
+      if (node.type === 'mention' && node.attrs?.id === fromId) {
+        return {
+          ...node,
+          attrs: {
+            ...node.attrs,
+            id: toAgent.sId,
+            label: toAgent.name
+          }
+        };
+      }
+      
+      if (node.content) {
+        return {
+          ...node,
+          content: node.content.map(replaceMentions)
+        };
+      }
+      
+      return node;
+    };
+    
+    const updatedJson = replaceMentions(json);
+    
+    // Set the updated content
+    // Emit update so mention listeners refresh and button background syncs
+    editor.commands.setContent(updatedJson, true);
+    editor.commands.focus('end');
+  }, [dustAgent, dustDeepAgent, editor, editorService]);
+
+  // No optimistic state; background derives solely from current content
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const contentEditableClasses = classNames(
@@ -308,19 +395,49 @@ const InputBarContainer = ({
             )}
             {(actions.includes("assistants-list") ||
               actions.includes("assistants-list-with-actions")) && (
-              <AssistantPicker
-                owner={owner}
-                size="xs"
-                onItemClick={(c) => {
-                  editorService.insertMention({ id: c.sId, label: c.name });
-                }}
-                assistants={allAssistants}
-                showDropdownArrow={false}
-                showFooterButtons={actions.includes(
-                  "assistants-list-with-actions"
+              <>
+                <AssistantPicker
+                  owner={owner}
+                  size="xs"
+                  onItemClick={(c) => {
+                    editorService.insertMention({ id: c.sId, label: c.name });
+                  }}
+                  assistants={allAssistants}
+                  showDropdownArrow={false}
+                  showFooterButtons={actions.includes(
+                    "assistants-list-with-actions"
+                  )}
+                  disabled={disableTextInput}
+                />
+                {showDeepResearchToggle && (
+                  <Button
+                    size="xs"
+                    icon={SparklesIcon}
+                    // Base variant ghost; apply light blue override when in deep mode
+                    variant="ghost"
+                    onClick={() => {
+                      handleDeepResearchToggle();
+                    }}
+                    className={classNames(
+                      "ml-1 s-!transition-none",
+                      isInDeepMode &&
+                        "s-!bg-blue-100 s-!text-blue-900 dark:s-!bg-blue-100-night dark:s-!text-blue-900-night"
+                    )}
+                    aria-pressed={isInDeepMode}
+                    aria-label={
+                      isInDeepMode
+                        ? "Switch to regular Dust mode"
+                        : "Switch to Deep Research mode"
+                    }
+                    disabled={disableTextInput}
+                    title={
+                      isInDeepMode
+                        ? "Switch to regular Dust mode"
+                        : "Switch to Deep Research mode"
+                    }
+                  />
                 )}
-                disabled={disableTextInput}
-              />
+              </>
             )}
           </div>
           <Button
@@ -342,7 +459,7 @@ const InputBarContainer = ({
           />
         </div>
       </div>
-
+      
       <MentionDropdown mentionDropdownState={mentionDropdown} />
     </div>
   );
