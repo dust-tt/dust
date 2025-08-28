@@ -311,11 +311,11 @@ function KnowledgeConfigurationSheetContent({
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
   });
-  const sources = useWatch<CapabilityFormData, "sources">({
-    name: "sources",
+  const hasSourceSelection = useWatch({
+    compute: (formData: CapabilityFormData) => {
+      return formData.sources.in.length > 0;
+    },
   });
-
-  const hasSourceSelection = sources.in.length > 0;
 
   const config = useMemo(() => {
     if (mcpServerView !== null) {
