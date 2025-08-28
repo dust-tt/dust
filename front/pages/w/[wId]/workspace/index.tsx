@@ -232,7 +232,7 @@ export default function WorkspaceAdmin({
         </Page.Vertical>
         <Page.Vertical align="stretch" gap="md">
           <Page.H variant="h4">Capabilities</Page.H>
-          <InteractiveContentToggle owner={owner} />
+          <CanvasSharingToggle owner={owner} />
         </Page.Vertical>
         {!isSlackDataSourceBotEnabled && (
           <Page.Vertical align="stretch" gap="md">
@@ -405,7 +405,7 @@ function SlackBotToggle({
   );
 }
 
-function InteractiveContentToggle({ owner }: { owner: WorkspaceType }) {
+function CanvasSharingToggle({ owner }: { owner: WorkspaceType }) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
 
