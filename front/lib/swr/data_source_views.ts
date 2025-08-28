@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
 import type {
@@ -355,6 +355,10 @@ export function useInfiniteDataSourceViewContentNodes({
   const hasNextPage =
     lastPage?.nextPageCursor !== null && lastPage?.nextPageCursor !== undefined;
 
+  const loadMore = useCallback(() => {
+    () => setSize((s) => s + 1);
+  }, [setSize]);
+
   return {
     isNodesLoading: isLoading && !data,
     isNodesValidating: isValidating,
@@ -362,7 +366,7 @@ export function useInfiniteDataSourceViewContentNodes({
     nodes,
     nextPageCursor: lastPage?.nextPageCursor || null,
     hasNextPage,
-    loadMore: () => setSize((s) => s + 1),
+    loadMore,
     mutate,
     totalNodesCount: lastPage?.total || 0,
     totalNodesCountIsAccurate: lastPage?.totalIsAccurate || true,
