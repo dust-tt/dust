@@ -191,7 +191,7 @@ export function ShareCanvasFilePopover({
                   icon={InformationCircleIcon}
                 >
                   {isSharingForbidden
-                    ? "Your workspace administrator has turned off sharing of Canvases."
+                    ? "Your workspace administrator has turned off sharing of Canvas files."
                     : "Sharing is disabled to protect company information. You can view this privately."}
                 </ContentMessage>
               )}
