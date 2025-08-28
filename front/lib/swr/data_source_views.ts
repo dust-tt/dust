@@ -355,7 +355,7 @@ export function useInfiniteDataSourceViewContentNodes({
   const hasNextPage =
     lastPage?.nextPageCursor !== null && lastPage?.nextPageCursor !== undefined;
 
-  const loadMore = useCallback(() =>  setSize((s) => s + 1), [setSize]);
+  const loadMore = useCallback(() => setSize((s) => s + 1), [setSize]);
 
   return {
     isNodesLoading: isLoading && !data,
