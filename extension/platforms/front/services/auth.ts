@@ -245,13 +245,22 @@ export class FrontAuthService extends AuthService {
     return true;
   }
 
-  async getAccessToken(): Promise<string | null> {
+  async getAccessToken(forceRefresh?: boolean): Promise<string | null> {
     let tokens = await this.getStoredTokens();
-    if (!tokens || !tokens.accessToken || tokens.expiresAt < Date.now()) {
+    if (
+      !tokens ||
+      !tokens.accessToken ||
+      tokens.expiresAt < Date.now() ||
+      forceRefresh
+    ) {
       const refreshRes = await this.refreshToken();
       if (refreshRes.isOk()) {
         tokens = refreshRes.value;
       }
+    }
+    // We wanted a refreshed token, don't return the one we have which is invalid.
+    if (forceRefresh) {
+      return null;
     }
     return tokens?.accessToken ?? null;
   }
