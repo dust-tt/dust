@@ -37,10 +37,15 @@ import {
   getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
+  isCanvasServer,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  CANVAS_CAT_ASSET_TOOL_NAME,
+  CANVAS_LIST_ASSETS_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/canvas";
 import {
   extractToolBlockedAwaitingInputResponse,
   isToolBlockedAwaitingInputResponse,
@@ -757,16 +762,52 @@ export async function tryListMCPTools(
   const { serverToolsAndInstructions, errors } = results.reduce<{
     serverToolsAndInstructions: ServerToolsAndInstructions[];
     errors: string[];
+    hasSeenCanvas: boolean;
   }>(
-    (acc, result) => {
+    ({ serverToolsAndInstructions, errors, hasSeenCanvas }, result) => {
       if (result.isOk()) {
-        acc.serverToolsAndInstructions.push(result.value);
-      } else {
-        acc.errors.push(result.error.message);
+        const currentServer = result.value;
+        const isCanvas = isCanvasServer(currentServer);
+
+        if (isCanvas) {
+          // If we've already seen canvas, we don't add the tools to manipulate the content.
+          // But we allow asset retrieval as it's tied to the MCP server
+          const tools = hasSeenCanvas
+            ? currentServer.tools.filter(
+                (tool) =>
+                  tool.name.endsWith(CANVAS_LIST_ASSETS_TOOL_NAME) ||
+                  // TODO: concatenate the data sources and show one cat instead.
+                  tool.name.endsWith(CANVAS_CAT_ASSET_TOOL_NAME)
+              )
+            : currentServer.tools;
+
+          return {
+            serverToolsAndInstructions: [
+              ...serverToolsAndInstructions,
+              { ...currentServer, tools },
+            ],
+            errors,
+            hasSeenCanvas: true,
+          };
+        }
+
+        return {
+          serverToolsAndInstructions: [
+            ...serverToolsAndInstructions,
+            currentServer,
+          ],
+          errors,
+          hasSeenCanvas,
+        };
       }
-      return acc;
+
+      return {
+        serverToolsAndInstructions,
+        errors: [...errors, result.error.message],
+        hasSeenCanvas,
+      };
     },
-    { serverToolsAndInstructions: [], errors: [] }
+    { serverToolsAndInstructions: [], errors: [], hasSeenCanvas: false }
   );
 
   return {
