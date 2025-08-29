@@ -24,6 +24,7 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
+import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
@@ -36,7 +37,6 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 
 export interface ConversationLayoutProps {
   baseUrl: string;
