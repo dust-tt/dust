@@ -8,7 +8,6 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import { MCPActionType } from "@app/lib/actions/mcp";
 import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isToolGeneratedFile } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
@@ -372,23 +371,18 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           (action: AgentMCPActionModel) => {
             const mcpServerId = action.toolConfiguration?.toolServerId || null;
 
-            return new MCPActionType({
+            return {
               id: action.id,
+              agentMessageId: action.agentMessageId,
+              functionCallName: value.value.name,
+              internalMCPServerName:
+                getInternalMCPServerNameFromSId(mcpServerId),
+              mcpServerId,
               params: JSON.parse(value.value.arguments),
+              status: action.status,
               output: removeNulls(
                 action.outputItems.map(hideFileFromActionOutput)
               ),
-              functionCallId: value.value.id,
-              functionCallName: value.value.name,
-              mcpServerId,
-              internalMCPServerName:
-                getInternalMCPServerNameFromSId(mcpServerId),
-              agentMessageId: action.agentMessageId,
-              step: this.step,
-              mcpServerConfigurationId: action.mcpServerConfigurationId,
-              type: "tool_action",
-              status: action.status,
-              citationsAllocated: action.citationsAllocated,
               generatedFiles: removeNulls(
                 action.outputItems.map((o) => {
                   if (!o.file) {
@@ -415,7 +409,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
                   };
                 })
               ),
-            });
+            };
           }
         );
       }
