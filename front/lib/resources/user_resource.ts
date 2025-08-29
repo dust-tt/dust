@@ -33,6 +33,7 @@ export interface SearchMembersPaginationParams {
 }
 
 const USER_METADATA_COMMA_SEPARATOR = ",";
+const USER_METADATA_COMMA_REPLACEMENT = "DUST_COMMA";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -294,23 +295,43 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
-  async appendToMetadata(key: string, value: string) {
-    const metadata = await UserMetadataModel.findOne({
-      where: {
-        userId: this.id,
-        key,
-      },
-    });
+  async getMetadataAsArray(key: string): Promise<string[]> {
+    const metadata = await this.getMetadata(key);
+    if (!metadata) {
+      return [];
+    }
+
+    return metadata.value
+      .split(USER_METADATA_COMMA_SEPARATOR)
+      .map((v) => v.replaceAll(USER_METADATA_COMMA_REPLACEMENT, ","));
+  }
+
+  async upsertMetadataArray(key: string, value: string) {
+    const valueWithCommaReplaced = value.replaceAll(
+      ",",
+      USER_METADATA_COMMA_REPLACEMENT
+    );
+    const metadata = await this.getMetadata(key);
     if (!metadata) {
       await UserMetadataModel.create({
         userId: this.id,
         key,
-        value,
+        value: valueWithCommaReplaced,
       });
       return;
     }
-    const newValue = `${metadata.value}${USER_METADATA_COMMA_SEPARATOR}${value}`;
-    await metadata.update({ value: newValue });
+
+    const metadataArray = metadata.value
+      .split(USER_METADATA_COMMA_SEPARATOR)
+      .map((v) => v.replace(USER_METADATA_COMMA_REPLACEMENT, ","));
+
+    if (!metadataArray.includes(valueWithCommaReplaced)) {
+      metadataArray.push(valueWithCommaReplaced);
+    }
+
+    await metadata.update({
+      value: metadataArray.join(USER_METADATA_COMMA_SEPARATOR),
+    });
   }
 
   async deleteAllMetadata() {

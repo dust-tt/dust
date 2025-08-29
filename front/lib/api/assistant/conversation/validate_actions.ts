@@ -8,6 +8,7 @@ import {
   isMCPApproveExecutionEvent,
   updateMCPApprovalState,
 } from "@app/lib/actions/mcp";
+import { setUserAlwaysApprovedTool } from "@app/lib/actions/utils";
 import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
@@ -133,10 +134,13 @@ export async function validateAction(
       });
       const toolName = actionBaseParams.functionCallName;
 
-      await user.appendToMetadata(
-        `toolsValidations:${toolServerId}`,
-        `${toolName}`
-      );
+      if (toolName) {
+        await setUserAlwaysApprovedTool({
+          user,
+          mcpServerId: toolServerId,
+          toolName,
+        });
+      }
     }
   }
 
