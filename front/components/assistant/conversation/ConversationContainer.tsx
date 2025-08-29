@@ -8,8 +8,8 @@ import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
-import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowserContainer";
-import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { useActionValidationContext } from "@app/components/assistant/blocked_actions/BlockedActionsProvider";
+import { AssistantBrowserContainer } from "@@app/components/assistant/conversation/blocked_actions/BlockedActionsProvider;
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";

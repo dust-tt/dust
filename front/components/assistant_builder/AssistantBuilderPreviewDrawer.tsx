@@ -21,7 +21,7 @@ import { Separator } from "@radix-ui/react-select";
 import assert from "assert";
 import { useContext, useEffect, useRef, useState } from "react";
 
-import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { BlockedActionsProvider } from "@app/components/assistant/conversation/blocked_actions/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";

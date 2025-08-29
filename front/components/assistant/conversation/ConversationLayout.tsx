@@ -2,7 +2,7 @@ import { cn, ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
-import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { BlockedActionsProvider } from "@app/components/assistant/conversation/blocked_actions/BlockedActionsProvider";
 import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import {

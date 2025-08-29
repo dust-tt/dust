@@ -16,13 +16,13 @@ import React, { useCallback } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
+import { useActionValidationContext } from "@app/components/assistant/blocked_actions/BlockedActionsProvider";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import {
   AgentMessageCanvasGeneratedFiles,
   DefaultAgentMessageGeneratedFiles,
 } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
-import { AssistantHandle } from "@app/components/assistant/conversation/AssistantHandle";
-import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { AssistantHandle } from "@app/compon@app/components/assistant/conversation/blocked_actions/BlockedActionsProvider
 import { useAutoOpenCanvas } from "@app/components/assistant/conversation/canvas/useAutoOpenCanvas";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
