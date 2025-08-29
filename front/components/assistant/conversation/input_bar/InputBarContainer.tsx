@@ -36,7 +36,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
-import { getSupportedFileExtensions } from "@app/types";
+import { getSupportedFileExtensions, GLOBAL_AGENTS_SID } from "@app/types";
 
 export const INPUT_BAR_ACTIONS = [
   "tools",
@@ -250,8 +250,10 @@ const InputBarContainer = ({
     // Update mentions whenever editor content changes
     const updateMentions = () => {
       const { mentions } = editorService.getMarkdownAndMentions();
-      const nextHasDust = mentions.some((m) => m.id === "dust");
-      const nextHasDustDeep = mentions.some((m) => m.id === "dust-deep");
+      const nextHasDust = mentions.some((m) => m.id === GLOBAL_AGENTS_SID.DUST);
+      const nextHasDustDeep = mentions.some(
+        (m) => m.id === GLOBAL_AGENTS_SID.DUST_DEEP
+      );
 
       setHasDustMention((prev) => (prev !== nextHasDust ? nextHasDust : prev));
       setHasDustDeepMention((prev) =>
@@ -275,11 +277,15 @@ const InputBarContainer = ({
 
   // Check if dust and dust-deep agents are available
   const dustAgent = useMemo(() => {
-    return agentConfigurations.find((agent) => agent.sId === "dust");
+    return agentConfigurations.find(
+      (agent) => agent.sId === GLOBAL_AGENTS_SID.DUST
+    );
   }, [agentConfigurations]);
 
   const dustDeepAgent = useMemo(() => {
-    return agentConfigurations.find((agent) => agent.sId === "dust-deep");
+    return agentConfigurations.find(
+      (agent) => agent.sId === GLOBAL_AGENTS_SID.DUST_DEEP
+    );
   }, [agentConfigurations]);
 
   // Show button if either dust or dust-deep is mentioned and both agents are available
@@ -300,8 +306,12 @@ const InputBarContainer = ({
     const json = editor.getJSON();
 
     // Determine direction based on latest editor state (not cached state)
-    const hasDustNow = mentions.some((m) => m.id === "dust");
-    const fromId = hasDustNow ? "dust" : "dust-deep";
+    const hasDustNow = mentions.some(
+      (m) => m.id === GLOBAL_AGENTS_SID.DUST
+    );
+    const fromId = hasDustNow
+      ? GLOBAL_AGENTS_SID.DUST
+      : GLOBAL_AGENTS_SID.DUST_DEEP;
     const toAgent = hasDustNow ? dustDeepAgent : dustAgent;
 
     // Function to recursively replace mentions

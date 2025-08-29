@@ -33,6 +33,7 @@ import type {
   Result,
   WorkspaceType,
 } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types";
 import {
   compareAgentsForSort,
   GLOBAL_SPACE_NAME,
@@ -131,7 +132,10 @@ export function AssistantInputBar({
   
   // Also fetch global agents only if dust-deep is not already present
   const hasDustDeepInUnified = useMemo(
-    () => baseAgentConfigurations.some((a) => a.sId === "dust-deep"),
+    () =>
+      baseAgentConfigurations.some(
+        (a) => a.sId === GLOBAL_AGENTS_SID.DUST_DEEP
+      ),
     [baseAgentConfigurations]
   );
 
