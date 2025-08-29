@@ -113,7 +113,7 @@ export async function validateAction(
     return new Err(new Error(`Action is not blocked: ${action.status}`));
   }
 
-  const actionUpdated = await action.updateStatus(
+  const [updatedActionsCount] = await action.updateStatus(
     getMCPApprovalStateFromUserApprovalState(approvalState)
   );
 
@@ -142,7 +142,7 @@ export async function validateAction(
     }
   }
 
-  if (!actionUpdated) {
+  if (updatedActionsCount === 0) {
     logger.info(
       {
         actionId,
