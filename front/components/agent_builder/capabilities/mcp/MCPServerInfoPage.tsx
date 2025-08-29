@@ -26,7 +26,7 @@ function DataVisualizationInfoContent() {
   ];
 
   return (
-    <div className="flex h-full flex-col space-y-6">
+    <div className="flex h-full flex-col space-y-6 pt-3">
       <div className="space-y-4">
         <div className="space-y-3">
           <div className="flex items-center gap-3">
@@ -71,7 +71,7 @@ function MCPServerInfoContent({
   const { owner } = useAgentBuilderContext();
 
   return (
-    <div className="flex h-full flex-col space-y-6">
+    <div className="flex h-full flex-col space-y-6 pt-3">
       <div className="space-y-4">
         <div className="space-y-3">
           <div className="flex items-center gap-3">
