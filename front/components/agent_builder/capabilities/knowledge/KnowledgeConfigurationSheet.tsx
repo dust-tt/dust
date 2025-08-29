@@ -235,7 +235,9 @@ function KnowledgeConfigurationSheetForm({
         ? action!.name // Keep original name when editing without changes
         : generateUniqueActionName({
             baseName: nameToStorageFormat(formData.name),
-            existingActions: actions || [],
+            existingActions: isEditing
+              ? (actions || []).filter((a) => a.id !== action?.id)
+              : actions || [],
           });
 
     const newAction: AgentBuilderAction = {
