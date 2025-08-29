@@ -33,8 +33,7 @@ export const restoreConversationPlugin = createPlugin({
     },
   },
   execute: async (auth, _, args) => {
-    // Default to 'specific' if mode is not provided
-    const mode = args.mode || 'specific';
+    const mode = args.mode;
     
     if (!['specific', 'user'].includes(mode)) {
       return new Err(new Error("Invalid mode selected"));
@@ -85,7 +84,6 @@ export const restoreConversationPlugin = createPlugin({
         return new Err(new Error("Please provide User Email when mode is 'All for User'"));
       }
       
-      // Check if user accidentally filled in conversation IDs field
       if (args.conversationIds?.trim()) {
         return new Err(new Error("Conversation IDs should be empty when mode is 'All for User'. Use 'Specific Conversations' mode to restore by IDs."));
       }
