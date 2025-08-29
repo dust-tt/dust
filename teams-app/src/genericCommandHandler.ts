@@ -18,13 +18,15 @@ export class GenericCommandHandler {
     console.log(`App received message: ${context.activity.text}`);
 
     if (context.activity.text.startsWith("@dust")) {
-      // Post message to webhook
+      // Send thinking message first
+      await context.sendActivity("🤔 Dust AI is thinking...");
+      
       try {
         const webhookUrl =
           process.env.WEBHOOK_URL ||
           "http://localhost:3002/webhooks/mywebhooksecret/teams_bot";
 
-        // Create webhook payload matching our Teams webhook implementation
+        // Create webhook payload with response callback info
         const webhookPayload = {
           type: "message",
           tenantId: context.activity.conversation?.tenantId || "unknown-tenant",
@@ -53,23 +55,34 @@ export class GenericCommandHandler {
             locale: context.activity.locale,
             replyToId: context.activity.replyToId,
           },
+          // Add callback info for the webhook to respond back
+          responseCallback: {
+            serviceUrl: context.activity.serviceUrl,
+            conversationId: context.activity.conversation.id,
+            activityId: context.activity.id,
+          }
         };
 
-        const response = await axios.post(webhookUrl, webhookPayload, {
+        // Call webhook asynchronously - don't wait for response
+        axios.post(webhookUrl, webhookPayload, {
           headers: {
             "Content-Type": "application/json",
           },
+          timeout: 30000, // 30 second timeout
+        }).then(response => {
+          console.log(`Webhook called successfully: ${response.status}`);
+        }).catch(error => {
+          console.error("Error calling webhook:", error);
+          // Send error message via Bot Framework
+          context.sendActivity(`❌ Sorry, I encountered an error: ${error.message}`);
         });
 
-        console.log(
-          `Message posted to webhook successfully: ${response.status}`
-        );
-        return `Message "${context.activity.text}" has been sent to Dust AI for processing...`;
+        // Return nothing - the webhook will handle the response via Bot Framework
+        return undefined;
+        
       } catch (error) {
-        console.error("Error posting to webhook:", error);
-        return `Failed to post message to webhook: ${
-          error.response?.data || error.message
-        }`;
+        console.error("Error setting up webhook call:", error);
+        return `❌ Failed to process request: ${error.message}`;
       }
     }
 

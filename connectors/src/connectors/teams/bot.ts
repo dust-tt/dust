@@ -34,14 +34,24 @@ type TeamsAnswerParams = {
 export async function botAnswerTeamsMessage(
   message: string,
   params: TeamsAnswerParams,
-  connector: ConnectorResource
+  connector: ConnectorResource,
+  responseCallback?: {
+    serviceUrl: string;
+    conversationId: string;
+    activityId: string;
+    userId?: string;
+  }
 ): Promise<Result<undefined, Error>> {
-  const { conversationId, tenantId } = params;
+  const { tenantId } = params;
 
   try {
     const res = await answerTeamsMessage(message, params, connector);
 
-    await processTeamsErrorResult(res, params, connector);
+    if (responseCallback) {
+      await sendTeamsResponse(res, responseCallback, connector);
+    } else {
+      await processTeamsErrorResult(res, params, connector);
+    }
 
     return new Ok(undefined);
   } catch (e) {
@@ -54,34 +64,106 @@ export async function botAnswerTeamsMessage(
       "Unexpected exception answering to Teams message"
     );
 
-    try {
-      const client = await getClient(connector.connectionId);
-      if (e instanceof ProviderRateLimitError) {
-        await client.api(`/me/chats/${conversationId}/messages`).post({
-          body: {
-            contentType: "text",
-            content: TEAMS_RATE_LIMIT_ERROR_MESSAGE,
-          },
-        });
-      } else {
-        await client.api(`/me/chats/${conversationId}/messages`).post({
-          body: {
-            contentType: "text",
-            content: "An unexpected error occurred. Our team has been notified",
-          },
-        });
-      }
-    } catch (e) {
-      logger.error(
-        {
-          conversationId,
-          tenantId,
-          error: e,
-        },
-        "Failed to post error message to Teams"
+    if (responseCallback) {
+      await sendTeamsResponse(
+        new Err(new Error("An unexpected error occurred. Our team has been notified")),
+        responseCallback,
+        connector
       );
+    } else {
+      // Fallback to Graph API if no callback available
+      try {
+        const client = await getClient(connector.connectionId);
+        const { conversationId } = params;
+        if (e instanceof ProviderRateLimitError) {
+          await client.api(`/chats/${conversationId}/messages`).post({
+            body: {
+              contentType: "text",
+              content: TEAMS_RATE_LIMIT_ERROR_MESSAGE,
+            },
+          });
+        } else {
+          await client.api(`/chats/${conversationId}/messages`).post({
+            body: {
+              contentType: "text",
+              content: "An unexpected error occurred. Our team has been notified",
+            },
+          });
+        }
+      } catch (e) {
+        logger.error(
+          {
+            conversationId: params.conversationId,
+            tenantId,
+            error: e,
+          },
+          "Failed to post error message to Teams"
+        );
+      }
     }
     return new Err(new Error("An unexpected error occurred"));
+  }
+}
+
+async function sendTeamsResponse(
+  result: Result<AgentMessageSuccessEvent | undefined, Error>,
+  responseCallback: {
+    serviceUrl: string;
+    conversationId: string;
+    activityId: string;
+    userId?: string;
+  },
+  connector: ConnectorResource
+) {
+  const teamsAppUrl = process.env.TEAMS_APP_URL || "http://localhost:3978";
+  
+  try {
+    let responsePayload;
+    
+    if (result.isErr()) {
+      responsePayload = {
+        ...responseCallback,
+        error: result.error.message,
+      };
+    } else if (result.value) {
+      const response = result.value.message.content || "I received your message but couldn't generate a response.";
+      responsePayload = {
+        ...responseCallback,
+        response: response,
+      };
+    } else {
+      responsePayload = {
+        ...responseCallback,
+        response: "I received your message but couldn't generate a response.",
+      };
+    }
+
+    // Use dynamic import for axios since it might not be available in connectors
+    const axios = (await import('axios')).default;
+    
+    await axios.post(`${teamsAppUrl}/api/webhook-response`, responsePayload, {
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      timeout: 10000
+    });
+    
+    logger.info(
+      {
+        connectorId: connector.id,
+        conversationId: responseCallback.conversationId,
+      },
+      "Successfully sent response to Teams app"
+    );
+  } catch (error) {
+    logger.error(
+      {
+        error,
+        connectorId: connector.id,
+        conversationId: responseCallback.conversationId,
+      },
+      "Failed to send response to Teams app"
+    );
   }
 }
 
@@ -105,7 +187,7 @@ async function processTeamsErrorResult(
 
     try {
       const client = await getClient(connector.connectionId);
-      await client.api(`/me/chats/${convId}/messages`).post({
+      await client.api(`/chats/${convId}/messages`).post({
         body: {
           contentType: "text",
           content: errorMessage,
@@ -319,27 +401,7 @@ async function answerTeamsMessage(
     .splice(0, 100)
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  // Send initial "thinking" message to Teams
-  let mainMessageResponse: { id?: string } | null = null;
-  try {
-    mainMessageResponse = await client
-      .api(`/me/chats/${conversationId}/messages`)
-      .post({
-        body: {
-          contentType: "text",
-          content: `🤔 ${mention.assistantName} is thinking...`,
-        },
-      });
-  } catch (e) {
-    logger.error(
-      {
-        error: e,
-        conversationId,
-        connectorId: connector.id,
-      },
-      "Failed to post thinking message to Teams"
-    );
-  }
+  // Skip Graph API messaging - Teams app handles "thinking" message via Bot Framework
 
   if (!message.includes(":mention")) {
     // if the message does not contain the mention, we add it as a prefix.
@@ -410,25 +472,48 @@ async function answerTeamsMessage(
     await teamsMessage.save();
   }
 
-  const streamRes = await streamConversationToTeams(dustAPI, {
-    assistantName: mention.assistantName,
-    connector,
+  // For Bot Framework approach, we don't need streaming - just get the final response
+  const streamRes = await dustAPI.streamAgentAnswerEvents({
     conversation,
-    mainMessageResponse,
-    teams: {
-      conversationId,
-      client,
-      activityId,
-      channelId,
-    },
-    userMessage,
-    teamsMessage,
-    agentConfigurations: mostPopularAgentConfigurations,
+    userMessageId: userMessage.sId,
   });
 
   if (streamRes.isErr()) {
     return new Err(new Error(streamRes.error.message));
   }
 
-  return streamRes;
+  // Collect the full response
+  let finalResponse = "";
+  let agentMessageSuccess = undefined;
+  
+  for await (const event of streamRes.value.eventStream) {
+    switch (event.type) {
+      case "agent_error":
+      case "user_message_error":
+      case "tool_error": {
+        return new Err(new Error(event.error.message));
+      }
+      case "agent_message_success": {
+        agentMessageSuccess = event;
+        finalResponse = event.message.content ?? "";
+        break;
+      }
+      case "generation_tokens": {
+        if (event.classification === "tokens") {
+          finalResponse += event.text;
+        }
+        break;
+      }
+      default:
+        // Ignore other events
+        break;
+    }
+  }
+
+  if (agentMessageSuccess) {
+    // Return the final response for Bot Framework to send
+    return new Ok(agentMessageSuccess);
+  } else {
+    return new Err(new Error("No response generated"));
+  }
 }

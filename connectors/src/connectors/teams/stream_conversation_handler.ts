@@ -80,7 +80,7 @@ export async function streamConversationToTeams(
             if (params.mainMessageResponse?.id) {
               await client
                 .api(
-                  `/me/chats/${conversationId}/messages/${params.mainMessageResponse.id}`
+                  `/chats/${conversationId}/messages/${params.mainMessageResponse.id}`
                 )
                 .patch({
                   body: {
@@ -120,7 +120,7 @@ export async function streamConversationToTeams(
               if (params.mainMessageResponse?.id) {
                 await client
                   .api(
-                    `/me/chats/${conversationId}/messages/${params.mainMessageResponse.id}`
+                    `/chats/${conversationId}/messages/${params.mainMessageResponse.id}`
                   )
                   .patch({
                     body: {
@@ -165,7 +165,7 @@ export async function streamConversationToTeams(
       if (params.mainMessageResponse?.id) {
         await client
           .api(
-            `/me/chats/${conversationId}/messages/${params.mainMessageResponse.id}`
+            `/chats/${conversationId}/messages/${params.mainMessageResponse.id}`
           )
           .patch({
             body: {

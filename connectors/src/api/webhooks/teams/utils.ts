@@ -75,7 +75,7 @@ export async function handleTeamsChatBot(
   logger: Logger,
   connector: ConnectorResource
 ) {
-  const { activity } = req.body;
+  const { activity, responseCallback } = req.body;
 
   const teamsMessage = activity.text;
   const tenantId = req.body.tenantId;
@@ -94,6 +94,7 @@ export async function handleTeamsChatBot(
         userId: userId,
         channelId: channelId,
       },
+      hasResponseCallback: !!responseCallback,
     },
     "Processing Teams message"
   );
@@ -137,7 +138,8 @@ export async function handleTeamsChatBot(
     replyToId,
   };
 
-  const botRes = await botAnswerTeamsMessage(teamsMessage, params, connector);
+  // Pass response callback if available
+  const botRes = await botAnswerTeamsMessage(teamsMessage, params, connector, responseCallback);
   if (botRes.isErr()) {
     logger.error(
       {
