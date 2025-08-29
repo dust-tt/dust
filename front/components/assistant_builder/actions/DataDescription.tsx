@@ -9,7 +9,7 @@ import type {
 interface DataDescriptionProps {
   updateAction: (args: {
     actionName: string;
-    actionDescription: string;
+    actionDescription: string | null;
     getNewActionConfig: (
       old: AssistantBuilderMCPConfiguration["configuration"]
     ) => AssistantBuilderMCPConfiguration["configuration"];
@@ -34,7 +34,7 @@ export const DataDescription = ({
     >
       <TextArea
         placeholder={"This data contains…"}
-        value={action.description}
+        value={action.description || ""}
         onChange={(e) => {
           if (e.target.value.length < 800) {
             updateAction({

@@ -90,7 +90,7 @@ export type AssistantBuilderMCPConfiguration = {
   type: "MCP";
   configuration: AssistantBuilderMCPServerConfiguration;
   name: string;
-  description: string;
+  description: string | null;
   noConfigurationRequired?: boolean;
 };
 
@@ -103,7 +103,7 @@ export interface AssistantBuilderDataVisualizationConfiguration {
   type: "DATA_VISUALIZATION";
   configuration: Record<string, never>;
   name: string;
-  description: string;
+  description: string | null;
   noConfigurationRequired: true;
 }
 

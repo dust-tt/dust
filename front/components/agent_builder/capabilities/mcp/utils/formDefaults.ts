@@ -21,6 +21,7 @@ export function getDefaultConfiguration(
 
   const defaults: MCPServerConfigurationType = {
     mcpServerViewId: mcpServerView?.sId ?? "not-a-valid-sId",
+    description: null,
     dataSourceConfigurations: null,
     tablesConfigurations: null,
     childAgentId: null,

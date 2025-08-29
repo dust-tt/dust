@@ -50,18 +50,16 @@ function processActionsFromStorage(
   actions: AssistantBuilderMCPConfigurationWithId[]
 ): AgentBuilderAction[] {
   return actions.map((action) => {
-    if (action.type === "MCP") {
-      return {
-        ...action,
-        configuration: {
-          ...action.configuration,
-          additionalConfiguration: processAdditionalConfigurationFromStorage(
-            action.configuration.additionalConfiguration
-          ),
-        },
-      };
-    }
-    return action;
+    return {
+      ...action,
+      configuration: {
+        ...action.configuration,
+        description: action.description,
+        additionalConfiguration: processAdditionalConfigurationFromStorage(
+          action.configuration.additionalConfiguration
+        ),
+      },
+    };
   });
 }
 

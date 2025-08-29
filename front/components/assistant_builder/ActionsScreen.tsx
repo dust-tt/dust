@@ -173,11 +173,13 @@ export default function ActionsScreen({
       actionName,
       newActionName,
       newActionDescription,
+      actionDescription,
       getNewActionConfig,
     }: {
       actionName: string;
       newActionName?: string;
       newActionDescription?: string;
+      actionDescription?: string | null;
       getNewActionConfig: (
         old: AssistantBuilderMCPOrVizState["configuration"]
       ) => AssistantBuilderMCPOrVizState["configuration"];
@@ -190,7 +192,8 @@ export default function ActionsScreen({
             return {
               ...action,
               name: newActionName ?? action.name,
-              description: newActionDescription ?? action.description,
+              description:
+                actionDescription ?? newActionDescription ?? action.description,
               // This is quite unsatisfying, but using `as any` here and repeating every
               // other key in the object instead of spreading is actually the safest we can do.
               // There is no way (that I could find) to make typescript understand that
@@ -265,7 +268,7 @@ export default function ActionsScreen({
             updateAction({
               actionName: pendingAction.previousActionName,
               newActionName: newActionName,
-              newActionDescription: newAction.description,
+              newActionDescription: newAction.description ?? undefined,
               getNewActionConfig: () => newAction.configuration,
             });
           } else {
@@ -489,7 +492,8 @@ function NewActionModal({
         !hasActionError(newActionConfig, mcpServerViews)
       ) {
         newActionConfig.name = newActionConfig.name.trim();
-        newActionConfig.description = newActionConfig.description.trim();
+        newActionConfig.description =
+          newActionConfig.description?.trim() ?? null;
         onSave(newActionConfig);
         onCloseLocal();
       } else {
@@ -523,7 +527,7 @@ function NewActionModal({
       getNewActionConfig,
     }: {
       actionName: string;
-      actionDescription: string;
+      actionDescription: string | null;
       getNewActionConfig: (
         old: AssistantBuilderMCPConfiguration["configuration"]
       ) => AssistantBuilderMCPConfiguration["configuration"];
@@ -686,7 +690,7 @@ interface ActionConfigEditorProps {
   isEditing: boolean;
   updateAction: (args: {
     actionName: string;
-    actionDescription: string;
+    actionDescription: string | null;
     getNewActionConfig: (
       old: AssistantBuilderMCPConfigurationWithId["configuration"]
     ) => AssistantBuilderMCPConfigurationWithId["configuration"];
@@ -739,7 +743,7 @@ interface ActionEditorProps {
   setShowInvalidActionDescError: (error: string | null) => void;
   updateAction: (args: {
     actionName: string;
-    actionDescription: string;
+    actionDescription: string | null;
     getNewActionConfig: (
       old: AssistantBuilderMCPConfiguration["configuration"]
     ) => AssistantBuilderMCPConfiguration["configuration"];

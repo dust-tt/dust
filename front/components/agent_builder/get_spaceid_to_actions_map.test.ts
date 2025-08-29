@@ -32,6 +32,7 @@ const createMockMCPAction = (
   description: `Description for ${name}`,
   configuration: {
     mcpServerViewId: mcpServerViewId || "",
+    description: `Description for ${name}`,
     dataSourceConfigurations: dataSourceConfigurations || null,
     tablesConfigurations: tablesConfigurations || null,
     childAgentId: null,

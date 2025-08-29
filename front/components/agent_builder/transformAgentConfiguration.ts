@@ -128,7 +128,10 @@ export function convertActionsForFormData(
     name: action.name,
     description: action.description,
     type: "MCP",
-    configuration: action.configuration,
+    configuration: {
+      ...action.configuration,
+      description: action.description,
+    },
   }));
 }
 

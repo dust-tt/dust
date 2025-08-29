@@ -11,8 +11,8 @@ import type { Result } from "@app/types";
 interface JsonSchemaConfigurationSectionProps {
   // The agent's instructions and tool description, needed to generate the
   // schema automatically if requested by the user.
-  instructions: string;
-  description: string;
+  instructions: string | null;
+  description: string | null;
   // A string that explains this schema configuration section, displayed to the
   // user.
   sectionConfigurationDescription: string;

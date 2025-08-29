@@ -84,7 +84,7 @@ interface MCPActionProps {
   isEditing: boolean;
   updateAction: (args: {
     actionName: string;
-    actionDescription: string;
+    actionDescription: string | null;
     getNewActionConfig: (
       old: AssistantBuilderMCPConfiguration["configuration"]
     ) => AssistantBuilderMCPConfiguration["configuration"];

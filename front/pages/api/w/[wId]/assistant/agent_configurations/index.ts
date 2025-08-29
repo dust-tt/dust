@@ -272,7 +272,9 @@ export async function createOrUpgradeAgentConfiguration({
     }
 
     // We allow knowledge tools to not have any description
-    const actionsWithoutDesc = actions.filter((action) => !action.description && !action.dataSources && !action.tables);
+    const actionsWithoutDesc = actions.filter(
+      (action) => !action.description && !action.dataSources && !action.tables
+    );
     if (actionsWithoutDesc.length) {
       return new Err(
         Error(

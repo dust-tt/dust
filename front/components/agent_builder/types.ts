@@ -183,10 +183,10 @@ export function getDefaultMCPAction(
       requirements.requiresDataSourceConfiguration ||
       requirements.requiresDataWarehouseConfiguration ||
       requirements.requiresTableConfiguration
-        ? ""
+        ? null
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
-          : "",
+          : null,
     noConfigurationRequired: requirements.noRequirement,
   };
 }
