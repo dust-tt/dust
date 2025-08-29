@@ -8,7 +8,6 @@ import {
   MagnifyingGlassIcon,
   Markdown,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { MCPAgentManagementActionDetails } from "@app/components/actions/mcp/details/MCPAgentManagementActionDetails";
