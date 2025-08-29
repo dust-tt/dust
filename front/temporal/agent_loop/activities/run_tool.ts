@@ -53,9 +53,7 @@ export async function runToolActivity(
       step: step + 1,
     });
 
-  const [action] = await AgentMCPActionResource.fetchByModelIds(auth, [
-    actionId,
-  ]);
+  const action = await AgentMCPActionResource.fetchByModelPk(auth, actionId);
   assert(action, "Action not found");
 
   const mcpServerId = action.toolConfiguration.toolServerId;

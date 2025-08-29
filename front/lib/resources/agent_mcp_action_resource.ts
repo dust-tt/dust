@@ -171,6 +171,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
+  static async fetchByModelPk(
+    auth: Authenticator,
+    id: ModelId
+  ): Promise<AgentMCPActionResource | null> {
+    const [action] = await this.fetchByModelIds(auth, [id]);
+    return action ?? null;
+  }
+
   static async listBlockedActionsForConversation(
     auth: Authenticator,
     conversationId: string
