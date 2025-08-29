@@ -8,7 +8,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import isEmpty from "lodash/isEmpty";
 import uniqueId from "lodash/uniqueId";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { FormProvider, useForm, useWatch } from "react-hook-form";
+import {
+  FormProvider,
+  useForm,
+  useFormContext,
+  useWatch,
+} from "react-hook-form";
 
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { KnowledgeFooter } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeFooter";
@@ -44,7 +49,10 @@ import {
   KnowledgePageProvider,
   useKnowledgePageContext,
 } from "@app/components/data_source_view/context/PageContext";
-import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
+import {
+  getMCPServerNameForTemplateAction,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
 import { SEARCH_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -313,6 +321,7 @@ function KnowledgeConfigurationSheetContent({
 }: KnowledgeConfigurationSheetContentProps) {
   const { currentPageId, setSheetPageId } = useKnowledgePageContext();
   const nameSectionRef = useRef<HTMLInputElement>(null);
+  const { setValue, getValues } = useFormContext<CapabilityFormData>();
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
@@ -340,6 +349,21 @@ function KnowledgeConfigurationSheetContent({
       nameSectionRef.current?.focus();
     }
   }, [currentPageId]);
+
+  // Prefill name field with processing method display name when mcpServerView changes
+  useEffect(() => {
+    if (mcpServerView && !isEditing) {
+      const processingMethodName = getMcpServerViewDisplayName(mcpServerView);
+      const currentName = getValues("name");
+      if (currentName !== processingMethodName) {
+        setValue("name", processingMethodName, {
+          shouldDirty: false,
+          shouldTouch: false,
+          shouldValidate: false,
+        });
+      }
+    }
+  }, [mcpServerView, isEditing, setValue, getValues]);
 
   const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
