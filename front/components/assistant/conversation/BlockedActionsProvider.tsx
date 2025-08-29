@@ -413,6 +413,8 @@ export function BlockedActionsProvider({
       return;
     }
 
+    removeCompletedAction(blockedAction.actionId);
+
     setSubmitStatus(null);
     setNeverAskAgain(false);
     setErrorMessage(null);
@@ -478,7 +480,7 @@ export function BlockedActionsProvider({
             );
 
         return {
-          id: index.toString(),
+          id: "auth",
           title: "Personal authentication required",
           description:
             "The agent took an action that requires personal authentication",
@@ -500,12 +502,44 @@ export function BlockedActionsProvider({
         };
       }
 
-      // For validation pages, adjust the index to account for the authentication page
-      const validationIndex = hasPendingAuthentications ? index - 1 : index;
-      const { blockedAction } = pendingValidations[validationIndex];
+      // Index within the validations section (excluding the optional auth page)
+      const validationSectionIndex = hasPendingAuthentications
+        ? index - 1
+        : index;
+
+      if (validationSectionIndex < validatedActions) {
+        return {
+          id: index.toString(),
+          title: "Completed",
+          icon: ActionPieChartIcon,
+          content: (
+            <div className="py-4 text-sm text-muted-foreground">
+              Action already processed
+            </div>
+          ),
+        };
+      }
+
+      const pendingValidationIndex = validationSectionIndex - validatedActions;
+      const currentBlockedAction = pendingValidations[pendingValidationIndex];
+
+      if (!currentBlockedAction) {
+        return {
+          id: index.toString(),
+          title: "Completed",
+          icon: ActionPieChartIcon,
+          content: (
+            <div className="py-4 text-sm text-muted-foreground">
+              Action already processed
+            </div>
+          ),
+        };
+      }
+
+      const { blockedAction } = currentBlockedAction;
 
       return {
-        id: index.toString(),
+        id: `validation-${blockedAction.actionId}`,
         title: "Tool Validation Required",
         icon: blockedAction.metadata.icon
           ? getIcon(blockedAction.metadata.icon)
@@ -531,6 +565,19 @@ export function BlockedActionsProvider({
     pendingAuthentications,
   ]);
 
+  const currentPageId = useMemo(() => {
+    if (pages.length === 0) {
+      return "";
+    }
+    if (hasPendingAuthentications && validatedActions === 0) {
+      return "auth";
+    }
+    const nextValidation = pendingValidations[validatedActions];
+    return nextValidation
+      ? `validation-${nextValidation.blockedAction.actionId}`
+      : pages[0].id;
+  }, [pages, hasPendingAuthentications, validatedActions, pendingValidations]);
+
   return (
     <ActionValidationContext.Provider
       value={{
@@ -546,7 +593,7 @@ export function BlockedActionsProvider({
         {pages.length > 0 && (
           <MultiPageDialogContent
             pages={pages}
-            currentPageId={validatedActions.toString()}
+            currentPageId={currentPageId}
             onPageChange={() => {}}
             hideCloseButton={
               !(hasPendingAuthentications && validatedActions === 0)
