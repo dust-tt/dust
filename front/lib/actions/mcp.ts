@@ -69,10 +69,7 @@ import {
   isPersonalAuthenticationRequiredErrorContent,
   removeNulls,
 } from "@app/types";
-import type {
-  AgentMCPActionType,
-  AgentMCPActionWithOutputType,
-} from "@app/types/actions";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;
