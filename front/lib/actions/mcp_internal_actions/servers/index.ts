@@ -87,7 +87,9 @@ export async function getInternalMCPServer(
       return imageGenerationDallEServer(auth);
     case "file_generation":
       return generateFileServer(auth);
-    case "canvas":
+    case "canvas_dashboard":
+    case "canvas_slideshow":
+    case "canvas_other":
       return canvasServer(auth, agentLoopContext);
     case "query_tables":
       return tablesQueryServer(auth, agentLoopContext);

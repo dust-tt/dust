@@ -2,11 +2,10 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
-} from "@app/lib/actions/constants";
-import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import {
   FRESHSERVICE_SERVER_INSTRUCTIONS,
   JIRA_SERVER_INSTRUCTIONS,
@@ -49,6 +48,22 @@ export const TABLE_QUERY_SERVER_NAME = "query_tables";
 export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2";
 export const DATA_WAREHOUSE_SERVER_NAME = "data_warehouses";
 
+export const CANVAS_SERVER_NAMES = [
+  "canvas_slideshow",
+  "canvas_dashboard",
+  "canvas_other",
+] as const;
+
+export function isCanvasServer(
+  server: ServerToolsAndInstructions
+): server is ServerToolsAndInstructions & {
+  serverName: (typeof CANVAS_SERVER_NAMES)[number];
+} {
+  return CANVAS_SERVER_NAMES.includes(
+    server.serverName as (typeof CANVAS_SERVER_NAMES)[number]
+  );
+}
+
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
   // Names should reflect the purpose of the server but not directly the tools it contains.
@@ -70,7 +85,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "hubspot",
   "image_generation",
   "include_data",
-  "canvas",
   "jira",
   "missing_action_catcher",
   "monday",
@@ -86,6 +100,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "think",
   "toolsets",
   "web_search_&_browse",
+  ...CANVAS_SERVER_NAMES,
   SEARCH_SERVER_NAME,
   TABLE_QUERY_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
@@ -99,6 +114,28 @@ const MCP_SERVER_AVAILABILITY = [
   "auto_hidden_builder",
 ] as const;
 export type MCPServerAvailability = (typeof MCP_SERVER_AVAILABILITY)[number];
+
+const CANVAS_SERVER_INFORMATION = {
+  availability: "auto",
+  allowMultipleInstances: false,
+  isRestricted: ({
+    featureFlags,
+  }: {
+    featureFlags: WhitelistableFeature[];
+  }) => {
+    return !featureFlags.includes("interactive_content_server");
+  },
+  isPreview: true,
+  tools_stakes: undefined,
+  timeoutMs: undefined,
+  serverInfo: {
+    version: "1.0.0",
+    authorization: null,
+    icon: "ActionDocumentTextIcon",
+    documentationUrl: null,
+    instructions: CANVAS_INSTRUCTIONS,
+  } as const,
+} as const;
 
 export const INTERNAL_MCP_SERVERS = {
   // Note:
@@ -715,25 +752,32 @@ The directive should be used to display a clickable version of the agent name in
       instructions: JIRA_SERVER_INSTRUCTIONS,
     },
   },
-  canvas: {
-    id: 23,
-    availability: "auto",
-    allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("interactive_content_server");
-    },
-    isPreview: true,
-    tools_stakes: undefined,
-    timeoutMs: undefined,
+  canvas_dashboard: {
+    id: 27,
+    ...CANVAS_SERVER_INFORMATION,
     serverInfo: {
-      name: "canvas",
-      version: "1.0.0",
+      ...CANVAS_SERVER_INFORMATION.serverInfo,
+      name: "canvas_dashboard",
+      description: "Create dashboards and single page visualizations.",
+    },
+  },
+  canvas_slideshow: {
+    id: 28,
+    ...CANVAS_SERVER_INFORMATION,
+    serverInfo: {
+      ...CANVAS_SERVER_INFORMATION.serverInfo,
+      name: "canvas_slideshow",
+      description: "Create slideshows.",
+    },
+  },
+  canvas_other: {
+    id: 28,
+    ...CANVAS_SERVER_INFORMATION,
+    serverInfo: {
+      ...CANVAS_SERVER_INFORMATION.serverInfo,
+      name: "canvas_other",
       description:
-        "Create and update canvas files that users can execute and interact with. Currently supports client-executable code.",
-      authorization: null,
-      icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: CANVAS_INSTRUCTIONS,
+        "Create various types of visual interactive assets (mini games, small apps, etc...).",
     },
   },
   outlook: {

@@ -37,10 +37,15 @@ import {
   getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
+  isCanvasServer,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  CANVAS_CAT_ASSET_TOOL_NAME,
+  CANVAS_LIST_ASSETS_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/canvas";
 import {
   extractToolBlockedAwaitingInputResponse,
   isToolBlockedAwaitingInputResponse,
@@ -753,6 +758,8 @@ export async function tryListMCPTools(
     { concurrency: 10 }
   );
 
+  let hasSeenCanvas = false;
+
   // Aggregate results
   const { serverToolsAndInstructions, errors } = results.reduce<{
     serverToolsAndInstructions: ServerToolsAndInstructions[];
@@ -760,7 +767,28 @@ export async function tryListMCPTools(
   }>(
     (acc, result) => {
       if (result.isOk()) {
-        acc.serverToolsAndInstructions.push(result.value);
+        const serverToolsAndInstructions = result.value;
+        const isCanvas = isCanvasServer(serverToolsAndInstructions);
+        if (isCanvas) {
+          hasSeenCanvas = true;
+        }
+        if (isCanvas) {
+          if (hasSeenCanvas) {
+            acc.serverToolsAndInstructions.push({
+              ...serverToolsAndInstructions,
+              tools: serverToolsAndInstructions.tools.filter(
+                (tool) =>
+                  tool.name === CANVAS_LIST_ASSETS_TOOL_NAME ||
+                  // TODO: concatenate the data sources and show one cat instead.
+                  tool.name === CANVAS_CAT_ASSET_TOOL_NAME
+              ),
+            });
+            return acc;
+          }
+          acc.serverToolsAndInstructions.push(serverToolsAndInstructions);
+        } else {
+          acc.serverToolsAndInstructions.push(serverToolsAndInstructions);
+        }
       } else {
         acc.errors.push(result.error.message);
       }

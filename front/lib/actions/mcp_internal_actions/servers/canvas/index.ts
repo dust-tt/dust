@@ -22,10 +22,18 @@ import {
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
 import type { CanvasFileContentType } from "@app/types";
-import { clientExecutableContentType, Err, Ok } from "@app/types";
-import { CANVAS_FILE_FORMATS } from "@app/types";
+import {
+  CANVAS_FILE_FORMATS,
+  clientExecutableContentType,
+  Err,
+  Ok,
+} from "@app/types";
 
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
+
+export const CANVAS_LIST_ASSETS_TOOL_NAME = "list_assets";
+
+export const CANVAS_CAT_ASSET_TOOL_NAME = "cat_assets";
 
 /**
  * Canvas Server - Allows the model to create and update canvas files.
@@ -38,7 +46,8 @@ const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
-  const server = makeInternalMCPServer("canvas");
+  // TODO
+  const server = makeInternalMCPServer("canvas_slideshow");
 
   server.tool(
     CREATE_CANVAS_FILE_TOOL_NAME,
@@ -293,7 +302,7 @@ const createServer = (
   // Register data source file system tools for the Canvas server with custom
   // descriptions tailored for Canvas use cases (visual assets and templates).
   registerListTool(auth, server, agentLoopContext, {
-    name: "list_assets",
+    name: CANVAS_LIST_ASSETS_TOOL_NAME,
     extraDescription:
       "Browse available visual assets and templates in the connected data sources. " +
       "Use this to explore folders containing images, icons, slideshow templates, " +
@@ -301,7 +310,7 @@ const createServer = (
   });
 
   registerCatTool(auth, server, agentLoopContext, {
-    name: "cat_assets",
+    name: CANVAS_CAT_ASSET_TOOL_NAME,
     extraDescription:
       "Read template files or asset configurations from the connected data sources. " +
       "Use this to retrieve slideshow templates, HTML/CSS snippets, React component examples, " +
