@@ -46,7 +46,9 @@ export function AgentMessageActions({
     (isAgentMessageWithActions && agentMessage.actions.length > 0) ||
     agentMessage.chainOfThought;
 
-  const chainOfThought = agentMessage.chainOfThought || "";
+  const fullChainOfThought = agentMessage.chainOfThought || "";
+  const chainOfThought = fullChainOfThought.split("\n\n").pop() || "";
+
   const onClick = () => {
     openPanel({
       type: "actions",
