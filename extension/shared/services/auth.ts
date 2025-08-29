@@ -71,7 +71,6 @@ export abstract class AuthService {
 
   // Shared methods with implementation
   async saveTokens(rawTokens: OAuthAuthorizeResponse) {
-    console.log("======================", rawTokens);
     const tokens: StoredTokens = {
       accessToken: rawTokens.accessToken,
       refreshToken: rawTokens.refreshToken,
