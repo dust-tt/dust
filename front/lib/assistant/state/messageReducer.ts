@@ -29,6 +29,7 @@ export interface MessageTemporaryState {
   isRetrying: boolean;
   lastUpdated: Date;
   actionProgress: ActionProgressState;
+  useFullChainOfThought: boolean;
 }
 
 export type AgentMessageStateEvent = (
@@ -174,8 +175,13 @@ export function messageReducer(
           newState.agentState = "writing";
           break;
         case "chain_of_thought":
-          newState.message.chainOfThought =
-            (newState.message.chainOfThought || "") + event.text;
+          // If we're not using the full chain of thought, reset at paragraph boundaries.
+          if (!state.useFullChainOfThought && event.text === "\n\n") {
+            newState.message.chainOfThought = "";
+          } else {
+            newState.message.chainOfThought =
+              (newState.message.chainOfThought || "") + event.text;
+          }
           newState.agentState = "thinking";
           break;
         default:

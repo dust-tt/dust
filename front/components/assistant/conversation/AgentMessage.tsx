@@ -144,6 +144,7 @@ export function AgentMessage({
       [showBlockedActionsDialog, enqueueBlockedAction, message]
     ),
     streamId: `message-${message.sId}`,
+    useFullChainOfThought: false,
   });
 
   const agentMessageToRender = getAgentMessageToRender({
