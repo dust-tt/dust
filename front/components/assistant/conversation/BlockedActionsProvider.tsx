@@ -274,7 +274,7 @@ function useBlockedActionsQueue({
       // If the action is not in the queue, add it.
       // If the action is in the queue, replace it with the new one.
       return existingIndex === -1
-        ? [...blockedActionsQueue, { blockedAction, message }]
+        ? [...prevQueue, { blockedAction, message }]
         : prevQueue.map((item, index) =>
             index === existingIndex ? { blockedAction, message } : item
           );
@@ -520,8 +520,7 @@ export function BlockedActionsProvider({
         };
       }
 
-      const pendingValidationIndex = validationSectionIndex - validatedActions;
-      const currentBlockedAction = pendingValidations[pendingValidationIndex];
+      const currentBlockedAction = pendingValidations[0];
 
       if (!currentBlockedAction) {
         return {
