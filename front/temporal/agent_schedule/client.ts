@@ -58,7 +58,7 @@ export async function createOrUpdateAgentScheduleWorkflow({
   const childLogger = logger.child({
     workspaceId: workspace.sId,
     scheduleId,
-    triggerId: trigger.sId,
+    triggerId: trigger.sId(),
     trigger: trigger.toJSON(),
   });
 
