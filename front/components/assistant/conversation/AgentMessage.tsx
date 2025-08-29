@@ -121,7 +121,10 @@ export function AgentMessage({
     mutateMessage,
     onEventCallback: useCallback(
       (eventStr: string) => {
-        const eventPayload = JSON.parse(eventStr);
+        const eventPayload: {
+          eventId: string;
+          data: AgentMessageStateEvent;
+        } = JSON.parse(eventStr);
         const eventType = eventPayload.data.type;
 
         if (eventType === "tool_approve_execution") {
