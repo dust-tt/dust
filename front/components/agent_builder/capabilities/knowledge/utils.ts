@@ -28,7 +28,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
   search: {
     icon: MagnifyingGlassIcon,
     configPageTitle: "Configure Search",
-    configPageDescription: "Describe what you want to search for",
+    configPageDescription: "Describe what you want to search for.",
     descriptionConfig: {
       title: "What’s the data?",
       description:
@@ -39,7 +39,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
   include_data: {
     icon: ActionIncludeIcon,
     configPageTitle: "Configure Include Data",
-    configPageDescription: "Set time range and describe what data to include",
+    configPageDescription: "Set time range and describe what data to include.",
     descriptionConfig: {
       title: "What’s the data?",
       description:
@@ -52,7 +52,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
     icon: ActionScanIcon,
     configPageTitle: "Configure Extract Data",
     configPageDescription:
-      "Set extraction parameters and describe what data to extract",
+      "Set extraction parameters and describe what data to extract.",
     descriptionConfig: {
       title: "What’s the data?",
       description:
@@ -64,7 +64,8 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
   [TABLE_QUERY_SERVER_NAME]: {
     icon: TableIcon,
     configPageTitle: "Configure Query Tables",
-    configPageDescription: "Describe how you want to query the selected tables",
+    configPageDescription:
+      "Describe how you want to query the selected tables.",
     descriptionConfig: {
       title: "Query Description",
       description:
@@ -75,7 +76,8 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
   [TABLE_QUERY_V2_SERVER_NAME]: {
     icon: TableIcon,
     configPageTitle: "Configure Query Tables v2",
-    configPageDescription: "Describe how you want to query the selected tables",
+    configPageDescription:
+      "Describe how you want to query the selected tables.",
     descriptionConfig: {
       title: "Query Description",
       description:
@@ -86,7 +88,8 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
   [DATA_WAREHOUSE_SERVER_NAME]: {
     icon: TableIcon,
     configPageTitle: "Configure Data Warehouse",
-    configPageDescription: "Describe how you want to query the selected tables",
+    configPageDescription:
+      "Describe how you want to query the selected tables.",
     descriptionConfig: {
       title: "Query Description",
       description:

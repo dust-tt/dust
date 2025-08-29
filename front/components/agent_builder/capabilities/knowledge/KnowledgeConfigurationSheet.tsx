@@ -1,10 +1,19 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
-import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  MultiPageSheet,
+  MultiPageSheetContent,
+} from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import isEmpty from "lodash/isEmpty";
 import uniqueId from "lodash/uniqueId";
-import { useContext, useEffect, useMemo, useState } from "react";
-import { FormProvider, useForm, useWatch } from "react-hook-form";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  FormProvider,
+  useForm,
+  useFormContext,
+  useWatch,
+} from "react-hook-form";
 
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { KnowledgeFooter } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeFooter";
@@ -40,7 +49,10 @@ import {
   KnowledgePageProvider,
   useKnowledgePageContext,
 } from "@app/components/data_source_view/context/PageContext";
-import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
+import {
+  getMCPServerNameForTemplateAction,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
 import { SEARCH_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -235,7 +247,9 @@ function KnowledgeConfigurationSheetForm({
         ? action!.name // Keep original name when editing without changes
         : generateUniqueActionName({
             baseName: nameToStorageFormat(formData.name),
-            existingActions: actions || [],
+            existingActions: isEditing
+              ? (actions || []).filter((a) => a.id !== action?.id)
+              : actions || [],
           });
 
     const newAction: AgentBuilderAction = {
@@ -306,6 +320,8 @@ function KnowledgeConfigurationSheetContent({
   isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
   const { currentPageId, setSheetPageId } = useKnowledgePageContext();
+  const nameSectionRef = useRef<HTMLInputElement>(null);
+  const { setValue, getValues } = useFormContext<CapabilityFormData>();
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
@@ -326,6 +342,28 @@ function KnowledgeConfigurationSheetContent({
   const requirements = useMemo(() => {
     return getMCPServerRequirements(mcpServerView);
   }, [mcpServerView]);
+
+  // Focus NameSection input when navigating to CONFIGURATION page
+  useEffect(() => {
+    if (currentPageId === CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION) {
+      nameSectionRef.current?.focus();
+    }
+  }, [currentPageId]);
+
+  // Prefill name field with processing method display name when mcpServerView changes
+  useEffect(() => {
+    if (mcpServerView && !isEditing) {
+      const processingMethodName = getMcpServerViewDisplayName(mcpServerView);
+      const currentName = getValues("name");
+      if (currentName !== processingMethodName) {
+        setValue("name", processingMethodName, {
+          shouldDirty: false,
+          shouldTouch: false,
+          shouldValidate: false,
+        });
+      }
+    }
+  }, [mcpServerView, isEditing, setValue, getValues]);
 
   const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
@@ -389,14 +427,18 @@ function KnowledgeConfigurationSheetContent({
       description:
         config?.configPageDescription ||
         "Select knowledge type and configure settings",
-      icon: config?.icon,
+      icon: config
+        ? () => <Avatar icon={config.icon} size="md" className="mr-2" />
+        : undefined,
       content: (
         <div className="space-y-6">
-          <SelectDataSourcesFilters />
-
-          <NameSection title="Name" placeholder="Search Google Drive" />
-
           <ProcessingMethodSection />
+
+          <NameSection
+            ref={nameSectionRef}
+            title="Name"
+            placeholder="Name ..."
+          />
 
           {requirements.mayRequireTimeFrameConfiguration && (
             <TimeFrameSection actionType="extract" />
@@ -407,6 +449,8 @@ function KnowledgeConfigurationSheetContent({
           )}
 
           {config && <DescriptionSection {...config?.descriptionConfig} />}
+
+          <SelectDataSourcesFilters />
         </div>
       ),
     },

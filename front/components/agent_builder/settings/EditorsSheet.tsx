@@ -21,8 +21,13 @@ import type {
   ColumnDef,
   PaginationState,
 } from "@tanstack/react-table";
-import React, { useEffect, useMemo, useState } from "react";
-import { useCallback } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -51,6 +56,7 @@ export function EditorsSheet() {
   const [searchTerm, setSearchTerm] = useState("");
   const [localEditors, setLocalEditors] = useState<UserType[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const {
     field: { onChange, value: editors },
@@ -63,6 +69,15 @@ export function EditorsSheet() {
       setLocalEditors([...(editors || [])]);
     }
   }, [editors, isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      // Small delay to wait for sheet animation to complete
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 200);
+    }
+  }, [isOpen]);
 
   const { members: workspaceMembers, isLoading: isWorkspaceMembersLoading } =
     useSearchMembers({
@@ -221,6 +236,7 @@ export function EditorsSheet() {
         <SheetContainer>
           <div className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
             <SearchInput
+              ref={searchInputRef}
               value={searchTerm}
               onChange={setSearchTerm}
               name="search-editors"

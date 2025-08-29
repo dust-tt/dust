@@ -7,7 +7,13 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { UseFieldArrayAppend } from "react-hook-form";
 import { useForm } from "react-hook-form";
 
@@ -141,6 +147,7 @@ export function MCPServerViewsSheet({
     SelectedTool[]
   >([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [isOpen, setIsOpen] = useState(!!mode);
   const [currentPageId, setCurrentPageId] = useState<ConfigurationPagePageId>(
@@ -281,6 +288,16 @@ export function MCPServerViewsSheet({
     }
     setIsOpen(!!mode);
   }, [mode, allMcpServerViews]);
+
+  // Focus SearchInput when opening on TOOL_SELECTION page
+  useEffect(() => {
+    if (isOpen && currentPageId === TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION) {
+      // Small delay to ensure the component is fully rendered
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen, currentPageId]);
 
   const toggleToolSelection = useCallback((tool: SelectedTool) => {
     setSelectedToolsInSheet((prev) => {
@@ -495,10 +512,11 @@ export function MCPServerViewsSheet({
         <>
           {!isMCPServerViewsLoading && (
             <SearchInput
+              ref={searchInputRef}
               value={searchTerm}
               onChange={setSearchTerm}
               name="search-mcp-servers"
-              placeholder="Search servers..."
+              placeholder="Search tools..."
             />
           )}
           <MCPServerSelectionPage
