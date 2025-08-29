@@ -47,7 +47,9 @@ export function AgentMessageActions({
     agentMessage.chainOfThought;
 
   const fullChainOfThought = agentMessage.chainOfThought || "";
-  const chainOfThought = fullChainOfThought.split("\n\n").pop() || "";
+  const paragraphs = fullChainOfThought.split("\n\n");
+  const chainOfThought =
+    paragraphs.slice(paragraphs.length - 2).join("\n\n") || "";
 
   const onClick = () => {
     openPanel({
