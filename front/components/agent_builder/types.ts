@@ -112,7 +112,6 @@ export const capabilityFormSchema = z
       .default(""),
     description: z
       .string()
-      .min(1, "Description is required")
       .max(
         DESCRIPTION_MAX_LENGTH,
         "Description should be less than 800 characters."

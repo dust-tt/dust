@@ -97,7 +97,7 @@ export const mcpTimeFrameSchema = timeFrameSchema;
 const baseActionSchema = z.object({
   id: z.string(),
   name: z.string(),
-  description: z.string(),
+  description: z.string().nullable(),
   noConfigurationRequired: z.boolean().optional(),
 });
 
