@@ -14,6 +14,7 @@ import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_act
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
 import { default as calendarServer } from "@app/lib/actions/mcp_internal_actions/servers/google_calendar";
+import { default as driveServer } from "@app/lib/actions/mcp_internal_actions/servers/google_drive";
 import { default as sheetsServer } from "@app/lib/actions/mcp_internal_actions/servers/google_sheets";
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/server";
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
@@ -127,6 +128,8 @@ export async function getInternalMCPServer(
       return gmailServer();
     case "google_calendar":
       return calendarServer();
+    case "google_drive":
+      return driveServer();
     case "google_sheets":
       return sheetsServer();
     case "data_sources_file_system":
