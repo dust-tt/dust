@@ -468,7 +468,7 @@ export function BlockedActionsProvider({
       return [];
     }
 
-    const rawPages = Array.from({ length: totalCount }, (_, index) => {
+    return Array.from({ length: totalCount }, (_, index) => {
       if (hasPendingAuthentications && index === 0) {
         // Create a combined authentication page with all pending authentications
         const authActions: AuthenticationRequiredBlockedAction[] =
@@ -507,17 +507,39 @@ export function BlockedActionsProvider({
         ? index - 1
         : index;
 
+      if (validationSectionIndex < validatedActions) {
+        return {
+          id: index.toString(),
+          title: "Completed",
+          icon: ActionPieChartIcon,
+          content: (
+            <div className="py-4 text-sm text-muted-foreground">
+              Action already processed
+            </div>
+          ),
+        };
+      }
+
       const pendingValidationIndex = validationSectionIndex - validatedActions;
       const currentBlockedAction = pendingValidations[pendingValidationIndex];
 
       if (!currentBlockedAction) {
-        return null;
+        return {
+          id: index.toString(),
+          title: "Completed",
+          icon: ActionPieChartIcon,
+          content: (
+            <div className="py-4 text-sm text-muted-foreground">
+              Action already processed
+            </div>
+          ),
+        };
       }
 
       const { blockedAction } = currentBlockedAction;
 
       return {
-        id: blockedAction.actionId,
+        id: `validation-${blockedAction.actionId}`,
         title: "Tool Validation Required",
         icon: blockedAction.metadata.icon
           ? getIcon(blockedAction.metadata.icon)
@@ -532,10 +554,6 @@ export function BlockedActionsProvider({
         ),
       };
     });
-
-    return rawPages.filter(
-      (p): p is NonNullable<(typeof rawPages)[number]> => p !== null
-    );
   }, [
     errorMessage,
     neverAskAgain,
@@ -551,13 +569,13 @@ export function BlockedActionsProvider({
     if (pages.length === 0) {
       return "";
     }
-
     if (hasPendingAuthentications && validatedActions === 0) {
       return "auth";
     }
-
     const nextValidation = pendingValidations[validatedActions];
-    return nextValidation?.blockedAction.actionId ?? pages[0].id;
+    return nextValidation
+      ? `validation-${nextValidation.blockedAction.actionId}`
+      : pages[0].id;
   }, [pages, hasPendingAuthentications, validatedActions, pendingValidations]);
 
   return (
