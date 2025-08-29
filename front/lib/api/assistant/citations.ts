@@ -1,6 +1,5 @@
 import { removeNulls } from "@dust-tt/client";
 
-import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   isRunAgentResultResourceType,
   isSearchResultResourceType,
@@ -12,6 +11,7 @@ import type {
   CitationType,
   LightAgentMessageType,
 } from "@app/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 let REFS: string[] | null = null;
 const getRand = rand("chawarma");
@@ -50,7 +50,7 @@ export function citationMetaPrompt(isUsingRunAgent: boolean) {
 }
 
 export const getCitationsFromActions = (
-  actions: MCPActionType[]
+  actions: AgentMCPActionWithOutputType[]
 ): Record<string, CitationType> => {
   const searchResultsWithDocs = removeNulls(
     actions.flatMap((action) =>

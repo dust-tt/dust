@@ -35,6 +35,7 @@ import logger from "@app/logger/logger";
 import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
 import type { ModelId, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { AgentStepContentType } from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -360,6 +361,8 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           "Unexpected: MCP actions on non-function call step content"
         );
         // MCP actions filtering already happened in fetch methods if latestVersionsOnly was requested
+        // TODO(durable-agents): use AgentMCPActionResource.toJSON(), which may require moving
+        //  its constructor to the AgentStepContentResource instead of the model.
         base.mcpActions = this.agentMCPActions.map(
           (action: AgentMCPActionModel) => {
             const mcpServerId = action.toolConfiguration?.toolServerId || null;
@@ -396,7 +399,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
                   };
                 })
               ),
-            };
+            } satisfies AgentMCPActionWithOutputType;
           }
         );
       }
