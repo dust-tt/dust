@@ -450,7 +450,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async listConversationsForTrigger(
     auth: Authenticator,
-    triggerId: string
+    triggerId: string,
+    options?: FetchConversationOptions
   ): Promise<ConversationWithoutContentType[]> {
     const owner = auth.getNonNullableWorkspace();
 
@@ -459,7 +460,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return [];
     }
 
-    const conversations = await this.model.findAll({
+    const conversations = await this.baseFetch(auth, options, {
       where: {
         workspaceId: owner.id,
         triggerId: triggerModelId,
@@ -478,7 +479,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       triggerId: triggerId,
       requestedGroupIds: new this(
         this.model,
-        c.get()
+        c
       ).getConversationRequestedGroupIdsFromModel(auth),
     }));
   }
