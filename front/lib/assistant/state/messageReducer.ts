@@ -174,12 +174,8 @@ export function messageReducer(
           newState.agentState = "writing";
           break;
         case "chain_of_thought":
-          if (event.text === "\n\n") {
-            newState.message.chainOfThought = "";
-          } else {
-            newState.message.chainOfThought =
-              (newState.message.chainOfThought || "") + event.text;
-          }
+          newState.message.chainOfThought =
+            (newState.message.chainOfThought || "") + event.text;
           newState.agentState = "thinking";
           break;
         default:
