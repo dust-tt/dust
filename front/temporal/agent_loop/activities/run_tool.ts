@@ -1,6 +1,5 @@
 import assert from "assert";
 
-import { runToolWithStreaming } from "@app/lib/actions/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -8,6 +7,7 @@ import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activiti
 import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
+import { runToolWithStreaming } from "@app/temporal/agent_loop/lib/run_tool_streaming";
 import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
 import type { RunAgentArgs } from "@app/types/assistant/agent_run";
