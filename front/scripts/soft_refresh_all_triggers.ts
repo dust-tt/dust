@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -29,13 +30,27 @@ makeScript(
 
     const triggers = await TriggerResource.listByWorkspace(auth);
     for (const trigger of triggers) {
+      const user = await UserResource.fetchByModelId(trigger.editor);
+      if (!user) {
+        logger.error(
+          { triggerId: trigger.sId(), triggerName: trigger.name },
+          "Trigger editor user not found"
+        );
+        continue;
+      }
+
+      const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
       if (execute) {
-        await trigger.disable(auth);
+        await trigger.disable(editorAuth);
         logger.info(
           { triggerId: trigger.sId(), triggerName: trigger.name },
           "Disabled trigger"
         );
-        await trigger.enable(auth);
+        await trigger.enable(editorAuth);
         logger.info(
           { triggerId: trigger.sId(), triggerName: trigger.name },
           "Re-enabled trigger"
