@@ -299,7 +299,7 @@ const createServer = (
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const schemaResult = await coreAPI.getDatabaseSchema({
           tables: validatedNodes.map((node) => ({
-            project_id: parseInt(dataSource.dustAPIProjectId),
+            project_id: parseInt(dataSource.dustAPIProjectId, 10),
             data_source_id: dataSource.dustAPIDataSourceId,
             table_id: node.node_id,
           })),
@@ -403,7 +403,7 @@ const createServer = (
 
         return executeQuery(auth, {
           tables: validatedNodes.map((node) => ({
-            project_id: parseInt(dataSource.dustAPIProjectId),
+            project_id: parseInt(dataSource.dustAPIProjectId, 10),
             data_source_id: dataSource.dustAPIDataSourceId,
             table_id: node.node_id,
           })),

@@ -14,8 +14,7 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { CoreAPI, Err, removeNulls } from "@app/types";
-import { Ok } from "@app/types";
+import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
 
 const DEFAULT_SEARCH_LABELS_LIMIT = 10;
 
