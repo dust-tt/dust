@@ -43,6 +43,7 @@ import {
   CitationIcons,
   CitationIndex,
   CitationTitle,
+  ClipboardCheckIcon,
   ClipboardIcon,
   ContentMessage,
   ConversationMessage,
@@ -53,8 +54,10 @@ import {
   Markdown,
   Page,
   Popover,
+  useCopyToClipboard,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import { marked } from "marked";
 import {
   useCallback,
   useContext,
@@ -67,11 +70,6 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { visit } from "unist-util-visit";
-
-function cleanUpCitations(message: string): string {
-  const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
-  return message.replace(regex, "");
-}
 
 export const FeedbackSelectorPopoverContent = () => {
   return (
@@ -171,6 +169,7 @@ export function AgentMessage({
   const [activeReferences, setActiveReferences] = useState<
     { index: number; document: MarkdownCitation }[]
   >([]);
+  const [isCopied, copy] = useCopyToClipboard();
 
   const isGlobalAgent = message.configuration.id === -1;
 
@@ -415,6 +414,70 @@ export function AgentMessage({
     []
   );
 
+  async function handleCopyToClipboard() {
+    const messageContent = agentMessageToRender.content || "";
+    let footnotesMarkdown = "";
+    let footnotesHtml = "";
+
+    // 1. Build Key-to-Index Map
+    const keyToIndexMap = new Map<string, number>();
+    if (references && activeReferences) {
+      Object.entries(references).forEach(([key, mdCitation]) => {
+        const activeRefEntry = activeReferences.find(
+          (ar) =>
+            ar.document.href === mdCitation.href &&
+            ar.document.title === mdCitation.title
+        );
+        if (activeRefEntry) {
+          keyToIndexMap.set(key, activeRefEntry.index);
+        }
+      });
+    }
+
+    // 2. Process Message Content for Plain Text numerical citations
+    let processedMessageContent = messageContent;
+    if (keyToIndexMap.size > 0) {
+      const citeDirectiveRegex = /:cite\[([a-zA-Z0-9_,-]+)\]/g;
+      processedMessageContent = messageContent.replace(
+        citeDirectiveRegex,
+        (_match, keysString: string) => {
+          const keys = keysString.split(",").map((k) => k.trim());
+          const resolvedIndices = keys
+            .map((k) => keyToIndexMap.get(k))
+            .filter((idx) => idx !== undefined) as number[];
+
+          if (resolvedIndices.length > 0) {
+            resolvedIndices.sort((a, b) => a - b);
+            return `[${resolvedIndices.join(",")}]`;
+          }
+          return _match;
+        }
+      );
+    }
+
+    if (activeReferences.length > 0) {
+      footnotesMarkdown = "\n\nReferences:\n";
+      footnotesHtml = "<br/><br/><div>References:</div>";
+      const sortedActiveReferences = [...activeReferences].sort(
+        (a, b) => a.index - b.index
+      );
+      for (const ref of sortedActiveReferences) {
+        footnotesMarkdown += `[${ref.index}] ${ref.document.href}\n`;
+        footnotesHtml += `<div>[${ref.index}] <a href="${ref.document.href}">${ref.document.title}</a></div>`;
+      }
+    }
+
+    const markdownText = processedMessageContent + footnotesMarkdown;
+    const htmlContent = (await marked(processedMessageContent)) + footnotesHtml;
+
+    await copy(
+      new ClipboardItem({
+        "text/plain": new Blob([markdownText], { type: "text/plain" }),
+        "text/html": new Blob([htmlContent], { type: "text/html" }),
+      })
+    );
+  }
+
   const buttons =
     message.status === "failed" || messageStreamState.agentState === "thinking"
       ? []
@@ -424,12 +487,8 @@ export function AgentMessage({
             tooltip="Copy to clipboard"
             variant="ghost"
             size="xs"
-            onClick={() => {
-              void navigator.clipboard.writeText(
-                cleanUpCitations(agentMessageToRender.content || "")
-              );
-            }}
-            icon={ClipboardIcon}
+            onClick={handleCopyToClipboard}
+            icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
             className="text-muted-foreground dark:text-muted-foreground-night"
           />,
           <Button
