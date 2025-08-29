@@ -24,12 +24,8 @@ export class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    datadogLogs.logger.error("Uncaught client side error", {
-      error: {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
-      },
+    datadogLogs.logger.error(error.name || "Uncaught client side error", {
+      error,
       errorInfo: {
         componentStack: info.componentStack,
       },
