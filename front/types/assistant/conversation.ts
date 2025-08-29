@@ -1,7 +1,4 @@
-import type {
-  MCPActionType,
-  MCPApproveExecutionEvent,
-} from "@app/lib/actions/mcp";
+import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
@@ -160,7 +157,7 @@ export type BaseAgentMessageType = {
 
 export type ParsedContentItem =
   | { kind: "reasoning"; content: string }
-  | { kind: "action"; action: MCPActionType };
+  | { kind: "action"; action: AgentMCPActionWithOutputType };
 
 export type AgentMessageType = BaseAgentMessageType & {
   id: ModelId;
@@ -169,7 +166,7 @@ export type AgentMessageType = BaseAgentMessageType & {
   visibility: MessageVisibility;
   configuration: LightAgentConfigurationType;
   skipToolsValidation: boolean;
-  actions: MCPActionType[];
+  actions: AgentMCPActionWithOutputType[];
   rawContents: Array<{
     step: number;
     content: string;

@@ -1,7 +1,6 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -36,6 +35,7 @@ import type {
 } from "@app/types";
 import type { LightAgentConfigurationType } from "@app/types";
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentContentItemType,
   ReasoningContentType,
@@ -64,7 +64,7 @@ export function getMaximalVersionAgentStepContent(
 }
 
 export async function generateParsedContents(
-  actions: MCPActionType[],
+  actions: AgentMCPActionWithOutputType[],
   agentConfiguration: LightAgentConfigurationType,
   messageId: string,
   contents: { step: number; content: AgentContentItemType }[]
