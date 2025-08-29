@@ -13,12 +13,13 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 const SUPPORTED_MIMETYPES = [
   "application/vnd.google-apps.document",
   "application/vnd.google-apps.presentation",
-  "application/vnd.google-apps.spreadsheet",
   "text/plain",
   "text/markdown",
+  "text/csv",
 ];
 
 const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
+const MAX_FILE_SIZE = 64 * 1024 * 1024; // 10 MB max original file size
 
 const createServer = (): McpServer => {
   const server = makeInternalMCPServer("google_drive");
@@ -186,7 +187,8 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
 
   server.tool(
     "get_file_content",
-    "Get the content of a Google Drive file with offset-based pagination. Only supports Google Docs, Presentations, Sheets, and text files (text/plain and text/markdown).",
+    `Get the content of a Google Drive file with offset-based pagination. ` +
+      `Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}.`,
     {
       fileId: z
         .string()
@@ -214,55 +216,61 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
         // First, get file metadata to determine the mimetype
         const fileMetadata = await drive.files.get({
           fileId,
+          supportsAllDrives: true,
           fields: "id, name, mimeType, size",
         });
-
         const file = fileMetadata.data;
+
         if (!file.mimeType || !SUPPORTED_MIMETYPES.includes(file.mimeType)) {
           return makeMCPToolTextError(
             `Unsupported file type: ${file.mimeType}. Supported types: ${SUPPORTED_MIMETYPES.join(", ")}`
           );
         }
+        if (file.size && parseInt(file.size) > MAX_FILE_SIZE) {
+          return makeMCPToolTextError(
+            `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`
+          );
+        }
 
         let content: string;
 
-        // Handle different file types
-        if (
-          file.mimeType === "application/vnd.google-apps.document" ||
-          file.mimeType === "application/vnd.google-apps.presentation" ||
-          file.mimeType === "application/vnd.google-apps.spreadsheet"
-        ) {
-          // Export Google Docs and Presentations as plain text
-          const exportResponse = await drive.files.export({
-            fileId,
-            mimeType: "text/plain",
-          });
-          if (typeof exportResponse.data !== "string") {
-            return makeMCPToolTextError(
-              "Failed to export file content as text/plain"
-            );
+        switch (file.mimeType) {
+          case "application/vnd.google-apps.document":
+          case "application/vnd.google-apps.presentation": {
+            // Export Google Docs and Presentations as plain text
+            const exportRes = await drive.files.export({
+              fileId,
+              mimeType: "text/plain",
+            });
+            if (typeof exportRes.data !== "string") {
+              return makeMCPToolTextError(
+                "Failed to export file content as text/plain"
+              );
+            }
+            content = exportRes.data;
+            break;
           }
-          content = exportResponse.data;
-        } else if (
-          file.mimeType === "text/plain" ||
-          file.mimeType === "text/markdown"
-        ) {
-          // Download regular text files
-          const downloadResponse = await drive.files.get({
-            fileId,
-            alt: "media",
-          });
+          case "text/plain":
+          case "text/markdown":
+          case "text/csv": {
+            // Download regular text files
+            const downloadRes = await drive.files.get({
+              fileId,
+              alt: "media",
+            });
 
-          if (typeof downloadResponse.data !== "string") {
-            return makeMCPToolTextError(
-              "Failed to download file content as text"
-            );
+            if (typeof downloadRes.data !== "string") {
+              return makeMCPToolTextError(
+                "Failed to download file content as text"
+              );
+            }
+            content = downloadRes.data;
+            break;
           }
-          content = downloadResponse.data;
-        } else {
-          return makeMCPToolTextError(
-            `Unsupported file type: ${file.mimeType}`
-          );
+          default:
+            return makeMCPToolTextError(
+              `Unsupported file type: ${file.mimeType}`
+            );
         }
 
         // Apply offset and limit
