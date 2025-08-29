@@ -18,7 +18,7 @@ const SUPPORTED_MIMETYPES = [
   "text/markdown",
 ];
 
-const MAX_CONTENT_SIZE = 50000; // Max characters to return for file content
+const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
 
 const createServer = (): McpServer => {
   const server = makeInternalMCPServer("google_drive");
@@ -39,15 +39,11 @@ const createServer = (): McpServer => {
 
   server.tool(
     "list_drives",
-    "List all Google drives (shared drives) accessible by the user.",
+    "List all shared drives accessible by the user.",
     {
       pageToken: z.string().optional().describe("Page token for pagination."),
-      pageSize: z
-        .number()
-        .optional()
-        .describe("Maximum number of drives to return (max 100)."),
     },
-    async ({ pageToken, pageSize }, { authInfo }) => {
+    async ({ pageToken }, { authInfo }) => {
       const drive = await getDriveClient(authInfo);
       if (!drive) {
         return makeMCPToolTextError("Failed to authenticate with Google Drive");
@@ -56,7 +52,7 @@ const createServer = (): McpServer => {
       try {
         const res = await drive.drives.list({
           pageToken,
-          pageSize: pageSize ? Math.min(pageSize, 100) : undefined,
+          pageSize: 100,
           fields: "nextPageToken, drives(id, name, createdTime)",
         });
 
@@ -75,17 +71,31 @@ const createServer = (): McpServer => {
     "search_files",
     "Search for files in Google Drive. Can search in personal drive, all shared drives, or a specific drive.",
     {
-      query: z
-        .string()
-        .optional()
-        .describe(
-          "Search query to filter files. Uses Google Drive's search syntax. Leave empty to list all supported files."
-        ),
-      pageToken: z.string().optional().describe("Page token for pagination."),
-      pageSize: z
-        .number()
-        .optional()
-        .describe("Maximum number of files to return (max 1000)."),
+      q: z.string().optional().describe(`\
+Search query to filter files. Uses Google Drive's search syntax. Leave empty to list all supported files. Examples:
+- Files with the name "hello": name = 'hello'
+- Files with a name containing the words "hello" and "goodbye": name contains 'hello' and name contains 'goodbye'
+- Files with a name that does not contain the word "hello": not name contains 'hello'
+- Files that contain the text "important" and in the trash: fullText contains 'important' and trashed = true
+- Files that contain the word "hello": fullText contains 'hello'
+- Files that don't have the word "hello": not fullText contains 'hello'
+- Files that contain the exact phrase "hello world": fullText contains '"hello world"'
+- Files with a query that contains the "\\" character (for example, "\\authors"): fullText contains '\\\\authors'
+- Files that are folders: mimeType = 'application/vnd.google-apps.folder'
+- Files that are not folders: mimeType != 'application/vnd.google-apps.folder'
+- Files modified after a given date (default time zone is UTC)	modifiedTime > '2012-06-04T12:00:00'
+- Image or video files modified after a specific date: modifiedTime > '2012-06-04T12:00:00' and (mimeType contains 'image/' or mimeType contains 'video/')
+- Files that are starred: starred = true
+- Files within a collection (for example, the folder ID in the parents collection): '1234567' in parents
+- Files in an application data folder in a collection: 'appDataFolder' in parents
+- Files for which user "test@example.org" is the owner: 'test@example.org' in owners
+- Files for which user "test@example.org" has write permission: 'test@example.org' in writers
+- Files for which members of the group "group@example.org" have write permission: 'group@example.org' in writers
+- Files shared with the authorized user with "hello" in the name: sharedWithMe and name contains 'hello'
+- Files with a custom file property visible to all apps: properties has { key='mass' and value='1.3kg' }
+- Files with a custom file property private to the requesting app: appProperties has { key='additionalID' and value='8e8aceg2af2ge72e78' }
+- Files that have not been shared with anyone or domains (only private, or shared with specific users or groups): visibility = 'limited'
+`),
       driveId: z
         .string()
         .optional()
@@ -96,17 +106,30 @@ const createServer = (): McpServer => {
         .boolean()
         .default(true)
         .describe(
-          "Whether to include files from shared drives. Only valid if driveId is not set."
+          "Whether both My Drive and shared drive items should be included in results. Defaults to true."
         ),
-      orderBy: z
-        .string()
+      orderBy: z.string().optional().describe(`\
+A comma-separated list of sort key. Valid keys are:
+\`createdTime\`: When the file was created.
+\`folder\`: The folder ID. This field is sorted using alphabetical ordering.
+\`modifiedByMeTime\`: The last time the file was modified by the user.
+\`modifiedTime\`: The last time the file was modified by anyone.
+\`name\`: The name of the file. This field is sorted using alphabetical ordering, so 1, 12, 2, 22.
+\`name_natural\`: The name of the file. This field is sorted using natural sort ordering, so 1, 2, 12, 22.
+\`quotaBytesUsed\`: The number of storage quota bytes used by the file.
+\`recency\`: The most recent timestamp from the file's date-time fields.
+\`sharedWithMeTime\`: When the file was shared with the user, if applicable.
+\`starred\`: Whether the user has starred the file.
+\`viewedByMeTime\`: The last time the file was viewed by the user.
+Each key sorts ascending by default, but can be reversed with desc modified. Example: \`folder,modifiedTime desc,name\``),
+      pageSize: z
+        .number()
         .optional()
-        .describe(
-          "How to order the results. Examples: 'modifiedTime desc', 'name', 'createdTime desc'"
-        ),
+        .describe("Maximum number of files to return (max 1000)."),
+      pageToken: z.string().optional().describe("Page token for pagination."),
     },
     async (
-      { query, pageToken, pageSize, driveId, includeSharedDrives, orderBy },
+      { q, pageToken, pageSize, driveId, includeSharedDrives, orderBy },
       { authInfo }
     ) => {
       const drive = await getDriveClient(authInfo);
@@ -115,17 +138,8 @@ const createServer = (): McpServer => {
       }
 
       try {
-        // Build query to filter by supported mimetypes
-        const mimetypeQuery = SUPPORTED_MIMETYPES.map(
-          (mimetype) => `mimeType='${mimetype}'`
-        ).join(" or ");
-
-        const searchQuery = query
-          ? `(${mimetypeQuery}) and (${query})`
-          : `(${mimetypeQuery})`;
-
         const requestParams: {
-          q: string;
+          q?: string;
           pageToken?: string;
           pageSize?: number;
           fields: string;
@@ -135,7 +149,7 @@ const createServer = (): McpServer => {
           supportsAllDrives?: boolean;
           corpora?: string;
         } = {
-          q: searchQuery,
+          q,
           pageToken,
           pageSize: pageSize ? Math.min(pageSize, 1000) : undefined,
           fields:
@@ -172,7 +186,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_file_content",
-    "Get the content of a Google Drive file. Supports Google Docs, Presentations, Sheets, and text files with offset-based pagination.",
+    "Get the content of a Google Drive file with offset-based pagination. Only supports Google Docs, Presentations, Sheets, and text files (text/plain and text/markdown).",
     {
       fileId: z
         .string()
@@ -180,12 +194,14 @@ const createServer = (): McpServer => {
       offset: z
         .number()
         .default(0)
-        .describe("Character offset to start reading from (for pagination)."),
+        .describe(
+          "Character offset to start reading from (for pagination). Defaults to 0."
+        ),
       limit: z
         .number()
         .default(MAX_CONTENT_SIZE)
         .describe(
-          `Maximum number of characters to return, defaults to ${MAX_CONTENT_SIZE}.`
+          `Maximum number of characters to return. Defaults to ${MAX_CONTENT_SIZE}.`
         ),
     },
     async ({ fileId, offset, limit }, { authInfo }) => {
