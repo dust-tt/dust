@@ -28,7 +28,11 @@ const { microsoftDeletionActivity, microsoftGarbageCollectionActivity } =
     startToCloseTimeout: "120 minutes",
   });
 
-const { syncDeltaForRootNodesInDrive } = proxyActivities<typeof activities>({
+const {
+  fetchDeltaForRootNodesInDrive,
+  processDeltaChangesFromGCS,
+  cleanupDeltaGCSFile,
+} = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minutes",
   heartbeatTimeout: "5 minutes",
 });
@@ -184,11 +188,52 @@ export async function incrementalSyncWorkflow({
 
   const startSyncTs = new Date().getTime();
   for (const nodeId of Object.keys(groupedItems)) {
-    await syncDeltaForRootNodesInDrive({
+    // Step 1: Fetch delta data and upload to GCS
+    const { gcsFilePath } = await fetchDeltaForRootNodesInDrive({
       connectorId,
       driveId: nodeId,
       rootNodeIds: groupedItems[nodeId] as string[],
-      startSyncTs,
+    });
+
+    // Skip processing if no delta data was fetched
+    if (!gcsFilePath) {
+      console.log(`No delta data to process for drive ${nodeId}, skipping`);
+      continue;
+    }
+
+    // Step 2: Process the changes from GCS in batches
+    let cursor: number | null = 0;
+
+    try {
+      while (cursor !== null) {
+        const { nextCursor } = await processDeltaChangesFromGCS({
+          connectorId,
+          driveId: nodeId,
+          gcsFilePath,
+          startSyncTs,
+          cursor,
+        });
+
+        cursor = nextCursor;
+
+        // Add a small delay between batches to prevent overwhelming the system
+        if (cursor !== null) {
+          await sleep("1 second");
+        }
+      }
+    } catch (error) {
+      console.error(
+        `Error processing delta changes for drive ${nodeId}:`,
+        error
+      );
+      throw error; // Re-throw to fail the workflow
+    }
+
+    // Step 3: Clean up the temporary GCS file
+    await cleanupDeltaGCSFile({
+      connectorId,
+      driveId: nodeId,
+      gcsFilePath,
     });
   }
 
