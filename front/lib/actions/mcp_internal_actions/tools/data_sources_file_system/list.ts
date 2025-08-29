@@ -7,16 +7,16 @@ import { FILESYSTEM_LIST_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
-  getAgentDataSourceConfigurations,
-  makeDataSourceViewFilter,
-} from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import {
   DATA_SOURCE_FILE_SYSTEM_OPTION_PARAMETERS,
   extractDataSourceIdFromNodeId,
   getSearchNodesSortDirection,
   isDataSourceNodeId,
   makeQueryResourceForList,
 } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
+import {
+  getAgentDataSourceConfigurations,
+  makeDataSourceViewFilter,
+} from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";

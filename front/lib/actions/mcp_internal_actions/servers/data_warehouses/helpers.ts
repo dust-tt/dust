@@ -6,8 +6,8 @@ import type {
   WarehousesBrowseType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { WAREHOUSES_BROWSE_MIME_TYPE } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ResolvedDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeDataSourceViewFilter } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import type { ResolvedDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { makeDataSourceViewFilter } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
