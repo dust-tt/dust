@@ -180,7 +180,8 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: TABLE_QUERY_SERVER_NAME,
       version: "1.0.0",
-      description: "Tables, Spreadsheets, Notion DBs (quantitative).",
+      description:
+        "TablesQuery structured data like a spreadsheet or database for data analyses.",
       icon: "ActionTableIcon",
       authorization: null,
       documentationUrl: null,
@@ -320,7 +321,7 @@ The directive should be used to display a clickable version of the agent name in
       name: "include_data",
       version: "1.0.0",
       description:
-        "Always includes specific documents in full for every conversation with this agent.",
+        "Load complete content for full context up to memory limits.",
       icon: "ActionTimeIcon",
       authorization: null,
       documentationUrl: null,
@@ -398,8 +399,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "extract_data",
       version: "1.0.0",
-      description:
-        "Extracts structured information from unstructured data using your defined schema.",
+      description: "Parse documents to create structured datasets.",
       icon: "ActionScanIcon",
       authorization: null,
       documentationUrl: null,
@@ -890,8 +890,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: SEARCH_SERVER_NAME,
       version: "1.0.0",
-      description:
-        "Searches through selected data sources to surface the best content for answering user queries.",
+      description: "Search content to find the most relevant information.",
       icon: "ActionMagnifyingGlassIcon",
       authorization: null,
       documentationUrl: null,
@@ -971,7 +970,7 @@ The directive should be used to display a clickable version of the agent name in
       name: "query_tables_v2",
       version: "1.0.0",
       description:
-        "Transforms your questions into SQL queries for analyzing data. (quantitative) (mcp, exploded).",
+        "Query structured data like a spreadsheet or database for data analyses.",
       icon: "ActionTableIcon",
       authorization: null,
       documentationUrl: null,
