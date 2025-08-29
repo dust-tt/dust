@@ -48,10 +48,7 @@ import {
   isPersonalAuthenticationRequiredErrorContent,
   removeNulls,
 } from "@app/types";
-import type {
-  AgentMCPActionType,
-  AgentMCPActionWithOutputType,
-} from "@app/types/actions";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;
@@ -380,8 +377,7 @@ export type MCPParamsEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  // TODO: cleanup this type from the public API users.
-  action: AgentMCPActionType & { type: "tool_action"; output: null };
+  action: AgentMCPActionWithOutputType;
 };
 
 export type AgentActionRunningEvents =
