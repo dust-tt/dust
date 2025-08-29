@@ -1,6 +1,6 @@
 import assert from "assert";
 
-import { MCPActionType, runToolWithStreaming } from "@app/lib/actions/mcp";
+import { runToolWithStreaming } from "@app/lib/actions/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -71,20 +71,12 @@ export async function runToolActivity(
     status: action.status,
   });
 
-  const mcpAction = new MCPActionType({
-    ...actionBaseParams,
-    id: action.id,
-    type: "tool_action",
-    output: null,
-  });
-
   const eventStream = runToolWithStreaming(auth, {
     action,
     actionBaseParams,
     agentConfiguration,
     agentMessage,
     conversation,
-    mcpAction,
   });
 
   for await (const event of eventStream) {
@@ -145,26 +137,7 @@ export async function runToolActivity(
             step,
           }
         );
-
-        // We stitch the action into the agent message. The conversation is expected to include
-        // the agentMessage object, updating this object will update the conversation as well.
-        // Action might have already added earlier, so we to replace it.
-        // TODO(DURABLE-AGENTS 2025-08-12): This is a hack to avoid duplicates. Consider fetching
-        // at least on every step.
-        const existingActionIndex = agentMessage.actions.findIndex(
-          (existingAction) => existingAction.id === event.action.id
-        );
-
-        if (existingActionIndex >= 0) {
-          // Replace existing action with updated one.
-          agentMessage.actions[existingActionIndex] = event.action;
-        } else {
-          // Add the new action if it doesn't exist.
-          agentMessage.actions.push(event.action);
-        }
-
         break;
-
       case "tool_params":
       case "tool_notification":
         await updateResourceAndPublishEvent(event, agentMessageRow, {

@@ -3,6 +3,7 @@ import type { Editor } from "@tiptap/core";
 import { InputRule, mergeAttributes, Node } from "@tiptap/core";
 import type { Node as ProseMirrorNode, Slice } from "@tiptap/pm/model";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { NodeViewProps } from "@tiptap/react";
 import {
   NodeViewContent,
@@ -128,9 +129,7 @@ function queueFocusInsideCurrentInstructionBlock(editor: Editor): void {
 
 // Define consistent heading styles to match the main editor
 const instructionBlockContentStyles = cn(
-  "prose prose-sm mt-2",
-  // Add left padding to align with the chip (chevron button width + gap)
-  "ml-6",
+  "prose prose-sm",
   // Override for all headings to match the editor's heading style
   "[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:text-xl",
   "[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:font-semibold",
@@ -156,7 +155,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
       const text = firstChild.textContent.trim();
       const match = text.match(OPENING_TAG_REGEX);
       if (match) {
-        displayType = match[1] || ""; // Empty string for <>
+        displayType = match[0] || ""; // Full match including < and >
       }
     }
   }
@@ -199,24 +198,37 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
   return (
     <NodeViewWrapper className="my-2">
       <div className={containerClasses} onClick={handleBlockClick}>
-        <div
-          className="flex select-none items-center gap-1"
-          contentEditable={false}
-        >
+        <div className="flex items-start gap-1">
           <button
             onClick={handleToggle}
-            className="rounded p-0.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="mt-[3px] rounded p-0.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
             type="button"
+            contentEditable={false}
           >
             <ChevronIcon className="h-4 w-4" />
           </button>
-          <Chip size="mini" className="bg-gray-100 dark:bg-gray-800">
-            {displayType.toUpperCase() || " "}
-          </Chip>
+          {isCollapsed ? (
+            <div
+              contentEditable={false}
+              className="mt-[0.5px] cursor-pointer"
+              onClick={handleToggle}
+            >
+              <Chip
+                size="mini"
+                className="bg-gray-100 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+              >
+                {displayType ? displayType.toUpperCase() : " "}
+              </Chip>
+            </div>
+          ) : (
+            <div className="mt-0.5">
+              <NodeViewContent
+                className={instructionBlockContentStyles}
+                as="div"
+              />
+            </div>
+          )}
         </div>
-        {!isCollapsed && (
-          <NodeViewContent className={instructionBlockContentStyles} as="div" />
-        )}
       </div>
     </NodeViewWrapper>
   );
@@ -597,6 +609,45 @@ export const InstructionBlockExtension =
       };
 
       return [
+        // Plugin to style XML tags with chip appearance
+        new Plugin({
+          key: new PluginKey("instructionBlockTagDecoration"),
+          props: {
+            decorations(state) {
+              const decorations: Decoration[] = [];
+
+              state.doc.descendants((node, pos) => {
+                if (node.type.name === "instructionBlock") {
+                  let childPos = pos + 1;
+
+                  node.forEach((child) => {
+                    if (child.type.name === "paragraph") {
+                      const text = child.textContent.trim();
+                      const isOpeningTag = text.match(OPENING_TAG_REGEX);
+                      const isClosingTag = text.match(CLOSING_TAG_REGEX);
+
+                      if (isOpeningTag || isClosingTag) {
+                        const marginClass = isOpeningTag
+                          ? "mb-2"
+                          : isClosingTag
+                            ? "mt-2"
+                            : "";
+                        decorations.push(
+                          Decoration.node(childPos, childPos + child.nodeSize, {
+                            class: `block w-fit px-1.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-xs font-medium uppercase ${marginClass}`,
+                          })
+                        );
+                      }
+                    }
+                    childPos += child.nodeSize;
+                  });
+                }
+              });
+
+              return DecorationSet.create(state.doc, decorations);
+            },
+          },
+        }),
         new Plugin({
           key: new PluginKey("instructionBlockTagSync"),
           appendTransaction: (transactions, oldState, newState) => {

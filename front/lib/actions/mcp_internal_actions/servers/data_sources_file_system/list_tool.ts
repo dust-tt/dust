@@ -52,28 +52,24 @@ const ListToolInputSchema = {
   ...DATA_SOURCE_FILE_SYSTEM_OPTION_PARAMETERS,
 };
 
-interface ListToolOptions {
-  toolName?: string;
-  toolDescription?: string;
-}
-
 export function registerListTool(
   auth: Authenticator,
   server: McpServer,
-  agentLoopContext?: AgentLoopContextType,
-  options: ListToolOptions = {}
+  agentLoopContext: AgentLoopContextType | undefined,
+  { name, extraDescription }: { name: string; extraDescription?: string }
 ) {
-  const toolName = options.toolName || FILESYSTEM_LIST_TOOL_NAME;
-  const toolDescription =
-    options.toolDescription ||
+  const baseDescription =
     "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
-      "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
-      "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
-      "the next step's nodeId. If a node output by this tool or the find tool has children " +
-      "(hasChildren: true), it means that this tool can be used again on it.";
+    "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
+    "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
+    "the next step's nodeId. If a node output by this tool or the find tool has children " +
+    "(hasChildren: true), it means that this tool can be used again on it.";
+  const toolDescription = extraDescription
+    ? baseDescription + " " + extraDescription
+    : baseDescription;
 
   server.tool(
-    toolName,
+    name,
     toolDescription,
     ListToolInputSchema,
     withToolLogging(

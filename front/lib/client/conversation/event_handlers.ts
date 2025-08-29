@@ -98,9 +98,11 @@ export function getUpdatedParticipantsFromEvent(
       return participants;
     } else {
       participants.participants.users.push({
+        sId: user.sId,
         username: user.username,
         fullName: user.fullName,
         pictureUrl: user.image,
+        action: "posted",
       });
     }
   } else if (isAgentMessageType(message)) {

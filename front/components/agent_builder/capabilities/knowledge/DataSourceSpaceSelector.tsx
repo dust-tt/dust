@@ -1,9 +1,4 @@
-import {
-  Checkbox,
-  DataTable,
-  ScrollableDataTable,
-  Tooltip,
-} from "@dust-tt/sparkle";
+import { Checkbox, DataTable, ScrollableDataTable } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useContext, useMemo } from "react";
 
@@ -75,30 +70,25 @@ export function DataSourceSpaceSelector({
           }
           return (
             <div className="flex h-full items-center">
-              <Tooltip
-                trigger={
-                  <Checkbox
-                    size="xs"
-                    checked={selectionState}
-                    onClick={(event) => event.stopPropagation()}
-                    onCheckedChange={async () => {
-                      const item: NavigationHistoryEntryType = {
-                        type: "space",
-                        space: row.original,
-                      };
-                      const confirmed = await confirm({
-                        title: "Are you sure?",
-                        message: `Do you want to unselect all of "${row.original.name}"?`,
-                        validateLabel: "Unselect all",
-                        validateVariant: "warning",
-                      });
-                      if (confirmed) {
-                        removeNode(item);
-                      }
-                    }}
-                  />
-                }
-                label={`Unselect all of "${row.original.name}"`}
+              <Checkbox
+                size="xs"
+                checked={selectionState}
+                onClick={(event) => event.stopPropagation()}
+                onCheckedChange={async () => {
+                  const item: NavigationHistoryEntryType = {
+                    type: "space",
+                    space: row.original,
+                  };
+                  const confirmed = await confirm({
+                    title: "Are you sure?",
+                    message: `Do you want to unselect all of "${row.original.name}"?`,
+                    validateLabel: "Unselect all",
+                    validateVariant: "warning",
+                  });
+                  if (confirmed) {
+                    removeNode(item);
+                  }
+                }}
               />
             </div>
           );

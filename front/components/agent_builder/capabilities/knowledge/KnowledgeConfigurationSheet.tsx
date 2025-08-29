@@ -6,7 +6,6 @@ import uniqueId from "lodash/uniqueId";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { KnowledgeFooter } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeFooter";
 import {
@@ -36,10 +35,11 @@ import {
   CONFIGURATION_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
+import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import {
-  DataSourceBuilderProvider,
-  useDataSourceBuilderContext,
-} from "@app/components/data_source_view/context/DataSourceBuilderContext";
+  KnowledgePageProvider,
+  useKnowledgePageContext,
+} from "@app/components/data_source_view/context/PageContext";
 import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
 import { SEARCH_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -278,15 +278,15 @@ function KnowledgeConfigurationSheetForm({
 
   return (
     <FormProvider {...form}>
-      <DataSourceBuilderProvider
-        spaces={spaces}
-        initialPageId={getInitialPageId(isEditing)}
-      >
-        <KnowledgeConfigurationSheetContent
-          onSave={form.handleSubmit(handleSave)}
-          onClose={onClose}
-          getAgentInstructions={getAgentInstructions}
-        />
+      <DataSourceBuilderProvider spaces={spaces}>
+        <KnowledgePageProvider initialPageId={getInitialPageId(isEditing)}>
+          <KnowledgeConfigurationSheetContent
+            onSave={form.handleSubmit(handleSave)}
+            onClose={onClose}
+            getAgentInstructions={getAgentInstructions}
+            isEditing={isEditing}
+          />
+        </KnowledgePageProvider>
       </DataSourceBuilderProvider>
     </FormProvider>
   );
@@ -296,23 +296,25 @@ interface KnowledgeConfigurationSheetContentProps {
   onSave: () => void;
   onClose: () => void;
   getAgentInstructions: () => string;
+  isEditing: boolean;
 }
 
 function KnowledgeConfigurationSheetContent({
   onSave,
   onClose,
   getAgentInstructions,
+  isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
-  const { currentPageId, setSheetPageId } = useDataSourceBuilderContext();
+  const { currentPageId, setSheetPageId } = useKnowledgePageContext();
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
   });
-  const sources = useWatch<CapabilityFormData, "sources">({
-    name: "sources",
+  const hasSourceSelection = useWatch({
+    compute: (formData: CapabilityFormData) => {
+      return formData.sources.in.length > 0;
+    },
   });
-
-  const hasSourceSelection = sources.in.length > 0;
 
   const config = useMemo(() => {
     if (mcpServerView !== null) {
@@ -325,9 +327,6 @@ function KnowledgeConfigurationSheetContent({
     return getMCPServerRequirements(mcpServerView);
   }, [mcpServerView]);
 
-  const { owner } = useAgentBuilderContext();
-  const { supportedDataSourceViews } = useDataSourceViewsContext();
-
   const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
       setSheetPageId(pageId);
@@ -337,13 +336,18 @@ function KnowledgeConfigurationSheetContent({
   const getFooterButtons = () => {
     const isDataSourcePage =
       currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
+    const isConfigurationPage =
+      currentPageId === CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION;
 
     return {
       leftButton: {
-        label: isDataSourcePage ? "Cancel" : "Back",
+        label:
+          isDataSourcePage || (isConfigurationPage && isEditing)
+            ? "Cancel"
+            : "Back",
         variant: "outline",
         onClick: () => {
-          if (isDataSourcePage) {
+          if (isDataSourcePage || (isConfigurationPage && isEditing)) {
             onClose();
           } else {
             setSheetPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
@@ -376,13 +380,7 @@ function KnowledgeConfigurationSheetContent({
         : "Choose the data sources to include in your knowledge base",
       icon: undefined,
       noScroll: true,
-      content: (
-        <DataSourceBuilderSelector
-          dataSourceViews={supportedDataSourceViews}
-          owner={owner}
-          viewType="all"
-        />
-      ),
+      content: <DataSourceBuilderSelector viewType="all" />,
       footerContent: hasSourceSelection ? <KnowledgeFooter /> : undefined,
     },
     {

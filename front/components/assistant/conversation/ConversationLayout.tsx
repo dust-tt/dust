@@ -2,10 +2,13 @@ import { cn, ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
-import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
-import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
+import {
+  ConversationErrorDisplay,
+  ErrorDisplay,
+} from "@app/components/assistant/conversation/ConversationError";
 import ConversationSidePanelContainer from "@app/components/assistant/conversation/ConversationSidePanelContainer";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -21,6 +24,7 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
+import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
@@ -128,7 +132,7 @@ const ConversationLayoutContent = ({
   };
 
   return (
-    <ActionValidationProvider owner={owner} conversation={conversation}>
+    <BlockedActionsProvider owner={owner} conversation={conversation}>
       <InputBarProvider>
         <AppContentLayout
           hasTitle={!!activeConversationId}
@@ -176,7 +180,7 @@ const ConversationLayoutContent = ({
           )}
         </AppContentLayout>
       </InputBarProvider>
-    </ActionValidationProvider>
+    </BlockedActionsProvider>
   );
 };
 
@@ -187,6 +191,18 @@ interface ConversationInnerLayoutProps {
   baseUrl: string;
   conversationError: ConversationError | null;
   activeConversationId: string | null;
+}
+
+function UncaughtConversationErrorFallback() {
+  return (
+    <ErrorDisplay
+      title="Something unexpected happened"
+      message={[
+        "Try refreshing the page to continue your conversation.",
+        "Still having trouble? Reach out at support@dust.tt",
+      ]}
+    />
+  );
 }
 
 function ConversationInnerLayout({
@@ -200,42 +216,44 @@ function ConversationInnerLayout({
   const { currentPanel } = useConversationSidePanelContext();
 
   return (
-    <div className="flex h-full w-full flex-col">
-      <ResizablePanelGroup
-        direction="horizontal"
-        className="flex h-full w-full flex-1"
-      >
-        <ResizablePanel defaultSize={100}>
-          <div className="flex h-full flex-col">
-            {activeConversationId && (
-              <ConversationTitle owner={owner} baseUrl={baseUrl} />
-            )}
-            {conversationError ? (
-              <ConversationErrorDisplay error={conversationError} />
-            ) : (
-              <FileDropProvider>
-                <GenerationContextProvider>
-                  <div
-                    id={CONVERSATION_VIEW_SCROLL_LAYOUT}
-                    className={cn(
-                      "dd-privacy-mask h-full overflow-y-auto scroll-smooth px-4",
-                      // Hide conversation on mobile when any panel is opened.
-                      currentPanel && "hidden md:block"
-                    )}
-                  >
-                    {children}
-                  </div>
-                </GenerationContextProvider>
-              </FileDropProvider>
-            )}
-          </div>
-        </ResizablePanel>
+    <ErrorBoundary fallback={<UncaughtConversationErrorFallback />}>
+      <div className="flex h-full w-full flex-col">
+        <ResizablePanelGroup
+          direction="horizontal"
+          className="flex h-full w-full flex-1"
+        >
+          <ResizablePanel defaultSize={100}>
+            <div className="flex h-full flex-col">
+              {activeConversationId && (
+                <ConversationTitle owner={owner} baseUrl={baseUrl} />
+              )}
+              {conversationError ? (
+                <ConversationErrorDisplay error={conversationError} />
+              ) : (
+                <FileDropProvider>
+                  <GenerationContextProvider>
+                    <div
+                      id={CONVERSATION_VIEW_SCROLL_LAYOUT}
+                      className={cn(
+                        "dd-privacy-mask h-full overflow-y-auto scroll-smooth px-4",
+                        // Hide conversation on mobile when any panel is opened.
+                        currentPanel && "hidden md:block"
+                      )}
+                    >
+                      {children}
+                    </div>
+                  </GenerationContextProvider>
+                </FileDropProvider>
+              )}
+            </div>
+          </ResizablePanel>
 
-        <ConversationSidePanelContainer
-          owner={owner}
-          conversation={conversation}
-        />
-      </ResizablePanelGroup>
-    </div>
+          <ConversationSidePanelContainer
+            owner={owner}
+            conversation={conversation}
+          />
+        </ResizablePanelGroup>
+      </div>
+    </ErrorBoundary>
   );
 }

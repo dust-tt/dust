@@ -24,7 +24,7 @@ import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/M
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
-import type { MCPActionType } from "@app/lib/actions/mcp";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
   DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
   DATA_WAREHOUSES_FIND_TOOL_NAME,
@@ -58,23 +58,36 @@ import {
   isSupportedImageContentType,
   parseTimeFrame,
 } from "@app/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 export interface MCPActionDetailsProps {
-  action: MCPActionType;
+  action: AgentMCPActionWithOutputType;
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
   messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
   viewType: "conversation" | "sidebar";
 }
 
-export function MCPActionDetails(props: MCPActionDetailsProps) {
-  const {
-    action: { output, functionCallName, internalMCPServerName, params },
-    viewType,
-  } = props;
+export function MCPActionDetails({
+  action,
+  viewType,
+  owner,
+  lastNotification,
+  messageStatus,
+}: MCPActionDetailsProps) {
+  const { functionCallName, internalMCPServerName, params, output } = action;
 
   const parts = functionCallName ? functionCallName.split("__") : [];
   const toolName = parts[parts.length - 1];
+
+  const toolOutputDetailsProps: ToolExecutionDetailsProps = {
+    lastNotification,
+    messageStatus,
+    owner,
+    toolOutput: output,
+    toolParams: params,
+    viewType,
+  };
 
   if (
     internalMCPServerName === "search" ||
@@ -122,11 +135,11 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     }
 
     if (toolName === FILESYSTEM_CAT_TOOL_NAME) {
-      return <DataSourceNodeContentDetails {...props} />;
+      return <DataSourceNodeContentDetails {...toolOutputDetailsProps} />;
     }
 
     if (toolName === FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME) {
-      return <FilesystemPathDetails {...props} />;
+      return <FilesystemPathDetails {...toolOutputDetailsProps} />;
     }
   }
 
@@ -160,45 +173,45 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
       );
     }
     if (toolName === WEBBROWSER_TOOL_NAME) {
-      return <MCPBrowseActionDetails {...props} />;
+      return <MCPBrowseActionDetails {...toolOutputDetailsProps} />;
     }
   }
 
   if (internalMCPServerName === "query_tables") {
     if (toolName === QUERY_TABLES_TOOL_NAME) {
-      return <MCPTablesQueryActionDetails {...props} />;
+      return <MCPTablesQueryActionDetails {...toolOutputDetailsProps} />;
     }
   }
 
   if (internalMCPServerName === "query_tables_v2") {
     if (toolName === GET_DATABASE_SCHEMA_TOOL_NAME) {
-      return <MCPGetDatabaseSchemaActionDetails {...props} />;
+      return <MCPGetDatabaseSchemaActionDetails {...toolOutputDetailsProps} />;
     }
     if (toolName === EXECUTE_DATABASE_QUERY_TOOL_NAME) {
-      return <MCPTablesQueryActionDetails {...props} />;
+      return <MCPTablesQueryActionDetails {...toolOutputDetailsProps} />;
     }
   }
 
   if (internalMCPServerName === "reasoning") {
-    return <MCPReasoningActionDetails {...props} />;
+    return <MCPReasoningActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (internalMCPServerName === "extract_data") {
     if (toolName === PROCESS_TOOL_NAME) {
-      return <MCPExtractActionDetails {...props} />;
+      return <MCPExtractActionDetails {...toolOutputDetailsProps} />;
     }
   }
 
   if (internalMCPServerName === "run_agent") {
-    return <MCPRunAgentActionDetails {...props} />;
+    return <MCPRunAgentActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (internalMCPServerName === "toolsets") {
-    return <MCPListToolsActionDetails {...props} />;
+    return <MCPListToolsActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (internalMCPServerName === "agent_management") {
-    return <MCPAgentManagementActionDetails {...props} />;
+    return <MCPAgentManagementActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (internalMCPServerName === "data_warehouses") {
@@ -207,17 +220,25 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
         toolName
       )
     ) {
-      return <MCPDataWarehousesBrowseDetails {...props} />;
+      return <MCPDataWarehousesBrowseDetails {...toolOutputDetailsProps} />;
     }
     if (toolName === DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME) {
-      return <MCPGetDatabaseSchemaActionDetails {...props} />;
+      return <MCPGetDatabaseSchemaActionDetails {...toolOutputDetailsProps} />;
     }
     if (toolName === DATA_WAREHOUSES_QUERY_TOOL_NAME) {
-      return <MCPTablesQueryActionDetails {...props} />;
+      return <MCPTablesQueryActionDetails {...toolOutputDetailsProps} />;
     }
   }
 
-  return <GenericActionDetails {...props} />;
+  return (
+    <GenericActionDetails
+      owner={owner}
+      lastNotification={lastNotification}
+      messageStatus={messageStatus}
+      viewType={viewType}
+      action={{ ...action, output }}
+    />
+  );
 }
 
 export function GenericActionDetails({

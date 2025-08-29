@@ -145,6 +145,7 @@ export default function AgentBuilder({
       .map((channel) => ({
         slackChannelId: channel.slackChannelId,
         slackChannelName: channel.slackChannelName,
+        autoRespondWithoutMention: channel.autoRespondWithoutMention,
       }));
   }, [agentConfiguration, slackChannelsLinkedWithAgent]);
 

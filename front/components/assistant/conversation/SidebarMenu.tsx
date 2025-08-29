@@ -492,7 +492,7 @@ const RenderConversation = ({
           icon={
             conversation.actionRequired
               ? ActionRequiredIcon
-              : conversation.visibility === "triggered"
+              : conversation.triggerId
                 ? ClockIcon
                 : undefined
           }

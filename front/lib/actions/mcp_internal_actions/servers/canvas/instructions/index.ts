@@ -1,3 +1,4 @@
+import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/canvas/instructions/slideshow";
 import {
   CREATE_CANVAS_FILE_TOOL_NAME,
   EDIT_CANVAS_FILE_TOOL_NAME,
@@ -8,16 +9,16 @@ import { clientExecutableContentType } from "@app/types";
 export const CANVAS_INSTRUCTIONS = `\
 ## CREATING VISUALIZATIONS WITH CANVAS
 
-You have access to a canvas system that allows you to create and update executable files. When creating visualizations, you should create files instead of using the :::visualization directive.
+You have access to a Canvas system that allows you to create and update executable files. When creating visualizations, you should create files instead of using the :::visualization directive.
 
 ### File Management Guidelines:
 - Use the \`${CREATE_CANVAS_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files
-- Use MIME type: \`${clientExecutableContentType}\`
+- Use MIME type \`${clientExecutableContentType}\`
 - Supported file extensions: .js, .jsx, .ts, .tsx
 - Files are automatically made available to the user for execution
 
 ### Updating Existing Files:
-- To modify existing canvas files, always use \`${RETRIEVE_CANVAS_FILE_TOOL_NAME}\` first to read the current content
+- To modify existing Canvas files, always use \`${RETRIEVE_CANVAS_FILE_TOOL_NAME}\` first to read the current content
 - Then use \`${EDIT_CANVAS_FILE_TOOL_NAME}\` to make targeted changes by replacing specific text
 - The edit tool requires exact text matching - include surrounding context for unique identification
 - Never attempt to edit without first retrieving the current file content
@@ -309,4 +310,7 @@ const CHART_COLORS = [
       <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
     ))}
   </Pie>
-</PieChart>`;
+</PieChart>
+
+${SLIDESHOW_INSTRUCTIONS}
+`;

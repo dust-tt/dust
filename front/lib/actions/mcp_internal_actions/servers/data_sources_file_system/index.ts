@@ -6,7 +6,9 @@ import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
+  FILESYSTEM_CAT_TOOL_NAME,
   FILESYSTEM_FIND_TOOL_NAME,
+  FILESYSTEM_LIST_TOOL_NAME,
   FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
   FIND_TAGS_TOOL_NAME,
   SEARCH_TOOL_NAME,
@@ -21,11 +23,7 @@ import {
   makeQueryResource,
   renderSearchResults,
 } from "@app/lib/actions/mcp_internal_actions/rendering";
-import {
-  findTagsSchema,
-  makeFindTagsDescription,
-  makeFindTagsTool,
-} from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
+import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/cat_tool";
 import { registerListTool } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/list_tool";
 import {
@@ -338,7 +336,9 @@ const createServer = (
 ): McpServer => {
   const server = makeInternalMCPServer("data_sources_file_system");
 
-  registerCatTool(auth, server, agentLoopContext);
+  registerCatTool(auth, server, agentLoopContext, {
+    name: FILESYSTEM_CAT_TOOL_NAME,
+  });
 
   server.tool(
     FILESYSTEM_FIND_TOOL_NAME,
@@ -478,7 +478,9 @@ const createServer = (
     )
   );
 
-  registerListTool(auth, server, agentLoopContext);
+  registerListTool(auth, server, agentLoopContext, {
+    name: FILESYSTEM_LIST_TOOL_NAME,
+  });
 
   // Check if tags are dynamic before creating the search tool.
   const areTagsDynamic = agentLoopContext
@@ -500,12 +502,10 @@ const createServer = (
   } else {
     // If tags are dynamic, then we add a tool for the agent to discover tags and let it pass tags
     // in the search tool.
-    server.tool(
-      FIND_TAGS_TOOL_NAME,
-      makeFindTagsDescription(SEARCH_TOOL_NAME),
-      findTagsSchema,
-      makeFindTagsTool(auth)
-    );
+    registerFindTagsTool(auth, server, agentLoopContext, {
+      name: FIND_TAGS_TOOL_NAME,
+      extraDescription: `This tool is meant to be used before the ${SEARCH_TOOL_NAME} tool.`,
+    });
 
     server.tool(
       SEARCH_TOOL_NAME,

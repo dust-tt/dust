@@ -14,6 +14,7 @@ import { TriggerSubscriberModel } from "@app/lib/models/assistant/trigger_subscr
 import { TriggerModel } from "@app/lib/models/assistant/triggers";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -21,6 +22,7 @@ import {
   createOrUpdateAgentScheduleWorkflow,
   deleteAgentScheduleWorkflow,
 } from "@app/temporal/agent_schedule/client";
+import type { ModelId } from "@app/types";
 import { errorToString, normalizeError } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
@@ -75,10 +77,14 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   static async fetchByIds(auth: Authenticator, sIds: string[]) {
+    const ids = sIds
+      .map((sId) => getResourceIdFromSId(sId))
+      .filter((id): id is number => id !== null);
+
     return this.baseFetch(auth, {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        sId: sIds,
+        id: ids,
       },
     });
   }
@@ -146,7 +152,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       });
       await TriggerModel.destroy({
         where: {
-          sId: this.sId,
+          id: this.id,
           workspaceId: owner.id,
         },
         transaction,
@@ -193,8 +199,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     switch (this.kind) {
       case "schedule":
         return createOrUpdateAgentScheduleWorkflow({
-          authType: auth.toJSON(),
-          trigger: this.toJSON(),
+          auth,
+          trigger: this,
         });
       default:
         assertNever(this.kind);
@@ -208,7 +214,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       case "schedule":
         return deleteAgentScheduleWorkflow({
           workspaceId: auth.getNonNullableWorkspace().sId,
-          triggerId: this.sId,
+          triggerId: this.sId(),
         });
       default:
         assertNever(this.kind);
@@ -353,10 +359,30 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return nbSubscribers > 0;
   }
 
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("trigger", {
+      id,
+      workspaceId,
+    });
+  }
+
+  sId(): string {
+    return TriggerResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
   toJSON(): TriggerType {
     return {
       id: this.id,
-      sId: this.sId,
+      sId: this.sId(),
       name: this.name,
       agentConfigurationId: this.agentConfigurationId,
       editor: this.editor,

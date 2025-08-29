@@ -56,6 +56,7 @@ function AgentActionsPanelContent({
         [currentStreamingStep]
       ),
       streamId: `actions-panel-${messageId}`,
+      useFullChainOfThought: true,
     });
 
   useEffect(() => {
@@ -119,7 +120,7 @@ function AgentActionsPanelContent({
     /**
      * 1000px threshold is used to determine if the user is at the bottom of the panel.
      * If the user is within 1000px of the bottom, we consider them to be at the bottom.
-     * This is to prevent loosing auto-scroll when we receive a visually BIG chunk.
+     * This is to prevent losing auto-scroll when we receive a visually BIG chunk.
      */
     const threshold = 1000;
     isUserAtBottomRef.current =
@@ -161,7 +162,7 @@ function AgentActionsPanelContent({
         <div className="flex flex-col gap-4">
           {/* Render all parsed steps in order */}
           {Object.entries(steps || {})
-            .sort(([a], [b]) => parseInt(a) - parseInt(b))
+            .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
             .map(([step, entries]) => {
               if (!entries || !Array.isArray(entries) || entries.length === 0) {
                 return null;
@@ -170,7 +171,7 @@ function AgentActionsPanelContent({
               return (
                 <PanelAgentStep
                   key={step}
-                  stepNumber={parseInt(step)}
+                  stepNumber={parseInt(step, 10)}
                   entries={entries}
                   streamActionProgress={streamActionProgress}
                   owner={owner}
@@ -286,7 +287,7 @@ export function AgentActionsPanel({
     );
   }
 
-  // Use key to force remount when message changes for proper state reset
+  // Use key to force remount when the message changes for proper state reset.
   return (
     <AgentActionsPanelContent
       key={fullAgentMessage.sId}

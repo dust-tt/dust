@@ -4,8 +4,8 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/age
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessage,
+  ConversationParticipantModel,
   Message,
-  UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type {
@@ -13,17 +13,22 @@ import type {
   ConversationParticipantsType,
   ConversationWithoutContentType,
   ModelId,
+  ParticipantActionType,
   Result,
-  UserParticipantType,
 } from "@app/types";
 import { ConversationError, Err, formatUserFullName, Ok } from "@app/types";
 
-async function fetchAllUsersById(
-  userIds: ModelId[]
-): Promise<UserParticipantType[]> {
+async function fetchAllUsersById(userIds: ModelId[]) {
   const users = (
     await UserModel.findAll({
-      attributes: ["firstName", "lastName", "imageUrl", "username"],
+      attributes: [
+        "id",
+        "sId",
+        "firstName",
+        "lastName",
+        "imageUrl",
+        "username",
+      ],
       where: {
         id: {
           [Op.in]: userIds,
@@ -33,6 +38,8 @@ async function fetchAllUsersById(
   ).filter((u) => u !== null) as UserModel[];
 
   return users.map((u) => ({
+    id: u.id,
+    sId: u.sId,
     fullName: formatUserFullName(u),
     pictureUrl: u.imageUrl,
     username: u.username,
@@ -64,6 +71,7 @@ export async function fetchConversationParticipants(
     return new Err(new Error("Unexpected `auth` without `workspace`."));
   }
 
+  // We fetch agent participants from the messages table
   const messages = await Message.findAll({
     where: {
       conversationId: conversation.id,
@@ -72,37 +80,37 @@ export async function fetchConversationParticipants(
     attributes: [],
     include: [
       {
-        model: UserMessage,
-        as: "userMessage",
-        required: false,
-        attributes: ["userId"],
-      },
-      {
         model: AgentMessage,
         as: "agentMessage",
-        required: false,
+        required: true,
         attributes: ["agentConfigurationId"],
       },
     ],
   });
 
-  const { agentConfigurationIds, userIds } = messages.reduce<{
+  const { agentConfigurationIds } = messages.reduce<{
     agentConfigurationIds: Set<string>;
-    userIds: Set<ModelId>;
   }>(
     (acc, m) => {
-      const { agentMessage, userMessage } = m;
+      const { agentMessage } = m;
 
       if (agentMessage) {
         acc.agentConfigurationIds.add(agentMessage.agentConfigurationId);
-      } else if (userMessage && userMessage.userId) {
-        acc.userIds.add(userMessage.userId);
       }
 
       return acc;
     },
-    { agentConfigurationIds: new Set(), userIds: new Set() }
+    { agentConfigurationIds: new Set() }
   );
+
+  // We fetch users participants from the conversation participants table
+  const participants = await ConversationParticipantModel.findAll({
+    where: {
+      conversationId: conversation.id,
+      workspaceId: owner.id,
+    },
+  });
+  const userIds = participants.map((p) => p.userId);
 
   const [users, agents] = await Promise.all([
     fetchAllUsersById([...userIds]),
@@ -115,8 +123,18 @@ export async function fetchConversationParticipants(
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
+  const userIdToAction = new Map<ModelId, ParticipantActionType>(
+    participants.map((p) => [p.userId, p.action])
+  );
+
   return new Ok({
     agents,
-    users,
+    users: users.map((u) => ({
+      sId: u.sId,
+      fullName: u.fullName,
+      pictureUrl: u.pictureUrl,
+      username: u.username,
+      action: userIdToAction.get(u.id) ?? "posted",
+    })),
   });
 }

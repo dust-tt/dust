@@ -9,32 +9,49 @@ import {
   CLEAR_CONTENT_EVENT,
   messageReducer,
 } from "@app/lib/assistant/state/messageReducer";
-import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
+import type {
+  LightAgentMessageType,
+  LightAgentMessageWithActionsType,
+  LightWorkspaceType,
+} from "@app/types";
+import { assertNever, isLightAgentMessageWithActionsType } from "@app/types";
 
 type AgentMessageStateWithControlEvent =
   | AgentMessageStateEvent
   | { type: "end-of-stream" };
 
-function makeInitialMessageStreamState(
-  message: LightAgentMessageType
-): MessageTemporaryState {
-  return {
-    actionProgress: new Map(),
-    agentState: message.status === "created" ? "thinking" : "done",
-    isRetrying: false,
-    lastUpdated: new Date(),
-    message,
+function makeInitialMessageStreamState({
+  useFullChainOfThought,
+}: {
+  useFullChainOfThought: boolean;
+}) {
+  return (
+    message: LightAgentMessageType | LightAgentMessageWithActionsType
+  ): MessageTemporaryState => {
+    return {
+      actionProgress: new Map(),
+      agentState: message.status === "created" ? "thinking" : "done",
+      isRetrying: false,
+      lastUpdated: new Date(),
+      message: {
+        ...message,
+        actions: isLightAgentMessageWithActionsType(message)
+          ? message.actions
+          : [],
+      },
+      useFullChainOfThought,
+    };
   };
 }
 
 interface UseAgentMessageStreamParams {
-  message: LightAgentMessageType;
+  message: LightAgentMessageType | LightAgentMessageWithActionsType;
   conversationId: string | null;
   owner: LightWorkspaceType;
   mutateMessage?: () => void;
   onEventCallback?: (eventStr: string) => void;
   streamId: string;
+  useFullChainOfThought: boolean;
 }
 
 export function useAgentMessageStream({
@@ -44,11 +61,12 @@ export function useAgentMessageStream({
   mutateMessage,
   onEventCallback: customOnEventCallback,
   streamId,
+  useFullChainOfThought,
 }: UseAgentMessageStreamParams) {
   const [messageStreamState, dispatch] = useReducer(
     messageReducer,
     message,
-    makeInitialMessageStreamState
+    makeInitialMessageStreamState({ useFullChainOfThought })
   );
 
   const isFreshMountWithContent = useRef(

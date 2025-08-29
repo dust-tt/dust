@@ -43,12 +43,17 @@ const WorkspaceWorkOSUpdateBodySchema = t.type({
   workOSOrganizationId: t.union([t.string, t.null]),
 });
 
+const WorkspaceInteractiveContentSharingUpdateBodySchema = t.type({
+  allowCanvasFileSharing: t.boolean,
+});
+
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
   WorkspaceSsoEnforceUpdateBodySchema,
   WorkspaceProvidersUpdateBodySchema,
   WorkspaceWorkOSUpdateBodySchema,
+  WorkspaceInteractiveContentSharingUpdateBodySchema,
 ]);
 
 async function handler(
@@ -90,6 +95,7 @@ async function handler(
       }
       const { right: body } = bodyValidation;
 
+      // TODO: move to WorkspaceResource.
       const w = await WorkspaceModel.findOne({
         where: { id: owner.id },
       });
@@ -140,6 +146,14 @@ async function handler(
           workOSOrganizationId: body.workOSOrganizationId,
         });
         owner.workOSOrganizationId = body.workOSOrganizationId;
+      } else if ("allowCanvasFileSharing" in body) {
+        const previousMetadata = owner.metadata || {};
+        const newMetadata = {
+          ...previousMetadata,
+          allowCanvasFileSharing: body.allowCanvasFileSharing,
+        };
+        await w.update({ metadata: newMetadata });
+        owner.metadata = newMetadata;
       } else {
         const { domain, domainAutoJoinEnabled } = body;
         const [affectedCount] = await WorkspaceHasDomainModel.update(

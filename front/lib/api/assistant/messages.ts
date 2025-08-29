@@ -183,6 +183,7 @@ async function batchRenderUserMessages(
         email: userMessage.userContextEmail,
         profilePictureUrl: userMessage.userContextProfilePictureUrl,
         origin: userMessage.userContextOrigin,
+        clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
       },
     } satisfies UserMessageType;
     return { m, rank: message.rank, version: message.version };

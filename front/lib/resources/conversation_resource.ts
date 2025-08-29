@@ -18,6 +18,7 @@ import {
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   ConversationMCPServerViewType,
@@ -25,6 +26,7 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
+  ParticipantActionType,
   Result,
 } from "@app/types";
 import { ConversationError, Err, normalizeError, Ok } from "@app/types";
@@ -98,6 +100,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     return conversations.map((c) => new this(this.model, c.get()));
+  }
+
+  static triggerIdToSId(triggerId: number | null, workspaceId: number) {
+    return triggerId != null
+      ? TriggerResource.modelIdToSId({ id: triggerId, workspaceId })
+      : null;
+  }
+
+  triggerSId(): string | null {
+    return ConversationResource.triggerIdToSId(
+      this.triggerId,
+      this.workspaceId
+    );
   }
 
   static async fetchByIds(
@@ -342,6 +357,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       title: conversation.title,
       visibility: conversation.visibility,
       depth: conversation.depth,
+      triggerId: conversation.triggerSId(),
       requestedGroupIds:
         conversation.getConversationRequestedGroupIdsFromModel(auth),
     });
@@ -371,7 +387,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const includedConversationVisibilities: ConversationVisibility[] = [
       "unlisted",
-      "triggered",
     ];
 
     if (options?.includeDeleted) {
@@ -392,7 +407,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         userId: user.id,
         workspaceId: owner.id,
-        action: "posted",
       },
       include: [
         {
@@ -421,6 +435,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           title: c.title,
           visibility: c.visibility,
           depth: c.depth,
+          triggerId: ConversationResource.triggerIdToSId(c.triggerId, owner.id),
           requestedGroupIds: new this(
             this.model,
             c.get()
@@ -434,7 +449,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async upsertParticipation(
     auth: Authenticator,
-    conversation: ConversationType
+    {
+      conversation,
+      action,
+    }: {
+      conversation: ConversationType;
+      action: ParticipantActionType;
+    }
   ) {
     const user = auth.user();
     if (!user) {
@@ -455,7 +476,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         participant.changed("updatedAt", true);
         await participant.update(
           {
-            action: "posted",
+            action,
             updatedAt: new Date(),
           },
           { transaction: t }
@@ -464,7 +485,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         await ConversationParticipantModel.create(
           {
             conversationId: conversation.id,
-            action: "posted",
+            action,
             userId: user.id,
             workspaceId: conversation.owner.id,
             unread: false,
