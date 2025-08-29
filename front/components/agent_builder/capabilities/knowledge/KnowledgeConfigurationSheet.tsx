@@ -7,7 +7,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import isEmpty from "lodash/isEmpty";
 import uniqueId from "lodash/uniqueId";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
@@ -312,6 +312,7 @@ function KnowledgeConfigurationSheetContent({
   isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
   const { currentPageId, setSheetPageId } = useKnowledgePageContext();
+  const nameSectionRef = useRef<HTMLInputElement>(null);
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
@@ -332,6 +333,13 @@ function KnowledgeConfigurationSheetContent({
   const requirements = useMemo(() => {
     return getMCPServerRequirements(mcpServerView);
   }, [mcpServerView]);
+
+  // Focus NameSection input when navigating to CONFIGURATION page
+  useEffect(() => {
+    if (currentPageId === CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION) {
+      nameSectionRef.current?.focus();
+    }
+  }, [currentPageId]);
 
   const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
@@ -400,7 +408,11 @@ function KnowledgeConfigurationSheetContent({
         : undefined,
       content: (
         <div className="space-y-6">
-          <NameSection title="Name" placeholder="Search Google Drive" />
+          <NameSection
+            ref={nameSectionRef}
+            title="Name"
+            placeholder="Name ..."
+          />
 
           <ProcessingMethodSection />
 
