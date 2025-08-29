@@ -171,7 +171,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
-  static async fetchByModelPk(
+  static async fetchByModelIdWithAuth(
     auth: Authenticator,
     id: ModelId
   ): Promise<AgentMCPActionResource | null> {
