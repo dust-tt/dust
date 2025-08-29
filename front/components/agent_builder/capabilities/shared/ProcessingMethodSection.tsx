@@ -141,8 +141,9 @@ export function ProcessingMethodSection() {
     }
   }, [serversToDisplay, setValue, mcpServerView, sources.in]);
 
+  console.log(mcpServerView);
   return (
-    <div className="space-y-4">
+    <div className="mt-2 flex flex-col space-y-4">
       <div>
         <h3 className="mb-2 text-lg font-semibold">Processing method</h3>
         <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -158,39 +159,45 @@ export function ProcessingMethodSection() {
         </span>
       </div>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            isLoading={isMCPServerViewsLoading}
-            label={
-              mcpServerView
-                ? getMcpServerViewDisplayName(mcpServerView)
-                : "loading..."
-            }
-            icon={
-              mcpServerView != null &&
-              isInternalAllowedIcon(mcpServerView.server.icon)
-                ? InternalActionIcons[mcpServerView.server.icon]
-                : undefined
-            }
-            variant="primary"
-            isSelect
-          />
-        </DropdownMenuTrigger>
+      <div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              isLoading={isMCPServerViewsLoading}
+              label={
+                mcpServerView
+                  ? getMcpServerViewDisplayName(mcpServerView)
+                  : "loading..."
+              }
+              icon={
+                mcpServerView != null &&
+                isInternalAllowedIcon(mcpServerView.server.icon)
+                  ? InternalActionIcons[mcpServerView.server.icon]
+                  : undefined
+              }
+              variant="primary"
+              isSelect
+            />
+          </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="start" className="max-w-100">
-          {serversToDisplay &&
-            serversToDisplay.map((view) => (
-              <DropdownMenuItem
-                key={view.id}
-                label={getMcpServerViewDisplayName(view)}
-                icon={getAvatar(view.server)}
-                onClick={() => onChange(view)}
-                description={getMcpServerViewDescription(view)}
-              />
-            ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+          <DropdownMenuContent align="start" className="max-w-100">
+            {serversToDisplay &&
+              serversToDisplay.map((view) => (
+                <DropdownMenuItem
+                  key={view.id}
+                  label={getMcpServerViewDisplayName(view)}
+                  icon={getAvatar(view.server)}
+                  onClick={() => onChange(view)}
+                  description={getMcpServerViewDescription(view)}
+                />
+              ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <span className="text-sm text-muted-foreground dark:text-muted-foreground">
+        {mcpServerView?.server.description}
+      </span>
 
       {displayWarningTableQuery && (
         <div>
