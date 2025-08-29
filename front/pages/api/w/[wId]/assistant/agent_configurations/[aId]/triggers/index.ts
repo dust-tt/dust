@@ -112,7 +112,7 @@ async function handler(
       const { triggers: requestTriggers } = req.body;
       const workspace = auth.getNonNullableWorkspace();
 
-      const currentTriggersMap = new Map(triggers.map((t) => [t.sId, t]));
+      const currentTriggersMap = new Map(triggers.map((t) => [t.sId(), t]));
       const resultTriggers: TriggerType[] = [];
       const errors: Error[] = [];
 
