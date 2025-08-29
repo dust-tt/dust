@@ -5,13 +5,15 @@ import type {
   LightWorkspaceType,
 } from "@app/types";
 
+interface ConversationDataTableProps {
+  owner: LightWorkspaceType;
+  conversations: ConversationWithoutContentType[];
+}
+
 export function ConversationDataTable({
   owner,
   conversations,
-}: {
-  owner: LightWorkspaceType;
-  conversations: ConversationWithoutContentType[];
-}) {
+}: ConversationDataTableProps) {
   const columns = makeColumnsForConversations(owner);
 
   return (
