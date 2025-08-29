@@ -16,10 +16,13 @@ function createServer(): McpServer {
       user: z.object({
         name: ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
-        ],
+        ].default({
+          value: "hello",
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+        }),
         age: ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER
-        ],
+        ].optional(),
         admin:
           ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
       }),

@@ -24,6 +24,7 @@ import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { removeDiacritics } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
@@ -76,6 +77,7 @@ export const slackSearch = async (
 
   const data: SlackSearchResponse = (await resp.json()) as SlackSearchResponse;
   if (!data.ok) {
+    await MCPServerViewResource.fetchById(1);
     throw new Error(data.error || "unknown_error");
   }
 
