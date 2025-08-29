@@ -70,7 +70,7 @@ interface ErrorDisplayProps {
   title: string;
 }
 
-export function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
+function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
   return (
     <div className="flex h-screen flex-col items-center justify-center gap-1">
       {icon && (
