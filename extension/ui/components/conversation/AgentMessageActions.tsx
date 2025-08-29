@@ -2,7 +2,6 @@ import { MCPActionDetails } from "@app/ui/components/actions/mcp/details/MCPActi
 import type { ActionProgressState } from "@app/ui/components/assistants/state/messageReducer";
 import type { AgentStateClassification } from "@app/ui/components/conversation/AgentMessage";
 import type {
-  AgentActionPublicType,
   AgentMessagePublicType,
   LightWorkspaceType,
 } from "@dust-tt/client";
@@ -19,12 +18,6 @@ interface AgentMessageActionsProps {
   lastAgentStateClassification: AgentStateClassification;
   actionProgress: ActionProgressState;
   owner: LightWorkspaceType;
-}
-
-function isMCPActionType(
-  action: { type: "tool_action"; id: number } | undefined
-): action is AgentActionPublicType {
-  return action !== undefined && "functionCallName" in action;
 }
 
 export function AgentMessageActions({
@@ -52,8 +45,7 @@ export function AgentMessageActions({
           lastAction ? "cursor-pointer" : ""
         )}
       >
-        {isMCPActionType(lastAction) &&
-        lastAgentStateClassification === "acting" ? (
+        {lastAction && lastAgentStateClassification === "acting" ? (
           <Card variant="secondary" size="sm">
             <MCPActionDetails
               action={lastAction}
