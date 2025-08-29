@@ -1,7 +1,7 @@
 import { BoltIcon, Chip } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
+import type { ToolOutputDetailsProps } from "@app/components/actions/mcp/details/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getIcon } from "@app/lib/actions/mcp_icons";
 import { isToolsetsResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -10,9 +10,9 @@ import { useSpaces } from "@app/lib/swr/spaces";
 
 export function MCPListToolsActionDetails({
   owner,
-  action,
+  toolOutput,
   viewType,
-}: MCPActionDetailsProps) {
+}: ToolOutputDetailsProps) {
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
   });
@@ -22,9 +22,8 @@ export function MCPListToolsActionDetails({
     availability: "all",
   });
   const results =
-    action.output
-      ?.filter(isToolsetsResultResourceType)
-      .map((o) => o.resource) ?? [];
+    toolOutput?.filter(isToolsetsResultResourceType).map((o) => o.resource) ??
+    [];
 
   return (
     <ActionDetailsWrapper

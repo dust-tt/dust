@@ -1,27 +1,32 @@
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
-import { ActionPinDistanceIcon } from "@dust-tt/sparkle";
 import {
+  ActionPinDistanceIcon,
+  Breadcrumbs,
   Citation,
   CitationIcons,
   CitationTitle,
+  DocumentIcon,
   Icon,
   Markdown,
 } from "@dust-tt/sparkle";
-import { Breadcrumbs, DocumentIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
-import { isDataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isFilesystemPathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { getDocumentIcon } from "@app/lib/content_nodes";
-import { getVisualForContentNodeType } from "@app/lib/content_nodes";
+import type { ToolOutputDetailsProps } from "@app/components/actions/mcp/details/types";
+import {
+  isDataSourceNodeContentType,
+  isFilesystemPathType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  getDocumentIcon,
+  getVisualForContentNodeType,
+} from "@app/lib/content_nodes";
 import { formatDataSourceDisplayName } from "@app/types";
 
 export function DataSourceNodeContentDetails({
-  action,
+  toolOutput,
   viewType,
-}: MCPActionDetailsProps) {
-  const dataSourceNodeContent = action.output
+}: ToolOutputDetailsProps) {
+  const dataSourceNodeContent = toolOutput
     ?.filter(isDataSourceNodeContentType)
     .map((o) => o.resource)?.[0];
 
@@ -69,10 +74,10 @@ export function DataSourceNodeContentDetails({
 }
 
 export function FilesystemPathDetails({
-  action,
+  toolOutput,
   viewType,
-}: MCPActionDetailsProps) {
-  const filesystemPath = action.output
+}: ToolOutputDetailsProps) {
+  const filesystemPath = toolOutput
     ?.filter(isFilesystemPathType)
     .map((o) => o.resource)?.[0];
 

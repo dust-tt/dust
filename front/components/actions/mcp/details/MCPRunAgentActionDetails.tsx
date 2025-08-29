@@ -10,17 +10,17 @@ import {
   CollapsibleComponent,
   ContentMessage,
   DocumentIcon,
+  ExternalLinkIcon,
   Markdown,
   RobotIcon,
 } from "@dust-tt/sparkle";
-import { ExternalLinkIcon } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
+import type { ToolOutputDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
   CitationsContext,
   CiteBlock,
@@ -46,19 +46,20 @@ import { useSpaces } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
 
 export function MCPRunAgentActionDetails({
-  owner,
-  action,
   lastNotification,
+  owner,
+  toolOutput,
+  toolParams,
   viewType,
-}: MCPActionDetailsProps) {
+}: ToolOutputDetailsProps) {
   const { isDark } = useTheme();
 
   const addedMCPServerViewIds: string[] = useMemo(() => {
-    if (!action.params["toolsetsToAdd"]) {
+    if (!toolParams["toolsetsToAdd"]) {
       return emptyArray();
     }
-    return action.params["toolsetsToAdd"] as string[];
-  }, [action.params]);
+    return toolParams["toolsetsToAdd"] as string[];
+  }, [toolParams]);
 
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
@@ -71,14 +72,12 @@ export function MCPRunAgentActionDetails({
     disabled: addedMCPServerViewIds.length === 0,
   });
 
-  const queryResource =
-    action.output?.find(isRunAgentQueryResourceType) || null;
+  const queryResource = toolOutput?.find(isRunAgentQueryResourceType) || null;
 
-  const resultResource =
-    action.output?.find(isRunAgentResultResourceType) || null;
+  const resultResource = toolOutput?.find(isRunAgentResultResourceType) || null;
 
   const generatedFiles =
-    action.output?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
+    toolOutput?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
 
   const childAgentId = useMemo(() => {
     if (queryResource) {

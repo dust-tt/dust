@@ -1,27 +1,25 @@
 import { ChatBubbleThoughtIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
 import {
   ReasoningSuccessBlock,
   ThinkingBlock,
 } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
+import type { ToolOutputDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
   isReasoningSuccessOutput,
   isThinkingOutput,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
 export function MCPReasoningActionDetails({
-  action,
+  toolOutput,
   viewType,
-}: MCPActionDetailsProps) {
-  const { output } = action;
-
+}: ToolOutputDetailsProps) {
   const thinkingBlocks =
-    output?.filter(isThinkingOutput).map((o) => o.resource) ?? [];
+    toolOutput?.filter(isThinkingOutput).map((o) => o.resource) ?? [];
 
   const reasoningSuccessBlocks =
-    output?.filter(isReasoningSuccessOutput).map((o) => o.resource) ?? [];
+    toolOutput?.filter(isReasoningSuccessOutput).map((o) => o.resource) ?? [];
 
   return (
     <ActionDetailsWrapper

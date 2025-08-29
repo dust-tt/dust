@@ -25,6 +25,7 @@ import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/M
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
+import type { ToolOutputDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
   DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
   DATA_WAREHOUSES_FIND_TOOL_NAME,
@@ -105,6 +106,15 @@ export function MCPActionDetails({
   const parts = functionCallName ? functionCallName.split("__") : [];
   const toolName = parts[parts.length - 1];
 
+  const toolOutputDetailsProps: ToolOutputDetailsProps = {
+    lastNotification,
+    messageStatus,
+    owner,
+    toolOutput: output,
+    toolParams: params,
+    viewType,
+  };
+
   if (
     internalMCPServerName === "search" ||
     internalMCPServerName === "data_sources_file_system"
@@ -151,27 +161,11 @@ export function MCPActionDetails({
     }
 
     if (toolName === FILESYSTEM_CAT_TOOL_NAME) {
-      return (
-        <DataSourceNodeContentDetails
-          owner={owner}
-          lastNotification={lastNotification}
-          messageStatus={messageStatus}
-          viewType={viewType}
-          action={{ ...action, output }}
-        />
-      );
+      return <DataSourceNodeContentDetails {...toolOutputDetailsProps} />;
     }
 
     if (toolName === FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME) {
-      return (
-        <FilesystemPathDetails
-          owner={owner}
-          lastNotification={lastNotification}
-          messageStatus={messageStatus}
-          viewType={viewType}
-          action={{ ...action, output }}
-        />
-      );
+      return <FilesystemPathDetails {...toolOutputDetailsProps} />;
     }
   }
 
@@ -205,117 +199,45 @@ export function MCPActionDetails({
       );
     }
     if (toolName === WEBBROWSER_TOOL_NAME) {
-      return (
-        <MCPBrowseActionDetails
-          owner={owner}
-          lastNotification={lastNotification}
-          messageStatus={messageStatus}
-          viewType={viewType}
-          action={{ ...action, output }}
-        />
-      );
+      return <MCPBrowseActionDetails {...toolOutputDetailsProps} />;
     }
   }
 
   if (internalMCPServerName === "query_tables") {
     if (toolName === QUERY_TABLES_TOOL_NAME) {
-      return (
-        <MCPTablesQueryActionDetails
-          owner={owner}
-          lastNotification={lastNotification}
-          messageStatus={messageStatus}
-          viewType={viewType}
-          action={{ ...action, output }}
-        />
-      );
+      return <MCPTablesQueryActionDetails {...toolOutputDetailsProps} />;
     }
   }
 
   if (internalMCPServerName === "query_tables_v2") {
     if (toolName === GET_DATABASE_SCHEMA_TOOL_NAME) {
-      return (
-        <MCPGetDatabaseSchemaActionDetails
-          owner={owner}
-          lastNotification={lastNotification}
-          messageStatus={messageStatus}
-          viewType={viewType}
-          action={{ ...action, output }}
-        />
-      );
+      return <MCPGetDatabaseSchemaActionDetails {...toolOutputDetailsProps} />;
     }
     if (toolName === EXECUTE_DATABASE_QUERY_TOOL_NAME) {
-      return (
-        <MCPTablesQueryActionDetails
-          owner={owner}
-          lastNotification={lastNotification}
-          messageStatus={messageStatus}
-          viewType={viewType}
-          action={{ ...action, output }}
-        />
-      );
+      return <MCPTablesQueryActionDetails {...toolOutputDetailsProps} />;
     }
   }
 
   if (internalMCPServerName === "reasoning") {
-    return (
-      <MCPReasoningActionDetails
-        owner={owner}
-        lastNotification={lastNotification}
-        messageStatus={messageStatus}
-        viewType={viewType}
-        action={{ ...action, output }}
-      />
-    );
+    return <MCPReasoningActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (internalMCPServerName === "extract_data") {
     if (toolName === PROCESS_TOOL_NAME) {
-      return (
-        <MCPExtractActionDetails
-          owner={owner}
-          lastNotification={lastNotification}
-          messageStatus={messageStatus}
-          viewType={viewType}
-          action={{ ...action, output }}
-        />
-      );
+      return <MCPExtractActionDetails {...toolOutputDetailsProps} />;
     }
   }
 
   if (internalMCPServerName === "run_agent") {
-    return (
-      <MCPRunAgentActionDetails
-        owner={owner}
-        lastNotification={lastNotification}
-        messageStatus={messageStatus}
-        viewType={viewType}
-        action={{ ...action, output }}
-      />
-    );
+    return <MCPRunAgentActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (internalMCPServerName === "toolsets") {
-    return (
-      <MCPListToolsActionDetails
-        owner={owner}
-        lastNotification={lastNotification}
-        messageStatus={messageStatus}
-        viewType={viewType}
-        action={{ ...action, output }}
-      />
-    );
+    return <MCPListToolsActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (internalMCPServerName === "agent_management") {
-    return (
-      <MCPAgentManagementActionDetails
-        owner={owner}
-        lastNotification={lastNotification}
-        messageStatus={messageStatus}
-        viewType={viewType}
-        action={{ ...action, output }}
-      />
-    );
+    return <MCPAgentManagementActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (internalMCPServerName === "data_warehouses") {
@@ -324,37 +246,13 @@ export function MCPActionDetails({
         toolName
       )
     ) {
-      return (
-        <MCPDataWarehousesBrowseDetails
-          owner={owner}
-          lastNotification={lastNotification}
-          messageStatus={messageStatus}
-          viewType={viewType}
-          action={{ ...action, output }}
-        />
-      );
+      return <MCPDataWarehousesBrowseDetails {...toolOutputDetailsProps} />;
     }
     if (toolName === DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME) {
-      return (
-        <MCPGetDatabaseSchemaActionDetails
-          owner={owner}
-          lastNotification={lastNotification}
-          messageStatus={messageStatus}
-          viewType={viewType}
-          action={{ ...action, output }}
-        />
-      );
+      return <MCPGetDatabaseSchemaActionDetails {...toolOutputDetailsProps} />;
     }
     if (toolName === DATA_WAREHOUSES_QUERY_TOOL_NAME) {
-      return (
-        <MCPTablesQueryActionDetails
-          owner={owner}
-          lastNotification={lastNotification}
-          messageStatus={messageStatus}
-          viewType={viewType}
-          action={{ ...action, output }}
-        />
-      );
+      return <MCPTablesQueryActionDetails {...toolOutputDetailsProps} />;
     }
   }
 
