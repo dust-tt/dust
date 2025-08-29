@@ -31,6 +31,7 @@ import type {
 } from "@dust-tt/client";
 import {
   assertNever,
+  isRunAgentResultResourceType,
   isSearchResultResourceType,
   isWebsearchResultResourceType,
   removeNulls,
@@ -104,6 +105,59 @@ export function makeMCPActionCitation(
     icon: <DocumentTextIcon />,
   };
 }
+
+export const getCitationsFromActions = (
+  actions: AgentMessagePublicType["actions"]
+): Record<string, MarkdownCitation> => {
+  const searchResultsWithDocs = removeNulls(
+    actions.flatMap((action) =>
+      action.output?.filter(isSearchResultResourceType).map((o) => o.resource)
+    )
+  );
+
+  const searchRefs: Record<string, MarkdownCitation> = {};
+  searchResultsWithDocs.forEach((d) => {
+    searchRefs[d.ref] = makeMCPActionCitation(d);
+  });
+
+  const websearchResultsWithDocs = removeNulls(
+    actions.flatMap((action) =>
+      action.output
+        ?.filter(isWebsearchResultResourceType)
+        .map((o) => o.resource)
+    )
+  );
+
+  const websearchRefs: Record<string, MarkdownCitation> = {};
+  websearchResultsWithDocs.forEach((d) => {
+    websearchRefs[d.reference] = makeMCPActionCitation(d);
+  });
+
+  const runAgentResultsWithRefs = removeNulls(
+    actions.flatMap((action) =>
+      action.output?.filter(isRunAgentResultResourceType).map((o) => o.resource)
+    )
+  );
+
+  const runAgentRefs: Record<string, MarkdownCitation> = {};
+  runAgentResultsWithRefs.forEach((result) => {
+    if (result.refs) {
+      Object.entries(result.refs).forEach(([ref, citation]) => {
+        runAgentRefs[ref] = {
+          href: citation.href ?? "",
+          title: citation.title,
+          icon: <DocumentTextIcon />,
+        };
+      });
+    }
+  });
+
+  return {
+    ...searchRefs,
+    ...websearchRefs,
+    ...runAgentRefs,
+  };
+};
 
 interface AgentMessageProps {
   conversationId: string;
@@ -337,41 +391,7 @@ export function AgentMessage({
   ]);
 
   useEffect(() => {
-    // MCP search actions
-    const allMCPSearchResources = agentMessageToRender.actions
-      .map((a) =>
-        a.output?.filter(isSearchResultResourceType).map((o) => o.resource)
-      )
-      .flat();
-
-    const allMCPSearchReferences = removeNulls(allMCPSearchResources).reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, l) => {
-      acc[l.ref] = makeMCPActionCitation(l);
-      return acc;
-    }, {});
-
-    // MCP websearch actions
-    const allMCPWebSearchResources = agentMessageToRender.actions
-      .map((a) =>
-        a.output?.filter(isWebsearchResultResourceType).map((o) => o.resource)
-      )
-      .flat();
-
-    const allMCPWebSearchReferences = removeNulls(
-      allMCPWebSearchResources
-    ).reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, l) => {
-      acc[l.reference] = makeMCPActionCitation(l);
-      return acc;
-    }, {});
-
-    // Merge all references
-    setReferences({
-      ...allMCPSearchReferences,
-      ...allMCPWebSearchReferences,
-    });
+    setReferences(getCitationsFromActions(agentMessageToRender.actions));
   }, [
     agentMessageToRender.actions,
     agentMessageToRender.status,
