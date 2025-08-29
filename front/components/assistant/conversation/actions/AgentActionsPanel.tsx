@@ -161,7 +161,7 @@ function AgentActionsPanelContent({
         <div className="flex flex-col gap-4">
           {/* Render all parsed steps in order */}
           {Object.entries(steps || {})
-            .sort(([a], [b]) => parseInt(a) - parseInt(b))
+            .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
             .map(([step, entries]) => {
               if (!entries || !Array.isArray(entries) || entries.length === 0) {
                 return null;
@@ -170,7 +170,7 @@ function AgentActionsPanelContent({
               return (
                 <PanelAgentStep
                   key={step}
-                  stepNumber={parseInt(step)}
+                  stepNumber={parseInt(step, 10)}
                   entries={entries}
                   streamActionProgress={streamActionProgress}
                   owner={owner}
