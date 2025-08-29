@@ -758,43 +758,56 @@ export async function tryListMCPTools(
     { concurrency: 10 }
   );
 
-  let hasSeenCanvas = false;
-
   // Aggregate results
   const { serverToolsAndInstructions, errors } = results.reduce<{
     serverToolsAndInstructions: ServerToolsAndInstructions[];
     errors: string[];
+    hasSeenCanvas: boolean;
   }>(
-    (acc, result) => {
+    ({ serverToolsAndInstructions, errors, hasSeenCanvas }, result) => {
       if (result.isOk()) {
-        const serverToolsAndInstructions = result.value;
-        const isCanvas = isCanvasServer(serverToolsAndInstructions);
+        const currentServer = result.value;
+        const isCanvas = isCanvasServer(currentServer);
+
         if (isCanvas) {
-          hasSeenCanvas = true;
-        }
-        if (isCanvas) {
-          if (hasSeenCanvas) {
-            acc.serverToolsAndInstructions.push({
-              ...serverToolsAndInstructions,
-              tools: serverToolsAndInstructions.tools.filter(
+          // If we've already seen canvas, we don't add the tools to manipulate the content.
+          // But we allow asset retrieval as it's tied to the MCP server
+          const tools = hasSeenCanvas
+            ? currentServer.tools.filter(
                 (tool) =>
                   tool.name === CANVAS_LIST_ASSETS_TOOL_NAME ||
                   // TODO: concatenate the data sources and show one cat instead.
                   tool.name === CANVAS_CAT_ASSET_TOOL_NAME
-              ),
-            });
-            return acc;
-          }
-          acc.serverToolsAndInstructions.push(serverToolsAndInstructions);
-        } else {
-          acc.serverToolsAndInstructions.push(serverToolsAndInstructions);
+              )
+            : currentServer.tools;
+
+          return {
+            serverToolsAndInstructions: [
+              ...serverToolsAndInstructions,
+              { ...currentServer, tools },
+            ],
+            errors,
+            hasSeenCanvas: true,
+          };
         }
-      } else {
-        acc.errors.push(result.error.message);
+
+        return {
+          serverToolsAndInstructions: [
+            ...serverToolsAndInstructions,
+            currentServer,
+          ],
+          errors,
+          hasSeenCanvas,
+        };
       }
-      return acc;
+
+      return {
+        serverToolsAndInstructions,
+        errors: [...errors, result.error.message],
+        hasSeenCanvas,
+      };
     },
-    { serverToolsAndInstructions: [], errors: [] }
+    { serverToolsAndInstructions: [], errors: [], hasSeenCanvas: false }
   );
 
   return {
