@@ -594,7 +594,7 @@ export const InstructionBlockExtension =
         return { firstPara, lastPara, firstParaIndex, lastParaIndex };
       };
 
-      // Helper: returns tag name when paragraph is an exact tag line; otherwise null
+      // Helper function that returns tag name when paragraph is an exact tag line; otherwise null
       const getTagFromParagraph = (
         para: ProseMirrorNode | null,
         isClosing: boolean
@@ -625,9 +625,9 @@ export const InstructionBlockExtension =
               state.doc.descendants((node, pos) => {
                 if (node.type.name === "instructionBlock") {
                   // Use helper to find first and last paragraph tags
-                  const { firstPara, lastPara, firstParaIndex, lastParaIndex } = 
+                  const { firstPara, lastPara, firstParaIndex, lastParaIndex } =
                     findFirstLastParagraphs(node);
-                  
+
                   if (!firstPara || !lastPara) {
                     return;
                   }
@@ -636,14 +636,17 @@ export const InstructionBlockExtension =
                   const closingTag = getTagFromParagraph(lastPara, true);
 
                   // Only decorate if both tags exist and match (case-insensitive)
-                  if (openingTag !== null && closingTag !== null && 
-                      openingTag.toLowerCase() === closingTag.toLowerCase()) {
+                  if (
+                    openingTag !== null &&
+                    closingTag !== null &&
+                    openingTag.toLowerCase() === closingTag.toLowerCase()
+                  ) {
                     // Calculate positions
                     let firstPos = pos + 1;
                     for (let i = 0; i < firstParaIndex; i++) {
                       firstPos += node.child(i).nodeSize;
                     }
-                    
+
                     let lastPos = pos + 1;
                     for (let i = 0; i < lastParaIndex; i++) {
                       lastPos += node.child(i).nodeSize;
