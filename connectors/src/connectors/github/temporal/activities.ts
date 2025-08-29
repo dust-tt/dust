@@ -202,7 +202,7 @@ async function renderIssue(
           prefix: `>> ${renderGithubUser(comment.creator)}:\n`,
           content: null,
           sections: [
-            await renderMarkdownSection(dataSourceConfig, comment.body, {
+            await renderMarkdownSection(dataSourceConfig, comment.body ?? "", {
               flavor: "gfm",
             }),
           ],
