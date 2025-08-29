@@ -603,6 +603,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "exploded_tables_query"
   | "freshservice_tool"
   | "google_ai_studio_experimental_models_feature"
+  | "google_drive_tool"
   | "google_sheets_tool"
   | "hootl"
   | "index_private_slack_channel"
