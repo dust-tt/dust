@@ -31,19 +31,22 @@ import {
   DATA_WAREHOUSES_LIST_TOOL_NAME,
   DATA_WAREHOUSES_QUERY_TOOL_NAME,
   EXECUTE_DATABASE_QUERY_TOOL_NAME,
-  FILESYSTEM_CAT_TOOL_NAME,
-  FILESYSTEM_FIND_TOOL_NAME,
-  FILESYSTEM_LIST_TOOL_NAME,
-  FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
   GET_DATABASE_SCHEMA_TOOL_NAME,
   INCLUDE_TOOL_NAME,
   PROCESS_TOOL_NAME,
   QUERY_TABLES_TOOL_NAME,
-  SEARCH_TOOL_NAME,
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  isDataSourceNodeContentType,
+  isFilesystemPathType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  isDataSourceNodeListType,
+  isSearchResultResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getOutputText,
   isResourceContentWithText,
@@ -81,7 +84,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
     internalMCPServerName === "search" ||
     internalMCPServerName === "data_sources_file_system"
   ) {
-    if (toolName === SEARCH_TOOL_NAME) {
+    if (output?.some((o) => isSearchResultResourceType(o))) {
       const timeFrame = parseTimeFrame(params.relativeTimeFrame as string);
       const queryResource = makeQueryResource({
         query: params.query as string,
@@ -104,10 +107,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
       );
     }
 
-    if (
-      toolName === FILESYSTEM_LIST_TOOL_NAME ||
-      toolName === FILESYSTEM_FIND_TOOL_NAME
-    ) {
+    if (output?.some((o) => isDataSourceNodeListType(o))) {
       return (
         <SearchResultDetails
           viewType={viewType}
@@ -122,11 +122,11 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
       );
     }
 
-    if (toolName === FILESYSTEM_CAT_TOOL_NAME) {
+    if (output?.some((o) => isDataSourceNodeContentType(o))) {
       return <DataSourceNodeContentDetails {...props} />;
     }
 
-    if (toolName === FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME) {
+    if (output?.some((o) => isFilesystemPathType(o))) {
       return <FilesystemPathDetails {...props} />;
     }
   }
