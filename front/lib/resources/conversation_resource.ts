@@ -18,6 +18,7 @@ import {
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
@@ -445,6 +446,41 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
       return acc;
     }, [] as ConversationWithoutContentType[]);
+  }
+
+  static async listConversationsForTrigger(
+    auth: Authenticator,
+    triggerId: string
+  ): Promise<ConversationWithoutContentType[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const triggerModelId = getResourceIdFromSId(triggerId);
+    if (triggerModelId === null) {
+      return [];
+    }
+
+    const conversations = await this.model.findAll({
+      where: {
+        workspaceId: owner.id,
+        triggerId: triggerModelId,
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return conversations.map((c) => ({
+      id: c.id,
+      created: c.createdAt.getTime(),
+      sId: c.sId,
+      owner,
+      title: c.title,
+      visibility: c.visibility,
+      depth: c.depth,
+      triggerId: triggerId,
+      requestedGroupIds: new this(
+        this.model,
+        c.get()
+      ).getConversationRequestedGroupIdsFromModel(auth),
+    }));
   }
 
   static async upsertParticipation(
