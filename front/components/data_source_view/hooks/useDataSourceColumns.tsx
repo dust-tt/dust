@@ -1,4 +1,4 @@
-import { Checkbox, DataTable, Hoverable } from "@dust-tt/sparkle";
+import { Checkbox, cn, DataTable, Hoverable } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useContext, useMemo } from "react";
 
@@ -72,18 +72,17 @@ export const useDataSourceColumns = () => {
             return null;
           }
 
-          const hideColumn = shouldHideColumn(navigationHistory, currentEntry);
-
-          if (hideColumn && selectionState !== "partial") {
-            return undefined;
-          }
+          const hideColumn =
+            shouldHideColumn(navigationHistory, currentEntry) &&
+            selectionState !== "partial";
 
           return (
             <Checkbox
               key={`header-${selectionState}`}
               size="sm"
+              className={cn(hideColumn && "invisible")}
               checked={selectionState}
-              disabled={!isRowSelectable()}
+              disabled={!isRowSelectable() || hideColumn}
               onClick={(event) => event.stopPropagation()}
               onCheckedChange={async (state) => {
                 if (selectionState === "partial") {
@@ -110,14 +109,9 @@ export const useDataSourceColumns = () => {
         },
         cell: ({ row }) => {
           const selectionState = isRowSelected(row.original.id);
-          const hideColumn = shouldHideColumn(
-            navigationHistory,
-            row.original.entry
-          );
-
-          if (hideColumn && selectionState !== "partial") {
-            return undefined;
-          }
+          const hideColumn =
+            shouldHideColumn(navigationHistory, row.original.entry) &&
+            selectionState !== "partial";
 
           return (
             <div className="flex h-full w-full items-center">
@@ -125,7 +119,8 @@ export const useDataSourceColumns = () => {
                 key={`${row.original.id}-${selectionState}`}
                 size="sm"
                 checked={selectionState}
-                disabled={!isRowSelectable(row.original.id)}
+                className={cn(hideColumn && "invisible")}
+                disabled={!isRowSelectable(row.original.id) || hideColumn}
                 onClick={(event) => event.stopPropagation()}
                 onCheckedChange={async (state) => {
                   if (selectionState === "partial") {

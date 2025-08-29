@@ -9,9 +9,11 @@ import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import React from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceNavigationView } from "@app/components/agent_builder/capabilities/knowledge/DataSourceNavigationView";
 import { DataSourceSearchResults } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSearchResults";
 import { DataSourceSpaceSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
@@ -20,25 +22,20 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpacesSearch, useSystemSpace } from "@app/lib/swr/spaces";
-import type {
-  ContentNodesViewType,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { ContentNodesViewType } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 type DataSourceBuilderSelectorProps = {
-  owner: LightWorkspaceType;
-  dataSourceViews: DataSourceViewType[];
   viewType: ContentNodesViewType;
 };
 
 export const DataSourceBuilderSelector = ({
-  owner,
-  dataSourceViews,
   viewType,
 }: DataSourceBuilderSelectorProps) => {
+  const { owner } = useAgentBuilderContext();
   const { spaces } = useSpacesContext();
+  const { supportedDataSourceViews: dataSourceViews } =
+    useDataSourceViewsContext();
   const { navigationHistory, navigateTo } = useDataSourceBuilderContext();
   const router = useRouter();
   const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });

@@ -103,12 +103,7 @@ function KnowledgeFooterItem({
 
 export function KnowledgeFooter() {
   const [isOpen, setOpen] = useState(true);
-
   const { field } = useSourcesFormController();
-
-  if (field.value.in.length <= 0) {
-    return <></>;
-  }
 
   return (
     <Collapsible open={isOpen} onOpenChange={setOpen}>
