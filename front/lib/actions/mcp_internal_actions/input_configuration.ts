@@ -7,8 +7,10 @@ import zip from "lodash/zip";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import {
+  ConfigurableToolInputJSONSchemas,
+  validateConfiguredJsonSchema,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type {
   DataSourceConfiguration,
