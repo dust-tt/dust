@@ -15,7 +15,6 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare sId: string;
   declare name: string;
   declare kind: TriggerKind;
   declare customPrompt: string | null;
@@ -42,10 +41,6 @@ TriggerModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    sId: {
-      type: DataTypes.STRING,
-      allowNull: false,
     },
     agentConfigurationId: {
       type: DataTypes.STRING,

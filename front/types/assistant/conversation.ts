@@ -230,7 +230,7 @@ export type ConversationWithoutContentType = {
   title: string | null;
   visibility: ConversationVisibility;
   depth: number;
-  triggerId: ModelId | null;
+  triggerId: string | null;
   requestedGroupIds: string[][];
 };
 

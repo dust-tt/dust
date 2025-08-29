@@ -31,6 +31,7 @@ const RESOURCES_PREFIX = {
   extension: "ext",
   mcp_server_connection: "msc",
   mcp_server_view: "msv",
+  trigger: "trg",
   remote_mcp_server: "rms",
   tag: "tag",
   transcripts_configuration: "tsc",
