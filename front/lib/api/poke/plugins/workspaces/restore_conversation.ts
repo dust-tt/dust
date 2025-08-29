@@ -14,7 +14,8 @@ export const restoreConversationPlugin = createPlugin({
       mode: {
         type: "enum",
         label: "Restore Mode (Required)",
-        description: "Choose how to restore conversations. Select 'Specific Conversations' to restore by IDs or 'All for User' to restore by email",
+        description:
+          "Choose how to restore conversations. Select 'Specific Conversations' to restore by IDs or 'All for User' to restore by email",
         values: [
           { label: "Specific Conversations", value: "specific" },
           { label: "All for User", value: "user" },
@@ -23,31 +24,41 @@ export const restoreConversationPlugin = createPlugin({
       conversationIds: {
         type: "text",
         label: "Conversation IDs (for 'Specific Conversations' mode)",
-        description: "Comma-separated list of conversation sIds. Only fill this when mode is 'Specific Conversations'",
+        description:
+          "Comma-separated list of conversation sIds. Only fill this when mode is 'Specific Conversations'",
       },
       userEmail: {
         type: "text",
         label: "User Email (for 'All for User' mode)",
-        description: "Email address of the user whose conversations to restore. Only fill this when mode is 'All for User'",
+        description:
+          "Email address of the user whose conversations to restore. Only fill this when mode is 'All for User'",
       },
     },
   },
   execute: async (auth, _, args) => {
     const mode = args.mode;
-    
-    if (!['specific', 'user'].includes(mode)) {
+
+    if (!["specific", "user"].includes(mode)) {
       return new Err(new Error("Invalid mode selected"));
     }
 
-    if (mode === 'specific') {
+    if (mode === "specific") {
       const conversationIds = args.conversationIds?.trim();
       if (!conversationIds) {
-        return new Err(new Error("Please provide Conversation IDs when mode is 'Specific Conversations'"));
+        return new Err(
+          new Error(
+            "Please provide Conversation IDs when mode is 'Specific Conversations'"
+          )
+        );
       }
-      
+
       // Check if user accidentally filled in email field
       if (args.userEmail?.trim()) {
-        return new Err(new Error("User Email should be empty when mode is 'Specific Conversations'. Use 'All for User' mode to restore by email."));
+        return new Err(
+          new Error(
+            "User Email should be empty when mode is 'Specific Conversations'. Use 'All for User' mode to restore by email."
+          )
+        );
       }
 
       const conversationIdsArray = conversationIds
@@ -66,7 +77,9 @@ export const restoreConversationPlugin = createPlugin({
 
       if (missingConversations.length > 0) {
         return new Err(
-          new Error(`Conversations not found: ${missingConversations.join(", ")}`)
+          new Error(
+            `Conversations not found: ${missingConversations.join(", ")}`
+          )
         );
       }
 
@@ -81,11 +94,17 @@ export const restoreConversationPlugin = createPlugin({
     } else {
       const userEmail = args.userEmail?.trim();
       if (!userEmail) {
-        return new Err(new Error("Please provide User Email when mode is 'All for User'"));
+        return new Err(
+          new Error("Please provide User Email when mode is 'All for User'")
+        );
       }
-      
+
       if (args.conversationIds?.trim()) {
-        return new Err(new Error("Conversation IDs should be empty when mode is 'All for User'. Use 'Specific Conversations' mode to restore by IDs."));
+        return new Err(
+          new Error(
+            "Conversation IDs should be empty when mode is 'All for User'. Use 'Specific Conversations' mode to restore by IDs."
+          )
+        );
       }
 
       const user = await UserResource.fetchByEmail(userEmail);
@@ -105,7 +124,7 @@ export const restoreConversationPlugin = createPlugin({
       );
 
       const deletedConversations = conversations.filter(
-        (c) => c.visibility === 'deleted'
+        (c) => c.visibility === "deleted"
       );
 
       if (deletedConversations.length === 0) {
