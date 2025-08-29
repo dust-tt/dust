@@ -12,7 +12,6 @@ import { useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
-import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   isExtractQueryResourceType,
   isExtractResultResourceType,
@@ -21,7 +20,7 @@ import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
 
 interface MCPExtractActionQueryProps {
-  action: MCPActionType | AgentMCPActionWithOutputType;
+  action: AgentMCPActionWithOutputType;
   queryResource?: {
     text: string;
     mimeType: string;
