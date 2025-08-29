@@ -3,8 +3,10 @@ import { Err, Ok } from "@dust-tt/client";
 import assert from "assert";
 
 import {
+  getMCPAction,
   getMCPApprovalStateFromUserApprovalState,
   isMCPApproveExecutionEvent,
+  updateMCPApprovalState,
 } from "@app/lib/actions/mcp";
 import { setUserAlwaysApprovedTool } from "@app/lib/actions/utils";
 import { runAgentLoop } from "@app/lib/api/assistant/agent";
@@ -12,7 +14,6 @@ import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { Message } from "@app/lib/models/assistant/conversation";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import logger from "@app/logger/logger";
 import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
@@ -95,7 +96,7 @@ export async function validateAction(
     messageId,
   });
 
-  const action = await AgentMCPActionResource.fetchById(auth, actionId);
+  const action = await getMCPAction(auth, actionId);
   if (!action) {
     return new Err(new Error(`Action not found: ${actionId}`));
   }
@@ -113,7 +114,8 @@ export async function validateAction(
     return new Err(new Error(`Action is not blocked: ${action.status}`));
   }
 
-  const [updatedActionsCount] = await action.updateStatus(
+  const actionUpdated = await updateMCPApprovalState(
+    action,
     getMCPApprovalStateFromUserApprovalState(approvalState)
   );
 
@@ -142,7 +144,7 @@ export async function validateAction(
     }
   }
 
-  if (updatedActionsCount === 0) {
+  if (!actionUpdated) {
     logger.info(
       {
         actionId,
