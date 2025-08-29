@@ -244,9 +244,19 @@ function useBlockedActionsQueue({
   >(blockedActions.map((action) => ({ blockedAction: action })));
 
   useEffect(() => {
-    setBlockedActionsQueue(
-      blockedActions.map((action) => ({ blockedAction: action }))
-    );
+    if (blockedActions.length > 0) {
+      setBlockedActionsQueue((prevQueue) => {
+        const existingIds = new Set(
+          prevQueue.map((v) => v.blockedAction.actionId)
+        );
+        const newItems = blockedActions
+          .filter((v) => !existingIds.has(v.actionId))
+          .map((blockedAction) => ({
+            blockedAction,
+          }));
+        return [...prevQueue, ...newItems];
+      });
+    }
   }, [blockedActions]);
 
   const enqueueBlockedAction = ({
@@ -264,7 +274,7 @@ function useBlockedActionsQueue({
       // If the action is not in the queue, add it.
       // If the action is in the queue, replace it with the new one.
       return existingIndex === -1
-        ? [...prevQueue, { blockedAction, message }]
+        ? [...blockedActionsQueue, { blockedAction, message }]
         : prevQueue.map((item, index) =>
             index === existingIndex ? { blockedAction, message } : item
           );
@@ -562,7 +572,7 @@ export function BlockedActionsProvider({
     if (hasPendingAuthentications && validatedActions === 0) {
       return "auth";
     }
-    const nextValidation = pendingValidations[0];
+    const nextValidation = pendingValidations[validatedActions];
     return nextValidation
       ? `validation-${nextValidation.blockedAction.actionId}`
       : pages[0].id;
