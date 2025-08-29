@@ -96,8 +96,9 @@ export function AgentTriggersTab({
                   visual={trigger.kind === "schedule" ? ClockIcon : BellIcon}
                 />
                 <div className="font-medium">
-                  {trigger.name?.trim() ||
-                    cronstrue.toString(trigger.configuration.cron)}
+                  {trigger.name?.trim() === ""
+                    ? cronstrue.toString(trigger.configuration.cron)
+                    : trigger.name}
                 </div>
               </div>
               <div className="self-end">
