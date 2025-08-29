@@ -7,15 +7,15 @@ import {
 } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { isWarehousesBrowseType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getDocumentIcon } from "@app/lib/content_nodes";
 
 export function MCPDataWarehousesBrowseDetails({
-  action,
+  toolOutput,
   viewType,
-}: MCPActionDetailsProps) {
-  const browseResult = action.output
+}: ToolExecutionDetailsProps) {
+  const browseResult = toolOutput
     ?.filter(isWarehousesBrowseType)
     .map((o) => o.resource)?.[0];
 

@@ -2,12 +2,12 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { CodeBlock, TableIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
 import {
   SqlQueryBlock,
   ThinkingBlock,
   ToolGeneratedFileDetails,
 } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
   isExecuteTablesQueryErrorResourceType,
   isSqlQueryOutput,
@@ -16,23 +16,24 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
 export function MCPTablesQueryActionDetails({
-  action,
+  toolOutput,
+  toolParams,
   viewType,
   owner,
-}: MCPActionDetailsProps) {
+}: ToolExecutionDetailsProps) {
   const thinkingBlocks =
-    action.output?.filter(isThinkingOutput).map((o) => o.resource) ?? [];
+    toolOutput?.filter(isThinkingOutput).map((o) => o.resource) ?? [];
   const sqlQueryBlocks =
-    action.output?.filter(isSqlQueryOutput).map((o) => o.resource) ?? [];
+    toolOutput?.filter(isSqlQueryOutput).map((o) => o.resource) ?? [];
   const generatedFiles =
-    action.output?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
+    toolOutput?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
   const errorBlocks =
-    action.output
+    toolOutput
       ?.filter(isExecuteTablesQueryErrorResourceType)
       .map((o) => o.resource) ?? [];
 
   // For v2 server, get query from params if no SQL query blocks in output.
-  const queryFromParams = action.params?.query as string | undefined;
+  const queryFromParams = toolParams?.query as string | undefined;
   const hasQueryToDisplay = sqlQueryBlocks.length > 0 || queryFromParams;
 
   return (
@@ -44,15 +45,13 @@ export function MCPTablesQueryActionDetails({
       visual={TableIcon}
     >
       {viewType === "conversation" ? (
-        <>
-          {thinkingBlocks.length > 0 && (
-            <div className="flex flex-col gap-4 pl-6 pt-4">
-              {thinkingBlocks.map((block) => (
-                <div key={block.text}>{block.text}</div>
-              ))}
-            </div>
-          )}
-        </>
+        thinkingBlocks.length > 0 && (
+          <div className="flex flex-col gap-4 pl-6 pt-4">
+            {thinkingBlocks.map((block) => (
+              <div key={block.text}>{block.text}</div>
+            ))}
+          </div>
+        )
       ) : (
         <div className="flex flex-col gap-4 pl-6 pt-4">
           {thinkingBlocks.length > 0 && (
@@ -110,7 +109,7 @@ export function MCPTablesQueryActionDetails({
               </span>
               {errorBlocks.map((block, index) => (
                 <CodeBlock
-                  key={`execute-tables-query-error-${action.id}-${index}`}
+                  key={`execute-tables-query-error-${index}`}
                   wrapLongLines
                 >
                   {block.text}
