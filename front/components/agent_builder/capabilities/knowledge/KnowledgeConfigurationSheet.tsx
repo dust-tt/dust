@@ -408,13 +408,13 @@ function KnowledgeConfigurationSheetContent({
         : undefined,
       content: (
         <div className="space-y-6">
+          <ProcessingMethodSection />
+
           <NameSection
             ref={nameSectionRef}
             title="Name"
             placeholder="Name ..."
           />
-
-          <ProcessingMethodSection />
 
           {requirements.mayRequireTimeFrameConfiguration && (
             <TimeFrameSection actionType="extract" />

@@ -173,7 +173,7 @@ export function ProcessingMethodSection() {
                 ? InternalActionIcons[mcpServerView.server.icon]
                 : undefined
             }
-            variant="outline"
+            variant="primary"
             isSelect
           />
         </DropdownMenuTrigger>
