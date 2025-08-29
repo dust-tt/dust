@@ -40,6 +40,15 @@ export const TriggerCard = ({
     return "";
   }, [trigger.configuration?.cron]);
 
+  let triggerName = trigger.name;
+  let triggerDescription = cronDescription;
+
+  // If we don't have a name, use the cron description as the name, and skip the description to avoid duplication.
+  if (trigger.name?.trim() === "" && trigger.configuration) {
+    triggerName = cronstrue.toString(trigger.configuration.cron);
+    triggerDescription = "";
+  }
+
   return (
     <Card
       variant="primary"
@@ -61,10 +70,10 @@ export const TriggerCard = ({
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
           {getIcon(trigger.kind)}
-          <span className="truncate">{trigger.name}</span>
+          <span className="truncate">{triggerName}</span>
         </div>
         <span className="text-muted-foreground dark:text-muted-foreground-night">
-          {trigger.kind === "schedule" && <span>{cronDescription}</span>}
+          {trigger.kind === "schedule" && <span>{triggerDescription}</span>}
         </span>
       </div>
     </Card>
