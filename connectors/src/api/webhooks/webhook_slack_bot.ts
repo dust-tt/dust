@@ -147,6 +147,42 @@ const _webhookSlackBotAPIHandler = async (
               "slack.team_id": teamId,
               "slack.app": "slack_bot",
             })(handleChatBot)(req, res, logger);
+          } else if (event.channel_type === "channel") {
+            if (
+              !event.bot_id &&
+              event.channel &&
+              event.ts &&
+              event.user &&
+              !event.subtype
+            ) {
+              const slackConfig =
+                await SlackConfigurationResource.fetchByActiveBot(teamId);
+              if (slackConfig) {
+                // Check if the channel has an enhanced default agent configured
+                const channel =
+                  await SlackConfigurationResource.findChannelWithAutoRespond(
+                    slackConfig.connectorId,
+                    event.channel
+                  );
+
+                if (channel && channel.agentConfigurationId) {
+                  logger.info(
+                    {
+                      slackChannelId: event.channel,
+                      agentConfigurationId: channel.agentConfigurationId,
+                      autoRespondWithoutMention:
+                        channel.autoRespondWithoutMention,
+                    },
+                    "Found enhanced default agent for channel - processing message"
+                  );
+
+                  await withTrace({
+                    "slack.team_id": teamId,
+                    "slack.app": "slack_bot",
+                  })(handleChatBot)(req, res, logger);
+                }
+              }
+            }
           }
           break;
         }

@@ -114,7 +114,7 @@ export function getAttachmentFromContentNodeContentFragment(
     contentType: cf.contentType,
     snippet: null,
     contentFragmentVersion: cf.contentFragmentVersion,
-    // Backward compatibility: we fallback to the fileId if no generated tables are mentionned
+    // Backward compatibility: we fallback to the fileId if no generated tables are mentioned
     // but the file is queryable.
     generatedTables: isQueryable ? [cf.nodeId] : [],
     isIncludable,
@@ -158,7 +158,7 @@ export function getAttachmentFromFileContentFragment(
     contentType: cf.contentType,
     snippet: cf.snippet,
     contentFragmentVersion: cf.contentFragmentVersion,
-    // Backward compatibility: we fallback to the fileId if no generated tables are mentionned
+    // Backward compatibility: we fallback to the fileId if no generated tables are mentioned
     // but the file is queryable.
     generatedTables:
       cf.generatedTables.length > 0

@@ -9,6 +9,7 @@ import {
   EDIT_CANVAS_FILE_TOOL_NAME,
   RETRIEVE_CANVAS_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/canvas/types";
+import { validateTailwindCode } from "@app/lib/actions/mcp_internal_actions/servers/canvas/validation";
 import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/cat_tool";
 import { registerListTool } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/list_tool";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -21,7 +22,7 @@ import {
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
 import type { CanvasFileContentType } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { clientExecutableContentType, Err, Ok } from "@app/types";
 import { CANVAS_FILE_FORMATS } from "@app/types";
 
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
@@ -41,33 +42,33 @@ const createServer = (
 
   server.tool(
     CREATE_CANVAS_FILE_TOOL_NAME,
-    "Create a new canvas file that users can execute or interact with. Use this for " +
+    "Create a new Canvas file that users can execute or interact with. Use this for " +
       "content that provides functionality beyond static viewing.",
     {
       file_name: z
         .string()
         .describe(
-          "The name of the canvas file to create, including extension (e.g. " +
+          "The name of the Canvas file to create, including extension (e.g. " +
             "DataVisualization.tsx)"
         ),
       mime_type: z
         .enum(Object.keys(CANVAS_FILE_FORMATS) as [CanvasFileContentType])
         .describe(
           "The MIME type for the canvas. Currently supports " +
-            "'application/vnd.dust.client-executable' for client-side executable files."
+            `'${clientExecutableContentType}' for client-side executable files.`
         ),
       content: z
         .string()
         .max(MAX_FILE_SIZE_BYTES)
         .describe(
-          "The content for the canvas file. Should be complete and ready for execution or " +
+          "The content for the Canvas file. Should be complete and ready for execution or " +
             "interaction."
         ),
       description: z
         .string()
         .optional()
         .describe(
-          "Optional description of what this canvas does (e.g., " +
+          "Optional description of what this Canvas does (e.g., " +
             "'Interactive data visualization', 'Executable analysis script', " +
             "'Dynamic dashboard')"
         ),
@@ -79,6 +80,11 @@ const createServer = (
         { file_name, mime_type, content, description },
         { sendNotification, _meta }
       ) => {
+        const validationResult = validateTailwindCode(content);
+        if (validationResult.isErr()) {
+          return new Err(new MCPError(validationResult.error.message));
+        }
+
         const { conversation } = agentLoopContext?.runContext ?? {};
         if (!conversation) {
           return new Err(
@@ -113,7 +119,7 @@ const createServer = (
               total: 1,
               progressToken: _meta?.progressToken,
               data: {
-                label: "Creating canvas...",
+                label: "Creating Canvas file...",
                 output: {
                   type: "canvas_file",
                   fileId: fileResource.sId,
@@ -149,7 +155,7 @@ const createServer = (
 
   server.tool(
     EDIT_CANVAS_FILE_TOOL_NAME,
-    "Modifies content within an canvas file by substituting specified text segments. " +
+    "Modifies content within a Canvas file by substituting specified text segments. " +
       "Performs single substitution by default, or multiple substitutions when " +
       "`expected_replacements` is defined. This function demands comprehensive contextual " +
       "information surrounding the target modification to ensure accurate targeting. " +
@@ -164,7 +170,7 @@ const createServer = (
     {
       file_id: z
         .string()
-        .describe("The ID of the canvas file to update (e.g., 'fil_abc123')"),
+        .describe("The ID of the Canvas file to update (e.g., 'fil_abc123')"),
       old_string: z
         .string()
         .describe(
@@ -223,7 +229,7 @@ const createServer = (
               total: 1,
               progressToken: _meta?.progressToken,
               data: {
-                label: "Updating canvas...",
+                label: "Updating Canvas file...",
                 output: {
                   type: "canvas_file",
                   fileId: fileResource.sId,
@@ -251,14 +257,14 @@ const createServer = (
 
   server.tool(
     RETRIEVE_CANVAS_FILE_TOOL_NAME,
-    "Retrieve the current content of an existing canvas file by its file ID. " +
-      "Use this to read back the content of canvas files you have previously created or " +
+    "Retrieve the current content of an existing Canvas file by its file ID. " +
+      "Use this to read back the content of Canvas files you have previously created or " +
       `updated. Use this tool before calling ${EDIT_CANVAS_FILE_TOOL_NAME} to ` +
       "understand the current file state and identify the exact text to replace.",
     {
       file_id: z
         .string()
-        .describe("The ID of the canvas file to retrieve (e.g., 'fil_abc123')"),
+        .describe("The ID of the Canvas file to retrieve (e.g., 'fil_abc123')"),
     },
     withToolLogging(
       auth,
@@ -284,29 +290,22 @@ const createServer = (
     )
   );
 
-  // Register data source file system tools for canvas server with custom descriptions
-  // tailored for canvas use cases (visual assets and templates).
+  // Register data source file system tools for the Canvas server with custom
+  // descriptions tailored for Canvas use cases (visual assets and templates).
   registerListTool(auth, server, agentLoopContext, {
-    toolName: "list_assets",
-    toolDescription:
+    name: "list_assets",
+    extraDescription:
       "Browse available visual assets and templates in the connected data sources. " +
       "Use this to explore folders containing images, icons, slideshow templates, " +
-      "or other resources that can be incorporated into canvas files.\n\n" +
-      "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
-      "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
-      "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
-      "the next step's nodeId. If a node output by this tool has children " +
-      "(hasChildren: true), it means that this tool can be used again on it.",
+      "or other resources that can be incorporated into Canvas files.",
   });
 
   registerCatTool(auth, server, agentLoopContext, {
-    toolName: "cat_assets",
-    toolDescription:
+    name: "cat_assets",
+    extraDescription:
       "Read template files or asset configurations from the connected data sources. " +
       "Use this to retrieve slideshow templates, HTML/CSS snippets, React component examples, " +
-      "or configuration files that can serve as a starting point or be incorporated into canvas files.\n\n" +
-      "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). " +
-      "The nodeId can be obtained using the 'list_assets' tool.",
+      "or configuration files that can serve as a starting point or be incorporated into Canvas files.",
   });
 
   return server;

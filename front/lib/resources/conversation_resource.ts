@@ -18,6 +18,7 @@ import {
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   ConversationMCPServerViewType,
@@ -99,6 +100,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     return conversations.map((c) => new this(this.model, c.get()));
+  }
+
+  static triggerIdToSId(triggerId: number | null, workspaceId: number) {
+    return triggerId != null
+      ? TriggerResource.modelIdToSId({ id: triggerId, workspaceId })
+      : null;
+  }
+
+  triggerSId(): string | null {
+    return ConversationResource.triggerIdToSId(
+      this.triggerId,
+      this.workspaceId
+    );
   }
 
   static async fetchByIds(
@@ -343,7 +357,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       title: conversation.title,
       visibility: conversation.visibility,
       depth: conversation.depth,
-      triggerId: conversation.triggerId,
+      triggerId: conversation.triggerSId(),
       requestedGroupIds:
         conversation.getConversationRequestedGroupIdsFromModel(auth),
     });
@@ -421,7 +435,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           title: c.title,
           visibility: c.visibility,
           depth: c.depth,
-          triggerId: c.triggerId,
+          triggerId: ConversationResource.triggerIdToSId(c.triggerId, owner.id),
           requestedGroupIds: new this(
             this.model,
             c.get()

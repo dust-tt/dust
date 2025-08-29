@@ -2,12 +2,14 @@ import {
   Button,
   ClipboardCheckIcon,
   ClipboardIcon,
+  ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   GlobeAltIcon,
   IconButton,
+  InformationCircleIcon,
   Input,
   Label,
   LinkIcon,
@@ -99,17 +101,15 @@ function FileSharingDropdown({
 }
 
 interface ShareCanvasFilePopoverProps {
-  disabled?: boolean;
   fileId: string;
   owner: LightWorkspaceType;
-  tooltip?: string;
+  isUsingConversationFiles: boolean;
 }
 
 export function ShareCanvasFilePopover({
   fileId,
   owner,
-  disabled = false,
-  tooltip = "Share public link",
+  isUsingConversationFiles,
 }: ShareCanvasFilePopoverProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [isCopied, copyToClipboard] = useCopyToClipboard();
@@ -117,6 +117,8 @@ export function ShareCanvasFilePopover({
   const [selectedScope, setSelectedScope] = React.useState<FileShareScope>(
     "conversation_participants"
   );
+
+  const isSharingForbidden = owner.metadata?.allowCanvasFileSharing === false;
 
   const { doShare, fileShare, isFileShareLoading, isFileShareError } =
     useShareCanvasFile({
@@ -160,29 +162,52 @@ export function ShareCanvasFilePopover({
           icon={LinkIcon}
           size="xs"
           variant="ghost"
-          tooltip={tooltip}
-          disabled={disabled}
+          tooltip="Share public link"
         />
       </PopoverTrigger>
-      <PopoverContent className="flex h-52 w-96 flex-col" align="end">
+      <PopoverContent className="flex w-96 flex-col" align="end">
         <div className="flex flex-col gap-4">
           <div className="text-base font-semibold text-primary dark:text-primary-night">
             Share this Canvas
           </div>
 
-          <div className="flex flex-1 flex-col">
-            {isFileShareLoading ? (
+          <div className="flex flex-col">
+            {isFileShareLoading && (
               <div className="flex h-full items-center justify-center">
                 <Spinner size="sm" />
               </div>
-            ) : (
+            )}
+            {/* Warning if sharing is disabled. */}
+            {!isFileShareLoading &&
+              (isSharingForbidden || isUsingConversationFiles) && (
+                <ContentMessage
+                  className="mb-4"
+                  title={
+                    isSharingForbidden
+                      ? "Sharing disabled by admin"
+                      : "This canvas contains company data"
+                  }
+                  variant="golden"
+                  icon={InformationCircleIcon}
+                >
+                  {isSharingForbidden
+                    ? "Your workspace administrator has turned off sharing of Canvas files."
+                    : "The Canvas relies on conversation files, sharing is therefore disabled " +
+                      "to protect company information."}
+                </ContentMessage>
+              )}
+            {/* File sharing link. */}
+            {!isFileShareLoading && (
               <div className="flex flex-col gap-3">
-                {/* Scope Selection Dropdown - always visible */}
                 <FileSharingDropdown
                   selectedScope={selectedScope}
                   onScopeChange={handleScopeChange}
                   owner={owner}
-                  disabled={isUpdatingShare}
+                  disabled={
+                    isSharingForbidden ||
+                    isUsingConversationFiles ||
+                    isUpdatingShare
+                  }
                   isLoading={isUpdatingShare}
                 />
 

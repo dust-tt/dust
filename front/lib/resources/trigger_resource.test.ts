@@ -34,7 +34,7 @@ describe("TriggerResource", () => {
 
       // Create a trigger with editorUser as the editor
       const triggerResult = await TriggerResource.makeNew(editorAuth, {
-        sId: "test-trigger-123",
+        id: 123,
         workspaceId: workspace.id,
         name: "Test Trigger",
         kind: "schedule",
@@ -88,7 +88,7 @@ describe("TriggerResource", () => {
 
       // Create a trigger with user as the editor
       const triggerResult = await TriggerResource.makeNew(authenticator, {
-        sId: "test-trigger-123",
+        id: 123,
         workspaceId: workspace.id,
         name: "Test Trigger",
         kind: "schedule",
@@ -138,7 +138,7 @@ describe("TriggerResource", () => {
 
       // Create a trigger in workspace1
       const triggerResult = await TriggerResource.makeNew(auth1, {
-        sId: "test-trigger-123",
+        id: 123,
         workspaceId: workspace1.id,
         name: "Test Trigger",
         kind: "schedule",
@@ -196,7 +196,7 @@ describe("TriggerResource", () => {
 
       // Create a trigger
       const triggerResult = await TriggerResource.makeNew(editorAuth, {
-        sId: "test-trigger-123",
+        id: 123,
         workspaceId: workspace.id,
         name: "Test Trigger",
         kind: "schedule",
@@ -259,7 +259,7 @@ describe("TriggerResource", () => {
 
       // Create a trigger
       const triggerResult = await TriggerResource.makeNew(editorAuth, {
-        sId: "test-trigger-123",
+        id: 123,
         workspaceId: workspace.id,
         name: "Test Trigger",
         kind: "schedule",
@@ -323,7 +323,7 @@ describe("TriggerResource", () => {
 
       // Create a trigger
       const triggerResult = await TriggerResource.makeNew(editorAuth, {
-        sId: "test-trigger-123",
+        id: 123,
         workspaceId: workspace.id,
         name: "Test Trigger",
         kind: "schedule",
@@ -393,7 +393,7 @@ describe("TriggerResource", () => {
 
       // Create a trigger in workspace1
       const triggerResult = await TriggerResource.makeNew(auth1, {
-        sId: "test-trigger-123",
+        id: 123,
         workspaceId: workspace1.id,
         name: "Test Trigger",
         kind: "schedule",
@@ -451,7 +451,7 @@ describe("TriggerResource", () => {
 
       // Create a trigger
       const triggerResult = await TriggerResource.makeNew(editorAuth, {
-        sId: "test-trigger-123",
+        id: 123,
         workspaceId: workspace.id,
         name: "Test Trigger",
         kind: "schedule",
@@ -514,7 +514,7 @@ describe("TriggerResource", () => {
 
       // Create a trigger
       const triggerResult = await TriggerResource.makeNew(editorAuth, {
-        sId: "test-trigger-123",
+        id: 123,
         workspaceId: workspace.id,
         name: "Test Trigger",
         kind: "schedule",
@@ -583,7 +583,7 @@ describe("TriggerResource", () => {
 
       // Create a trigger with editorUser as the editor
       const triggerResult = await TriggerResource.makeNew(editorAuth, {
-        sId: "test-trigger-123",
+        id: 123,
         workspaceId: workspace.id,
         name: "Test Trigger",
         kind: "schedule",

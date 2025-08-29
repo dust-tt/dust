@@ -220,7 +220,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
           scope: {
             label: "OAuth Scope(s)",
             value: undefined,
-            helpMessage: "The scope(s) to request (comma-separated list).",
+            helpMessage: "The scope(s) to request (space separated list).",
             validator: isValidScope,
           },
         };

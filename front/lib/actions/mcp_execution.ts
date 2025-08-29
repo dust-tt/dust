@@ -14,7 +14,6 @@ import {
 } from "@app/lib/actions/action_output_limits";
 import type {
   LightMCPToolConfigurationType,
-  MCPActionType,
   MCPApproveExecutionEvent,
   MCPToolConfigurationType,
   ToolNotificationEvent,
@@ -69,7 +68,6 @@ export async function* executeMCPTool({
   agentConfiguration,
   conversation,
   agentMessage,
-  mcpAction,
 }: {
   auth: Authenticator;
   inputs: Record<string, unknown>;
@@ -78,7 +76,6 @@ export async function* executeMCPTool({
   agentConfiguration: AgentConfigurationType;
   conversation: ConversationType;
   agentMessage: AgentMessageType;
-  mcpAction: MCPActionType;
 }): AsyncGenerator<
   ToolNotificationEvent | MCPApproveExecutionEvent,
   Result<
@@ -112,7 +109,12 @@ export async function* executeMCPTool({
           configurationId: agentConfiguration.sId,
           conversationId: conversation.sId,
           messageId: agentMessage.sId,
-          action: mcpAction,
+          action: {
+            ...action.toJSON(),
+            // TODO(2025-08-29 aubin): cleanup as soon as the SDK type is updated.
+            output: null,
+            generatedFiles: [],
+          },
           notification: notification.params,
         };
       }

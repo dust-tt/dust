@@ -117,7 +117,7 @@ export abstract class AuthService {
 
   abstract logout(): Promise<boolean>;
 
-  abstract getAccessToken(): Promise<string | null>;
+  abstract getAccessToken(forceRefresh?: boolean): Promise<string | null>;
 
   abstract refreshToken(
     tokens: StoredTokens | null

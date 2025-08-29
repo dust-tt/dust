@@ -622,6 +622,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_tool"
   | "show_debug_tools"
   | "slack_semantic_search"
+  | "slack_enhanced_default_agent"
   | "toolsets_tool"
   | "usage_data_api"
   | "xai_feature"
@@ -693,7 +694,6 @@ const MCPActionTypeSchema = z.object({
   status: z.string(),
   params: z.record(z.any()),
   output: CallToolResultSchema.shape.content.nullable(),
-  type: z.literal("tool_action"),
 });
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
@@ -1733,7 +1733,9 @@ export type PostUserMessageResponseType = z.infer<
 export const RetryMessageResponseSchema = z.object({
   message: AgentMessageTypeSchema,
 });
-export type RetryMessageResponseType = z.infer<typeof RetryMessageResponseSchema>;
+export type RetryMessageResponseType = z.infer<
+  typeof RetryMessageResponseSchema
+>;
 
 export const GetConversationResponseSchema = z.object({
   conversation: ConversationSchema,
