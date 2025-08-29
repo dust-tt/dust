@@ -5,11 +5,7 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/client";
-import {
-  DustAPI,
-  Err,
-  Ok,
-} from "@dust-tt/client";
+import { DustAPI, Err, Ok } from "@dust-tt/client";
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
@@ -20,9 +16,7 @@ import { ProviderRateLimitError } from "@connectors/lib/error";
 import { TeamsMessage } from "@connectors/lib/models/teams";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import {
-  getHeaderFromUserEmail,
-} from "@connectors/types";
+import { getHeaderFromUserEmail } from "@connectors/types";
 
 const TEAMS_RATE_LIMIT_ERROR_MESSAGE =
   "Microsoft Teams has blocked the agent from continuing the conversation due to rate limits. You can retry the conversation later.";
@@ -45,11 +39,7 @@ export async function botAnswerTeamsMessage(
   const { conversationId, tenantId } = params;
 
   try {
-    const res = await answerTeamsMessage(
-      message,
-      params,
-      connector
-    );
+    const res = await answerTeamsMessage(message, params, connector);
 
     await processTeamsErrorResult(res, params, connector);
 
@@ -67,18 +57,18 @@ export async function botAnswerTeamsMessage(
     try {
       const client = await getClient(connector.connectionId);
       if (e instanceof ProviderRateLimitError) {
-        await client.api(`/v1.0/me/chats/${conversationId}/messages`).post({
+        await client.api(`/me/chats/${conversationId}/messages`).post({
           body: {
-            contentType: 'text',
-            content: TEAMS_RATE_LIMIT_ERROR_MESSAGE
-          }
+            contentType: "text",
+            content: TEAMS_RATE_LIMIT_ERROR_MESSAGE,
+          },
         });
       } else {
-        await client.api(`/v1.0/me/chats/${conversationId}/messages`).post({
+        await client.api(`/me/chats/${conversationId}/messages`).post({
           body: {
-            contentType: 'text',
-            content: "An unexpected error occurred. Our team has been notified"
-          }
+            contentType: "text",
+            content: "An unexpected error occurred. Our team has been notified",
+          },
         });
       }
     } catch (e) {
@@ -115,11 +105,11 @@ async function processTeamsErrorResult(
 
     try {
       const client = await getClient(connector.connectionId);
-      await client.api(`/v1.0/me/chats/${convId}/messages`).post({
+      await client.api(`/me/chats/${convId}/messages`).post({
         body: {
-          contentType: 'text',
-          content: errorMessage
-        }
+          contentType: "text",
+          content: errorMessage,
+        },
       });
     } catch (e) {
       logger.error(
@@ -153,7 +143,6 @@ async function answerTeamsMessage(
   }: TeamsAnswerParams,
   connector: ConnectorResource
 ): Promise<Result<AgentMessageSuccessEvent | undefined, Error>> {
-  
   // Check for existing conversation in the same thread
   let lastTeamsMessage: TeamsMessage | null = null;
   if (replyToId) {
@@ -172,13 +161,18 @@ async function answerTeamsMessage(
   const client = await getClient(connector.connectionId);
 
   // Get user info from Microsoft Graph
-  let userInfo: { id: string; displayName?: string; mail?: string; userPrincipalName?: string } | null = null;
+  let userInfo: {
+    id: string;
+    displayName?: string;
+    mail?: string;
+    userPrincipalName?: string;
+  } | null = null;
   try {
     if (userAadObjectId) {
-      userInfo = await client.api(`/v1.0/users/${userAadObjectId}`).get();
+      userInfo = await client.api(`/users/${userAadObjectId}`).get();
     } else {
       // Fallback: try to get user info by userId (though this might not work for all scenarios)
-      userInfo = await client.api(`/v1.0/users/${userId}`).get();
+      userInfo = await client.api(`/users/${userId}`).get();
     }
   } catch (e) {
     logger.warn(
@@ -199,7 +193,8 @@ async function answerTeamsMessage(
   }
 
   const displayName = userInfo?.displayName || "Unknown User";
-  const email = userInfo?.mail || userInfo?.userPrincipalName || "unknown@example.com";
+  const email =
+    userInfo?.mail || userInfo?.userPrincipalName || "unknown@example.com";
 
   const teamsMessage = await TeamsMessage.create({
     connectorId: connector.id,
@@ -221,7 +216,9 @@ async function answerTeamsMessage(
       workspaceId: connector.workspaceId,
       apiKey: connector.workspaceAPIKey,
       extraHeaders: {
-        ...getHeaderFromUserEmail(email !== "unknown@example.com" ? email : undefined),
+        ...getHeaderFromUserEmail(
+          email !== "unknown@example.com" ? email : undefined
+        ),
       },
     },
     logger
@@ -263,7 +260,7 @@ async function answerTeamsMessage(
           distance: number;
         }
       | undefined = undefined;
-    
+
     for (const agentConfiguration of activeAgentConfigurations) {
       const distance =
         1 -
@@ -325,12 +322,14 @@ async function answerTeamsMessage(
   // Send initial "thinking" message to Teams
   let mainMessageResponse: { id?: string } | null = null;
   try {
-    mainMessageResponse = await client.api(`/v1.0/me/chats/${conversationId}/messages`).post({
-      body: {
-        contentType: 'text',
-        content: `🤔 ${mention.assistantName} is thinking...`
-      }
-    });
+    mainMessageResponse = await client
+      .api(`/me/chats/${conversationId}/messages`)
+      .post({
+        body: {
+          contentType: "text",
+          content: `🤔 ${mention.assistantName} is thinking...`,
+        },
+      });
   } catch (e) {
     logger.error(
       {

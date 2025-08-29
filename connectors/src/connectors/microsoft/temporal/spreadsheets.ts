@@ -166,10 +166,7 @@ async function processSheet({
       "[Spreadsheet] Failed to fetch sheet content."
     );
 
-    if (
-      content.error instanceof GraphError &&
-      content.error.statusCode === 504
-    ) {
+    if (content.error.statusCode === 504) {
       await markInternalIdAsSkipped({
         internalId: worksheetInternalId,
         connectorId: connector.id,

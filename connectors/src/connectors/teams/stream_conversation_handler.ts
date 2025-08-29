@@ -75,15 +75,19 @@ export async function streamConversationToTeams(
         case "agent_message_success": {
           // Final message - update with complete response
           const finalAnswer = event.message.content ?? "";
-          
+
           try {
             if (params.mainMessageResponse?.id) {
-                await client.api(`/v1.0/me/chats/${conversationId}/messages/${params.mainMessageResponse.id}`).patch({
-                body: {
-                  contentType: 'text',
-                  content: `**${assistantName}**: ${finalAnswer}`
-                }
-              });
+              await client
+                .api(
+                  `/me/chats/${conversationId}/messages/${params.mainMessageResponse.id}`
+                )
+                .patch({
+                  body: {
+                    contentType: "text",
+                    content: `**${assistantName}**: ${finalAnswer}`,
+                  },
+                });
             }
           } catch (e) {
             logger.error(
@@ -111,15 +115,19 @@ export async function streamConversationToTeams(
           const now = Date.now();
           if (now - lastUpdateTime > UPDATE_INTERVAL && fullResponse.trim()) {
             lastUpdateTime = now;
-            
+
             try {
               if (params.mainMessageResponse?.id) {
-                  await client.api(`/v1.0/me/chats/${conversationId}/messages/${params.mainMessageResponse.id}`).patch({
-                  body: {
-                    contentType: 'text',
-                    content: `**${assistantName}**: ${fullResponse}...`
-                  }
-                });
+                await client
+                  .api(
+                    `/me/chats/${conversationId}/messages/${params.mainMessageResponse.id}`
+                  )
+                  .patch({
+                    body: {
+                      contentType: "text",
+                      content: `**${assistantName}**: ${fullResponse}...`,
+                    },
+                  });
               }
             } catch (e) {
               logger.warn(
@@ -143,7 +151,6 @@ export async function streamConversationToTeams(
 
     // If we get here without a success event, something went wrong
     return new Err(new Error("Streaming ended without success event"));
-
   } catch (error) {
     logger.error(
       {
@@ -156,12 +163,16 @@ export async function streamConversationToTeams(
 
     try {
       if (params.mainMessageResponse?.id) {
-          await client.api(`/v1.0/me/chats/${conversationId}/messages/${params.mainMessageResponse.id}`).patch({
-          body: {
-            contentType: 'text',
-            content: `❌ An error occurred while processing your request. Our team has been notified.`
-          }
-        });
+        await client
+          .api(
+            `/me/chats/${conversationId}/messages/${params.mainMessageResponse.id}`
+          )
+          .patch({
+            body: {
+              contentType: "text",
+              content: `❌ An error occurred while processing your request. Our team has been notified.`,
+            },
+          });
       }
     } catch (e) {
       logger.error(
