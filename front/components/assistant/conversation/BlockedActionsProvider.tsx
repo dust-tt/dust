@@ -413,13 +413,20 @@ export function BlockedActionsProvider({
       return;
     }
 
-    removeCompletedAction(blockedAction.actionId);
-
     setSubmitStatus(null);
     setNeverAskAgain(false);
     setErrorMessage(null);
 
-    setValidatedActions((c) => c + 1);
+    const newValidatedCount = validatedActions + 1;
+    setValidatedActions(newValidatedCount);
+
+    // If all current validations are completed, clear them from the queue at once
+    const totalValidations = pendingValidations.length;
+    if (newValidatedCount >= totalValidations) {
+      pendingValidations.forEach((item) =>
+        removeCompletedAction(item.blockedAction.actionId)
+      );
+    }
   };
 
   const showBlockedActionsDialog = useCallback(() => {
