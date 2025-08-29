@@ -1,6 +1,6 @@
 import assert from "assert";
 
-import { MCPActionType, runToolWithStreaming } from "@app/lib/actions/mcp";
+import { runToolWithStreaming } from "@app/lib/actions/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -71,20 +71,12 @@ export async function runToolActivity(
     status: action.status,
   });
 
-  const mcpAction = new MCPActionType({
-    ...actionBaseParams,
-    id: action.id,
-    type: "tool_action",
-    output: null,
-  });
-
   const eventStream = runToolWithStreaming(auth, {
     action,
     actionBaseParams,
     agentConfiguration,
     agentMessage,
     conversation,
-    mcpAction,
   });
 
   for await (const event of eventStream) {

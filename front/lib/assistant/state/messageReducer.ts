@@ -1,13 +1,13 @@
-import type {
-  MCPActionType,
-  ToolNotificationEvent,
-} from "@app/lib/actions/mcp";
+import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import type { LightAgentMessageWithActionsType, ModelId } from "@app/types";
 import { assertNever } from "@app/types";
-import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type {
+  AgentMCPActionType,
+  AgentMCPActionWithOutputType,
+} from "@app/types/actions";
 
 export type AgentStateClassification =
   | "thinking"
@@ -18,7 +18,7 @@ export type AgentStateClassification =
 export type ActionProgressState = Map<
   ModelId,
   {
-    action: MCPActionType;
+    action: AgentMCPActionType;
     progress?: ProgressNotificationContentType;
   }
 >;
@@ -59,7 +59,7 @@ function updateProgress(
   const actionId = event.action.id;
   const currentProgress = state.actionProgress.get(actionId);
 
-  const newState = {
+  return {
     ...state,
     actionProgress: new Map(state.actionProgress).set(actionId, {
       action: event.action,
@@ -73,8 +73,6 @@ function updateProgress(
       },
     }),
   };
-
-  return newState;
 }
 
 export const CLEAR_CONTENT_EVENT = { type: "clear_content" as const };
