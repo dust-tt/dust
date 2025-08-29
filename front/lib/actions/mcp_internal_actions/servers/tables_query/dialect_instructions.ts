@@ -6,7 +6,7 @@ Query complexity or performance is not a concern.
 
 Always use double quotes on table and column names.
 
-Always use single quotes for string literals. If the string litteral contains a single quote, you must properly escape it.
+Always use single quotes for string literals. If the string literal contains a single quote, you must properly escape it.
 
 Always produce a SINGLE query that will retrieve the data necessary to answer ALL of the user's questions at once.
 You may use Common Table Expression or Sub Queries if necessary.
