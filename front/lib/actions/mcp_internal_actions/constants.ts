@@ -771,7 +771,7 @@ The directive should be used to display a clickable version of the agent name in
     },
   },
   canvas_other: {
-    id: 28,
+    id: 29,
     ...CANVAS_SERVER_INFORMATION,
     serverInfo: {
       ...CANVAS_SERVER_INFORMATION.serverInfo,

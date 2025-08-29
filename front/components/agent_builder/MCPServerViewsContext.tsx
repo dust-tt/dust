@@ -106,7 +106,7 @@ function getGroupedMCPServerViews({
       // Special handling for canvas server:
       // The canvas server includes list and cat tools for convenience, but its primary purpose is
       // not data source operations. We don't want it to be classified as requiring knowledge.
-      const isCanvasServer = view.server.name === "canvas";
+      const isCanvasServer = view.server.name.startsWith("canvas");
 
       const isWithKnowledge =
         !isCanvasServer &&
