@@ -179,8 +179,9 @@ export function UserMenu({
                       const regexp = new RegExp(`/w/([^/]+)/assistant/([^/]+)`);
                       const match = window.location.href.match(regexp);
                       if (match) {
-                        void router.push(
-                          `/poke/${match[1]}/conversations/${match[2]}`
+                        window.open(
+                          `/poke/${match[1]}/conversations/${match[2]}`,
+                          "_blank"
                         );
                       }
                     }}
