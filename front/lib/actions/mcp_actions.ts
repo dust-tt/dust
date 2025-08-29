@@ -775,9 +775,9 @@ export async function tryListMCPTools(
           const tools = hasSeenCanvas
             ? currentServer.tools.filter(
                 (tool) =>
-                  tool.name === CANVAS_LIST_ASSETS_TOOL_NAME ||
+                  tool.name.endsWith(CANVAS_LIST_ASSETS_TOOL_NAME) ||
                   // TODO: concatenate the data sources and show one cat instead.
-                  tool.name === CANVAS_CAT_ASSET_TOOL_NAME
+                  tool.name.endsWith(CANVAS_CAT_ASSET_TOOL_NAME)
               )
             : currentServer.tools;
 

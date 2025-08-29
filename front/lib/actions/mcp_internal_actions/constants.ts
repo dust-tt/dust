@@ -59,9 +59,7 @@ export function isCanvasServer(
 ): server is ServerToolsAndInstructions & {
   serverName: (typeof CANVAS_SERVER_NAMES)[number];
 } {
-  return CANVAS_SERVER_NAMES.includes(
-    server.serverName as (typeof CANVAS_SERVER_NAMES)[number]
-  );
+  return CANVAS_SERVER_NAMES.some((name) => server.serverName.startsWith(name));
 }
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
