@@ -1,16 +1,11 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-import type {
-  ActionBaseParams,
-  MCPApproveExecutionEvent,
-  ToolNotificationEvent,
-} from "@app/lib/actions/mcp";
+import type { ActionBaseParams } from "@app/lib/actions/mcp";
 import { MCPActionType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import type { AgentMCPActionType } from "@app/types/actions";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 
