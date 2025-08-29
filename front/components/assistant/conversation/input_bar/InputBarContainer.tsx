@@ -239,46 +239,52 @@ const InputBarContainer = ({
 
   // Track current mentions for Deep Research toggle
   const [currentMentions, setCurrentMentions] = useState<string[]>([]);
-  
+
   useEffect(() => {
-    if (!editor) return;
-    
+    if (!editor) {
+      return;
+    }
+
     // Update mentions whenever editor content changes
     const updateMentions = () => {
       const { mentions } = editorService.getMarkdownAndMentions();
-      setCurrentMentions(mentions.map(m => m.id));
+      setCurrentMentions(mentions.map((m) => m.id));
     };
-    
-    editor.on('update', updateMentions);
-    updateMentions(); // Initial update
-    
+
+    // Set up listener for future updates
+    editor.on("update", updateMentions);
+
+    // Important: Check for pre-filled mentions immediately
+    // This handles cases where the editor starts with content (e.g., pre-filled agent)
+    updateMentions();
+
     return () => {
-      editor.off('update', updateMentions);
+      editor.off("update", updateMentions);
     };
   }, [editor, editorService]);
-  
+
   const hasDustMention = currentMentions.includes("dust");
   const hasDustDeepMention = currentMentions.includes("dust-deep");
-  
+
   // Check if dust and dust-deep agents are available
   const dustAgent = useMemo(() => {
     return agentConfigurations.find((agent) => agent.sId === "dust");
   }, [agentConfigurations]);
-  
+
   const dustDeepAgent = useMemo(() => {
     return agentConfigurations.find((agent) => agent.sId === "dust-deep");
   }, [agentConfigurations]);
-  
+
   // Show button if either dust or dust-deep is mentioned and both agents are available
   const showDeepResearchToggle =
     (hasDustMention || hasDustDeepMention) && dustAgent && dustDeepAgent;
   // Consider deep mode active if any dust-deep pill is present
   const isInDeepMode = hasDustDeepMention;
-  
 
   const handleDeepResearchToggle = useCallback(() => {
-    if (!editor || !dustDeepAgent || !dustAgent) return;
-
+    if (!editor || !dustDeepAgent || !dustAgent) {
+      return;
+    }
 
     const { mentions } = editorService.getMarkdownAndMentions();
 
@@ -289,36 +295,36 @@ const InputBarContainer = ({
     const hasDustNow = mentions.some((m) => m.id === "dust");
     const fromId = hasDustNow ? "dust" : "dust-deep";
     const toAgent = hasDustNow ? dustDeepAgent : dustAgent;
-    
+
     // Function to recursively replace mentions
     const replaceMentions = (node: any): any => {
-      if (node.type === 'mention' && node.attrs?.id === fromId) {
+      if (node.type === "mention" && node.attrs?.id === fromId) {
         return {
           ...node,
           attrs: {
             ...node.attrs,
             id: toAgent.sId,
-            label: toAgent.name
-          }
+            label: toAgent.name,
+          },
         };
       }
-      
+
       if (node.content) {
         return {
           ...node,
-          content: node.content.map(replaceMentions)
+          content: node.content.map(replaceMentions),
         };
       }
-      
+
       return node;
     };
-    
+
     const updatedJson = replaceMentions(json);
-    
+
     // Set the updated content
     // Emit update so mention listeners refresh and button background syncs
     editor.commands.setContent(updatedJson, true);
-    editor.commands.focus('end');
+    editor.commands.focus("end");
   }, [dustAgent, dustDeepAgent, editor, editorService]);
 
   // No optimistic state; background derives solely from current content
@@ -419,7 +425,7 @@ const InputBarContainer = ({
                   handleDeepResearchToggle();
                 }}
                 className={classNames(
-                  "ml-1 s-!transition-none",
+                  "s-!transition-none",
                   isInDeepMode &&
                     [
                       "s-bg-blue-100 s-text-blue-900",
@@ -462,7 +468,7 @@ const InputBarContainer = ({
           />
         </div>
       </div>
-      
+
       <MentionDropdown mentionDropdownState={mentionDropdown} />
     </div>
   );
