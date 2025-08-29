@@ -16,6 +16,7 @@ export const MCPInternalActionIconSchema = z.enum([
   "ActionTableIcon",
   "ActionTimeIcon",
   "CommandLineIcon",
+  "DriveLogo",
   "GcalLogo",
   "GmailLogo",
   "GithubLogo",
@@ -30,7 +31,6 @@ export const MCPInternalActionIconSchema = z.enum([
   "SalesforceLogo",
   "SlackLogo",
   "StripeLogo",
-  "DriveLogo",
 ]);
 
 export const MCPExternalActionIconSchema = z.enum([

@@ -2611,6 +2611,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionTableIcon"
   | "ActionTimeIcon"
   | "CommandLineIcon"
+  | "DriveLogo"
   | "GcalLogo"
   | "GithubLogo"
   | "GmailLogo"
