@@ -172,13 +172,7 @@ export type ToolExecution = {
   messageId: string;
   actionId: string;
 
-  inputs: Record<string, unknown>;
   stake?: MCPToolStakeLevelType;
-
-  metadata: MCPValidationMetadataType & {
-    mcpServerId?: string;
-    mcpServerDisplayName?: string;
-  };
 };
 
 export type BlockedToolExecution = ToolExecution &
@@ -187,11 +181,13 @@ export type BlockedToolExecution = ToolExecution &
         status:
           | "blocked_validation_required"
           | "blocked_child_action_input_required";
+        inputs: Record<string, unknown>;
         authorizationInfo: AuthorizationInfo | null;
+        metadata: MCPValidationMetadataType;
       }
     | {
         status: "blocked_authentication_required";
-        metadata: MCPValidationMetadataType & {
+        metadata: {
           mcpServerId: string;
           mcpServerDisplayName: string;
         };
@@ -202,9 +198,11 @@ export type BlockedToolExecution = ToolExecution &
 // TODO(durable-agents): cleanup the types of the events.
 export type MCPApproveExecutionEvent = ToolExecution & {
   type: "tool_approve_execution";
-  created: number;
   configurationId: string;
+  created: number;
+  inputs: Record<string, unknown>;
   isLastBlockingEventForStep?: boolean;
+  metadata: MCPValidationMetadataType;
 };
 
 export function getMCPApprovalStateFromUserApprovalState(

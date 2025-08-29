@@ -50,7 +50,10 @@ import {
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
+import type {
+  AgentMessageStateEvent,
+  MessageTemporaryState,
+} from "@app/lib/assistant/state/messageReducer";
 import { RETRY_BLOCKED_ACTIONS_STARTED_EVENT } from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type {
@@ -140,6 +143,30 @@ export function AgentMessage({
               inputs: eventPayload.data.inputs,
               stake: eventPayload.data.stake,
               metadata: eventPayload.data.metadata,
+            },
+          });
+        } else if (
+          eventType === "tool_error" &&
+          isPersonalAuthenticationRequiredErrorContent(eventPayload.data.error)
+        ) {
+          showBlockedActionsDialog();
+          enqueueBlockedAction({
+            message,
+            blockedAction: {
+              status: "blocked_authentication_required",
+              authorizationInfo: {
+                provider: eventPayload.data.error.metadata.provider,
+                supported_use_cases: ["personal_actions"],
+                scope: eventPayload.data.error.metadata.scope,
+              },
+              metadata: {
+                mcpServerId: eventPayload.data.error.metadata.mcp_server_id,
+                mcpServerDisplayName:
+                  eventPayload.data.error.mcpServerDisplayName,
+              },
+              messageId: eventPayload.data.messageId,
+              conversationId: eventPayload.data.conversationId,
+              actionId: eventPayload.data.actionId,
             },
           });
         }

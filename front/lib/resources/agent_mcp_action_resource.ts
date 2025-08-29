@@ -32,8 +32,7 @@ import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
-import { removeNulls } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 import type { AgentMCPActionType } from "@app/types/actions";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -271,7 +270,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
       const baseActionParams: Omit<
         BlockedToolExecution,
-        "status" | "authorizationInfo"
+        "status" | "authorizationInfo" | "metadata"
       > = {
         messageId: agentMessage.message.sId,
         conversationId,
@@ -279,14 +278,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           id: action.id,
           workspaceId: owner.id,
         }),
-        inputs: action.augmentedInputs,
         stake: action.toolConfiguration.permission,
-        metadata: {
-          toolName: action.toolConfiguration.originalName,
-          mcpServerName: action.toolConfiguration.mcpServerName,
-          agentName: agentConfiguration.name,
-          icon: action.toolConfiguration.icon,
-        },
       };
 
       if (action.status === "blocked_authentication_required") {
@@ -309,7 +301,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           status: action.status,
           authorizationInfo,
           metadata: {
-            ...baseActionParams.metadata,
             mcpServerId,
             mcpServerDisplayName,
           },
@@ -318,10 +309,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         blockedActionsList.push({
           ...baseActionParams,
           status: action.status,
+          inputs: action.augmentedInputs,
           metadata: {
-            ...baseActionParams.metadata,
-            mcpServerId,
-            mcpServerDisplayName,
+            toolName: action.toolConfiguration.originalName,
+            mcpServerName: action.toolConfiguration.mcpServerName,
+            agentName: agentConfiguration.name,
+            icon: action.toolConfiguration.icon,
           },
           authorizationInfo: null,
         });
