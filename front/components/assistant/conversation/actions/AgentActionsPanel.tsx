@@ -56,6 +56,7 @@ function AgentActionsPanelContent({
         [currentStreamingStep]
       ),
       streamId: `actions-panel-${messageId}`,
+      useFullChainOfThought: true,
     });
 
   useEffect(() => {
