@@ -11,7 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ToolOutputDetailsProps } from "@app/components/actions/mcp/details/types";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
   isDataSourceNodeContentType,
   isFilesystemPathType,
@@ -25,7 +25,7 @@ import { formatDataSourceDisplayName } from "@app/types";
 export function DataSourceNodeContentDetails({
   toolOutput,
   viewType,
-}: ToolOutputDetailsProps) {
+}: ToolExecutionDetailsProps) {
   const dataSourceNodeContent = toolOutput
     ?.filter(isDataSourceNodeContentType)
     .map((o) => o.resource)?.[0];
@@ -76,7 +76,7 @@ export function DataSourceNodeContentDetails({
 export function FilesystemPathDetails({
   toolOutput,
   viewType,
-}: ToolOutputDetailsProps) {
+}: ToolExecutionDetailsProps) {
   const filesystemPath = toolOutput
     ?.filter(isFilesystemPathType)
     .map((o) => o.resource)?.[0];

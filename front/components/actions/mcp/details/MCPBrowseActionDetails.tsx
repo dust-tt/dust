@@ -1,14 +1,14 @@
 import { Button, GlobeAltIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ToolOutputDetailsProps } from "@app/components/actions/mcp/details/types";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { isBrowseResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
 export function MCPBrowseActionDetails({
   toolOutput,
   toolParams,
   viewType,
-}: ToolOutputDetailsProps) {
+}: ToolExecutionDetailsProps) {
   const urls = toolParams.urls as string[];
   const browseResults =
     toolOutput?.filter(isBrowseResultResourceType).map((o) => o.resource) ?? [];

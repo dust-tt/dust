@@ -25,7 +25,7 @@ import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/M
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
-import type { ToolOutputDetailsProps } from "@app/components/actions/mcp/details/types";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
   DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
   DATA_WAREHOUSES_FIND_TOOL_NAME,
@@ -81,7 +81,7 @@ export function MCPActionDetails({
   const parts = functionCallName ? functionCallName.split("__") : [];
   const toolName = parts[parts.length - 1];
 
-  const toolOutputDetailsProps: ToolOutputDetailsProps = {
+  const toolOutputDetailsProps: ToolExecutionDetailsProps = {
     lastNotification,
     messageStatus,
     owner,

@@ -11,7 +11,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ToolOutputDetailsProps } from "@app/components/actions/mcp/details/types";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
   isExtractQueryResourceType,
   isExtractResultResourceType,
@@ -43,7 +43,7 @@ export function MCPExtractActionDetails({
   toolParams,
   toolOutput,
   viewType,
-}: ToolOutputDetailsProps) {
+}: ToolExecutionDetailsProps) {
   const queryResource = toolOutput
     ?.filter(isExtractQueryResourceType)
     .map((o) => o.resource)?.[0];

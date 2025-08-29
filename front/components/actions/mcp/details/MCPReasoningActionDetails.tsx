@@ -5,7 +5,7 @@ import {
   ReasoningSuccessBlock,
   ThinkingBlock,
 } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
-import type { ToolOutputDetailsProps } from "@app/components/actions/mcp/details/types";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
   isReasoningSuccessOutput,
   isThinkingOutput,
@@ -14,7 +14,7 @@ import {
 export function MCPReasoningActionDetails({
   toolOutput,
   viewType,
-}: ToolOutputDetailsProps) {
+}: ToolExecutionDetailsProps) {
   const thinkingBlocks =
     toolOutput?.filter(isThinkingOutput).map((o) => o.resource) ?? [];
 

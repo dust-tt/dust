@@ -1,7 +1,7 @@
 import { CodeBlock, CollapsibleComponent, TableIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ToolOutputDetailsProps } from "@app/components/actions/mcp/details/types";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import type {
   DatabaseSchemaResourceType,
   ExampleRowsResourceType,
@@ -14,7 +14,7 @@ import {
 export function MCPGetDatabaseSchemaActionDetails({
   toolOutput,
   viewType,
-}: ToolOutputDetailsProps) {
+}: ToolExecutionDetailsProps) {
   // Extract different types of outputs
   const schemaBlocks =
     toolOutput?.filter(isDatabaseSchemaResourceType).map((o) => o.resource) ??

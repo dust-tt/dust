@@ -7,7 +7,7 @@ import {
   ThinkingBlock,
   ToolGeneratedFileDetails,
 } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
-import type { ToolOutputDetailsProps } from "@app/components/actions/mcp/details/types";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
   isExecuteTablesQueryErrorResourceType,
   isSqlQueryOutput,
@@ -20,7 +20,7 @@ export function MCPTablesQueryActionDetails({
   toolParams,
   viewType,
   owner,
-}: ToolOutputDetailsProps) {
+}: ToolExecutionDetailsProps) {
   const thinkingBlocks =
     toolOutput?.filter(isThinkingOutput).map((o) => o.resource) ?? [];
   const sqlQueryBlocks =

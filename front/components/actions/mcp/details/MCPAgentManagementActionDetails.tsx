@@ -11,7 +11,7 @@ import { useEffect, useRef } from "react";
 import { useSWRConfig } from "swr";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ToolOutputDetailsProps } from "@app/components/actions/mcp/details/types";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { isAgentCreationResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
 export function MCPAgentManagementActionDetails({
@@ -20,7 +20,7 @@ export function MCPAgentManagementActionDetails({
   viewType,
   owner,
   messageStatus,
-}: ToolOutputDetailsProps) {
+}: ToolExecutionDetailsProps) {
   const creationResult = toolOutput?.find(isAgentCreationResultResourceType);
   const { mutate } = useSWRConfig();
   const hasRefreshed = useRef(false);

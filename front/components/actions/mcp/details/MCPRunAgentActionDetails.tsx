@@ -20,7 +20,7 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
-import type { ToolOutputDetailsProps } from "@app/components/actions/mcp/details/types";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
   CitationsContext,
   CiteBlock,
@@ -51,7 +51,7 @@ export function MCPRunAgentActionDetails({
   toolOutput,
   toolParams,
   viewType,
-}: ToolOutputDetailsProps) {
+}: ToolExecutionDetailsProps) {
   const { isDark } = useTheme();
 
   const addedMCPServerViewIds: string[] = useMemo(() => {

@@ -1,7 +1,7 @@
 import { BoltIcon, Chip } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ToolOutputDetailsProps } from "@app/components/actions/mcp/details/types";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getIcon } from "@app/lib/actions/mcp_icons";
 import { isToolsetsResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -12,7 +12,7 @@ export function MCPListToolsActionDetails({
   owner,
   toolOutput,
   viewType,
-}: ToolOutputDetailsProps) {
+}: ToolExecutionDetailsProps) {
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
   });
