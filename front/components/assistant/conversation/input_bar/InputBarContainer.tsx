@@ -1,4 +1,5 @@
 import { ArrowUpIcon, Button, TelescopeIcon } from "@dust-tt/sparkle";
+import type { JSONContent } from "@tiptap/core";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import React, {
@@ -237,8 +238,9 @@ const InputBarContainer = ({
     disableAutoFocus
   );
 
-  // Track current mentions for Deep Research toggle
-  const [currentMentions, setCurrentMentions] = useState<string[]>([]);
+  // Track presence of dust / dust-deep mentions for Deep Research toggle
+  const [hasDustMention, setHasDustMention] = useState<boolean>(false);
+  const [hasDustDeepMention, setHasDustDeepMention] = useState<boolean>(false);
 
   useEffect(() => {
     if (!editor) {
@@ -248,7 +250,13 @@ const InputBarContainer = ({
     // Update mentions whenever editor content changes
     const updateMentions = () => {
       const { mentions } = editorService.getMarkdownAndMentions();
-      setCurrentMentions(mentions.map((m) => m.id));
+      const nextHasDust = mentions.some((m) => m.id === "dust");
+      const nextHasDustDeep = mentions.some((m) => m.id === "dust-deep");
+
+      setHasDustMention((prev) => (prev !== nextHasDust ? nextHasDust : prev));
+      setHasDustDeepMention((prev) =>
+        prev !== nextHasDustDeep ? nextHasDustDeep : prev
+      );
     };
 
     // Set up listener for future updates
@@ -263,8 +271,7 @@ const InputBarContainer = ({
     };
   }, [editor, editorService]);
 
-  const hasDustMention = currentMentions.includes("dust");
-  const hasDustDeepMention = currentMentions.includes("dust-deep");
+  // hasDustMention / hasDustDeepMention are maintained by the update listener
 
   // Check if dust and dust-deep agents are available
   const dustAgent = useMemo(() => {
@@ -276,8 +283,9 @@ const InputBarContainer = ({
   }, [agentConfigurations]);
 
   // Show button if either dust or dust-deep is mentioned and both agents are available
-  const showDeepResearchToggle =
-    (hasDustMention || hasDustDeepMention) && dustAgent && dustDeepAgent;
+  const showDeepResearchToggle = Boolean(
+    (hasDustMention || hasDustDeepMention) && dustAgent && dustDeepAgent
+  );
   // Consider deep mode active if any dust-deep pill is present
   const isInDeepMode = hasDustDeepMention;
 
@@ -297,7 +305,7 @@ const InputBarContainer = ({
     const toAgent = hasDustNow ? dustDeepAgent : dustAgent;
 
     // Function to recursively replace mentions
-    const replaceMentions = (node: any): any => {
+    const replaceMentions = (node: JSONContent): JSONContent => {
       if (node.type === "mention" && node.attrs?.id === fromId) {
         return {
           ...node,
@@ -361,7 +369,7 @@ const InputBarContainer = ({
             "max-h-[40vh] min-h-14 sm:min-h-16"
           )}
         />
-        <div className="flex items-center justify-between px-1 px-2 py-1.5 sm:pb-3 sm:pr-3">
+        <div className="flex items-center justify-between px-2 py-1.5 sm:pb-3 sm:pr-3">
           <div className="flex items-center">
             {actions.includes("attachment") && (
               <>

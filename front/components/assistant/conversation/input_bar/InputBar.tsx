@@ -1,4 +1,4 @@
-import { Button, cn, RainbowEffect, StopIcon } from "@dust-tt/sparkle";
+import { Button, RainbowEffect, StopIcon } from "@dust-tt/sparkle";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
@@ -129,13 +129,17 @@ export function AssistantInputBar({
       workspaceId: owner.sId,
     });
   
-  // Also fetch global agents to ensure dust-deep is included
-  const { agentConfigurations: globalAgentConfigurations } = 
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "global",
-      disabled: false,
-    });
+  // Also fetch global agents only if dust-deep is not already present
+  const hasDustDeepInUnified = useMemo(
+    () => baseAgentConfigurations.some((a) => a.sId === "dust-deep"),
+    [baseAgentConfigurations]
+  );
+
+  const { agentConfigurations: globalAgentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: hasDustDeepInUnified ? null : "global",
+    disabled: hasDustDeepInUnified,
+  });
 
   // Files upload.
 
@@ -482,7 +486,7 @@ export function FixedAssistantInputBar({
 }) {
   return (
     <div
-      className={cn(
+      className={classNames(
         "sticky bottom-0 z-20 flex max-h-screen w-full",
         "pb-2",
         "sm:w-full sm:max-w-3xl sm:pb-4"
