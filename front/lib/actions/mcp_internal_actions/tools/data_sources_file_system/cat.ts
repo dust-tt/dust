@@ -9,7 +9,7 @@ import { renderNode } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   getAgentDataSourceConfigurations,
   makeDataSourceViewFilter,
-} from "@app/lib/actions/mcp_internal_actions/servers/utils";
+} from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";

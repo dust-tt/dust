@@ -4,9 +4,13 @@ import type {
   DataSourceNodeListType,
   SearchQueryResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ResolvedDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import type { ConnectorProvider, CoreAPIContentNode } from "@app/types";
-import type { CoreAPISearchNodesResponse, TimeFrame } from "@app/types";
+import type { ResolvedDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import type {
+  ConnectorProvider,
+  CoreAPIContentNode,
+  CoreAPISearchNodesResponse,
+  TimeFrame,
+} from "@app/types";
 import { DATA_SOURCE_NODE_ID } from "@app/types";
 
 function formatTimestamp(timestamp: number): string {

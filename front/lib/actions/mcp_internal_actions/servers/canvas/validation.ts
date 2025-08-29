@@ -1,6 +1,5 @@
 import type { Result } from "@app/types";
-import { Err } from "@app/types";
-import { Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 // Regular expression to capture the value inside a className attribute. This pattern assumes
 // double quotes for simplicity.

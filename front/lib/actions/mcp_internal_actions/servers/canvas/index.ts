@@ -10,8 +10,8 @@ import {
   RETRIEVE_CANVAS_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/canvas/types";
 import { validateTailwindCode } from "@app/lib/actions/mcp_internal_actions/servers/canvas/validation";
-import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/cat_tool";
-import { registerListTool } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/list_tool";
+import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/cat";
+import { registerListTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -22,8 +22,12 @@ import {
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
 import type { CanvasFileContentType } from "@app/types";
-import { clientExecutableContentType, Err, Ok } from "@app/types";
-import { CANVAS_FILE_FORMATS } from "@app/types";
+import {
+  CANVAS_FILE_FORMATS,
+  clientExecutableContentType,
+  Err,
+  Ok,
+} from "@app/types";
 
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
