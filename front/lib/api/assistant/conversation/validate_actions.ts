@@ -14,7 +14,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
 import type { ConversationType, Result } from "@app/types";
@@ -96,11 +95,7 @@ export async function validateAction(
     messageId,
   });
 
-  const id = getResourceIdFromSId(actionId);
-  if (!id) {
-    throw new Error(`Invalid action ID: ${actionId}`);
-  }
-  const action = await AgentMCPActionResource.fetchById(auth, id);
+  const action = await AgentMCPActionResource.fetchById(auth, actionId);
   if (!action) {
     return new Err(new Error(`Action not found: ${actionId}`));
   }

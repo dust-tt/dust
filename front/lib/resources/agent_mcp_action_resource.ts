@@ -28,7 +28,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
@@ -139,16 +139,22 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async fetchById(
     auth: Authenticator,
-    id: ModelId,
+    sId: string,
     transaction?: Transaction
   ): Promise<AgentMCPActionResource | null> {
+    const modelId: ModelId | null = getResourceIdFromSId(sId);
+    if (!modelId) {
+      return null;
+    }
+
     const [action] = await this.baseFetch(
       auth,
       {
-        where: { id },
+        where: { id: modelId },
       },
       transaction
     );
+
     return action;
   }
 
@@ -385,16 +391,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     };
   }
 
-  async updateStatus(status: ToolExecutionStatus): Promise<boolean> {
-    if (this.status === status) {
-      return false;
-    }
-
-    await this.update({
+  async updateStatus(
+    status: ToolExecutionStatus
+  ): Promise<[affectedCount: number]> {
+    return this.update({
       status,
     });
-
-    return true;
   }
 
   async updateStepContext(

@@ -45,14 +45,12 @@ export async function* runToolWithStreaming(
     agentConfiguration,
     agentMessage,
     conversation,
-    mcpAction,
   }: {
     action: AgentMCPActionResource;
     actionBaseParams: ActionBaseParams;
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
     conversation: ConversationType;
-    mcpAction: MCPActionType;
   }
 ): AsyncGenerator<
   | MCPApproveExecutionEvent
@@ -80,8 +78,6 @@ export async function* runToolWithStreaming(
     `workspace:${owner.sId}`,
     `workspace_name:${owner.name}`,
   ];
-
-  const { status } = mcpAction;
 
   // Use the augmented inputs that were computed and stored during action creation
   const inputs = action.augmentedInputs;
@@ -180,7 +176,7 @@ export async function* runToolWithStreaming(
       agentConfiguration,
       agentMessage,
       actionBaseParams,
-      status,
+      status: action.status,
       errorMessage,
       yieldAsError: false,
     });

@@ -1,6 +1,5 @@
 import assert from "assert";
 
-import { MCPActionType } from "@app/lib/actions/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -54,7 +53,9 @@ export async function runToolActivity(
       step: step + 1,
     });
 
-  const action = await AgentMCPActionResource.fetchById(auth, actionId);
+  const [action] = await AgentMCPActionResource.fetchByModelIds(auth, [
+    actionId,
+  ]);
   assert(action, "Action not found");
 
   const mcpServerId = action.toolConfiguration.toolServerId;
@@ -75,12 +76,6 @@ export async function runToolActivity(
     agentConfiguration,
     agentMessage,
     conversation,
-    mcpAction: new MCPActionType({
-      ...actionBaseParams,
-      id: action.id,
-      output: null,
-      type: "tool_action",
-    }),
   });
 
   for await (const event of eventStream) {
