@@ -54,7 +54,7 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
                 />
               )}
             </div>
-            {canAdd && !isSelected && (
+            {canAdd && (
               <Button
                 size="xs"
                 variant="outline"
