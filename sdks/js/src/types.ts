@@ -2610,6 +2610,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionScanIcon"
   | "ActionTableIcon"
   | "ActionTimeIcon"
+  | "AsanaLogo"
   | "CommandLineIcon"
   | "DriveLogo"
   | "GcalLogo"
