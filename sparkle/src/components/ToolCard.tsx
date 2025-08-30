@@ -36,8 +36,8 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
       <Card
         ref={ref}
         variant={isSelected ? "secondary" : "primary"}
-        onClick={canAdd && !isSelected ? onClick : undefined}
-        disabled={!canAdd || isSelected}
+        onClick={onClick}
+        disabled={!canAdd}
         className={cn("s-h-24 s-p-3", className)}
       >
         <div className="s-flex s-w-full s-flex-col">
@@ -63,7 +63,7 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
                 className={cn(FADE_TRANSITION_CLASSES, "s-flex-shrink-0")}
               />
             )}
-            {!canAdd && cantAddReason && (
+            {cantAddReason && (
               <div className="s-flex-shrink-0 s-text-xs s-italic s-text-muted-foreground dark:s-text-muted-foreground-night">
                 {cantAddReason}
               </div>
