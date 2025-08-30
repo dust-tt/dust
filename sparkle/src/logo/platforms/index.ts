@@ -1,5 +1,6 @@
 export { default as Ai21Logo } from "./Ai21";
 export { default as AnthropicLogo } from "./Anthropic";
+export { default as AsanaLogo } from "./Asana";
 export { default as BigQueryLogo } from "./BigQuery";
 export { default as ChromeLogo } from "./Chrome";
 export { default as ClaudeLogo } from "./Claude";
