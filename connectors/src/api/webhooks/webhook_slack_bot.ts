@@ -9,7 +9,9 @@ import type {
   SlackWebhookResBody,
 } from "@connectors/api/webhooks/slack/utils";
 import {
-  handleChatBot,
+  handleChatBotWithMessageSplitting,
+  handleChatBotWithMessageTruncation,
+  isAppMentionMessage,
   isSlackWebhookEventReqBody,
   withTrace,
 } from "@connectors/api/webhooks/slack/utils";
@@ -92,7 +94,7 @@ const _webhookSlackBotAPIHandler = async (
           await withTrace({
             "slack.team_id": teamId,
             "slack.app": "slack_bot",
-          })(handleChatBot)(req, res, logger);
+          })(handleChatBotWithMessageTruncation)(req, res, logger);
           break;
         }
         /**
@@ -146,7 +148,7 @@ const _webhookSlackBotAPIHandler = async (
             await withTrace({
               "slack.team_id": teamId,
               "slack.app": "slack_bot",
-            })(handleChatBot)(req, res, logger);
+            })(handleChatBotWithMessageTruncation)(req, res, logger);
           } else if (event.channel_type === "channel") {
             if (
               !event.bot_id &&
@@ -176,10 +178,19 @@ const _webhookSlackBotAPIHandler = async (
                     "Found enhanced default agent for channel - processing message"
                   );
 
+                  // Avoid double processing since we already handle app mention events
+                  const isAppMention = await isAppMentionMessage(
+                    event.text,
+                    teamId
+                  );
+                  if (isAppMention) {
+                    return res.status(200).send();
+                  }
+
                   await withTrace({
                     "slack.team_id": teamId,
                     "slack.app": "slack_bot",
-                  })(handleChatBot)(req, res, logger);
+                  })(handleChatBotWithMessageSplitting)(req, res, logger);
                 }
               }
             }
