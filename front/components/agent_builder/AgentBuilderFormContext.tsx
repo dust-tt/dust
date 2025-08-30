@@ -210,7 +210,7 @@ export const agentBuilderFormSchema = z.object({
 });
 
 export const scheduleFormSchema = z.object({
-  name: z.string().min(1, "Name is required").max(255, "Name is too long"),
+  name: z.string().max(255, "Name is too long"),
   cron: z.string().min(9, "Cron expression is required"),
   timezone: z.string().min(1, "Timezone is required"),
   customPrompt: z.string(),

@@ -51,7 +51,7 @@ export function ScheduleEditionModal({
   const isEditor = !trigger?.editor || trigger?.editor === user?.id;
 
   const defaultValues: ScheduleFormData = {
-    name: "Schedule",
+    name: "",
     cron: "",
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     customPrompt: "",
@@ -153,7 +153,7 @@ export function ScheduleEditionModal({
           <FormProvider form={form} onSubmit={onSubmit}>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="trigger-name">Trigger Name</Label>
+                <Label htmlFor="trigger-name">Trigger Name (optional)</Label>
                 <Input
                   id="trigger-name"
                   {...form.register("name")}
