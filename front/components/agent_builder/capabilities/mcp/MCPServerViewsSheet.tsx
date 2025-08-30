@@ -663,7 +663,10 @@ export function MCPServerViewsSheet({
         ...configurationTool,
         name: newActionName,
         description: formData.description,
-        configuration: formData.configuration,
+        configuration: {
+          ...formData.configuration,
+          description: formData.description,
+        },
       };
 
       handleConfigurationSaveUtil({

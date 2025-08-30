@@ -124,7 +124,7 @@ export class AgentYAMLConverter {
       for (const action of actions) {
         const baseAction = {
           name: action.name,
-          description: action.description,
+          description: action.description ?? "",
         };
 
         if (action.type === "DATA_VISUALIZATION") {

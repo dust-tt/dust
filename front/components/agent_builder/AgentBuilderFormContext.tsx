@@ -97,7 +97,7 @@ export const mcpTimeFrameSchema = timeFrameSchema;
 const baseActionSchema = z.object({
   id: z.string(),
   name: z.string(),
-  description: z.string(),
+  description: z.string().nullable(),
   noConfigurationRequired: z.boolean().optional(),
 });
 
@@ -123,8 +123,9 @@ export const reasoningModelSchema = z
   })
   .nullable();
 
-export const mcpServerConfigurationSchema = z.object({
+const baseMcpServerConfigurationSchema = z.object({
   mcpServerViewId: mcpServerViewIdSchema,
+  description: z.string().nullable(),
   dataSourceConfigurations: dataSourceConfigurationSchema,
   tablesConfigurations: dataSourceConfigurationSchema,
   childAgentId: childAgentIdSchema,
@@ -136,8 +137,20 @@ export const mcpServerConfigurationSchema = z.object({
   _jsonSchemaString: jsonSchemaStringSchema,
 });
 
+export const mcpServerConfigurationSchema =
+  baseMcpServerConfigurationSchema.refine(
+    (data) =>
+      data.dataSourceConfigurations !== null ||
+      data.tablesConfigurations !== null ||
+      data.description !== null,
+    {
+      message: "Description required when both configurations are null",
+      path: ["description"],
+    }
+  );
+
 export type MCPServerConfigurationType = z.infer<
-  typeof mcpServerConfigurationSchema
+  typeof baseMcpServerConfigurationSchema
 >;
 
 const mcpActionSchema = baseActionSchema.extend({
