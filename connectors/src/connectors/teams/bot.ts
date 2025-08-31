@@ -1,25 +1,27 @@
 import type {
-  AgentMessageSuccessEvent,
+  AgentActionPublicType,
   ConversationPublicType,
   LightAgentConfigurationType,
   Result,
   UserMessageType,
 } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
+import axios from "axios";
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import { getClient } from "@connectors/connectors/microsoft/index";
-import { streamConversationToTeams } from "@connectors/connectors/teams/stream_conversation_handler";
+import {
+  createErrorAdaptiveCard,
+  createResponseAdaptiveCard,
+  createStreamingAdaptiveCard,
+  makeConversationUrl,
+} from "@connectors/connectors/teams/adaptive_cards";
 import { apiConfig } from "@connectors/lib/api/config";
-import { ProviderRateLimitError } from "@connectors/lib/error";
 import { TeamsMessage } from "@connectors/lib/models/teams";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { getHeaderFromUserEmail } from "@connectors/types";
-
-const TEAMS_RATE_LIMIT_ERROR_MESSAGE =
-  "Microsoft Teams has blocked the agent from continuing the conversation due to rate limits. You can retry the conversation later.";
 
 type TeamsAnswerParams = {
   tenantId: string;
@@ -35,7 +37,7 @@ export async function botAnswerTeamsMessage(
   message: string,
   params: TeamsAnswerParams,
   connector: ConnectorResource,
-  responseCallback?: {
+  responseCallback: {
     serviceUrl: string;
     conversationId: string;
     activityId: string;
@@ -45,15 +47,25 @@ export async function botAnswerTeamsMessage(
   const { tenantId } = params;
 
   try {
-    const res = await answerTeamsMessage(message, params, connector);
+    const res = await answerTeamsMessage(
+      message,
+      params,
+      connector,
+      responseCallback
+    );
 
-    if (responseCallback) {
-      await sendTeamsResponse(res, responseCallback, connector);
-    } else {
-      await processTeamsErrorResult(res, params, connector);
+    if (res.isErr()) {
+      await sendTeamsResponse(
+        responseCallback,
+        false,
+        createErrorAdaptiveCard({
+          error: res.error.message,
+          workspaceId: connector.workspaceId,
+        })
+      );
     }
 
-    return new Ok(undefined);
+    return res;
   } catch (e) {
     logger.error(
       {
@@ -64,152 +76,15 @@ export async function botAnswerTeamsMessage(
       "Unexpected exception answering to Teams message"
     );
 
-    if (responseCallback) {
-      await sendTeamsResponse(
-        new Err(new Error("An unexpected error occurred. Our team has been notified")),
-        responseCallback,
-        connector
-      );
-    } else {
-      // Fallback to Graph API if no callback available
-      try {
-        const client = await getClient(connector.connectionId);
-        const { conversationId } = params;
-        if (e instanceof ProviderRateLimitError) {
-          await client.api(`/chats/${conversationId}/messages`).post({
-            body: {
-              contentType: "text",
-              content: TEAMS_RATE_LIMIT_ERROR_MESSAGE,
-            },
-          });
-        } else {
-          await client.api(`/chats/${conversationId}/messages`).post({
-            body: {
-              contentType: "text",
-              content: "An unexpected error occurred. Our team has been notified",
-            },
-          });
-        }
-      } catch (e) {
-        logger.error(
-          {
-            conversationId: params.conversationId,
-            tenantId,
-            error: e,
-          },
-          "Failed to post error message to Teams"
-        );
-      }
-    }
+    await sendTeamsResponse(
+      responseCallback,
+      false,
+      createErrorAdaptiveCard({
+        error: "An unexpected error occurred. Our team has been notified",
+        workspaceId: connector.workspaceId,
+      })
+    );
     return new Err(new Error("An unexpected error occurred"));
-  }
-}
-
-async function sendTeamsResponse(
-  result: Result<AgentMessageSuccessEvent | undefined, Error>,
-  responseCallback: {
-    serviceUrl: string;
-    conversationId: string;
-    activityId: string;
-    userId?: string;
-  },
-  connector: ConnectorResource
-) {
-  const teamsAppUrl = process.env.TEAMS_APP_URL || "http://localhost:3978";
-  
-  try {
-    let responsePayload;
-    
-    if (result.isErr()) {
-      responsePayload = {
-        ...responseCallback,
-        error: result.error.message,
-      };
-    } else if (result.value) {
-      const response = result.value.message.content || "I received your message but couldn't generate a response.";
-      responsePayload = {
-        ...responseCallback,
-        response: response,
-      };
-    } else {
-      responsePayload = {
-        ...responseCallback,
-        response: "I received your message but couldn't generate a response.",
-      };
-    }
-
-    // Use dynamic import for axios since it might not be available in connectors
-    const axios = (await import('axios')).default;
-    
-    await axios.post(`${teamsAppUrl}/api/webhook-response`, responsePayload, {
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      timeout: 10000
-    });
-    
-    logger.info(
-      {
-        connectorId: connector.id,
-        conversationId: responseCallback.conversationId,
-      },
-      "Successfully sent response to Teams app"
-    );
-  } catch (error) {
-    logger.error(
-      {
-        error,
-        connectorId: connector.id,
-        conversationId: responseCallback.conversationId,
-      },
-      "Failed to send response to Teams app"
-    );
-  }
-}
-
-async function processTeamsErrorResult(
-  res: Result<AgentMessageSuccessEvent | undefined, Error>,
-  params: TeamsAnswerParams,
-  connector: ConnectorResource
-) {
-  if (res.isErr()) {
-    logger.error(
-      {
-        error: res.error,
-        errorMessage: res.error.message,
-        ...params,
-      },
-      "Failed answering to Teams message"
-    );
-
-    const errorMessage = `An error occurred: ${res.error.message}. Our team has been notified and will work on it as soon as possible.`;
-    const { conversationId: convId } = params;
-
-    try {
-      const client = await getClient(connector.connectionId);
-      await client.api(`/chats/${convId}/messages`).post({
-        body: {
-          contentType: "text",
-          content: errorMessage,
-        },
-      });
-    } catch (e) {
-      logger.error(
-        {
-          error: e,
-          conversationId: convId,
-        },
-        "Failed to post error message to Teams"
-      );
-    }
-  } else {
-    logger.info(
-      {
-        connectorId: connector.id,
-        ...params,
-      },
-      "Successfully answered to Teams message"
-    );
   }
 }
 
@@ -223,21 +98,30 @@ async function answerTeamsMessage(
     channelId,
     replyToId,
   }: TeamsAnswerParams,
-  connector: ConnectorResource
-): Promise<Result<AgentMessageSuccessEvent | undefined, Error>> {
-  // Check for existing conversation in the same thread
-  let lastTeamsMessage: TeamsMessage | null = null;
-  if (replyToId) {
-    lastTeamsMessage = await TeamsMessage.findOne({
-      where: {
-        connectorId: connector.id,
-        conversationId: conversationId,
-        replyToId: replyToId,
-      },
-      order: [["createdAt", "DESC"]],
-      limit: 1,
-    });
+  connector: ConnectorResource,
+  responseCallback: {
+    serviceUrl: string;
+    conversationId: string;
+    activityId: string;
+    userId?: string;
   }
+): Promise<Result<undefined, Error>> {
+  // Check for existing Dust conversation for this Teams conversation
+  let lastTeamsMessage: TeamsMessage | null = null;
+
+  // Always look for previous messages in the same Teams conversation
+  // to maintain conversation continuity - first try to find one with dustConversationId
+  const allTeamsMessages = await TeamsMessage.findAll({
+    where: {
+      connectorId: connector.id,
+      conversationId: conversationId,
+    },
+    order: [["createdAt", "DESC"]],
+  });
+
+  // Find the most recent message that has a Dust conversation ID
+  lastTeamsMessage =
+    allTeamsMessages.find((msg) => msg.dustConversationId) || null;
 
   // Get Microsoft Graph client
   const client = await getClient(connector.connectionId);
@@ -321,10 +205,10 @@ async function answerTeamsMessage(
 
   let mention: { assistantName: string; assistantId: string } | undefined;
 
-  // Extract all ~mentions and +mentions
+  // Extract all @mentions, ~mentions and +mentions (Teams typically uses @)
   const mentionCandidates =
     messageWithoutMarkdown.match(
-      /(?<!\S)[+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$)/g
+      /(?<!\S)[@+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$|)/g
     ) || [];
 
   if (mentionCandidates.length > 1) {
@@ -425,6 +309,15 @@ async function answerTeamsMessage(
   let userMessage: UserMessageType | undefined = undefined;
 
   if (lastTeamsMessage?.dustConversationId) {
+    logger.info(
+      {
+        connectorId: connector.id,
+        teamsConversationId: conversationId,
+        dustConversationId: lastTeamsMessage.dustConversationId,
+      },
+      "Reusing existing Dust conversation for Teams conversation"
+    );
+
     // Check conversation existence (it might have been deleted between two messages).
     const existsRes = await dustAPI.getConversation({
       conversationId: lastTeamsMessage.dustConversationId,
@@ -448,10 +341,27 @@ async function answerTeamsMessage(
         return new Err(new Error(conversationRes.error.message));
       }
       conversation = conversationRes.value;
+    } else {
+      logger.warn(
+        {
+          connectorId: connector.id,
+          teamsConversationId: conversationId,
+          dustConversationId: lastTeamsMessage.dustConversationId,
+        },
+        "Dust conversation not found, will create new one"
+      );
     }
   }
 
   if (!conversation || !userMessage) {
+    logger.info(
+      {
+        connectorId: connector.id,
+        teamsConversationId: conversationId,
+      },
+      "Creating new Dust conversation for Teams conversation"
+    );
+
     const convRes = await dustAPI.createConversation({
       title: null,
       visibility: "unlisted",
@@ -468,11 +378,20 @@ async function answerTeamsMessage(
       return new Err(new Error("Failed to retrieve the created message."));
     }
 
+    logger.info(
+      {
+        connectorId: connector.id,
+        teamsConversationId: conversationId,
+        dustConversationId: conversation.sId,
+      },
+      "Created new Dust conversation and linked to Teams conversation"
+    );
+
     teamsMessage.dustConversationId = conversation.sId;
     await teamsMessage.save();
   }
 
-  // For Bot Framework approach, we don't need streaming - just get the final response
+  // For Bot Framework approach with streaming updates
   const streamRes = await dustAPI.streamAgentAnswerEvents({
     conversation,
     userMessageId: userMessage.sId,
@@ -482,10 +401,15 @@ async function answerTeamsMessage(
     return new Err(new Error(streamRes.error.message));
   }
 
-  // Collect the full response
+  // Collect the full response and stream updates
   let finalResponse = "";
   let agentMessageSuccess = undefined;
-  
+  let lastUpdateTime = Date.now();
+  let streamingUsed = false;
+  let chainOfThought = "";
+  let agentState = "thinking";
+  const UPDATE_INTERVAL_MS = 100; // Update every second
+
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "agent_error":
@@ -499,9 +423,50 @@ async function answerTeamsMessage(
         break;
       }
       case "generation_tokens": {
+        // Stream updates at intervals to avoid rate limits
         if (event.classification === "tokens") {
           finalResponse += event.text;
+          agentState = "writing";
+        } else if (event.classification === "chain_of_thought") {
+          if (event.text === "\n\n") {
+            chainOfThought = "";
+          } else {
+            chainOfThought += event.text;
+          }
+          agentState = "thinking";
         }
+
+        const now = Date.now();
+        if (now - lastUpdateTime > UPDATE_INTERVAL_MS) {
+          lastUpdateTime = now;
+          streamingUsed = true;
+          const text =
+            agentState === "thinking" ? chainOfThought : finalResponse;
+          if (text.trim()) {
+            const streamingCard = createStreamingAdaptiveCard({
+              response: text,
+              assistantName: mention.assistantName,
+              conversationUrl: null,
+              workspaceId: connector.workspaceId,
+            });
+
+            // Send streaming update to Teams app webhook endpoint
+            await sendTeamsResponse(responseCallback, true, streamingCard);
+          }
+        }
+        break;
+      }
+      case "tool_params": {
+        const action = getActionName(event.action);
+        const streamingCard = createStreamingAdaptiveCard({
+          response: action,
+          assistantName: mention.assistantName,
+          conversationUrl: null,
+          workspaceId: connector.workspaceId,
+        });
+        agentState = "acting";
+        await sendTeamsResponse(responseCallback, true, streamingCard);
+
         break;
       }
       default:
@@ -511,9 +476,159 @@ async function answerTeamsMessage(
   }
 
   if (agentMessageSuccess) {
-    // Return the final response for Bot Framework to send
-    return new Ok(agentMessageSuccess);
+    // Send final clean message if streaming was used
+    if (streamingUsed && responseCallback) {
+      try {
+        const finalCard = createResponseAdaptiveCard({
+          response: finalResponse,
+          assistantName: mention.assistantName,
+          conversationUrl: makeConversationUrl(
+            connector.workspaceId,
+            conversation.sId
+          ),
+          workspaceId: connector.workspaceId,
+          agentConfigurations: mostPopularAgentConfigurations,
+          originalMessage: message,
+        });
+
+        await sendTeamsResponse(responseCallback, false, finalCard);
+      } catch (finalError) {
+        logger.warn(
+          { error: finalError },
+          "Failed to send final message to Teams"
+        );
+      }
+    }
+
+    // Return the result with streaming info
+    return new Ok(undefined);
   } else {
     return new Err(new Error("No response generated"));
   }
 }
+
+const sendTeamsResponse = async (
+  responseCallback: {
+    serviceUrl: string;
+    conversationId: string;
+    activityId: string;
+    userId?: string;
+  },
+  isStreaming: boolean,
+  adaptiveCard: any
+) => {
+  try {
+    const teamsAppUrl = process.env.TEAMS_APP_URL || "http://localhost:3978";
+    const teamsUrl = `${teamsAppUrl}/api/webhook-response`;
+
+    await axios.post(
+      teamsUrl,
+      {
+        serviceUrl: responseCallback.serviceUrl,
+        conversationId: responseCallback.conversationId,
+        activityId: responseCallback.activityId,
+        userId: responseCallback.userId,
+        isStreaming,
+        adaptiveCard,
+      },
+      {
+        headers: { "Content-Type": "application/json" },
+        timeout: 5000,
+      }
+    );
+  } catch (updateError) {
+    logger.warn(
+      { error: updateError },
+      "Failed to send streaming update to Teams"
+    );
+  }
+};
+
+export const SEARCH_TOOL_NAME = "semantic_search";
+export const INCLUDE_TOOL_NAME = "retrieve_recent_documents";
+export const WEBSEARCH_TOOL_NAME = "websearch";
+export const WEBBROWSER_TOOL_NAME = "webbrowser";
+export const QUERY_TABLES_TOOL_NAME = "query_tables";
+export const GET_DATABASE_SCHEMA_TOOL_NAME = "get_database_schema";
+export const EXECUTE_DATABASE_QUERY_TOOL_NAME = "execute_database_query";
+export const PROCESS_TOOL_NAME = "extract_information_from_documents";
+export const RUN_AGENT_TOOL_NAME = "run_agent";
+export const CREATE_AGENT_TOOL_NAME = "create_agent";
+export const FIND_TAGS_TOOL_NAME = "find_tags";
+export const FILESYSTEM_CAT_TOOL_NAME = "cat";
+export const FILESYSTEM_FIND_TOOL_NAME = "find";
+export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
+export const FILESYSTEM_LIST_TOOL_NAME = "list";
+
+const getActionName = (action: AgentActionPublicType) => {
+  const { functionCallName, internalMCPServerName } = action;
+
+  const parts = functionCallName ? functionCallName.split("__") : [];
+  const toolName = parts[parts.length - 1];
+
+  if (
+    internalMCPServerName === "search" ||
+    internalMCPServerName === "data_sources_file_system"
+  ) {
+    if (toolName === SEARCH_TOOL_NAME) {
+      return "Searching";
+    }
+
+    if (
+      toolName === FILESYSTEM_LIST_TOOL_NAME ||
+      toolName === FILESYSTEM_FIND_TOOL_NAME
+    ) {
+      return "Browsing data sources";
+    }
+
+    if (toolName === FILESYSTEM_CAT_TOOL_NAME) {
+      return "Viewing data source";
+    }
+
+    if (toolName === FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME) {
+      return "Locating in tree";
+    }
+  }
+
+  if (internalMCPServerName === "include_data") {
+    if (toolName === INCLUDE_TOOL_NAME) {
+      return "Including data";
+    }
+  }
+
+  if (internalMCPServerName === "web_search_&_browse") {
+    if (toolName === WEBSEARCH_TOOL_NAME) {
+      return "Searching the web";
+    }
+    if (toolName === WEBBROWSER_TOOL_NAME) {
+      return "Browsing the web";
+    }
+  }
+
+  if (internalMCPServerName === "query_tables") {
+    if (toolName === QUERY_TABLES_TOOL_NAME) {
+      return "Querying tables";
+    }
+  }
+
+  if (internalMCPServerName === "query_tables_v2") {
+    if (toolName === GET_DATABASE_SCHEMA_TOOL_NAME) {
+      return "Getting database schema";
+    }
+    if (toolName === EXECUTE_DATABASE_QUERY_TOOL_NAME) {
+      return "Executing database query";
+    }
+  }
+
+  if (internalMCPServerName === "reasoning") {
+    return "Reasoning";
+  }
+
+  if (internalMCPServerName === "extract_data") {
+    if (toolName === PROCESS_TOOL_NAME) {
+      return "Extracting data";
+    }
+  }
+
+  return "Executing tool";
+};

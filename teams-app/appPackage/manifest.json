@@ -10,12 +10,12 @@
         "termsOfUseUrl": "https://www.example.com/termofuse"
     },
     "icons": {
-        "color": "color.png",
+        "color": "dust.png",
         "outline": "outline.png"
     },
     "name": {
         "short": "dust${{APP_NAME_SUFFIX}}",
-        "full": "Full name for dust"
+        "full": "Dust"
     },
     "description": {
         "short": "Short description of dust",
@@ -41,15 +41,44 @@
                     ],
                     "commands": [
                         {
-                            "title": "helloWorld",
-                            "description": "A helloworld command to send a welcome message"
+                            "title": "+dust",
+                            "description": "Ask any question to Dust AI assistants"
+                        },
+                        {
+                            "title": "+help",
+                            "description": "Get help using Dust in Teams"
                         }
                     ]
                 }
             ]
         }
     ],
-    "composeExtensions": [],
+    "composeExtensions": [
+        {
+            "botId": "${{BOT_ID}}",
+            "canUpdateConfiguration": false,
+            "commands": [
+                {
+                    "id": "searchAgents",
+                    "type": "query",
+                    "title": "🤖 Select Dust Agent",
+                    "description": "Choose from your available AI assistants",
+                    "initialRun": true,
+                    "context": [
+                        "compose"
+                    ],
+                    "parameters": [
+                        {
+                            "name": "searchQuery",
+                            "title": "Search agents",
+                            "description": "Type to search for agents",
+                            "inputType": "text"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
     "configurableTabs": [],
     "staticTabs": [],
     "permissions": [
