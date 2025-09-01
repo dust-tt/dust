@@ -8,6 +8,7 @@ import type { UrlObject } from "url";
 
 import { ConfirmPopupArea } from "@app/components/Confirm";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
+import DatadogInit from "@app/pages/datadog-init";
 import { isAPIErrorResponse } from "@app/types";
 
 function NextLinkWrapper({
@@ -86,6 +87,7 @@ export default function RootLayout({
           },
         }}
       >
+        <DatadogInit />
         <SidebarProvider>
           <ConfirmPopupArea>
             <Notification.Area>{children}</Notification.Area>
