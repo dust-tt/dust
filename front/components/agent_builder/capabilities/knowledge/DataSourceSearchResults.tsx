@@ -1,11 +1,5 @@
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
-import {
-  Checkbox,
-  cn,
-  DataTable,
-  ScrollableDataTable,
-  Tooltip,
-} from "@dust-tt/sparkle";
+import { Checkbox, cn, DataTable, ScrollableDataTable } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 
@@ -91,9 +85,10 @@ function makeSearchResultColumnsWithSelection(
       enableSorting: false,
       cell: ({ row }) => (
         <DataTable.CellContent icon={row.original.icon}>
-          <Tooltip
+          <DataTable.BasicCellContent
             label={row.original.title}
-            trigger={<span>{row.original.title}</span>}
+            tooltip={row.original.title}
+            className="p-0"
           />
         </DataTable.CellContent>
       ),
@@ -106,16 +101,20 @@ function makeSearchResultColumnsWithSelection(
       accessorKey: "location",
       id: "location",
       enableSorting: false,
-      cell: ({ row }) => (
-        <DataTable.BasicCellContent
-          label={
-            row.original.dataSourceView.category === "folder"
-              ? row.original.dataSourceView.dataSource.name
-              : row.original.location
-          }
-          className="pr-2"
-        />
-      ),
+      cell: ({ row }) => {
+        const locationText =
+          row.original.dataSourceView.category === "folder"
+            ? row.original.dataSourceView.dataSource.name
+            : row.original.location;
+
+        return (
+          <DataTable.BasicCellContent
+            label={locationText}
+            tooltip={locationText}
+            className="pr-2"
+          />
+        );
+      },
       meta: {
         sizeRatio: 35,
       },
