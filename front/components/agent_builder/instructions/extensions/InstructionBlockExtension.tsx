@@ -221,7 +221,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
               </Chip>
             </div>
           ) : (
-            <div className="mt-0.5">
+            <div className="mt-0.5 w-full">
               <NodeViewContent
                 className={instructionBlockContentStyles}
                 as="div"
