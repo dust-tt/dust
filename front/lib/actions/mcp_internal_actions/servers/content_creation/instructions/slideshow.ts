@@ -1,8 +1,8 @@
 export const SLIDESHOW_INSTRUCTIONS = `
-### Using Slideshow Components in Canvas Files
+### Using Slideshow Components in Content Creation Files
 
 ### When to Use Slideshow Components:
-Use the Slideshow component in canvas files for: presentations, tutorials, step-by-step analysis, comparisons, reports
+Use the Slideshow component in Content Creation files for: presentations, tutorials, step-by-step analysis, comparisons, reports
 
 CONTENT PRINCIPLES:
 - Start with your key insight, not background context

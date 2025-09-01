@@ -1,13 +1,13 @@
 import Head from "next/head";
 
-import { PublicCanvasContainer } from "@app/components/assistant/conversation/canvas/PublicCanvasContainer";
+import { PublicContentCreationContainer } from "@app/components/assistant/conversation/content_creation/PublicContentCreationContainer";
 import config from "@app/lib/api/config";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
-  CANVAS_SIDE_PANEL_TYPE,
+  CONTENT_CREATION_SIDE_PANEL_TYPE,
   SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
 } from "@app/types/conversation_side_panel";
@@ -57,7 +57,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       redirect: {
         destination:
           `/w/${workspace.sId}/assistant/${file.useCaseMetadata?.conversationId}#?` +
-          `${SIDE_PANEL_TYPE_HASH_PARAM}=${CANVAS_SIDE_PANEL_TYPE}&` +
+          `${SIDE_PANEL_TYPE_HASH_PARAM}=${CONTENT_CREATION_SIDE_PANEL_TYPE}&` +
           `${SIDE_PANEL_HASH_PARAM}=${file.sId}`,
         permanent: false,
       },
@@ -131,7 +131,7 @@ export default function SharedFilePage({
         <link rel="icon" type="image/png" href="/static/favicon.png" />
       </Head>
       <div className="flex h-screen w-full">
-        <PublicCanvasContainer shareToken={token} />
+        <PublicContentCreationContainer shareToken={token} />
       </div>
     </>
   );

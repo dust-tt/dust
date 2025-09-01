@@ -26,7 +26,7 @@ import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
-import { useCanvasesSharingToggle } from "@app/hooks/useCanvasesSharingToggle";
+import { useContentCreationSharingToggle } from "@app/hooks/useContentCreationSharingToggle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -233,7 +233,7 @@ export default function WorkspaceAdmin({
         </Page.Vertical>
         <Page.Vertical align="stretch" gap="md">
           <Page.H variant="h4">Capabilities</Page.H>
-          <CanvasSharingToggle owner={owner} />
+          <ContentCreationSharingToggle owner={owner} />
         </Page.Vertical>
         {!isSlackDataSourceBotEnabled && (
           <Page.Vertical align="stretch" gap="md">
@@ -406,23 +406,23 @@ function SlackBotToggle({
   );
 }
 
-function CanvasSharingToggle({ owner }: { owner: WorkspaceType }) {
-  const { isEnabled, isChanging, doToggleCanvasesSharing } =
-    useCanvasesSharingToggle({ owner });
+function ContentCreationSharingToggle({ owner }: { owner: WorkspaceType }) {
+  const { isEnabled, isChanging, doToggleContentCreationSharing } =
+    useContentCreationSharingToggle({ owner });
 
   return (
     <ContextItem.List>
       <div className="h-full border-b border-border dark:border-border-night" />
       <ContextItem
-        title="Canvas file sharing"
-        subElement="Enable Canvas files sharing"
+        title="Content Creation file sharing"
+        subElement="Enable Content Creation files sharing"
         visual={<DocumentTextIcon className="h-6 w-6" />}
         hasSeparatorIfLast={true}
         action={
           <SliderToggle
             selected={isEnabled}
             disabled={isChanging}
-            onClick={doToggleCanvasesSharing}
+            onClick={doToggleContentCreationSharing}
           />
         }
       />

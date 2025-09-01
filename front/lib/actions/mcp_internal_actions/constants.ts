@@ -12,7 +12,7 @@ import {
   JIRA_SERVER_INSTRUCTIONS,
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
-import { CANVAS_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/canvas/instructions";
+import { CONTENT_CREATION_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/instructions";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type {
@@ -71,7 +71,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "hubspot",
   "image_generation",
   "include_data",
-  "canvas",
+  "content_creation",
   "jira",
   "missing_action_catcher",
   "monday",
@@ -716,7 +716,7 @@ The directive should be used to display a clickable version of the agent name in
       instructions: JIRA_SERVER_INSTRUCTIONS,
     },
   },
-  canvas: {
+  content_creation: {
     id: 23,
     availability: "auto",
     allowMultipleInstances: false,
@@ -727,14 +727,14 @@ The directive should be used to display a clickable version of the agent name in
     tools_stakes: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: "canvas",
+      name: "content_creation",
       version: "1.0.0",
       description:
         "Create interactive content including dashboards with data visualizations, slide presentations, or any custom interactive components. Choose your preferred content type for focused guidance.",
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
-      instructions: CANVAS_INSTRUCTIONS,
+      instructions: CONTENT_CREATION_INSTRUCTIONS,
       flavors: [
         {
           id: "dashboards",

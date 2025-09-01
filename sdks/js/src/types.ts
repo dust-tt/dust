@@ -6,7 +6,7 @@ import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,
 } from "./mcp_icon_types";
-import { NotificationCanvasFileContentSchema } from "./output_schemas";
+import { NotificationContentCreationFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
 
 type StringLiteral<T> = T extends string
@@ -1047,7 +1047,7 @@ const NotificationRunAgentGenerationTokensSchema = z.object({
 });
 
 const NotificationContentSchema = z.union([
-  NotificationCanvasFileContentSchema,
+  NotificationContentCreationFileContentSchema,
   NotificationImageContentSchema,
   NotificationRunAgentChainOfThoughtSchema,
   NotificationRunAgentContentSchema,

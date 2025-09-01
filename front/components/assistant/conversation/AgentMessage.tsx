@@ -18,12 +18,12 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import {
-  AgentMessageCanvasGeneratedFiles,
+  AgentMessageContentCreationGeneratedFiles,
   DefaultAgentMessageGeneratedFiles,
 } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { AssistantHandle } from "@app/components/assistant/conversation/AssistantHandle";
 import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { useAutoOpenCanvas } from "@app/components/assistant/conversation/canvas/useAutoOpenCanvas";
+import { useAutoOpenContentCreation } from "@app/components/assistant/conversation/content_creation/useAutoOpenContentCreation";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -62,7 +62,7 @@ import type {
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
-  isCanvasFileContentType,
+  isContentCreationFileContentType,
   isPersonalAuthenticationRequiredErrorContent,
   isString,
   isSupportedImageContentType,
@@ -230,8 +230,8 @@ export function AgentMessage({
     conversationId,
   ]);
 
-  // Auto-open canvas drawer when canvas files are available.
-  const { canvasFiles } = useAutoOpenCanvas({
+  // Auto-open content creation drawer when content creation files are available.
+  const { contentCreationFiles } = useAutoOpenContentCreation({
     messageStreamState,
     agentMessageToRender,
     isLastMessage,
@@ -514,7 +514,7 @@ export function AgentMessage({
     const generatedFiles = agentMessage.generatedFiles.filter(
       (file) =>
         !isSupportedImageContentType(file.contentType) &&
-        !isCanvasFileContentType(file.contentType)
+        !isContentCreationFileContentType(file.contentType)
     );
 
     return (
@@ -525,7 +525,9 @@ export function AgentMessage({
           actionProgress={messageStreamState.actionProgress}
           owner={owner}
         />
-        <AgentMessageCanvasGeneratedFiles files={canvasFiles} />
+        <AgentMessageContentCreationGeneratedFiles
+          files={contentCreationFiles}
+        />
         {(inProgressImages.length > 0 || completedImages.length > 0) && (
           <InteractiveImageGrid
             images={[

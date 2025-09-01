@@ -6,7 +6,7 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
-  CANVAS_SIDE_PANEL_TYPE,
+  CONTENT_CREATION_SIDE_PANEL_TYPE,
   SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
 } from "@app/types/conversation_side_panel";
@@ -17,14 +17,15 @@ type OpenPanelParams =
       messageId: string;
     }
   | {
-      type: "canvas";
+      type: "content_creation";
       fileId: string;
       timestamp?: string;
     };
 
 const isSupportedPanelType = (
   type: string | undefined
-): type is ConversationSidePanelType => type === "actions" || type === "canvas";
+): type is ConversationSidePanelType =>
+  type === "actions" || type === "content_creation";
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
@@ -86,7 +87,7 @@ export function ConversationSidePanelProvider({
         break;
       }
 
-      case CANVAS_SIDE_PANEL_TYPE:
+      case CONTENT_CREATION_SIDE_PANEL_TYPE:
         params.timestamp
           ? setData(`${params.fileId}@${params.timestamp}`)
           : setData(params.fileId);
