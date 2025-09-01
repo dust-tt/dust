@@ -117,6 +117,7 @@ export const INTERNAL_MCP_SERVERS = {
       get_pull_request: "never_ask",
       list_organization_projects: "never_ask",
       list_issues: "never_ask",
+      list_pull_requests: "never_ask",
       get_issue: "never_ask",
     },
     timeoutMs: undefined,
