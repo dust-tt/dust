@@ -30,6 +30,7 @@ import { FeedbackSelector } from "@app/components/assistant/conversation/Feedbac
 import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
+import { processContentWithInlineCards, type InlineCardsContext } from "@app/components/assistant/conversation/markdown/InlineInstructionsPlugin";
 import {
   CitationsContext,
   CiteBlock,
@@ -89,7 +90,12 @@ export function AgentMessage({
   message,
   messageFeedback,
   owner,
-}: AgentMessageProps) {
+  onApplyInstructions,
+  currentInstructions,
+}: AgentMessageProps & {
+  onApplyInstructions?: (instructions: string) => void;
+  currentInstructions?: string;
+}) {
   const { isDark } = useTheme();
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
@@ -559,15 +565,86 @@ export function AgentMessage({
                   updateActiveReferences,
                 }}
               >
-                <Markdown
-                  content={sanitizeVisualizationContent(agentMessage.content)}
-                  isStreaming={
-                    streaming && lastTokenClassification === "tokens"
+                {(() => {
+                  const processedContent = sanitizeVisualizationContent(
+                    agentMessage.content
+                  );
+
+                  // Special handling for the copilot agent to render inline instruction cards
+                  if (
+                    agentMessage.configuration?.sId === "CFUlTuoqNQ" &&
+                    processedContent
+                  ) {
+                    const inlineContext: InlineCardsContext = {
+                      onApplyInstructions,
+                      currentInstructions,
+                      messageId: agentMessage.sId,
+                      isStreaming: streaming &&
+                        lastTokenClassification === "tokens",
+                    };
+
+                    const inlineNodes = processContentWithInlineCards(
+                      processedContent,
+                      inlineContext
+                    );
+
+                    if (inlineNodes.length > 0) {
+                      return (
+                        <div className="space-y-2">
+                          {inlineNodes.map((node, index) => {
+                            if (
+                              React.isValidElement(node) &&
+                              node.type === "span"
+                            ) {
+                              const textContent = node.props.children;
+                              if (
+                                textContent &&
+                                typeof textContent === "string" &&
+                                textContent.trim()
+                              ) {
+                                return (
+                                  <Markdown
+                                    key={index}
+                                    content={textContent.trim()}
+                                    isStreaming={
+                                      streaming &&
+                                      lastTokenClassification === "tokens" &&
+                                      index === inlineNodes.length - 1
+                                    }
+                                    isLastMessage={isLastMessage}
+                                    additionalMarkdownComponents={
+                                      additionalMarkdownComponents
+                                    }
+                                    additionalMarkdownPlugins={
+                                      additionalMarkdownPlugins
+                                    }
+                                  />
+                                );
+                              }
+                              return null;
+                            }
+                            return node;
+                          })}
+                        </div>
+                      );
+                    }
                   }
-                  isLastMessage={isLastMessage}
-                  additionalMarkdownComponents={additionalMarkdownComponents}
-                  additionalMarkdownPlugins={additionalMarkdownPlugins}
-                />
+
+                  // Default rendering
+                  return (
+                    <Markdown
+                      content={processedContent}
+                      isStreaming={
+                        streaming && lastTokenClassification === "tokens"
+                      }
+                      isLastMessage={isLastMessage}
+                      additionalMarkdownComponents={
+                        additionalMarkdownComponents
+                      }
+                      additionalMarkdownPlugins={additionalMarkdownPlugins}
+                    />
+                  );
+                })()}
               </CitationsContext.Provider>
             )}
           </div>

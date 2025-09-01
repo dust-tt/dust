@@ -25,6 +25,8 @@ interface MessageItemProps {
   message: MessageWithContentFragmentsType;
   owner: WorkspaceType;
   user: UserType;
+  onApplyInstructions?: (instructions: string) => void;
+  currentInstructions?: string;
 }
 
 const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
@@ -36,6 +38,8 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       message,
       owner,
       user,
+      onApplyInstructions,
+      currentInstructions,
     }: MessageItemProps,
     ref
   ) {
@@ -144,6 +148,8 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               messageFeedback={messageFeedbackWithSubmit}
               owner={owner}
               user={user}
+              onApplyInstructions={onApplyInstructions}
+              currentInstructions={currentInstructions}
             />
           </div>
         );

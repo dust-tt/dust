@@ -13,6 +13,7 @@ type AgentBuilderContextType = {
   assistantTemplate: FetchAssistantTemplateResponse | null;
   presetActionToAdd: TemplateActionPreset | null;
   setPresetActionToAdd: (preset: TemplateActionPreset | null) => void;
+  aiInstructions: string | null;
 };
 
 export const AgentBuilderContext = createContext<
@@ -23,6 +24,7 @@ interface AgentBuilderProviderProps {
   owner: WorkspaceType;
   user: UserType;
   assistantTemplate: FetchAssistantTemplateResponse | null;
+  aiInstructions?: string | null;
   children: React.ReactNode;
 }
 
@@ -33,6 +35,7 @@ export function AgentBuilderProvider({
   owner,
   user,
   assistantTemplate,
+  aiInstructions = null,
   children,
 }: AgentBuilderProviderProps) {
   const [presetActionToAdd, setPresetActionToAdd] =
@@ -45,8 +48,9 @@ export function AgentBuilderProvider({
       assistantTemplate,
       presetActionToAdd,
       setPresetActionToAdd,
+      aiInstructions,
     }),
-    [owner, user, assistantTemplate, presetActionToAdd]
+    [owner, user, assistantTemplate, presetActionToAdd, aiInstructions]
   );
 
   return (

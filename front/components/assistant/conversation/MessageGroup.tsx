@@ -20,6 +20,8 @@ interface MessageGroupProps {
   prevFirstMessageRef: React.RefObject<HTMLDivElement>;
   user: UserType;
   latestPage?: FetchConversationMessagesResponse;
+  onApplyInstructions?: (instructions: string) => void;
+  currentInstructions?: string;
 }
 
 // arbitrary offset to scroll the last MessageGroup to
@@ -39,6 +41,8 @@ export default function MessageGroup({
   prevFirstMessageRef,
   user,
   latestPage,
+  onApplyInstructions,
+  currentInstructions,
 }: MessageGroupProps) {
   const lastMessageGroupRef = useRef<HTMLDivElement>(null);
 
@@ -75,6 +79,8 @@ export default function MessageGroup({
           }
           user={user}
           isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
+          onApplyInstructions={onApplyInstructions}
+          currentInstructions={currentInstructions}
         />
       ))}
     </div>

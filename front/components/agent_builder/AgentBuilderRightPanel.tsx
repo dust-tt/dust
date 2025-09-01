@@ -16,9 +16,14 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
+import { AgentBuilderCopilot } from "@app/components/agent_builder/AgentBuilderCopilot";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 
-type AgentBuilderRightPanelTabType = "testing" | "performance" | "template";
+type AgentBuilderRightPanelTabType =
+  | "testing"
+  | "performance"
+  | "template"
+  | "copilot";
 
 interface PanelHeaderProps {
   isPreviewPanelOpen: boolean;
@@ -26,6 +31,7 @@ interface PanelHeaderProps {
   onTogglePanel: () => void;
   onTabChange: (tab: AgentBuilderRightPanelTabType) => void;
   hasTemplate: boolean;
+  isNewAgent: boolean;
 }
 
 function PanelHeader({
@@ -34,6 +40,7 @@ function PanelHeader({
   onTogglePanel,
   onTabChange,
   hasTemplate,
+  isNewAgent,
 }: PanelHeaderProps) {
   return (
     <div className="flex h-16 items-end">
@@ -49,6 +56,12 @@ function PanelHeader({
                   tooltip="Hide preview"
                   onClick={onTogglePanel}
                   className="ml-4"
+                />
+                <TabsTrigger
+                  value="copilot"
+                  label="Copilot"
+                  icon={MagicIcon}
+                  onClick={() => onTabChange("copilot")}
                 />
                 <TabsTrigger
                   value="testing"
@@ -98,6 +111,13 @@ function CollapsedTabs({ onTabSelect, hasTemplate }: CollapsedTabsProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
       <Button
+        icon={MagicIcon}
+        variant="ghost"
+        size="sm"
+        tooltip="Copilot"
+        onClick={() => onTabSelect("copilot")}
+      />
+      <Button
         icon={TestTubeIcon}
         variant="ghost"
         size="sm"
@@ -137,6 +157,11 @@ function ExpandedContent({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {selectedTab === "copilot" && (
+        <div className="min-h-0 flex-1">
+          <AgentBuilderCopilot />
+        </div>
+      )}
       {selectedTab === "template" && assistantTemplate && (
         <AgentBuilderTemplate
           assistantTemplate={assistantTemplate}
@@ -171,9 +196,14 @@ export function AgentBuilderRightPanel({
   const { assistantTemplate } = useAgentBuilderContext();
 
   const hasTemplate = !!assistantTemplate;
-
+  const isNewAgent = !agentConfigurationSId;
+  const defaultTab: AgentBuilderRightPanelTabType = isNewAgent
+    ? "copilot"
+    : hasTemplate
+      ? "template"
+      : "testing";
   const [selectedTab, setSelectedTab] = useState<AgentBuilderRightPanelTabType>(
-    hasTemplate ? "template" : "testing"
+    defaultTab
   );
 
   const handleTogglePanel = () => {
@@ -197,6 +227,7 @@ export function AgentBuilderRightPanel({
         onTogglePanel={handleTogglePanel}
         onTabChange={handleTabChange}
         hasTemplate={hasTemplate}
+        isNewAgent={isNewAgent}
       />
       {isPreviewPanelOpen ? (
         <ExpandedContent

@@ -22,12 +22,16 @@ import type {
 } from "@app/types";
 
 function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
-  const { duplicate, templateId } = query;
+  const { duplicate, templateId, aiInstructions } = query;
 
   return {
     duplicate: duplicate && typeof duplicate === "string" ? duplicate : null,
     templateId:
       templateId && typeof templateId === "string" ? templateId : null,
+    aiInstructions:
+      aiInstructions && typeof aiInstructions === "string"
+        ? decodeURIComponent(aiInstructions)
+        : null,
   };
 }
 
@@ -44,6 +48,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   baseUrl: string;
   templateId: string | null;
   duplicateAgentId: string | null;
+  aiInstructions: string | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -77,7 +82,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     | AgentConfigurationType
     | TemplateAgentConfigurationType
     | null = null;
-  const { duplicate, templateId } = getDuplicateAndTemplateIdFromQuery(
+  const { duplicate, templateId, aiInstructions } = getDuplicateAndTemplateIdFromQuery(
     context.query
   );
   if (duplicate) {
@@ -109,6 +114,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       templateId,
       duplicateAgentId: duplicate,
       user,
+      aiInstructions,
     },
   };
 });
@@ -119,6 +125,7 @@ export default function CreateAgent({
   user,
   templateId,
   duplicateAgentId,
+  aiInstructions,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({ templateId });
 
@@ -135,6 +142,7 @@ export default function CreateAgent({
       owner={owner}
       user={user}
       assistantTemplate={assistantTemplate}
+      aiInstructions={aiInstructions}
     >
       <AgentBuilder
         agentConfiguration={

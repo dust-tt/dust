@@ -51,6 +51,8 @@ interface ConversationViewerProps {
   onStickyMentionsChange?: (mentions: AgentMention[]) => void;
   owner: WorkspaceType;
   user: UserType;
+  onApplyInstructions?: (instructions: string) => void;
+  currentInstructions?: string;
 }
 
 /**
@@ -62,7 +64,15 @@ const ConversationViewer = React.forwardRef<
   HTMLDivElement,
   ConversationViewerProps
 >(function ConversationViewer(
-  { owner, user, conversationId, onStickyMentionsChange, isInModal = false },
+  {
+    owner,
+    user,
+    conversationId,
+    onStickyMentionsChange,
+    isInModal = false,
+    onApplyInstructions,
+    currentInstructions,
+  },
   ref
 ) {
   const {
@@ -354,6 +364,8 @@ const ConversationViewer = React.forwardRef<
               prevFirstMessageRef={prevFirstMessageRef}
               user={user}
               latestPage={latestPage}
+              onApplyInstructions={onApplyInstructions}
+              currentInstructions={currentInstructions}
             />
           );
         })}
