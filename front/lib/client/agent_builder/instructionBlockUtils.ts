@@ -76,12 +76,14 @@ export function textToBlockNodes(content: string): JSONContent[] {
   const nodes: JSONContent[] = [];
 
   for (const segment of splitContentByCodeFences(content)) {
-    if (segment.type === 'code') {
+    if (segment.type === "code") {
       const language = (segment.info || "").trim().split(/\s+/)[0] || "";
       nodes.push({
         type: "codeBlock",
         attrs: { language },
-        content: segment.content ? [{ type: "text", text: segment.content }] : [],
+        content: segment.content
+          ? [{ type: "text", text: segment.content }]
+          : [],
       });
       continue;
     }
@@ -117,7 +119,9 @@ export function textToBlockNodes(content: string): JSONContent[] {
         nodes.push({
           type: "heading",
           attrs: { level },
-          content: headingContent ? [{ type: "text", text: headingContent }] : [],
+          content: headingContent
+            ? [{ type: "text", text: headingContent }]
+            : [],
         });
       } else {
         nodes.push({
@@ -158,7 +162,7 @@ export function textToProseMirrorBlocks(
   const nodes: ProseMirrorNode[] = [];
 
   for (const segment of splitContentByCodeFences(content)) {
-    if (segment.type === 'code') {
+    if (segment.type === "code") {
       if (schema.nodes.codeBlock) {
         const language = (segment.info || "").trim().split(/\s+/)[0] || "";
         nodes.push(
@@ -248,26 +252,33 @@ export function createInstructionBlockNode(
  */
 export function splitContentByCodeFences(
   content: string
-): Array<{ type: 'code' | 'text'; content: string; info?: string }> {
+): Array<{ type: "code" | "text"; content: string; info?: string }> {
   const codeBlockRegex = /```([^\n]*)\n([\s\S]*?)```/g;
-  const segments: Array<{ type: 'code' | 'text'; content: string; info?: string }> = [];
+  const segments: Array<{
+    type: "code" | "text";
+    content: string;
+    info?: string;
+  }> = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
   while ((match = codeBlockRegex.exec(content)) !== null) {
     if (match.index > lastIndex) {
-      segments.push({ type: 'text', content: content.slice(lastIndex, match.index) });
+      segments.push({
+        type: "text",
+        content: content.slice(lastIndex, match.index),
+      });
     }
     let codeContent = match[2];
-    if (codeContent && codeContent.endsWith('\n')) {
+    if (codeContent && codeContent.endsWith("\n")) {
       codeContent = codeContent.slice(0, -1);
     }
-    segments.push({ type: 'code', info: match[1] || '', content: codeContent });
+    segments.push({ type: "code", info: match[1] || "", content: codeContent });
     lastIndex = match.index + match[0].length;
   }
 
   if (lastIndex < content.length) {
-    segments.push({ type: 'text', content: content.slice(lastIndex) });
+    segments.push({ type: "text", content: content.slice(lastIndex) });
   }
 
   return segments;
