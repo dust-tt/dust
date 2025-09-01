@@ -16,6 +16,7 @@ import React, {
 } from "react";
 import type { UseFieldArrayAppend } from "react-hook-form";
 import { useForm } from "react-hook-form";
+import { FormProvider as RHFFormProvider } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
@@ -23,6 +24,7 @@ import type {
   MCPFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import {
   transformSelectionConfigurationsToTree,
   transformTreeToSelectionConfigurations,
@@ -60,8 +62,8 @@ import { FlavorSection } from "@app/components/agent_builder/capabilities/shared
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { SelectedDataSourcesSection } from "@app/components/agent_builder/capabilities/shared/SelectedDataSourcesSection";
-import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
@@ -75,9 +77,7 @@ import {
   TOOLS_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
 import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
-import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
-import { FormProvider as RHFFormProvider } from "react-hook-form";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
@@ -494,6 +494,12 @@ export function MCPServerViewsSheet({
   // Memoize default values to prevent form recreation
   const defaultFormValues = useMemo(() => {
     if (configurationTool?.type === "MCP") {
+      const baseValues = {
+        name: configurationTool.name ?? "",
+        description: configurationTool.description ?? "",
+        configuration: configurationTool.configuration,
+      };
+      
       if (mcpServerView?.server.name === "canvas") {
         // For Canvas, extract data sources from configuration if editing
         const dataSourceConfigurations = configurationTool.configuration?.dataSourceConfigurations;
@@ -502,17 +508,12 @@ export function MCPServerViewsSheet({
           : { in: [], notIn: [] };
         
         return {
-          name: configurationTool.name ?? "",
-          description: configurationTool.description ?? "",
-          configuration: configurationTool.configuration,
+          ...baseValues,
           sources,
         } as any; // Type cast to handle the dynamic sources field
       }
-      return {
-        name: configurationTool.name ?? "",
-        description: configurationTool.description ?? "",
-        configuration: configurationTool.configuration,
-      };
+      
+      return baseValues;
     }
 
     return getDefaultFormValues(mcpServerView);
@@ -569,19 +570,6 @@ export function MCPServerViewsSheet({
     setSearchTerm("");
     resetToSelection();
   }, [resetToSelection]);
-  
-  // Handle navigation from data source page to configuration
-  const handleDataSourcePageNext = useCallback(() => {
-    setHasVisitedDataSourcePage(true);
-    setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
-  }, []);
-  
-  // Handle skip button on data source page
-  const handleDataSourcePageSkip = useCallback(() => {
-    setCanvasDataSourceSkipped(true);
-    setHasVisitedDataSourcePage(true);
-    setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
-  }, []);
 
   // Determine if we need DataSourceBuilderProvider based on current state
   const needsDataSourceProvider = useMemo(() => {
@@ -641,11 +629,7 @@ export function MCPServerViewsSheet({
       noScroll: true,
       content:
         mcpServerView?.server.name === "canvas" ? (
-          <DataSourceBuilderSelector
-            dataSourceViews={supportedDataSourceViews}
-            owner={owner}
-            viewType="all"
-          />
+          <DataSourceBuilderSelector viewType="all" />
         ) : (
           <div className="flex h-40 w-full items-center justify-center">
             <Spinner />
@@ -855,13 +839,11 @@ export function MCPServerViewsSheet({
             finalConfiguration = {
               ...formData.configuration,
               dataSourceConfigurations,
-              sources, // Keep sources for validation
             };
           } else {
             // No sources selected, just keep the base configuration
             finalConfiguration = {
               ...formData.configuration,
-              sources, // Keep empty sources for validation
             };
           }
         }
@@ -964,8 +946,6 @@ export function MCPServerViewsSheet({
     handleConfigurationSave,
     resetToSelection,
     mcpServerView,
-    handleDataSourcePageNext,
-    handleDataSourcePageSkip,
   ]);
 
   const sheetContent = (
@@ -1005,14 +985,7 @@ export function MCPServerViewsSheet({
     >
       {needsDataSourceProvider ? (
         <RHFFormProvider {...form}>
-          <DataSourceBuilderProvider
-            spaces={spaces}
-            initialPageId={
-              currentPageId === TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION
-                ? "data-source-selection"
-                : "configuration"
-            }
-          >
+          <DataSourceBuilderProvider spaces={spaces}>
             {sheetContent}
           </DataSourceBuilderProvider>
         </RHFFormProvider>

@@ -36,17 +36,28 @@ export function SelectedDataSourcesSection({
   const { watch } = useFormContext<MCPFormData>();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   
-  const sources = watch("sources") as DataSourceBuilderTreeType | undefined;
+  // For Canvas, the form is extended with a sources field that's not in the MCPFormData type
+  // We need to use watch with any type and validate the structure
+  const watchedSources = watch("sources" as any);
   
   const selectedDataSources = useMemo(() => {
-    if (!sources?.in || sources.in.length === 0) {
+    // Ensure sources has the proper structure
+    let normalizedSources: DataSourceBuilderTreeType;
+    
+    if (watchedSources && typeof watchedSources === 'object' && 'in' in watchedSources && 'notIn' in watchedSources) {
+      normalizedSources = watchedSources as DataSourceBuilderTreeType;
+    } else {
+      normalizedSources = { in: [], notIn: [] };
+    }
+    
+    if (!normalizedSources.in || normalizedSources.in.length === 0) {
       return [];
     }
     
     // Map the selected source items to data source views
     const results: Array<{ name: string; sId: string; dataSourceView: DataSourceViewType }> = [];
     
-    for (const item of sources.in) {
+    for (const item of normalizedSources.in) {
       // Check if this is a data source type item
       if (item.type === "data_source" && "dataSourceView" in item) {
         results.push({
@@ -79,7 +90,7 @@ export function SelectedDataSourcesSection({
     }
     
     return results;
-  }, [sources, supportedDataSourceViews]);
+  }, [watchedSources, supportedDataSourceViews]);
 
   if (!isEditMode && (!selectedDataSources || selectedDataSources.length === 0)) {
     return null;
@@ -104,7 +115,9 @@ export function SelectedDataSourcesSection({
       {selectedDataSources.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {selectedDataSources.map((ds) => {
-            if (!ds) return null;
+            if (!ds) {
+              return null;
+            }
             const Icon = getDataSourceIcon(ds.dataSourceView);
             return (
               <Chip
@@ -112,7 +125,6 @@ export function SelectedDataSourcesSection({
                 label={ds.name}
                 size="sm"
                 icon={Icon}
-                color="slate"
               />
             );
           })}
@@ -120,7 +132,7 @@ export function SelectedDataSourcesSection({
       ) : (
         <ContentMessage
           title="No data sources selected"
-          variant="slate"
+          variant="outline"
           size="sm"
         >
           {isEditMode ? (
