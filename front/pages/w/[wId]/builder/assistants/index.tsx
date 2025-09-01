@@ -2,7 +2,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   Record<string, never>
->(async (context, auth) => {
+>(async (context) => {
   const { wId } = context.params as { wId: string };
 
   return {
