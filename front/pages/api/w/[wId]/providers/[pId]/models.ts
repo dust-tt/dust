@@ -199,13 +199,13 @@ async function handler(
               // Deprecated models.
               { id: "claude-2.1" }, // Retired Jul 2025.
               { id: "claude-3-sonnet-20240229" }, // Retired Jul 2025.
+              { id: "claude-3-5-sonnet-20240620" }, // Retired Oct 2025.
+              { id: "claude-3-5-sonnet-20241022" }, // Retired Oct 2025.
               { id: "claude-3-opus-20240229" }, // Retired Jan 2026.
+              { id: "claude-3-7-sonnet-20250219" }, // Retired Feb 2026.
               // Active models.
               { id: "claude-3-haiku-20240307" },
-              { id: "claude-3-5-sonnet-20240620" },
               { id: "claude-3-5-haiku-20241022" },
-              { id: "claude-3-5-sonnet-20241022" },
-              { id: "claude-3-7-sonnet-20250219" },
               { id: "claude-sonnet-4-20250514" },
               { id: "claude-opus-4-20250514" },
             ];
