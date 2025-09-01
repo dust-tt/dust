@@ -77,7 +77,7 @@ export function textToBlockNodes(content: string): JSONContent[] {
 
   for (const segment of splitContentByCodeFences(content)) {
     if (segment.type === "code") {
-      const language = (segment.info || "").trim().split(/\s+/)[0] || "";
+      const language = extractLanguageFromInfo(segment.info);
       nodes.push({
         type: "codeBlock",
         attrs: { language },
@@ -164,7 +164,7 @@ export function textToProseMirrorBlocks(
   for (const segment of splitContentByCodeFences(content)) {
     if (segment.type === "code") {
       if (schema.nodes.codeBlock) {
-        const language = (segment.info || "").trim().split(/\s+/)[0] || "";
+        const language = extractLanguageFromInfo(segment.info);
         nodes.push(
           schema.nodes.codeBlock.create(
             { language },
@@ -282,6 +282,19 @@ export function splitContentByCodeFences(
   }
 
   return segments;
+}
+
+/** Extract first token (language) from a fenced code info string. */
+function extractLanguageFromInfo(info?: string): string {
+  if (typeof info !== "string") {
+    return "";
+  }
+  const trimmed = info.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const [language] = trimmed.split(/\s+/);
+  return language || "";
 }
 
 /**
