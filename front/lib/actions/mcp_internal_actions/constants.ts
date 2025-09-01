@@ -2,6 +2,7 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
+  MAX_MCP_REQUEST_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
@@ -100,9 +101,6 @@ const MCP_SERVER_AVAILABILITY = [
   "auto_hidden_builder",
 ] as const;
 export type MCPServerAvailability = (typeof MCP_SERVER_AVAILABILITY)[number];
-
-export const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes.
-export const MAX_MCP_REQUEST_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes.
 
 export const INTERNAL_MCP_SERVERS = {
   // Note:

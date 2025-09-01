@@ -19,7 +19,7 @@ import type {
   RunAgentArgs,
   RunAgentAsynchronousArgs,
 } from "@app/types/assistant/agent_run";
-import { MAX_MCP_REQUEST_TIMEOUT_MS } from "@app/lib/actions/mcp_internal_actions/constants";
+import { MAX_MCP_REQUEST_TIMEOUT_MS } from "@app/lib/actions/constants";
 
 const logMetricsActivities = proxyActivities<
   typeof logAgentLoopMetricsActivities

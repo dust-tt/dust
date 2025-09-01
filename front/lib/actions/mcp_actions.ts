@@ -20,6 +20,7 @@ import {
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
+  DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
 } from "@app/lib/actions/constants";
@@ -37,7 +38,6 @@ import {
   getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
-  DEFAULT_MCP_REQUEST_TIMEOUT_MS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
