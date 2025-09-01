@@ -82,9 +82,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     | AgentConfigurationType
     | TemplateAgentConfigurationType
     | null = null;
-  const { duplicate, templateId, aiInstructions } = getDuplicateAndTemplateIdFromQuery(
-    context.query
-  );
+  const { duplicate, templateId, aiInstructions } =
+    getDuplicateAndTemplateIdFromQuery(context.query);
   if (duplicate) {
     configuration = await getAgentConfiguration(auth, {
       agentId: duplicate,

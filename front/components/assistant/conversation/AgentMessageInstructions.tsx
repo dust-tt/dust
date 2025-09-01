@@ -38,7 +38,7 @@ export function AgentMessageInstructions({
 
   return (
     <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/10">
-      <div className="border-b border-blue-200 dark:border-blue-700 px-4 py-2 flex items-center justify-between">
+      <div className="flex items-center justify-between border-b border-blue-200 px-4 py-2 dark:border-blue-700">
         <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
           Agent Instructions
         </span>
@@ -62,11 +62,10 @@ export function AgentMessageInstructions({
         )}
       </div>
       <div className="p-4">
-        <pre className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300 font-mono">
+        <pre className="whitespace-pre-wrap font-mono text-sm text-slate-700 dark:text-slate-300">
           {instructions}
         </pre>
       </div>
     </div>
   );
 }
-

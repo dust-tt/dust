@@ -1,5 +1,4 @@
 import React from "react";
-import type { Components } from "react-markdown";
 import { AgentMessageInstructions } from "@app/components/assistant/conversation/AgentMessageInstructions";
 
 export interface InlineCardsContext {
@@ -20,23 +19,23 @@ export function InlineInstructionsComponent({
 }) {
   if (isPartial && context.isStreaming) {
     return (
-      <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/10 relative overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-blue-400 to-transparent animate-shimmer" />
-        <div className="border-b border-blue-200 dark:border-blue-700 px-4 py-2 flex items-center justify-between">
+      <div className="relative mt-4 overflow-hidden rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/10">
+        <div className="animate-shimmer absolute left-0 right-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-blue-400 to-transparent" />
+        <div className="flex items-center justify-between border-b border-blue-200 px-4 py-2 dark:border-blue-700">
           <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
             Agent Instructions
           </span>
-          <span className="text-xs text-blue-600 dark:text-blue-400 animate-pulse">
+          <span className="animate-pulse text-xs text-blue-600 dark:text-blue-400">
             Generating...
           </span>
         </div>
         <div className="p-4">
           {content ? (
-            <pre className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300 font-mono">
+            <pre className="whitespace-pre-wrap font-mono text-sm text-slate-700 dark:text-slate-300">
               {content}
             </pre>
           ) : (
-            <div className="text-sm text-slate-500 dark:text-slate-400 italic">
+            <div className="text-sm italic text-slate-500 dark:text-slate-400">
               <span className="loading-dots"></span>
             </div>
           )}
@@ -117,4 +116,3 @@ export function processContentWithInlineCards(
 
   return nodes;
 }
-

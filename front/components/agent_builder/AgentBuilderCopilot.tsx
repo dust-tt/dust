@@ -24,6 +24,7 @@ import type {
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { DustError } from "@app/lib/error";
 
 // Hard-coded agent ID for the promptWriter agent
 const PROMPT_WRITER_AGENT_ID = "CFUlTuoqNQ";
@@ -52,13 +53,9 @@ function useCopilotConversation() {
     input: string,
     mentions: MentionType[],
     contentFragments: ContentFragmentsType
-  ): Promise<Result<undefined, any>> => {
+  ): Promise<Result<undefined, DustError>> => {
     if (!user) {
-      return new Err({
-        code: "internal_error",
-        name: "No user",
-        message: "No user found",
-      });
+      return new Err(new DustError("internal_error", "No user found"));
     }
 
     // Ensure the promptWriter agent is always mentioned
@@ -91,11 +88,7 @@ function useCopilotConversation() {
         type: "error",
       });
 
-      return new Err({
-        code: "internal_error",
-        name: result.error.title,
-        message: result.error.message,
-      });
+      return new Err(new DustError("internal_error", result.error.message));
     } else {
       const result = await submitMessage({
         owner,
@@ -114,11 +107,7 @@ function useCopilotConversation() {
         type: "error",
       });
 
-      return new Err({
-        code: "internal_error",
-        name: result.error.title,
-        message: result.error.message,
-      });
+      return new Err(new DustError("internal_error", result.error.message));
     }
   };
 
@@ -191,7 +180,7 @@ export function AgentBuilderCopilot() {
 
   return (
     <div className="flex h-full w-full flex-col" aria-label="Agent copilot">
-      <BlockedActionsProvider owner={owner as any} conversation={conversation}>
+      <BlockedActionsProvider owner={owner} conversation={conversation}>
         <GenerationContextProvider>
           <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
             {conversation && (
@@ -225,7 +214,9 @@ export function AgentBuilderCopilot() {
                 </div>
               ) : (
                 <div className="flex h-full flex-col">
-                  <div className={`flex-1 overflow-y-auto ${currentPanel ? "hidden" : ""}`}>
+                  <div
+                    className={`flex-1 overflow-y-auto ${currentPanel ? "hidden" : ""}`}
+                  >
                     <ConversationViewer
                       owner={owner}
                       user={user}
@@ -255,7 +246,7 @@ export function AgentBuilderCopilot() {
           </div>
 
           <ConversationSidePanelContent
-            conversation={conversation as any}
+            conversation={conversation}
             owner={owner}
             currentPanel={currentPanel}
           />

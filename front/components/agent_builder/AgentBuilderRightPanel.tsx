@@ -202,9 +202,8 @@ export function AgentBuilderRightPanel({
     : hasTemplate
       ? "template"
       : "testing";
-  const [selectedTab, setSelectedTab] = useState<AgentBuilderRightPanelTabType>(
-    defaultTab
-  );
+  const [selectedTab, setSelectedTab] =
+    useState<AgentBuilderRightPanelTabType>(defaultTab);
 
   const handleTogglePanel = () => {
     setIsPreviewPanelOpen(!isPreviewPanelOpen);

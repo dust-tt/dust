@@ -30,7 +30,10 @@ import { FeedbackSelector } from "@app/components/assistant/conversation/Feedbac
 import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
-import { processContentWithInlineCards, type InlineCardsContext } from "@app/components/assistant/conversation/markdown/InlineInstructionsPlugin";
+import {
+  processContentWithInlineCards,
+  type InlineCardsContext,
+} from "@app/components/assistant/conversation/markdown/InlineInstructionsPlugin";
 import {
   CitationsContext,
   CiteBlock,
@@ -579,8 +582,8 @@ export function AgentMessage({
                       onApplyInstructions,
                       currentInstructions,
                       messageId: agentMessage.sId,
-                      isStreaming: streaming &&
-                        lastTokenClassification === "tokens",
+                      isStreaming:
+                        streaming && lastTokenClassification === "tokens",
                     };
 
                     const inlineNodes = processContentWithInlineCards(
