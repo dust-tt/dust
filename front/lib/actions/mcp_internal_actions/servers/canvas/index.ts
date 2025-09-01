@@ -4,14 +4,14 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
+import { augmentCanvasInstructions } from "@app/lib/actions/mcp_internal_actions/servers/canvas/instructions/flavors";
 import {
   CREATE_CANVAS_FILE_TOOL_NAME,
   EDIT_CANVAS_FILE_TOOL_NAME,
   RETRIEVE_CANVAS_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/canvas/types";
 import { validateTailwindCode } from "@app/lib/actions/mcp_internal_actions/servers/canvas/validation";
-import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/cat_tool";
-import { registerListTool } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/list_tool";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -38,7 +38,17 @@ const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
-  const server = makeInternalMCPServer("canvas");
+  // Get base instructions and augment with flavor-specific instructions.
+  const baseInstructions =
+    INTERNAL_MCP_SERVERS.canvas.serverInfo.instructions || "";
+  const augmentedInstructions = augmentCanvasInstructions(
+    baseInstructions,
+    agentLoopContext
+  );
+
+  const server = makeInternalMCPServer("canvas", {
+    augmentedInstructions,
+  });
 
   server.tool(
     CREATE_CANVAS_FILE_TOOL_NAME,
@@ -290,23 +300,25 @@ const createServer = (
     )
   );
 
-  // Register data source file system tools for the Canvas server with custom
-  // descriptions tailored for Canvas use cases (visual assets and templates).
-  registerListTool(auth, server, agentLoopContext, {
-    name: "list_assets",
-    extraDescription:
-      "Browse available visual assets and templates in the connected data sources. " +
-      "Use this to explore folders containing images, icons, slideshow templates, " +
-      "or other resources that can be incorporated into Canvas files.",
-  });
+  // TODO(CONTENT_CREATION 2025-09-01): Register data source file system tools for the Canvas server
+  // once supported in the agent builder.
+  // // Register data source file system tools for the Canvas server with custom
+  // // descriptions tailored for Canvas use cases (visual assets and templates).
+  // registerListTool(auth, server, agentLoopContext, {
+  //   name: "list_assets",
+  //   extraDescription:
+  //     "Browse available visual assets and templates in the connected data sources. " +
+  //     "Use this to explore folders containing images, icons, slideshow templates, " +
+  //     "or other resources that can be incorporated into Canvas files.",
+  // });
 
-  registerCatTool(auth, server, agentLoopContext, {
-    name: "cat_assets",
-    extraDescription:
-      "Read template files or asset configurations from the connected data sources. " +
-      "Use this to retrieve slideshow templates, HTML/CSS snippets, React component examples, " +
-      "or configuration files that can serve as a starting point or be incorporated into Canvas files.",
-  });
+  // registerCatTool(auth, server, agentLoopContext, {
+  //   name: "cat_assets",
+  //   extraDescription:
+  //     "Read template files or asset configurations from the connected data sources. " +
+  //     "Use this to retrieve slideshow templates, HTML/CSS snippets, React component examples, " +
+  //     "or configuration files that can serve as a starting point or be incorporated into Canvas files.",
+  // });
 
   return server;
 };

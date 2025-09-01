@@ -731,11 +731,32 @@ The directive should be used to display a clickable version of the agent name in
       name: "canvas",
       version: "1.0.0",
       description:
-        "Create and update canvas files that users can execute and interact with. Currently supports client-executable code.",
+        "Create interactive content including dashboards with data visualizations, slide presentations, or any custom interactive components. Choose your preferred content type for focused guidance.",
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
       instructions: CANVAS_INSTRUCTIONS,
+      flavors: [
+        {
+          id: "dashboards",
+          name: "Dashboard",
+          description:
+            "Create interactive dashboards with charts, KPIs, and data visualizations",
+          icon: "ActionPieChartIcon",
+        },
+        {
+          id: "slides",
+          name: "Slides",
+          description: "Build slide decks and presentations",
+          icon: "ActionSlideshowIcon",
+        },
+        {
+          id: "other",
+          name: "Others",
+          description: "Create any interactive content with full flexibility",
+          icon: "ActionDocumentTextIcon",
+        },
+      ],
     },
   },
   outlook: {
