@@ -1179,6 +1179,15 @@ export async function microsoftGarbageCollectionActivity({
 
   const chunkedRequests = _.chunk(requests, 20);
 
+  const nodeResources = await MicrosoftNodeResource.fetchByInternalIds(
+    connectorId,
+    nodesToCheck.map((n) => n.internalId)
+  );
+
+  const nodeResourceMap = new Map(
+    nodeResources.map((resource) => [resource.internalId, resource])
+  );
+
   for (const chunk of chunkedRequests) {
     let batchRes: {
       responses: Array<{
@@ -1220,10 +1229,7 @@ export async function microsoftGarbageCollectionActivity({
         const driveOrItem = res.status === 200 ? res.body : null;
 
         // don't delete if we don't have the item in DB / the item have a skip reason
-        const nodeResource = await MicrosoftNodeResource.fetchByInternalId(
-          connectorId,
-          node.internalId
-        );
+        const nodeResource = nodeResourceMap.get(node.internalId);
         if (!nodeResource || nodeResource.skipReason) {
           continue;
         }
