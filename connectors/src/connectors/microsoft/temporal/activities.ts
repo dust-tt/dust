@@ -1218,6 +1218,16 @@ export async function microsoftGarbageCollectionActivity({
       const node = nodesToCheck[Number(res.id)];
       if (node && (res.status === 200 || res.status === 404)) {
         const driveOrItem = res.status === 200 ? res.body : null;
+
+        // don't delete if we don't have the item in DB / the item have a skip reason
+        const nodeResource = await MicrosoftNodeResource.fetchByInternalId(
+          connectorId,
+          node.internalId
+        );
+        if (!nodeResource || nodeResource.skipReason) {
+          continue;
+        }
+
         switch (node.nodeType) {
           case "drive":
             if (!driveOrItem) {
