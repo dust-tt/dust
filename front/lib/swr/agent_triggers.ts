@@ -15,6 +15,7 @@ import type {
   PostTextAsCronRuleRequestBody,
   PostTextAsCronRuleResponseBody,
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/text_as_cron_rule";
+import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
 
 export function useAgentTriggers({
   workspaceId,
@@ -209,6 +210,87 @@ export function useRemoveTriggerSubscriber({
       }
     },
     [workspaceId, agentConfigurationId, sendNotification, mutateTriggers]
+  );
+
+  return removeSubscriber;
+}
+
+export function useUserTriggers({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const userTriggersFetcher: Fetcher<GetUserTriggersResponseBody> = fetcher;
+
+  const { data, error, mutate, isValidating } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/me/triggers`,
+    userTriggersFetcher,
+    { disabled }
+  );
+
+  return {
+    triggers: data?.triggers ?? emptyArray(),
+    isTriggersLoading: !error && !data && !disabled,
+    isTriggersError: error,
+    isTriggersValidating: isValidating,
+    mutateTriggers: mutate,
+  };
+}
+
+export function useRemoveUserTriggerSubscriber({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateTriggers } = useUserTriggers({
+    workspaceId,
+    disabled: true,
+  });
+
+  const removeSubscriber = useCallback(
+    async (
+      triggerId: string,
+      agentConfigurationId: string
+    ): Promise<boolean> => {
+      try {
+        const response = await fetch(
+          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/subscribers`,
+          {
+            method: "DELETE",
+          }
+        );
+
+        if (response.ok) {
+          sendNotification({
+            type: "success",
+            title: "Unsubscribed from trigger",
+            description:
+              "You will no longer receive notifications when this trigger runs.",
+          });
+          void mutateTriggers();
+          return true;
+        } else {
+          const errorData = await getErrorFromResponse(response);
+          sendNotification({
+            type: "error",
+            title: "Failed to unsubscribe",
+            description: `Error: ${errorData.message}`,
+          });
+          return false;
+        }
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to unsubscribe",
+          description: "An unexpected error occurred. Please try again.",
+        });
+        return false;
+      }
+    },
+    [workspaceId, sendNotification, mutateTriggers]
   );
 
   return removeSubscriber;
