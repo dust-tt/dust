@@ -54,7 +54,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-
   if (await isRestrictedFromAgentCreation(owner)) {
     return {
       notFound: true,
