@@ -209,8 +209,8 @@ export function MCPServerViewsSheet({
         ? views
         : views.filter((view) => {
             const term = searchTerm.toLowerCase();
-            return [view.label, view.description, view.name].some((field) =>
-              field?.toLowerCase().includes(term)
+            return [view.label, view.server.description, view.server.name].some(
+              (field) => field?.toLowerCase().includes(term)
             );
           });
 
@@ -517,6 +517,7 @@ export function MCPServerViewsSheet({
               onChange={setSearchTerm}
               name="search-mcp-servers"
               placeholder="Search tools..."
+              className="mt-4"
             />
           )}
           <MCPServerSelectionPage
