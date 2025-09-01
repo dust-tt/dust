@@ -15,8 +15,6 @@ import { useMemo, useState } from "react";
 
 import { AgentTemplateGrid } from "@app/components/agent_builder/AgentTemplateGrid";
 import { AgentTemplateModal } from "@app/components/agent_builder/AgentTemplateModal";
-import type { BuilderFlow } from "@app/components/agent_builder/types";
-import { BUILDER_FLOWS } from "@app/components/agent_builder/types";
 import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
@@ -35,7 +33,6 @@ import type {
 import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  flow: BuilderFlow;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   templateTagsMapping: TemplateTagsType;
@@ -49,24 +46,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const flow: BuilderFlow = BUILDER_FLOWS.includes(
-    context.query.flow as BuilderFlow
-  )
-    ? (context.query.flow as BuilderFlow)
-    : "personal_assistants";
-
   return {
     props: {
       owner,
       subscription,
-      flow,
       templateTagsMapping: TEMPLATES_TAGS_CONFIG,
     },
   };
 });
 
 export default function CreateAgent({
-  flow,
   owner,
   subscription,
   templateTagsMapping,
