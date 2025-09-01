@@ -379,7 +379,7 @@ export function MCPServerViewsSheet({
       const action = getDefaultMCPAction(mcpServerView);
       const isReasoning = requirement.requiresReasoningConfiguration;
       
-      // For Canvas, we need to go through data source selection first
+      // For Canvas, go directly to configuration page with data source section
       if (IS_CANVAS) {
         // Reset form with Canvas defaults BEFORE setting state to ensure sources is initialized
         const canvasDefaults = getDefaultFormValues(mcpServerView);
@@ -387,9 +387,8 @@ export function MCPServerViewsSheet({
         
         setConfigurationTool(action);
         setConfigurationMCPServerView(mcpServerView);
-        setCurrentPageId(TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
-        setHasVisitedDataSourcePage(false);
-        setCanvasDataSourceSkipped(false);
+        setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
+        setHasVisitedDataSourcePage(true); // Mark as visited since we're showing it in configuration
         return;
       }
 
@@ -671,7 +670,7 @@ export function MCPServerViewsSheet({
                 />
 
                 {/* Show selected data sources for Canvas */}
-                {mcpServerView.server.name === "canvas" && mode?.type === "edit" && (
+                {mcpServerView.server.name === "canvas" && (
                   <SelectedDataSourcesSection
                     isEditMode={true}
                     onEditDataSources={() => {
@@ -727,7 +726,7 @@ export function MCPServerViewsSheet({
                   />
 
                   {/* Show selected data sources for Canvas */}
-                  {mcpServerView.server.name === "canvas" && mode?.type === "edit" && (
+                  {mcpServerView.server.name === "canvas" && (
                     <SelectedDataSourcesSection
                       isEditMode={true}
                       onEditDataSources={() => {
@@ -920,37 +919,21 @@ export function MCPServerViewsSheet({
     const isCanvas = mcpServerView?.server.name === "canvas";
     
     if (isDataSourcePage && isCanvas) {
-      // In edit mode, when editing data sources, go back to configuration
-      if (mode?.type === "edit") {
-        return {
-          leftButton: {
-            label: "Cancel",
-            variant: "outline" as const,
-            onClick: () => {
-              setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
-            },
-          },
-          rightButton: {
-            label: "Save",
-            variant: "primary" as const,
-            onClick: () => {
-              setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
-            },
-          },
-        };
-      }
-      
-      // In add mode, show Skip/Next buttons
+      // When selecting data sources for Canvas (from configuration page)
       return {
         leftButton: {
-          label: "Skip",
+          label: "Cancel",
           variant: "outline" as const,
-          onClick: handleDataSourcePageSkip,
+          onClick: () => {
+            setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
+          },
         },
         rightButton: {
-          label: "Next",
+          label: "Done",
           variant: "primary" as const,
-          onClick: handleDataSourcePageNext,
+          onClick: () => {
+            setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
+          },
         },
       };
     }
