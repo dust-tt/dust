@@ -5,11 +5,28 @@ import { useFormContext } from "react-hook-form";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import type { DataSourceViewType } from "@app/types";
 
 interface SelectedDataSourcesSectionProps {
   onEditDataSources?: () => void;
   isEditMode?: boolean;
+}
+
+function getDataSourceIcon(dataSourceView: DataSourceViewType) {
+  // Check if the data source has a connector provider with a custom logo
+  if (
+    dataSourceView.dataSource?.connectorProvider &&
+    CONNECTOR_CONFIGURATIONS[dataSourceView.dataSource.connectorProvider]
+  ) {
+    return CONNECTOR_CONFIGURATIONS[
+      dataSourceView.dataSource.connectorProvider
+    ].getLogoComponent();
+  }
+  
+  // Default to folder icon for data sources without a specific connector
+  return FolderIcon;
 }
 
 export function SelectedDataSourcesSection({
@@ -26,24 +43,42 @@ export function SelectedDataSourcesSection({
       return [];
     }
     
-    // Map the selected source paths to data source views
-    return sources.in.map((item) => {
-      // Parse the path to get the data source view ID
-      const pathParts = item.path.split("/");
-      if (pathParts.length >= 4 && pathParts[2] === "data_sources") {
-        const dataSourceViewId = pathParts[3];
-        const dataSourceView = supportedDataSourceViews.find(
-          (dsv) => dsv.sId === dataSourceViewId
-        );
-        if (dataSourceView) {
-          return {
-            name: getDataSourceNameFromView(dataSourceView),
-            sId: dataSourceView.sId,
-          };
+    // Map the selected source items to data source views
+    const results: Array<{ name: string; sId: string; dataSourceView: DataSourceViewType }> = [];
+    
+    for (const item of sources.in) {
+      // Check if this is a data source type item
+      if (item.type === "data_source" && "dataSourceView" in item) {
+        results.push({
+          name: getDataSourceNameFromView(item.dataSourceView),
+          sId: item.dataSourceView.sId,
+          dataSourceView: item.dataSourceView,
+        });
+      } else if (item.type === "node" && "node" in item) {
+        // If a specific node/folder is selected, we need to find its parent data source
+        // Parse from the path: "root/spaceId/data_sources/dataSourceViewId/..."
+        const pathParts = item.path.split("/");
+        if (pathParts.length >= 4 && pathParts[2] === "data_sources") {
+          const dataSourceViewId = pathParts[3];
+          const dataSourceView = supportedDataSourceViews.find(
+            (dsv) => dsv.sId === dataSourceViewId
+          );
+          if (dataSourceView) {
+            // Check if we already added this data source
+            if (!results.find(r => r.sId === dataSourceView.sId)) {
+              results.push({
+                name: getDataSourceNameFromView(dataSourceView),
+                sId: dataSourceView.sId,
+                dataSourceView: dataSourceView,
+              });
+            }
+          }
         }
       }
-      return null;
-    }).filter(Boolean);
+      // We could also handle "space" and "category" types if needed
+    }
+    
+    return results;
   }, [sources, supportedDataSourceViews]);
 
   if (!isEditMode && (!selectedDataSources || selectedDataSources.length === 0)) {
@@ -68,17 +103,19 @@ export function SelectedDataSourcesSection({
       
       {selectedDataSources.length > 0 ? (
         <div className="flex flex-wrap gap-2">
-          {selectedDataSources.map((ds) => (
-            ds && (
+          {selectedDataSources.map((ds) => {
+            if (!ds) return null;
+            const Icon = getDataSourceIcon(ds.dataSourceView);
+            return (
               <Chip
                 key={ds.sId}
                 label={ds.name}
                 size="sm"
-                icon={FolderIcon}
+                icon={Icon}
                 color="slate"
               />
-            )
-          ))}
+            );
+          })}
         </div>
       ) : (
         <ContentMessage
