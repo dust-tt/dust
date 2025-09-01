@@ -11,6 +11,7 @@ NODE_ENV=development npx concurrently \
   "nodemon --exec 'tsx ./start_worker.ts --workers agent_loop' \
     --watch 'temporal/agent_loop' \
     --watch 'lib/api/assistant' \
+    --watch 'lib/actions' \
     --ext 'ts,js' \
     --signal 'SIGTERM' \
     --delay 5" # 5 seconds delay to avoid restarting the agent loop worker too often.
