@@ -24,10 +24,10 @@ import type {
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { COPILOT_AGENT_SID } from "@app/lib/assistant/copilot";
 import { DustError } from "@app/lib/error";
 
-// Hard-coded agent ID for the promptWriter agent
-const PROMPT_WRITER_AGENT_ID = "CFUlTuoqNQ";
+// Copilot agent id shared constant
 
 function useCopilotConversation() {
   const { owner } = useAgentBuilderContext();
@@ -36,7 +36,7 @@ function useCopilotConversation() {
 
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([
-    { configurationId: PROMPT_WRITER_AGENT_ID },
+    { configurationId: COPILOT_AGENT_SID },
   ]);
 
   const { conversation: swrConversation } = useConversation({
@@ -60,11 +60,11 @@ function useCopilotConversation() {
 
     // Ensure the promptWriter agent is always mentioned
     const hasPromptWriterMention = mentions.some(
-      (m) => m.configurationId === PROMPT_WRITER_AGENT_ID
+      (m) => m.configurationId === COPILOT_AGENT_SID
     );
 
     if (!hasPromptWriterMention) {
-      mentions = [{ configurationId: PROMPT_WRITER_AGENT_ID }, ...mentions];
+      mentions = [{ configurationId: COPILOT_AGENT_SID }, ...mentions];
     }
 
     const messageData = { input, mentions, contentFragments };
@@ -158,7 +158,10 @@ export function AgentBuilderCopilot() {
   // Apply instructions to the current agent
   const handleApplyInstructions = useCallback(
     (instructions: string) => {
-      setValue("instructions", instructions, { shouldValidate: true });
+      setValue("instructions", instructions, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
 
       sendNotification({
         title: "Instructions Applied",

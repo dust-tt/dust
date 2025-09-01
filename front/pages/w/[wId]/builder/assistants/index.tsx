@@ -21,7 +21,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
+// Use quick-create modal for consistency
+import { AgentCreationDialog } from "@app/components/agent_builder/AgentCreationDialog";
 import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
@@ -45,7 +46,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { isAdmin, isBuilder } from "@app/types";
+import { isAdmin, isBuilder, TEMPLATES_TAGS_CONFIG } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 export const AGENT_MANAGER_TABS = [
@@ -135,6 +136,7 @@ export default function WorkspaceAssistants({
   const [selectedTags, setSelectedTags] = useState<TagType[]>([]);
   const [isBatchEdit, setIsBatchEdit] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
+  const [isCreateAgentOpen, setIsCreateAgentOpen] = useState(false);
 
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -301,6 +303,14 @@ export default function WorkspaceAssistants({
         owner={owner}
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
+        {/* Quick Agent Creation Modal (controlled) */}
+        <AgentCreationDialog
+          owner={owner}
+          flow="workspace_assistants"
+          templateTagsMapping={TEMPLATES_TAGS_CONFIG}
+          isOpen={isCreateAgentOpen}
+          onOpenChange={setIsCreateAgentOpen}
+        />
         <AssistantDetails
           owner={owner}
           user={user}
@@ -340,9 +350,11 @@ export default function WorkspaceAssistants({
                     owner={owner}
                   />
                   {!isRestrictedFromAgentCreation && (
-                    <CreateAgentButton
-                      owner={owner}
-                      dataGtmLocation="assistantsWorkspace"
+                    <Button
+                      icon={PlusIcon}
+                      label="Create agent"
+                      variant="highlight"
+                      onClick={() => setIsCreateAgentOpen(true)}
                     />
                   )}
                 </div>
@@ -425,11 +437,11 @@ export default function WorkspaceAssistants({
                 !isRestrictedFromAgentCreation && (
                   <div className="pt-2">
                     <EmptyCallToAction
-                      href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
                       label="Create an agent"
                       icon={PlusIcon}
                       data-gtm-label="assistantCreationButton"
                       data-gtm-location="assistantsWorkspace"
+                      onClick={() => setIsCreateAgentOpen(true)}
                     />
                   </div>
                 )

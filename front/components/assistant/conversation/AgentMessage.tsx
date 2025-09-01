@@ -53,6 +53,7 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
+import { COPILOT_AGENT_SID } from "@app/lib/assistant/copilot";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
 import { RETRY_BLOCKED_ACTIONS_STARTED_EVENT } from "@app/lib/assistant/state/messageReducer";
@@ -575,7 +576,7 @@ export function AgentMessage({
 
                   // Special handling for the copilot agent to render inline instruction cards
                   if (
-                    agentMessage.configuration?.sId === "CFUlTuoqNQ" &&
+                    agentMessage.configuration?.sId === COPILOT_AGENT_SID &&
                     processedContent
                   ) {
                     const inlineContext: InlineCardsContext = {
