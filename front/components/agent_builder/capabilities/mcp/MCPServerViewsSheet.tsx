@@ -48,18 +48,22 @@ import { ChildAgentSection } from "@app/components/agent_builder/capabilities/sh
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
+import { SelectDataSourcesFilters } from "@app/components/agent_builder/capabilities/shared/SelectDataSourcesFilters";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type {
   ActionSpecification,
   AgentBuilderAction,
+  CapabilityFormData,
   ConfigurationPagePageId,
 } from "@app/components/agent_builder/types";
 import {
   getDefaultMCPAction,
   TOOLS_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
+import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
@@ -127,6 +131,7 @@ export function MCPServerViewsSheet({
   actions,
   getAgentInstructions,
 }: MCPServerViewsSheetProps) {
+  const { spaces } = useSpacesContext();
   const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
@@ -328,8 +333,9 @@ export function MCPServerViewsSheet({
   function onClickMCPServer(mcpServerView: MCPServerViewType) {
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
     const requirement = getMCPServerRequirements(mcpServerView);
+    const IS_CANVAS = mcpServerView.server.name === "canvas";
 
-    if (!requirement.noRequirement) {
+    if (!requirement.noRequirement || IS_CANVAS) {
       const action = getDefaultMCPAction(mcpServerView);
       const isReasoning = requirement.requiresReasoningConfiguration;
 
@@ -435,6 +441,14 @@ export function MCPServerViewsSheet({
   // Memoize default values to prevent form recreation
   const defaultFormValues = useMemo<MCPFormData>(() => {
     if (configurationTool?.type === "MCP") {
+      if (mcpServerView?.server.name === "canvas") {
+        return {
+          name: configurationTool.name ?? "",
+          description: configurationTool.description ?? "",
+          configuration: configurationTool.configuration,
+          sources: { in: [], notIn: [] },
+        };
+      }
       return {
         name: configurationTool.name ?? "",
         description: configurationTool.description ?? "",
@@ -453,6 +467,9 @@ export function MCPServerViewsSheet({
     // Prevent form recreation by providing stable shouldUnregister
     shouldUnregister: false,
   });
+
+  console.log("form", form);
+  console.log("defaultFormValues", defaultFormValues);
 
   const requirements = useMemo(
     () => (mcpServerView ? getMCPServerRequirements(mcpServerView) : null),
@@ -535,6 +552,15 @@ export function MCPServerViewsSheet({
                   mcpServerView={mcpServerView}
                   allowNameEdit={!configurationTool.noConfigurationRequired}
                 />
+
+                {mcpServerView.server.name === "canvas" && (
+                  <DataSourceBuilderProvider
+                    spaces={spaces}
+                    initialPageId={"data-source-selection"}
+                  >
+                    <SelectDataSourcesFilters />
+                  </DataSourceBuilderProvider>
+                )}
 
                 {requirements.requiresReasoningConfiguration && (
                   <ReasoningModelSection />

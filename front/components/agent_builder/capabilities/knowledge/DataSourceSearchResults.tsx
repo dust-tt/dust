@@ -184,6 +184,8 @@ export function DataSourceSearchResults({
     [spaces]
   );
 
+  console.log("buildNodePath", buildNodePath);
+
   // Custom isRowSelected for search results that uses the actual node path
   const isSearchRowSelected = useCallback(
     (rowId: string, node: DataSourceViewContentNode) => {

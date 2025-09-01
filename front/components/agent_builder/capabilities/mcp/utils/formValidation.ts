@@ -1,5 +1,8 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+
 import { createMCPFormSchema } from "@app/components/agent_builder/capabilities/mcp/validation/schemaBuilders";
-import type { AgentBuilderAction } from "@app/components/agent_builder/types";
+import type {AgentBuilderAction} from "@app/components/agent_builder/types";
+import { capabilityFormSchema } from "@app/components/agent_builder/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
@@ -13,6 +16,10 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 export function getMCPConfigurationFormSchema(
   mcpServerView: MCPServerViewType | null | undefined
 ) {
+  if (mcpServerView?.server.name === 'canvas') {
+    return zodResolver(capabilityFormSchema)
+  }
+
   const requirements = mcpServerView
     ? getMCPServerRequirements(mcpServerView)
     : null;

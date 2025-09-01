@@ -2,6 +2,7 @@ import groupBy from "lodash/groupBy";
 import { useMemo } from "react";
 
 import { sortMCPServerViewsByPriority } from "@app/components/agent_builder/MCPServerViewsContext";
+import { INTERNAL_KNOWLEDGE_TOOL_SERVER_NAMES } from "@app/components/agent_builder/types";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import type {
@@ -88,17 +89,12 @@ function getGroupedMCPServerViews({
       label: displayName,
     };
   });
-
-  // We show the MCP actions with data sources in Knowledge dropdown,
-  // and the ones without data sources in Tools dropdown.
+  
   const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
     groupBy(mcpServerViewsWithLabel, (view) => {
-      const requirements = getMCPServerRequirements(view);
-
-      const isWithKnowledge =
-        requirements.requiresDataSourceConfiguration ||
-        requirements.requiresDataWarehouseConfiguration ||
-        requirements.requiresTableConfiguration;
+      const isWithKnowledge = INTERNAL_KNOWLEDGE_TOOL_SERVER_NAMES.includes(
+        view.server.name
+      );
 
       return isWithKnowledge
         ? "mcpServerViewsWithKnowledge"

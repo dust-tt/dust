@@ -177,6 +177,7 @@ export function isNodeSelected(
   let hasChildExclusions = false;
 
   for (const notInPath of tree.notIn) {
+    debugger;
     if (isParentOrSamePath(notInPath.path, pathStr)) {
       return false;
     }
