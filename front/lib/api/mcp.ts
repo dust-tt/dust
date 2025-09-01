@@ -86,10 +86,10 @@ export type MCPServerDefinitionType = Omit<
 >;
 
 export type InternalMCPServerFlavorType = {
+  description: string;
+  icon: InternalAllowedIconType;
   id: string;
   name: string;
-  description: string;
-  icon: string;
 };
 
 type InternalMCPServerType = MCPServerType & {

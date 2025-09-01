@@ -1,10 +1,10 @@
-import { BookOpenIcon, Chip, ToolCard } from "@dust-tt/sparkle";
+import { Chip, ToolCard } from "@dust-tt/sparkle";
 import assert from "assert";
-import React from "react";
 import { useController } from "react-hook-form";
 
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
+import { getIcon } from "@app/lib/actions/mcp_icons";
 import type { InternalMCPServerFlavorType } from "@app/lib/api/mcp";
 
 interface FlavorSectionProps {
@@ -36,7 +36,7 @@ export function FlavorSection({ flavors }: FlavorSectionProps) {
             {flavors.map((f, idx) => (
               <ToolCard
                 key={idx}
-                icon={BookOpenIcon}
+                icon={getIcon(f.icon)}
                 label={f.name}
                 description={f.description}
                 isSelected={fieldValue?.includes(f.name)}
