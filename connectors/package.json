@@ -14,7 +14,8 @@
     "tsc": "tsc",
     "cli": "npx tsx src/admin/cli.ts",
     "initdb": "./admin/init_db.sh",
-    "create-db-migration": "./create_db_migration_file.sh"
+    "create-db-migration": "./create_db_migration_file.sh",
+    "teams:create-app": "node create-teams-app.js"
   },
   "dependencies": {
     "@dust-tt/client": "file:../sdks/js",
@@ -39,6 +40,7 @@
     "axios": "^1.7.9",
     "blake3": "^2.1.7",
     "body-parser": "^1.20.2",
+    "∑builder": "^4.23.3",
     "cls-hooked": "^4.2.2",
     "crawlee": "^3.13.3-beta.10",
     "dd-trace": "^5.52.0",

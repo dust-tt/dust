@@ -10,7 +10,7 @@
         "termsOfUseUrl": "https://www.example.com/termofuse"
     },
     "icons": {
-        "color": "dust.png",
+        "color": "color.png",
         "outline": "outline.png"
     },
     "name": {

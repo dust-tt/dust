@@ -42,6 +42,8 @@ export async function botAnswerTeamsMessage(
     conversationId: string;
     activityId: string;
     userId?: string;
+    botContext?: any; // Direct Bot Framework context
+    streamingMessages?: Map<string, string>;
   }
 ): Promise<Result<undefined, Error>> {
   const { tenantId } = params;
@@ -513,11 +515,52 @@ const sendTeamsResponse = async (
     conversationId: string;
     activityId: string;
     userId?: string;
+    botContext?: any;
+    streamingMessages?: Map<string, string>;
   },
   isStreaming: boolean,
   adaptiveCard: any
 ) => {
   try {
+    // If we have direct Bot Framework context, use it directly
+    if (responseCallback.botContext && responseCallback.streamingMessages) {
+      const context = responseCallback.botContext;
+      const streamingMessages = responseCallback.streamingMessages;
+      const conversationId = responseCallback.conversationId;
+
+      if (isStreaming) {
+        // Update existing message for streaming
+        const existingActivityId = streamingMessages.get(conversationId);
+        if (existingActivityId) {
+          try {
+            const updateActivity = {
+              ...adaptiveCard,
+              id: existingActivityId,
+            };
+            await context.updateActivity(updateActivity);
+            return;
+          } catch (updateError) {
+            logger.warn(
+              { error: updateError },
+              "Failed to update streaming message, sending new one"
+            );
+          }
+        }
+
+        // Send new streaming message
+        const sentActivity = await context.sendActivity(adaptiveCard);
+        if (sentActivity?.id) {
+          streamingMessages.set(conversationId, sentActivity.id);
+        }
+      } else {
+        // Final message - send and clean up
+        await context.sendActivity(adaptiveCard);
+        streamingMessages.delete(conversationId);
+      }
+      return;
+    }
+
+    // Fallback to webhook approach (for backward compatibility) -- to remove in the future
     const teamsAppUrl = process.env.TEAMS_APP_URL || "http://localhost:3978";
     const teamsUrl = `${teamsAppUrl}/api/webhook-response`;
 
