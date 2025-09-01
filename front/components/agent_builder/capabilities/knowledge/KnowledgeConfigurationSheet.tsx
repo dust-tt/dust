@@ -109,6 +109,7 @@ export function KnowledgeConfigurationSheet({
         <KnowledgeConfigurationSheetForm
           action={action}
           setIsDirty={setIsDirty}
+          onCancel={handlePageChange}
           {...props}
         />
       )}
@@ -118,6 +119,7 @@ export function KnowledgeConfigurationSheet({
 
 type KnowledgeConfigurationSheetFormProps = KnowledgeConfigurationSheetProps & {
   setIsDirty: (value: boolean) => void;
+  onCancel: () => Promise<void>;
 };
 
 function KnowledgeConfigurationSheetForm({
@@ -129,6 +131,7 @@ function KnowledgeConfigurationSheetForm({
   getAgentInstructions,
   onClose,
   onSave,
+  onCancel,
   setIsDirty,
 }: KnowledgeConfigurationSheetFormProps) {
   const { spaces } = useSpacesContext();
@@ -212,6 +215,7 @@ function KnowledgeConfigurationSheetForm({
           <KnowledgeConfigurationSheetContent
             onSave={form.handleSubmit(handleSave)}
             onClose={onClose}
+            onCancel={onCancel}
             getAgentInstructions={getAgentInstructions}
             isEditing={isEditing}
           />
@@ -224,6 +228,7 @@ function KnowledgeConfigurationSheetForm({
 interface KnowledgeConfigurationSheetContentProps {
   onSave: () => void;
   onClose: () => void;
+  onCancel: () => Promise<void>;
   getAgentInstructions: () => string;
   isEditing: boolean;
 }
@@ -231,6 +236,7 @@ interface KnowledgeConfigurationSheetContentProps {
 function KnowledgeConfigurationSheetContent({
   onSave,
   onClose,
+  onCancel,
   getAgentInstructions,
   isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
@@ -289,21 +295,17 @@ function KnowledgeConfigurationSheetContent({
   const getFooterButtons = () => {
     const isDataSourcePage =
       currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
-    const isConfigurationPage =
-      currentPageId === CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION;
+    const isManageSelectionMode = isDataSourcePage && hasSourceSelection;
 
     return {
       leftButton: {
-        label:
-          isDataSourcePage || (isConfigurationPage && isEditing)
-            ? "Cancel"
-            : "Back",
+        label: "Cancel",
         variant: "outline",
-        onClick: () => {
-          if (isDataSourcePage || (isConfigurationPage && isEditing)) {
-            onClose();
+        onClick: async () => {
+          if (isManageSelectionMode) {
+            setSheetPageId(CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION);
           } else {
-            setSheetPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
+            await onCancel();
           }
         },
       },
