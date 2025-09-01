@@ -12,6 +12,7 @@ import {
   PlusIcon,
   Spinner,
 } from "@dust-tt/sparkle";
+import type { KeyboardEvent } from "react";
 import { useMemo, useState } from "react";
 
 import { useCreateTag, useTags } from "@app/lib/swr/tags";
@@ -116,6 +117,19 @@ export const TagsSelector = ({
 
   const sortedTags = tags.toSorted(tagsSorter);
 
+  const onKeyDown = async (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      if (showCreateOption) {
+        await handleCreateTag(searchText.trim());
+      } else {
+        const allAvailable = [...suggestedFilteredTags, ...otherFilteredTags];
+        if (allAvailable.length > 0) {
+          onAddTag(allAvailable[0]);
+        }
+      }
+    }
+  };
+
   return (
     <div className="space-y-2">
       <div className="flex gap-2">
@@ -141,21 +155,7 @@ export const TagsSelector = ({
               name="input"
               value={searchText}
               onChange={setSearchText}
-              onKeyDown={async (e) => {
-                if (e.key === "Enter") {
-                  if (showCreateOption) {
-                    await handleCreateTag(searchText.trim());
-                  } else {
-                    const allAvailable = [
-                      ...suggestedFilteredTags,
-                      ...otherFilteredTags,
-                    ];
-                    if (allAvailable.length > 0) {
-                      onAddTag(allAvailable[0]);
-                    }
-                  }
-                }
-              }}
+              onKeyDown={onKeyDown}
             />
             <DropdownMenuSeparator />
             <div className="max-h-80 overflow-auto">
