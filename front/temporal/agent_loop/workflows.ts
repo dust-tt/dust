@@ -19,6 +19,7 @@ import type {
   RunAgentArgs,
   RunAgentAsynchronousArgs,
 } from "@app/types/assistant/agent_run";
+import { MAX_MCP_REQUEST_TIMEOUT_MS } from "@app/lib/actions/mcp_internal_actions/constants";
 
 const logMetricsActivities = proxyActivities<
   typeof logAgentLoopMetricsActivities
@@ -33,7 +34,11 @@ const activities: AgentLoopActivities = {
     startToCloseTimeout: "7 minutes",
   }).runModelAndCreateActionsActivity,
   runToolActivity: proxyActivities<typeof runToolActivities>({
-    startToCloseTimeout: "10 minutes",
+    // The activity timeout should be slightly longer than the max timeout of
+    // the tool, to avoid the activity being killed before the tool timeout.
+    startToCloseTimeout: `${
+      MAX_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1
+    } minutes`,
     retry: {
       // Do not retry tool activities. Those are not idempotent.
       maximumAttempts: 1,

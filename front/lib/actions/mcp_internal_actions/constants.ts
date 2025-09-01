@@ -101,6 +101,9 @@ const MCP_SERVER_AVAILABILITY = [
 ] as const;
 export type MCPServerAvailability = (typeof MCP_SERVER_AVAILABILITY)[number];
 
+export const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes.
+export const MAX_MCP_REQUEST_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes.
+
 export const INTERNAL_MCP_SERVERS = {
   // Note:
   // ids should be stable, do not change them when moving internal servers to production as it would break existing agents.
@@ -905,7 +908,7 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    timeoutMs: 10 * 60 * 1000, // 10 minutes
+    timeoutMs: MAX_MCP_REQUEST_TIMEOUT_MS,
     serverInfo: {
       name: "run_agent",
       version: "1.0.0",
