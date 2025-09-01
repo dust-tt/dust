@@ -195,11 +195,22 @@ export default async function createServer(
         )
         .optional()
         .nullable(),
+      conversationId: z
+        .string()
+        .describe("The conversation id to run the agent in.")
+        .optional()
+        .nullable(),
       childAgent:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
     },
     async (
-      { query, childAgent: { uri }, toolsetsToAdd, fileOrContentFragmentIds },
+      {
+        query,
+        childAgent: { uri },
+        toolsetsToAdd,
+        fileOrContentFragmentIds,
+        conversationId,
+      },
       { sendNotification, _meta }
     ) => {
       assert(
@@ -245,6 +256,7 @@ export default async function createServer(
           query,
           toolsetsToAdd: toolsetsToAdd ?? null,
           fileOrContentFragmentIds: fileOrContentFragmentIds ?? null,
+          conversationId: conversationId ?? null,
         }
       );
 
