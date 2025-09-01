@@ -548,7 +548,7 @@ export function MCPServerViewsSheet({
         configurationTool && mcpServerView && requirements && formSchema ? (
           <FormProvider form={form} className="h-full">
             <div className="h-full">
-              <div className="h-full space-y-6">
+              <div className="h-full space-y-6 pt-3">
                 <MCPActionHeader
                   action={configurationTool}
                   mcpServerView={mcpServerView}
