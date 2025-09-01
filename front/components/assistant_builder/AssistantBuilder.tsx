@@ -369,9 +369,11 @@ export default function AssistantBuilder({
     Boolean(template !== null && initialBuilderState?.instructions)
   );
 
-  const modalTitle = agentConfiguration
-    ? `Edit @${builderState.handle}`
-    : "New Agent";
+  const modalTitle = duplicateAgentId
+    ? `Duplicate @${builderState.handle}`
+    : agentConfiguration
+      ? `Edit @${builderState.handle}`
+      : "New Agent";
 
   return (
     <>
