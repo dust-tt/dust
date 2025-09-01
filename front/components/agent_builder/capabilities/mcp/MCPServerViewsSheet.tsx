@@ -59,6 +59,7 @@ import { DustAppSection } from "@app/components/agent_builder/capabilities/share
 import { FlavorSection } from "@app/components/agent_builder/capabilities/shared/FlavorSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
+import { SelectedDataSourcesSection } from "@app/components/agent_builder/capabilities/shared/SelectedDataSourcesSection";
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -271,12 +272,14 @@ export function MCPServerViewsSheet({
         if (mcpServerView) {
           setConfigurationMCPServerView(mcpServerView);
           
-          // For Canvas in edit mode, show data source selection page first
+          // For Canvas in edit mode, go directly to configuration page
+          // The data sources will be shown in the configuration page
+          setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
+          
+          // Mark that we've already visited data source page for Canvas
+          // since we're showing the data sources in the configuration
           if (mcpServerView.server.name === "canvas") {
-            setCurrentPageId(TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
-            setHasVisitedDataSourcePage(false);
-          } else {
-            setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
+            setHasVisitedDataSourcePage(true);
           }
         }
       } else {
@@ -667,6 +670,16 @@ export function MCPServerViewsSheet({
                   allowNameEdit={!configurationTool.noConfigurationRequired}
                 />
 
+                {/* Show selected data sources for Canvas */}
+                {mcpServerView.server.name === "canvas" && mode?.type === "edit" && (
+                  <SelectedDataSourcesSection
+                    isEditMode={true}
+                    onEditDataSources={() => {
+                      setCurrentPageId(TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
+                    }}
+                  />
+                )}
+
                 {requirements.requiresReasoningConfiguration && (
                   <ReasoningModelSection />
                 )}
@@ -712,6 +725,16 @@ export function MCPServerViewsSheet({
                     mcpServerView={mcpServerView}
                     allowNameEdit={!configurationTool.noConfigurationRequired}
                   />
+
+                  {/* Show selected data sources for Canvas */}
+                  {mcpServerView.server.name === "canvas" && mode?.type === "edit" && (
+                    <SelectedDataSourcesSection
+                      isEditMode={true}
+                      onEditDataSources={() => {
+                        setCurrentPageId(TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
+                      }}
+                    />
+                  )}
 
                   {requirements.requiresReasoningConfiguration && (
                     <ReasoningModelSection />
@@ -897,6 +920,27 @@ export function MCPServerViewsSheet({
     const isCanvas = mcpServerView?.server.name === "canvas";
     
     if (isDataSourcePage && isCanvas) {
+      // In edit mode, when editing data sources, go back to configuration
+      if (mode?.type === "edit") {
+        return {
+          leftButton: {
+            label: "Cancel",
+            variant: "outline" as const,
+            onClick: () => {
+              setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
+            },
+          },
+          rightButton: {
+            label: "Save",
+            variant: "primary" as const,
+            onClick: () => {
+              setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
+            },
+          },
+        };
+      }
+      
+      // In add mode, show Skip/Next buttons
       return {
         leftButton: {
           label: "Skip",
