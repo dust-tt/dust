@@ -41,7 +41,8 @@ function serializeNodeToText(node: JSONContent): string {
     // Convert code blocks to markdown format with triple backticks
     const language = node.attrs?.language || "";
     const code = node.content?.map(serializeNodeToText).join("") || "";
-    return `\`\`\`${language}\n${code}\`\`\`\n`;
+    // Code blocks should have exactly one newline before the closing backticks
+    return `\`\`\`${language}\n${code}\n\`\`\`\n`;
   }
 
   if (node.content) {
@@ -72,12 +73,18 @@ function parseInstructionBlocks(text: string): JSONContent[] {
 
       while ((match = codeBlockRegex.exec(segment.content)) !== null) {
         if (match.index > lastIndex) {
-          const textBefore = segment.content.slice(lastIndex, match.index);
-          const nodes = parseTextWithHeadings(textBefore);
-          content.push(...nodes);
+          const textBefore = segment.content.slice(lastIndex, match.index).trim();
+          if (textBefore) {
+            const nodes = parseTextWithHeadings(textBefore);
+            content.push(...nodes);
+          }
         }
         const language = match[1] || "";
-        const code = match[2];
+        // Remove trailing newline from code content if present
+        let code = match[2];
+        if (code && code.endsWith("\n")) {
+          code = code.slice(0, -1);
+        }
         content.push({
           type: "codeBlock",
           attrs: { language },
@@ -88,9 +95,11 @@ function parseInstructionBlocks(text: string): JSONContent[] {
       }
 
       if (lastIndex < segment.content.length) {
-        const remainingText = segment.content.slice(lastIndex);
-        const nodes = parseTextWithHeadings(remainingText);
-        content.push(...nodes);
+        const remainingText = segment.content.slice(lastIndex).trim();
+        if (remainingText) {
+          const nodes = parseTextWithHeadings(remainingText);
+          content.push(...nodes);
+        }
       }
     } else if (segment.type === "block" && segment.blockType) {
       const blockNode = createInstructionBlockNode(
@@ -108,7 +117,8 @@ function parseTextWithHeadings(text: string): JSONContent[] {
   const nodes: JSONContent[] = [];
   const lines = text.split("\n");
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
     if (headingMatch) {
       const level = headingMatch[1].length; // Preserve original level (1–6)
@@ -118,11 +128,22 @@ function parseTextWithHeadings(text: string): JSONContent[] {
         attrs: { level }, // Keep the original heading level
         content: content ? [{ type: "text", text: content }] : [],
       });
-    } else {
+    } else if (line.trim()) {
+      // Only add non-empty paragraphs
       nodes.push({
         type: "paragraph",
-        content: line.trim() ? [{ type: "text", text: line.trim() }] : [],
+        content: [{ type: "text", text: line.trim() }],
       });
+    } else if (i > 0 && i < lines.length - 1) {
+      // Only add empty paragraphs if they're between content (not leading/trailing)
+      const prevLine = lines[i - 1].trim();
+      const nextLine = lines[i + 1].trim();
+      if (prevLine || nextLine) {
+        nodes.push({
+          type: "paragraph",
+          content: [],
+        });
+      }
     }
   }
 
