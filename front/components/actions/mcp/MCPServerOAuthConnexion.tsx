@@ -6,7 +6,7 @@ import {
   DropdownMenuTrigger,
   Input,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
+import { Hoverable } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
@@ -205,13 +205,13 @@ export function MCPServerOAuthConnexion({
           {documentationUrl && (
             <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
               Questions ? Read{" "}
-              <Link
+              <Hoverable
                 href={documentationUrl}
                 target="_blank"
-                className="font-semibold text-highlight-600 dark:text-highlight-600-night"
+                variant="primary"
               >
                 our guide
-              </Link>{" "}
+              </Hoverable>{" "}
               on {OAUTH_PROVIDER_NAMES[authorization.provider]}
             </div>
           )}
