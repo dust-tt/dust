@@ -65,9 +65,19 @@ export function getDefaultConfiguration(
  * @returns Default form data object
  */
 export function getDefaultFormValues(mcpServerView: MCPServerViewType | null) {
-  return {
+  const baseValues = {
     name: "",
     description: "",
     configuration: getDefaultConfiguration(mcpServerView),
   };
+  
+  // For Canvas, include the sources field with proper initialization
+  if (mcpServerView?.server.name === "canvas") {
+    return {
+      ...baseValues,
+      sources: { in: [], notIn: [] },
+    };
+  }
+  
+  return baseValues;
 }

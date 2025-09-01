@@ -106,7 +106,8 @@ export function KnowledgeFooter() {
 
   const { field } = useSourcesFormController();
 
-  if (field.value.in.length <= 0) {
+  // Handle case where field.value is not yet initialized
+  if (!field.value || !field.value.in || field.value.in.length <= 0) {
     return <></>;
   }
 

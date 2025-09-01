@@ -17,7 +17,7 @@ export function getMCPConfigurationFormSchema(
   mcpServerView: MCPServerViewType | null | undefined
 ) {
   if (mcpServerView?.server.name === 'canvas') {
-    return zodResolver(capabilityFormSchema)
+    return capabilityFormSchema;
   }
 
   const requirements = mcpServerView

@@ -17,6 +17,10 @@ import type {
   MCPFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import {
+  transformSelectionConfigurationsToTree,
+  transformTreeToSelectionConfigurations,
+} from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
@@ -48,7 +52,7 @@ import { ChildAgentSection } from "@app/components/agent_builder/capabilities/sh
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
-import { SelectDataSourcesFilters } from "@app/components/agent_builder/capabilities/shared/SelectDataSourcesFilters";
+import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -56,7 +60,6 @@ import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type {
   ActionSpecification,
   AgentBuilderAction,
-  CapabilityFormData,
   ConfigurationPagePageId,
 } from "@app/components/agent_builder/types";
 import {
@@ -64,7 +67,9 @@ import {
   TOOLS_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
 import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
+import { FormProvider as RHFFormProvider } from "react-hook-form";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
@@ -135,6 +140,7 @@ export function MCPServerViewsSheet({
   const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
+  const { supportedDataSourceViews } = useDataSourceViewsContext();
   const {
     mcpServerViews: allMcpServerViews,
     defaultMCPServerViews,
@@ -153,6 +159,10 @@ export function MCPServerViewsSheet({
   );
   const [configurationTool, setConfigurationTool] =
     useState<AgentBuilderAction | null>(getInitialConfigurationTool(mode));
+  
+  // State for Canvas data source flow
+  const [, setCanvasDataSourceSkipped] = useState(false);
+  const [, setHasVisitedDataSourcePage] = useState(false);
 
   const [configurationMCPServerView, setConfigurationMCPServerView] =
     useState<MCPServerViewType | null>(null);
@@ -338,6 +348,20 @@ export function MCPServerViewsSheet({
     if (!requirement.noRequirement || IS_CANVAS) {
       const action = getDefaultMCPAction(mcpServerView);
       const isReasoning = requirement.requiresReasoningConfiguration;
+      
+      // For Canvas, we need to go through data source selection first
+      if (IS_CANVAS) {
+        // Reset form with Canvas defaults BEFORE setting state to ensure sources is initialized
+        const canvasDefaults = getDefaultFormValues(mcpServerView);
+        form.reset(canvasDefaults);
+        
+        setConfigurationTool(action);
+        setConfigurationMCPServerView(mcpServerView);
+        setCurrentPageId(TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
+        setHasVisitedDataSourcePage(false);
+        setCanvasDataSourceSkipped(false);
+        return;
+      }
 
       let configuredAction = action;
       if (action.type === "MCP" && isReasoning) {
@@ -439,15 +463,21 @@ export function MCPServerViewsSheet({
   );
 
   // Memoize default values to prevent form recreation
-  const defaultFormValues = useMemo<MCPFormData>(() => {
+  const defaultFormValues = useMemo(() => {
     if (configurationTool?.type === "MCP") {
       if (mcpServerView?.server.name === "canvas") {
+        // For Canvas, extract data sources from configuration if editing
+        const dataSourceConfigurations = configurationTool.configuration?.dataSourceConfigurations;
+        const sources = dataSourceConfigurations
+          ? transformSelectionConfigurationsToTree(dataSourceConfigurations)
+          : { in: [], notIn: [] };
+        
         return {
           name: configurationTool.name ?? "",
           description: configurationTool.description ?? "",
           configuration: configurationTool.configuration,
-          sources: { in: [], notIn: [] },
-        };
+          sources,
+        } as any; // Type cast to handle the dynamic sources field
       }
       return {
         name: configurationTool.name ?? "",
@@ -460,10 +490,10 @@ export function MCPServerViewsSheet({
   }, [configurationTool, mcpServerView]);
 
   // Create stable form instance with conditional resolver
-  const form = useForm<MCPFormData>({
+  const form = useForm({
     resolver: formSchema ? zodResolver(formSchema) : undefined,
     mode: "onSubmit",
-    defaultValues: defaultFormValues,
+    defaultValues: defaultFormValues as any,
     // Prevent form recreation by providing stable shouldUnregister
     shouldUnregister: false,
   });
@@ -485,11 +515,24 @@ export function MCPServerViewsSheet({
   useEffect(() => {
     resetFormValues(form);
   }, [resetFormValues, form]);
+  
+  // Initialize form for Canvas when configuration changes
+  useEffect(() => {
+    if (mcpServerView?.server.name === "canvas" && configurationTool) {
+      // Ensure sources field is initialized for Canvas
+      const currentValues = form.getValues();
+      if (!currentValues.sources) {
+        form.setValue("sources" as any, { in: [], notIn: [] });
+      }
+    }
+  }, [mcpServerView, configurationTool, form]);
 
   const resetToSelection = useCallback(() => {
     setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);
     setConfigurationTool(null);
     setConfigurationMCPServerView(null);
+    setHasVisitedDataSourcePage(false);
+    setCanvasDataSourceSkipped(false);
   }, []);
 
   const resetSheet = useCallback(() => {
@@ -497,6 +540,28 @@ export function MCPServerViewsSheet({
     setSearchTerm("");
     resetToSelection();
   }, [resetToSelection]);
+  
+  // Handle navigation from data source page to configuration
+  const handleDataSourcePageNext = useCallback(() => {
+    setHasVisitedDataSourcePage(true);
+    setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
+  }, []);
+  
+  // Handle skip button on data source page
+  const handleDataSourcePageSkip = useCallback(() => {
+    setCanvasDataSourceSkipped(true);
+    setHasVisitedDataSourcePage(true);
+    setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
+  }, []);
+
+  // Determine if we need DataSourceBuilderProvider based on current state
+  const needsDataSourceProvider = useMemo(() => {
+    return (
+      mcpServerView?.server.name === "canvas" &&
+      (currentPageId === TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION ||
+        currentPageId === TOOLS_SHEET_PAGE_IDS.CONFIGURATION)
+    );
+  }, [mcpServerView, currentPageId]);
 
   const pages: MultiPageSheetPage[] = [
     {
@@ -538,13 +603,33 @@ export function MCPServerViewsSheet({
         ) : undefined,
     },
     {
+      id: TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
+      title: "Select Data Sources (Optional)",
+      description: "Choose data sources for Canvas to access",
+      icon: undefined,
+      noScroll: true,
+      content:
+        mcpServerView?.server.name === "canvas" ? (
+          <DataSourceBuilderSelector
+            dataSourceViews={supportedDataSourceViews}
+            owner={owner}
+            viewType="all"
+          />
+        ) : (
+          <div className="flex h-40 w-full items-center justify-center">
+            <Spinner />
+          </div>
+        ),
+    },
+    {
       id: TOOLS_SHEET_PAGE_IDS.CONFIGURATION,
       title: mcpServerView?.name || "Configure Tool",
       description: "",
       icon: undefined,
       content:
         configurationTool && mcpServerView && requirements && formSchema ? (
-          <FormProvider form={form} className="h-full">
+          needsDataSourceProvider ? (
+            // Content without FormProvider wrapper since it's provided at a higher level
             <div className="h-full">
               <div className="h-full space-y-6">
                 <MCPActionHeader
@@ -552,15 +637,6 @@ export function MCPServerViewsSheet({
                   mcpServerView={mcpServerView}
                   allowNameEdit={!configurationTool.noConfigurationRequired}
                 />
-
-                {mcpServerView.server.name === "canvas" && (
-                  <DataSourceBuilderProvider
-                    spaces={spaces}
-                    initialPageId={"data-source-selection"}
-                  >
-                    <SelectDataSourcesFilters />
-                  </DataSourceBuilderProvider>
-                )}
 
                 {requirements.requiresReasoningConfiguration && (
                   <ReasoningModelSection />
@@ -593,7 +669,50 @@ export function MCPServerViewsSheet({
                 />
               </div>
             </div>
-          </FormProvider>
+          ) : (
+            // Non-canvas tools keep their FormProvider
+            <FormProvider form={form} className="h-full">
+              <div className="h-full">
+                <div className="h-full space-y-6">
+                  <MCPActionHeader
+                    action={configurationTool}
+                    mcpServerView={mcpServerView}
+                    allowNameEdit={!configurationTool.noConfigurationRequired}
+                  />
+
+                  {requirements.requiresReasoningConfiguration && (
+                    <ReasoningModelSection />
+                  )}
+
+                  {requirements.requiresChildAgentConfiguration && (
+                    <ChildAgentSection />
+                  )}
+
+                  {requirements.mayRequireTimeFrameConfiguration && (
+                    <TimeFrameSection actionType="search" />
+                  )}
+
+                  {requirements.requiresDustAppConfiguration && (
+                    <DustAppSection />
+                  )}
+
+                  {requirements.mayRequireJsonSchemaConfiguration && (
+                    <JsonSchemaSection
+                      getAgentInstructions={getAgentInstructions}
+                    />
+                  )}
+
+                  <AdditionalConfigurationSection
+                    requiredStrings={requirements.requiredStrings}
+                    requiredNumbers={requirements.requiredNumbers}
+                    requiredBooleans={requirements.requiredBooleans}
+                    requiredEnums={requirements.requiredEnums}
+                    requiredLists={requirements.requiredLists}
+                  />
+                </div>
+              </div>
+            </FormProvider>
+          )
         ) : (
           <div className="flex h-40 w-full items-center justify-center">
             <Spinner />
@@ -632,15 +751,15 @@ export function MCPServerViewsSheet({
 
   const currentMode = mode?.type ?? "add";
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setIsOpen(false);
     onModeChange(null);
     if (currentMode) {
       resetSheet();
     }
-  };
+  }, [currentMode, onModeChange, resetSheet]);
 
-  const handleConfigurationSave = async (formData: MCPFormData) => {
+  const handleConfigurationSave = useCallback(async (formData: MCPFormData) => {
     if (!configurationTool || !form || !mcpServerView) {
       return;
     }
@@ -667,11 +786,27 @@ export function MCPServerViewsSheet({
           ? configurationTool.name
           : formData.name;
 
+      // For Canvas, include data source configurations
+      let finalConfiguration = formData.configuration;
+      if (mcpServerView.server.name === "canvas" && 'sources' in formData) {
+        const sources = (formData as any).sources;
+        if (sources && typeof sources === 'object' && 'in' in sources && 'notIn' in sources) {
+          const dataSourceConfigurations = transformTreeToSelectionConfigurations(
+            sources,
+            supportedDataSourceViews
+          );
+          finalConfiguration = {
+            ...formData.configuration,
+            dataSourceConfigurations,
+          };
+        }
+      }
+
       const configuredAction: AgentBuilderAction = {
         ...configurationTool,
         name: newActionName,
         description: formData.description,
-        configuration: formData.configuration,
+        configuration: finalConfiguration,
       };
 
       handleConfigurationSaveUtil({
@@ -699,23 +834,89 @@ export function MCPServerViewsSheet({
         type: "error",
       });
     }
-  };
+  }, [
+    configurationTool,
+    form,
+    mcpServerView,
+    mode,
+    defaultFormValues,
+    actions,
+    selectedToolsInSheet,
+    onActionUpdate,
+    onModeChange,
+    sendNotification,
+    supportedDataSourceViews,
+  ]);
 
-  const footerButtons = getFooterButtons({
+  
+  const footerButtons = useMemo(() => {
+    const isDataSourcePage = currentPageId === TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
+    const isCanvas = mcpServerView?.server.name === "canvas";
+    
+    if (isDataSourcePage && isCanvas) {
+      return {
+        leftButton: {
+          label: "Skip",
+          variant: "outline" as const,
+          onClick: handleDataSourcePageSkip,
+        },
+        rightButton: {
+          label: "Next",
+          variant: "primary" as const,
+          onClick: handleDataSourcePageNext,
+        },
+      };
+    }
+    
+    return getFooterButtons({
+      currentPageId,
+      modeType: currentMode,
+      selectedToolsInSheet,
+      form,
+      onCancel: handleCancel,
+      onModeChange,
+      onAddSelectedTools: () => {
+        handleAddSelectedTools();
+        setIsOpen(false);
+        onModeChange(null);
+      },
+      onConfigurationSave: handleConfigurationSave,
+      resetToSelection,
+    });
+  }, [
     currentPageId,
-    modeType: currentMode,
+    currentMode,
     selectedToolsInSheet,
     form,
-    onCancel: handleCancel,
+    handleCancel,
     onModeChange,
-    onAddSelectedTools: () => {
-      handleAddSelectedTools();
-      setIsOpen(false);
-      onModeChange(null);
-    },
-    onConfigurationSave: handleConfigurationSave,
+    handleAddSelectedTools,
+    handleConfigurationSave,
     resetToSelection,
-  });
+    mcpServerView,
+    handleDataSourcePageNext,
+    handleDataSourcePageSkip,
+  ]);
+
+  const sheetContent = (
+    <MultiPageSheetContent
+      className="h-full"
+      showNavigation={false}
+      showHeaderNavigation={false}
+      size="xl"
+      pages={pages}
+      currentPageId={currentPageId}
+      onPageChange={(pageId) => {
+        if (pageId === TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION) {
+          resetToSelection();
+        } else {
+          setCurrentPageId(pageId as ConfigurationPagePageId);
+        }
+      }}
+      addFooterSeparator
+      {...footerButtons}
+    />
+  );
 
   return (
     <MultiPageSheet
@@ -732,23 +933,22 @@ export function MCPServerViewsSheet({
         }
       }}
     >
-      <MultiPageSheetContent
-        className="h-full"
-        showNavigation={false}
-        showHeaderNavigation={false}
-        size="xl"
-        pages={pages}
-        currentPageId={currentPageId}
-        onPageChange={(pageId) => {
-          if (pageId === TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION) {
-            resetToSelection();
-          } else {
-            setCurrentPageId(pageId as ConfigurationPagePageId);
-          }
-        }}
-        addFooterSeparator
-        {...footerButtons}
-      />
+      {needsDataSourceProvider ? (
+        <RHFFormProvider {...form}>
+          <DataSourceBuilderProvider
+            spaces={spaces}
+            initialPageId={
+              currentPageId === TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION
+                ? "data-source-selection"
+                : "configuration"
+            }
+          >
+            {sheetContent}
+          </DataSourceBuilderProvider>
+        </RHFFormProvider>
+      ) : (
+        sheetContent
+      )}
     </MultiPageSheet>
   );
 }
