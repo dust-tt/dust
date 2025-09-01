@@ -91,18 +91,18 @@ export function AgentTriggersTab({
               key={trigger.sId}
               className="flex w-full flex-row items-center justify-between"
             >
-              <div className="flex flex-row gap-2">
-                <Icon
-                  visual={trigger.kind === "schedule" ? ClockIcon : BellIcon}
-                />
-                <div className="flex flex-col">
+              <div className="flex flex-col gap-1">
+                <div className="flex flex-row items-center gap-2">
+                  <Icon
+                    visual={trigger.kind === "schedule" ? ClockIcon : BellIcon}
+                  />
                   <div className="font-medium">{trigger.name}</div>
-                  {trigger.kind === "schedule" && (
-                    <div className="text-sm text-muted-foreground">
-                      {cronstrue.toString(trigger.configuration.cron)}
-                    </div>
-                  )}
                 </div>
+                {trigger.kind === "schedule" && (
+                  <div className="text-sm text-muted-foreground">
+                    {cronstrue.toString(trigger.configuration.cron)}
+                  </div>
+                )}
               </div>
               <div className="self-end">
                 {trigger.isEditor ? (
