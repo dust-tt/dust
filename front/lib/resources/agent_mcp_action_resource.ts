@@ -28,7 +28,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
@@ -149,6 +149,22 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       },
       transaction
     );
+    return action;
+  }
+
+  static async fetchById(
+    auth: Authenticator,
+    sId: string
+  ): Promise<AgentMCPActionResource | null> {
+    const modelId = getResourceIdFromSId(sId);
+    if (!modelId) {
+      return null;
+    }
+
+    const [action] = await AgentMCPActionResource.fetchByModelIds(auth, [
+      modelId,
+    ]);
+
     return action;
   }
 
