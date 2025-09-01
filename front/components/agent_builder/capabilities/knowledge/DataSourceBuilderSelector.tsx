@@ -164,7 +164,7 @@ export const DataSourceBuilderSelector = ({
   }
 
   return (
-    <div className="relative flex h-full flex-1 flex-col gap-4">
+    <div className="relative flex h-full flex-1 flex-col gap-4 pt-2">
       {breadcrumbItems.length > 1 && <Breadcrumbs items={breadcrumbItems} />}
 
       {currentNavigationEntry.type === "root" ? (
