@@ -730,7 +730,7 @@ The directive should be used to display a clickable version of the agent name in
       name: "canvas",
       version: "1.0.0",
       description:
-        "Create and update content files that users can execute and interact with. Currently supports client-executable code.",
+        "Create interactive content including dashboards with data visualizations, slide presentations, or any custom interactive components. Choose your preferred content type for focused guidance.",
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,

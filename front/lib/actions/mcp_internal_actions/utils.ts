@@ -14,7 +14,9 @@ export function makeInternalMCPServer(
   }
 ): McpServer {
   const { serverInfo } = INTERNAL_MCP_SERVERS[serverName];
-  const instructions = options?.augmentedInstructions ?? serverInfo.instructions ?? undefined;
+  const instructions =
+    options?.augmentedInstructions ?? serverInfo.instructions ?? undefined;
+
   return new McpServer(serverInfo, {
     instructions,
   });
