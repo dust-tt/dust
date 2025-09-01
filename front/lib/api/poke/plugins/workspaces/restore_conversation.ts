@@ -2,6 +2,7 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types";
 
 export const restoreConversationPlugin = createPlugin({
@@ -134,22 +135,30 @@ export const restoreConversationPlugin = createPlugin({
         });
       }
 
-      const restoredConversations = [];
-      for (const conversationData of deletedConversations) {
-        const conversation = await ConversationResource.fetchById(
-          auth,
-          conversationData.sId,
-          { includeDeleted: true }
-        );
-        if (conversation) {
-          await conversation.updateVisibilityToUnlisted();
-          restoredConversations.push(conversation);
-        }
-      }
+      const restoredConversations = await concurrentExecutor(
+        deletedConversations,
+        async (conversationData) => {
+          const conversation = await ConversationResource.fetchById(
+            auth,
+            conversationData.sId,
+            { includeDeleted: true }
+          );
+          if (conversation) {
+            await conversation.updateVisibilityToUnlisted();
+            return conversation;
+          }
+          return null;
+        },
+        { concurrency: 10 }
+      );
+
+      const successfullyRestored = restoredConversations.filter(
+        (c) => c !== null
+      );
 
       return new Ok({
         display: "text",
-        value: `Restored ${restoredConversations.length} conversations for user ${userEmail}`,
+        value: `Restored ${successfullyRestored.length} conversations for user ${userEmail}`,
       });
     }
   },
