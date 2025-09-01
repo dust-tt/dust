@@ -28,8 +28,9 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { removeNulls } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
@@ -53,6 +54,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     readonly stepContent: NonAttribute<AgentStepContentModel>,
     readonly metadata: {
       internalMCPServerName: InternalMCPServerNameType | null;
+      mcpServerId: string;
     }
   ) {
     super(model, blob);
@@ -91,12 +93,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
       // Each action must have a step content.
       assert(stepContent, "Step content not found.");
-      const internalMCPServerName = getInternalMCPServerNameFromSId(
-        a.toolConfiguration.toolServerId
-      );
+      const internalMCPServerName = a.toolConfiguration.toolServerId
+        ? getInternalMCPServerNameFromSId(a.toolConfiguration.toolServerId)
+        : null;
 
       return new this(this.model, a.get(), stepContent, {
         internalMCPServerName,
+        mcpServerId: a.toolConfiguration.toolServerId,
       });
     });
   }
@@ -130,6 +133,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     return new this(this.model, action.get(), stepContent, {
       internalMCPServerName,
+      mcpServerId: blob.toolConfiguration.toolServerId,
     });
   }
 
@@ -145,6 +149,22 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       },
       transaction
     );
+    return action;
+  }
+
+  static async fetchById(
+    auth: Authenticator,
+    sId: string
+  ): Promise<AgentMCPActionResource | null> {
+    const modelId = getResourceIdFromSId(sId);
+    if (!modelId) {
+      return null;
+    }
+
+    const [action] = await AgentMCPActionResource.fetchByModelIds(auth, [
+      modelId,
+    ]);
+
     return action;
   }
 
@@ -257,7 +277,18 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         ? mcpServerViewMap.get(action.toolConfiguration.mcpServerViewId)
         : null;
 
-      blockedActionsList.push({
+      const authorizationInfo =
+        mcpServerView?.toJSON().server.authorization ?? null;
+
+      const mcpServerId = mcpServerView?.mcpServerId;
+      const mcpServerDisplayName = mcpServerView
+        ? getMcpServerViewDisplayName(mcpServerView.toJSON())
+        : undefined;
+
+      const baseActionParams: Omit<
+        BlockedToolExecution,
+        "status" | "authorizationInfo"
+      > = {
         messageId: agentMessage.message.sId,
         conversationId,
         actionId: this.modelIdToSId({
@@ -271,14 +302,46 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           mcpServerName: action.toolConfiguration.mcpServerName,
           agentName: agentConfiguration.name,
           icon: action.toolConfiguration.icon,
-          mcpServerId: mcpServerView?.mcpServerId,
-          mcpServerDisplayName: mcpServerView
-            ? getMcpServerViewDisplayName(mcpServerView.toJSON())
-            : undefined,
         },
-        status: action.status,
-        authorizationInfo: mcpServerView?.toJSON().server.authorization ?? null,
-      });
+      };
+
+      if (action.status === "blocked_authentication_required") {
+        if (!mcpServerId || !mcpServerDisplayName || !authorizationInfo) {
+          logger.warn(
+            {
+              actionId: action.id,
+              conversationId,
+              messageId: agentMessage.message.sId,
+              workspaceId: owner.id,
+            },
+            `MCP server view or authorization info not found for blocked action ${action.id}`
+          );
+
+          continue;
+        }
+
+        blockedActionsList.push({
+          ...baseActionParams,
+          status: action.status,
+          authorizationInfo,
+          metadata: {
+            ...baseActionParams.metadata,
+            mcpServerId,
+            mcpServerDisplayName,
+          },
+        });
+      } else {
+        blockedActionsList.push({
+          ...baseActionParams,
+          status: action.status,
+          metadata: {
+            ...baseActionParams.metadata,
+            mcpServerId,
+            mcpServerDisplayName,
+          },
+          authorizationInfo: null,
+        });
+      }
     }
 
     return blockedActionsList;
@@ -329,19 +392,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     return {
       agentMessageId: this.agentMessageId,
-      citationsAllocated: this.citationsAllocated,
-      functionCallId: this.stepContent.value.value.id,
       functionCallName: this.stepContent.value.value.name,
       id: this.id,
       internalMCPServerName: this.metadata.internalMCPServerName,
-      mcpServerConfigurationId: this.mcpServerConfigurationId,
+      mcpServerId: this.metadata.mcpServerId,
       params: this.augmentedInputs,
       status: this.status,
-      stepContentId: this.stepContentId,
-      stepContext: this.stepContext,
-      toolConfiguration: this.toolConfiguration,
-      version: this.version,
-      workspaceId: this.workspaceId,
     };
   }
 

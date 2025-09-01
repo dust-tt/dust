@@ -19,7 +19,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { LightWorkspaceType, ModelId, Result } from "@app/types";
+import type { ModelId, Result } from "@app/types";
 import {
   Err,
   formatUserFullName,
@@ -220,15 +220,11 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
 
   // Deletion.
 
-  static async deleteAllForWorkspace(
-    workspace: LightWorkspaceType,
-    transaction?: Transaction
-  ) {
+  static async deleteAllForWorkspace(auth: Authenticator) {
     return this.model.destroy({
       where: {
-        workspaceId: workspace.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
-      transaction,
     });
   }
 

@@ -22,6 +22,8 @@ import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
 import * as utilsAll from "@viz/lib/utils";
 import * as shadcnAll from "@viz/components/ui";
+import * as lucideAll from "lucide-react";
+import * as dustSlideshowV1 from "@viz/components/dust/slideshow/v1";
 
 // Regular expression to capture the value inside a className attribute. This pattern assumes
 // double quotes for simplicity.
@@ -316,6 +318,8 @@ export function VisualizationWrapper({
                 recharts: rechartsAll,
                 shadcn: shadcnAll,
                 utils: utilsAll,
+                "lucide-react": lucideAll,
+                "@dust/slideshow/v1": dustSlideshowV1,
                 "@dust/generated-code": importCode(fetchedCode, {
                   import: {
                     papaparse: papaparseAll,
@@ -323,6 +327,8 @@ export function VisualizationWrapper({
                     recharts: rechartsAll,
                     shadcn: shadcnAll,
                     utils: utilsAll,
+                    "lucide-react": lucideAll,
+                    "@dust/slideshow/v1": dustSlideshowV1,
                     "@dust/react-hooks": {
                       triggerUserFileDownload: memoizedDownloadFile,
                       useFile: (fileId: string) => useFile(fileId, fetchFile),

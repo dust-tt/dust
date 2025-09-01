@@ -1,6 +1,6 @@
 import {
   Button,
-  Chip,
+  ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -8,6 +8,7 @@ import {
   Hoverable,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo } from "react";
+import React from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -41,6 +42,26 @@ function isRemoteDatabaseItem(item: DataSourceBuilderTreeItemType): boolean {
   );
 }
 
+function isTableItem(item: DataSourceBuilderTreeItemType): boolean {
+  return item.type === "node" && item.node.type === "table";
+}
+
+function isRemoteDatabaseOrTableItem(
+  item: DataSourceBuilderTreeItemType
+): boolean {
+  return isRemoteDatabaseItem(item) || isTableItem(item);
+}
+
+function isNonTableDataItem(item: DataSourceBuilderTreeItemType): boolean {
+  return (
+    (item.type === "data_source" &&
+      !isRemoteDatabase(item.dataSourceView.dataSource)) ||
+    (item.type === "node" &&
+      item.node.type !== "table" &&
+      !isRemoteDatabase(item.node.dataSourceView.dataSource))
+  );
+}
+
 export function ProcessingMethodSection() {
   const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
@@ -52,149 +73,122 @@ export function ProcessingMethodSection() {
   const { setValue } = useFormContext<CapabilityFormData>();
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
 
-  const dataWarehouseServer = useMemo(
-    () =>
-      mcpServerViewsWithKnowledge.find(
-        (serverView) =>
-          serverView.serverType === "internal" &&
-          serverView.server.name === DATA_WAREHOUSE_SERVER_NAME
-      ),
-    [mcpServerViewsWithKnowledge]
-  );
-
-  const tablesQueryServers = useMemo(
-    () =>
-      mcpServerViewsWithKnowledge.filter(
-        (serverView) =>
-          serverView.serverType === "internal" &&
-          tablesServer.includes(serverView.server.name)
-      ),
-    [mcpServerViewsWithKnowledge]
-  );
-
-  const [serversToDisplay, displayWarningTableQuery] = useMemo((): [
+  const [serversToDisplay, warningContent] = useMemo((): [
     MCPServerViewTypeWithLabel[] | null,
-    boolean,
+    React.ReactNode | null,
   ] => {
     if (sources.in.length <= 0) {
-      return [null, false];
+      return [null, null];
     }
 
-    const onlyRemote = sources.in.every(isRemoteDatabaseItem);
-    if (onlyRemote) {
-      if (dataWarehouseServer) {
-        return [[dataWarehouseServer, ...tablesQueryServers], false];
+    // Check if current server selection creates a warning condition
+    let warning: React.ReactNode | null = null;
+
+    if (mcpServerView) {
+      const isTableOrWarehouseServer =
+        tablesServer.includes(mcpServerView.server.name) ||
+        mcpServerView.server.name === DATA_WAREHOUSE_SERVER_NAME;
+
+      if (isTableOrWarehouseServer) {
+        // Warning for tables query or data warehouse servers with non-table data
+        if (sources.in.some(isNonTableDataItem)) {
+          warning = (
+            <>
+              <strong>{getMcpServerViewDisplayName(mcpServerView)}</strong> will
+              ignore text documents and files in your selection. Create a
+              separated knowledge tools if you need both.
+            </>
+          );
+        }
+      } else {
+        // Warning for non-table servers with only remote databases and/or tables
+        if (sources.in.every(isRemoteDatabaseOrTableItem)) {
+          warning = (
+            <>
+              <strong>{getMcpServerViewDisplayName(mcpServerView)}</strong> will
+              ignore tables in your selection. Switch processing method if you
+              want to use your structured data.
+            </>
+          );
+        }
       }
-      return [tablesQueryServers, false];
     }
 
-    const onlyTableQueries = sources.in.every(
-      (item) =>
-        (item.type === "node" && item.node.type === "table") ||
-        isRemoteDatabaseItem(item)
-    );
-    if (onlyTableQueries) {
-      return [tablesQueryServers, false];
-    }
-
-    return [
-      mcpServerViewsWithKnowledge.filter(
-        (serverView) =>
-          serverView.server.name !== DATA_WAREHOUSE_SERVER_NAME &&
-          !tablesServer.includes(serverView.server.name)
-      ),
-      sources.in.some(
-        (item) =>
-          (item.type === "data_source" &&
-            isRemoteDatabase(item.dataSourceView.dataSource)) ||
-          (item.type === "node" &&
-            isRemoteDatabase(item.node.dataSourceView.dataSource)) ||
-          (item.type === "node" && item.node.type === "table")
-      ),
-    ];
-  }, [
-    dataWarehouseServer,
-    mcpServerViewsWithKnowledge,
-    sources.in,
-    tablesQueryServers,
-  ]);
+    return [mcpServerViewsWithKnowledge, warning];
+  }, [mcpServerViewsWithKnowledge, sources.in, mcpServerView]);
 
   useEffect(() => {
-    // Check if current mcpServerView is not in the serversToDisplay list
-    const currentServerNotInList =
-      mcpServerView && serversToDisplay
-        ? !serversToDisplay.some((server) => server.id === mcpServerView.id)
-        : false;
-
-    // Update mcpServerView only in specific cases:
-    // 1. mcpServerView is null
-    // 2. list of serversToDisplay doesn't include the current mcpServerView
-    // Note: sources.in changes are automatically handled by the effect dependency array
-    const shouldUpdate =
-      serversToDisplay && (mcpServerView === null || currentServerNotInList);
-
-    if (shouldUpdate) {
+    // Update mcpServerView only if it's null and we have servers to display
+    if (serversToDisplay && mcpServerView === null) {
       const [defaultServer] = serversToDisplay;
-      if (defaultServer && defaultServer.id !== mcpServerView?.id) {
+      if (defaultServer) {
         setValue("mcpServerView", defaultServer, { shouldDirty: false });
       }
     }
-  }, [serversToDisplay, setValue, mcpServerView, sources.in]);
+  }, [serversToDisplay, setValue, mcpServerView]);
 
   return (
-    <div className="space-y-4">
+    <div className="mt-2 flex flex-col space-y-4">
       <div>
         <h3 className="mb-2 text-lg font-semibold">Processing method</h3>
         <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           Sets the approach for finding and retrieving information from your
           data sources. Need help? Check our{" "}
           <Hoverable
-            href="https://docs.dust.tt/docs/knowledge"
             variant="primary"
+            href="https://docs.dust.tt/docs/knowledge"
+            target="_blank"
           >
-            guide
+            guide.
           </Hoverable>
-          .
         </span>
       </div>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            isLoading={isMCPServerViewsLoading}
-            label={
-              mcpServerView
-                ? getMcpServerViewDisplayName(mcpServerView)
-                : "loading..."
-            }
-            icon={
-              mcpServerView != null &&
-              isInternalAllowedIcon(mcpServerView.server.icon)
-                ? InternalActionIcons[mcpServerView.server.icon]
-                : undefined
-            }
-            variant="outline"
-            isSelect
-          />
-        </DropdownMenuTrigger>
+      <div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              isLoading={isMCPServerViewsLoading}
+              label={
+                mcpServerView
+                  ? getMcpServerViewDisplayName(mcpServerView)
+                  : "loading..."
+              }
+              icon={
+                mcpServerView != null &&
+                isInternalAllowedIcon(mcpServerView.server.icon)
+                  ? InternalActionIcons[mcpServerView.server.icon]
+                  : undefined
+              }
+              variant="primary"
+              isSelect
+            />
+          </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="start" className="max-w-100">
-          {serversToDisplay &&
-            serversToDisplay.map((view) => (
-              <DropdownMenuItem
-                key={view.id}
-                label={getMcpServerViewDisplayName(view)}
-                icon={getAvatar(view.server)}
-                onClick={() => onChange(view)}
-                description={getMcpServerViewDescription(view)}
-              />
-            ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+          <DropdownMenuContent align="start" className="max-w-100">
+            {serversToDisplay &&
+              serversToDisplay.map((view) => (
+                <DropdownMenuItem
+                  key={view.id}
+                  label={getMcpServerViewDisplayName(view)}
+                  icon={getAvatar(view.server)}
+                  onClick={() => onChange(view)}
+                  description={getMcpServerViewDescription(view)}
+                />
+              ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
-      {displayWarningTableQuery && (
+      <span className="text-sm text-muted-foreground dark:text-muted-foreground">
+        {mcpServerView?.server.description}
+      </span>
+
+      {warningContent && (
         <div>
-          <Chip color="info" size="sm" label=" Your tables will be ignored " />
+          <ContentMessage variant="info" size="lg">
+            {warningContent}
+          </ContentMessage>
         </div>
       )}
     </div>

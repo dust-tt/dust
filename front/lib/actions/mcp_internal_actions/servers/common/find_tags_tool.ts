@@ -1,4 +1,5 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import trim from "lodash/trim";
 import { z } from "zod";
 
@@ -31,85 +32,95 @@ export const findTagsSchema = {
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
 };
 
-export const makeFindTagsDescription = (toolName: string) =>
-  `Find exact matching labels (also called tags) before using them in the tool ${toolName}.` +
-  "Restricting or excluding content succeeds only with existing labels. " +
-  "Searching without verifying labels first typically returns no results.";
-
-export function makeFindTagsTool(
+export function registerFindTagsTool(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  server: McpServer,
+  agentLoopContext: AgentLoopContextType | undefined,
+  { name, extraDescription }: { name: string; extraDescription?: string }
 ) {
-  return withToolLogging(
-    auth,
-    { toolName: FIND_TAGS_TOOL_NAME, agentLoopContext },
-    async ({
-      query,
-      dataSources,
-    }: {
-      query: string;
-      dataSources: DataSourcesToolConfigurationType[number][];
-    }) => {
-      const coreSearchArgsResults = await concurrentExecutor(
-        dataSources,
-        async (dataSourceConfiguration) =>
-          getCoreSearchArgs(auth, dataSourceConfiguration),
-        { concurrency: 10 }
-      );
+  const baseDescription =
+    `Find exact matching labels (also called tags).` +
+    "Restricting or excluding content succeeds only with existing labels. " +
+    "Searching without verifying labels first typically returns no results.";
+  const toolDescription = extraDescription
+    ? baseDescription + "\n" + extraDescription
+    : baseDescription;
 
-      if (coreSearchArgsResults.some((res) => res.isErr())) {
-        return new Err(
-          new MCPError(
-            "Invalid data sources: " +
-              removeNulls(
-                coreSearchArgsResults.map((res) =>
-                  res.isErr() ? res.error : null
-                )
-              )
-                .map((error) => error.message)
-                .join("\n")
-          )
-        );
-      }
-
-      const coreSearchArgs = removeNulls(
-        coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
-      );
-
-      if (coreSearchArgs.length === 0) {
-        return new Err(
-          new MCPError(
-            "Search action must have at least one data source configured."
-          )
-        );
-      }
-
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const result = await coreAPI.searchTags({
-        dataSourceViews: coreSearchArgs.map((arg) => arg.dataSourceView),
-        limit: DEFAULT_SEARCH_LABELS_LIMIT,
+  server.tool(
+    name,
+    toolDescription,
+    findTagsSchema,
+    withToolLogging(
+      auth,
+      { toolName: FIND_TAGS_TOOL_NAME, agentLoopContext },
+      async ({
         query,
-        queryType: "match",
-      });
+        dataSources,
+      }: {
+        query: string;
+        dataSources: DataSourcesToolConfigurationType[number][];
+      }) => {
+        const coreSearchArgsResults = await concurrentExecutor(
+          dataSources,
+          async (dataSourceConfiguration) =>
+            getCoreSearchArgs(auth, dataSourceConfiguration),
+          { concurrency: 10 }
+        );
 
-      if (result.isErr()) {
-        return new Err(new MCPError("Error searching for labels"));
+        if (coreSearchArgsResults.some((res) => res.isErr())) {
+          return new Err(
+            new MCPError(
+              "Invalid data sources: " +
+                removeNulls(
+                  coreSearchArgsResults.map((res) =>
+                    res.isErr() ? res.error : null
+                  )
+                )
+                  .map((error) => error.message)
+                  .join("\n")
+            )
+          );
+        }
+
+        const coreSearchArgs = removeNulls(
+          coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
+        );
+
+        if (coreSearchArgs.length === 0) {
+          return new Err(
+            new MCPError(
+              "Search action must have at least one data source configured."
+            )
+          );
+        }
+
+        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+        const result = await coreAPI.searchTags({
+          dataSourceViews: coreSearchArgs.map((arg) => arg.dataSourceView),
+          limit: DEFAULT_SEARCH_LABELS_LIMIT,
+          query,
+          queryType: "match",
+        });
+
+        if (result.isErr()) {
+          return new Err(new MCPError("Error searching for labels"));
+        }
+
+        return new Ok([
+          {
+            type: "text",
+            text:
+              "Labels found:\n\n" +
+              removeNulls(
+                result.value.tags.map((tag) =>
+                  tag.tag && trim(tag.tag)
+                    ? `${tag.tag} (${tag.match_count} matches)`
+                    : null
+                )
+              ).join("\n"),
+          },
+        ]);
       }
-
-      return new Ok([
-        {
-          type: "text",
-          text:
-            "Labels found:\n\n" +
-            removeNulls(
-              result.value.tags.map((tag) =>
-                tag.tag && trim(tag.tag)
-                  ? `${tag.tag} (${tag.match_count} matches)`
-                  : null
-              )
-            ).join("\n"),
-        },
-      ]);
-    }
+    )
   );
 }

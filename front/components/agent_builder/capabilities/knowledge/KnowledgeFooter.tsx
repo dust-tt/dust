@@ -103,7 +103,6 @@ function KnowledgeFooterItem({
 
 export function KnowledgeFooter() {
   const [isOpen, setOpen] = useState(true);
-
   const { field } = useSourcesFormController();
 
   // Handle case where field.value is not yet initialized

@@ -145,6 +145,7 @@ export default function AgentBuilder({
       .map((channel) => ({
         slackChannelId: channel.slackChannelId,
         slackChannelName: channel.slackChannelName,
+        autoRespondWithoutMention: channel.autoRespondWithoutMention,
       }));
   }, [agentConfiguration, slackChannelsLinkedWithAgent]);
 
@@ -279,7 +280,9 @@ export default function AgentBuilder({
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 
   const title = agentConfiguration
-    ? `Edit agent @${agentConfiguration.name}`
+    ? duplicateAgentId
+      ? `Duplicate @${agentConfiguration.name}`
+      : `Edit agent @${agentConfiguration.name}`
     : "Create new agent";
 
   return (

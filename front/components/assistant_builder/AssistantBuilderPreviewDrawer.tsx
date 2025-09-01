@@ -21,7 +21,7 @@ import { Separator } from "@radix-ui/react-select";
 import assert from "assert";
 import { useContext, useEffect, useRef, useState } from "react";
 
-import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
@@ -213,7 +213,7 @@ export default function AssistantBuilderRightPanel({
               </div>
             ) : (
               <ConversationsNavigationProvider>
-                <ActionValidationProvider
+                <BlockedActionsProvider
                   owner={owner}
                   conversation={conversation}
                 >
@@ -273,7 +273,7 @@ export default function AssistantBuilderRightPanel({
                       currentPanel={currentPanel}
                     />
                   </GenerationContextProvider>
-                </ActionValidationProvider>
+                </BlockedActionsProvider>
               </ConversationsNavigationProvider>
             )}
           </div>

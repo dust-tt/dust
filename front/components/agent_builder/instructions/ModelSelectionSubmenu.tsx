@@ -138,7 +138,9 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                 )}
                 {hasOlderModels && (
                   <>
-                    <DropdownMenuLabel label="Older models" />
+                    <DropdownMenuLabel
+                      label={hasRecentModels ? "Older models" : "All models"}
+                    />
                     <DropdownMenuRadioGroup value={currentModelKey}>
                       {models.older.map((modelConfig) => (
                         <ModelRadioItem

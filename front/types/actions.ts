@@ -1,22 +1,23 @@
-import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import type { StepContext } from "@app/lib/actions/types";
+import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { ModelId } from "@app/types/shared/model_id";
 
 export type AgentMCPActionType = {
   agentMessageId: ModelId;
-  citationsAllocated: number;
-  functionCallId: string;
-  functionCallName: string;
+  // TODO(MCPActionDetails): prevent exposing the function call name
+  //  currently used in the extension to guess the tool name but quite brittle.
+  functionCallName: string | null;
   id: ModelId;
   internalMCPServerName: InternalMCPServerNameType | null;
-  mcpServerConfigurationId: string;
+  mcpServerId: string | null;
   params: Record<string, unknown>;
   status: ToolExecutionStatus;
-  stepContentId: ModelId;
-  stepContext: StepContext;
-  toolConfiguration: LightMCPToolConfigurationType;
-  version: number;
-  workspaceId: ModelId;
+};
+
+export type AgentMCPActionWithOutputType = AgentMCPActionType & {
+  generatedFiles: ActionGeneratedFileType[];
+  output: CallToolResult["content"] | null;
 };

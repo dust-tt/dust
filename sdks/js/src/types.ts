@@ -603,6 +603,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "exploded_tables_query"
   | "freshservice_tool"
   | "google_ai_studio_experimental_models_feature"
+  | "google_drive_tool"
   | "google_sheets_tool"
   | "hootl"
   | "index_private_slack_channel"
@@ -622,6 +623,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_tool"
   | "show_debug_tools"
   | "slack_semantic_search"
+  | "slack_enhanced_default_agent"
   | "toolsets_tool"
   | "usage_data_api"
   | "xai_feature"
@@ -690,9 +692,9 @@ const MCPActionTypeSchema = z.object({
   internalMCPServerName: z.string().nullable(),
   agentMessageId: ModelIdSchema,
   functionCallName: z.string().nullable(),
+  status: z.string(),
   params: z.record(z.any()),
   output: CallToolResultSchema.shape.content.nullable(),
-  type: z.literal("tool_action"),
 });
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
@@ -926,7 +928,7 @@ const AgentMessageFeedbackSchema = z.object({
 });
 
 const ConversationVisibilitySchema = FlexibleEnumSchema<
-  "unlisted" | "triggered" | "workspace" | "deleted" | "test"
+  "unlisted" | "workspace" | "deleted" | "test"
 >();
 
 export type ConversationVisibility = z.infer<
@@ -1727,6 +1729,13 @@ export const PostUserMessageResponseSchema = z.object({
 
 export type PostUserMessageResponseType = z.infer<
   typeof PostUserMessageResponseSchema
+>;
+
+export const RetryMessageResponseSchema = z.object({
+  message: AgentMessageTypeSchema,
+});
+export type RetryMessageResponseType = z.infer<
+  typeof RetryMessageResponseSchema
 >;
 
 export const GetConversationResponseSchema = z.object({
@@ -2601,7 +2610,9 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionScanIcon"
   | "ActionTableIcon"
   | "ActionTimeIcon"
+  | "AsanaLogo"
   | "CommandLineIcon"
+  | "DriveLogo"
   | "GcalLogo"
   | "GithubLogo"
   | "GmailLogo"

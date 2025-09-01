@@ -5,11 +5,12 @@ import { DataSourceViewTagsFilterDropdown } from "@app/components/agent_builder/
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { CONFIGURATION_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
-import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
+import { useKnowledgePageContext } from "@app/components/data_source_view/context/PageContext";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import type { DataSourceViewType } from "@app/types";
+import { pluralize } from "@app/types";
 
 type DataSourceFilterItem = {
   dataSourceView: DataSourceViewType;
@@ -45,7 +46,7 @@ function DataSourceFilterContextItem({
 }
 
 export function SelectDataSourcesFilters() {
-  const { setSheetPageId } = useDataSourceBuilderContext();
+  const { setSheetPageId } = useKnowledgePageContext();
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
 
   const dataSourceViews = sources.in.reduce(
@@ -68,7 +69,9 @@ export function SelectDataSourcesFilters() {
   return (
     <div className="space-y-4">
       <div className="align-center flex flex-row justify-between">
-        <h3 className="mb-2 text-lg font-semibold">Selected data source</h3>
+        <h3 className="mb-2 text-lg font-semibold">
+          Selected data source{pluralize(Object.values(dataSourceViews).length)}
+        </h3>
 
         <div className="flex flex-row items-center space-x-2">
           <Button

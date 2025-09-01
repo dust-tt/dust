@@ -244,7 +244,7 @@ async function renderDataSourcesConfigurations(
       if (sr.excludedResources && sr.excludedResources.length > 0) {
         const excludedContentNodes = await getContentNodesForDataSourceView(
           dataSourceView,
-          { internalIds: sr.excludedResources, viewType: "document" }
+          { internalIds: sr.excludedResources, viewType: "all" }
         );
         if (excludedContentNodes.isErr()) {
           localLogger.error(

@@ -617,15 +617,50 @@ const createServer = (): McpServer => {
 
   // Service catalog
   server.tool(
-    "list_service_items",
-    "Lists service catalog items",
+    "list_service_categories",
+    "Lists service catalog categories. Use this first to get category IDs for filtering service items.",
     {
-      category_id: z.number().optional().describe("Filter by category ID"),
-      search: z.string().optional().describe("Search term"),
       page: z.number().optional().default(1),
       per_page: z.number().optional().default(30),
     },
-    async ({ category_id, search, page, per_page }, { authInfo }) => {
+    async ({ page, per_page }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const params = new URLSearchParams({
+            page: page.toString(),
+            per_page: per_page.toString(),
+          });
+
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `service_catalog/categories?${params.toString()}`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: `Retrieved ${result.service_categories?.length || 0} service categories`,
+            result: result.service_categories || [],
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "list_service_items",
+    "Lists service catalog items. To filter by category: 1) Use list_service_categories to get category IDs, 2) Use the category_id parameter here.",
+    {
+      category_id: z
+        .number()
+        .optional()
+        .describe(
+          "Filter by category ID - use list_service_categories to get available category IDs"
+        ),
+      page: z.number().optional().default(1),
+      per_page: z.number().optional().default(30),
+    },
+    async ({ category_id, page, per_page }, { authInfo }) => {
       return withAuth({
         action: async (accessToken, freshserviceDomain) => {
           const params = new URLSearchParams({
@@ -636,9 +671,6 @@ const createServer = (): McpServer => {
           if (category_id) {
             params.append("category_id", category_id.toString());
           }
-          if (search) {
-            params.append("search", search);
-          }
 
           const result = await apiRequest(
             accessToken,
@@ -648,6 +680,66 @@ const createServer = (): McpServer => {
 
           return makeMCPToolJSONSuccess({
             message: `Retrieved ${result.service_items?.length || 0} service items`,
+            result: result.service_items || [],
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "search_service_items",
+    "Searches for service items from the service catalog for a given search term. Only use this when specifically searching for items by keyword.",
+    {
+      search_term: z
+        .string()
+        .describe(
+          "The keywords for which the service items have to be searched (e.g. 'VPN issue', 'Adobe')"
+        ),
+      workspace_id: z
+        .number()
+        .optional()
+        .describe(
+          "ID of the workspace to which the service item belongs. Applicable only to accounts on Employee Support Mode."
+        ),
+      user_email: z
+        .string()
+        .email()
+        .optional()
+        .describe(
+          "By default, the API will search items for the user whose API key is provided. If you want to search items for a different user, provide their user_email."
+        ),
+      page: z.number().optional().default(1),
+      per_page: z.number().optional().default(30),
+    },
+    async (
+      { search_term, workspace_id, user_email, page, per_page },
+      { authInfo }
+    ) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const params = new URLSearchParams({
+            search_term,
+            page: page.toString(),
+            per_page: per_page.toString(),
+          });
+
+          if (workspace_id) {
+            params.append("workspace_id", workspace_id.toString());
+          }
+          if (user_email) {
+            params.append("user_email", user_email);
+          }
+
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `service_catalog/items/search?${params.toString()}`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: `Found ${result.service_items?.length || 0} service items matching '${search_term}'`,
             result: result.service_items || [],
           });
         },
@@ -802,15 +894,23 @@ const createServer = (): McpServer => {
   // Solutions (Knowledge Base)
   server.tool(
     "list_solution_categories",
-    "Lists solution categories",
-    {},
-    async (_, { authInfo }) => {
+    "Lists solution categories. These are used to organize solution folders, which are mandatory for ticket listing.",
+    {
+      page: z.number().optional().default(1),
+      per_page: z.number().optional().default(30),
+    },
+    async ({ page, per_page }, { authInfo }) => {
       return withAuth({
         action: async (accessToken, freshserviceDomain) => {
+          const params = new URLSearchParams({
+            page: page.toString(),
+            per_page: per_page.toString(),
+          });
+
           const result = await apiRequest(
             accessToken,
             freshserviceDomain,
-            "solutions/categories"
+            `solutions/categories?${params.toString()}`
           );
 
           return makeMCPToolJSONSuccess({
@@ -824,11 +924,54 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "list_solution_articles",
-    "Lists solution articles (returns metadata only, use get_solution_article for full content)",
+    "list_solution_folders",
+    "Lists solution folders within categories. Solution folders are mandatory for ticket listing. Use list_solution_categories first to get category IDs, then filter folders by category_id.",
     {
-      folder_id: z.number().optional().describe("Filter by folder ID"),
       category_id: z.number().optional().describe("Filter by category ID"),
+      page: z.number().optional().default(1),
+      per_page: z.number().optional().default(30),
+    },
+    async ({ category_id, page, per_page }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const params = new URLSearchParams({
+            page: page.toString(),
+            per_page: per_page.toString(),
+          });
+
+          if (category_id) {
+            params.append("category_id", category_id.toString());
+          }
+
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `solutions/folders?${params.toString()}`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: `Retrieved ${result.folders?.length || 0} solution folders`,
+            result: result.folders || [],
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "list_solution_articles",
+    "Lists solution articles within a specific folder (returns metadata only, use get_solution_article for full content). To get folder_id: 1) Use list_solution_categories to get category IDs, 2) Use list_solution_folders with category_id to get folder IDs, 3) Use the folder_id here.",
+    {
+      folder_id: z
+        .number()
+        .describe(
+          "Folder ID (required) - use list_solution_folders to get available folder IDs"
+        ),
+      category_id: z
+        .number()
+        .optional()
+        .describe("Filter by category ID (optional additional filter)"),
       page: z.number().optional().default(1),
       per_page: z.number().optional().default(30),
     },
@@ -838,11 +981,9 @@ const createServer = (): McpServer => {
           const params = new URLSearchParams({
             page: page.toString(),
             per_page: per_page.toString(),
+            folder_id: folder_id.toString(),
           });
 
-          if (folder_id) {
-            params.append("folder_id", folder_id.toString());
-          }
           if (category_id) {
             params.append("category_id", category_id.toString());
           }
@@ -904,11 +1045,15 @@ const createServer = (): McpServer => {
 
   server.tool(
     "create_solution_article",
-    "Creates a new solution article",
+    "Creates a new solution article in a specific folder. To get folder_id: 1) Use list_solution_categories to get category IDs, 2) Use list_solution_folders with category_id to get folder IDs, 3) Use the folder_id here.",
     {
       title: z.string().describe("Article title"),
       description: z.string().describe("Article content"),
-      folder_id: z.number().describe("Folder ID to place the article in"),
+      folder_id: z
+        .number()
+        .describe(
+          "Folder ID to place the article in (required) - use list_solution_folders to get available folder IDs"
+        ),
       status: z
         .enum(["1", "2"])
         .optional()

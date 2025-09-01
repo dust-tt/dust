@@ -1,9 +1,9 @@
-import { ChevronDownIcon, ChevronRightIcon, Chip } from "@dust-tt/sparkle";
+import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/core";
 import { InputRule, mergeAttributes, Node } from "@tiptap/core";
-import type { Slice } from "@tiptap/pm/model";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
-import { TextSelection } from "@tiptap/pm/state";
+import type { Node as ProseMirrorNode, Slice } from "@tiptap/pm/model";
+import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { NodeViewProps } from "@tiptap/react";
 import {
   NodeViewContent,
@@ -12,7 +12,10 @@ import {
 } from "@tiptap/react";
 import React, { useState } from "react";
 
-import { OPENING_TAG_REGEX } from "@app/lib/client/agent_builder/instructionBlockUtils";
+import {
+  CLOSING_TAG_REGEX,
+  OPENING_TAG_REGEX,
+} from "@app/lib/client/agent_builder/instructionBlockUtils";
 
 export interface InstructionBlockAttributes {
   type: string;
@@ -27,6 +30,38 @@ declare module "@tiptap/core" {
       insertInstructionBlock: (type: string) => ReturnType;
     };
   }
+}
+
+/**
+ * Build the three-paragraph content for an instruction block
+ */
+function buildInstructionBlockContent(tag: string) {
+  return [
+    {
+      type: "paragraph",
+      content: [{ type: "text", text: `<${tag}>` }],
+    },
+    { type: "paragraph" },
+    {
+      type: "paragraph",
+      content: [{ type: "text", text: `</${tag}>` }],
+    },
+  ];
+}
+
+/**
+ * Get the position of the current instruction block
+ */
+function getCurrentInstructionBlockPos(editor: Editor): number {
+  const { $from } = editor.state.selection;
+
+  for (let d = $from.depth; d >= 0; d--) {
+    if ($from.node(d).type.name === "instructionBlock") {
+      return $from.before(d);
+    }
+  }
+
+  return -1;
 }
 
 /**
@@ -62,6 +97,46 @@ function positionCursorInMiddleParagraph(
   return true;
 }
 
+/**
+ * Focus cursor inside the current instruction block
+ */
+function focusInsideCurrentInstructionBlock(editor: Editor): void {
+  if (editor.isDestroyed) {
+    return;
+  }
+
+  const blockPos = getCurrentInstructionBlockPos(editor);
+  if (blockPos > -1) {
+    positionCursorInMiddleParagraph(editor, blockPos);
+  }
+}
+
+/**
+ * Queue a caret move inside the current instruction block (post-render)
+ */
+function queueFocusInsideCurrentInstructionBlock(editor: Editor): void {
+  if (editor.isDestroyed || !editor.view) {
+    return;
+  }
+  requestAnimationFrame(() => {
+    // Double-check lifecycle at callback time to avoid acting on a destroyed editor
+    if (editor.isDestroyed || !editor.view) {
+      return;
+    }
+    focusInsideCurrentInstructionBlock(editor);
+  });
+}
+
+// Define consistent heading styles to match the main editor
+const instructionBlockContentStyles = cn(
+  "prose prose-sm",
+  // Override for all headings to match the editor's heading style
+  "[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:text-xl",
+  "[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:font-semibold",
+  "[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:mt-4",
+  "[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:mb-3"
+);
+
 const InstructionBlockComponent: React.FC<NodeViewProps> = ({
   node,
   editor,
@@ -78,9 +153,9 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     const firstChild = node.child(0);
     if (firstChild.type.name === "paragraph") {
       const text = firstChild.textContent.trim();
-      const match = text.match(/^<(\w*)>$/);
+      const match = text.match(OPENING_TAG_REGEX);
       if (match) {
-        displayType = match[1] || ""; // Empty string for <>
+        displayType = match[0] || ""; // Full match including < and >
       }
     }
   }
@@ -114,31 +189,46 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     }
   };
 
-  const containerClasses = `rounded-lg border bg-gray-100 p-2 dark:bg-gray-800 transition-all ${
+  const containerClasses = `rounded-lg py-2 px-1 transition-all ${
     selected && isCollapsed
-      ? "ring-2 ring-highlight-300 dark:ring-highlight-300-night border-highlight-300 dark:border-highlight-300-night"
-      : "border-border"
+      ? "ring-2 ring-highlight-300 dark:ring-highlight-300-night"
+      : ""
   }`;
 
   return (
     <NodeViewWrapper className="my-2">
       <div className={containerClasses} onClick={handleBlockClick}>
-        <div
-          className="flex select-none items-center gap-1"
-          contentEditable={false}
-        >
+        <div className="flex items-start gap-1">
           <button
             onClick={handleToggle}
-            className="rounded p-0.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="mt-[3px] rounded p-0.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
             type="button"
+            contentEditable={false}
           >
             <ChevronIcon className="h-4 w-4" />
           </button>
-          <Chip size="mini">{displayType.toUpperCase() || " "}</Chip>
+          {isCollapsed ? (
+            <div
+              contentEditable={false}
+              className="mt-[0.5px] cursor-pointer"
+              onClick={handleToggle}
+            >
+              <Chip
+                size="mini"
+                className="bg-gray-100 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+              >
+                {displayType ? displayType.toUpperCase() : " "}
+              </Chip>
+            </div>
+          ) : (
+            <div className="mt-0.5 w-full">
+              <NodeViewContent
+                className={instructionBlockContentStyles}
+                as="div"
+              />
+            </div>
+          )}
         </div>
-        {!isCollapsed && (
-          <NodeViewContent className="prose prose-sm mt-2 font-mono" as="div" />
-        )}
       </div>
     </NodeViewWrapper>
   );
@@ -149,7 +239,8 @@ export const InstructionBlockExtension =
     name: "instructionBlock",
     group: "block",
     priority: 1000,
-    content: "paragraph+",
+    // Allow only specific blocks inside the instruction block
+    content: "(paragraph|heading|codeBlock)+",
     defining: true,
     /** Prevents auto-merging two blocks when they're not separated by a paragraph */
     isolating: true,
@@ -203,48 +294,52 @@ export const InstructionBlockExtension =
 
         insertInstructionBlock:
           (type) =>
-          ({ commands, editor }) => {
-            const success = commands.insertContent({
-              type: this.name,
-              attrs: { type },
-              content: [
-                {
-                  type: "paragraph",
-                  content: [{ type: "text", text: `<${type}>` }],
-                },
-                { type: "paragraph" },
-                {
-                  type: "paragraph",
-                  content: [{ type: "text", text: `</${type}>` }],
-                },
-              ],
-            });
+          ({ state, chain }) => {
+            const { selection } = state;
+            const { $from } = selection;
 
-            if (success) {
-              requestAnimationFrame(() => {
-                if (editor.isDestroyed || !editor.view) {
-                  return;
-                }
+            // Check if we're in an empty paragraph
+            const isEmptyParagraph =
+              $from.parent.type.name === "paragraph" &&
+              $from.parent.content.size === 0;
 
-                const { selection } = editor.state;
-                const $from = selection.$from;
+            const content = buildInstructionBlockContent(type);
 
-                let blockPos = -1;
-                for (let d = $from.depth; d >= 0; d--) {
-                  const node = $from.node(d);
-                  if (node.type.name === this.name) {
-                    blockPos = $from.before(d);
-                    break;
+            if (isEmptyParagraph) {
+              // Replace empty paragraph with instruction block
+              const from = $from.before($from.depth);
+              const to = $from.after($from.depth);
+
+              return chain()
+                .focus()
+                .insertContentAt(
+                  { from, to },
+                  {
+                    type: this.name,
+                    attrs: { type },
+                    content,
                   }
-                }
-
-                if (blockPos > -1) {
-                  positionCursorInMiddleParagraph(editor, blockPos);
-                }
-              });
+                )
+                .command(({ editor }) => {
+                  queueFocusInsideCurrentInstructionBlock(editor);
+                  return true;
+                })
+                .run();
             }
 
-            return success;
+            // Non-empty: insert normally
+            return chain()
+              .focus()
+              .insertContent({
+                type: this.name,
+                attrs: { type },
+                content,
+              })
+              .command(({ editor }) => {
+                queueFocusInsideCurrentInstructionBlock(editor);
+                return true;
+              })
+              .run();
           },
       };
     },
@@ -257,56 +352,55 @@ export const InstructionBlockExtension =
       return [
         new InputRule({
           find: OPENING_TAG_REGEX,
-          handler: ({ range, match, commands }) => {
+          handler: ({ range, match, chain, state }) => {
             const type = match[1] ? match[1].toLowerCase() : "";
+            const tagType = type || "instructions";
 
             if (this.editor.isActive(this.name)) {
               return;
             }
 
-            const tagType = type || "instructions";
+            const { $from } = state.selection;
+            const isEmptyParagraph =
+              $from.parent.type.name === "paragraph" &&
+              $from.parent.textContent === match[0];
 
-            commands.insertContentAt(
-              { from: range.from, to: range.to },
-              {
-                type: this.name,
-                attrs: { type: tagType },
-                content: [
+            if (isEmptyParagraph) {
+              // Replace entire paragraph with instruction block
+              const from = $from.before($from.depth);
+              const to = $from.after($from.depth);
+
+              chain()
+                .focus()
+                .insertContentAt(
+                  { from, to },
                   {
-                    type: "paragraph",
-                    content: [{ type: "text", text: `<${tagType}>` }],
-                  },
-                  { type: "paragraph" },
-                  {
-                    type: "paragraph",
-                    content: [{ type: "text", text: `</${tagType}>` }],
-                  },
-                ],
-              }
-            );
-
-            requestAnimationFrame(() => {
-              // Safety check: ensure editor is still valid
-              if (this.editor.isDestroyed || !this.editor.view) {
-                return;
-              }
-
-              const { selection } = this.editor.state;
-              const $from = selection.$from;
-
-              let blockPos = -1;
-              for (let d = $from.depth; d >= 0; d--) {
-                const node = $from.node(d);
-                if (node.type.name === this.name) {
-                  blockPos = $from.before(d);
-                  break;
-                }
-              }
-
-              if (blockPos > -1) {
-                positionCursorInMiddleParagraph(this.editor, blockPos);
-              }
-            });
+                    type: this.name,
+                    attrs: { type: tagType },
+                    content: buildInstructionBlockContent(tagType),
+                  }
+                )
+                .command(({ editor }) => {
+                  queueFocusInsideCurrentInstructionBlock(editor);
+                  return true;
+                })
+                .run();
+            } else {
+              // Delete the typed text and insert instruction block
+              chain()
+                .focus()
+                .deleteRange({ from: range.from, to: range.to })
+                .insertContent({
+                  type: this.name,
+                  attrs: { type: tagType },
+                  content: buildInstructionBlockContent(tagType),
+                })
+                .command(({ editor }) => {
+                  queueFocusInsideCurrentInstructionBlock(editor);
+                  return true;
+                })
+                .run();
+            }
           },
         }),
       ];
@@ -450,7 +544,7 @@ export const InstructionBlockExtension =
           const isAtEndOfClosingTag =
             paragraphNode &&
             paragraphNode.type.name === "paragraph" &&
-            paragraphNode.textContent.match(/^<\/(\w*)>$/) &&
+            paragraphNode.textContent.match(CLOSING_TAG_REGEX) &&
             $from.parentOffset === paragraphNode.content.size;
 
           if (!isParagraphEmpty && !isAtEndOfClosingTag) {
@@ -478,7 +572,106 @@ export const InstructionBlockExtension =
     },
 
     addProseMirrorPlugins() {
+      // Helper function to find first and last paragraph nodes in a block
+      const findFirstLastParagraphs = (blockNode: ProseMirrorNode) => {
+        let firstPara: ProseMirrorNode | null = null;
+        let lastPara: ProseMirrorNode | null = null;
+        let firstParaIndex = -1;
+        let lastParaIndex = -1;
+
+        for (let i = 0; i < blockNode.childCount; i++) {
+          const child = blockNode.child(i);
+          if (child.type.name === "paragraph") {
+            if (firstPara === null) {
+              firstPara = child;
+              firstParaIndex = i;
+            }
+            lastPara = child;
+            lastParaIndex = i;
+          }
+        }
+
+        return { firstPara, lastPara, firstParaIndex, lastParaIndex };
+      };
+
+      // Helper function that returns tag name when paragraph is an exact tag line; otherwise null
+      const getTagFromParagraph = (
+        para: ProseMirrorNode | null,
+        isClosing: boolean
+      ) => {
+        if (!para) {
+          return null;
+        }
+        const text = para.textContent.trim();
+        const regex = isClosing ? CLOSING_TAG_REGEX : OPENING_TAG_REGEX;
+        const match = text.match(regex);
+        if (!match) {
+          return null;
+        }
+        const tag = match[1] || "";
+        // Enforce exact-line match to avoid partial matches (e.g., prefixes)
+        const expected = isClosing ? `</${tag}>` : `<${tag}>`;
+        return text === expected ? tag : null;
+      };
+
       return [
+        // Plugin to style XML tags with chip appearance
+        new Plugin({
+          key: new PluginKey("instructionBlockTagDecoration"),
+          props: {
+            decorations(state) {
+              const decorations: Decoration[] = [];
+
+              state.doc.descendants((node, pos) => {
+                if (node.type.name === "instructionBlock") {
+                  // Use helper to find first and last paragraph tags
+                  const { firstPara, lastPara, firstParaIndex, lastParaIndex } =
+                    findFirstLastParagraphs(node);
+
+                  if (!firstPara || !lastPara) {
+                    return;
+                  }
+
+                  const openingTag = getTagFromParagraph(firstPara, false);
+                  const closingTag = getTagFromParagraph(lastPara, true);
+
+                  // Only decorate if both tags exist and match (case-insensitive)
+                  if (
+                    openingTag !== null &&
+                    closingTag !== null &&
+                    openingTag.toLowerCase() === closingTag.toLowerCase()
+                  ) {
+                    // Calculate positions
+                    let firstPos = pos + 1;
+                    for (let i = 0; i < firstParaIndex; i++) {
+                      firstPos += node.child(i).nodeSize;
+                    }
+
+                    let lastPos = pos + 1;
+                    for (let i = 0; i < lastParaIndex; i++) {
+                      lastPos += node.child(i).nodeSize;
+                    }
+
+                    // Decorate opening tag
+                    decorations.push(
+                      Decoration.node(firstPos, firstPos + firstPara.nodeSize, {
+                        class: `block w-fit px-1.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-xs font-medium uppercase mb-2`,
+                      })
+                    );
+                    // Decorate closing tag
+                    decorations.push(
+                      Decoration.node(lastPos, lastPos + lastPara.nodeSize, {
+                        class: `block w-fit px-1.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-xs font-medium uppercase mt-2`,
+                      })
+                    );
+                  }
+                }
+              });
+
+              return DecorationSet.create(state.doc, decorations);
+            },
+          },
+        }),
         new Plugin({
           key: new PluginKey("instructionBlockTagSync"),
           appendTransaction: (transactions, oldState, newState) => {
@@ -495,7 +688,6 @@ export const InstructionBlockExtension =
               return null;
             }
 
-            let tr = null;
             const { selection } = newState;
             const $from = selection.$from;
 
@@ -515,128 +707,112 @@ export const InstructionBlockExtension =
             }
 
             const blockNode = $from.node(blockDepth);
-
-            // Check if we're editing the first or last paragraph (opening/closing tag)
             const childIndex = $from.index(blockDepth);
-            const isEditingOpeningTag = childIndex === 0;
-            const isEditingClosingTag = childIndex === blockNode.childCount - 1;
+            const currentNode = blockNode.child(childIndex);
+
+            // Only proceed if we're editing a paragraph
+            if (currentNode.type.name !== "paragraph") {
+              return null;
+            }
+
+            // Use helper to find first and last paragraphs
+            const { firstPara, lastPara, firstParaIndex, lastParaIndex } =
+              findFirstLastParagraphs(blockNode);
+
+            if (!firstPara || !lastPara || firstPara === lastPara) {
+              return null; // Need at least two paragraphs for opening and closing tags
+            }
+
+            // Check if we're editing the opening or closing tag
+            const isEditingOpeningTag = childIndex === firstParaIndex;
+            const isEditingClosingTag = childIndex === lastParaIndex;
 
             if (!isEditingOpeningTag && !isEditingClosingTag) {
-              return null;
-            }
-            if (blockNode.childCount < 2) {
-              // Need at least opening and closing tags
-              return null;
+              return null; // Not editing a tag paragraph
             }
 
-            // Get the opening and closing tag paragraphs
-            const firstPara = blockNode.child(0);
-            const lastPara = blockNode.child(blockNode.childCount - 1);
+            // Get current tags
+            const currentOpeningTag = getTagFromParagraph(firstPara, false);
+            const currentClosingTag = getTagFromParagraph(lastPara, true);
 
-            // Extract tag names
-            const openingText = firstPara.textContent.trim();
-            const closingText = lastPara.textContent.trim();
+            if (currentOpeningTag === null || currentClosingTag === null) {
+              return null; // Not valid XML tags
+            }
 
-            // Parse opening and closing tags
-            const openingMatch = openingText.match(/^<(\w*)>$/);
-            const closingMatch = closingText.match(/^<\/(\w*)>$/);
+            // Check the old state to see if tags were previously in sync
+            if (blockPos < 0 || blockPos >= oldState.doc.content.size) {
+              return null; // Invalid position in old document
+            }
 
-            // Both tags must be valid for syncing
-            if (!openingMatch || !closingMatch) {
+            const oldBlockNode = oldState.doc.nodeAt(blockPos);
+            if (!oldBlockNode) {
               return null;
             }
 
-            const currentOpeningTag = openingMatch[1] || "";
-            const currentClosingTag = closingMatch[1] || "";
+            // Get old tags using helper
+            const oldTags = findFirstLastParagraphs(oldBlockNode);
+            const oldOpeningTag = getTagFromParagraph(oldTags.firstPara, false);
+            const oldClosingTag = getTagFromParagraph(oldTags.lastPara, true);
 
-            // Check if we need to sync (only if they were different)
-            // We need to check the old state to see if they matched before
-            const oldDoc = oldState.doc;
-
-            // Safety check: ensure blockPos is within the old document bounds
-            if (blockPos < 0 || blockPos >= oldDoc.content.size) {
-              return null; // Skip syncing if position is invalid in old document
+            if (oldOpeningTag === null || oldClosingTag === null) {
+              return null; // Old state didn't have valid tags
             }
 
-            const oldBlockNode = oldDoc.nodeAt(blockPos);
+            // Only sync if tags were previously the same and now they're different
+            if (oldOpeningTag !== oldClosingTag) {
+              return null; // Tags weren't in sync before, don't auto-sync
+            }
 
-            if (oldBlockNode && oldBlockNode.childCount >= 2) {
-              const oldFirstPara = oldBlockNode.child(0);
-              const oldLastPara = oldBlockNode.child(
-                oldBlockNode.childCount - 1
+            // Check if we need to sync
+            if (currentOpeningTag === currentClosingTag) {
+              return null; // Already in sync
+            }
+
+            // Create transaction to sync the tags
+            const tr = newState.tr;
+            tr.setMeta("instructionBlockTagSync", true);
+            tr.setMeta("addToHistory", false); // Don't add to undo history
+
+            if (isEditingOpeningTag && currentOpeningTag !== oldOpeningTag) {
+              // User changed opening tag, update closing tag to match
+              const newClosingTag = currentOpeningTag
+                ? `</${currentOpeningTag}>`
+                : "</>";
+
+              // Calculate position of last paragraph
+              let pos = blockPos + 1;
+              for (let i = 0; i < lastParaIndex; i++) {
+                pos += blockNode.child(i).nodeSize;
+              }
+
+              tr.replaceWith(
+                pos + 1,
+                pos + lastPara.nodeSize - 1,
+                newState.schema.text(newClosingTag)
               );
 
-              const oldOpeningText = oldFirstPara.textContent.trim();
-              const oldClosingText = oldLastPara.textContent.trim();
+              return tr;
+            }
 
-              const oldOpeningMatch = oldOpeningText.match(/^<(\w*)>$/);
-              const oldClosingMatch = oldClosingText.match(/^<\/(\w*)>$/);
+            if (isEditingClosingTag && currentClosingTag !== oldClosingTag) {
+              // User changed closing tag, update opening tag to match
+              const newOpeningTag = currentClosingTag
+                ? `<${currentClosingTag}>`
+                : "<>";
 
-              if (oldOpeningMatch && oldClosingMatch) {
-                const oldOpeningTag = oldOpeningMatch[1] || "";
-                const oldClosingTag = oldClosingMatch[1] || "";
-
-                // Sync opening -> closing when editing opening tag
-                if (
-                  isEditingOpeningTag &&
-                  oldOpeningTag === oldClosingTag &&
-                  currentOpeningTag !== oldOpeningTag &&
-                  currentClosingTag === oldClosingTag
-                ) {
-                  if (!tr) {
-                    tr = newState.tr;
-                    tr.setMeta("instructionBlockTagSync", true);
-                    // Keep undo history clean
-                    tr.setMeta("addToHistory", false);
-                  }
-
-                  // Calculate position of last paragraph
-                  let lastParaPos = blockPos + 1;
-                  for (let i = 0; i < blockNode.childCount - 1; i++) {
-                    lastParaPos += blockNode.child(i).nodeSize;
-                  }
-
-                  // Update closing tag
-                  const newClosingTag = currentOpeningTag
-                    ? `</${currentOpeningTag}>`
-                    : "</>";
-                  tr.replaceWith(
-                    lastParaPos + 1,
-                    lastParaPos + lastPara.nodeSize - 1,
-                    newState.schema.text(newClosingTag)
-                  );
-
-                  return tr;
-                }
-
-                // Sync closing -> opening when editing closing tag
-                if (
-                  isEditingClosingTag &&
-                  oldOpeningTag === oldClosingTag &&
-                  currentOpeningTag === oldOpeningTag &&
-                  currentClosingTag !== oldClosingTag
-                ) {
-                  if (!tr) {
-                    tr = newState.tr;
-                    tr.setMeta("instructionBlockTagSync", true);
-                    // Keep undo history clean
-                    tr.setMeta("addToHistory", false);
-                  }
-
-                  // Update opening tag (fix: correct range inside paragraph)
-                  const newOpeningTag = currentClosingTag
-                    ? `<${currentClosingTag}>`
-                    : "<>";
-                  const firstParaStart = blockPos + 1;
-                  tr.replaceWith(
-                    firstParaStart + 1, // Start of text inside paragraph
-                    firstParaStart + firstPara.nodeSize - 1, // End of paragraph content
-                    newState.schema.text(newOpeningTag)
-                  );
-
-                  return tr;
-                }
+              // Calculate position of first paragraph
+              let pos = blockPos + 1;
+              for (let i = 0; i < firstParaIndex; i++) {
+                pos += blockNode.child(i).nodeSize;
               }
+
+              tr.replaceWith(
+                pos + 1,
+                pos + firstPara.nodeSize - 1,
+                newState.schema.text(newOpeningTag)
+              );
+
+              return tr;
             }
 
             return null;
@@ -655,9 +831,32 @@ export const InstructionBlockExtension =
               for (let i = 0; i < slice.content.childCount; i++) {
                 const child = slice.content.child(i);
                 if (child.type.name === this.name) {
-                  // Just get the text content as-is since tags are now part of the content
-                  const inner = child.textBetween(0, child.content.size, "\n");
-                  parts.push(inner);
+                  // Serialize instruction block content preserving markdown headings and code blocks
+                  const innerParts: string[] = [];
+                  child.forEach((node) => {
+                    if (node.type.name === "heading") {
+                      const level = node.attrs?.level || 1;
+                      const prefix = "#".repeat(level) + " ";
+                      innerParts.push(prefix + node.textContent);
+                    } else if (node.type.name === "codeBlock") {
+                      const language = node.attrs?.language || "";
+                      const code = node.textContent;
+                      innerParts.push(`\`\`\`${language}\n${code}\`\`\``);
+                    } else if (node.type.name === "paragraph") {
+                      innerParts.push(node.textContent);
+                    } else {
+                      innerParts.push(node.textContent);
+                    }
+                  });
+                  parts.push(innerParts.join("\n"));
+                } else if (child.type.name === "heading") {
+                  const level = child.attrs?.level || 1;
+                  const prefix = "#".repeat(level) + " ";
+                  parts.push(prefix + child.textContent);
+                } else if (child.type.name === "codeBlock") {
+                  const language = child.attrs?.language || "";
+                  const code = child.textContent;
+                  parts.push(`\`\`\`${language}\n${code}\`\`\``);
                 } else if (child.type.name === "paragraph") {
                   parts.push(child.textContent);
                 } else if (child.isText) {

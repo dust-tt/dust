@@ -97,11 +97,16 @@ export class ChromeAuthService extends AuthService {
         return res;
       }
       const workspaces = res.value.user.workspaces;
+
+      const selectedWorkspace =
+        workspaces.find((w) => w.sId === res.value.user.selectedWorkspace) ||
+        workspaces[0];
+
       const user = await this.saveUser({
         ...res.value.user,
         ...connectionDetails,
         dustDomain,
-        selectedWorkspace: workspaces.length === 1 ? workspaces[0].sId : null,
+        selectedWorkspace: selectedWorkspace?.sId ?? null,
       });
       datadogLogs.setUser({
         id: user.sId,
@@ -135,15 +140,23 @@ export class ChromeAuthService extends AuthService {
     }
   }
 
-  async getAccessToken(): Promise<string | null> {
+  async getAccessToken(forceRefresh?: boolean): Promise<string | null> {
     let tokens = await this.getStoredTokens();
-    if (!tokens || !tokens.accessToken || tokens.expiresAt < Date.now()) {
+    if (
+      !tokens ||
+      !tokens.accessToken ||
+      tokens.expiresAt < Date.now() ||
+      forceRefresh
+    ) {
       const refreshRes = await this.refreshToken(tokens);
       if (refreshRes.isOk()) {
         tokens = refreshRes.value;
       }
     }
-
+    // We wanted a refreshed token, don't return the one we have which is invalid.
+    if (forceRefresh) {
+      return null;
+    }
     return tokens?.accessToken ?? null;
   }
 

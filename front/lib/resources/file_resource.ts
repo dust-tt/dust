@@ -177,23 +177,18 @@ export class FileResource extends BaseResource<FileModel> {
     };
   }
 
-  static async deleteAllForWorkspace(
-    workspace: LightWorkspaceType,
-    transaction?: Transaction
-  ) {
+  static async deleteAllForWorkspace(auth: Authenticator) {
     // Delete all shareable file records.
     await ShareableFileModel.destroy({
       where: {
-        workspaceId: workspace.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
-      transaction,
     });
 
     return this.model.destroy({
       where: {
-        workspaceId: workspace.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
-      transaction,
     });
   }
 

@@ -2,6 +2,7 @@ import {
   ArrowPathIcon,
   Button,
   ContextItem,
+  DocumentTextIcon,
   Input,
   Page,
   PencilSquareIcon,
@@ -25,6 +26,7 @@ import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
+import { useCanvasesSharingToggle } from "@app/hooks/useCanvasesSharingToggle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -229,6 +231,10 @@ export default function WorkspaceAdmin({
             <ProviderManagementModal owner={owner} plan={subscription.plan} />
           </div>
         </Page.Vertical>
+        <Page.Vertical align="stretch" gap="md">
+          <Page.H variant="h4">Capabilities</Page.H>
+          <CanvasSharingToggle owner={owner} />
+        </Page.Vertical>
         {!isSlackDataSourceBotEnabled && (
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Integrations</Page.H>
@@ -394,6 +400,30 @@ function SlackBotToggle({
               }}
             />
           </div>
+        }
+      />
+    </ContextItem.List>
+  );
+}
+
+function CanvasSharingToggle({ owner }: { owner: WorkspaceType }) {
+  const { isEnabled, isChanging, doToggleCanvasesSharing } =
+    useCanvasesSharingToggle({ owner });
+
+  return (
+    <ContextItem.List>
+      <div className="h-full border-b border-border dark:border-border-night" />
+      <ContextItem
+        title="Canvas file sharing"
+        subElement="Enable Canvas files sharing"
+        visual={<DocumentTextIcon className="h-6 w-6" />}
+        hasSeparatorIfLast={true}
+        action={
+          <SliderToggle
+            selected={isEnabled}
+            disabled={isChanging}
+            onClick={doToggleCanvasesSharing}
+          />
         }
       />
     </ContextItem.List>

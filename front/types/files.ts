@@ -330,7 +330,7 @@ export const CANVAS_FILE_FORMATS = {
 } as const satisfies Record<string, FileFormat>;
 
 export function isCanvasContentType(contentType: string): boolean {
-  return contentType === clientExecutableContentType;
+  return Object.keys(CANVAS_FILE_FORMATS).includes(contentType);
 }
 
 // Define a type for canvas file content types.

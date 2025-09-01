@@ -237,8 +237,40 @@ export async function getContentNodesForDataSourceView(
         nodes.filter((node) => node.internalId === id)
       );
 
+  // Filter parentInternalIds based on the dataSourceView's parentsIn configuration
+  const filteredNodes = !dataSourceView.parentsIn
+    ? sortedNodes
+    : sortedNodes.map((node) => {
+        if (!node.parentInternalIds || node.parentInternalIds.length === 0) {
+          return node;
+        }
+
+        // Find the deepest parent that is included in the view's parentsIn
+        let deepestValidIndex = -1;
+        for (const [
+          index,
+          parentInternalId,
+        ] of node.parentInternalIds.entries()) {
+          const parentsInSet = new Set(dataSourceView.parentsIn || []);
+          if (parentsInSet.has(parentInternalId)) {
+            deepestValidIndex = index;
+          }
+        }
+        // If no valid parent found, keep the original parentInternalIds
+        // If found, slice from that index to keep only the relevant hierarchy
+        return deepestValidIndex >= 0
+          ? {
+              ...node,
+              parentInternalIds: node.parentInternalIds.slice(
+                0,
+                deepestValidIndex + 1
+              ),
+            }
+          : node;
+      });
+
   return new Ok({
-    nodes: sortedNodes,
+    nodes: filteredNodes,
     total: hitCount - hiddenNodesCount, // Deducing the number of folders we hid from the total count.
     totalIsAccurate,
     nextPageCursor: nextPageCursor,

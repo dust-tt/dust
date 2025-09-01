@@ -376,7 +376,7 @@ export const VisualizationActionIframe = forwardRef<
               )}
               {isErrored && (
                 <div className="flex h-full w-full flex-col items-center gap-4 py-8">
-                  <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  <div className="px-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                     An error occured while rendering the visualization.
                     <div className="pt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
                       {errorMessage}

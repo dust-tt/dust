@@ -17,12 +17,12 @@ import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
-import { useActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
 import {
   AgentMessageCanvasGeneratedFiles,
   DefaultAgentMessageGeneratedFiles,
 } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { AssistantHandle } from "@app/components/assistant/conversation/AssistantHandle";
+import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useAutoOpenCanvas } from "@app/components/assistant/conversation/canvas/useAutoOpenCanvas";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -50,19 +50,21 @@ import {
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
 import { RETRY_BLOCKED_ACTIONS_STARTED_EVENT } from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type {
   LightAgentMessageType,
+  LightAgentMessageWithActionsType,
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { isPersonalAuthenticationRequiredErrorContent } from "@app/types";
-import { isString } from "@app/types";
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
   isCanvasFileContentType,
+  isPersonalAuthenticationRequiredErrorContent,
+  isString,
   isSupportedImageContentType,
 } from "@app/types";
 
@@ -102,7 +104,7 @@ export function AgentMessage({
     message.configuration.sId as GLOBAL_AGENTS_SID
   );
 
-  const { showValidationDialog, enqueueValidation } =
+  const { showBlockedActionsDialog, enqueueBlockedAction } =
     useActionValidationContext();
 
   const { mutateMessage } = useConversationMessage({
@@ -123,10 +125,12 @@ export function AgentMessage({
         const eventType = eventPayload.data.type;
 
         if (eventType === "tool_approve_execution") {
-          showValidationDialog();
-          enqueueValidation({
+          showBlockedActionsDialog();
+          enqueueBlockedAction({
             message,
-            validationRequest: {
+            blockedAction: {
+              status: "blocked_validation_required",
+              authorizationInfo: null,
               messageId: eventPayload.data.messageId,
               conversationId: eventPayload.data.conversationId,
               actionId: eventPayload.data.actionId,
@@ -137,27 +141,16 @@ export function AgentMessage({
           });
         }
       },
-      [showValidationDialog, enqueueValidation, message]
+      [showBlockedActionsDialog, enqueueBlockedAction, message]
     ),
     streamId: `message-${message.sId}`,
+    useFullChainOfThought: false,
   });
 
-  const agentMessageToRender = ((): LightAgentMessageType => {
-    switch (message.status) {
-      case "succeeded":
-      case "failed":
-        return message;
-      case "cancelled":
-        if (messageStreamState.message.status === "created") {
-          return { ...messageStreamState.message, status: "cancelled" };
-        }
-        return messageStreamState.message;
-      case "created":
-        return messageStreamState.message;
-      default:
-        assertNever(message.status);
-    }
-  })();
+  const agentMessageToRender = getAgentMessageToRender({
+    message,
+    messageStreamState,
+  });
 
   const references = Object.entries(
     agentMessageToRender.citations ?? {}
@@ -627,6 +620,33 @@ export function AgentMessage({
     );
 
     setIsRetryHandlerProcessing(false);
+  }
+}
+
+/**
+ * Reconstructs the agent message to render based on the message fetched and the data streamed.
+ * The message does not contain actions, we may only have some if we received through the stream.
+ */
+function getAgentMessageToRender({
+  message,
+  messageStreamState,
+}: {
+  message: LightAgentMessageType;
+  messageStreamState: MessageTemporaryState;
+}): LightAgentMessageType | LightAgentMessageWithActionsType {
+  switch (message.status) {
+    case "succeeded":
+    case "failed":
+      return message;
+    case "cancelled":
+      if (messageStreamState.message.status === "created") {
+        return { ...messageStreamState.message, status: "cancelled" };
+      }
+      return messageStreamState.message;
+    case "created":
+      return messageStreamState.message;
+    default:
+      assertNever(message.status);
   }
 }
 

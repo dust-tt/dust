@@ -7,7 +7,13 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { UseFieldArrayAppend } from "react-hook-form";
 import { useForm } from "react-hook-form";
 
@@ -50,6 +56,7 @@ import {
 import { AdditionalConfigurationSection } from "@app/components/agent_builder/capabilities/shared/AdditionalConfigurationSection";
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
+import { FlavorSection } from "@app/components/agent_builder/capabilities/shared/FlavorSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
@@ -152,6 +159,7 @@ export function MCPServerViewsSheet({
     SelectedTool[]
   >([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [isOpen, setIsOpen] = useState(!!mode);
   const [currentPageId, setCurrentPageId] = useState<ConfigurationPagePageId>(
@@ -217,8 +225,8 @@ export function MCPServerViewsSheet({
         ? views
         : views.filter((view) => {
             const term = searchTerm.toLowerCase();
-            return [view.label, view.description, view.name].some((field) =>
-              field?.toLowerCase().includes(term)
+            return [view.label, view.server.description, view.server.name].some(
+              (field) => field?.toLowerCase().includes(term)
             );
           });
 
@@ -296,6 +304,16 @@ export function MCPServerViewsSheet({
     }
     setIsOpen(!!mode);
   }, [mode, allMcpServerViews]);
+
+  // Focus SearchInput when opening on TOOL_SELECTION page
+  useEffect(() => {
+    if (isOpen && currentPageId === TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION) {
+      // Small delay to ensure the component is fully rendered
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen, currentPageId]);
 
   const toggleToolSelection = useCallback((tool: SelectedTool) => {
     setSelectedToolsInSheet((prev) => {
@@ -577,10 +595,12 @@ export function MCPServerViewsSheet({
         <>
           {!isMCPServerViewsLoading && (
             <SearchInput
+              ref={searchInputRef}
               value={searchTerm}
               onChange={setSearchTerm}
-              name="search-mcp-servers"
-              placeholder="Search servers..."
+              name="search-mcp"
+              placeholder="Search tools..."
+              className="mt-4"
             />
           )}
           <MCPServerSelectionPage
@@ -631,7 +651,7 @@ export function MCPServerViewsSheet({
           needsDataSourceProvider ? (
             // Content without FormProvider wrapper since it's provided at a higher level
             <div className="h-full">
-              <div className="h-full space-y-6">
+              <div className="h-full space-y-6 pt-3">
                 <MCPActionHeader
                   action={configurationTool}
                   mcpServerView={mcpServerView}
@@ -658,6 +678,10 @@ export function MCPServerViewsSheet({
                   <JsonSchemaSection
                     getAgentInstructions={getAgentInstructions}
                   />
+                )}
+
+                {requirements.requiredFlavors.length > 0 && (
+                  <FlavorSection flavors={requirements.requiredFlavors} />
                 )}
 
                 <AdditionalConfigurationSection

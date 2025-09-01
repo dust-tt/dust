@@ -2,12 +2,12 @@ import type {
   MCPApproveExecutionEvent,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import { createMCPAction } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
+import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
@@ -181,7 +181,7 @@ async function createActionForTool(
   // Create the action object in the database and yield an event for the generation of the params.
   // We store the action here as the params have been generated, if an error occurs later on,
   // the error will be stored on the parent agent message.
-  const { action: agentMCPAction, mcpAction } = await createMCPAction(auth, {
+  const action = await createMCPAction(auth, {
     actionBaseParams,
     actionConfiguration,
     augmentedInputs,
@@ -196,7 +196,9 @@ async function createActionForTool(
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      action: mcpAction,
+      // TODO: cleanup the type field from the public API users and remove everywhere.
+      // TODO: move the output field to a separate field.
+      action: { ...action.toJSON(), output: null, generatedFiles: [] },
     },
     agentMessageRow,
     {
@@ -207,7 +209,7 @@ async function createActionForTool(
 
   return {
     actionBlob: {
-      actionId: agentMCPAction.id,
+      actionId: action.id,
       actionStatus: status,
       needsApproval: status === "blocked_validation_required",
     },
@@ -219,8 +221,8 @@ async function createActionForTool(
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
             conversationId,
-            actionId: agentMCPAction.sId,
-            inputs: mcpAction.params,
+            actionId: action.sId,
+            inputs: action.augmentedInputs,
             stake: actionConfiguration.permission,
             metadata: {
               toolName: actionConfiguration.originalName,

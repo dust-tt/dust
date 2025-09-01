@@ -132,8 +132,8 @@ export function transformSelectionConfigurationsToTree(
     const { dataSourceView } = config;
     const baseParts = buildDataSourcePath(dataSourceView);
 
+    // If all nodes are selected, just add the data source path
     if (config.isSelectAll) {
-      // If all nodes are selected, just add the data source path
       inPaths.push({
         path: baseParts,
         name: dataSourceView.dataSource.name,

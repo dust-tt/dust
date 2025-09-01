@@ -66,6 +66,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "github",
   "gmail",
   "google_calendar",
+  "google_drive",
   "google_sheets",
   "hubspot",
   "image_generation",
@@ -116,6 +117,7 @@ export const INTERNAL_MCP_SERVERS = {
       get_pull_request: "never_ask",
       list_organization_projects: "never_ask",
       list_issues: "never_ask",
+      list_pull_requests: "never_ask",
       get_issue: "never_ask",
     },
     timeoutMs: undefined,
@@ -179,7 +181,8 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: TABLE_QUERY_SERVER_NAME,
       version: "1.0.0",
-      description: "Tables, Spreadsheets, Notion DBs (quantitative).",
+      description:
+        "TablesQuery structured data like a spreadsheet or database for data analyses.",
       icon: "ActionTableIcon",
       authorization: null,
       documentationUrl: null,
@@ -319,7 +322,7 @@ The directive should be used to display a clickable version of the agent name in
       name: "include_data",
       version: "1.0.0",
       description:
-        "Always includes specific documents in full for every conversation with this agent.",
+        "Load complete content for full context up to memory limits.",
       icon: "ActionTimeIcon",
       authorization: null,
       documentationUrl: null,
@@ -397,8 +400,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "extract_data",
       version: "1.0.0",
-      description:
-        "Extracts structured information from unstructured data using your defined schema.",
+      description: "Parse documents to create structured datasets.",
       icon: "ActionScanIcon",
       authorization: null,
       documentationUrl: null,
@@ -729,11 +731,32 @@ The directive should be used to display a clickable version of the agent name in
       name: "canvas",
       version: "1.0.0",
       description:
-        "Create and update canvas files that users can execute and interact with. Currently supports client-executable code.",
+        "Create interactive content including dashboards with data visualizations, slide presentations, or any custom interactive components. Choose your preferred content type for focused guidance.",
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
       instructions: CANVAS_INSTRUCTIONS,
+      flavors: [
+        {
+          id: "dashboards",
+          name: "Dashboard",
+          description:
+            "Create interactive dashboards with charts, KPIs, and data visualizations",
+          icon: "ActionPieChartIcon",
+        },
+        {
+          id: "slides",
+          name: "Slides",
+          description: "Build slide decks and presentations",
+          icon: "ActionSlideshowIcon",
+        },
+        {
+          id: "other",
+          name: "Others",
+          description: "Create any interactive content with full flexibility",
+          icon: "ActionDocumentTextIcon",
+        },
+      ],
     },
   },
   outlook: {
@@ -818,11 +841,13 @@ The directive should be used to display a clickable version of the agent name in
       list_oncall_schedules: "never_ask",
       list_service_items: "never_ask",
       list_solution_categories: "never_ask",
+      list_solution_folders: "never_ask",
       list_solution_articles: "never_ask",
       list_requesters: "never_ask",
       get_requester: "never_ask",
       list_purchase_orders: "never_ask",
       list_sla_policies: "never_ask",
+      get_solution_article: "never_ask",
 
       // Write operations - low/high stakes
       create_ticket: "low",
@@ -847,6 +872,35 @@ The directive should be used to display a clickable version of the agent name in
       instructions: FRESHSERVICE_SERVER_INSTRUCTIONS,
     },
   },
+  google_drive: {
+    id: 27,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("google_drive_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      list_drives: "never_ask",
+      search_files: "never_ask",
+      get_file_content: "never_ask",
+    },
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "google_drive",
+      version: "1.0.0",
+      description:
+        "Tools for searching and reading content from Google Drive files (Docs, Sheets, Presentations, text files).",
+      authorization: {
+        provider: "google_drive" as const,
+        supported_use_cases: ["personal_actions"] as const,
+        scope: "https://www.googleapis.com/auth/drive.readonly" as const,
+      },
+      icon: "DriveLogo",
+      documentationUrl: "https://docs.dust.tt/docs/google-drive",
+      instructions: null,
+    },
+  },
   [SEARCH_SERVER_NAME]: {
     id: 1006,
     availability: "auto",
@@ -858,8 +912,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: SEARCH_SERVER_NAME,
       version: "1.0.0",
-      description:
-        "Searches through selected data sources to surface the best content for answering user queries.",
+      description: "Search content to find the most relevant information.",
       icon: "ActionMagnifyingGlassIcon",
       authorization: null,
       documentationUrl: null,
@@ -939,7 +992,7 @@ The directive should be used to display a clickable version of the agent name in
       name: "query_tables_v2",
       version: "1.0.0",
       description:
-        "Transforms your questions into SQL queries for analyzing data. (quantitative) (mcp, exploded).",
+        "Query structured data like a spreadsheet or database for data analyses.",
       icon: "ActionTableIcon",
       authorization: null,
       documentationUrl: null,

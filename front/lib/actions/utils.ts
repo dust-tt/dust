@@ -14,18 +14,21 @@ import {
   isMCPInternalDataSourceFileSystem,
   isMCPInternalInclude,
   isMCPInternalNotion,
+  isMCPInternalRunAgent,
   isMCPInternalSearch,
   isMCPInternalSlack,
   isMCPInternalWebsearch,
 } from "@app/lib/actions/types/guards";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import type { AgentConfigurationType, AgentMessageType } from "@app/types";
 import { assertNever } from "@app/types";
 
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 export const SLACK_SEARCH_ACTION_NUM_RESULTS = 24;
 export const NOTION_SEARCH_ACTION_NUM_RESULTS = 16;
+export const RUN_AGENT_ACTION_NUM_RESULTS = 64;
 
 export const MCP_SPECIFICATION: ActionSpecification = {
   label: "More...",
@@ -179,6 +182,10 @@ export function getCitationsCount({
     return NOTION_SEARCH_ACTION_NUM_RESULTS;
   }
 
+  if (isMCPInternalRunAgent(action)) {
+    return RUN_AGENT_ACTION_NUM_RESULTS;
+  }
+
   return getRetrievalTopK({
     agentConfiguration,
     stepActions,
@@ -266,13 +273,14 @@ export async function getExecutionStatusFromConfig(
     case "low": {
       // The user may not be populated, notably when using the public API.
       const user = auth.user();
-      const neverAskSetting = await user?.getMetadata(
-        `toolsValidations:${actionConfiguration.toolServerId}`
-      );
 
       if (
-        neverAskSetting &&
-        neverAskSetting.value.includes(`${actionConfiguration.name}`)
+        user &&
+        (await hasUserAlwaysApprovedTool({
+          user,
+          mcpServerId: actionConfiguration.toolServerId,
+          toolName: actionConfiguration.name,
+        }))
       ) {
         return { status: "ready_allowed_implicitly" };
       }
@@ -283,4 +291,53 @@ export async function getExecutionStatusFromConfig(
     default:
       assertNever(actionConfiguration.permission);
   }
+}
+
+const TOOLS_VALIDATION_WILDCARD = "*";
+
+const getToolsValidationKey = (mcpServerId: string) =>
+  `toolsValidations:${mcpServerId}`;
+
+export async function setUserAlwaysApprovedTool({
+  user,
+  mcpServerId,
+  toolName,
+}: {
+  user: UserResource;
+  mcpServerId: string;
+  toolName: string;
+}) {
+  if (!toolName) {
+    throw new Error("toolName is required");
+  }
+  if (!mcpServerId) {
+    throw new Error("mcpServerId is required");
+  }
+
+  await user.upsertMetadataArray(getToolsValidationKey(mcpServerId), toolName);
+}
+
+export async function hasUserAlwaysApprovedTool({
+  user,
+  mcpServerId,
+  toolName,
+}: {
+  user: UserResource;
+  mcpServerId: string;
+  toolName: string;
+}) {
+  if (!mcpServerId) {
+    throw new Error("mcpServerId is required");
+  }
+
+  if (!toolName) {
+    throw new Error("toolName is required");
+  }
+
+  const metadata = await user.getMetadataAsArray(
+    getToolsValidationKey(mcpServerId)
+  );
+  return (
+    metadata.includes(toolName) || metadata.includes(TOOLS_VALIDATION_WILDCARD)
+  );
 }

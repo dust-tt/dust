@@ -1,14 +1,14 @@
 import type {
-  MCPActionType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { OAuthProvider } from "@app/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
+  FunctionCallContentType,
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
-import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -312,7 +312,7 @@ export type AgentActionSuccessEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  action: MCPActionType;
+  action: AgentMCPActionWithOutputType;
 };
 
 // Event sent to stop the generation.

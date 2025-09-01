@@ -31,6 +31,7 @@ import type {
 } from "@dust-tt/client";
 import {
   assertNever,
+  isRunAgentResultResourceType,
   isSearchResultResourceType,
   isWebsearchResultResourceType,
   removeNulls,
@@ -43,6 +44,7 @@ import {
   CitationIcons,
   CitationIndex,
   CitationTitle,
+  ClipboardCheckIcon,
   ClipboardIcon,
   ContentMessage,
   ConversationMessage,
@@ -53,8 +55,10 @@ import {
   Markdown,
   Page,
   Popover,
+  useCopyToClipboard,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import { marked } from "marked";
 import {
   useCallback,
   useContext,
@@ -67,11 +71,6 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { visit } from "unist-util-visit";
-
-function cleanUpCitations(message: string): string {
-  const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
-  return message.replace(regex, "");
-}
 
 export const FeedbackSelectorPopoverContent = () => {
   return (
@@ -106,6 +105,59 @@ export function makeMCPActionCitation(
     icon: <DocumentTextIcon />,
   };
 }
+
+export const getCitationsFromActions = (
+  actions: AgentMessagePublicType["actions"]
+): Record<string, MarkdownCitation> => {
+  const searchResultsWithDocs = removeNulls(
+    actions.flatMap((action) =>
+      action.output?.filter(isSearchResultResourceType).map((o) => o.resource)
+    )
+  );
+
+  const searchRefs: Record<string, MarkdownCitation> = {};
+  searchResultsWithDocs.forEach((d) => {
+    searchRefs[d.ref] = makeMCPActionCitation(d);
+  });
+
+  const websearchResultsWithDocs = removeNulls(
+    actions.flatMap((action) =>
+      action.output
+        ?.filter(isWebsearchResultResourceType)
+        .map((o) => o.resource)
+    )
+  );
+
+  const websearchRefs: Record<string, MarkdownCitation> = {};
+  websearchResultsWithDocs.forEach((d) => {
+    websearchRefs[d.reference] = makeMCPActionCitation(d);
+  });
+
+  const runAgentResultsWithRefs = removeNulls(
+    actions.flatMap((action) =>
+      action.output?.filter(isRunAgentResultResourceType).map((o) => o.resource)
+    )
+  );
+
+  const runAgentRefs: Record<string, MarkdownCitation> = {};
+  runAgentResultsWithRefs.forEach((result) => {
+    if (result.refs) {
+      Object.entries(result.refs).forEach(([ref, citation]) => {
+        runAgentRefs[ref] = {
+          href: citation.href ?? "",
+          title: citation.title,
+          icon: <DocumentTextIcon />,
+        };
+      });
+    }
+  });
+
+  return {
+    ...searchRefs,
+    ...websearchRefs,
+    ...runAgentRefs,
+  };
+};
 
 interface AgentMessageProps {
   conversationId: string;
@@ -171,6 +223,7 @@ export function AgentMessage({
   const [activeReferences, setActiveReferences] = useState<
     { index: number; document: MarkdownCitation }[]
   >([]);
+  const [isCopied, copy] = useCopyToClipboard();
 
   const isGlobalAgent = message.configuration.id === -1;
 
@@ -338,41 +391,7 @@ export function AgentMessage({
   ]);
 
   useEffect(() => {
-    // MCP search actions
-    const allMCPSearchResources = agentMessageToRender.actions
-      .map((a) =>
-        a.output?.filter(isSearchResultResourceType).map((o) => o.resource)
-      )
-      .flat();
-
-    const allMCPSearchReferences = removeNulls(allMCPSearchResources).reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, l) => {
-      acc[l.ref] = makeMCPActionCitation(l);
-      return acc;
-    }, {});
-
-    // MCP websearch actions
-    const allMCPWebSearchResources = agentMessageToRender.actions
-      .map((a) =>
-        a.output?.filter(isWebsearchResultResourceType).map((o) => o.resource)
-      )
-      .flat();
-
-    const allMCPWebSearchReferences = removeNulls(
-      allMCPWebSearchResources
-    ).reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, l) => {
-      acc[l.reference] = makeMCPActionCitation(l);
-      return acc;
-    }, {});
-
-    // Merge all references
-    setReferences({
-      ...allMCPSearchReferences,
-      ...allMCPWebSearchReferences,
-    });
+    setReferences(getCitationsFromActions(agentMessageToRender.actions));
   }, [
     agentMessageToRender.actions,
     agentMessageToRender.status,
@@ -415,6 +434,70 @@ export function AgentMessage({
     []
   );
 
+  async function handleCopyToClipboard() {
+    const messageContent = agentMessageToRender.content || "";
+    let footnotesMarkdown = "";
+    let footnotesHtml = "";
+
+    // 1. Build Key-to-Index Map
+    const keyToIndexMap = new Map<string, number>();
+    if (references && activeReferences) {
+      Object.entries(references).forEach(([key, mdCitation]) => {
+        const activeRefEntry = activeReferences.find(
+          (ar) =>
+            ar.document.href === mdCitation.href &&
+            ar.document.title === mdCitation.title
+        );
+        if (activeRefEntry) {
+          keyToIndexMap.set(key, activeRefEntry.index);
+        }
+      });
+    }
+
+    // 2. Process Message Content for Plain Text numerical citations
+    let processedMessageContent = messageContent;
+    if (keyToIndexMap.size > 0) {
+      const citeDirectiveRegex = /:cite\[([a-zA-Z0-9_,-]+)\]/g;
+      processedMessageContent = messageContent.replace(
+        citeDirectiveRegex,
+        (_match, keysString: string) => {
+          const keys = keysString.split(",").map((k) => k.trim());
+          const resolvedIndices = keys
+            .map((k) => keyToIndexMap.get(k))
+            .filter((idx) => idx !== undefined) as number[];
+
+          if (resolvedIndices.length > 0) {
+            resolvedIndices.sort((a, b) => a - b);
+            return `[${resolvedIndices.join(",")}]`;
+          }
+          return _match;
+        }
+      );
+    }
+
+    if (activeReferences.length > 0) {
+      footnotesMarkdown = "\n\nReferences:\n";
+      footnotesHtml = "<br/><br/><div>References:</div>";
+      const sortedActiveReferences = [...activeReferences].sort(
+        (a, b) => a.index - b.index
+      );
+      for (const ref of sortedActiveReferences) {
+        footnotesMarkdown += `[${ref.index}] ${ref.document.href}\n`;
+        footnotesHtml += `<div>[${ref.index}] <a href="${ref.document.href}">${ref.document.title}</a></div>`;
+      }
+    }
+
+    const markdownText = processedMessageContent + footnotesMarkdown;
+    const htmlContent = (await marked(processedMessageContent)) + footnotesHtml;
+
+    await copy(
+      new ClipboardItem({
+        "text/plain": new Blob([markdownText], { type: "text/plain" }),
+        "text/html": new Blob([htmlContent], { type: "text/html" }),
+      })
+    );
+  }
+
   const buttons =
     message.status === "failed" || messageStreamState.agentState === "thinking"
       ? []
@@ -424,12 +507,8 @@ export function AgentMessage({
             tooltip="Copy to clipboard"
             variant="ghost"
             size="xs"
-            onClick={() => {
-              void navigator.clipboard.writeText(
-                cleanUpCitations(agentMessageToRender.content || "")
-              );
-            }}
-            icon={ClipboardIcon}
+            onClick={handleCopyToClipboard}
+            icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
             className="text-muted-foreground dark:text-muted-foreground-night"
           />,
           <Button

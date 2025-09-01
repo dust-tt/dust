@@ -452,6 +452,7 @@ export function extractMetadataFromServerVersion(
       documentationUrl: isInternalMCPServerDefinition(r)
         ? r.documentationUrl
         : null,
+      flavors: isInternalMCPServerDefinition(r) ? r.flavors : undefined,
     };
   }
 
