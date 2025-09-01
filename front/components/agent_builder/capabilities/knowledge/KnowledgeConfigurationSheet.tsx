@@ -214,7 +214,6 @@ function KnowledgeConfigurationSheetForm({
         <KnowledgePageProvider initialPageId={getInitialPageId(isEditing)}>
           <KnowledgeConfigurationSheetContent
             onSave={form.handleSubmit(handleSave)}
-            onClose={onClose}
             onCancel={onCancel}
             getAgentInstructions={getAgentInstructions}
             isEditing={isEditing}
@@ -227,7 +226,6 @@ function KnowledgeConfigurationSheetForm({
 
 interface KnowledgeConfigurationSheetContentProps {
   onSave: () => void;
-  onClose: () => void;
   onCancel: () => Promise<void>;
   getAgentInstructions: () => string;
   isEditing: boolean;
@@ -235,7 +233,6 @@ interface KnowledgeConfigurationSheetContentProps {
 
 function KnowledgeConfigurationSheetContent({
   onSave,
-  onClose,
   onCancel,
   getAgentInstructions,
   isEditing,
