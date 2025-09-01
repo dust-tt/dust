@@ -116,7 +116,7 @@ export function MCPServerSelectionPage({
 
   return (
     <>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 py-2">
         {((dataVisualization && onDataVisualizationClick) ||
           defaultMcpServerViews) && (
           <span className="text-lg font-semibold">Top tools</span>

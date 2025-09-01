@@ -4,13 +4,23 @@ import {
   MagnifyingGlassIcon,
   TableIcon,
 } from "@dust-tt/sparkle";
+import isEmpty from "lodash/isEmpty";
 
+import { transformSelectionConfigurationsToTree } from "@app/components/agent_builder/capabilities/knowledge/transformations";
+import { nameToDisplayFormat } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
+import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
+import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import { DESCRIPTION_MAX_LENGTH } from "@app/components/agent_builder/types";
+import { CONFIGURATION_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
+import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
 import {
   DATA_WAREHOUSE_SERVER_NAME,
   TABLE_QUERY_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { SEARCH_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { TemplateActionPreset } from "@app/types";
 
 export interface CapabilityConfig {
   icon: React.ComponentType;
@@ -97,4 +107,83 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
       placeholder: "Describe what you want to query from your tables...",
     },
   },
+};
+
+type GetKnowledgeDefaultValuesOptions = {
+  action: AgentBuilderAction | null;
+  mcpServerViews: MCPServerViewType[];
+  presetActionData?: TemplateActionPreset;
+  isEditing: boolean;
+};
+
+export function getKnowledgeDefaultValues({
+  action,
+  mcpServerViews,
+  presetActionData,
+  isEditing,
+}: GetKnowledgeDefaultValuesOptions) {
+  const dataSourceConfigurations =
+    action?.configuration?.dataSourceConfigurations;
+  const tablesConfigurations = action?.configuration?.tablesConfigurations;
+
+  // Use either data source or tables configurations - they're mutually exclusive
+  const configurationToUse = isEmpty(dataSourceConfigurations)
+    ? isEmpty(tablesConfigurations)
+      ? {}
+      : tablesConfigurations
+    : dataSourceConfigurations;
+
+  const dataSourceTree =
+    configurationToUse && action
+      ? transformSelectionConfigurationsToTree(configurationToUse)
+      : { in: [], notIn: [] };
+
+  const selectedMCPServerView = (() => {
+    if (isEditing && action?.type === "MCP") {
+      return mcpServerViews.find(
+        (view) => view.sId === action.configuration.mcpServerViewId
+      );
+    }
+
+    if (presetActionData) {
+      const targetServerName =
+        getMCPServerNameForTemplateAction(presetActionData);
+      return mcpServerViews.find(
+        (view) => view.server.name === targetServerName
+      );
+    }
+
+    return mcpServerViews.find(
+      (view) => view.server.name === SEARCH_SERVER_NAME
+    );
+  })();
+
+  const storedName =
+    action?.name ??
+    presetActionData?.name ??
+    selectedMCPServerView?.name ??
+    selectedMCPServerView?.server.name ??
+    "";
+
+  // Convert stored name to user-friendly format for display
+  const defaultName = storedName ? nameToDisplayFormat(storedName) : "";
+
+  const defaultDescription =
+    action?.description ?? presetActionData?.description ?? "";
+
+  return {
+    sources: dataSourceTree,
+    description: defaultDescription,
+    configuration:
+      action?.configuration ?? getDefaultConfiguration(selectedMCPServerView),
+    mcpServerView: selectedMCPServerView ?? null,
+    name: defaultName,
+  };
+}
+
+export const getInitialPageId = (isEditing: boolean) => {
+  if (isEditing) {
+    return CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION;
+  }
+  return CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
 };

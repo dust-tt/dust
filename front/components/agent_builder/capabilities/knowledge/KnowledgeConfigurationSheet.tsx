@@ -5,7 +5,6 @@ import {
   MultiPageSheetContent,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import isEmpty from "lodash/isEmpty";
 import uniqueId from "lodash/uniqueId";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -17,17 +16,15 @@ import {
 
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { KnowledgeFooter } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeFooter";
-import {
-  transformSelectionConfigurationsToTree,
-  transformTreeToSelectionConfigurations,
-} from "@app/components/agent_builder/capabilities/knowledge/transformations";
+import { transformTreeToSelectionConfigurations } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import { CAPABILITY_CONFIGS } from "@app/components/agent_builder/capabilities/knowledge/utils";
+import { getKnowledgeDefaultValues } from "@app/components/agent_builder/capabilities/knowledge/utils";
+import { getInitialPageId } from "@app/components/agent_builder/capabilities/knowledge/utils";
 import {
   generateUniqueActionName,
   nameToDisplayFormat,
   nameToStorageFormat,
 } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
-import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { isValidPage } from "@app/components/agent_builder/capabilities/mcp/utils/sheetUtils";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
@@ -49,11 +46,7 @@ import {
   KnowledgePageProvider,
   useKnowledgePageContext,
 } from "@app/components/data_source_view/context/PageContext";
-import {
-  getMCPServerNameForTemplateAction,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
-import { SEARCH_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
@@ -68,84 +61,6 @@ interface KnowledgeConfigurationSheetProps {
   getAgentInstructions: () => string;
   presetActionData?: TemplateActionPreset;
 }
-
-type GetKnowledgeDefaultValuesOptions = {
-  action: AgentBuilderAction | null;
-  mcpServerViews: MCPServerViewType[];
-  presetActionData?: TemplateActionPreset;
-  isEditing: boolean;
-};
-function getKnowledgeDefaultValues({
-  action,
-  mcpServerViews,
-  presetActionData,
-  isEditing,
-}: GetKnowledgeDefaultValuesOptions) {
-  const dataSourceConfigurations =
-    action?.configuration?.dataSourceConfigurations;
-  const tablesConfigurations = action?.configuration?.tablesConfigurations;
-
-  // Use either data source or tables configurations - they're mutually exclusive
-  const configurationToUse = isEmpty(dataSourceConfigurations)
-    ? isEmpty(tablesConfigurations)
-      ? {}
-      : tablesConfigurations
-    : dataSourceConfigurations;
-
-  const dataSourceTree =
-    configurationToUse && action
-      ? transformSelectionConfigurationsToTree(configurationToUse)
-      : { in: [], notIn: [] };
-
-  const selectedMCPServerView = (() => {
-    if (isEditing && action?.type === "MCP") {
-      return mcpServerViews.find(
-        (view) => view.sId === action.configuration.mcpServerViewId
-      );
-    }
-
-    if (presetActionData) {
-      const targetServerName =
-        getMCPServerNameForTemplateAction(presetActionData);
-      return mcpServerViews.find(
-        (view) => view.server.name === targetServerName
-      );
-    }
-
-    return mcpServerViews.find(
-      (view) => view.server.name === SEARCH_SERVER_NAME
-    );
-  })();
-
-  const storedName =
-    action?.name ??
-    presetActionData?.name ??
-    selectedMCPServerView?.name ??
-    selectedMCPServerView?.server.name ??
-    "";
-
-  // Convert stored name to user-friendly format for display
-  const defaultName = storedName ? nameToDisplayFormat(storedName) : "";
-
-  const defaultDescription =
-    action?.description ?? presetActionData?.description ?? "";
-
-  return {
-    sources: dataSourceTree,
-    description: defaultDescription,
-    configuration:
-      action?.configuration ?? getDefaultConfiguration(selectedMCPServerView),
-    mcpServerView: selectedMCPServerView ?? null,
-    name: defaultName,
-  };
-}
-
-const getInitialPageId = (isEditing: boolean) => {
-  if (isEditing) {
-    return CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION;
-  }
-  return CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
-};
 
 export function KnowledgeConfigurationSheet({
   action,
