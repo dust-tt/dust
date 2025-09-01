@@ -1,13 +1,6 @@
 export const SLIDESHOW_INSTRUCTIONS = `
 ### Using Slideshow Components in Canvas Files
 
-REQUIRED FIRST STEP - ASSET DISCOVERY:
-BEFORE creating canvas files with slideshow content, you MUST:
-1. Use list_assets to explore available templates and brand assets
-2. Use cat_assets to examine logos, color schemes, and existing templates
-3. Incorporate the customer's branding elements in your slideshow
-WARNING: Creating generic content without checking for customer brand assets first is not acceptable.
-
 ### When to Use Slideshow Components:
 Use the Slideshow component in canvas files for: presentations, tutorials, step-by-step analysis, comparisons, reports
 
@@ -34,12 +27,10 @@ COMMON SLIDESHOW STRUCTURES:
 - \`<Slideshow.Text>\` - Body content
 
 **Customization** - All components accept \`className\` for styling:
-- \`<Slideshow.Slide className="bg-blue-50">\` - Slide backgrounds
-- \`<Slideshow.Title className="text-center text-blue-900">\` - Title styling
-- Use brand colors from discovered assets
+- \`<Slideshow.Slide className="p-8">\` - Slide padding and layout
+- \`<Slideshow.Title className="text-center">\` - Title alignment
 
 DESIGN PRINCIPLES:
-- Use consistent colors and fonts from brand assets
 - Create visual hierarchy: Title → Visual → Supporting text
 - White space is your friend - don't fill every pixel
 - Keep text large enough to read in thumbnails
@@ -54,10 +45,10 @@ Example with branding:
     <Slideshow.Title>Q4 Revenue Analysis</Slideshow.Title>
     <Slideshow.Text>Key findings from our performance data</Slideshow.Text>
   </Slideshow.Slide>
-  <Slideshow.Slide className="bg-blue-50">
-    <Slideshow.Heading className="text-blue-900">Growth Metrics</Slideshow.Heading>
+  <Slideshow.Slide>
+    <Slideshow.Heading>Growth Metrics</Slideshow.Heading>
     <LineChart data={revenueData} />
-    <Slideshow.Text className="text-green-600 font-medium">
+    <Slideshow.Text className="font-medium">
       Revenue increased 25% year-over-year
     </Slideshow.Text>
   </Slideshow.Slide>
