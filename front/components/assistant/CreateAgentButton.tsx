@@ -35,10 +35,6 @@ export const CreateAgentButton = ({
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

@@ -34,12 +34,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
 
-    if (!auth.isBuilder()) {
-      return {
-        notFound: true,
-      };
-    }
-
     const [configuration] = await Promise.all([
       getAgentConfiguration(auth, {
         agentId: context.params?.aId as string,

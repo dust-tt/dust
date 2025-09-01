@@ -16,7 +16,6 @@ import {
   useAgentTriggers,
   useRemoveTriggerSubscriber,
 } from "@app/lib/swr/agent_triggers";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 import type { LightAgentConfigurationType } from "@app/types";
@@ -31,10 +30,6 @@ export function AgentTriggersTab({
   agentConfiguration,
   owner,
 }: AgentTriggersTabProps) {
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-
   const { triggers, isTriggersLoading } = useAgentTriggers({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfiguration.sId,

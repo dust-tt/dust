@@ -12,6 +12,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import Link from "next/link";
+
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";

@@ -21,7 +21,6 @@ import { TableTagSelector } from "@app/components/assistant/manager/TableTagSele
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useTags } from "@app/lib/swr/tags";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   classNames,
   formatTimestampToFriendlyDate,
@@ -282,10 +281,6 @@ export function AssistantsTable({
   });
   const router = useRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
-
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
 
   const rows: RowData[] = useMemo(
     () =>
