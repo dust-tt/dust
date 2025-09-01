@@ -368,7 +368,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       // First, ensure all channels exist (sequential to avoid race conditions)
       for (const [internalId] of permissionEntries) {
         const slackChannelId = slackChannelIdFromInternalId(internalId);
-        let channel = channels[slackChannelId];
+        const channel = channels[slackChannelId];
         if (!channel) {
           const joinRes = await joinChannelWithRetries(
             this.connectorId,
