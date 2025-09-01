@@ -257,7 +257,6 @@ export function MCPServerViewsSheet({
 
   useEffect(() => {
     if (mode?.type === "edit") {
-      setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
       setConfigurationTool(mode.action);
       setSelectedToolsInSheet([]);
 
@@ -271,7 +270,17 @@ export function MCPServerViewsSheet({
         );
         if (mcpServerView) {
           setConfigurationMCPServerView(mcpServerView);
+          
+          // For Canvas in edit mode, show data source selection page first
+          if (mcpServerView.server.name === "canvas") {
+            setCurrentPageId(TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
+            setHasVisitedDataSourcePage(false);
+          } else {
+            setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
+          }
         }
+      } else {
+        setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
       }
     } else if (mode?.type === "configure") {
       setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
@@ -815,14 +824,24 @@ export function MCPServerViewsSheet({
       if (mcpServerView.server.name === "canvas" && 'sources' in formData) {
         const sources = (formData as any).sources;
         if (sources && typeof sources === 'object' && 'in' in sources && 'notIn' in sources) {
-          const dataSourceConfigurations = transformTreeToSelectionConfigurations(
-            sources,
-            supportedDataSourceViews
-          );
-          finalConfiguration = {
-            ...formData.configuration,
-            dataSourceConfigurations,
-          };
+          // Only add dataSourceConfigurations if there are selected sources
+          if (sources.in.length > 0) {
+            const dataSourceConfigurations = transformTreeToSelectionConfigurations(
+              sources,
+              supportedDataSourceViews
+            );
+            finalConfiguration = {
+              ...formData.configuration,
+              dataSourceConfigurations,
+              sources, // Keep sources for validation
+            };
+          } else {
+            // No sources selected, just keep the base configuration
+            finalConfiguration = {
+              ...formData.configuration,
+              sources, // Keep empty sources for validation
+            };
+          }
         }
       }
 

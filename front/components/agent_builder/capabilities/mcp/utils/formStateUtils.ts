@@ -28,11 +28,19 @@ export function createFormResetHandler(
 
       if (configurationTool?.type === "MCP") {
         // Edit mode: reset with existing tool data
-        form.reset({
+        const resetData: any = {
           name: configurationTool.name ?? "",
           description: configurationTool.description ?? "",
           configuration: configurationTool.configuration,
-        });
+        };
+        
+        // For Canvas, include sources from configuration or provide default structure
+        if (mcpServerView?.server.name === "canvas") {
+          // Ensure sources has the proper structure even if it doesn't exist
+          resetData.sources = configurationTool.configuration?.sources || { in: [], notIn: [] };
+        }
+        
+        form.reset(resetData);
       } else if (mcpServerView) {
         // New configuration mode: reset with default values
         const defaultValues = getDefaultFormValues(mcpServerView);

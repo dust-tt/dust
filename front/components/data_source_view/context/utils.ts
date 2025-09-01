@@ -43,6 +43,11 @@ export function addNodeToTree(
   tree: DataSourceBuilderTreeType,
   item: DataSourceBuilderTreeItemType
 ): DataSourceBuilderTreeType {
+  // Ensure tree has the proper structure
+  if (!tree || !tree.in || !tree.notIn) {
+    tree = { in: [], notIn: [] };
+  }
+  
   const { path } = item;
   const pathPrefix = getPathPrefix(path);
 
@@ -99,6 +104,11 @@ export function removeNodeFromTree(
   tree: DataSourceBuilderTreeType,
   { path: pathStr, ...opts }: DataSourceBuilderTreeItemType
 ): DataSourceBuilderTreeType {
+  // Ensure tree has the proper structure
+  if (!tree || !tree.in || !tree.notIn) {
+    tree = { in: [], notIn: [] };
+  }
+  
   const pathPrefix = getPathPrefix(pathStr);
 
   let hasParentExclusion = false;
@@ -171,6 +181,11 @@ export function isNodeSelected(
   tree: DataSourceBuilderTreeType,
   path: string[]
 ): NodeSelectionState {
+  // Ensure tree has the proper structure
+  if (!tree || !tree.in || !tree.notIn) {
+    return false;
+  }
+  
   const pathStr = pathToString(path);
   const pathPrefix = getPathPrefix(pathStr);
 
