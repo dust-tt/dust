@@ -125,7 +125,7 @@ const PEOPLE: Record<
   },
   tmartin: {
     name: "Thibault Martin",
-    title: "Operations",
+    title: "GTM & Operations",
     image: "https://avatars.githubusercontent.com/u/168569391?v=4",
     github: "https://github.com/thib-martin",
     linkedIn: "https://www.linkedin.com/in/thibault-martin-27b19b5a/",
@@ -174,7 +174,7 @@ const PEOPLE: Record<
   },
   ahammour: {
     name: "Abboud Hammour",
-    title: "Customer Success",
+    title: "Solutions Engineer",
     image: "https://avatars.githubusercontent.com/u/170936020?v=4",
     github: "https://github.com/ahammour",
     linkedIn: "https://www.linkedin.com/in/abboud-hammour/",
