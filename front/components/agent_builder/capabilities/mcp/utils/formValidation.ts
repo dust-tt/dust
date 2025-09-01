@@ -56,7 +56,7 @@ export function validateMCPActionConfiguration(
   } catch (error) {
     return {
       isValid: false,
-      errorMessage: `Tool "${serverView.name}" has invalid configuration. Please reconfigure it.`,
+      errorMessage: `Tool "${serverView.name || serverView.server.name}" has invalid configuration. Please reconfigure it.`,
     };
   }
 }
