@@ -30,6 +30,7 @@ import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import React, { useCallback, useContext, useState } from "react";
 
+import { AgentCreationDialog } from "@app/components/agent_builder/AgentCreationDialog";
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
@@ -45,7 +46,7 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
-import { isBuilder } from "@app/types";
+import { isBuilder, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 type AssistantSidebarMenuProps = {
   owner: WorkspaceType;
@@ -250,8 +251,21 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     }
   }, [setSidebarOpen, router, setAnimate]);
 
+  // Quick create modal state
+  const [isCreateAgentOpen, setIsCreateAgentOpen] = useState(false);
+
+  const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
+
   return (
     <>
+      {/* Quick Agent Creation Modal (controlled) */}
+      <AgentCreationDialog
+        owner={owner}
+        flow="personal_assistants"
+        templateTagsMapping={TEMPLATES_TAGS_CONFIG}
+        isOpen={isCreateAgentOpen}
+        onOpenChange={setIsCreateAgentOpen}
+      />
       <DeleteConversationsDialog
         isOpen={showDeleteDialog !== null}
         isDeleting={isDeleting}
@@ -295,7 +309,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   tooltip="Create a new conversation"
                   onClick={handleNewClick}
                 />
-                <DropdownMenu>
+                <DropdownMenu
+                  modal={false}
+                  open={isCreateMenuOpen}
+                  onOpenChange={setIsCreateMenuOpen}
+                >
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" icon={MoreIcon} variant="outline" />
                   </DropdownMenuTrigger>
@@ -304,16 +322,18 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                       <>
                         <DropdownMenuLabel>Agent</DropdownMenuLabel>
                         <DropdownMenuItem
-                          href={getAgentBuilderRoute(
-                            owner.sId,
-                            "new",
-                            hasAgentBuilderV2,
-                            "flow=personal_assistants"
-                          )}
                           icon={DocumentIcon}
                           label="New agent from scratch"
                           data-gtm-label="assistantCreationButton"
                           data-gtm-location="sidebarMenu"
+                          onSelect={() => {
+                            setIsCreateMenuOpen(false);
+                            setTimeout(() => setIsCreateAgentOpen(true), 0);
+                          }}
+                          onClick={() => {
+                            setIsCreateMenuOpen(false);
+                            setTimeout(() => setIsCreateAgentOpen(true), 0);
+                          }}
                         />
                         <DropdownMenuItem
                           href={getAgentBuilderRoute(
@@ -408,6 +428,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     </>
   );
 }
+
 
 const RenderConversations = ({
   conversations,
