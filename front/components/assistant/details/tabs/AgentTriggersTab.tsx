@@ -8,6 +8,7 @@ import {
 } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { Spinner } from "@dust-tt/sparkle";
+import cronstrue from "cronstrue";
 import { useState } from "react";
 
 import {
@@ -94,7 +95,14 @@ export function AgentTriggersTab({
                 <Icon
                   visual={trigger.kind === "schedule" ? ClockIcon : BellIcon}
                 />
-                <div className="font-medium">{trigger.name}</div>
+                <div className="flex flex-col">
+                  <div className="font-medium">{trigger.name}</div>
+                  {trigger.kind === "schedule" && (
+                    <div className="text-sm text-muted-foreground">
+                      {cronstrue.toString(trigger.configuration.cron)}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="self-end">
                 {trigger.isEditor ? (
