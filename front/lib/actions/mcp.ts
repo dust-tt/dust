@@ -1,7 +1,6 @@
 import type { ActionApprovalStateType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import omit from "lodash/omit";
 
 import type {
   MCPToolStakeLevelType,
@@ -22,11 +21,7 @@ import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_sche
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
-import type {
-  ActionGeneratedFileType,
-  StepContext,
-} from "@app/lib/actions/types";
+import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
   DataSourceConfiguration,
@@ -34,11 +29,7 @@ import type {
 } from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
-import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type {
-  AgentConfigurationType,
-  AgentMessageType,
   DustAppRunConfigurationType,
   FunctionCallType,
   FunctionMessageTypeModel,
@@ -132,7 +123,7 @@ export type MCPToolConfigurationType =
   | ServerSideMCPToolConfigurationType
   | ClientSideMCPToolConfigurationType;
 
-const MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT = [
+export const MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT = [
   "description",
   "inputSchema",
 ] as const;
@@ -408,90 +399,6 @@ export function buildToolSpecification(
     description:
       actionConfiguration.description?.slice(0, MAX_DESCRIPTION_LENGTH) ?? "",
     inputSchema: filteredInputSchema,
-  };
-}
-
-/**
- * Creates an MCP action in the database and returns both the DB record and the type object.
- */
-export async function createMCPAction(
-  auth: Authenticator,
-  {
-    actionBaseParams,
-    actionConfiguration,
-    augmentedInputs,
-    stepContentId,
-    stepContext,
-  }: {
-    actionBaseParams: ActionBaseParams;
-    actionConfiguration: MCPToolConfigurationType;
-    augmentedInputs: Record<string, unknown>;
-    stepContentId: ModelId;
-    stepContext: StepContext;
-  }
-): Promise<AgentMCPActionResource> {
-  const toolConfiguration = omit(
-    actionConfiguration,
-    MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT
-  ) as LightMCPToolConfigurationType;
-
-  return AgentMCPActionResource.makeNew(auth, {
-    agentMessageId: actionBaseParams.agentMessageId,
-    augmentedInputs,
-    citationsAllocated: stepContext.citationsCount,
-    mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
-    status: actionBaseParams.status,
-    stepContentId,
-    stepContext,
-    toolConfiguration,
-    version: 0,
-  });
-}
-
-type HandleErrorParams = {
-  action: AgentMCPActionResource;
-  agentConfiguration: AgentConfigurationType;
-  agentMessage: AgentMessageType;
-  errorMessage: string;
-  status: ToolExecutionStatus;
-};
-
-/**
- * Handles MCP action errors with type-safe discriminated union based on error severity.
- */
-export async function handleMCPActionError(
-  params: HandleErrorParams
-): Promise<MCPErrorEvent | MCPSuccessEvent> {
-  const { action, agentConfiguration, agentMessage, errorMessage, status } =
-    params;
-
-  const outputContent: CallToolResult["content"][number] = {
-    type: "text",
-    text: errorMessage,
-  };
-
-  await AgentMCPActionOutputItem.create({
-    workspaceId: action.workspaceId,
-    agentMCPActionId: action.id,
-    content: outputContent,
-  });
-
-  // If the tool is not already in a final state, we set it to errored (could be denied).
-  if (!isToolExecutionStatusFinal(status)) {
-    await action.updateStatus("errored");
-  }
-
-  // Yields tool_success to continue the conversation.
-  return {
-    type: "tool_success",
-    created: Date.now(),
-    configurationId: agentConfiguration.sId,
-    messageId: agentMessage.sId,
-    action: {
-      ...action.toJSON(),
-      output: [outputContent],
-      generatedFiles: [],
-    },
   };
 }
 

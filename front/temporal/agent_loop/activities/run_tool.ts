@@ -1,6 +1,6 @@
 import assert from "assert";
 
-import { runToolWithStreaming } from "@app/lib/actions/mcp";
+import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
