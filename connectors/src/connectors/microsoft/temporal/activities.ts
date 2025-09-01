@@ -1359,10 +1359,20 @@ async function isOutsideRootNodes({
   rootNodeIds: string[];
   startGarbageCollectionTs: number;
 }) {
-  if (
-    rootNodeIds.includes(getDriveItemInternalId(driveItem)) ||
-    rootNodeIds.includes(getDriveInternalIdFromItem(driveItem))
-  ) {
+  try {
+    if (
+      rootNodeIds.includes(getDriveItemInternalId(driveItem)) ||
+      rootNodeIds.includes(getDriveInternalIdFromItem(driveItem))
+    ) {
+      return false;
+    }
+  } catch (error) {
+    logger.error(
+      {
+        driveItem,
+      },
+      "Error checking driveItem internalId on deletion."
+    );
     return false;
   }
 
