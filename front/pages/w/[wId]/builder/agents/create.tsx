@@ -23,17 +23,10 @@ import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { getFeatureFlags } from "@app/lib/auth";
-import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type {
-  SubscriptionType,
-  TemplateTagCodeType,
-  TemplateTagsType,
-  WorkspaceType,
-} from "@app/types";
+import type { SubscriptionType, TemplateTagCodeType, TemplateTagsType, WorkspaceType } from "@app/types";
 import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -46,16 +39,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const plan = auth.plan();
   const subscription = auth.subscription();
   if (!owner || !plan || !auth.isUser() || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const featureFlags = await getFeatureFlags(owner);
-  if (
-    !featureFlags.includes("agent_builder_v2") ||
-    (await isRestrictedFromAgentCreation(owner))
-  ) {
     return {
       notFound: true,
     };
@@ -260,7 +243,6 @@ export default function CreateAgent({
           </div>
         </Page>
         <AgentTemplateModal
-          flow={flow}
           owner={owner}
           templateId={selectedTemplateId}
           onClose={closeTemplateModal}

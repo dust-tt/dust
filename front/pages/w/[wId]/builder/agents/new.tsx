@@ -9,7 +9,7 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import config from "@app/lib/api/config";
-import { getFeatureFlags, isRestrictedFromAgentCreation } from "@app/lib/auth";
+import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
@@ -54,12 +54,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("agent_builder_v2")) {
-    return {
-      notFound: true,
-    };
-  }
 
   if (await isRestrictedFromAgentCreation(owner)) {
     return {

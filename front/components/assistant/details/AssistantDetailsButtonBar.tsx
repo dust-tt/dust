@@ -55,7 +55,6 @@ export function AssistantDetailsButtonBar({
     workspaceId: owner.sId,
   });
 
-  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&
     !isBuilder(owner);
@@ -178,8 +177,7 @@ export function AssistantDetailsButtonBar({
                       getAgentBuilderRoute(
                         owner.sId,
                         "new",
-                        hasAgentBuilderV2,
-                        `flow=personal_assistants&duplicate=${agentConfiguration.sId}`
+                        `duplicate=${agentConfiguration.sId}`
                       )
                     );
                     e.stopPropagation();
@@ -247,12 +245,7 @@ export function AssistantDetailsButtonBar({
             size="sm"
             href={
               canEditAssistant
-                ? getAgentBuilderRoute(
-                    owner.sId,
-                    agentConfiguration.sId,
-                    hasAgentBuilderV2,
-                    "flow=workspace_assistants"
-                  )
+                ? getAgentBuilderRoute(owner.sId, agentConfiguration.sId)
                 : undefined
             }
             disabled={!canEditAssistant}

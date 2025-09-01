@@ -38,7 +38,6 @@ export function GlobalAgentAction({
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
 
   const isConfigurable = agent.sId === GLOBAL_AGENTS_SID.DUST;
   const canBeDisabled =
@@ -55,9 +54,7 @@ export function GlobalAgentAction({
         disabled={!isBuilder(owner)}
         onClick={(e: Event) => {
           e.stopPropagation();
-          void router.push(
-            getAgentBuilderRoute(owner.sId, agent.sId, hasAgentBuilderV2)
-          );
+          void router.push(getAgentBuilderRoute(owner.sId, agent.sId));
         }}
       />
     );

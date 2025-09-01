@@ -24,7 +24,6 @@ export function AgentInfoTab({
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
 
   const isConfigurable = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
   return (
@@ -49,11 +48,7 @@ export function AgentInfoTab({
             <Button
               label={`Manage ${agentConfiguration.name} configuration`}
               icon={Cog6ToothIcon}
-              href={getAgentBuilderRoute(
-                owner.sId,
-                agentConfiguration.sId,
-                hasAgentBuilderV2
-              )}
+              href={getAgentBuilderRoute(owner.sId, agentConfiguration.sId)}
             />
           ) : (
             <Chip

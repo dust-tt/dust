@@ -39,8 +39,6 @@ export const CreateAgentButton = ({
     workspaceId: owner.sId,
   });
 
-  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -62,14 +60,7 @@ export const CreateAgentButton = ({
           icon={DocumentIcon}
           onClick={() => {
             setIsLoading(true);
-            void router.push(
-              getAgentBuilderRoute(
-                owner.sId,
-                "new",
-                hasAgentBuilderV2,
-                "flow=personal_assistants"
-              )
-            );
+            void router.push(getAgentBuilderRoute(owner.sId, "new"));
           }}
         />
         <DropdownMenuItem
@@ -77,14 +68,7 @@ export const CreateAgentButton = ({
           icon={MagicIcon}
           onClick={() => {
             setIsLoading(true);
-            void router.push(
-              getAgentBuilderRoute(
-                owner.sId,
-                "create",
-                hasAgentBuilderV2,
-                "flow=personal_assistants"
-              )
-            );
+            void router.push(getAgentBuilderRoute(owner.sId, "create"));
           }}
         />
         {hasFeature("agent_to_yaml") && (

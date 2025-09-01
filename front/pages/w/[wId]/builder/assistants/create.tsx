@@ -7,7 +7,6 @@ import { useCallback, useEffect, useState } from "react";
 import { AssistantTemplateModal } from "@app/components/assistant_builder/AssistantTemplateModal";
 import { TemplateGrid } from "@app/components/assistant_builder/TemplateGrid";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
-import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -15,12 +14,7 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
-import type {
-  SubscriptionType,
-  TemplateTagCodeType,
-  TemplateTagsType,
-  WorkspaceType,
-} from "@app/types";
+import type { SubscriptionType, TemplateTagCodeType, TemplateTagsType, WorkspaceType } from "@app/types";
 import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -44,24 +38,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const flow: BuilderFlow = BUILDER_FLOWS.includes(
-    context.query.flow as BuilderFlow
-  )
-    ? (context.query.flow as BuilderFlow)
-    : "personal_assistants";
-
   return {
     props: {
       owner,
       subscription,
-      flow,
       templateTagsMapping: TEMPLATES_TAGS_CONFIG,
     },
   };
 });
 
 export default function CreateAssistant({
-  flow,
   owner,
   subscription,
   templateTagsMapping,
@@ -225,7 +211,6 @@ export default function CreateAssistant({
           )}
         </Page>
         <AssistantTemplateModal
-          flow={flow}
           owner={owner}
           templateId={selectedTemplateId}
           onClose={() => closeTemplateModal()}

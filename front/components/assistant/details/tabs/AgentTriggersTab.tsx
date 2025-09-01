@@ -52,11 +52,7 @@ export function AgentTriggersTab({
   });
 
   const canEditAssistant = agentConfiguration.canEdit || isAdmin(owner);
-  const editionURL = getAgentBuilderRoute(
-    owner.sId,
-    agentConfiguration.sId,
-    featureFlags.includes("agent_builder_v2")
-  );
+  const editionURL = getAgentBuilderRoute(owner.sId, agentConfiguration.sId);
 
   return (
     <>

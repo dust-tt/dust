@@ -588,7 +588,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "advanced_search"
   | "agent_builder_instructions_autocomplete"
-  | "agent_builder_v2"
   | "agent_management_tool"
   | "agent_to_yaml"
   | "anthropic_vertex_fallback"
