@@ -32,7 +32,7 @@ import {
   getSectionColumnsPrefix,
   TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
-import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import {
   makeInternalMCPServer,
   makeMCPToolTextError,

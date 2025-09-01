@@ -29,8 +29,13 @@ import type {
   Result,
   TextContent,
 } from "@app/types";
-import { normalizeError } from "@app/types";
-import { Err, isImageContent, isTextContent, Ok } from "@app/types";
+import {
+  Err,
+  isImageContent,
+  isTextContent,
+  normalizeError,
+  Ok,
+} from "@app/types";
 
 const MAX_FILE_SIZE_FOR_GREP = 20 * 1024 * 1024; // 20MB.
 const MAX_FILE_SIZE_FOR_INCLUDE = 1024 * 1024; // 1MB.

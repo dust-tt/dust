@@ -23,23 +23,25 @@ import {
   makeQueryResource,
   renderSearchResults,
 } from "@app/lib/actions/mcp_internal_actions/rendering";
-import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
-import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/cat_tool";
-import { registerListTool } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/list_tool";
+import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/cat";
+import { registerListTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
 import {
   DATA_SOURCE_FILE_SYSTEM_OPTION_PARAMETERS,
   extractDataSourceIdFromNodeId,
   getSearchNodesSortDirection,
   isDataSourceNodeId,
   makeQueryResourceForFind,
-} from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/utils";
+} from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
+import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import {
   checkConflictingTags,
+  shouldAutoGenerateTags,
+} from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
+import {
   getAgentDataSourceConfigurations,
   getCoreSearchArgs,
   makeDataSourceViewFilter,
-  shouldAutoGenerateTags,
-} from "@app/lib/actions/mcp_internal_actions/servers/utils";
+} from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
