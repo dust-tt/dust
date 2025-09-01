@@ -98,7 +98,7 @@ function makeSearchResultColumnsWithSelection(
         </DataTable.CellContent>
       ),
       meta: {
-        sizeRatio: 40,
+        sizeRatio: 50,
       },
     },
     {
@@ -117,7 +117,7 @@ function makeSearchResultColumnsWithSelection(
         />
       ),
       meta: {
-        sizeRatio: 40,
+        sizeRatio: 35,
       },
     },
     {
@@ -132,14 +132,14 @@ function makeSearchResultColumnsWithSelection(
             row.original.lastUpdatedAt
               ? formatTimestampToFriendlyDate(
                   row.original.lastUpdatedAt,
-                  "short"
+                  "compact"
                 )
               : "-"
           }
         />
       ),
       meta: {
-        sizeRatio: 20,
+        sizeRatio: 15,
       },
     },
   ];
