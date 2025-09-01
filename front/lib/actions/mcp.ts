@@ -1,18 +1,11 @@
 import type { ActionApprovalStateType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import omit from "lodash/omit";
 
 import type {
   MCPToolStakeLevelType,
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
-import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
-import {
-  executeMCPTool,
-  processToolResults,
-} from "@app/lib/actions/mcp_execution";
 import type {
   CustomServerIconType,
   InternalAllowedIconType,
@@ -25,19 +18,10 @@ import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_interna
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { ToolBlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
-import {
-  hideFileFromActionOutput,
-  rewriteContentForModel,
-} from "@app/lib/actions/mcp_utils";
+import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
-import type {
-  ActionGeneratedFileType,
-  AgentLoopRunContextType,
-  StepContext,
-} from "@app/lib/actions/types";
+import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
   DataSourceConfiguration,
@@ -45,15 +29,7 @@ import type {
 } from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
-import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
-import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
 import type {
-  AgentConfigurationType,
-  AgentMessageType,
-  ConversationType,
   DustAppRunConfigurationType,
   FunctionCallType,
   FunctionMessageTypeModel,
@@ -147,7 +123,7 @@ export type MCPToolConfigurationType =
   | ServerSideMCPToolConfigurationType
   | ClientSideMCPToolConfigurationType;
 
-const MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT = [
+export const MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT = [
   "description",
   "inputSchema",
 ] as const;
@@ -223,7 +199,7 @@ export function getMCPApprovalStateFromUserApprovalState(
   }
 }
 
-type MCPParamsEvent = {
+export type MCPParamsEvent = {
   type: "tool_params";
   created: number;
   configurationId: string;
@@ -231,7 +207,7 @@ type MCPParamsEvent = {
   action: AgentMCPActionWithOutputType;
 };
 
-type MCPSuccessEvent = {
+export type MCPSuccessEvent = {
   type: "tool_success";
   created: number;
   configurationId: string;
@@ -239,7 +215,7 @@ type MCPSuccessEvent = {
   action: AgentMCPActionWithOutputType;
 };
 
-type MCPErrorEvent = {
+export type MCPErrorEvent = {
   type: "tool_error";
   created: number;
   configurationId: string;
@@ -426,263 +402,6 @@ export function buildToolSpecification(
   };
 }
 
-/**
- * Runs a tool with streaming for the given MCP action configuration.
- *
- * All errors within this function must be handled through `handleMCPActionError`
- * to ensure consistent error reporting and proper conversation flow control.
- * TODO(DURABLE_AGENTS 2025-08-05): This function is going to be used only to execute the tool.
- */
-export async function* runToolWithStreaming(
-  auth: Authenticator,
-  {
-    action,
-    actionBaseParams,
-    agentConfiguration,
-    agentMessage,
-    conversation,
-  }: {
-    action: AgentMCPActionResource;
-    actionBaseParams: ActionBaseParams;
-    agentConfiguration: AgentConfigurationType;
-    agentMessage: AgentMessageType;
-    conversation: ConversationType;
-  }
-): AsyncGenerator<
-  | MCPApproveExecutionEvent
-  | MCPErrorEvent
-  | MCPParamsEvent
-  | MCPSuccessEvent
-  | ToolNotificationEvent
-  | ToolPersonalAuthRequiredEvent,
-  void
-> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const { toolConfiguration, status, augmentedInputs: inputs } = action;
-
-  const localLogger = logger.child({
-    actionConfigurationId: toolConfiguration.sId,
-    conversationId: conversation.sId,
-    messageId: agentMessage.sId,
-    workspaceId: conversation.owner.sId,
-  });
-
-  const tags = [
-    `action:${toolConfiguration.name}`,
-    `mcp_server:${toolConfiguration.mcpServerName}`,
-    `workspace:${owner.sId}`,
-    `workspace_name:${owner.name}`,
-  ];
-
-  const agentLoopRunContext: AgentLoopRunContextType = {
-    agentConfiguration,
-    agentMessage,
-    conversation,
-    stepContext: action.stepContext,
-    toolConfiguration,
-  };
-
-  const toolCallResult = yield* executeMCPTool({
-    auth,
-    inputs,
-    agentLoopRunContext,
-    action,
-    agentConfiguration,
-    conversation,
-    agentMessage,
-  });
-
-  if (!toolCallResult || toolCallResult.isErr()) {
-    statsDClient.increment("mcp_actions_error.count", 1, tags);
-    localLogger.error(
-      {
-        error: toolCallResult
-          ? toolCallResult.error.message
-          : "No tool call result",
-      },
-      "Error calling MCP tool on run."
-    );
-
-    const { error: toolErr } = toolCallResult ?? {};
-
-    // If we got a personal authentication error, we emit a specific event that will be
-    // deferred until after all tools complete, then converted to a tool_error.
-    if (MCPServerPersonalAuthenticationRequiredError.is(toolErr)) {
-      const authErrorMessage =
-        `The tool ${actionBaseParams.functionCallName} requires personal ` +
-        `authentication, please authenticate to use it.`;
-
-      // Update the action to mark it as blocked because of a personal authentication error.
-      await action.updateStatus("blocked_authentication_required");
-
-      yield {
-        type: "tool_personal_auth_required",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        conversationId: conversation.sId,
-        authError: {
-          mcpServerId: toolErr.mcpServerId,
-          provider: toolErr.provider,
-          toolName: actionBaseParams.functionCallName ?? "unknown",
-          message: authErrorMessage,
-          ...(toolErr.scope && {
-            scope: toolErr.scope,
-          }),
-        },
-      };
-
-      return;
-    } else if (toolErr instanceof ToolBlockedAwaitingInputError) {
-      // Update the action status to blocked_child_action_input_required to break the agent loop.
-      await action.updateStatus("blocked_child_action_input_required");
-
-      // Update the step context to save the resume state.
-      await action.updateStepContext({
-        ...action.stepContext,
-        resumeState: toolErr.resumeState,
-      });
-
-      // Yield the blocking events.
-      for (const event of toolErr.blockingEvents) {
-        yield event;
-      }
-
-      return;
-    }
-
-    let errorMessage: string;
-
-    // We don't want to expose the MCP full error message to the user.
-    if (toolErr && toolErr instanceof McpError && toolErr.code === -32001) {
-      // MCP Error -32001: Request timed out.
-      errorMessage = `The tool ${actionBaseParams.functionCallName} timed out. `;
-    } else {
-      errorMessage = `The tool ${actionBaseParams.functionCallName} returned an error. `;
-    }
-    errorMessage +=
-      "An error occurred while executing the tool. You can inform the user of this issue.";
-
-    yield await handleMCPActionError({
-      action,
-      agentConfiguration,
-      agentMessage,
-      status,
-      errorMessage,
-    });
-    return;
-  }
-
-  const { outputItems, generatedFiles } = await processToolResults(auth, {
-    action,
-    conversation,
-    localLogger,
-    toolCallResult: toolCallResult.value,
-    toolConfiguration,
-  });
-
-  statsDClient.increment("mcp_actions_success.count", 1, tags);
-
-  await action.updateStatus("succeeded");
-
-  yield {
-    type: "tool_success",
-    created: Date.now(),
-    configurationId: agentConfiguration.sId,
-    messageId: agentMessage.sId,
-    action: {
-      ...action.toJSON(),
-      output: removeNulls(outputItems.map(hideFileFromActionOutput)),
-      generatedFiles,
-    },
-  };
-}
-
-/**
- * Creates an MCP action in the database and returns both the DB record and the type object.
- */
-export async function createMCPAction(
-  auth: Authenticator,
-  {
-    actionBaseParams,
-    actionConfiguration,
-    augmentedInputs,
-    stepContentId,
-    stepContext,
-  }: {
-    actionBaseParams: ActionBaseParams;
-    actionConfiguration: MCPToolConfigurationType;
-    augmentedInputs: Record<string, unknown>;
-    stepContentId: ModelId;
-    stepContext: StepContext;
-  }
-): Promise<AgentMCPActionResource> {
-  const toolConfiguration = omit(
-    actionConfiguration,
-    MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT
-  ) as LightMCPToolConfigurationType;
-
-  return AgentMCPActionResource.makeNew(auth, {
-    agentMessageId: actionBaseParams.agentMessageId,
-    augmentedInputs,
-    citationsAllocated: stepContext.citationsCount,
-    mcpServerConfigurationId: actionBaseParams.mcpServerConfigurationId,
-    status: actionBaseParams.status,
-    stepContentId,
-    stepContext,
-    toolConfiguration,
-    version: 0,
-  });
-}
-
-type HandleErrorParams = {
-  action: AgentMCPActionResource;
-  agentConfiguration: AgentConfigurationType;
-  agentMessage: AgentMessageType;
-  errorMessage: string;
-  status: ToolExecutionStatus;
-};
-
-/**
- * Handles MCP action errors with type-safe discriminated union based on error severity.
- */
-export async function handleMCPActionError(
-  params: HandleErrorParams
-): Promise<MCPErrorEvent | MCPSuccessEvent> {
-  const { action, agentConfiguration, agentMessage, errorMessage, status } =
-    params;
-
-  const outputContent: CallToolResult["content"][number] = {
-    type: "text",
-    text: errorMessage,
-  };
-
-  await AgentMCPActionOutputItem.create({
-    workspaceId: action.workspaceId,
-    agentMCPActionId: action.id,
-    content: outputContent,
-  });
-
-  // If the tool is not already in a final state, we set it to errored (could be denied).
-  if (!isToolExecutionStatusFinal(status)) {
-    await action.updateStatus("errored");
-  }
-
-  // Yields tool_success to continue the conversation.
-  return {
-    type: "tool_success",
-    created: Date.now(),
-    configurationId: agentConfiguration.sId,
-    messageId: agentMessage.sId,
-    action: {
-      ...action.toJSON(),
-      output: [outputContent],
-      generatedFiles: [],
-    },
-  };
-}
-
 export function isMCPApproveExecutionEvent(
   event: unknown
 ): event is MCPApproveExecutionEvent {
@@ -719,30 +438,4 @@ export function isBlockedActionEvent(
     (isMCPApproveExecutionEvent(event) ||
       isToolPersonalAuthRequiredEvent(event))
   );
-}
-
-// TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent mcp action.
-export async function getMCPAction(
-  auth: Authenticator,
-  actionId: string
-): Promise<AgentMCPActionResource | null> {
-  const id = getResourceIdFromSId(actionId);
-  if (!id) {
-    throw new Error(`Invalid action ID: ${actionId}`);
-  }
-  return AgentMCPActionResource.fetchByModelIdWithAuth(auth, id);
-}
-
-// TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent mcp action.
-export async function updateMCPApprovalState(
-  action: AgentMCPActionResource,
-  approvalState: "denied" | "ready_allowed_explicitly"
-): Promise<boolean> {
-  if (action.status === approvalState) {
-    return false;
-  }
-
-  await action.updateStatus(approvalState);
-
-  return true;
 }

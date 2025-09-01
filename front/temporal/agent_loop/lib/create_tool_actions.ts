@@ -2,12 +2,12 @@ import type {
   MCPApproveExecutionEvent,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import { createMCPAction } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
+import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
