@@ -17,7 +17,6 @@ import {
   useRemoveTriggerSubscriber,
   useUserTriggers,
 } from "@app/lib/swr/agent_triggers";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
