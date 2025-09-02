@@ -208,10 +208,7 @@ type SlideshowProps = PropsWithChildren<{
 }>;
 
 function SlideshowRoot({ children, className }: SlideshowProps) {
-  const slides = React.useMemo(
-    () => validateSlideChildren(children),
-    [children]
-  );
+  const slides = validateSlideChildren(children);
 
   const [activeIndex, setActiveIndex] = React.useState(0);
   const [isNavigationVisible, setIsNavigationVisible] = React.useState(true);
