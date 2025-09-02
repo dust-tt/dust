@@ -5,9 +5,8 @@ import {
   PlusIcon,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
-import { useFormContext } from "react-hook-form";
+import { useWatch } from "react-hook-form";
 
-import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { DataSourceFilterItem } from "@app/components/agent_builder/capabilities/shared/DataSourceFilterContextItem";
 import { DataSourceFilterContextItem } from "@app/components/agent_builder/capabilities/shared/DataSourceFilterContextItem";
 import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
@@ -21,11 +20,7 @@ export function SelectedDataSourcesSection({
   onEditDataSources,
   isEditMode = false,
 }: SelectedDataSourcesSectionProps) {
-  const { watch } = useFormContext<MCPFormData>();
-
-  // For Canvas, the form is extended with a sources field that's not in the MCPFormData type
-  // We need to use watch with any type and validate the structure
-  const watchedSources = watch("sources" as any);
+  const watchedSources = useWatch({ name: "sources" });
 
   const dataSourceViews = useMemo(() => {
     // Ensure sources has the proper structure
