@@ -26,6 +26,7 @@ import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Subscription } from "@app/lib/models/plan";
+import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -462,6 +463,13 @@ export async function deleteMembersActivity({
         await FileResource.deleteAllForUser(auth, user.toJSON());
         await membership.delete(auth, {});
 
+        // Delete the user's agent memories.
+        await AgentMemoryModel.destroy({
+          where: {
+            userId: user.id,
+          },
+        });
+
         await user.delete(auth, {});
       }
     } else {
@@ -596,6 +604,7 @@ export async function deleteWorkspaceActivity({
       workspaceId: workspace.id,
     },
   });
+  await AgentMemoryResource.deleteAllForWorkspace(auth);
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 
