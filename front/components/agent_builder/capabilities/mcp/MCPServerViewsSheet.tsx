@@ -819,9 +819,10 @@ export function MCPServerViewsSheet({
                 dataSourceConfigurations,
               };
             } else {
-              // No sources selected, just keep the base configuration
+              // No sources selected, explicitly clear dataSourceConfigurations
               finalConfiguration = {
                 ...formData.configuration,
+                dataSourceConfigurations: null,
               };
             }
           }
