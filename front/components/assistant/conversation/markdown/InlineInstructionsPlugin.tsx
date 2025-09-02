@@ -37,21 +37,22 @@ export function InlineInstructionsComponent({
 
     const showExpanded = isCollapsible ? isExpanded : true;
 
+    const displayContent = (content || "").trimStart();
     return (
-      <div className="relative mt-4 overflow-hidden rounded-lg border border-separator bg-slate-50 dark:bg-slate-900/10">
+      <div className="relative mt-2 overflow-hidden rounded-lg border border-separator bg-slate-50 dark:bg-slate-900/10">
         <div className="flex items-center justify-between border-b border-separator px-4 py-2">
           <span className="text-sm font-medium text-slate-800 dark:text-slate-200">Agent Instructions</span>
           <span className="animate-pulse text-xs text-muted-foreground">Generating…</span>
         </div>
-        <div className="relative p-4">
+        <div className="relative p-3">
           {content ? (
             <div
               className={
                 "whitespace-pre-wrap font-sans text-sm text-slate-700 dark:text-slate-300 overflow-hidden transition-all duration-300 ease-in-out " +
-                (isCollapsible ? (showExpanded ? "max-h-[9999px]" : "max-h-64") : "max-h-[9999px]")
+                (isCollapsible ? (showExpanded ? "max-h-[9999px]" : "max-h-80") : "max-h-[9999px]")
               }
             >
-              {content}
+              {displayContent}
             </div>
           ) : (
             <div className="text-sm italic text-slate-500 dark:text-slate-400">
@@ -59,10 +60,10 @@ export function InlineInstructionsComponent({
             </div>
           )}
           {isCollapsible && !showExpanded && (
-            <div className="pointer-events-none absolute bottom-4 left-4 right-4 h-16 bg-gradient-to-t from-slate-50 dark:from-slate-900/10 to-transparent" />
+            <div className="pointer-events-none absolute bottom-3 left-3 right-3 h-16 bg-gradient-to-t from-slate-50 dark:from-slate-900/10 to-transparent" />
           )}
           {isCollapsible && (
-            <div className="mt-3 flex justify-center">
+            <div className="mt-2 flex justify-center">
               <Button
                 size="xs"
                 variant="ghost"
@@ -81,7 +82,7 @@ export function InlineInstructionsComponent({
   }
 
   return (
-    <div className="mt-4">
+    <div className="mt-2">
       <AgentMessageInstructions
         instructions={content}
         currentInstructions={context.currentInstructions}
