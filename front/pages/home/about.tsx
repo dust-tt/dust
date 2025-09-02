@@ -366,7 +366,7 @@ const PEOPLE: Record<
     title: "Software Engineer",
     image: "https://ca.slack-edge.com/T050RH73H9P-U09D77UR8S0-3af0e8ba603b-512",
     linkedIn: "https://www.linkedin.com/in/r%C3%A9my-christophe-s-0204834/",
-    github: "https://avatars.githubusercontent.com/u/16667?v=4",
+    github: "https://github.com/ElPicador",
   },
   pierre: {
     name: "Pierre Milliotte",
