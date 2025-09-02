@@ -366,21 +366,21 @@ const PEOPLE: Record<
     title: "Security Engineer",
     image: "https://ca.slack-edge.com/T050RH73H9P-U09DVNRFDJL-bbc7ebca4159-512",
     linkedIn: "https://www.linkedin.com/in/zeidmarouf",
-    github: "XXX",
+    github: "https://github.com/zmarouf",
   },
   rcs: {
     name: "Rémy-Christophe Schermesser",
     title: "Software Engineer",
     image: "https://ca.slack-edge.com/T050RH73H9P-U09D77UR8S0-3af0e8ba603b-512",
     linkedIn: "https://www.linkedin.com/in/r%C3%A9my-christophe-s-0204834/",
-    github: "XXX",
+    github: "https://github.com/ElPicador",
   },
   pierre: {
     name: "Pierre Milliotte",
-    title: "XXX",
-    image: "XXX",
-    linkedIn: "XXX",
-    github: "XXX",
+    title: "Software Engineer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09DG8A5R2M-e95b31316051-512",
+    linkedIn: "https://www.linkedin.com/in/pierre-milliotte-664962a4/",
+    github: "https://github.com/pmilliotte",
   },
   alex: {
     name: "Alexandre Casanova",
@@ -391,11 +391,11 @@ const PEOPLE: Record<
   },
   neyla: {
     name: "Neyla Belmaachi",
-    title: "XXX",
-    image: "XXX",
-    linkedIn: "XXX",
+    title: "Business Development Representative",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09DVNWQDT2-8e9a078de65f-512",
+    linkedIn: "https://www.linkedin.com/in/neyla-belmaachi-4817b0166/",
     github: null,
-  },
+  }
 };
 
 const Person = ({ handle }: { handle: string }) => {
