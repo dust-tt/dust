@@ -1,4 +1,10 @@
-import { Card, CardActionButton, TimeIcon, XMarkIcon } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Card,
+  CardActionButton,
+  TimeIcon,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import cronstrue from "cronstrue";
 import { useMemo } from "react";
 
@@ -60,11 +66,13 @@ export const TriggerCard = ({
     >
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          {getIcon(trigger.kind)}
+          <Avatar visual={getIcon(trigger.kind)} size="xs" />
           <span className="truncate">{trigger.name}</span>
         </div>
         <span className="text-muted-foreground dark:text-muted-foreground-night">
-          {trigger.kind === "schedule" && <span>{cronDescription}</span>}
+          {trigger.kind === "schedule" && (
+            <span className="line-clamp-2 break-words">{cronDescription}</span>
+          )}
         </span>
       </div>
     </Card>
