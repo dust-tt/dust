@@ -415,7 +415,7 @@ export function MCPServerViewsSheet({
     toggleToolSelection(tool);
   }
 
-  const handleAddSelectedTools = useCallback(() => {
+  const handleAddSelectedTools = () => {
     // Validate any configured tools before adding
     for (const tool of selectedToolsInSheet) {
       if (tool.type === "MCP" && tool.configuredAction) {
@@ -454,7 +454,7 @@ export function MCPServerViewsSheet({
     );
 
     setSelectedToolsInSheet([]);
-  }, [selectedToolsInSheet, addTools, sendNotification]);
+  };
 
   const mcpServerView = configurationMCPServerView;
 
@@ -462,8 +462,6 @@ export function MCPServerViewsSheet({
     () => (mcpServerView ? getMCPConfigurationFormSchema(mcpServerView) : null),
     [mcpServerView]
   );
-
-  console.log("formSchema", formSchema);
 
   // Memoize default values to prevent form recreation
   const defaultFormValues = useMemo(() => {
@@ -670,127 +668,111 @@ export function MCPServerViewsSheet({
 
   const currentMode = mode?.type ?? "add";
 
-  const handleCancel = useCallback(() => {
+  const handleCancel = () => {
     setIsOpen(false);
     onModeChange(null);
     if (currentMode) {
       resetSheet();
     }
-  }, [currentMode, onModeChange, resetSheet]);
+  };
 
-  const handleConfigurationSave = useCallback(
-    async (formData: MCPFormData) => {
-      if (!configurationTool || !form || !mcpServerView) {
-        return;
+  const handleConfigurationSave = async (formData: MCPFormData) => {
+    if (!configurationTool || !form || !mcpServerView) {
+      return;
+    }
+
+    try {
+      // Ensure we're working with an MCP action
+      if (configurationTool.type !== "MCP") {
+        throw new Error("Expected MCP action for configuration save");
       }
 
-      try {
-        // Ensure we're working with an MCP action
-        if (configurationTool.type !== "MCP") {
-          throw new Error("Expected MCP action for configuration save");
-        }
+      const isNewActionOrNameChanged = shouldGenerateUniqueName(
+        mode,
+        defaultFormValues,
+        formData
+      );
 
-        const isNewActionOrNameChanged = shouldGenerateUniqueName(
-          mode,
-          defaultFormValues,
-          formData
-        );
+      const newActionName = isNewActionOrNameChanged
+        ? generateUniqueActionName({
+            baseName: nameToStorageFormat(formData.name),
+            existingActions: actions,
+            selectedToolsInSheet,
+          })
+        : mode?.type === "edit"
+          ? configurationTool.name
+          : formData.name;
 
-        const newActionName = isNewActionOrNameChanged
-          ? generateUniqueActionName({
-              baseName: nameToStorageFormat(formData.name),
-              existingActions: actions,
-              selectedToolsInSheet,
-            })
-          : mode?.type === "edit"
-            ? configurationTool.name
-            : formData.name;
-
-        // Only include data source configurations in backend for Canvas
-        let finalConfiguration = formData.configuration;
-        if (mcpServerView.server.name === "canvas") {
-          const sources = formData.sources;
-          if (
-            sources &&
-            typeof sources === "object" &&
-            "in" in sources &&
-            "notIn" in sources
-          ) {
-            // Only add dataSourceConfigurations if there are selected sources
-            if (sources.in.length > 0) {
-              const dataSourceConfigurations =
-                transformTreeToSelectionConfigurations(
-                  sources,
-                  supportedDataSourceViews
-                );
-              finalConfiguration = {
-                ...formData.configuration,
-                dataSourceConfigurations,
-              };
-            } else {
-              // No sources selected, explicitly clear dataSourceConfigurations
-              finalConfiguration = {
-                ...formData.configuration,
-                dataSourceConfigurations: null,
-              };
-            }
+      // Only include data source configurations in backend for Canvas
+      let finalConfiguration = formData.configuration;
+      if (mcpServerView.server.name === "canvas") {
+        const sources = formData.sources;
+        if (
+          sources &&
+          typeof sources === "object" &&
+          "in" in sources &&
+          "notIn" in sources
+        ) {
+          // Only add dataSourceConfigurations if there are selected sources
+          if (sources.in.length > 0) {
+            const dataSourceConfigurations =
+              transformTreeToSelectionConfigurations(
+                sources,
+                supportedDataSourceViews
+              );
+            finalConfiguration = {
+              ...formData.configuration,
+              dataSourceConfigurations,
+            };
+          } else {
+            // No sources selected, explicitly clear dataSourceConfigurations
+            finalConfiguration = {
+              ...formData.configuration,
+              dataSourceConfigurations: null,
+            };
           }
         }
-
-        const configuredAction: AgentBuilderAction = {
-          ...configurationTool,
-          name: newActionName,
-          description: formData.description,
-          configuration: finalConfiguration,
-        };
-
-        handleConfigurationSaveUtil({
-          mode,
-          configuredAction,
-          mcpServerView,
-          onActionUpdate,
-          onModeChange,
-          setSelectedToolsInSheet,
-          setIsOpen,
-          sendNotification,
-        });
-
-        // Handle legacy navigation for non-configure modes
-        if (mode?.type !== "edit" && mode?.type !== "configure") {
-          setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);
-          setConfigurationTool(null);
-          setConfigurationMCPServerView(null);
-        }
-      } catch (error) {
-        sendNotification({
-          title: "Configuration failed",
-          description:
-            "There was an error configuring the tool. Please try again.",
-          type: "error",
-        });
       }
-    },
-    [
-      configurationTool,
-      form,
-      mcpServerView,
-      mode,
-      defaultFormValues,
-      actions,
-      selectedToolsInSheet,
-      onActionUpdate,
-      onModeChange,
-      sendNotification,
-      supportedDataSourceViews,
-    ]
-  );
 
-  const footerButtons = useMemo(() => {
-    const isDataSourcePage =
-      currentPageId === TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
+      const configuredAction: AgentBuilderAction = {
+        ...configurationTool,
+        name: newActionName,
+        description: formData.description,
+        configuration: finalConfiguration,
+      };
 
-    if (isDataSourcePage) {
-      return {
+      handleConfigurationSaveUtil({
+        mode,
+        configuredAction,
+        mcpServerView,
+        onActionUpdate,
+        onModeChange,
+        setSelectedToolsInSheet,
+        setIsOpen,
+        sendNotification,
+      });
+
+      // Handle legacy navigation for non-configure modes
+      if (mode?.type !== "edit" && mode?.type !== "configure") {
+        setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);
+        setConfigurationTool(null);
+        setConfigurationMCPServerView(null);
+      }
+    } catch (error) {
+      sendNotification({
+        title: "Configuration failed",
+        description:
+          "There was an error configuring the tool. Please try again.",
+        type: "error",
+      });
+    }
+  };
+
+  const isDataSourcePage =
+    currentPageId === TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
+
+  const footerButtons = isDataSourcePage
+    ? {
         leftButton: {
           label: "Cancel",
           variant: "outline" as const,
@@ -805,35 +787,22 @@ export function MCPServerViewsSheet({
             setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
           },
         },
-      };
-    }
-
-    return getFooterButtons({
-      currentPageId,
-      modeType: currentMode,
-      selectedToolsInSheet,
-      form,
-      onCancel: handleCancel,
-      onModeChange,
-      onAddSelectedTools: () => {
-        handleAddSelectedTools();
-        setIsOpen(false);
-        onModeChange(null);
-      },
-      onConfigurationSave: handleConfigurationSave,
-      resetToSelection,
-    });
-  }, [
-    currentPageId,
-    currentMode,
-    selectedToolsInSheet,
-    form,
-    handleCancel,
-    onModeChange,
-    handleAddSelectedTools,
-    handleConfigurationSave,
-    resetToSelection,
-  ]);
+      }
+    : getFooterButtons({
+        currentPageId,
+        modeType: currentMode,
+        selectedToolsInSheet,
+        form,
+        onCancel: handleCancel,
+        onModeChange,
+        onAddSelectedTools: () => {
+          handleAddSelectedTools();
+          setIsOpen(false);
+          onModeChange(null);
+        },
+        onConfigurationSave: handleConfigurationSave,
+        resetToSelection,
+      });
 
   const sheetContent = (
     <MultiPageSheetContent

@@ -65,12 +65,10 @@ export function getDefaultConfiguration(
  * @returns Default form data object
  */
 export function getDefaultFormValues(mcpServerView: MCPServerViewType | null) {
-  const baseValues = {
+  return {
     name: "",
     description: "",
     configuration: getDefaultConfiguration(mcpServerView),
     sources: { in: [], notIn: [] },
   };
-
-  return baseValues;
 }

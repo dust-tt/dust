@@ -1,12 +1,8 @@
 import { z } from "zod";
 
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { mcpServerConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { transformSelectionConfigurationsToTree } from "@app/components/agent_builder/capabilities/knowledge/transformations";
-import {
-  createBaseFormSchema,
-  createMCPFormSchema,
-} from "@app/components/agent_builder/capabilities/mcp/validation/schemaBuilders";
+import { createMCPFormSchema } from "@app/components/agent_builder/capabilities/mcp/validation/schemaBuilders";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
@@ -35,14 +31,12 @@ export function getMCPConfigurationFormSchema(
     ? getMCPServerRequirements(mcpServerView)
     : null;
 
-  // Get the base schema with requirements-based validation
   const baseSchema = createMCPFormSchema(requirements);
   
-  // All MCP tools now support sources in the form
-  // Extend the base schema to include sources
+  // All MCP tools has sources but only Canvas will use it (and it should be optional)
   return z.object({
     ...baseSchema.shape,
-    sources: dataSourceBuilderTreeType, // Data sources are optional for all MCP tools
+    sources: dataSourceBuilderTreeType, 
   });
 }
 
