@@ -99,6 +99,7 @@ export type AgentModelConfigurationType = {
   temperature: number;
   reasoningEffort?: AgentReasoningEffort;
   responseFormat?: string;
+  promptCaching?: boolean;
 };
 
 export type AgentFetchVariant = "light" | "full" | "extra_light";

@@ -359,6 +359,11 @@ export async function runModelActivity(
     runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
   }
 
+  // Set prompt_caching from agent configuration, default to true if not specified
+  if (agentConfiguration.model.promptCaching) {
+    runConfig.MODEL.prompt_caching = agentConfiguration.model.promptCaching;
+  }
+
   const res = await runActionStreamed(
     auth,
     "assistant-v2-multi-actions-agent",
