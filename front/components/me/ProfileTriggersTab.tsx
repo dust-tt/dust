@@ -13,11 +13,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import cronstrue from "cronstrue";
 import { useCallback, useMemo, useState } from "react";
 
-import {
-  useRemoveTriggerSubscriber,
-  useUserTriggers,
-} from "@app/lib/swr/agent_triggers";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { useRemoveTriggerSubscriber, useUserTriggers } from "@app/lib/swr/agent_triggers";
 import { classNames } from "@app/lib/utils";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
@@ -27,9 +23,6 @@ interface ProfileTriggersTabProps {
 }
 
 export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
 
   const { triggers, isTriggersLoading } = useUserTriggers({
     workspaceId: owner.sId,
@@ -46,7 +39,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
     (agentConfigurationId: string) => {
       return getAgentBuilderRoute(owner.sId, agentConfigurationId);
     },
-    [owner.sId, featureFlags]
+    [owner.sId]
   );
 
   const filteredTriggers = useMemo(() => {

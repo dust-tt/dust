@@ -170,11 +170,9 @@ export default function AgentBuilder({
       agentSettings: {
         ...baseValues.agentSettings,
         slackProvider,
-        editors: duplicateAgentId
-          ? baseValues.agentSettings.editors
-          : editors.length > 0
-            ? editors
-            : [user],
+        editors: agentConfiguration
+          ? editors
+          : baseValues.agentSettings.editors,
         slackChannels: agentSlackChannels,
       },
     };
