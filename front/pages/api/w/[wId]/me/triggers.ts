@@ -84,7 +84,7 @@ async function handler(
   ];
 
   const filteredTriggers = allTriggers.filter(
-    (trigger): trigger is NonNullable<typeof trigger> => trigger !== null
+    (trigger): trigger is Exclude<typeof trigger, null> => trigger !== null
   );
 
   return res.status(200).json({
