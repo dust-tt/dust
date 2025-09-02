@@ -31,6 +31,7 @@ import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
   getDefaultMCPAction,
+  INTERNAL_KNOWLEDGE_TOOL_SERVER_NAMES,
   isDefaultActionName,
 } from "@app/components/agent_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -194,8 +195,19 @@ export function AgentBuilderCapabilitiesBlock({
   };
 
   const handleActionEdit = (action: AgentBuilderAction, index: number) => {
+    // Check if this is a knowledge tool by finding the MCP server view and checking its server name
+    const isKnowledgeTool =
+      action.type === "MCP" &&
+      action.configuration.mcpServerViewId &&
+      mcpServerViews.find(
+        (view) =>
+          view.sId === action.configuration.mcpServerViewId &&
+          INTERNAL_KNOWLEDGE_TOOL_SERVER_NAMES.includes(view.server.name)
+      );
+
     const isDataSourceSelectionRequired =
       action.type === "MCP" &&
+      isKnowledgeTool && // Only knowledge tools should open the knowledge sheet
       Boolean(
         !isEmpty(action.configuration.dataSourceConfigurations) ||
           !isEmpty(action.configuration.tablesConfigurations)

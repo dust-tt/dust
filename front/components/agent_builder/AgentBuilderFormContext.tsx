@@ -3,6 +3,7 @@ import { createContext } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
+import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
 import {
   MODEL_IDS,
@@ -225,26 +226,12 @@ export type AgentBuilderDataVizAction = z.infer<
   typeof dataVisualizationActionSchema
 >;
 
-// TODO: create types from schema
-export interface MCPFormData {
+export type MCPFormData = {
   name: string;
   description: string;
-  configuration: {
-    mcpServerViewId: string;
-    dataSourceConfigurations: any;
-    tablesConfigurations: any;
-    childAgentId: string | null;
-    reasoningModel: any;
-    timeFrame: {
-      duration: number;
-      unit: "hour" | "day" | "week" | "month" | "year";
-    } | null;
-    additionalConfiguration: AdditionalConfigurationInBuilderType;
-    dustAppConfiguration: any;
-    jsonSchema: any;
-    _jsonSchemaString: string | null;
-  };
-}
+  configuration: MCPServerConfigurationType;
+  sources: DataSourceBuilderTreeType;
+};
 
 export const AgentBuilderFormContext =
   createContext<UseFormReturn<AgentBuilderFormData> | null>(null);

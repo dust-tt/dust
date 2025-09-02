@@ -1,7 +1,18 @@
+import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { transformSelectionConfigurationsToTree } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import { createMCPFormSchema } from "@app/components/agent_builder/capabilities/mcp/validation/schemaBuilders";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
+import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+
+type MCPValidationData = {
+  name: string;
+  description: string | null;
+  configuration: MCPServerConfigurationType | null;
+  sources: DataSourceBuilderTreeType;
+  mcpServerView?: MCPServerViewType;
+};
 
 /**
  * Creates MCP configuration form schema for validation
@@ -39,17 +50,32 @@ export function validateMCPActionConfiguration(
 
     const schema = getMCPConfigurationFormSchema(serverView);
 
-    schema.parse({
+    if (!schema) {
+      return {
+        isValid: false,
+        errorMessage: `Configuration schema not found for "${serverView.name || serverView.server.name}".`,
+      };
+    }
+
+    const validationData: MCPValidationData = {
       name: action.name,
       description: action.description,
       configuration: action.configuration,
-    });
+      sources: action.configuration?.dataSourceConfigurations
+        ? transformSelectionConfigurationsToTree(
+            action.configuration.dataSourceConfigurations
+          )
+        : { in: [], notIn: [] },
+      mcpServerView: serverView,
+    };
+
+    schema.parse(validationData);
 
     return { isValid: true };
   } catch (error) {
     return {
       isValid: false,
-      errorMessage: `Tool "${serverView.name}" has invalid configuration. Please reconfigure it.`,
+      errorMessage: `Tool "${serverView.name || serverView.server.name}" has invalid configuration. Please reconfigure it.`,
     };
   }
 }

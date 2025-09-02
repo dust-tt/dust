@@ -11,6 +11,7 @@ import {
   reasoningModelSchema,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { VALIDATION_MESSAGES } from "@app/components/agent_builder/capabilities/mcp/utils/validationMessages";
+import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 
 /**
@@ -144,7 +145,9 @@ function createAdditionalConfigurationSchema(
 
     // Add flavors field only when there are required flavors.
     if (requirements.requiredFlavors.length > 0) {
-      nestedStructure.flavors = z.array(z.string());
+      nestedStructure.flavors = z
+        .array(z.string())
+        .min(1, "You must select at least one content type");
     }
 
     return z.object(nestedStructure);
@@ -210,5 +213,6 @@ export function createMCPFormSchema(
   return z.object({
     ...baseFormSchema,
     configuration: configurationSchema,
+    sources: dataSourceBuilderTreeType,
   });
 }

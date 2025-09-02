@@ -1,6 +1,7 @@
 import type { UseFormReturn } from "react-hook-form";
 
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { transformSelectionConfigurationsToTree } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -28,11 +29,22 @@ export function createFormResetHandler(
 
       if (configurationTool?.type === "MCP") {
         // Edit mode: reset with existing tool data
-        form.reset({
+        // Extract data sources from configuration if present (only Canvas stores them in backend)
+        const sources = configurationTool.configuration
+          ?.dataSourceConfigurations
+          ? transformSelectionConfigurationsToTree(
+              configurationTool.configuration.dataSourceConfigurations
+            )
+          : { in: [], notIn: [] };
+
+        const resetData: MCPFormData = {
           name: configurationTool.name ?? "",
           description: configurationTool.description ?? "",
           configuration: configurationTool.configuration,
-        });
+          sources,
+        };
+
+        form.reset(resetData);
       } else if (mcpServerView) {
         // New configuration mode: reset with default values
         const defaultValues = getDefaultFormValues(mcpServerView);

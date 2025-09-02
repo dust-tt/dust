@@ -69,5 +69,6 @@ export function getDefaultFormValues(mcpServerView: MCPServerViewType | null) {
     name: "",
     description: "",
     configuration: getDefaultConfiguration(mcpServerView),
+    sources: { in: [], notIn: [] },
   };
 }

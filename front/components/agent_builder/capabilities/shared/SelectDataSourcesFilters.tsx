@@ -1,69 +1,22 @@
 import { Button, ContextItem } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 import { useWatch } from "react-hook-form";
 
+import { DataSourceFilterContextItem } from "@app/components/agent_builder/capabilities/shared/DataSourceFilterContextItem";
 import { DataSourceViewTagsFilterDropdown } from "@app/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { extractDataSourceViews } from "@app/components/agent_builder/capabilities/shared/utils/dataSourceUtils";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { CONFIGURATION_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
 import { useKnowledgePageContext } from "@app/components/data_source_view/context/PageContext";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { getDisplayNameForDataSource } from "@app/lib/data_sources";
-import type { DataSourceViewType } from "@app/types";
 import { pluralize } from "@app/types";
-
-type DataSourceFilterItem = {
-  dataSourceView: DataSourceViewType;
-};
-
-type DataSourceFilterContextItemProps = {
-  item: DataSourceFilterItem;
-};
-
-function DataSourceFilterContextItem({
-  item: { dataSourceView },
-}: DataSourceFilterContextItemProps) {
-  const { isDark } = useTheme();
-  const { spaces } = useSpacesContext();
-
-  const spaceName = spaces.find((s) => s.sId === dataSourceView.spaceId)?.name;
-
-  return (
-    <ContextItem
-      key={dataSourceView.id}
-      title={getDisplayNameForDataSource(dataSourceView.dataSource)}
-      visual={
-        <ContextItem.Visual
-          visual={getConnectorProviderLogoWithFallback({
-            provider: dataSourceView.dataSource.connectorProvider,
-            isDark,
-          })}
-        />
-      }
-      subElement={spaceName && <span className="text-xs">{spaceName}</span>}
-    />
-  );
-}
 
 export function SelectDataSourcesFilters() {
   const { setSheetPageId } = useKnowledgePageContext();
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
 
-  const dataSourceViews = sources.in.reduce(
-    (acc, source) => {
-      if (source.type === "data_source") {
-        acc[source.dataSourceView.dataSource.dustAPIDataSourceId] = {
-          dataSourceView: source.dataSourceView,
-        };
-      } else if (source.type === "node") {
-        acc[source.node.dataSourceView.dataSource.dustAPIDataSourceId] = {
-          dataSourceView: source.node.dataSourceView,
-        };
-      }
-
-      return acc;
-    },
-    {} as Record<string, DataSourceFilterItem>
+  const dataSourceViews = useMemo(
+    () => extractDataSourceViews(sources),
+    [sources]
   );
 
   return (
