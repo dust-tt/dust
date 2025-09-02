@@ -17,7 +17,11 @@ import {
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
 import type { UserMessageType, WorkspaceType } from "@app/types";
-import { COPILOT_SEED_PROMPT } from "@app/lib/assistant/copilot";
+import {
+  COPILOT_SEED_PROMPT,
+  COPILOT_STATE_WRAP_START,
+  COPILOT_STATE_WRAP_END,
+} from "@app/lib/assistant/copilot";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
@@ -59,14 +63,32 @@ export function UserMessage({
           citations={citations}
         >
           {(() => {
-            // Hide the Copilot seed prompt from the visible user message.
-            const contentForDisplay = message.content.startsWith(
-              COPILOT_SEED_PROMPT
-            )
-              ? message.content
-                  .slice(COPILOT_SEED_PROMPT.length)
-                  .trimStart()
-              : message.content;
+            // Hide the Copilot seed prompt and the hidden editor state block from display.
+            let contentForDisplay = message.content;
+
+            // 1) Strip the seed prompt (first message only)
+            if (contentForDisplay.startsWith(COPILOT_SEED_PROMPT)) {
+              contentForDisplay = contentForDisplay
+                .slice(COPILOT_SEED_PROMPT.length)
+                .trimStart();
+            }
+
+            // 2) Strip a leading editor state block wrapped in markers.
+            //    Allow for optional leading whitespace before the start marker.
+            const stripEditorStateBlock = (text: string) => {
+              const leadingWs = text.match(/^\s*/)?.[0].length ?? 0;
+              const afterWs = text.slice(leadingWs);
+              if (afterWs.startsWith(COPILOT_STATE_WRAP_START)) {
+                const endIdx = afterWs.indexOf(COPILOT_STATE_WRAP_END);
+                if (endIdx !== -1) {
+                  const sliceAfter = endIdx + COPILOT_STATE_WRAP_END.length;
+                  return afterWs.slice(sliceAfter).trimStart();
+                }
+              }
+              return text;
+            };
+
+            contentForDisplay = stripEditorStateBlock(contentForDisplay);
             return (
               <Markdown
                 content={contentForDisplay}

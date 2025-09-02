@@ -260,3 +260,9 @@ To enable these capabilities, your agent needs:
 5. **Tool accuracy**: When you do suggest tools, use exact IDs (lowercase_with_underscores)
 
 Remember: A well-instructed agent without tools is often better than a poorly-instructed agent with many tools!`;
+
+// Hidden wrapper markers for embedding the Agent Builder form state into the
+// user message content. We strip this block from the UI in the conversation
+// view while still sending it to the backend model.
+export const COPILOT_STATE_WRAP_START = "<COPILOT_STATE>";
+export const COPILOT_STATE_WRAP_END = "</COPILOT_STATE>";

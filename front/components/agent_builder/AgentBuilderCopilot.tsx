@@ -24,7 +24,11 @@ import type {
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { COPILOT_AGENT_SID, COPILOT_SEED_PROMPT } from "@app/lib/assistant/copilot";
+import {
+  COPILOT_SEED_PROMPT,
+  COPILOT_STATE_WRAP_START,
+  COPILOT_STATE_WRAP_END,
+} from "@app/lib/assistant/copilot";
 import { GLOBAL_AGENTS_SID } from "@app/types";
 import { DustError } from "@app/lib/error";
 
@@ -34,6 +38,7 @@ function useCopilotConversation() {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
   const sendNotification = useSendNotification();
+  const { getValues } = useFormContext<AgentBuilderFormData>();
 
   const [conversationId, setConversationId] = useState<string | null>(null);
   // For reliability, mention an existing global agent (gpt-4) on the server.
@@ -71,9 +76,14 @@ function useCopilotConversation() {
       mentions = [{ configurationId: SERVER_AGENT_SID }, ...mentions];
     }
 
+    // Build hidden editor state block (JSON) so the Copilot can rewrite the current agent.
+    const editorState = getValues();
+    const editorStateJson = JSON.stringify(editorState, null, 2);
+    const hiddenEditorStateBlock = `${COPILOT_STATE_WRAP_START}\nThis is the current state of this agent (JSON). Use it to update or rewrite the agent as requested.\n\n${editorStateJson}\n${COPILOT_STATE_WRAP_END}`;
+
     const effectiveInput = !conversation
-      ? `${COPILOT_SEED_PROMPT}\n\n${input}`
-      : input;
+      ? `${COPILOT_SEED_PROMPT}\n\n${hiddenEditorStateBlock}\n\n${input}`
+      : `${hiddenEditorStateBlock}\n\n${input}`;
     const messageData = { input: effectiveInput, mentions, contentFragments };
 
     if (!conversation) {
