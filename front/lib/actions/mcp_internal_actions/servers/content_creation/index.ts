@@ -5,13 +5,13 @@ import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
-import { augmentCanvasInstructions } from "@app/lib/actions/mcp_internal_actions/servers/canvas/instructions/flavors";
+import { augmentContentCreationInstructions } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/instructions/flavors";
 import {
-  CREATE_CANVAS_FILE_TOOL_NAME,
-  EDIT_CANVAS_FILE_TOOL_NAME,
-  RETRIEVE_CANVAS_FILE_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/canvas/types";
-import { validateTailwindCode } from "@app/lib/actions/mcp_internal_actions/servers/canvas/validation";
+  CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
+  EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+  RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
+import { validateTailwindCode } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/validation";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -21,17 +21,17 @@ import {
   getClientExecutableFileContent,
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
-import type { CanvasFileContentType } from "@app/types";
+import type { ContentCreationFileContentType } from "@app/types";
 import { clientExecutableContentType, Err, Ok } from "@app/types";
-import { CANVAS_FILE_FORMATS } from "@app/types";
+import { CONTENT_CREATION_FILE_FORMATS } from "@app/types";
 
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
 /**
- * Canvas Server - Allows the model to create and update canvas files.
- * Canvas includes any file that users can execute, run, or interact with directly.
+ * Content Creation Server - Allows the model to create and update content creation files.
+ * Content Creation includes any file that users can execute, run, or interact with directly.
  * Currently supports client-executable files, with plans to expand to other interactive formats.
- * Files are rendered in a canvas viewer where users can execute and interact with them.
+ * Files are rendered in a content creation viewer where users can execute and interact with them.
  * We return the file resource only on file creation, as edit updates the existing file.
  */
 const createServer = (
@@ -40,52 +40,56 @@ const createServer = (
 ): McpServer => {
   // Get base instructions and augment with flavor-specific instructions.
   const baseInstructions =
-    INTERNAL_MCP_SERVERS.canvas.serverInfo.instructions || "";
-  const augmentedInstructions = augmentCanvasInstructions(
+    INTERNAL_MCP_SERVERS.content_creation.serverInfo.instructions || "";
+  const augmentedInstructions = augmentContentCreationInstructions(
     baseInstructions,
     agentLoopContext
   );
 
-  const server = makeInternalMCPServer("canvas", {
+  const server = makeInternalMCPServer("content_creation", {
     augmentedInstructions,
   });
 
   server.tool(
-    CREATE_CANVAS_FILE_TOOL_NAME,
-    "Create a new Canvas file that users can execute or interact with. Use this for " +
+    CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
+    "Create a new Content Creation file that users can execute or interact with. Use this for " +
       "content that provides functionality beyond static viewing.",
     {
       file_name: z
         .string()
         .describe(
-          "The name of the Canvas file to create, including extension (e.g. " +
+          "The name of the Content Creation file to create, including extension (e.g. " +
             "DataVisualization.tsx)"
         ),
       mime_type: z
-        .enum(Object.keys(CANVAS_FILE_FORMATS) as [CanvasFileContentType])
+        .enum(
+          Object.keys(CONTENT_CREATION_FILE_FORMATS) as [
+            ContentCreationFileContentType,
+          ]
+        )
         .describe(
-          "The MIME type for the canvas. Currently supports " +
+          "The MIME type for the Content Creation file. Currently supports " +
             `'${clientExecutableContentType}' for client-side executable files.`
         ),
       content: z
         .string()
         .max(MAX_FILE_SIZE_BYTES)
         .describe(
-          "The content for the Canvas file. Should be complete and ready for execution or " +
+          "The content for the Content Creation file. Should be complete and ready for execution or " +
             "interaction."
         ),
       description: z
         .string()
         .optional()
         .describe(
-          "Optional description of what this Canvas does (e.g., " +
+          "Optional description of what this Content Creation file does (e.g., " +
             "'Interactive data visualization', 'Executable analysis script', " +
             "'Dynamic dashboard')"
         ),
     },
     withToolLogging(
       auth,
-      { toolName: CREATE_CANVAS_FILE_TOOL_NAME, agentLoopContext },
+      { toolName: CREATE_CONTENT_CREATION_FILE_TOOL_NAME, agentLoopContext },
       async (
         { file_name, mime_type, content, description },
         { sendNotification, _meta }
@@ -129,9 +133,9 @@ const createServer = (
               total: 1,
               progressToken: _meta?.progressToken,
               data: {
-                label: "Creating Canvas file...",
+                label: "Creating Content Creation file...",
                 output: {
-                  type: "canvas_file",
+                  type: "content_creation_file",
                   fileId: fileResource.sId,
                   mimeType: fileResource.contentType,
                   title: fileResource.fileName,
@@ -141,7 +145,7 @@ const createServer = (
             },
           };
 
-          // Send a notification to the MCP Client, to display the canvas file.
+          // Send a notification to the MCP Client, to display the Content Creation file.
           await sendNotification(notification);
         }
 
@@ -164,12 +168,12 @@ const createServer = (
   );
 
   server.tool(
-    EDIT_CANVAS_FILE_TOOL_NAME,
-    "Modifies content within a Canvas file by substituting specified text segments. " +
+    EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+    "Modifies content within a Content Creation file by substituting specified text segments. " +
       "Performs single substitution by default, or multiple substitutions when " +
       "`expected_replacements` is defined. This function demands comprehensive contextual " +
       "information surrounding the target modification to ensure accurate targeting. " +
-      `Use the ${RETRIEVE_CANVAS_FILE_TOOL_NAME} tool to review the file's ` +
+      `Use the ${RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME} tool to review the file's ` +
       "existing content prior to executing any text substitution. Requirements: " +
       "1. `old_string` MUST contain the precise literal content for substitution " +
       "(preserving all spacing, formatting, line breaks). " +
@@ -180,7 +184,9 @@ const createServer = (
     {
       file_id: z
         .string()
-        .describe("The ID of the Canvas file to update (e.g., 'fil_abc123')"),
+        .describe(
+          "The ID of the Content Creation file to update (e.g., 'fil_abc123')"
+        ),
       old_string: z
         .string()
         .describe(
@@ -206,7 +212,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: EDIT_CANVAS_FILE_TOOL_NAME, agentLoopContext },
+      { toolName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME, agentLoopContext },
       async (
         { file_id, old_string, new_string, expected_replacements },
         { sendNotification, _meta }
@@ -239,9 +245,9 @@ const createServer = (
               total: 1,
               progressToken: _meta?.progressToken,
               data: {
-                label: "Updating Canvas file...",
+                label: "Updating Content Creation file...",
                 output: {
-                  type: "canvas_file",
+                  type: "content_creation_file",
                   fileId: fileResource.sId,
                   mimeType: fileResource.contentType,
                   title: fileResource.fileName,
@@ -251,7 +257,7 @@ const createServer = (
             },
           };
 
-          // Send a notification to the MCP Client, to refresh the canvas file.
+          // Send a notification to the MCP Client, to refresh the Content Creation file.
           await sendNotification(notification);
         }
 
@@ -266,19 +272,21 @@ const createServer = (
   );
 
   server.tool(
-    RETRIEVE_CANVAS_FILE_TOOL_NAME,
-    "Retrieve the current content of an existing Canvas file by its file ID. " +
-      "Use this to read back the content of Canvas files you have previously created or " +
-      `updated. Use this tool before calling ${EDIT_CANVAS_FILE_TOOL_NAME} to ` +
+    RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME,
+    "Retrieve the current content of an existing Content Creation file by its file ID. " +
+      "Use this to read back the content of Content Creation files you have previously created or " +
+      `updated. Use this tool before calling ${EDIT_CONTENT_CREATION_FILE_TOOL_NAME} to ` +
       "understand the current file state and identify the exact text to replace.",
     {
       file_id: z
         .string()
-        .describe("The ID of the Canvas file to retrieve (e.g., 'fil_abc123')"),
+        .describe(
+          "The ID of the Content Creation file to retrieve (e.g., 'fil_abc123')"
+        ),
     },
     withToolLogging(
       auth,
-      { toolName: RETRIEVE_CANVAS_FILE_TOOL_NAME, agentLoopContext },
+      { toolName: RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME, agentLoopContext },
       async ({ file_id }) => {
         const result = await getClientExecutableFileContent(auth, file_id);
 
@@ -300,16 +308,16 @@ const createServer = (
     )
   );
 
-  // TODO(CONTENT_CREATION 2025-09-01): Register data source file system tools for the Canvas server
-  // once supported in the agent builder.
-  // // Register data source file system tools for the Canvas server with custom
-  // // descriptions tailored for Canvas use cases (visual assets and templates).
+  // TODO(CONTENT_CREATION 2025-09-01): Register data source file system tools for the Content
+  // Creation server once supported in the agent builder.
+  // // Register data source file system tools for the Content Creation server with custom
+  // // descriptions tailored for Content Creation use cases (visual assets and templates).
   // registerListTool(auth, server, agentLoopContext, {
   //   name: "list_assets",
   //   extraDescription:
   //     "Browse available visual assets and templates in the connected data sources. " +
   //     "Use this to explore folders containing images, icons, slideshow templates, " +
-  //     "or other resources that can be incorporated into Canvas files.",
+  //     "or other resources that can be incorporated into Content Creation files.",
   // });
 
   // registerCatTool(auth, server, agentLoopContext, {
@@ -317,7 +325,7 @@ const createServer = (
   //   extraDescription:
   //     "Read template files or asset configurations from the connected data sources. " +
   //     "Use this to retrieve slideshow templates, HTML/CSS snippets, React component examples, " +
-  //     "or configuration files that can serve as a starting point or be incorporated into Canvas files.",
+  //     "or configuration files that can serve as a starting point or be incorporated into Content Creation files.",
   // });
 
   return server;

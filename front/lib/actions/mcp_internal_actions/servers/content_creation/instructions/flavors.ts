@@ -69,9 +69,9 @@ function createFlavorInstructions(selectedFlavors: string[]): string {
 }
 
 /**
- * Augment canvas instructions with flavor-specific guidance
+ * Augment Content Creation instructions with flavor-specific guidance
  */
-export function augmentCanvasInstructions(
+export function augmentContentCreationInstructions(
   baseInstructions: string,
   agentLoopContext?: AgentLoopContextType
 ): string {

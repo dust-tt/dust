@@ -275,7 +275,7 @@ export function _getDustDeepGlobalAgent(
     preFetchedDataSources,
     webSearchBrowseMCPServerView,
     dataSourcesFileSystemMCPServerView,
-    canvasMCPServerView,
+    contentCreationMCPServerView,
     runAgentMCPServerView,
     dataWarehousesMCPServerView,
     toolsetsMCPServerView,
@@ -284,7 +284,7 @@ export function _getDustDeepGlobalAgent(
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-    canvasMCPServerView: MCPServerViewResource | null;
+    contentCreationMCPServerView: MCPServerViewResource | null;
     runAgentMCPServerView: MCPServerViewResource | null;
     dataWarehousesMCPServerView: MCPServerViewResource | null;
     toolsetsMCPServerView: MCPServerViewResource | null;
@@ -294,7 +294,7 @@ export function _getDustDeepGlobalAgent(
 
   const name = "dust-deep";
   const description =
-    "Deep research with company data, web search/browse, canvas, and data warehouses.";
+    "Deep research with company data, web search/browse, Content Creation, and data warehouses.";
 
   const pictureUrl =
     "https://dust.tt/static/systemavatar/dust-deep_avatar_full.png";
@@ -373,16 +373,16 @@ export function _getDustDeepGlobalAgent(
     actions.push(dataWarehousesAction);
   }
 
-  // Add canvas tool
-  if (canvasMCPServerView) {
+  // Add Content Creation tool.
+  if (contentCreationMCPServerView) {
     actions.push({
       id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-canvas",
+      sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-content-creation",
       type: "mcp_server_configuration",
-      name: "canvas" satisfies InternalMCPServerNameType,
-      description: "Create & update canvas files.",
-      mcpServerViewId: canvasMCPServerView.sId,
-      internalMCPServerId: canvasMCPServerView.internalMCPServerId,
+      name: "content_creation" satisfies InternalMCPServerNameType,
+      description: "Create & update Content Creation files.",
+      mcpServerViewId: contentCreationMCPServerView.sId,
+      internalMCPServerId: contentCreationMCPServerView.internalMCPServerId,
       dataSources: null,
       tables: null,
       childAgentId: null,
@@ -448,7 +448,7 @@ export function _getDustTaskGlobalAgent(
 
   const name = "dust-task";
   const description =
-    "Focused research sub-agent. Same data/web tools as dust-deep, without canvas or spawning sub-agents.";
+    "Focused research sub-agent. Same data/web tools as dust-deep, without Content Creation or spawning sub-agents.";
 
   const pictureUrl =
     "https://dust.tt/static/systemavatar/dust-task_avatar_full.png";

@@ -16,7 +16,6 @@ import {
   useAgentTriggers,
   useRemoveTriggerSubscriber,
 } from "@app/lib/swr/agent_triggers";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 import type { LightAgentConfigurationType } from "@app/types";
@@ -31,10 +30,6 @@ export function AgentTriggersTab({
   agentConfiguration,
   owner,
 }: AgentTriggersTabProps) {
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-
   const { triggers, isTriggersLoading } = useAgentTriggers({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfiguration.sId,
@@ -52,11 +47,7 @@ export function AgentTriggersTab({
   });
 
   const canEditAssistant = agentConfiguration.canEdit || isAdmin(owner);
-  const editionURL = getAgentBuilderRoute(
-    owner.sId,
-    agentConfiguration.sId,
-    featureFlags.includes("agent_builder_v2")
-  );
+  const editionURL = getAgentBuilderRoute(owner.sId, agentConfiguration.sId);
 
   return (
     <>

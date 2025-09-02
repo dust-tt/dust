@@ -17,10 +17,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Activates the advanced search option: browse selected data like a file system",
     stage: "on_demand",
   },
-  agent_builder_v2: {
-    description: "Version 2 of the agent builder interface (wip)",
-    stage: "dust_only",
-  },
   agent_to_yaml: {
     description: "Export and Import agents to/from YAML format",
     stage: "dust_only",
@@ -65,7 +61,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   interactive_content_server: {
     description:
-      "Canvas MCP server - gives access to the new visualization layout",
+      "Content Creation MCP server - gives access to the new visualization layout",
     stage: "on_demand",
   },
   google_ai_studio_experimental_models_feature: {

@@ -15,6 +15,7 @@ import type {
   PostTextAsCronRuleRequestBody,
   PostTextAsCronRuleResponseBody,
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/text_as_cron_rule";
+import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
 
 export function useAgentTriggers({
   workspaceId,
@@ -38,6 +39,30 @@ export function useAgentTriggers({
   return {
     triggers: data?.triggers ?? emptyArray(),
     isTriggersLoading: !!agentConfigurationId && !error && !data && !disabled,
+    isTriggersError: error,
+    isTriggersValidating: isValidating,
+    mutateTriggers: mutate,
+  };
+}
+
+export function useUserTriggers({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const userTriggersFetcher: Fetcher<GetUserTriggersResponseBody> = fetcher;
+
+  const { data, error, mutate, isValidating } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/me/triggers`,
+    userTriggersFetcher,
+    { disabled }
+  );
+
+  return {
+    triggers: data?.triggers ?? emptyArray(),
+    isTriggersLoading: !error && !data && !disabled,
     isTriggersError: error,
     isTriggersValidating: isValidating,
     mutateTriggers: mutate,
@@ -162,20 +187,30 @@ export function useRemoveTriggerSubscriber({
   agentConfigurationId,
 }: {
   workspaceId: string;
-  agentConfigurationId: string;
+  agentConfigurationId?: string;
 }) {
   const sendNotification = useSendNotification();
-  const { mutateTriggers } = useAgentTriggers({
+  const { mutateTriggers: mutateAgentTriggers } = useAgentTriggers({
     workspaceId,
-    agentConfigurationId,
-    disabled: true,
+    agentConfigurationId: agentConfigurationId || null,
+    disabled: !agentConfigurationId,
+  });
+  const { mutateTriggers: mutateUserTriggers } = useUserTriggers({
+    workspaceId,
+    disabled: !!agentConfigurationId,
   });
 
   const removeSubscriber = useCallback(
-    async (triggerId: string): Promise<boolean> => {
+    async (
+      triggerId: string,
+      triggerAgentConfigurationId?: string
+    ): Promise<boolean> => {
+      const targetAgentConfigurationId =
+        triggerAgentConfigurationId || agentConfigurationId;
+
       try {
         const response = await fetch(
-          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/subscribers`,
+          `/api/w/${workspaceId}/assistant/agent_configurations/${targetAgentConfigurationId}/triggers/${triggerId}/subscribers`,
           {
             method: "DELETE",
           }
@@ -188,7 +223,14 @@ export function useRemoveTriggerSubscriber({
             description:
               "You will no longer receive notifications when this trigger runs.",
           });
-          void mutateTriggers();
+
+          // Mutate the appropriate triggers list
+          if (agentConfigurationId) {
+            void mutateAgentTriggers();
+          } else {
+            void mutateUserTriggers();
+          }
+
           return true;
         } else {
           const errorData = await getErrorFromResponse(response);
@@ -208,7 +250,13 @@ export function useRemoveTriggerSubscriber({
         return false;
       }
     },
-    [workspaceId, agentConfigurationId, sendNotification, mutateTriggers]
+    [
+      workspaceId,
+      agentConfigurationId,
+      sendNotification,
+      mutateAgentTriggers,
+      mutateUserTriggers,
+    ]
   );
 
   return removeSubscriber;

@@ -13,9 +13,9 @@ import {
 import React from "react";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import { CanvasHeader } from "@app/components/assistant/conversation/canvas/CanvasHeader";
-import { CenteredState } from "@app/components/assistant/conversation/canvas/CenteredState";
-import { ShareCanvasFilePopover } from "@app/components/assistant/conversation/canvas/ShareCanvasFilePopover";
+import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
+import { ContentCreationHeader } from "@app/components/assistant/conversation/content_creation/ContentCreationHeader";
+import { ShareContentCreationFilePopover } from "@app/components/assistant/conversation/content_creation/ShareContentCreationFilePopover";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { isFileUsingConversationFiles } from "@app/lib/files";
 import { useFileContent } from "@app/lib/swr/files";
@@ -98,7 +98,7 @@ export function ClientExecutableRenderer({
     return (
       <CenteredState>
         <Spinner size="sm" />
-        <span>Loading canvas...</span>
+        <span>Loading Content Creation...</span>
       </CenteredState>
     );
   }
@@ -113,7 +113,7 @@ export function ClientExecutableRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <CanvasHeader
+      <ContentCreationHeader
         title={fileName || "Client Executable"}
         subtitle={fileId}
         onClose={closePanel}
@@ -126,12 +126,12 @@ export function ClientExecutableRenderer({
           variant="ghost"
         />
         <ExportContentDropdown iframeRef={iframeRef} />
-        <ShareCanvasFilePopover
+        <ShareContentCreationFilePopover
           fileId={fileId}
           owner={owner}
           isUsingConversationFiles={isUsingConversationFiles}
         />
-      </CanvasHeader>
+      </ContentCreationHeader>
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">

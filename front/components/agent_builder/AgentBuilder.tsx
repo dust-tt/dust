@@ -170,7 +170,7 @@ export default function AgentBuilder({
       agentSettings: {
         ...baseValues.agentSettings,
         slackProvider,
-        editors: editors ?? emptyArray(),
+        editors: agentConfiguration && editors.length > 0 ? editors : [user],
         slackChannels: agentSlackChannels,
       },
     };
@@ -218,7 +218,9 @@ export default function AgentBuilder({
         formData,
         owner,
         isDraft: false,
-        agentConfigurationId: agentConfiguration?.sId || null,
+        agentConfigurationId: duplicateAgentId
+          ? null
+          : agentConfiguration?.sId || null,
       });
 
       if (!result.isOk()) {
@@ -234,16 +236,17 @@ export default function AgentBuilder({
       }
 
       const createdAgent = result.value;
+      const isCreatingNew = duplicateAgentId || !agentConfiguration;
+
       sendNotification({
-        title: agentConfiguration ? "Agent saved" : "Agent created",
-        description: agentConfiguration
-          ? "Your agent has been successfully saved"
-          : "Your agent has been successfully created",
+        title: isCreatingNew ? "Agent created" : "Agent saved",
+        description: isCreatingNew
+          ? "Your agent has been successfully created"
+          : "Your agent has been successfully saved",
         type: "success",
       });
 
-      if (!agentConfiguration && createdAgent.sId) {
-        // For new agents, navigate immediately - form will be clean after navigation
+      if (isCreatingNew && createdAgent.sId) {
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
         await router.replace(newUrl, undefined, { shallow: true });
       } else {

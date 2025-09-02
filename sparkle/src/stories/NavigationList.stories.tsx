@@ -16,7 +16,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Primitives/NavigationList",
+  title: "Modules/NavigationList",
 } satisfies Meta;
 
 export default meta;

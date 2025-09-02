@@ -1,30 +1,30 @@
 import React from "react";
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { isCanvasFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isContentCreationFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
 import type { LightAgentMessageType } from "@app/types";
-import { isCanvasFileContentType, removeNulls } from "@app/types";
+import { isContentCreationFileContentType, removeNulls } from "@app/types";
 
-interface UseAutoOpenCanvasProps {
+interface UseAutoOpenContentCreationProps {
   agentMessageToRender: LightAgentMessageType;
   isLastMessage: boolean;
   messageStreamState: MessageTemporaryState;
 }
 
 /**
- * Custom hook to automatically open canvas drawer based on agent message state.
- * Also returns the canvas files that were generated in the agent message.
+ * Custom hook to automatically open content creation drawer based on agent message state.
+ * Also returns the content creation files that were generated in the agent message.
  *
  * Logic:
  * - Progress notifications (real-time): Always open drawer with updatedAt timestamp.
  * - Generated files (completed): Only open drawer on last message, skip updatedAt.
  */
-export function useAutoOpenCanvas({
+export function useAutoOpenContentCreation({
   agentMessageToRender,
   isLastMessage,
   messageStreamState,
-}: UseAutoOpenCanvasProps) {
+}: UseAutoOpenContentCreationProps) {
   const { openPanel } = useConversationSidePanelContext();
 
   // Track the last opened fileId to prevent double-opening glitch.
@@ -42,14 +42,14 @@ export function useAutoOpenCanvas({
   // allowing generated→progress refreshes (when file is updated with new timestamp).
   const lastOpenedFileIdRef = React.useRef<string | null>(null);
 
-  // Get canvas files from progress notifications.
-  const canvasFilesFromProgress = React.useMemo(
+  // Get content creation files from progress notifications.
+  const contentCreationFilesFromProgress = React.useMemo(
     () =>
       removeNulls(
         Array.from(messageStreamState.actionProgress.entries()).map(
           ([, progress]) => {
             const output = progress.progress?.data.output;
-            if (isCanvasFileContentOutput(output)) {
+            if (isContentCreationFileContentOutput(output)) {
               return output;
             }
             return null;
@@ -59,44 +59,49 @@ export function useAutoOpenCanvas({
     [messageStreamState.actionProgress]
   );
 
-  // Get completed canvas files from generatedFiles.
-  const completedCanvasFiles = React.useMemo(
+  // Get completed content creation files from generatedFiles.
+  const completedContentCreationFiles = React.useMemo(
     () =>
       agentMessageToRender.generatedFiles.filter((file) =>
-        isCanvasFileContentType(file.contentType)
+        isContentCreationFileContentType(file.contentType)
       ),
     [agentMessageToRender.generatedFiles]
   );
 
   React.useEffect(() => {
     // Handle progress notifications - always open drawer (supports generated->progress refresh).
-    if (canvasFilesFromProgress.length > 0) {
-      const [firstFile] = canvasFilesFromProgress;
+    if (contentCreationFilesFromProgress.length > 0) {
+      const [firstFile] = contentCreationFilesFromProgress;
       if (firstFile?.fileId) {
         lastOpenedFileIdRef.current = firstFile.fileId;
         // Always use updatedAt for real-time updates to trigger refresh.
         openPanel({
-          type: "canvas",
+          type: "content_creation",
           fileId: firstFile.fileId,
           timestamp: firstFile.updatedAt,
         });
       }
     }
     // Handle completed files - only open drawer on last message.
-    else if (completedCanvasFiles.length > 0 && isLastMessage) {
-      const [firstFile] = completedCanvasFiles;
+    else if (completedContentCreationFiles.length > 0 && isLastMessage) {
+      const [firstFile] = completedContentCreationFiles;
       const isNotAlreadyOpenedOnFile =
         lastOpenedFileIdRef.current !== firstFile.fileId;
       if (firstFile?.fileId && isNotAlreadyOpenedOnFile) {
         lastOpenedFileIdRef.current = firstFile.fileId;
         // Skip updatedAt for completed files since they're final state.
         openPanel({
-          type: "canvas",
+          type: "content_creation",
           fileId: firstFile.fileId,
         });
       }
     }
-  }, [canvasFilesFromProgress, completedCanvasFiles, isLastMessage, openPanel]);
+  }, [
+    contentCreationFilesFromProgress,
+    completedContentCreationFiles,
+    isLastMessage,
+    openPanel,
+  ]);
 
   // Reset tracking when message changes.
   React.useEffect(() => {
@@ -104,6 +109,6 @@ export function useAutoOpenCanvas({
   }, [agentMessageToRender.sId]);
 
   return {
-    canvasFiles: completedCanvasFiles,
+    contentCreationFiles: completedContentCreationFiles,
   };
 }

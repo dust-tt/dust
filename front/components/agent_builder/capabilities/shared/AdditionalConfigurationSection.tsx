@@ -255,7 +255,7 @@ function ListConfigurationInput({
           value={searchQuery}
           onChange={setSearchQuery}
         />
-        <div className="max-h-48 space-y-1 overflow-y-auto">
+        <div className="space-y-1">
           {filteredValues.length === 0 ? (
             <div className="py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
               {searchQuery.trim() === ""
@@ -291,7 +291,7 @@ function ListConfigurationInput({
           )}
         </div>
         {!!fieldState.error && (
-          <div className={"error flex items-center gap-1 text-xs"}>
+          <div className="error flex items-center gap-1 text-xs">
             {fieldState.error.message}
           </div>
         )}

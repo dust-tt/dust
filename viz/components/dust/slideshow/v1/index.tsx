@@ -114,57 +114,105 @@ export function SlideshowPreviewSidebar({
 type SlideProps = PropsWithChildren<{
   className?: string;
   isPreview?: boolean;
+  variant?: "centered" | "top";
 }>;
 
-export function Slide({ children, className, isPreview = false }: SlideProps) {
+export function Slide({
+  children,
+  className,
+  isPreview = false,
+  variant = "top",
+}: SlideProps) {
   const ref = React.useRef<HTMLDivElement>(null);
 
   return (
     <div
       ref={ref}
       className={cn(
-        "w-full h-full flex items-start justify-center overflow-hidden",
+        "w-full h-full flex overflow-hidden responsive-text justify-center",
+        variant === "centered" ? "items-center" : "items-start",
         className
       )}
       style={{ fontFamily: "var(--font-geist)" }}
     >
       {isPreview ? (
-        <div className="p-2 w-full h-full">{children}</div>
+        <div className="p-2 w-full h-full" style={{ fontSize: "0.4em" }}>
+          {children}
+        </div>
       ) : (
-        <div className="p-8 w-full">{children}</div>
+        <div
+          className={cn(
+            "w-full",
+            variant === "top" ? "slide-top-padding" : "slide-centered-padding"
+          )}
+        >
+          {children}
+        </div>
       )}
     </div>
   );
+}
+
+const NAVIGATION_HIDE_DELAY = 3000; // Milliseconds before navigation auto-hides
+
+function hasDisplayName(
+  component: unknown
+): component is { displayName: string } {
+  return (
+    typeof component === "function" &&
+    typeof (component as { displayName?: string }).displayName === "string"
+  );
+}
+
+function validateSlideChildren(
+  children: React.ReactNode
+): React.ReactElement[] {
+  const childArray = React.Children.toArray(children) as React.ReactElement[];
+
+  const validSlideDisplayNames = new Set([
+    "Slideshow.Slide.Base",
+    "Slideshow.Slide.Cover",
+    "Slideshow.Slide.Bullets",
+    "Slideshow.Slide.Split",
+    "Slideshow.Slide.Full",
+    "Slideshow.Slide.TitleCentered",
+    "Slideshow.Slide.TitleTop",
+    "Slideshow.Slide.BulletsOnly",
+    "Slideshow.Slide.Quote",
+  ]);
+
+  const invalidChildren = childArray.filter((child) => {
+    if (!React.isValidElement(child)) {
+      return true;
+    }
+
+    if (!hasDisplayName(child.type)) {
+      return true;
+    }
+
+    return !validSlideDisplayNames.has(child.type.displayName);
+  });
+
+  if (invalidChildren.length > 0) {
+    throw new Error(
+      "Slideshow: All children must be Slideshow.Slide components. " +
+        `Found ${invalidChildren.length} invalid child(ren).`
+    );
+  }
+
+  return childArray;
 }
 
 type SlideshowProps = PropsWithChildren<{
   className?: string;
 }>;
 
-const NAVIGATION_HIDE_DELAY = 3000; // Milliseconds before navigation auto-hides
-
-export function Slideshow({ children, className }: SlideshowProps) {
-  const slides = React.useMemo(() => {
-    const childArray = React.Children.toArray(children) as React.ReactElement[];
-
-    // Validate that all children are Slide components.
-    const invalidChildren = childArray.filter((child) => {
-      return !React.isValidElement(child) || child.type !== Slide;
-    });
-
-    if (invalidChildren.length > 0) {
-      throw new Error(
-        "Slideshow: All children must be Slideshow.Slide components. " +
-          `Found ${invalidChildren.length} invalid child(ren).`
-      );
-    }
-
-    return childArray;
-  }, [children]);
+function SlideshowRoot({ children, className }: SlideshowProps) {
+  const slides = validateSlideChildren(children);
 
   const [activeIndex, setActiveIndex] = React.useState(0);
   const [isNavigationVisible, setIsNavigationVisible] = React.useState(true);
-  const hideTimeoutRef = React.useRef<NodeJS.Timeout>();
+  const hideTimeoutRef = React.useRef<ReturnType<typeof setTimeout>>();
 
   const resetHideTimer = React.useCallback(() => {
     if (hideTimeoutRef.current) {
@@ -283,14 +331,232 @@ export const Text = ({
   className,
 }: PropsWithChildren<{ className?: string }>) => (
   <p
-    className={cn("font-normal text-sm m-0", className)}
+    className={cn("font-normal text-lg m-0", className)}
     style={{ fontFamily: "var(--font-geist)" }}
   >
     {children}
   </p>
 );
 
-Slideshow.Slide = Slide;
-Slideshow.Title = Title;
-Slideshow.Heading = Heading;
-Slideshow.Text = Text;
+// Slide-level layout components.
+
+interface CoverProps {
+  className?: string;
+  isPreview?: boolean;
+  subtitle?: string;
+  subtitleClassName?: string;
+  title: string;
+  titleClassName?: string;
+}
+
+export const Cover = ({
+  className,
+  isPreview = false,
+  subtitle,
+  subtitleClassName,
+  title,
+  titleClassName,
+}: CoverProps) => (
+  <Slide variant="centered" className={className} isPreview={isPreview}>
+    <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
+      <Title className={titleClassName}>{title}</Title>
+      {subtitle && (
+        <Text className={cn("opacity-80", subtitleClassName)}>{subtitle}</Text>
+      )}
+    </div>
+  </Slide>
+);
+Cover.displayName = "Slideshow.Slide.Cover";
+
+interface BulletsProps {
+  className?: string;
+  isPreview?: boolean;
+  items: string[];
+  title: string;
+  titleClassName?: string;
+}
+
+export const Bullets = ({
+  title,
+  items,
+  className,
+  titleClassName,
+  isPreview = false,
+}: BulletsProps) => (
+  <Slide variant="top" className={className} isPreview={isPreview}>
+    <div className="h-full flex flex-col space-y-6">
+      <Heading className={titleClassName}>{title}</Heading>
+      <ul className="space-y-4">
+        {items.map((item, index) => (
+          <li key={index} className="flex items-start">
+            <span className="text-2xl mr-4 mt-1 opacity-60">•</span>
+            <Text className="flex-1">{item}</Text>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </Slide>
+);
+Bullets.displayName = "Slideshow.Slide.Bullets";
+
+type TwoChildren = [React.ReactNode, React.ReactNode];
+
+interface SplitProps {
+  children: TwoChildren;
+  className?: string;
+  isPreview?: boolean;
+}
+
+export const Split = ({
+  children,
+  className,
+  isPreview = false,
+}: SplitProps) => (
+  <Slide variant="top" className={className} isPreview={isPreview}>
+    <div className="h-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+      <div>{children[0]}</div>
+      <div>{children[1]}</div>
+    </div>
+  </Slide>
+);
+Split.displayName = "Slideshow.Slide.Split";
+
+type FullProps = PropsWithChildren<{
+  className?: string;
+  isPreview?: boolean;
+}>;
+
+export const Full = ({ children, className, isPreview = false }: FullProps) => (
+  <Slide variant="top" className={className} isPreview={isPreview}>
+    <div className="h-full flex flex-col space-y-6">{children}</div>
+  </Slide>
+);
+Full.displayName = "Slideshow.Slide.Full";
+
+interface TitleCenteredProps {
+  className?: string;
+  isPreview?: boolean;
+  title: string;
+  titleClassName?: string;
+}
+
+export const TitleCentered = ({
+  className,
+  isPreview = false,
+  title,
+  titleClassName,
+}: TitleCenteredProps) => (
+  <Slide variant="centered" className={className} isPreview={isPreview}>
+    <div className="h-full flex flex-col items-center justify-center text-center">
+      <Title className={titleClassName}>{title}</Title>
+    </div>
+  </Slide>
+);
+TitleCentered.displayName = "Slideshow.Slide.TitleCentered";
+
+type TitleTopProps = PropsWithChildren<{
+  className?: string;
+  isPreview?: boolean;
+  title: string;
+  titleClassName?: string;
+}>;
+
+export const TitleTop = ({
+  title,
+  children,
+  className,
+  titleClassName,
+  isPreview = false,
+}: TitleTopProps) => (
+  <Slide variant="top" className={className} isPreview={isPreview}>
+    <div className="h-full flex flex-col">
+      <div className="text-center pb-8">
+        <Title className={titleClassName}>{title}</Title>
+      </div>
+      <div className="flex-1 flex flex-col justify-center">{children}</div>
+    </div>
+  </Slide>
+);
+TitleTop.displayName = "Slideshow.Slide.TitleTop";
+
+interface BulletsOnlyProps {
+  className?: string;
+  isPreview?: boolean;
+  items: string[];
+}
+
+export const BulletsOnly = ({
+  className,
+  isPreview = false,
+  items,
+}: BulletsOnlyProps) => (
+  <Slide variant="top" className={className} isPreview={isPreview}>
+    <div className="h-full flex flex-col">
+      <ul className="space-y-6">
+        {items.map((item, index) => (
+          <li key={index} className="flex items-start">
+            <span className="text-3xl mr-6 mt-1 opacity-60">•</span>
+            <Text className="flex-1">{item}</Text>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </Slide>
+);
+BulletsOnly.displayName = "Slideshow.Slide.BulletsOnly";
+
+interface QuoteProps {
+  author: string;
+  authorClassName?: string;
+  className?: string;
+  isPreview?: boolean;
+  quote: string;
+  quoteClassName?: string;
+}
+
+export const Quote = ({
+  author,
+  authorClassName,
+  className,
+  isPreview = false,
+  quote,
+  quoteClassName,
+}: QuoteProps) => (
+  <Slide variant="centered" className={className} isPreview={isPreview}>
+    <div className="h-full flex flex-col items-center justify-center text-center space-y-8">
+      <blockquote
+        className={cn(
+          "text-3xl font-light italic leading-relaxed max-w-4xl",
+          quoteClassName
+        )}
+      >
+        &quot;{quote}&quot;
+      </blockquote>
+      <cite className={cn("text-xl opacity-80 not-italic", authorClassName)}>
+        — {author}
+      </cite>
+    </div>
+  </Slide>
+);
+Quote.displayName = "Slideshow.Slide.Quote";
+
+Slide.displayName = "Slideshow.Slide.Base";
+
+// Namespace export.
+export const Slideshow = {
+  Heading,
+  Root: SlideshowRoot,
+  Slide: {
+    Base: Slide,
+    Bullets,
+    BulletsOnly,
+    Cover,
+    Full,
+    Quote,
+    Split,
+    TitleCentered,
+    TitleTop,
+  },
+  Text,
+  Title,
+};
