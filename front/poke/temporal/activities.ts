@@ -462,6 +462,13 @@ export async function deleteMembersActivity({
         await FileResource.deleteAllForUser(auth, user.toJSON());
         await membership.delete(auth, {});
 
+        // Delete the user's agent memories.
+        await AgentMemoryModel.destroy({
+          where: {
+            userId: user.id,
+          },
+        });
+
         await user.delete(auth, {});
       }
     } else {
@@ -592,6 +599,11 @@ export async function deleteWorkspaceActivity({
     },
   });
   await FeatureFlag.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+  await AgentMemoryModel.destroy({
     where: {
       workspaceId: workspace.id,
     },
