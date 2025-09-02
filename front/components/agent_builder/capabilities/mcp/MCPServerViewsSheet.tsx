@@ -169,10 +169,6 @@ export function MCPServerViewsSheet({
   const [configurationTool, setConfigurationTool] =
     useState<AgentBuilderAction | null>(getInitialConfigurationTool(mode));
 
-  // State for Canvas data source flow
-  const [, setCanvasDataSourceSkipped] = useState(false);
-  const [, setHasVisitedDataSourcePage] = useState(false);
-
   const [configurationMCPServerView, setConfigurationMCPServerView] =
     useState<MCPServerViewType | null>(null);
   const [infoMCPServerView, setInfoMCPServerView] =
@@ -258,6 +254,7 @@ export function MCPServerViewsSheet({
 
   useEffect(() => {
     if (mode?.type === "edit") {
+      setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
       setConfigurationTool(mode.action);
       setSelectedToolsInSheet([]);
 
@@ -271,16 +268,6 @@ export function MCPServerViewsSheet({
         );
         if (mcpServerView) {
           setConfigurationMCPServerView(mcpServerView);
-
-          // For Canvas in edit mode, go directly to configuration page
-          // The data sources will be shown in the configuration page
-          setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
-
-          // Mark that we've already visited data source page for Canvas
-          // since we're showing the data sources in the configuration
-          if (mcpServerView.server.name === "canvas") {
-            setHasVisitedDataSourcePage(true);
-          }
         }
       } else {
         setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
@@ -378,19 +365,6 @@ export function MCPServerViewsSheet({
     if (!requirement.noRequirement || isCanvas) {
       const action = getDefaultMCPAction(mcpServerView);
       const isReasoning = requirement.requiresReasoningConfiguration;
-
-      // For Canvas, go directly to configuration page with data source section
-      if (isCanvas) {
-        // Reset form with Canvas defaults BEFORE setting state to ensure sources is initialized
-        const canvasDefaults = getDefaultFormValues(mcpServerView);
-        form.reset(canvasDefaults);
-
-        setConfigurationTool(action);
-        setConfigurationMCPServerView(mcpServerView);
-        setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
-        setHasVisitedDataSourcePage(true); // Mark as visited since we're showing it in configuration
-        return;
-      }
 
       let configuredAction = action;
       if (action.type === "MCP" && isReasoning) {
@@ -562,8 +536,6 @@ export function MCPServerViewsSheet({
     setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);
     setConfigurationTool(null);
     setConfigurationMCPServerView(null);
-    setHasVisitedDataSourcePage(false);
-    setCanvasDataSourceSkipped(false);
   }, []);
 
   const resetSheet = useCallback(() => {
