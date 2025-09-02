@@ -1,11 +1,8 @@
-import { z } from "zod";
-
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { transformSelectionConfigurationsToTree } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import { createMCPFormSchema } from "@app/components/agent_builder/capabilities/mcp/validation/schemaBuilders";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
-import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
@@ -31,13 +28,7 @@ export function getMCPConfigurationFormSchema(
     ? getMCPServerRequirements(mcpServerView)
     : null;
 
-  const baseSchema = createMCPFormSchema(requirements);
-
-  // All MCP tools has sources but only content_creation will use it (and it should be optional)
-  return z.object({
-    ...baseSchema.shape,
-    sources: dataSourceBuilderTreeType,
-  });
+  return createMCPFormSchema(requirements);
 }
 
 /**
