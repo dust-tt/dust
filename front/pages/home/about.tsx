@@ -249,13 +249,6 @@ const PEOPLE: Record<
     github: "https://github.com/atrwendy",
     linkedIn: "https://www.linkedin.com/in/wendyzhao07/",
   },
-  max: {
-    name: "Maxime Cattet",
-    title: "Software Engineer",
-    image: "https://avatars.githubusercontent.com/u/1371886?v=4",
-    github: "https://github.com/johnoppenheimer",
-    linkedIn: "https://www.linkedin.com/in/maximecattet",
-  },
   gaelle: {
     name: "Gaëlle Caplier",
     title: "Customer Success",
