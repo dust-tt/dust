@@ -50,7 +50,7 @@ export default function ProfilePage({
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { user, isUserLoading } = useUser();
-  const { hasFeature } = useFeatureFlags(owner.sId);
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   return (
     <ConversationsNavigationProvider>
