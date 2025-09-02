@@ -211,18 +211,17 @@ export function ScheduleEditionModal({
                   }}
                 />
                 <div className="my-2">
-                  <ContentMessage
-                    variant="outline"
-                    icon={ClockIcon}
-                    title="Agent runs"
-                  >
-                    {naturalDescriptionToCronRuleStatus === "loading" ? (
-                      <AnimatedText variant="highlight">
-                        {cronDescription}
-                      </AnimatedText>
-                    ) : (
-                      cronDescription
-                    )}
+                  <ContentMessage variant="outline" size="lg">
+                    <div className="flex flex-row items-start gap-2 text-foreground dark:text-foreground-night">
+                      <ClockIcon className="mt-0.5 h-4 w-4 shrink-0 self-start" />
+                      {naturalDescriptionToCronRuleStatus === "loading" ? (
+                        <AnimatedText variant="primary">
+                          {cronDescription}
+                        </AnimatedText>
+                      ) : (
+                        <p>Agent will run {cronDescription}</p>
+                      )}
+                    </div>
                   </ContentMessage>
                 </div>
               </div>

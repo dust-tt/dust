@@ -4,10 +4,10 @@ import {
   Button,
   ClockIcon,
   DataTable,
-  Icon,
+  PencilSquareIcon,
   SearchInput,
   Spinner,
-  TrashIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import cronstrue from "cronstrue";
@@ -55,37 +55,6 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
   const triggerColumns = useMemo<ColumnDef<any>[]>(
     () => [
       {
-        accessorKey: "name",
-        header: "Trigger",
-        sortingFn: (rowA, rowB) => {
-          return rowA.original.name.localeCompare(rowB.original.name);
-        },
-        cell: ({ row }) => (
-          <DataTable.CellContent grow>
-            <div
-              className={classNames("flex flex-row items-center gap-3 py-3")}
-            >
-              <Icon
-                visual={row.original.kind === "schedule" ? ClockIcon : BellIcon}
-              />
-              <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
-                <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
-                  {row.original.name}
-                </div>
-                {row.original.kind === "schedule" && (
-                  <div className="truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    {cronstrue.toString(row.original.configuration.cron)}
-                  </div>
-                )}
-              </div>
-            </div>
-          </DataTable.CellContent>
-        ),
-        meta: {
-          className: "w-full",
-        },
-      },
-      {
         accessorKey: "agentName",
         header: "Agent",
         sortingFn: (rowA, rowB) => {
@@ -95,7 +64,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
           <DataTable.CellContent>
             <div className="flex items-center gap-2">
               <Avatar size="xs" visual={row.original.agentPictureUrl} />
-              <div className="truncate text-sm text-foreground dark:text-foreground-night">
+              <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
                 {row.original.agentName}
               </div>
             </div>
@@ -103,6 +72,43 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
         ),
         meta: {
           className: "w-48",
+        },
+      },
+      {
+        accessorKey: "name",
+        header: "Triggers",
+        sortingFn: (rowA, rowB) => {
+          return rowA.original.name.localeCompare(rowB.original.name);
+        },
+        cell: ({ row }) => (
+          <DataTable.CellContent grow>
+            <div
+              className={classNames(
+                "flex flex-row items-center gap-1 py-3",
+                "text-muted-foreground dark:text-muted-foreground-night"
+              )}
+            >
+              <Avatar
+                size="xs"
+                visual={
+                  row.original.kind === "schedule" ? (
+                    <ClockIcon />
+                  ) : (
+                    <BellIcon />
+                  )
+                }
+              />
+              <div className="text-sm font-semibold">{row.original.name}</div>
+              {row.original.kind === "schedule" && (
+                <div className="truncate text-sm">
+                  {cronstrue.toString(row.original.configuration.cron)}
+                </div>
+              )}
+            </div>
+          </DataTable.CellContent>
+        ),
+        meta: {
+          className: "w-full",
         },
       },
       {
@@ -117,11 +123,12 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
                   href={getEditionURL(row.original.agentConfigurationId)}
                   variant="outline"
                   size="sm"
+                  icon={PencilSquareIcon}
                 />
               ) : (
                 <Button
                   label="Unsubscribe"
-                  icon={TrashIcon}
+                  icon={XMarkIcon}
                   variant="outline"
                   size="sm"
                   isLoading={isLoading}
@@ -149,7 +156,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
 
   return (
     <>
-      <div className="relative mb-4">
+      <div className="relative my-4">
         <SearchInput
           name="search"
           placeholder="Search triggers and agents"
