@@ -354,6 +354,48 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/okalotieno",
     github: "https://github.com/okal",
   },
+  anas: {
+    name: "Anas Lecaillon",
+    title: "Software Engineer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09DVNMLF08-68655677bf9e-512",
+    linkedIn: "https://www.linkedin.com/in/anas-lecaillon",
+    github: "https://github.com/anonx3247",
+  },
+  z: {
+    name: "Zeïd Marouf",
+    title: "Security Engineer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09DVNRFDJL-bbc7ebca4159-512",
+    linkedIn: "https://www.linkedin.com/in/zeidmarouf",
+    github: "XXX",
+  },
+  rcs: {
+    name: "Rémy-Christophe Schermesser",
+    title: "Software Engineer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09D77UR8S0-3af0e8ba603b-512",
+    linkedIn: "https://www.linkedin.com/in/r%C3%A9my-christophe-s-0204834/",
+    github: "XXX",
+  },
+  pierre: {
+    name: "Pierre Milliotte",
+    title: "XXX",
+    image: "XXX",
+    linkedIn: "XXX",
+    github: "XXX",
+  },
+  alex: {
+    name: "Alexandre Casanova",
+    title: "Enterprise Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09DVNHFS2C-9a2d6df66ced-512",
+    linkedIn: "https://www.linkedin.com/in/alexandre-casanova-a89927a5/",
+    github: null,
+  },
+  neyla: {
+    name: "Neyla Belmaachi",
+    title: "XXX",
+    image: "XXX",
+    linkedIn: "XXX",
+    github: null,
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
