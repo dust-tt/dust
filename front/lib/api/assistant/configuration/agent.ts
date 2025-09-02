@@ -479,6 +479,7 @@ export async function createAgentConfiguration(
             agentConfigurationInstance,
             { transaction: t }
           );
+          await auth.refresh({ transaction: t });
           await group.setMembers(auth, editors, { transaction: t });
         } else {
           const group = await GroupResource.fetchByAgentConfiguration({
