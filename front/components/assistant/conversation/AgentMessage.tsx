@@ -96,9 +96,13 @@ export function AgentMessage({
   owner,
   onApplyInstructions,
   currentInstructions,
+  onAddTool,
+  currentToolIds,
 }: AgentMessageProps & {
   onApplyInstructions?: (instructions: string) => void;
   currentInstructions?: string;
+  onAddTool?: InlineCardsContext["onAddTool"];
+  currentToolIds?: string[];
 }) {
   const { isDark } = useTheme();
 
@@ -577,11 +581,13 @@ export function AgentMessage({
                   // Special handling for Copilot builder: render inline instruction cards
                   // when an apply handler is provided (indicates builder Copilot context),
                   // regardless of which backend agent is mentioned.
-                  if (processedContent && onApplyInstructions) {
+                  if (processedContent && (onApplyInstructions || onAddTool)) {
                     const inlineContext: InlineCardsContext = {
                       onApplyInstructions,
                       currentInstructions,
                       messageId: agentMessage.sId,
+                      onAddTool,
+                      currentToolIds,
                       isStreaming:
                         streaming && lastTokenClassification === "tokens",
                     };

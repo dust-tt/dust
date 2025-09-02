@@ -1,9 +1,12 @@
 import React from "react";
 import { AgentMessageInstructions } from "@app/components/assistant/conversation/AgentMessageInstructions";
+import { AgentMessageToolSuggestion, type ToolSuggestion } from "@app/components/assistant/conversation/AgentMessageToolSuggestion";
 
 export interface InlineCardsContext {
   onApplyInstructions?: (instructions: string) => void;
   currentInstructions?: string;
+  onAddTool?: (tool: ToolSuggestion) => Promise<boolean> | boolean;
+  currentToolIds?: string[];
   messageId: string;
   isStreaming?: boolean;
 }
@@ -72,11 +75,12 @@ export function processContentWithInlineCards(
   const nodes: React.ReactNode[] = [];
   let lastIndex = 0;
 
-  const instructionsRegex = /<INSTRUCTIONS>([\s\S]*?)(?:<\/INSTRUCTIONS>|$)/gi;
+  const instructionsRegex = /<AGENT_INSTRUCTIONS>([\s\S]*?)(?:<\/AGENT_INSTRUCTIONS>|$)/gi;
+  const addToolsRegex = /<ADD_TOOLS>([\s\S]*?)(?:<\/ADD_TOOLS>|$)/gi;
 
   let match;
   while ((match = instructionsRegex.exec(content)) !== null) {
-    const isComplete = match[0].includes("</INSTRUCTIONS>");
+    const isComplete = match[0].includes("</AGENT_INSTRUCTIONS>");
 
     if (match.index > lastIndex) {
       const textBefore = content.substring(lastIndex, match.index);
@@ -95,6 +99,48 @@ export function processContentWithInlineCards(
       />
     );
 
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Parse tool blocks and render suggestion cards
+  addToolsRegex.lastIndex = 0;
+  while ((match = addToolsRegex.exec(content)) !== null) {
+    const isComplete = match[0].includes("</ADD_TOOLS>");
+    const toolsContent = match[1] ?? "";
+
+    const toolRegex = /<TOOL>([\s\S]*?)(?:<\/TOOL>|$)/gi;
+    const tools: ToolSuggestion[] = [];
+    let tMatch: RegExpExecArray | null;
+    while ((tMatch = toolRegex.exec(toolsContent)) !== null) {
+      const block = tMatch[1] ?? "";
+      const id = (block.match(/<ID>([\s\S]*?)<\/ID>/i)?.[1] ?? "").trim();
+      const name = (block.match(/<NAME>([\s\S]*?)<\/NAME>/i)?.[1] ?? "").trim();
+      const type = (block.match(/<TYPE>([\s\S]*?)<\/TYPE>/i)?.[1] ?? "").trim();
+      const reason = (block.match(/<REASON>([\s\S]*?)<\/REASON>/i)?.[1] ?? "").trim();
+      if (id) {
+        tools.push({ id, name, type, reason });
+      }
+    }
+
+    // Insert text before this block, if any
+    if (match.index > lastIndex) {
+      const textBefore = content.substring(lastIndex, match.index);
+      const cleanedText = cleanupMarkdownArtifacts(textBefore);
+      if (cleanedText.trim()) {
+        nodes.push(<span key={`text-${lastIndex}`}>{cleanedText}</span>);
+      }
+    }
+
+    nodes.push(
+      <div key={`tools-${match.index}`} className="mt-2">
+        <AgentMessageToolSuggestion
+          tools={tools}
+          currentTools={context.currentToolIds}
+          onAddTool={context.onAddTool}
+          messageId={context.messageId}
+        />
+      </div>
+    );
     lastIndex = match.index + match[0].length;
   }
 

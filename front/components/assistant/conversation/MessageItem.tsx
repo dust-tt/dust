@@ -11,6 +11,7 @@ import { UserMessage } from "@app/components/assistant/conversation/UserMessage"
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import type { InlineCardsContext } from "@app/components/assistant/conversation/markdown/InlineInstructionsPlugin";
 import type {
   MessageWithContentFragmentsType,
   UserType,
@@ -27,6 +28,8 @@ interface MessageItemProps {
   user: UserType;
   onApplyInstructions?: (instructions: string) => void;
   currentInstructions?: string;
+  onAddTool?: InlineCardsContext["onAddTool"];
+  currentToolIds?: string[];
 }
 
 const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
@@ -40,6 +43,8 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       user,
       onApplyInstructions,
       currentInstructions,
+      onAddTool,
+      currentToolIds,
     }: MessageItemProps,
     ref
   ) {
@@ -150,6 +155,8 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               user={user}
               onApplyInstructions={onApplyInstructions}
               currentInstructions={currentInstructions}
+              onAddTool={onAddTool}
+              currentToolIds={currentToolIds}
             />
           </div>
         );

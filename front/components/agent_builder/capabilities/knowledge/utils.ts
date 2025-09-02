@@ -146,11 +146,23 @@ export function getKnowledgeDefaultValues({
     }
 
     if (presetActionData) {
-      const targetServerName =
-        getMCPServerNameForTemplateAction(presetActionData);
-      return mcpServerViews.find(
-        (view) => view.server.name === targetServerName
-      );
+      // Default mapping from preset type
+      let targetServerName = getMCPServerNameForTemplateAction(presetActionData);
+      // Fine-tune by preset name to support Include Data
+      const presetName = presetActionData.name.toLowerCase();
+      if (presetActionData.type === "RETRIEVAL_SEARCH") {
+        if (presetName.includes("include")) {
+          targetServerName = "include_data";
+        } else {
+          targetServerName = "search";
+        }
+      } else if (presetActionData.type === "TABLES_QUERY") {
+        targetServerName = "query_tables";
+      } else if (presetActionData.type === "PROCESS") {
+        targetServerName = "extract_data";
+      }
+
+      return mcpServerViews.find((view) => view.server.name === targetServerName);
     }
 
     return mcpServerViews.find(

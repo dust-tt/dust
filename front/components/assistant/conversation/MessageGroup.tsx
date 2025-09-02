@@ -8,6 +8,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import type { InlineCardsContext } from "@app/components/assistant/conversation/markdown/InlineInstructionsPlugin";
 
 interface MessageGroupProps {
   messages: MessageWithContentFragmentsType[];
@@ -22,6 +23,8 @@ interface MessageGroupProps {
   latestPage?: FetchConversationMessagesResponse;
   onApplyInstructions?: (instructions: string) => void;
   currentInstructions?: string;
+  onAddTool?: InlineCardsContext["onAddTool"];
+  currentToolIds?: string[];
 }
 
 // arbitrary offset to scroll the last MessageGroup to
@@ -43,6 +46,8 @@ export default function MessageGroup({
   latestPage,
   onApplyInstructions,
   currentInstructions,
+  onAddTool,
+  currentToolIds,
 }: MessageGroupProps) {
   const lastMessageGroupRef = useRef<HTMLDivElement>(null);
 
@@ -65,24 +70,26 @@ export default function MessageGroup({
       style={{ minHeight }}
     >
       {messages.map((message) => (
-        <MessageItem
-          key={`message-${message.sId}`}
-          conversationId={conversationId}
-          messageFeedback={feedbacks.find(
-            (feedback) => feedback.messageId === message.sId
-          )}
-          isInModal={isInModal}
-          message={message}
-          owner={owner}
-          ref={
-            message.sId === prevFirstMessageId ? prevFirstMessageRef : undefined
-          }
-          user={user}
-          isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
-          onApplyInstructions={onApplyInstructions}
-          currentInstructions={currentInstructions}
-        />
-      ))}
+          <MessageItem
+            key={`message-${message.sId}`}
+            conversationId={conversationId}
+            messageFeedback={feedbacks.find(
+              (feedback) => feedback.messageId === message.sId
+            )}
+            isInModal={isInModal}
+            message={message}
+            owner={owner}
+            ref={
+              message.sId === prevFirstMessageId ? prevFirstMessageRef : undefined
+            }
+            user={user}
+            isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
+            onApplyInstructions={onApplyInstructions}
+            currentInstructions={currentInstructions}
+            onAddTool={onAddTool}
+            currentToolIds={currentToolIds}
+          />
+        ))}
     </div>
   );
 }

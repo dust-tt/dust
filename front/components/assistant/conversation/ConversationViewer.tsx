@@ -9,6 +9,7 @@ import React, {
 import { useInView } from "react-intersection-observer";
 
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
+import type { InlineCardsContext } from "@app/components/assistant/conversation/markdown/InlineInstructionsPlugin";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import MessageGroup from "@app/components/assistant/conversation/MessageGroup";
 import { useEventSource } from "@app/hooks/useEventSource";
@@ -53,6 +54,8 @@ interface ConversationViewerProps {
   user: UserType;
   onApplyInstructions?: (instructions: string) => void;
   currentInstructions?: string;
+  onAddTool?: InlineCardsContext["onAddTool"];
+  currentToolIds?: string[];
 }
 
 /**
@@ -72,6 +75,8 @@ const ConversationViewer = React.forwardRef<
     isInModal = false,
     onApplyInstructions,
     currentInstructions,
+    onAddTool,
+    currentToolIds,
   },
   ref
 ) {
@@ -366,6 +371,8 @@ const ConversationViewer = React.forwardRef<
               latestPage={latestPage}
               onApplyInstructions={onApplyInstructions}
               currentInstructions={currentInstructions}
+              onAddTool={onAddTool}
+              currentToolIds={currentToolIds}
             />
           );
         })}

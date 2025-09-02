@@ -1,15 +1,18 @@
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import { _getDefaultWebActionsForGlobalAgent } from "@app/lib/api/assistant/global_agents/tools";
-import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
-import type { AgentConfigurationStatus, AgentConfigurationType, AgentModelConfigurationType } from "@app/types";
+import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type {
+  AgentConfigurationStatus,
+  AgentConfigurationType,
+  AgentModelConfigurationType,
+} from "@app/types";
 import {
-  GPT_4_1_MODEL_CONFIG,
   GLOBAL_AGENTS_SID,
+  GPT_4_1_MODEL_CONFIG,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
-import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 
 export function _getCopilotGlobalAgent({
   auth,
@@ -20,8 +23,6 @@ export function _getCopilotGlobalAgent({
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType | null {
-  const owner = auth.getNonNullableWorkspace();
-  
   let status: AgentConfigurationStatus = "active";
   if (settings) {
     status = settings.status;
@@ -72,7 +73,8 @@ export function _getCopilotGlobalAgent({
         webSearchBrowseMCPServerView,
       }),
     ],
-    maxStepsPerRun: status === "disabled_by_admin" ? 0 : MAX_STEPS_USE_PER_RUN_LIMIT,
+    maxStepsPerRun:
+      status === "disabled_by_admin" ? 0 : MAX_STEPS_USE_PER_RUN_LIMIT,
   };
 
   return copilotAgent;
