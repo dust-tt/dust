@@ -179,18 +179,13 @@ export function useRemoveTriggerSubscriber({
   });
 
   const removeSubscriber = useCallback(
-    async (triggerId: string, triggerAgentConfigurationId?: string): Promise<boolean> => {
+    async (
+      triggerId: string,
+      triggerAgentConfigurationId?: string
+    ): Promise<boolean> => {
       // Use provided agentConfigurationId or fall back to the one from parameters
-      const targetAgentConfigurationId = triggerAgentConfigurationId || agentConfigurationId;
-      
-      if (!targetAgentConfigurationId) {
-        sendNotification({
-          type: "error",
-          title: "Failed to unsubscribe",
-          description: "Agent configuration ID is required.",
-        });
-        return false;
-      }
+      const targetAgentConfigurationId =
+        triggerAgentConfigurationId || agentConfigurationId;
 
       try {
         const response = await fetch(
@@ -207,7 +202,7 @@ export function useRemoveTriggerSubscriber({
             description:
               "You will no longer receive notifications when this trigger runs.",
           });
-          
+
           // Mutate the appropriate triggers list(s)
           if (agentConfigurationId) {
             void mutateAgentTriggers();
@@ -215,7 +210,7 @@ export function useRemoveTriggerSubscriber({
           if (mutateUserTriggers) {
             void mutateUserTriggersList();
           }
-          
+
           return true;
         } else {
           const errorData = await getErrorFromResponse(response);
@@ -235,7 +230,14 @@ export function useRemoveTriggerSubscriber({
         return false;
       }
     },
-    [workspaceId, agentConfigurationId, sendNotification, mutateAgentTriggers, mutateUserTriggersList, mutateUserTriggers]
+    [
+      workspaceId,
+      agentConfigurationId,
+      sendNotification,
+      mutateAgentTriggers,
+      mutateUserTriggersList,
+      mutateUserTriggers,
+    ]
   );
 
   return removeSubscriber;
@@ -264,4 +266,3 @@ export function useUserTriggers({
     mutateTriggers: mutate,
   };
 }
-
