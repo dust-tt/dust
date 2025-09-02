@@ -89,7 +89,6 @@ export function InlineInstructionsComponent({
         onApply={context.onApplyInstructions}
         messageId={context.messageId}
         disableApply={context.isStreaming || isPartial}
-        autoInlineReview={!isPartial}
       />
     </div>
   );

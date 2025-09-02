@@ -15,7 +15,6 @@ interface AgentInstructionsDiffDialogProps {
   suggestedInstructions: string;
   onApply?: (instructions: string) => void;
   messageId: string;
-  preferInlineReview?: boolean;
 }
 
 export function AgentInstructionsDiffDialog({
@@ -23,7 +22,6 @@ export function AgentInstructionsDiffDialog({
   suggestedInstructions,
   onApply,
   messageId,
-  preferInlineReview = false,
 }: AgentInstructionsDiffDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [hasBeenApplied, setHasBeenApplied] = useState(false);
@@ -70,20 +68,6 @@ export function AgentInstructionsDiffDialog({
           icon={EyeIcon}
           tooltip="Review changes"
           disabled={instructionsMatch}
-          onClick={(e) => {
-            if (preferInlineReview) {
-              e.preventDefault();
-              e.stopPropagation();
-              window.dispatchEvent(
-                new CustomEvent("dust:enter-inline-review", {
-                  detail: {
-                    oldText: currentInstructions || "",
-                    newText: suggestedInstructions,
-                  },
-                })
-              );
-            }
-          }}
         />
       </DialogTrigger>
       <DialogContent className="flex max-h-[90vh] max-w-6xl flex-col">
