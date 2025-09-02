@@ -34,9 +34,9 @@ export function InlineInstructionsComponent({
         </div>
         <div className="p-4">
           {content ? (
-            <pre className="whitespace-pre-wrap font-mono text-sm text-slate-700 dark:text-slate-300">
+            <div className="whitespace-pre-wrap font-sans text-sm text-slate-700 dark:text-slate-300">
               {content}
-            </pre>
+            </div>
           ) : (
             <div className="text-sm italic text-slate-500 dark:text-slate-400">
               <span className="loading-dots"></span>

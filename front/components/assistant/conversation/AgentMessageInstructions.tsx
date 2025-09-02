@@ -62,9 +62,9 @@ export function AgentMessageInstructions({
         )}
       </div>
       <div className="p-4">
-        <pre className="whitespace-pre-wrap font-mono text-sm text-slate-700 dark:text-slate-300">
+        <div className="whitespace-pre-wrap font-sans text-sm text-slate-700 dark:text-slate-300">
           {instructions}
-        </pre>
+        </div>
       </div>
     </div>
   );
