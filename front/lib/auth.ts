@@ -1,11 +1,8 @@
 import assert from "assert";
 import tracer from "dd-trace";
 import memoizer from "lru-memoizer";
-import type {
-  GetServerSidePropsContext,
-  NextApiRequest,
-  NextApiResponse,
-} from "next";
+import type { GetServerSidePropsContext, NextApiRequest, NextApiResponse } from "next";
+import type { Transaction } from "sequelize";
 
 import config from "@app/lib/api/config";
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
@@ -15,10 +12,7 @@ import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
-import {
-  KeyResource,
-  SECRET_KEY_PREFIX,
-} from "@app/lib/resources/key_resource";
+import { KeyResource, SECRET_KEY_PREFIX } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -206,6 +200,18 @@ export class Authenticator {
         subscription,
       });
     });
+  }
+
+  async refresh({ transaction }: { transaction?: Transaction } = {}) {
+    if (this._user && this._workspace) {
+      this._groups = await GroupResource.listUserGroupsInWorkspace({
+        user: this._user,
+        workspace: renderLightWorkspaceType({ workspace: this._workspace }),
+        transaction
+      })
+    } else {
+      return
+    }
   }
 
   /**
