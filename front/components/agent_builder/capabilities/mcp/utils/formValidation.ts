@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { mcpServerConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { transformSelectionConfigurationsToTree } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import {
   createBaseFormSchema,
   createMCPFormSchema,
@@ -87,8 +88,11 @@ export function validateMCPActionConfiguration(
             name: action.name,
             description: action.description,
             configuration: action.configuration,
-            // This is to bypass the validation, we don't need to validate it here
-            sources: { in: [], notIn: [] },
+            sources: action.configuration?.dataSourceConfigurations
+              ? transformSelectionConfigurationsToTree(
+                  action.configuration.dataSourceConfigurations
+                )
+              : { in: [], notIn: [] },
             mcpServerView: serverView,
           }
         : {
