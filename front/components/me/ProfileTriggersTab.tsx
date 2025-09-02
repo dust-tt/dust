@@ -1,4 +1,5 @@
 import {
+  Avatar,
   BellIcon,
   Button,
   ClockIcon,
@@ -64,7 +65,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
     () => [
       {
         accessorKey: "name",
-        header: "Trigger Name",
+        header: "Trigger",
         sortingFn: (rowA, rowB) => {
           return rowA.original.name.localeCompare(rowB.original.name);
         },
@@ -101,8 +102,14 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
         },
         cell: ({ row }) => (
           <DataTable.CellContent>
-            <div className="truncate text-sm text-foreground dark:text-foreground-night">
-              {row.original.agentName}
+            <div className="flex items-center gap-2">
+              <Avatar
+                size="xs"
+                visual={row.original.agentPictureUrl}
+              />
+              <div className="truncate text-sm text-foreground dark:text-foreground-night">
+                {row.original.agentName}
+              </div>
             </div>
           </DataTable.CellContent>
         ),
@@ -111,7 +118,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
         },
       },
       {
-        header: "",
+        header: "Action",
         accessorKey: "actions",
         cell: ({ row }) => (
           <DataTable.CellContent>

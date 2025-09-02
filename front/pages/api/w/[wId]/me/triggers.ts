@@ -13,6 +13,7 @@ export interface GetUserTriggersResponseBody {
     isSubscriber: boolean;
     isEditor: boolean;
     agentName: string;
+    agentPictureUrl: string;
   })[];
 }
 
@@ -35,7 +36,7 @@ async function handler(
   const userTriggers = await TriggerResource.listByUser(auth);
 
   // Get agent configurations and build response
-  const triggersWithAgentNames = await Promise.all(
+  const filteredTriggers = await Promise.all(
     userTriggers.map(async (trigger) => {
       const isEditor = trigger.editor === auth.getNonNullableUser().id;
       const isSubscriber = await trigger.isSubscriber(auth);
@@ -55,13 +56,9 @@ async function handler(
         isSubscriber,
         isEditor,
         agentName: agentConfiguration.name,
+        agentPictureUrl: agentConfiguration.pictureUrl,
       };
     })
-  );
-
-  // Filter out null values (in case some agent configurations were not found)
-  const filteredTriggers = triggersWithAgentNames.filter(
-    (trigger): trigger is NonNullable<typeof trigger> => trigger !== null
   );
 
   return res.status(200).json({
