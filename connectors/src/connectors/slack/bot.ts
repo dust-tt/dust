@@ -109,7 +109,16 @@ export async function getSlackConnector(params: BotAnswerParams) {
 
 export async function botAnswerMessage(
   message: string,
-  params: BotAnswerParams
+  params: BotAnswerParams,
+  files?: Array<{
+    id?: string;
+    name?: string;
+    title?: string;
+    mimetype?: string;
+    size?: number;
+    url_private?: string;
+    url_private_download?: string;
+  }>
 ): Promise<Result<undefined, Error>> {
   const { slackChannel, slackMessageTs, slackTeamId } = params;
   const connectorRes = await getSlackConnector(params);
@@ -124,7 +133,8 @@ export async function botAnswerMessage(
       undefined,
       params,
       connector,
-      slackConfig
+      slackConfig,
+      files
     );
 
     await processErrorResult(res, params, connector);
@@ -203,7 +213,8 @@ export async function botReplaceMention(
       mentionOverride,
       params,
       connector,
-      slackConfig
+      slackConfig,
+      undefined // No files for botReplaceMention
     );
 
     await processErrorResult(res, params, connector);
@@ -483,7 +494,16 @@ async function answerMessage(
     slackThreadTs,
   }: BotAnswerParams,
   connector: ConnectorResource,
-  slackConfig: SlackConfigurationResource
+  slackConfig: SlackConfigurationResource,
+  files?: Array<{
+    id?: string;
+    name?: string;
+    title?: string;
+    mimetype?: string;
+    size?: number;
+    url_private?: string;
+    url_private_download?: string;
+  }>
 ): Promise<Result<AgentMessageSuccessEvent | undefined, Error>> {
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
   if (slackThreadTs) {
@@ -629,7 +649,8 @@ async function answerMessage(
     slackThreadTs || slackMessageTs,
     lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
     connector,
-    lastSlackChatBotMessage?.conversationId || null
+    lastSlackChatBotMessage?.conversationId || null,
+    files
   );
 
   buildContentFragmentPromise.catch((error) => {
@@ -1035,7 +1056,16 @@ async function makeContentFragments(
   threadTs: string,
   startingAtTs: string | null,
   connector: ConnectorResource,
-  conversationId: string | null
+  conversationId: string | null,
+  eventFiles?: Array<{
+    id?: string;
+    name?: string;
+    title?: string;
+    mimetype?: string;
+    size?: number;
+    url_private?: string;
+    url_private_download?: string;
+  }>
 ): Promise<Result<PublicPostContentFragmentRequestBody[] | null, Error>> {
   const allContentFragments: PublicPostContentFragmentRequestBody[] = [];
   let allMessages: MessageElement[] = [];
@@ -1070,9 +1100,18 @@ async function makeContentFragments(
     }
   }
 
-  const supportedFiles = removeNulls(
+  // Collect files from both the event (if provided) and thread messages
+  const threadFiles = removeNulls(
     allMessages.filter((m) => m.files).flatMap((m) => m.files)
-  ).filter(
+  );
+  
+  // Combine event files (from workflow or direct message) with thread files
+  const allFiles = [
+    ...(eventFiles || []),
+    ...threadFiles
+  ];
+  
+  const supportedFiles = allFiles.filter(
     (f) =>
       isSupportedFileContentType(f.mimetype ?? "") &&
       !!f.size &&

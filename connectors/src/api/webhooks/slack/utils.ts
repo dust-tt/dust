@@ -67,6 +67,15 @@ export interface SlackWebhookEvent<T = string> {
   message?: {
     bot_id?: string;
   };
+  files?: Array<{
+    id?: string;
+    name?: string;
+    title?: string;
+    mimetype?: string;
+    size?: number;
+    url_private?: string;
+    url_private_download?: string;
+  }>;
 }
 
 export type SlackWebhookReqBody = {
@@ -121,6 +130,7 @@ export async function handleChatBot(
   const slackBotId = event.bot_id || null;
   const slackMessageTs = event.ts;
   const slackThreadTs = event.thread_ts || null;
+  const slackFiles = event.files || [];
 
   logger.info(
     {
@@ -170,7 +180,7 @@ export async function handleChatBot(
     slackMessageTs,
     slackThreadTs,
   };
-  const botRes = await botAnswerMessage(slackMessage, params);
+  const botRes = await botAnswerMessage(slackMessage, params, slackFiles);
   if (botRes.isErr()) {
     logger.error(
       {
