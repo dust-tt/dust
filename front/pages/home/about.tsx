@@ -37,7 +37,7 @@ export async function getStaticProps() {
 }
 
 const PEOPLE: Record<
-  string,
+  string, // The handle is the prefix of the email address
   {
     name: string;
     title: string;
@@ -382,7 +382,7 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/pierre-milliotte-664962a4/",
     github: "https://github.com/pmilliotte",
   },
-  alex: {
+  "alex.casanova": {
     name: "Alexandre Casanova",
     title: "Enterprise Account Executive",
     image: "https://ca.slack-edge.com/T050RH73H9P-U09DVNHFS2C-9a2d6df66ced-512",
@@ -392,8 +392,7 @@ const PEOPLE: Record<
   neyla: {
     name: "Neyla Belmaachi",
     title: "Business Development Representative",
-    image:
-      "https://media.licdn.com/dms/image/v2/D4D03AQFOta7Ao6aodg/profile-displayphoto-shrink_800_800/B4DZeCQlSRH4Ac-/0/1750237075055?e=1759968000&v=beta&t=HR_yS-qenHyqOcrwWAXiqO3czAvb0KGRDpja8sutgIs",
+    image: "https://media.licdn.com/dms/image/v2/D4D03AQFOta7Ao6aodg/profile-displayphoto-shrink_800_800/B4DZeCQlSRH4Ac-/0/1750237075055?e=1759968000&v=beta&t=HR_yS-qenHyqOcrwWAXiqO3czAvb0KGRDpja8sutgIs",
     linkedIn: "https://www.linkedin.com/in/neyla-belmaachi-4817b0166/",
     github: null,
   },
