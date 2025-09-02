@@ -31,40 +31,36 @@ async function handler(
     });
   }
 
-  // Get all triggers in the workspace
-  const allTriggers = await TriggerResource.listByWorkspace(auth);
+  // Get triggers where the user is either editor or subscriber
+  const userTriggers = await TriggerResource.listByUser(auth);
 
-  // Filter triggers where the user is either editor or subscriber
-  const userTriggers = await Promise.all(
-    allTriggers.map(async (trigger) => {
+  // Get agent configurations and build response
+  const triggersWithAgentNames = await Promise.all(
+    userTriggers.map(async (trigger) => {
       const isEditor = trigger.editor === auth.getNonNullableUser().id;
       const isSubscriber = await trigger.isSubscriber(auth);
 
-      if (isEditor || isSubscriber) {
-        // Get agent configuration to get the agent name
-        const agentConfiguration = await getAgentConfiguration(auth, {
-          agentId: trigger.agentConfigurationId,
-          variant: "light",
-        });
+      // Get agent configuration to get the agent name
+      const agentConfiguration = await getAgentConfiguration(auth, {
+        agentId: trigger.agentConfigurationId,
+        variant: "light",
+      });
 
-        if (!agentConfiguration) {
-          return null;
-        }
-
-        return {
-          ...trigger.toJSON(),
-          isSubscriber,
-          isEditor,
-          agentName: agentConfiguration.name,
-        };
+      if (!agentConfiguration) {
+        return null;
       }
 
-      return null;
+      return {
+        ...trigger.toJSON(),
+        isSubscriber,
+        isEditor,
+        agentName: agentConfiguration.name,
+      };
     })
   );
 
-  // Filter out null values
-  const filteredTriggers = userTriggers.filter(
+  // Filter out null values (in case some agent configurations were not found)
+  const filteredTriggers = triggersWithAgentNames.filter(
     (trigger): trigger is NonNullable<typeof trigger> => trigger !== null
   );
 

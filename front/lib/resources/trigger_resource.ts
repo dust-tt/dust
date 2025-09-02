@@ -7,6 +7,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -110,6 +111,38 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
   static listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth);
+  }
+
+  static async listByUser(auth: Authenticator) {
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
+
+    const res = await this.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        [Op.or]: [
+          // User is the editor
+          { editor: user.id },
+          // User is a subscriber - using LEFT JOIN with WHERE clause
+          {
+            "$trigger_subscribers.userId$": user.id,
+          },
+        ],
+      },
+      include: [
+        {
+          model: TriggerSubscriberModel,
+          as: "trigger_subscribers", // Explicitly set the alias to match association
+          required: false, // LEFT JOIN
+          where: {
+            workspaceId: workspace.id,
+          },
+          attributes: [], // We don't need subscriber attributes in the result
+        },
+      ],
+    });
+
+    return res.map((c) => new this(this.model, c.get()));
   }
 
   static async update(
