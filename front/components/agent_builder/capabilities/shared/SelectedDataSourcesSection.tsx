@@ -7,9 +7,9 @@ import {
 import { useMemo } from "react";
 import { useWatch } from "react-hook-form";
 
+import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { DataSourceFilterContextItem } from "@app/components/agent_builder/capabilities/shared/DataSourceFilterContextItem";
 import { extractDataSourceViews } from "@app/components/agent_builder/capabilities/shared/utils/dataSourceUtils";
-import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { pluralize } from "@app/types";
 
 interface SelectedDataSourcesSectionProps {
@@ -17,11 +17,12 @@ interface SelectedDataSourcesSectionProps {
   isEditMode?: boolean;
 }
 
+// This is only used for content_creation for now.
 export function SelectedDataSourcesSection({
   onEditDataSources,
   isEditMode = false,
 }: SelectedDataSourcesSectionProps) {
-  const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
+  const sources = useWatch<MCPFormData, "sources">({ name: "sources" });
 
   const dataSourceViews = useMemo(
     () => extractDataSourceViews(sources),
