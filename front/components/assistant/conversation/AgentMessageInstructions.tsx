@@ -70,9 +70,9 @@ export function AgentMessageInstructions({
           {onApply && (
             <Button
               size="xs"
-              variant={instructionsMatch ? "primary" : "primary"}
+              variant="primary"
               icon={CheckIcon}
-              label={instructionsMatch || hasBeenApplied ? "Accepted" : "Accept"}
+              tooltip={instructionsMatch || hasBeenApplied ? "Accepted" : "Accept"}
               onClick={handleApply}
               disabled={isButtonDisabled}
             />

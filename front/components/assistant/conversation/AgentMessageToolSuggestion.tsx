@@ -95,8 +95,8 @@ export function AgentMessageToolSuggestion({
                 <Button
                   size="xs"
                   variant="primary"
-                  icon={isAlready ? CheckIcon : undefined}
-                  label={buttonLabel}
+                  icon={CheckIcon}
+                  tooltip={buttonLabel}
                   disabled={disabled}
                   onClick={() => handleAdd(tool)}
                 />
