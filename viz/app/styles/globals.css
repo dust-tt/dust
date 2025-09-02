@@ -114,29 +114,29 @@
 
 @layer base {
   :root {
-    /* Responsive typography and spacing - defined once for all themes */
-    --responsive-text-xs: clamp(0.75rem, 1.8vw, 1rem);
-    --responsive-text-sm: clamp(0.875rem, 2vw, 1.125rem);
-    --responsive-text-base: clamp(1rem, 2.2vw, 1.25rem);
-    --responsive-text-lg: clamp(1.125rem, 2.4vw, 1.5rem);
-    --responsive-text-xl: clamp(1.25rem, 2.8vw, 1.75rem);
-    --responsive-text-2xl: clamp(1.5rem, 3.2vw, 2rem);
-    --responsive-text-3xl: clamp(1.875rem, 3.6vw, 2.5rem);
-    --responsive-text-4xl: clamp(2.25rem, 4.2vw, 3rem);
-    --responsive-text-5xl: clamp(2.5rem, 5vw, 3.5rem);
-    --responsive-text-6xl: clamp(3rem, 6vw, 4.5rem);
-    --responsive-text-7xl: clamp(3.5rem, 7vw, 5.5rem);
+    /* Responsive typography and spacing - aggressive mobile scaling */
+    --responsive-text-xs: clamp(0.5rem, 1.8vw, 1rem);
+    --responsive-text-sm: clamp(0.625rem, 2vw, 1.125rem);
+    --responsive-text-base: clamp(0.75rem, 2.2vw, 1.25rem);
+    --responsive-text-lg: clamp(0.875rem, 2.4vw, 1.5rem);
+    --responsive-text-xl: clamp(1rem, 2.8vw, 1.75rem);
+    --responsive-text-2xl: clamp(1.125rem, 3.2vw, 2rem);
+    --responsive-text-3xl: clamp(1.25rem, 3.6vw, 2.5rem);
+    --responsive-text-4xl: clamp(1.5rem, 4.2vw, 3rem);
+    --responsive-text-5xl: clamp(1.75rem, 5vw, 3.5rem);
+    --responsive-text-6xl: clamp(2rem, 6vw, 4.5rem);
+    --responsive-text-7xl: clamp(2.5rem, 7vw, 5.5rem);
 
-    --responsive-space-1: clamp(0.125rem, 0.25vw, 0.25rem);
-    --responsive-space-2: clamp(0.25rem, 0.5vw, 0.5rem);
-    --responsive-space-3: clamp(0.375rem, 0.75vw, 0.75rem);
-    --responsive-space-4: clamp(0.5rem, 1vw, 1rem);
-    --responsive-space-6: clamp(0.75rem, 1.5vw, 1.5rem);
-    --responsive-space-8: clamp(1rem, 2vw, 2rem);
-    --responsive-space-12: clamp(1.5rem, 3vw, 3rem);
-    --responsive-space-16: clamp(2rem, 4vw, 4rem);
-    --responsive-space-20: clamp(2.5rem, 5vw, 5rem);
-    --responsive-space-24: clamp(3rem, 6vw, 6rem);
+    --responsive-space-1: clamp(0.075rem, 0.25vw, 0.25rem);
+    --responsive-space-2: clamp(0.125rem, 0.5vw, 0.5rem);
+    --responsive-space-3: clamp(0.25rem, 0.75vw, 0.75rem);
+    --responsive-space-4: clamp(0.375rem, 1vw, 1rem);
+    --responsive-space-6: clamp(0.5rem, 1.5vw, 1.5rem);
+    --responsive-space-8: clamp(0.75rem, 2vw, 2rem);
+    --responsive-space-12: clamp(1rem, 3vw, 3rem);
+    --responsive-space-16: clamp(1.5rem, 4vw, 4rem);
+    --responsive-space-20: clamp(2rem, 5vw, 5rem);
+    --responsive-space-24: clamp(2.5rem, 6vw, 6rem);
   }
 
   * {

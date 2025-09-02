@@ -307,10 +307,7 @@ export const Title = ({
   className,
 }: PropsWithChildren<{ className?: string }>) => (
   <h1
-    className={cn(
-      "font-semibold text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl leading-tight m-0 mb-3 sm:mb-4 md:mb-5 lg:mb-6",
-      className
-    )}
+    className={cn("font-semibold text-7xl leading-tight m-0 mb-6", className)}
     style={{ fontFamily: "var(--font-geist-mono)" }}
   >
     {children}
@@ -322,10 +319,7 @@ export const Heading = ({
   className,
 }: PropsWithChildren<{ className?: string }>) => (
   <h2
-    className={cn(
-      "font-semibold text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-tight m-0 mb-2 sm:mb-3 md:mb-4",
-      className
-    )}
+    className={cn("font-semibold text-5xl leading-tight m-0 mb-4", className)}
     style={{ fontFamily: "var(--font-geist-mono)" }}
   >
     {children}
@@ -337,10 +331,7 @@ export const Text = ({
   className,
 }: PropsWithChildren<{ className?: string }>) => (
   <p
-    className={cn(
-      "font-normal text-xs sm:text-sm md:text-base lg:text-lg m-0",
-      className
-    )}
+    className={cn("font-normal text-lg m-0", className)}
     style={{ fontFamily: "var(--font-geist)" }}
   >
     {children}
@@ -367,29 +358,10 @@ export const Cover = ({
   titleClassName,
 }: CoverProps) => (
   <Slide variant="centered" className={className} isPreview={isPreview}>
-    <div
-      className={cn(
-        "h-full flex flex-col items-center justify-center text-center space-y-2 sm:space-y-3",
-        "md:space-y-4"
-      )}
-    >
-      <Title
-        className={cn(
-          "text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl",
-          titleClassName
-        )}
-      >
-        {title}
-      </Title>
+    <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
+      <Title className={titleClassName}>{title}</Title>
       {subtitle && (
-        <Text
-          className={cn(
-            "text-sm sm:text-base md:text-lg lg:text-xl opacity-80",
-            subtitleClassName
-          )}
-        >
-          {subtitle}
-        </Text>
+        <Text className={cn("opacity-80", subtitleClassName)}>{subtitle}</Text>
       )}
     </div>
   </Slide>
@@ -412,17 +384,13 @@ export const Bullets = ({
   isPreview = false,
 }: BulletsProps) => (
   <Slide variant="top" className={className} isPreview={isPreview}>
-    <div className="h-full flex flex-col space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6">
+    <div className="h-full flex flex-col space-y-6">
       <Heading className={titleClassName}>{title}</Heading>
-      <ul className="space-y-2 sm:space-y-3 md:space-y-4">
+      <ul className="space-y-4">
         {items.map((item, index) => (
           <li key={index} className="flex items-start">
-            <span className="text-lg sm:text-xl md:text-2xl mr-2 sm:mr-3 md:mr-4 mt-1 opacity-60">
-              •
-            </span>
-            <Text className="text-sm sm:text-base md:text-lg flex-1">
-              {item}
-            </Text>
+            <span className="text-2xl mr-4 mt-1 opacity-60">•</span>
+            <Text className="flex-1">{item}</Text>
           </li>
         ))}
       </ul>
@@ -445,7 +413,7 @@ export const Split = ({
   isPreview = false,
 }: SplitProps) => (
   <Slide variant="top" className={className} isPreview={isPreview}>
-    <div className="h-full grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8 items-center">
+    <div className="h-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
       <div>{children[0]}</div>
       <div>{children[1]}</div>
     </div>
@@ -460,9 +428,7 @@ type FullProps = PropsWithChildren<{
 
 export const Full = ({ children, className, isPreview = false }: FullProps) => (
   <Slide variant="top" className={className} isPreview={isPreview}>
-    <div className="h-full flex flex-col space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6">
-      {children}
-    </div>
+    <div className="h-full flex flex-col space-y-6">{children}</div>
   </Slide>
 );
 Full.displayName = "Slideshow.Slide.Full";
@@ -482,14 +448,7 @@ export const TitleCentered = ({
 }: TitleCenteredProps) => (
   <Slide variant="centered" className={className} isPreview={isPreview}>
     <div className="h-full flex flex-col items-center justify-center text-center">
-      <Title
-        className={cn(
-          "text-3xl sm:text-4xl md:text-5xl lg:text-6xl",
-          titleClassName
-        )}
-      >
-        {title}
-      </Title>
+      <Title className={titleClassName}>{title}</Title>
     </div>
   </Slide>
 );
@@ -511,15 +470,8 @@ export const TitleTop = ({
 }: TitleTopProps) => (
   <Slide variant="top" className={className} isPreview={isPreview}>
     <div className="h-full flex flex-col">
-      <div className="text-center pb-4 sm:pb-6 md:pb-8">
-        <Title
-          className={cn(
-            "text-2xl sm:text-3xl md:text-4xl lg:text-5xl",
-            titleClassName
-          )}
-        >
-          {title}
-        </Title>
+      <div className="text-center pb-8">
+        <Title className={titleClassName}>{title}</Title>
       </div>
       <div className="flex-1 flex flex-col justify-center">{children}</div>
     </div>
@@ -540,15 +492,11 @@ export const BulletsOnly = ({
 }: BulletsOnlyProps) => (
   <Slide variant="top" className={className} isPreview={isPreview}>
     <div className="h-full flex flex-col">
-      <ul className="space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6">
+      <ul className="space-y-6">
         {items.map((item, index) => (
           <li key={index} className="flex items-start">
-            <span className="text-xl sm:text-2xl md:text-3xl mr-3 sm:mr-4 md:mr-5 lg:mr-6 mt-1 opacity-60">
-              •
-            </span>
-            <Text className="text-base sm:text-lg md:text-xl flex-1">
-              {item}
-            </Text>
+            <span className="text-3xl mr-6 mt-1 opacity-60">•</span>
+            <Text className="flex-1">{item}</Text>
           </li>
         ))}
       </ul>
@@ -575,21 +523,16 @@ export const Quote = ({
   quoteClassName,
 }: QuoteProps) => (
   <Slide variant="centered" className={className} isPreview={isPreview}>
-    <div className="h-full flex flex-col items-center justify-center text-center space-y-4 sm:space-y-6 md:space-y-8">
+    <div className="h-full flex flex-col items-center justify-center text-center space-y-8">
       <blockquote
         className={cn(
-          "text-lg sm:text-xl md:text-2xl lg:text-3xl font-light italic leading-relaxed max-w-4xl",
+          "text-3xl font-light italic leading-relaxed max-w-4xl",
           quoteClassName
         )}
       >
         &quot;{quote}&quot;
       </blockquote>
-      <cite
-        className={cn(
-          "text-sm sm:text-base md:text-lg lg:text-xl opacity-80 not-italic",
-          authorClassName
-        )}
-      >
+      <cite className={cn("text-xl opacity-80 not-italic", authorClassName)}>
         — {author}
       </cite>
     </div>
