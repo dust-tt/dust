@@ -121,8 +121,8 @@ export function ReasoningModelSection() {
       field.value &&
       reasoningModels.find(
         (m) =>
-          m.modelId === field.value.modelId &&
-          m.providerId === field.value.providerId
+          m.modelId === field.value?.modelId &&
+          m.providerId === field.value?.providerId
       ),
     [field.value, reasoningModels]
   );
