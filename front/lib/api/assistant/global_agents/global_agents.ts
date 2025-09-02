@@ -41,6 +41,7 @@ import {
   _getNotionGlobalAgent,
   _getSlackGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/retired_managed";
+import { _getCopilotGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/copilot";
 import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
 import { getDataSourcesAndWorkspaceIdForGlobalAgents } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
@@ -113,6 +114,13 @@ function getGlobalAgent({
         agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
         searchMCPServerView,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.COPILOT:
+      agentConfiguration = _getCopilotGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT35_TURBO:

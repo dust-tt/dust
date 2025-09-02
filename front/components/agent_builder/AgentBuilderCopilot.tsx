@@ -24,7 +24,8 @@ import type {
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { COPILOT_AGENT_SID } from "@app/lib/assistant/copilot";
+import { COPILOT_AGENT_SID, COPILOT_SEED_PROMPT } from "@app/lib/assistant/copilot";
+import { GLOBAL_AGENTS_SID } from "@app/types";
 import { DustError } from "@app/lib/error";
 
 // Copilot agent id shared constant
@@ -35,8 +36,11 @@ function useCopilotConversation() {
   const sendNotification = useSendNotification();
 
   const [conversationId, setConversationId] = useState<string | null>(null);
+  // For reliability, mention an existing global agent (gpt-4) on the server.
+  // UI still presents this as "Copilot".
+  const SERVER_AGENT_SID = GLOBAL_AGENTS_SID.GPT4;
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([
-    { configurationId: COPILOT_AGENT_SID },
+    { configurationId: SERVER_AGENT_SID },
   ]);
 
   const { conversation: swrConversation } = useConversation({
@@ -60,14 +64,17 @@ function useCopilotConversation() {
 
     // Ensure the promptWriter agent is always mentioned
     const hasPromptWriterMention = mentions.some(
-      (m) => m.configurationId === COPILOT_AGENT_SID
+      (m) => m.configurationId === SERVER_AGENT_SID
     );
 
     if (!hasPromptWriterMention) {
-      mentions = [{ configurationId: COPILOT_AGENT_SID }, ...mentions];
+      mentions = [{ configurationId: SERVER_AGENT_SID }, ...mentions];
     }
 
-    const messageData = { input, mentions, contentFragments };
+    const effectiveInput = !conversation
+      ? `${COPILOT_SEED_PROMPT}\n\n${input}`
+      : input;
+    const messageData = { input: effectiveInput, mentions, contentFragments };
 
     if (!conversation) {
       const result = await createConversationWithMessage({

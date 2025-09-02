@@ -574,11 +574,10 @@ export function AgentMessage({
                     agentMessage.content
                   );
 
-                  // Special handling for the copilot agent to render inline instruction cards
-                  if (
-                    agentMessage.configuration?.sId === COPILOT_AGENT_SID &&
-                    processedContent
-                  ) {
+                  // Special handling for Copilot builder: render inline instruction cards
+                  // when an apply handler is provided (indicates builder Copilot context),
+                  // regardless of which backend agent is mentioned.
+                  if (processedContent && onApplyInstructions) {
                     const inlineContext: InlineCardsContext = {
                       onApplyInstructions,
                       currentInstructions,

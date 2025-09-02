@@ -1521,6 +1521,7 @@ export type ReasoningModelConfigurationType = {
  */
 
 export enum GLOBAL_AGENTS_SID {
+  COPILOT = "copilot",
   HELPER = "helper",
   DUST = "dust",
   DUST_DEEP = "dust-deep",
@@ -1591,6 +1592,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
 }
 
 const CUSTOM_ORDER: string[] = [
+  GLOBAL_AGENTS_SID.COPILOT,
   GLOBAL_AGENTS_SID.DUST,
   GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
   GLOBAL_AGENTS_SID.GPT4,

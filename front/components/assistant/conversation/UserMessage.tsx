@@ -17,6 +17,7 @@ import {
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
 import type { UserMessageType, WorkspaceType } from "@app/types";
+import { COPILOT_SEED_PROMPT } from "@app/lib/assistant/copilot";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
@@ -57,13 +58,25 @@ export function UserMessage({
           type="user"
           citations={citations}
         >
-          <Markdown
-            content={message.content}
-            isStreaming={false}
-            isLastMessage={isLastMessage}
-            additionalMarkdownComponents={additionalMarkdownComponents}
-            additionalMarkdownPlugins={additionalMarkdownPlugins}
-          />
+          {(() => {
+            // Hide the Copilot seed prompt from the visible user message.
+            const contentForDisplay = message.content.startsWith(
+              COPILOT_SEED_PROMPT
+            )
+              ? message.content
+                  .slice(COPILOT_SEED_PROMPT.length)
+                  .trimStart()
+              : message.content;
+            return (
+              <Markdown
+                content={contentForDisplay}
+                isStreaming={false}
+                isLastMessage={isLastMessage}
+                additionalMarkdownComponents={additionalMarkdownComponents}
+                additionalMarkdownPlugins={additionalMarkdownPlugins}
+              />
+            );
+          })()}
         </ConversationMessage>
       </div>
       {message.mentions.length === 0 && isLastMessage && (

@@ -29,6 +29,13 @@ type AgentMetadata = {
 
 export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
   switch (sId) {
+    case GLOBAL_AGENTS_SID.COPILOT:
+      return {
+        sId: GLOBAL_AGENTS_SID.COPILOT,
+        name: "copilot",
+        description: "Helps you write agent instructions and improves them.",
+        pictureUrl: "/static/emojis/bg-yellow-400/writing_hand/270d-fe0f",
+      };
     case GLOBAL_AGENTS_SID.HELPER:
       return {
         sId: GLOBAL_AGENTS_SID.HELPER,
