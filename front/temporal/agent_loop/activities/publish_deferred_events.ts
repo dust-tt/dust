@@ -1,7 +1,6 @@
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { DeferredEvent } from "@app/temporal/agent_loop/lib/deferred_events";
 import { assertNever } from "@app/types";
 
@@ -85,7 +84,6 @@ export async function publishDeferredEventsActivity(
 
     // Check if this event should pause the workflow.
     if (deferredEvent.shouldPauseAgentLoop) {
-      await ConversationResource.markAsActionRequired(context.conversationId);
       shouldPauseWorkflow = true;
     }
   }

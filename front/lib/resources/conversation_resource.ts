@@ -485,16 +485,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }));
   }
 
-  static async markAsActionRequired(conversationId: string) {
-    const conversation = await ConversationModel.findOne({
-      where: {
-        sId: conversationId,
-      },
-    });
-    if (conversation === null) {
-      return new Err(new ConversationError("conversation_not_found"));
-    }
-
+  static async markAsActionRequired(
+    auth: Authenticator,
+    { conversation }: { conversation: ConversationWithoutContentType }
+  ) {
     // Update the conversation participant to set actionRequired to true
     const updated = await ConversationParticipantModel.update(
       { actionRequired: true },
@@ -503,6 +497,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         // It's fine because we are only updating the actionRequired flag.
         where: {
           conversationId: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
       }
     );
@@ -588,13 +583,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   /**
    * Get the latest agent message id by rank for a given conversation.
-   * @param conversationId - The conversation id.
    * @returns The latest agent message id, version and rank.
    */
-  static async getLatestAgentMessageIdByRank(
-    auth: Authenticator,
-    { conversation }: { conversation: ConversationResource }
-  ): Promise<
+  async getLatestAgentMessageIdByRank(auth: Authenticator): Promise<
     {
       rank: number;
       agentMessageId: number;
@@ -633,7 +624,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       type: QueryTypes.SELECT,
       replacements: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        conversationId: conversation.id,
+        conversationId: this.id,
       },
     });
 

@@ -196,9 +196,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     }
 
     const latestAgentMessages =
-      await ConversationResource.getLatestAgentMessageIdByRank(auth, {
-        conversation,
-      });
+      await conversation.getLatestAgentMessageIdByRank(auth);
 
     const blockedActions = await AgentMCPActionModel.findAll({
       include: [
