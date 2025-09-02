@@ -1,4 +1,5 @@
 import { Err, Ok, removeNulls } from "@dust-tt/client";
+import { createHash } from "crypto";
 
 import { getChannelsToSync } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
@@ -15,7 +16,6 @@ import { QUEUE_NAME } from "./config";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
 import {
   joinChannelsWorkflow,
-  joinChannelsWorkflowId,
   migrateChannelsFromLegacyBotToNewBotWorkflow,
   migrateChannelsFromLegacyBotToNewBotWorkflowId,
   slackGarbageCollectorWorkflow,
@@ -29,6 +29,15 @@ import {
 } from "./workflows";
 
 const logger = mainLogger.child({ provider: "slack" });
+
+function joinChannelsWorkflowId(connectorId: ModelId, channelIds: string[]) {
+  // Create a hash of the channel IDs to ensure unique workflow ID for each set
+  const channelsHash = createHash("sha256")
+    .update(channelIds.sort().join(","))
+    .digest("hex")
+    .substring(0, 8); // Use first 8 chars of hash for readability
+  return `slack-joinChannels-${connectorId}-${channelsHash}`;
+}
 
 export async function launchSlackSyncWorkflow(
   connectorId: ModelId,
