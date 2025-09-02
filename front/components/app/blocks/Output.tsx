@@ -282,6 +282,7 @@ export function InnerLogs({ trace }: { trace: TraceType }) {
           token_usage?: {
             prompt_tokens: number;
             completion_tokens: number;
+            cached_tokens?: number;
             reasoning_tokens?: number;
           };
         }
@@ -435,6 +436,7 @@ export default function Output({
                   token_usage?: {
                     completion_tokens: number;
                     prompt_tokens: number;
+                    cached_tokens?: number;
                     reasoning_tokens?: number;
                   };
                 }
@@ -484,6 +486,7 @@ export default function Output({
                               token_usage?: {
                                 completion_tokens: number;
                                 prompt_tokens: number;
+                                cached_tokens?: number;
                                 reasoning_tokens?: number;
                               };
                             }
