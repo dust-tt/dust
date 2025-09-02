@@ -44,7 +44,7 @@ import { useEditors } from "@app/lib/swr/editors";
 import { emptyArray } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types";
-import { removeNulls } from "@app/types";
+import { isBuilder, removeNulls } from "@app/types";
 
 function processActionsFromStorage(
   actions: AssistantBuilderMCPConfigurationWithId[]
@@ -112,7 +112,7 @@ export default function AgentBuilder({
   const { slackChannels: slackChannelsLinkedWithAgent } =
     useSlackChannelsLinkedWithAgent({
       workspaceId: owner.sId,
-      disabled: !agentConfiguration,
+      disabled: !agentConfiguration || !isBuilder(owner),
     });
 
   const slackProvider = useMemo(() => {
