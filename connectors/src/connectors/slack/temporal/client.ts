@@ -389,8 +389,8 @@ export async function launchSlackJoinChannelsWorkflow(
   try {
     // Launch all workflows and return handles
     const handles = await Promise.all(
-      batches.map(async (batch, index) => {
-        const workflowId = joinChannelsWorkflowId(connectorId, index);
+      batches.map(async (batch) => {
+        const workflowId = joinChannelsWorkflowId(connectorId, batch);
         const handle = await client.workflow.start(joinChannelsWorkflow, {
           args: [connectorId, batch],
           taskQueue: QUEUE_NAME,

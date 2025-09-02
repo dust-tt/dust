@@ -6,6 +6,7 @@ import {
   sleep,
   workflowInfo,
 } from "@temporalio/workflow";
+import crypto from "crypto";
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
 import type { ModelId } from "@connectors/types";
@@ -398,7 +399,13 @@ export async function joinChannelsWorkflow(
 
 export function joinChannelsWorkflowId(
   connectorId: ModelId,
-  batchIndex: number = 0
+  channelIds: string[]
 ) {
-  return `slack-joinChannels-${connectorId}-batch-${batchIndex}`;
+  // Create a hash of the channel IDs to ensure unique workflow ID for each set
+  const channelsHash = crypto
+    .createHash("sha256")
+    .update(channelIds.sort().join(","))
+    .digest("hex")
+    .substring(0, 8); // Use first 8 chars of hash for readability
+  return `slack-joinChannels-${connectorId}-${channelsHash}`;
 }
