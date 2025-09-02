@@ -14,6 +14,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/BlockInsertDropdown";
 import { AgentInstructionDiffExtension } from "@app/components/agent_builder/instructions/extensions/AgentInstructionDiffExtension";
+import { AgentSuggestionReviewExtension } from "@app/components/agent_builder/instructions/extensions/AgentSuggestionReviewExtension";
 import { BlockInsertExtension } from "@app/components/agent_builder/instructions/extensions/BlockInsertExtension";
 import { InstructionBlockExtension } from "@app/components/agent_builder/instructions/extensions/InstructionBlockExtension";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
@@ -104,6 +105,7 @@ export function AgentBuilderInstructionsEditor({
       ParagraphExtension,
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
+      AgentSuggestionReviewExtension,
       BlockInsertExtension.configure({
         suggestion: suggestionHandler,
       }),
@@ -144,6 +146,31 @@ export function AgentBuilderInstructionsEditor({
     },
     [extensions]
   );
+
+  // Listen for inline review requests from Copilot
+  useEffect(() => {
+    function handleInlineReview(e: Event) {
+      const { detail } = e as CustomEvent<{ oldText?: string; newText: string }>;
+      if (!editor || !detail?.newText) return;
+      const currentText = plainTextFromTipTapContent(editor.getJSON());
+      const oldText = detail.oldText ?? currentText;
+      // Apply diff using the existing diff extension; this will mark additions/deletions and set editor read-only
+      editor.commands.applyDiff(oldText, detail.newText);
+    }
+    window.addEventListener("dust:enter-inline-review", handleInlineReview as EventListener);
+    return () => window.removeEventListener("dust:enter-inline-review", handleInlineReview as EventListener);
+  }, [editor]);
+
+  // Re-enable editing once all suggestions are resolved
+  useEffect(() => {
+    if (!editor) return;
+    const onResolved = () => {
+      editor.setEditable(true);
+      // Optionally could strip any residual marks; but additions/deletions should be gone.
+    };
+    window.addEventListener("dust:inline-review-resolved", onResolved);
+    return () => window.removeEventListener("dust:inline-review-resolved", onResolved);
+  }, [editor]);
 
   useEffect(() => {
     editorRef.current = editor;

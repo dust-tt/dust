@@ -9,6 +9,7 @@ interface AgentMessageInstructionsProps {
   onApply?: (instructions: string) => void;
   messageId: string;
   disableApply?: boolean;
+  autoInlineReview?: boolean;
 }
 
 export function AgentMessageInstructions({
@@ -17,6 +18,7 @@ export function AgentMessageInstructions({
   onApply,
   messageId,
   disableApply = false,
+  autoInlineReview = false,
 }: AgentMessageInstructionsProps) {
   const [hasBeenApplied, setHasBeenApplied] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -56,17 +58,41 @@ export function AgentMessageInstructions({
   const isButtonDisabled =
     disableApply || instructionsMatch || (hasBeenApplied && instructionsMatch);
 
+  // Auto-trigger inline review when generation completes (builder context only)
+  useEffect(() => {
+    if (
+      autoInlineReview &&
+      !disableApply &&
+      typeof window !== "undefined" &&
+      (window as any).DUST_INLINE_REVIEW_ENABLED === true
+    ) {
+      // Avoid duplicate dispatches for same content
+      const key = `${messageId}-inline-review-dispatched`;
+      if ((window as any)[key]) return;
+      (window as any)[key] = true;
+      window.dispatchEvent(
+        new CustomEvent("dust:enter-inline-review", {
+          detail: {
+            oldText: currentInstructions || "",
+            newText: displayInstructions,
+          },
+        })
+      );
+    }
+  }, [autoInlineReview, disableApply, messageId, currentInstructions, displayInstructions]);
+
   return (
     <div className="mt-2 rounded-lg border border-separator bg-slate-50 dark:bg-slate-900/10">
       <div className="flex items-center justify-between border-b border-separator px-4 py-2">
         <span className="text-sm font-medium text-slate-800 dark:text-slate-200">Agent Instructions</span>
         <div className="flex items-center gap-2">
-          <AgentInstructionsDiffDialog
-            currentInstructions={currentInstructions}
-            suggestedInstructions={displayInstructions}
-            onApply={onApply}
-            messageId={messageId}
-          />
+      <AgentInstructionsDiffDialog
+        currentInstructions={currentInstructions}
+        suggestedInstructions={displayInstructions}
+        onApply={onApply}
+        messageId={messageId}
+        preferInlineReview={typeof window !== "undefined" && (window as any).DUST_INLINE_REVIEW_ENABLED === true}
+      />
           {onApply && (
             <Button
               size="xs"

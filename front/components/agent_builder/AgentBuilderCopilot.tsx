@@ -220,6 +220,18 @@ export function AgentBuilderCopilot() {
   const sendNotification = useSendNotification();
   const { mcpServerViews, defaultMCPServerViews } = useMCPServerViewsContext();
 
+  // Manage global inline review flag lifecycle for Copilot mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).DUST_INLINE_REVIEW_ENABLED = true;
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        delete (window as any).DUST_INLINE_REVIEW_ENABLED;
+      }
+    };
+  }, []);
+
   // Watch the current instructions
   const currentInstructions = watch("instructions");
   const currentActions = watch("actions");
@@ -405,6 +417,13 @@ export function AgentBuilderCopilot() {
     <div className="flex h-full w-full flex-col" aria-label="Agent copilot">
       <BlockedActionsProvider owner={owner} conversation={conversation}>
         <GenerationContextProvider>
+          {/* Enable inline review globally while Copilot is mounted */}
+          {(() => {
+            if (typeof window !== "undefined") {
+              (window as any).DUST_INLINE_REVIEW_ENABLED = true;
+            }
+            return null;
+          })()}
           <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
             {conversation && (
               <div className="flex items-center justify-center px-6 py-3">

@@ -1,6 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
-import { diffWords } from "diff";
+import { diffArrays } from "diff";
 
 import { AdditionMark, DeletionMark } from "./AgentDiffMarks";
 
@@ -53,14 +53,21 @@ export const AgentInstructionDiffExtension =
             }
             this.storage.isDiffMode = true;
 
-            const diffParts = diffWords(oldContent, newContent);
+            const diffParts = diffArrays(
+              splitParagraphs(oldContent),
+              splitParagraphs(newContent)
+            );
             this.storage.diffParts = diffParts;
 
             let addedCount = 0;
             let removedCount = 0;
 
             diffParts.forEach((part) => {
-              const wordCount = part.value
+              const paras: string[] = Array.isArray(part.value)
+                ? part.value
+                : [String(part.value ?? "")];
+              const wordCount = paras
+                .join(" ")
                 .trim()
                 .split(/\s+/)
                 .filter(Boolean).length;
@@ -75,14 +82,19 @@ export const AgentInstructionDiffExtension =
             this.storage.diffStats.addedWordCount = addedCount;
             this.storage.diffStats.removedWordCount = removedCount;
 
-            const diffContent = buildWordDiffContent(diffParts);
+            const diffContent = buildParagraphDiffContent(diffParts);
 
+            const hasChanges = diffParts.some((p: any) => p.added || p.removed);
             const result = commands.setContent(diffContent);
 
-            // Make editor read-only
-            if (result) {
+            if (!hasChanges) {
+              // No marks/tokens; keep editor editable and exit diff mode immediately
+              editor.setEditable(true);
+              this.storage.isDiffMode = false;
+              this.storage.originalContent = null;
+            } else if (result) {
+              // Make editor read-only during inline review
               editor.setEditable(false);
-
               if (this.options.onDiffApplied) {
                 this.options.onDiffApplied();
               }
@@ -119,30 +131,31 @@ export const AgentInstructionDiffExtension =
     },
   });
 
-// Helper function to build diff content
-function buildWordDiffContent(diffParts: any[]): JSONContent {
-  const content = diffParts.map((part) => {
-    const node: JSONContent = {
-      type: "text",
-      text: part.value,
-    };
+// Paragraph split by blank lines
+function splitParagraphs(t: string): string[] {
+  return t.replace(/\r\n/g, "\n").split(/\n\s*\n/).map((s) => s.trim());
+}
 
-    if (part.added) {
-      node.marks = [{ type: AdditionMark.name }];
-    } else if (part.removed) {
-      node.marks = [{ type: DeletionMark.name }];
-    }
-
-    return node;
+// Helper: build paragraph-level diff content
+function buildParagraphDiffContent(diffParts: any[]): JSONContent {
+  const paragraphs: JSONContent[] = [];
+  diffParts.forEach((part: any) => {
+    const paras: string[] = Array.isArray(part.value) ? part.value : [String(part.value ?? "")];
+    paras.forEach((p) => {
+      const trimmed = (p ?? "").toString();
+      if (trimmed.trim().length === 0) {
+        // Push an empty paragraph (no empty text nodes)
+        paragraphs.push({ type: "paragraph" });
+      } else {
+        const textNode: JSONContent = { type: "text", text: trimmed };
+        if (part.added) {
+          textNode.marks = [{ type: AdditionMark.name }];
+        } else if (part.removed) {
+          textNode.marks = [{ type: DeletionMark.name }];
+        }
+        paragraphs.push({ type: "paragraph", content: [textNode] });
+      }
+    });
   });
-
-  return {
-    type: "doc",
-    content: [
-      {
-        type: "paragraph",
-        content,
-      },
-    ],
-  };
+  return { type: "doc", content: paragraphs };
 }
