@@ -161,22 +161,40 @@ export function useAddTriggerSubscriber({
 export function useRemoveTriggerSubscriber({
   workspaceId,
   agentConfigurationId,
+  mutateUserTriggers,
 }: {
   workspaceId: string;
-  agentConfigurationId: string;
+  agentConfigurationId?: string;
+  mutateUserTriggers?: boolean;
 }) {
   const sendNotification = useSendNotification();
-  const { mutateTriggers } = useAgentTriggers({
+  const { mutateTriggers: mutateAgentTriggers } = useAgentTriggers({
     workspaceId,
-    agentConfigurationId,
-    disabled: true,
+    agentConfigurationId: agentConfigurationId || null,
+    disabled: !agentConfigurationId,
+  });
+  const { mutateTriggers: mutateUserTriggersList } = useUserTriggers({
+    workspaceId,
+    disabled: !mutateUserTriggers,
   });
 
   const removeSubscriber = useCallback(
-    async (triggerId: string): Promise<boolean> => {
+    async (triggerId: string, triggerAgentConfigurationId?: string): Promise<boolean> => {
+      // Use provided agentConfigurationId or fall back to the one from parameters
+      const targetAgentConfigurationId = triggerAgentConfigurationId || agentConfigurationId;
+      
+      if (!targetAgentConfigurationId) {
+        sendNotification({
+          type: "error",
+          title: "Failed to unsubscribe",
+          description: "Agent configuration ID is required.",
+        });
+        return false;
+      }
+
       try {
         const response = await fetch(
-          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/subscribers`,
+          `/api/w/${workspaceId}/assistant/agent_configurations/${targetAgentConfigurationId}/triggers/${triggerId}/subscribers`,
           {
             method: "DELETE",
           }
@@ -189,7 +207,15 @@ export function useRemoveTriggerSubscriber({
             description:
               "You will no longer receive notifications when this trigger runs.",
           });
-          void mutateTriggers();
+          
+          // Mutate the appropriate triggers list(s)
+          if (agentConfigurationId) {
+            void mutateAgentTriggers();
+          }
+          if (mutateUserTriggers) {
+            void mutateUserTriggersList();
+          }
+          
           return true;
         } else {
           const errorData = await getErrorFromResponse(response);
@@ -209,7 +235,7 @@ export function useRemoveTriggerSubscriber({
         return false;
       }
     },
-    [workspaceId, agentConfigurationId, sendNotification, mutateTriggers]
+    [workspaceId, agentConfigurationId, sendNotification, mutateAgentTriggers, mutateUserTriggersList, mutateUserTriggers]
   );
 
   return removeSubscriber;
@@ -239,59 +265,3 @@ export function useUserTriggers({
   };
 }
 
-export function useRemoveUserTriggerSubscriber({
-  workspaceId,
-}: {
-  workspaceId: string;
-}) {
-  const sendNotification = useSendNotification();
-  const { mutateTriggers } = useUserTriggers({
-    workspaceId,
-    disabled: true,
-  });
-
-  const removeSubscriber = useCallback(
-    async (
-      triggerId: string,
-      agentConfigurationId: string
-    ): Promise<boolean> => {
-      try {
-        const response = await fetch(
-          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/subscribers`,
-          {
-            method: "DELETE",
-          }
-        );
-
-        if (response.ok) {
-          sendNotification({
-            type: "success",
-            title: "Unsubscribed from trigger",
-            description:
-              "You will no longer receive notifications when this trigger runs.",
-          });
-          void mutateTriggers();
-          return true;
-        } else {
-          const errorData = await getErrorFromResponse(response);
-          sendNotification({
-            type: "error",
-            title: "Failed to unsubscribe",
-            description: `Error: ${errorData.message}`,
-          });
-          return false;
-        }
-      } catch (error) {
-        sendNotification({
-          type: "error",
-          title: "Failed to unsubscribe",
-          description: "An unexpected error occurred. Please try again.",
-        });
-        return false;
-      }
-    },
-    [workspaceId, sendNotification, mutateTriggers]
-  );
-
-  return removeSubscriber;
-}

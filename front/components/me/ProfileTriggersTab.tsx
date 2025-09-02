@@ -5,7 +5,7 @@ import cronstrue from "cronstrue";
 import { useState } from "react";
 
 import {
-  useRemoveUserTriggerSubscriber,
+  useRemoveTriggerSubscriber,
   useUserTriggers,
 } from "@app/lib/swr/agent_triggers";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -27,8 +27,9 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
 
   const [isLoading, setIsLoading] = useState(false);
 
-  const unsubscribe = useRemoveUserTriggerSubscriber({
+  const unsubscribe = useRemoveTriggerSubscriber({
     workspaceId: owner.sId,
+    mutateUserTriggers: true,
   });
 
   const getEditionURL = (agentConfigurationId: string) => {
