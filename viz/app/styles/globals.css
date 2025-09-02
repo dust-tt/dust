@@ -113,10 +113,204 @@
 }
 
 @layer base {
+  :root {
+    /* Responsive typography and spacing - defined once for all themes */
+    --responsive-text-xs: clamp(0.75rem, 1.8vw, 1rem);
+    --responsive-text-sm: clamp(0.875rem, 2vw, 1.125rem);
+    --responsive-text-base: clamp(1rem, 2.2vw, 1.25rem);
+    --responsive-text-lg: clamp(1.125rem, 2.4vw, 1.5rem);
+    --responsive-text-xl: clamp(1.25rem, 2.8vw, 1.75rem);
+    --responsive-text-2xl: clamp(1.5rem, 3.2vw, 2rem);
+    --responsive-text-3xl: clamp(1.875rem, 3.6vw, 2.5rem);
+    --responsive-text-4xl: clamp(2.25rem, 4.2vw, 3rem);
+    --responsive-text-5xl: clamp(2.5rem, 5vw, 3.5rem);
+    --responsive-text-6xl: clamp(3rem, 6vw, 4.5rem);
+    --responsive-text-7xl: clamp(3.5rem, 7vw, 5.5rem);
+
+    --responsive-space-1: clamp(0.125rem, 0.25vw, 0.25rem);
+    --responsive-space-2: clamp(0.25rem, 0.5vw, 0.5rem);
+    --responsive-space-3: clamp(0.375rem, 0.75vw, 0.75rem);
+    --responsive-space-4: clamp(0.5rem, 1vw, 1rem);
+    --responsive-space-6: clamp(0.75rem, 1.5vw, 1.5rem);
+    --responsive-space-8: clamp(1rem, 2vw, 2rem);
+    --responsive-space-12: clamp(1.5rem, 3vw, 3rem);
+    --responsive-space-16: clamp(2rem, 4vw, 4rem);
+    --responsive-space-20: clamp(2.5rem, 5vw, 5rem);
+    --responsive-space-24: clamp(3rem, 6vw, 6rem);
+  }
+
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* Responsive typography and spacing utilities - opt-in for any component */
+  .responsive-text .text-xs {
+    font-size: var(--responsive-text-xs);
+  }
+  .responsive-text .text-sm {
+    font-size: var(--responsive-text-sm);
+  }
+  .responsive-text .text-base {
+    font-size: var(--responsive-text-base);
+  }
+  .responsive-text .text-lg {
+    font-size: var(--responsive-text-lg);
+  }
+  .responsive-text .text-xl {
+    font-size: var(--responsive-text-xl);
+  }
+  .responsive-text .text-2xl {
+    font-size: var(--responsive-text-2xl);
+  }
+  .responsive-text .text-3xl {
+    font-size: var(--responsive-text-3xl);
+  }
+  .responsive-text .text-4xl {
+    font-size: var(--responsive-text-4xl);
+  }
+  .responsive-text .text-5xl {
+    font-size: var(--responsive-text-5xl);
+  }
+  .responsive-text .text-6xl {
+    font-size: var(--responsive-text-6xl);
+  }
+  .responsive-text .text-7xl {
+    font-size: var(--responsive-text-7xl);
+  }
+
+  .responsive-text .gap-1 {
+    gap: var(--responsive-space-1);
+  }
+  .responsive-text .gap-2 {
+    gap: var(--responsive-space-2);
+  }
+  .responsive-text .gap-3 {
+    gap: var(--responsive-space-3);
+  }
+  .responsive-text .gap-4 {
+    gap: var(--responsive-space-4);
+  }
+  .responsive-text .gap-6 {
+    gap: var(--responsive-space-6);
+  }
+  .responsive-text .gap-8 {
+    gap: var(--responsive-space-8);
+  }
+  .responsive-text .gap-12 {
+    gap: var(--responsive-space-12);
+  }
+  .responsive-text .gap-16 {
+    gap: var(--responsive-space-16);
+  }
+
+  .responsive-text .space-y-1 > * + * {
+    margin-top: var(--responsive-space-1);
+  }
+  .responsive-text .space-y-2 > * + * {
+    margin-top: var(--responsive-space-2);
+  }
+  .responsive-text .space-y-3 > * + * {
+    margin-top: var(--responsive-space-3);
+  }
+  .responsive-text .space-y-4 > * + * {
+    margin-top: var(--responsive-space-4);
+  }
+  .responsive-text .space-y-6 > * + * {
+    margin-top: var(--responsive-space-6);
+  }
+  .responsive-text .space-y-8 > * + * {
+    margin-top: var(--responsive-space-8);
+  }
+  .responsive-text .space-y-12 > * + * {
+    margin-top: var(--responsive-space-12);
+  }
+
+  .responsive-text .mt-1 {
+    margin-top: var(--responsive-space-1);
+  }
+  .responsive-text .mt-2 {
+    margin-top: var(--responsive-space-2);
+  }
+  .responsive-text .mt-3 {
+    margin-top: var(--responsive-space-3);
+  }
+  .responsive-text .mt-4 {
+    margin-top: var(--responsive-space-4);
+  }
+  .responsive-text .mt-6 {
+    margin-top: var(--responsive-space-6);
+  }
+  .responsive-text .mt-8 {
+    margin-top: var(--responsive-space-8);
+  }
+  .responsive-text .mt-12 {
+    margin-top: var(--responsive-space-12);
+  }
+  .responsive-text .mt-16 {
+    margin-top: var(--responsive-space-16);
+  }
+
+  .responsive-text .mb-1 {
+    margin-bottom: var(--responsive-space-1);
+  }
+  .responsive-text .mb-2 {
+    margin-bottom: var(--responsive-space-2);
+  }
+  .responsive-text .mb-3 {
+    margin-bottom: var(--responsive-space-3);
+  }
+  .responsive-text .mb-4 {
+    margin-bottom: var(--responsive-space-4);
+  }
+  .responsive-text .mb-6 {
+    margin-bottom: var(--responsive-space-6);
+  }
+  .responsive-text .mb-8 {
+    margin-bottom: var(--responsive-space-8);
+  }
+  .responsive-text .mb-12 {
+    margin-bottom: var(--responsive-space-12);
+  }
+
+  .responsive-text .p-1 {
+    padding: var(--responsive-space-1);
+  }
+  .responsive-text .p-2 {
+    padding: var(--responsive-space-2);
+  }
+  .responsive-text .p-3 {
+    padding: var(--responsive-space-3);
+  }
+  .responsive-text .p-4 {
+    padding: var(--responsive-space-4);
+  }
+  .responsive-text .p-6 {
+    padding: var(--responsive-space-6);
+  }
+  .responsive-text .p-8 {
+    padding: var(--responsive-space-8);
+  }
+  .responsive-text .p-12 {
+    padding: var(--responsive-space-12);
+  }
+
+  /* Slide variant padding */
+  .slide-top-padding {
+    padding: var(--responsive-space-8);
+    padding-top: var(--responsive-space-24);
+  }
+  .slide-centered-padding {
+    padding: var(--responsive-space-8);
+  }
+
+  /* Slide content container */
+  .slide-content-container {
+    max-height: calc(100vh - var(--responsive-space-24) - var(--responsive-space-8));
+    overflow: auto;
   }
 }
