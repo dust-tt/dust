@@ -278,7 +278,7 @@ export default function AgentBuilder({
 
   const isSaveDisabled = duplicateAgentId
     ? false
-    : !isDirty || isSubmitting || isActionsLoading || isTriggersLoading;
+    : isSubmitting || isActionsLoading || isTriggersLoading;
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 
