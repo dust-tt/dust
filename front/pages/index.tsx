@@ -73,7 +73,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     // This allows linking to the assistant template creation page from external sources.
     const { goto, templateId } = context.query;
     if (goto === "template" && isString(templateId)) {
-      url = url + `/builder/assistants/create?templateId=${templateId}`;
+      url = url + `/builder/agents/create?templateId=${templateId}`;
     }
 
     if (context.query.inviteToken) {

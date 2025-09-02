@@ -107,7 +107,6 @@ export function InstructionScreen({
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
 
   const extensions = useMemo(() => {
     return getAgentBuilderInstructionsExtensionsForWorkspace(
@@ -336,14 +335,7 @@ export function InstructionScreen({
                 variant="highlight"
                 size="xs"
                 onClick={() => {
-                  void router.push(
-                    getAgentBuilderRoute(
-                      owner.sId,
-                      "create",
-                      hasAgentBuilderV2,
-                      "flow=personal_assistants"
-                    )
-                  );
+                  void router.push(getAgentBuilderRoute(owner.sId, "create"));
                 }}
                 label="Browse templates"
               />
@@ -371,11 +363,7 @@ export function InstructionScreen({
                   You can also use one of our{" "}
                   <Hoverable
                     variant="highlight"
-                    href={getAgentBuilderRoute(
-                      owner.sId,
-                      "create",
-                      hasAgentBuilderV2
-                    )}
+                    href={getAgentBuilderRoute(owner.sId, "create")}
                     target="_blank"
                   >
                     templates

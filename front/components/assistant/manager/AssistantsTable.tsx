@@ -21,7 +21,6 @@ import { TableTagSelector } from "@app/components/assistant/manager/TableTagSele
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useTags } from "@app/lib/swr/tags";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   classNames,
   formatTimestampToFriendlyDate,
@@ -283,11 +282,6 @@ export function AssistantsTable({
   const router = useRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
 
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
-
   const rows: RowData[] = useMemo(
     () =>
       agents.map((agentConfiguration) => {
@@ -355,16 +349,7 @@ export function AssistantsTable({
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void router.push(
-                        getAgentBuilderRoute(
-                          owner.sId,
-                          agentConfiguration.sId,
-                          hasAgentBuilderV2,
-                          `flow=${
-                            agentConfiguration.scope
-                              ? "workspace_assistants"
-                              : "personal_assistants"
-                          }`
-                        )
+                        getAgentBuilderRoute(owner.sId, agentConfiguration.sId)
                       );
                     },
                     kind: "item" as const,
@@ -404,8 +389,7 @@ export function AssistantsTable({
                         getAgentBuilderRoute(
                           owner.sId,
                           "new",
-                          hasAgentBuilderV2,
-                          `flow=personal_assistants&duplicate=${agentConfiguration.sId}`
+                          `duplicate=${agentConfiguration.sId}`
                         )
                       );
                     },
@@ -431,7 +415,6 @@ export function AssistantsTable({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- handleToggleAgentStatus & router are not stable, mutating the agents list which prevent pagination to work
     [
       agents,
-      hasAgentBuilderV2,
       owner,
       setShowDetails,
       setShowDisabledFreeWorkspacePopup,

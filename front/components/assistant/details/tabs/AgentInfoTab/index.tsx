@@ -9,7 +9,6 @@ import {
 import { AssistantEditedSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantEditedSection";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection";
 import { AssistantToolsSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantToolsSection";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { AgentConfigurationType, WorkspaceType } from "@app/types";
 import { GLOBAL_AGENTS_SID, isAdmin } from "@app/types";
@@ -21,11 +20,6 @@ export function AgentInfoTab({
   agentConfiguration: AgentConfigurationType;
   owner: WorkspaceType;
 }) {
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
-
   const isConfigurable = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
   return (
     <>
@@ -49,11 +43,7 @@ export function AgentInfoTab({
             <Button
               label={`Manage ${agentConfiguration.name} configuration`}
               icon={Cog6ToothIcon}
-              href={getAgentBuilderRoute(
-                owner.sId,
-                agentConfiguration.sId,
-                hasAgentBuilderV2
-              )}
+              href={getAgentBuilderRoute(owner.sId, agentConfiguration.sId)}
             />
           ) : (
             <Chip
