@@ -35,13 +35,11 @@ async function handler(
   // Get triggers where the user is either editor or subscriber
   const userTriggers = await TriggerResource.listByUser(auth);
 
-  // Get agent configurations and build response
-  const filteredTriggers = await Promise.all(
+  const triggersWithAgentNames = await Promise.all(
     userTriggers.map(async (trigger) => {
       const isEditor = trigger.editor === auth.getNonNullableUser().id;
       const isSubscriber = await trigger.isSubscriber(auth);
 
-      // Get agent configuration to get the agent name
       const agentConfiguration = await getAgentConfiguration(auth, {
         agentId: trigger.agentConfigurationId,
         variant: "light",
@@ -59,6 +57,11 @@ async function handler(
         agentPictureUrl: agentConfiguration.pictureUrl,
       };
     })
+  );
+
+  // Filter out null values (in case some agent configurations were not found)
+  const filteredTriggers = triggersWithAgentNames.filter(
+    (trigger): trigger is NonNullable<typeof trigger> => trigger !== null
   );
 
   return res.status(200).json({
