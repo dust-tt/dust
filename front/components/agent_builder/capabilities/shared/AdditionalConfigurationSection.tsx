@@ -287,7 +287,9 @@ function ListConfigurationInput({
                     size="xs"
                     onCheckedChange={(checked) => {
                       const current = Array.isArray(field.value)
-                        ? field.value.filter((v): v is string => typeof v === "string")
+                        ? field.value.filter(
+                            (v): v is string => typeof v === "string"
+                          )
                         : [];
                       const newValues = checked
                         ? [...current, value]
