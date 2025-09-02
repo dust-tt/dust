@@ -112,7 +112,7 @@ export default function AgentBuilder({
   const { slackChannels: slackChannelsLinkedWithAgent } =
     useSlackChannelsLinkedWithAgent({
       workspaceId: owner.sId,
-      disabled: !agentConfiguration || isBuilder(owner),
+      disabled: !agentConfiguration || !isBuilder(owner),
     });
 
   const slackProvider = useMemo(() => {
