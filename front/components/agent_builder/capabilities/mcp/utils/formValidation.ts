@@ -1,39 +1,18 @@
 import { z } from "zod";
 
 import { mcpServerConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { createMCPFormSchema } from "@app/components/agent_builder/capabilities/mcp/validation/schemaBuilders";
+import { 
+  createBaseFormSchema,
+  createMCPFormSchema 
+} from "@app/components/agent_builder/capabilities/mcp/validation/schemaBuilders";
 import type {AgentBuilderAction} from "@app/components/agent_builder/types";
-import { DESCRIPTION_MAX_LENGTH } from "@app/components/agent_builder/types";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
-// Canvas-specific schema with optional data sources
 const canvasFormSchema = z.object({
-  name: z
-    .string()
-    .min(1, "The name cannot be empty.")
-    .transform((val) => {
-      // Convert to lowercase and replace spaces and special chars with underscores
-      return (
-        val
-          .toLowerCase()
-          .replace(/[^a-z0-9_]/g, "_")
-          // Remove consecutive underscores
-          .replace(/_+/g, "_")
-          // Remove leading/trailing underscores
-          .replace(/^_+|_+$/g, "")
-      );
-    })
-    .default(""),
-  description: z
-    .string()
-    .min(1, "Description is required")
-    .max(
-      DESCRIPTION_MAX_LENGTH,
-      "Description should be less than 800 characters."
-    ),
-  sources: dataSourceBuilderTreeType, // No refinement - data sources are optional
+  ...createBaseFormSchema(),
+  sources: dataSourceBuilderTreeType, // No refinement - data sources are optional for canvas
   mcpServerView: z.custom<MCPServerViewType>().nullable(),
   configuration: mcpServerConfigurationSchema,
 });
