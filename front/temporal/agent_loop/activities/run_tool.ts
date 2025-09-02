@@ -4,6 +4,7 @@ import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
@@ -118,6 +119,10 @@ export async function runToolActivity(
             step,
           },
           shouldPauseAgentLoop: true,
+        });
+
+        await ConversationResource.markAsActionRequired(auth, {
+          conversation,
         });
 
         return { deferredEvents };
