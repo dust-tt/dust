@@ -472,7 +472,7 @@ export function MCPServerViewsSheet({
   );
 
   // Memoize default values to prevent form recreation
-  const defaultFormValues = useMemo((): MCPFormValues => {
+  const defaultFormValues = useMemo(() => {
     if (configurationTool?.type === "MCP") {
       const baseValues: MCPFormData = {
         name: configurationTool.name ?? "",
@@ -498,7 +498,7 @@ export function MCPServerViewsSheet({
       return baseValues;
     }
 
-    return getDefaultFormValues(mcpServerView) as MCPFormValues;
+    return getDefaultFormValues(mcpServerView);
   }, [configurationTool, mcpServerView]);
 
   // Create stable form instance with conditional resolver
