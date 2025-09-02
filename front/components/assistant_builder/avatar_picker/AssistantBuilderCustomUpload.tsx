@@ -78,7 +78,7 @@ const AssistantBuilderCustomUpload = React.forwardRef<
     image: HTMLImageElement,
     crop: Crop
   ): Promise<string> => {
-    const canvas = document.createElement("canvas");
+    const canvas = document.createElement("content_creation");
 
     canvas.width = crop.width ? (crop.width / 100) * image.naturalWidth : 0;
     canvas.height = crop.height ? (crop.height / 100) * image.naturalHeight : 0;

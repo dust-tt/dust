@@ -33,7 +33,7 @@ export function getMCPConfigurationFormSchema(
 
   const baseSchema = createMCPFormSchema(requirements);
   
-  // All MCP tools has sources but only Canvas will use it (and it should be optional)
+  // All MCP tools has sources but only content_creation will use it (and it should be optional)
   return z.object({
     ...baseSchema.shape,
     sources: dataSourceBuilderTreeType, 
@@ -66,7 +66,6 @@ export function validateMCPActionConfiguration(
       };
     }
 
-    // Include sources for all MCP tools
     const validationData: MCPValidationData = {
       name: action.name,
       description: action.description,
@@ -83,7 +82,6 @@ export function validateMCPActionConfiguration(
 
     return { isValid: true };
   } catch (error) {
-    console.error("Validation error for", serverView.server.name, ":", error);
     return {
       isValid: false,
       errorMessage: `Tool "${serverView.name || serverView.server.name}" has invalid configuration. Please reconfigure it.`,

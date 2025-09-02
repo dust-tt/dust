@@ -360,7 +360,7 @@ export function MCPServerViewsSheet({
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
     const requirement = getMCPServerRequirements(mcpServerView);
 
-    if (!requirement.noRequirement || isCanvas) {
+    if (!requirement.noRequirement || isContentCreation) {
       const action = getDefaultMCPAction(mcpServerView);
       const isReasoning = requirement.requiresReasoningConfiguration;
 
@@ -466,7 +466,7 @@ export function MCPServerViewsSheet({
   // Memoize default values to prevent form recreation
   const defaultFormValues = useMemo(() => {
     if (configurationTool?.type === "MCP") {
-      // Extract data sources from configuration if editing (only Canvas stores them for now)
+      // Extract data sources from configuration if editing (only "content_creation" stores them for now)
       const dataSourceConfigurations =
         configurationTool.configuration?.dataSourceConfigurations;
       const sources = dataSourceConfigurations
@@ -498,7 +498,7 @@ export function MCPServerViewsSheet({
     [mcpServerView]
   );
 
-  const isCanvas = mcpServerView?.server.name === "canvas";
+  const isContentCreation = mcpServerView?.server.name === "content_creation";
 
   // Stable form reset handler - no form dependency to prevent re-renders
   const resetFormValues = useMemo(
@@ -586,7 +586,7 @@ export function MCPServerViewsSheet({
                 allowNameEdit={!configurationTool.noConfigurationRequired}
               />
 
-              {mcpServerView.server.name === "canvas" && (
+              {mcpServerView.server.name === "content_creation" && (
                 <SelectedDataSourcesSection
                   isEditMode={true}
                   onEditDataSources={() => {
@@ -703,9 +703,9 @@ export function MCPServerViewsSheet({
           ? configurationTool.name
           : formData.name;
 
-      // Only include data source configurations in backend for Canvas
+      // Only include data source configurations in backend for "content_creation"
       let finalConfiguration = formData.configuration;
-      if (mcpServerView.server.name === "canvas") {
+      if (mcpServerView.server.name === "content_creation") {
         const sources = formData.sources;
         if (
           sources &&

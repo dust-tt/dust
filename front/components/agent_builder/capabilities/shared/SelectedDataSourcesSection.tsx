@@ -70,8 +70,8 @@ export function SelectedDataSourcesSection({
           {isEditMode ? (
             <div className="flex flex-col gap-2">
               <p>
-                Canvas can access your data sources for better context. This is
-                optional.
+                Content Creation can access your data sources for better
+                context. This is optional.
               </p>
               {onEditDataSources && (
                 <Button
@@ -84,7 +84,7 @@ export function SelectedDataSourcesSection({
               )}
             </div>
           ) : (
-            "Canvas will operate without data source context."
+            "Content Creation will operate without data source context."
           )}
         </ContentMessage>
       )}
