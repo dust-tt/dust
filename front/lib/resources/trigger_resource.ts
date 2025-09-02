@@ -130,7 +130,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     const res = await this.model.findAll({
       where: {
         workspaceId: workspace.id,
-        "$trigger_subscribers.userId$": user.id,
         // Exclude triggers where user is also editor to avoid duplicates
         editor: { [Op.ne]: user.id },
       },
