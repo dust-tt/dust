@@ -13,26 +13,13 @@ import { dataSourceBuilderTreeType } from "@app/components/data_source_view/cont
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
-type CanvasValidationData = {
-  name: string;
-  description: string | null;
-  configuration: MCPServerConfigurationType | null;
-  sources: DataSourceBuilderTreeType;
-  mcpServerView: MCPServerViewType;
-};
-
 type MCPValidationData = {
   name: string;
   description: string | null;
   configuration: MCPServerConfigurationType | null;
+  sources: DataSourceBuilderTreeType;
+  mcpServerView?: MCPServerViewType;
 };
-
-const canvasFormSchema = z.object({
-  ...createBaseFormSchema(),
-  sources: dataSourceBuilderTreeType, // No refinement - data sources are optional for canvas
-  mcpServerView: z.custom<MCPServerViewType>().nullable(),
-  configuration: mcpServerConfigurationSchema,
-});
 
 /**
  * Creates MCP configuration form schema for validation
@@ -44,15 +31,19 @@ const canvasFormSchema = z.object({
 export function getMCPConfigurationFormSchema(
   mcpServerView: MCPServerViewType | null | undefined
 ) {
-  if (mcpServerView?.server.name === "canvas") {
-    return canvasFormSchema;
-  }
-
   const requirements = mcpServerView
     ? getMCPServerRequirements(mcpServerView)
     : null;
 
-  return createMCPFormSchema(requirements);
+  // Get the base schema with requirements-based validation
+  const baseSchema = createMCPFormSchema(requirements);
+  
+  // All MCP tools now support sources in the form
+  // Extend the base schema to include sources
+  return z.object({
+    ...baseSchema.shape,
+    sources: dataSourceBuilderTreeType, // Data sources are optional for all MCP tools
+  });
 }
 
 /**
@@ -81,25 +72,18 @@ export function validateMCPActionConfiguration(
       };
     }
 
-    // For Canvas, include sources and mcpServerView in validation
-    const validationData: MCPValidationData | CanvasValidationData =
-      serverView.server.name === "canvas"
-        ? {
-            name: action.name,
-            description: action.description,
-            configuration: action.configuration,
-            sources: action.configuration?.dataSourceConfigurations
-              ? transformSelectionConfigurationsToTree(
-                  action.configuration.dataSourceConfigurations
-                )
-              : { in: [], notIn: [] },
-            mcpServerView: serverView,
-          }
-        : {
-            name: action.name,
-            description: action.description,
-            configuration: action.configuration,
-          };
+    // Include sources for all MCP tools
+    const validationData: MCPValidationData = {
+      name: action.name,
+      description: action.description,
+      configuration: action.configuration,
+      sources: action.configuration?.dataSourceConfigurations
+        ? transformSelectionConfigurationsToTree(
+            action.configuration.dataSourceConfigurations
+          )
+        : { in: [], notIn: [] },
+      mcpServerView: serverView,
+    };
 
     schema.parse(validationData);
 

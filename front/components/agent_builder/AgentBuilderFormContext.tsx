@@ -3,6 +3,7 @@ import { createContext } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
+import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
 import {
   MODEL_IDS,
@@ -229,6 +230,7 @@ export type MCPFormData = {
   name: string;
   description: string;
   configuration: MCPServerConfigurationType;
+  sources: DataSourceBuilderTreeType;
 }
 
 export const AgentBuilderFormContext =
