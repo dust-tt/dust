@@ -129,11 +129,7 @@ function useCopilotConversation() {
       new Set(["data_visualization", ...mcpServerViews.map((v) => v.server.name)])
     );
 
-    // Log available tools in the console for validation.
-    if (!conversation) {
-      // eslint-disable-next-line no-console
-      console.log("Copilot available tool IDs:", availableToolIds);
-    }
+    // availableToolIds is included in the hidden <COPILOT_STATE> but not logged.
 
     const editorStateLight = {
       agentSettings: {
