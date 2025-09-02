@@ -37,7 +37,7 @@ export async function getStaticProps() {
 }
 
 const PEOPLE: Record<
-  string,
+  string, // The handle is the prefix of the email address
   {
     name: string;
     title: string;
@@ -346,6 +346,49 @@ const PEOPLE: Record<
     image: "https://ca.slack-edge.com/T050RH73H9P-U09ATLV5RNX-f840cb7fa121-512",
     linkedIn: "https://www.linkedin.com/in/okalotieno",
     github: "https://github.com/okal",
+  },
+  anas: {
+    name: "Anas Lecaillon",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/31699174?v=4",
+    linkedIn: "https://www.linkedin.com/in/anas-lecaillon",
+    github: "https://github.com/anonx3247",
+  },
+  z: {
+    name: "Zeïd Marouf",
+    title: "Security Engineer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09DVNRFDJL-bbc7ebca4159-512",
+    linkedIn: "https://www.linkedin.com/in/zeidmarouf",
+    github: "https://github.com/zmarouf",
+  },
+  rcs: {
+    name: "Rémy-Christophe Schermesser",
+    title: "Software Engineer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09D77UR8S0-3af0e8ba603b-512",
+    linkedIn: "https://www.linkedin.com/in/r%C3%A9my-christophe-s-0204834/",
+    github: "https://avatars.githubusercontent.com/u/16667?v=4",
+  },
+  pierre: {
+    name: "Pierre Milliotte",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/39985796?v=4",
+    linkedIn: "https://www.linkedin.com/in/pierre-milliotte-664962a4/",
+    github: "https://github.com/pmilliotte",
+  },
+  alex: {
+    name: "Alexandre Casanova",
+    title: "Enterprise Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09DVNHFS2C-9a2d6df66ced-512",
+    linkedIn: "https://www.linkedin.com/in/alexandre-casanova-a89927a5/",
+    github: "https://github.com/AlexandreCasa",
+  },
+  neyla: {
+    name: "Neyla Belmaachi",
+    title: "Business Development Representative",
+    image:
+      "https://media.licdn.com/dms/image/v2/D4D03AQFOta7Ao6aodg/profile-displayphoto-shrink_800_800/B4DZeCQlSRH4Ac-/0/1750237075055?e=1759968000&v=beta&t=HR_yS-qenHyqOcrwWAXiqO3czAvb0KGRDpja8sutgIs",
+    linkedIn: "https://www.linkedin.com/in/neyla-belmaachi-4817b0166/",
+    github: null,
   },
 };
 
