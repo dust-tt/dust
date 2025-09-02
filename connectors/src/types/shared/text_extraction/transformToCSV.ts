@@ -55,6 +55,11 @@ export function transformStreamToCSV(
     {
       onopentag(name) {
         state.tags.push(name);
+        // When we open a td tag, add an empty cell placeholder
+        // This handles self-closing <td/> tags from Tika XLSX conversion
+        if (name === HTML_TAGS.CELL) {
+          state.currentRow.push("");
+        }
       },
 
       ontext(text) {
@@ -63,7 +68,12 @@ export function transformStreamToCSV(
         if (currentTag === selector) {
           htmlParsingTransform.push(`${TABLE_PREFIX}${text}\n`);
         } else if (currentTag === HTML_TAGS.CELL) {
-          state.currentRow.push(text);
+          // Replace the last empty cell with actual text content
+          // Trim to remove tabs/whitespace from Tika XLSX conversion
+          const trimmed = text.trim();
+          if (trimmed) {
+            state.currentRow[state.currentRow.length - 1] = trimmed;
+          }
         }
       },
 

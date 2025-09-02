@@ -187,13 +187,28 @@ pub async fn load_tables_from_identifiers(
     .await?)
         // Unwrap the results.
         .into_iter()
-        .filter(|t| {
+        .enumerate()
+        .filter(|(_, t)| {
             t.as_ref().map_or(true, |table| {
                 filters_by_project
                     .get(&table.data_source_id())
                     .map_or(true, |filter| filter.match_filter(table))
             })
         })
-        .map(|t| t.ok_or_else(|| anyhow!("Table not found. The table does not exist anymore or the agent does not have access to it.")))
+        .map(|(idx, t)| {
+            t.ok_or_else(|| {
+                let (workspace_id, data_source_or_view_id, table_id, _) = &table_identifiers[idx];
+                let (project, data_source_name) = project_and_data_source_by_data_source_view
+                    .get(&(*workspace_id, *data_source_or_view_id))
+                    .map(|(p, ds)| (p.project_id().to_string(), ds.to_string()))
+                    .unwrap_or_else(|| ("unknown".to_string(), "unknown".to_string()));
+
+                anyhow!(
+                    "Table not found: table_id='{}', data_source='{}', project='{}', workspace_id='{}'. \
+                    The table does not exist anymore or the agent does not have access to it.",
+                    table_id, data_source_name, project, workspace_id
+                )
+            })
+        })
         .collect()
 }
