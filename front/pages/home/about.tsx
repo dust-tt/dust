@@ -395,7 +395,7 @@ const PEOPLE: Record<
     image: "https://ca.slack-edge.com/T050RH73H9P-U09DVNWQDT2-8e9a078de65f-512",
     linkedIn: "https://www.linkedin.com/in/neyla-belmaachi-4817b0166/",
     github: null,
-  }
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
