@@ -25,7 +25,7 @@ export const AGENT_CREATIVITY_LEVELS = [
 ] as const;
 export type AgentCreativityLevel = (typeof AGENT_CREATIVITY_LEVELS)[number];
 
-// Add a name of the server if you want to show a tool under knowledge
+// Add a name of the server if you want to show a tool under knowledge dropdown
 export const INTERNAL_KNOWLEDGE_TOOL_SERVER_NAMES = [
   "search",
   "extract_data",

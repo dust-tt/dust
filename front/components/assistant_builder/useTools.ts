@@ -89,7 +89,7 @@ function getGroupedMCPServerViews({
       label: displayName,
     };
   });
-
+  
   const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
     groupBy(mcpServerViewsWithLabel, (view) => {
       const isWithKnowledge = INTERNAL_KNOWLEDGE_TOOL_SERVER_NAMES.includes(
