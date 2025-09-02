@@ -4,6 +4,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
@@ -37,8 +38,9 @@ async function handler(
     TriggerResource.listByUserSubscriber(auth),
   ]);
 
-  const editorTriggersWithAgentInfo = await Promise.all(
-    editorTriggers.map(async (trigger) => {
+  const editorTriggersWithAgentInfo = await concurrentExecutor(
+    editorTriggers,
+    async (trigger) => {
       const agentConfiguration = await getAgentConfiguration(auth, {
         agentId: trigger.agentConfigurationId,
         variant: "light",
@@ -54,11 +56,13 @@ async function handler(
         agentName: agentConfiguration.name,
         agentPictureUrl: agentConfiguration.pictureUrl,
       };
-    })
+    },
+    { concurrency: 5 }
   );
 
-  const subscriberTriggersWithAgentInfo = await Promise.all(
-    subscriberTriggers.map(async (trigger) => {
+  const subscriberTriggersWithAgentInfo = await concurrentExecutor(
+    subscriberTriggers,
+    async (trigger) => {
       const agentConfiguration = await getAgentConfiguration(auth, {
         agentId: trigger.agentConfigurationId,
         variant: "light",
@@ -74,7 +78,8 @@ async function handler(
         agentName: agentConfiguration.name,
         agentPictureUrl: agentConfiguration.pictureUrl,
       };
-    })
+    },
+    { concurrency: 5 }
   );
 
   // Combine and filter out null values
