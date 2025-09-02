@@ -530,6 +530,7 @@ impl LLM for AnthropicLLM {
             usage: Some(LLMTokenUsage {
                 prompt_tokens: c.usage.input_tokens,
                 completion_tokens: c.usage.output_tokens,
+                cached_tokens: c.usage.cache_read_input_tokens,
                 // Note: the model can actually use less than that, but best we can do is report
                 // the full budget.
                 reasoning_tokens: thinking_budget,

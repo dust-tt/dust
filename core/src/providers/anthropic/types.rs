@@ -67,6 +67,7 @@ pub enum StopReason {
 pub struct Usage {
     pub input_tokens: u64,
     pub output_tokens: u64,
+    pub cache_read_input_tokens: Option<u64>,
 }
 
 // Anthropic content enum (a response is really an array of contents)

@@ -591,6 +591,7 @@ export async function runModelActivity(
             prompt_tokens: number;
             completion_tokens: number;
             reasoning_tokens?: number;
+            cached_tokens?: number;
           };
         } | null;
         const reasoningTokens = meta?.token_usage?.reasoning_tokens || 0;
