@@ -44,11 +44,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
 
   const getEditionURL = useCallback(
     (agentConfigurationId: string) => {
-      return getAgentBuilderRoute(
-        owner.sId,
-        agentConfigurationId,
-        featureFlags.includes("agent_builder_v2")
-      );
+      return getAgentBuilderRoute(owner.sId, agentConfigurationId);
     },
     [owner.sId, featureFlags]
   );
