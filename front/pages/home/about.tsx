@@ -357,7 +357,7 @@ const PEOPLE: Record<
   anas: {
     name: "Anas Lecaillon",
     title: "Software Engineer",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U09DVNMLF08-68655677bf9e-512",
+    image: "https://avatars.githubusercontent.com/u/31699174?v=4",
     linkedIn: "https://www.linkedin.com/in/anas-lecaillon",
     github: "https://github.com/anonx3247",
   },
@@ -373,16 +373,16 @@ const PEOPLE: Record<
     title: "Software Engineer",
     image: "https://ca.slack-edge.com/T050RH73H9P-U09D77UR8S0-3af0e8ba603b-512",
     linkedIn: "https://www.linkedin.com/in/r%C3%A9my-christophe-s-0204834/",
-    github: "https://github.com/ElPicador",
+    github: "https://avatars.githubusercontent.com/u/16667?v=4",
   },
   pierre: {
     name: "Pierre Milliotte",
     title: "Software Engineer",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U09DG8A5R2M-e95b31316051-512",
+    image: "https://avatars.githubusercontent.com/u/39985796?v=4",
     linkedIn: "https://www.linkedin.com/in/pierre-milliotte-664962a4/",
     github: "https://github.com/pmilliotte",
   },
-  "alex.casanova": {
+  alex: {
     name: "Alexandre Casanova",
     title: "Enterprise Account Executive",
     image: "https://ca.slack-edge.com/T050RH73H9P-U09DVNHFS2C-9a2d6df66ced-512",
