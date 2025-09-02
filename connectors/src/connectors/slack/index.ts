@@ -12,7 +12,6 @@ import {
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
 import {
-  autoReadChannel,
   autoReadChannelsBulk,
   findMatchingChannelPatterns,
 } from "@connectors/connectors/slack/auto_read_channel";

@@ -9,11 +9,11 @@ import {
   getSlackClient,
   reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
-import { launchSlackJoinChannelsWorkflowAndWait } from "@connectors/connectors/slack/temporal/client";
 import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
 } from "@connectors/connectors/slack/lib/utils";
+import { launchSlackJoinChannelsWorkflowAndWait } from "@connectors/connectors/slack/temporal/client";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -301,11 +301,11 @@ export async function autoReadChannelsBulk(
       method: "conversations.info",
       channelId: slackChannelId,
     });
-    
+
     const remoteChannel = await slackClient.conversations.info({
       channel: slackChannelId,
     });
-    
+
     const remoteChannelName = remoteChannel.channel?.name;
     if (!remoteChannel.ok || !remoteChannelName) {
       logger.error({
@@ -325,7 +325,7 @@ export async function autoReadChannelsBulk(
       if (!remoteChannel.channel?.is_member) {
         channelsToJoin.push(slackChannelId);
       }
-      
+
       channelsToProcess.push({
         channelId: slackChannelId,
         channelName: remoteChannelName,
@@ -358,7 +358,7 @@ export async function autoReadChannelsBulk(
         connectorId,
       },
     });
-    
+
     if (!channel) {
       channel = await SlackChannel.create({
         connectorId,
@@ -440,7 +440,9 @@ export async function autoReadChannelsBulk(
                 dataSourceView,
                 {
                   parentsToAdd: [
-                    slackChannelInternalIdFromSlackChannelId(channel.slackChannelId),
+                    slackChannelInternalIdFromSlackChannelId(
+                      channel.slackChannelId
+                    ),
                   ],
                   parentsToRemove: undefined,
                 }

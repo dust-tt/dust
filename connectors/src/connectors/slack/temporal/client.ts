@@ -336,7 +336,7 @@ export async function launchSlackMigrateChannelsFromLegacyBotToNewBotWorkflow(
 /**
  * Launch workflow(s) to join Slack channels.
  * Returns workflow handles that the caller can await.
- * 
+ *
  * @param connectorId - The connector ID
  * @param channelIds - Array of channel IDs to join
  * @param allowUnlimitedChannels - If true, allows processing more than 250 channels
@@ -349,17 +349,20 @@ export async function launchSlackJoinChannelsWorkflow(
   allowUnlimitedChannels: boolean = false
 ) {
   const MAX_CHANNELS_PER_WORKFLOW = 250;
-  
+
   if (channelIds.length === 0) {
     return new Ok([]);
   }
 
   // Check if we exceed the limit without permission
-  if (!allowUnlimitedChannels && channelIds.length > MAX_CHANNELS_PER_WORKFLOW) {
+  if (
+    !allowUnlimitedChannels &&
+    channelIds.length > MAX_CHANNELS_PER_WORKFLOW
+  ) {
     return new Err(
       new Error(
         `Cannot join more than ${MAX_CHANNELS_PER_WORKFLOW} channels without allowUnlimitedChannels flag. ` +
-        `Received ${channelIds.length} channels.`
+          `Received ${channelIds.length} channels.`
       )
     );
   }
@@ -378,7 +381,7 @@ export async function launchSlackJoinChannelsWorkflow(
       totalChannels: channelIds.length,
       batchCount: batches.length,
     },
-    batches.length > 1 
+    batches.length > 1
       ? "Starting multiple channel join workflows for bulk operation."
       : "Starting channel join workflow."
   );
@@ -399,7 +402,7 @@ export async function launchSlackJoinChannelsWorkflow(
             connectorId: connectorId,
           },
         });
-        
+
         logger.info(
           {
             workflowId,
@@ -407,7 +410,7 @@ export async function launchSlackJoinChannelsWorkflow(
           },
           "Started joinChannels workflow."
         );
-        
+
         return handle;
       })
     );
