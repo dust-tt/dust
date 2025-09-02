@@ -1,9 +1,10 @@
 import { Button, ContextItem } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 import { useWatch } from "react-hook-form";
 
-import type { DataSourceFilterItem } from "@app/components/agent_builder/capabilities/shared/DataSourceFilterContextItem";
 import { DataSourceFilterContextItem } from "@app/components/agent_builder/capabilities/shared/DataSourceFilterContextItem";
 import { DataSourceViewTagsFilterDropdown } from "@app/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown";
+import { extractDataSourceViews } from "@app/components/agent_builder/capabilities/shared/utils/dataSourceUtils";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { CONFIGURATION_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
 import { useKnowledgePageContext } from "@app/components/data_source_view/context/PageContext";
@@ -13,21 +14,9 @@ export function SelectDataSourcesFilters() {
   const { setSheetPageId } = useKnowledgePageContext();
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
 
-  const dataSourceViews = sources.in.reduce(
-    (acc, source) => {
-      if (source.type === "data_source") {
-        acc[source.dataSourceView.dataSource.dustAPIDataSourceId] = {
-          dataSourceView: source.dataSourceView,
-        };
-      } else if (source.type === "node") {
-        acc[source.node.dataSourceView.dataSource.dustAPIDataSourceId] = {
-          dataSourceView: source.node.dataSourceView,
-        };
-      }
-
-      return acc;
-    },
-    {} as Record<string, DataSourceFilterItem>
+  const dataSourceViews = useMemo(
+    () => extractDataSourceViews(sources),
+    [sources]
   );
 
   return (
