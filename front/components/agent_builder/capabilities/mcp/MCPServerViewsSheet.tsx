@@ -22,8 +22,8 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type {
   AgentBuilderFormData,
   MCPFormData,
+  MCPServerConfigurationType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import {
   transformSelectionConfigurationsToTree,
@@ -77,6 +77,7 @@ import {
   TOOLS_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
 import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
+import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
@@ -112,6 +113,12 @@ type MCPActionWithConfiguration = AgentBuilderAction & {
   type: "MCP";
   configuration: MCPServerConfigurationType;
 };
+
+type MCPCanvasFormData = MCPFormData & {
+  sources: DataSourceBuilderTreeType;
+};
+
+type MCPFormValues = MCPFormData | MCPCanvasFormData;
 
 function isMCPActionWithConfiguration(
   action: AgentBuilderAction
@@ -360,9 +367,8 @@ export function MCPServerViewsSheet({
   function onClickMCPServer(mcpServerView: MCPServerViewType) {
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
     const requirement = getMCPServerRequirements(mcpServerView);
-    const isCanvas = mcpServerView.server.name === "canvas";
 
-    if (!requirement.noRequirement || isCanvas) {
+    if (!requirement.noRequirement || requirement.requiredFlavors) {
       const action = getDefaultMCPAction(mcpServerView);
       const isReasoning = requirement.requiresReasoningConfiguration;
 
@@ -466,9 +472,9 @@ export function MCPServerViewsSheet({
   );
 
   // Memoize default values to prevent form recreation
-  const defaultFormValues = useMemo(() => {
+  const defaultFormValues = useMemo((): MCPFormValues => {
     if (configurationTool?.type === "MCP") {
-      const baseValues = {
+      const baseValues: MCPFormData = {
         name: configurationTool.name ?? "",
         description: configurationTool.description ?? "",
         configuration: configurationTool.configuration,
@@ -482,23 +488,24 @@ export function MCPServerViewsSheet({
           ? transformSelectionConfigurationsToTree(dataSourceConfigurations)
           : { in: [], notIn: [] };
 
-        return {
+        const canvasFormValues = {
           ...baseValues,
           sources,
-        } as any; // Type cast to handle the dynamic sources field
+        };
+        return canvasFormValues;
       }
 
       return baseValues;
     }
 
-    return getDefaultFormValues(mcpServerView);
+    return getDefaultFormValues(mcpServerView) as MCPFormValues;
   }, [configurationTool, mcpServerView]);
 
   // Create stable form instance with conditional resolver
-  const form = useForm({
+  const form = useForm<MCPFormValues>({
     resolver: formSchema ? zodResolver(formSchema) : undefined,
     mode: "onSubmit",
-    defaultValues: defaultFormValues as any,
+    defaultValues: defaultFormValues,
     // Prevent form recreation by providing stable shouldUnregister
     shouldUnregister: false,
   });
@@ -762,7 +769,7 @@ export function MCPServerViewsSheet({
   }, [currentMode, onModeChange, resetSheet]);
 
   const handleConfigurationSave = useCallback(
-    async (formData: MCPFormData) => {
+    async (formData: MCPFormValues) => {
       if (!configurationTool || !form || !mcpServerView) {
         return;
       }
@@ -792,7 +799,8 @@ export function MCPServerViewsSheet({
         // For Canvas, include data source configurations
         let finalConfiguration = formData.configuration;
         if (mcpServerView.server.name === "canvas" && "sources" in formData) {
-          const sources = (formData as any).sources;
+          const canvasFormData = formData;
+          const sources = canvasFormData.sources;
           if (
             sources &&
             typeof sources === "object" &&

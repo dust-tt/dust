@@ -225,25 +225,10 @@ export type AgentBuilderDataVizAction = z.infer<
   typeof dataVisualizationActionSchema
 >;
 
-// TODO: create types from schema
-export interface MCPFormData {
+export type MCPFormData = {
   name: string;
   description: string;
-  configuration: {
-    mcpServerViewId: string;
-    dataSourceConfigurations: any;
-    tablesConfigurations: any;
-    childAgentId: string | null;
-    reasoningModel: any;
-    timeFrame: {
-      duration: number;
-      unit: "hour" | "day" | "week" | "month" | "year";
-    } | null;
-    additionalConfiguration: AdditionalConfigurationInBuilderType;
-    dustAppConfiguration: any;
-    jsonSchema: any;
-    _jsonSchemaString: string | null;
-  };
+  configuration: MCPServerConfigurationType;
 }
 
 export const AgentBuilderFormContext =
