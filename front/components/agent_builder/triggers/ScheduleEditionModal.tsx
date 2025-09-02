@@ -1,6 +1,5 @@
 import {
   AnimatedText,
-  Avatar,
   ClockIcon,
   ContentMessage,
   Input,

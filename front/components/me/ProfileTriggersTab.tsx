@@ -4,11 +4,9 @@ import {
   Button,
   ClockIcon,
   DataTable,
-  Icon,
   PencilSquareIcon,
   SearchInput,
   Spinner,
-  TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -29,10 +27,6 @@ interface ProfileTriggersTabProps {
 }
 
 export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-
   const { triggers, isTriggersLoading } = useUserTriggers({
     workspaceId: owner.sId,
   });
@@ -48,7 +42,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
     (agentConfigurationId: string) => {
       return getAgentBuilderRoute(owner.sId, agentConfigurationId);
     },
-    [owner.sId, featureFlags]
+    [owner.sId]
   );
 
   const filteredTriggers = useMemo(() => {

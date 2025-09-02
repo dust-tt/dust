@@ -20,7 +20,7 @@ import {
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 import type { LightAgentConfigurationType } from "@app/types";
-import { isAdmin, pluralize } from "@app/types";
+import { isAdmin } from "@app/types";
 
 interface AgentTriggersTabProps {
   agentConfiguration: LightAgentConfigurationType;
