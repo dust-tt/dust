@@ -67,7 +67,8 @@ export function AgentMessageToolSuggestion({
           ? "Add knowledge"
           : "Add tool";
 
-        const view = mcpServerViews.find((v) => v.server.name === id) || null;
+        const view =
+          mcpServerViews.find((v) => v.server.name?.toLowerCase() === id) || null;
         let iconEl: React.ReactNode = null;
         if (id === "data_visualization") {
           iconEl = <Avatar icon={DATA_VISUALIZATION_SPECIFICATION.cardIcon} size="xs" />;

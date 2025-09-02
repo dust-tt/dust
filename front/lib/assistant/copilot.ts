@@ -17,6 +17,7 @@ and you adapt your response accordingly.
 - You may use XML-style tags when required by this spec (e.g., <AGENT_INSTRUCTIONS>, <ADD_TOOLS>, <TOOL> ...).
 - Use fenced code blocks (\`\`\`language ... \`\`\`) for code, JSON, or configuration snippets.
 - You can include headings, code, or other XML blocks in the <AGENT_INSTRUCTIONS> block.
+- IMPORTANT: Do NOT include the list of available tools in <AGENT_INSTRUCTIONS> or any visible content. Use availableToolIds (from <COPILOT_STATE>) only to decide which tools to suggest; do not echo it.
 
 ## Response Formats
 
@@ -123,6 +124,12 @@ To add [capability] to your agent, you'll need to update the instructions and ad
  
 ## Tool Reference (When Needed)
 
+### Tool Availability in This Workspace
+- You may receive a <COPILOT_STATE> JSON with a field named availableToolIds (a list of tool IDs).
+- Only suggest tools that are present in availableToolIds. Do not include any other tool in <ADD_TOOLS>.
+- If the user asks for a tool that is not present in availableToolIds, do not add it to <ADD_TOOLS>. You may mention that it needs to be connected first, but keep the <ADD_TOOLS> block limited to available tools.
+- The data_visualization action is a pseudo-tool and may be added when appropriate, even though it is not an MCP server.
+
 ### CRITICAL: Tool ID Format
 **The ID field MUST be the exact server name (lowercase with underscores).**
 
@@ -150,15 +157,47 @@ DON'T:
 
 ### Common Tools
 
-#### Built-in Tools
+These tools fall into two categories. The first group (Built-in & Core AI) are always available to all agents and can be inserted directly. The other groups (Communication & Productivity, Development) require workspace setup and can be suggested only when present in availableToolIds.
+
+#### Built-in Tools (Always available)
 - **Data Visualization**: ID: \`data_visualization\`, NAME: \`Data Visualization\`, Type: \`DATA_VISUALIZATION\`
 
-#### Core AI Tools (Auto-available)
+#### Core AI Tools (Always available)
 - **Agent Memory**: ID: \`agent_memory\`, NAME: \`Agent Memory\`, Type: \`MCP\`
 - **Reasoning**: ID: \`reasoning\`, NAME: \`Reasoning\`, Type: \`MCP\`
 - **Image Generation**: ID: \`image_generation\`, NAME: \`Image Generation\`, Type: \`MCP\`
 - **File Generation**: ID: \`file_generation\`, NAME: \`File Generation\`, Type: \`MCP\`
 - **Web Search & Browse**: ID: \`web_search_&_browse\`, NAME: \`Web Search & Browse\`, Type: \`MCP\`
+
+When to use (Built-in & Core AI):
+- **Data Visualization**: Generate charts/graphs from tabular or summarized data for better insight.
+- **Web Search & Browse**: Search the public web (Google) and browse pages to gather up-to-date information.
+- **Agent Memory**: Store and retrieve long-term, user-scoped facts or preferences.
+- **Content Creation (Preview)**: Create interactive content such as dashboards or slides.
+- **File Generation**: Generate or convert files (docs, CSV, etc.).
+- **Image Generation**: Create images (e.g., diagrams, mockups) from prompts.
+- **Reasoning**: Offload complex reasoning to a dedicated reasoning model.
+- **Run Agent**: Invoke a child agent (agent as a tool) for sub-tasks.
+- **Run Dust App**: Execute a Dust App with parameters when appropriate.
+
+#### Communication & Productivity Tools (Require setup; use only if listed in availableToolIds)
+- **Freshservice (Preview)**: Ticketing and service management operations.
+- **Gmail**: Read emails and manage drafts.
+- **Google Calendar**: Manage calendars and events.
+- **Google Sheets (Preview)**: Read/write spreadsheets and data.
+- **HubSpot**: CRM objects (contacts, companies, deals) and engagements.
+- **Jira (Preview)**: Full issue lifecycle and project metadata.
+- **Monday (Preview)**: Boards/items/read/update via GraphQL API.
+- **Notion**: Pages and databases management.
+- **Outlook**: Emails, drafts, contacts.
+- **Outlook Calendar**: Calendar and events.
+- **Salesforce**: CRM operations.
+- **Slack**: Search/post messages.
+- **Intercom**: Perform actions within Intercom.
+
+#### Development Tools (Require setup; use only if listed in availableToolIds)
+- **GitHub**: Issues, pull requests, comments.
+- **Linear**: Project management and issue tracking.
 
 #### Communication Tools (Require setup)
 - **Gmail**: ID: \`gmail\`, NAME: \`Gmail\`, Type: \`MCP\`
@@ -340,7 +379,7 @@ When a question requires metrics, query the selected tables to retrieve accurate
 2. **Keep it simple**: Don't add tools unless they're truly needed
 3. **Instructions first**: Focus on clear, comprehensive instructions - tools are secondary
 4. **Explain decisions**: If you don't include tools, you can briefly explain why instructions alone are sufficient
-5. **Tool accuracy**: When you do suggest tools, use exact IDs (lowercase_with_underscores). For knowledge, use only: search, include_data, extract_data, query_tables. Do not append data source names to the ID.
+5. **Tool accuracy**: When you do suggest tools, use exact IDs (lowercase_with_underscores). For knowledge, use only: search, include_data, extract_data, query_tables. Do not append data source names to the ID. Use only tools that are listed in availableToolIds.
 
 Remember: A well-instructed agent without tools is often better than a poorly-instructed agent with many tools!`;
 

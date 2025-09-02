@@ -221,6 +221,44 @@ export function AgentBuilderCapabilitiesBlock({
     update(index, action);
   };
 
+  // Allow external components (e.g., Copilot panel) to request opening the MCP
+  // action configuration sheet for a given action index.
+  React.useEffect(() => {
+    const handler = (ev: Event) => {
+      const custom = ev as CustomEvent<{ index: number }>;
+      const idx = custom.detail?.index;
+      if (typeof idx === "number" && idx >= 0 && idx < fields.length) {
+        const action = fields[idx];
+        setDialogMode({ type: "edit", action, index: idx });
+      }
+    };
+    window.addEventListener("dust:open-mcp-action-sheet", handler);
+    return () => window.removeEventListener("dust:open-mcp-action-sheet", handler);
+  }, [fields]);
+
+  // Allow opening the MCP configuration sheet for a specific server view before adding.
+  React.useEffect(() => {
+    const handler = (ev: Event) => {
+      const custom = ev as CustomEvent<{ serverName: string }>;
+      const serverName = custom.detail?.serverName?.toLowerCase();
+      if (!serverName) return;
+      // Search in both default and non-default lists
+      const allViews = [
+        ...mcpServerViewsWithKnowledge,
+        ...mcpServerViews,
+      ];
+      const view = allViews.find(
+        (v) => v.server.name?.toLowerCase() === serverName
+      );
+      if (!view) return;
+      const action = getDefaultMCPAction(view);
+      setDialogMode({ type: "configure", action, mcpServerView: view });
+    };
+    window.addEventListener("dust:configure-mcp-server-view", handler);
+    return () =>
+      window.removeEventListener("dust:configure-mcp-server-view", handler);
+  }, [mcpServerViews, mcpServerViewsWithKnowledge]);
+
   const onClickKnowledge = () => {
     // We don't know which action will be selected so we will create a generic MCP action.
     const action = getDefaultMCPAction();

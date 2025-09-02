@@ -125,6 +125,16 @@ function useCopilotConversation() {
       return null;
     }).filter(Boolean);
 
+    const availableToolIds = Array.from(
+      new Set(["data_visualization", ...mcpServerViews.map((v) => v.server.name)])
+    );
+
+    // Log available tools in the console for validation.
+    if (!conversation) {
+      // eslint-disable-next-line no-console
+      console.log("Copilot available tool IDs:", availableToolIds);
+    }
+
     const editorStateLight = {
       agentSettings: {
         name: fullState.agentSettings?.name,
@@ -140,6 +150,7 @@ function useCopilotConversation() {
         responseFormat: fullState.generationSettings?.responseFormat || null,
       },
       actions: actionsLight,
+      availableToolIds,
       maxStepsPerRun: fullState.maxStepsPerRun,
     };
     const editorStateJson = JSON.stringify(editorStateLight, null, 2);
@@ -318,8 +329,12 @@ export function AgentBuilderCopilot() {
 
       // Find a matching MCP server view by server.name
       const view =
-        defaultMCPServerViews.find((v) => v.server.name === toolId) ||
-        mcpServerViews.find((v) => v.server.name === toolId) ||
+        defaultMCPServerViews.find(
+          (v) => v.server.name?.toLowerCase() === toolId
+        ) ||
+        mcpServerViews.find(
+          (v) => v.server.name?.toLowerCase() === toolId
+        ) ||
         null;
 
       if (!view) {
@@ -328,6 +343,18 @@ export function AgentBuilderCopilot() {
           description: `No '${toolId}' tool is available in this workspace.`,
           type: "error",
         });
+        return false;
+      }
+
+      // For tools that require configuration (run_agent, run_dust_app), open
+      // the configuration sheet and only add the tool upon saving.
+      if (toolId === "run_agent" || toolId === "run_dust_app") {
+        window.dispatchEvent(
+          new CustomEvent("dust:configure-mcp-server-view", {
+            detail: { serverName: view.server.name },
+          })
+        );
+        // Do not mark as added; completion happens when user saves the sheet.
         return false;
       }
 
