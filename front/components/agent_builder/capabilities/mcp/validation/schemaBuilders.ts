@@ -144,7 +144,9 @@ function createAdditionalConfigurationSchema(
 
     // Add flavors field only when there are required flavors.
     if (requirements.requiredFlavors.length > 0) {
-      nestedStructure.flavors = z.array(z.string());
+      nestedStructure.flavors = z
+        .array(z.string())
+        .min(1, "You must select at least one content type");
     }
 
     return z.object(nestedStructure);
