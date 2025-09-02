@@ -223,9 +223,9 @@ interface PublicVisualizationActionIframeProps {
 }
 
 // This interface represents the props for the VisualizationActionIframe component when it is used
-// in a private canvas context.
-interface CanvasVisualizationActionIframeProps {
-  // TODO(CANVAS 2025-07-25): Add support to retry the visualization.
+// in a private content creation context.
+interface ContentCreationVisualizationActionIframeProps {
+  // TODO(CONTENT_CREATION 2025-07-25): Add support to retry the visualization.
   agentConfigurationId: string | null;
   conversationId: string;
   isInDrawer?: boolean;
@@ -244,7 +244,7 @@ interface LegacyVisualizationActionIframeProps {
 }
 
 type VisualizationActionIframeProps =
-  | CanvasVisualizationActionIframeProps
+  | ContentCreationVisualizationActionIframeProps
   | LegacyVisualizationActionIframeProps
   | PublicVisualizationActionIframeProps;
 

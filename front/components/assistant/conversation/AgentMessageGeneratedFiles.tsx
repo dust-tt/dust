@@ -45,7 +45,7 @@ export function DefaultAgentMessageGeneratedFiles({
   );
 }
 
-// Canvas files.
+// Content creation files.
 
 function getDescriptionForContentType(
   file: LightAgentMessageType["generatedFiles"][number]
@@ -57,17 +57,17 @@ function getDescriptionForContentType(
   return null;
 }
 
-interface AgentMessageCanvasGeneratedFilesProps {
+interface AgentMessageContentCreationGeneratedFilesProps {
   files: LightAgentMessageType["generatedFiles"];
   onClick?: () => void;
   variant?: "list" | "grid";
 }
 
-export function AgentMessageCanvasGeneratedFiles({
+export function AgentMessageContentCreationGeneratedFiles({
   files,
   onClick,
   variant = "list",
-}: AgentMessageCanvasGeneratedFilesProps) {
+}: AgentMessageContentCreationGeneratedFilesProps) {
   const { openPanel } = useConversationSidePanelContext();
 
   if (files.length === 0) {
@@ -80,7 +80,7 @@ export function AgentMessageCanvasGeneratedFiles({
         const handleClick = (e: React.MouseEvent) => {
           e.preventDefault();
           openPanel({
-            type: "canvas",
+            type: "content_creation",
             fileId: file.fileId,
           });
           onClick?.();
@@ -106,7 +106,7 @@ export function AgentMessageCanvasGeneratedFiles({
             <CitationDescription>
               <div className="flow-row flex items-center gap-2">
                 <Icon visual={SparklesIcon} size="xs" />
-                Canvas
+                Content Creation
               </div>
             </CitationDescription>
           </Citation>

@@ -103,13 +103,13 @@ function getGroupedMCPServerViews({
     groupBy(mcpServerViewsWithLabel, (view) => {
       const requirements = getMCPServerRequirements(view);
 
-      // Special handling for canvas server:
-      // The canvas server includes list and cat tools for convenience, but its primary purpose is
+      // Special handling for content_creation server:
+      // The content_creation server includes list and cat tools for convenience, but its primary purpose is
       // not data source operations. We don't want it to be classified as requiring knowledge.
-      const isCanvasServer = view.server.name === "canvas";
+      const isContentCreationServer = view.server.name === "content_creation";
 
       const isWithKnowledge =
-        !isCanvasServer &&
+        !isContentCreationServer &&
         (requirements.requiresDataSourceConfiguration ||
           requirements.requiresDataWarehouseConfiguration ||
           requirements.requiresTableConfiguration);

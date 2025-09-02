@@ -177,7 +177,7 @@ export function useFileContent({
   };
 }
 
-export function useShareCanvasFile({
+export function useShareContentCreationFile({
   fileId,
   owner,
 }: {
@@ -205,7 +205,7 @@ export function useShareCanvasFile({
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "Failed to share the canvas file.",
+        title: "Failed to share the Content Creation file.",
         description: `Error: ${errorData.message}`,
       });
       return null;
