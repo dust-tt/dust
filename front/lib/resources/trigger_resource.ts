@@ -121,9 +121,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       where: {
         workspaceId: workspace.id,
         [Op.or]: [
-          // User is the editor
+          // User has to be editor or subscriber
           { editor: user.id },
-          // User is a subscriber - using LEFT JOIN with WHERE clause
           {
             "$trigger_subscribers.userId$": user.id,
           },
@@ -132,12 +131,9 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       include: [
         {
           model: TriggerSubscriberModel,
-          as: "trigger_subscribers", // Explicitly set the alias to match association
-          required: false, // LEFT JOIN
-          where: {
-            workspaceId: workspace.id,
-          },
-          attributes: [], // We don't need subscriber attributes in the result
+          as: "trigger_subscribers",
+          required: false,
+          attributes: [],
         },
       ],
     });

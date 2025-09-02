@@ -224,7 +224,7 @@ export function useRemoveTriggerSubscriber({
               "You will no longer receive notifications when this trigger runs.",
           });
 
-          // Mutate the appropriate triggers list(s)
+          // Mutate the appropriate triggers list
           if (agentConfigurationId) {
             void mutateAgentTriggers();
           } else {
