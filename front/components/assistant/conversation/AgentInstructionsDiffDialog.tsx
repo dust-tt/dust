@@ -66,7 +66,7 @@ export function AgentInstructionsDiffDialog({
           size="xs"
           variant="outline"
           icon={EyeIcon}
-          tooltip="View Changes"
+          tooltip="Review changes"
           disabled={instructionsMatch}
         />
       </DialogTrigger>
@@ -153,9 +153,7 @@ export function AgentInstructionsDiffDialog({
               }
               icon={hasBeenApplied || instructionsMatch ? CheckIcon : undefined}
               label={
-                hasBeenApplied || instructionsMatch
-                  ? "Applied!"
-                  : "Apply Changes"
+                hasBeenApplied || instructionsMatch ? "Accepted" : "Accept"
               }
               onClick={handleApply}
               disabled={hasBeenApplied || instructionsMatch}

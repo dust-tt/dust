@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Button, ChevronDownIcon, ChevronUpIcon } from "@dust-tt/sparkle";
 import { AgentMessageInstructions } from "@app/components/assistant/conversation/AgentMessageInstructions";
 import { AgentMessageToolSuggestion, type ToolSuggestion } from "@app/components/assistant/conversation/AgentMessageToolSuggestion";
 
@@ -21,25 +22,57 @@ export function InlineInstructionsComponent({
   isPartial?: boolean;
 }) {
   if (isPartial && context.isStreaming) {
+    const [isExpanded, setIsExpanded] = useState(true);
+    const [userToggled, setUserToggled] = useState(false);
+    const lineCount = useMemo(() => (content || "").split("\n").length, [content]);
+    const isCollapsible = lineCount > 16 || (content?.length || 0) > 1200;
+
+    useEffect(() => {
+      if (isCollapsible && !userToggled) {
+        setIsExpanded(false);
+      } else if (!isCollapsible && !userToggled) {
+        setIsExpanded(true);
+      }
+    }, [isCollapsible, content, userToggled]);
+
+    const showExpanded = isCollapsible ? isExpanded : true;
+
     return (
-      <div className="relative mt-4 overflow-hidden rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/10">
-        <div className="animate-shimmer absolute left-0 right-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-blue-400 to-transparent" />
-        <div className="flex items-center justify-between border-b border-blue-200 px-4 py-2 dark:border-blue-700">
-          <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
-            Agent Instructions
-          </span>
-          <span className="animate-pulse text-xs text-blue-600 dark:text-blue-400">
-            Generating...
-          </span>
+      <div className="relative mt-4 overflow-hidden rounded-lg border border-separator bg-slate-50 dark:bg-slate-900/10">
+        <div className="flex items-center justify-between border-b border-separator px-4 py-2">
+          <span className="text-sm font-medium text-slate-800 dark:text-slate-200">Agent Instructions</span>
+          <span className="animate-pulse text-xs text-muted-foreground">Generating…</span>
         </div>
-        <div className="p-4">
+        <div className="relative p-4">
           {content ? (
-            <div className="whitespace-pre-wrap font-sans text-sm text-slate-700 dark:text-slate-300">
+            <div
+              className={
+                "whitespace-pre-wrap font-sans text-sm text-slate-700 dark:text-slate-300 overflow-hidden transition-all duration-300 ease-in-out " +
+                (isCollapsible ? (showExpanded ? "max-h-[9999px]" : "max-h-64") : "max-h-[9999px]")
+              }
+            >
               {content}
             </div>
           ) : (
             <div className="text-sm italic text-slate-500 dark:text-slate-400">
               <span className="loading-dots"></span>
+            </div>
+          )}
+          {isCollapsible && !showExpanded && (
+            <div className="pointer-events-none absolute bottom-4 left-4 right-4 h-16 bg-gradient-to-t from-slate-50 dark:from-slate-900/10 to-transparent" />
+          )}
+          {isCollapsible && (
+            <div className="mt-3 flex justify-center">
+              <Button
+                size="xs"
+                variant="ghost"
+                icon={showExpanded ? ChevronUpIcon : ChevronDownIcon}
+                label={showExpanded ? "Collapse" : "Expand"}
+                onClick={() => {
+                  setIsExpanded((v) => !v);
+                  setUserToggled(true);
+                }}
+              />
             </div>
           )}
         </div>
@@ -54,6 +87,7 @@ export function InlineInstructionsComponent({
         currentInstructions={context.currentInstructions}
         onApply={context.onApplyInstructions}
         messageId={context.messageId}
+        disableApply={context.isStreaming || isPartial}
       />
     </div>
   );

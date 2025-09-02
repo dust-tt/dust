@@ -422,16 +422,13 @@ export function AgentBuilderCopilot() {
         <GenerationContextProvider>
           <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
             {conversation && (
-              <div className="flex items-center justify-between px-6 py-3">
-                <h2 className="font-semibold text-foreground dark:text-foreground-night">
-                  Copilot Assistant
-                </h2>
+              <div className="flex items-center justify-center px-6 py-3">
                 <Button
                   variant="outline"
                   size="sm"
                   icon={ArrowPathIcon}
                   onClick={resetConversation}
-                  label="Reset conversation"
+                  label="Clear conversation"
                 />
               </div>
             )}

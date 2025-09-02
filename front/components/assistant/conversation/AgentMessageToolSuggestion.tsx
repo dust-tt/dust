@@ -84,17 +84,17 @@ export function AgentMessageToolSuggestion({
         return (
           <div
             key={`${tool.id}-${idx}`}
-            className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/10"
+            className="rounded-lg border border-separator bg-slate-50 dark:bg-slate-900/10"
           >
-            <div className="flex items-center justify-between border-b border-amber-200 px-4 py-2 dark:border-amber-700">
-              <div className="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-200">
+            <div className="flex items-center justify-between border-b border-separator px-4 py-2">
+              <div className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-200">
                 {iconEl}
                 <span>{tool.name || tool.id}</span>
               </div>
               <div>
                 <Button
                   size="xs"
-                  variant={isAlready ? "primary" : "highlight"}
+                  variant="primary"
                   icon={isAlready ? CheckIcon : undefined}
                   label={buttonLabel}
                   disabled={disabled}
