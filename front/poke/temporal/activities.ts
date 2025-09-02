@@ -40,6 +40,7 @@ import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { Provider } from "@app/lib/resources/storage/models/apps";
 import {
   LabsTranscriptsConfigurationModel,
@@ -260,6 +261,13 @@ export async function deleteAgentsActivity({
     });
 
     await TagAgentModel.destroy({
+      where: {
+        agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
+      },
+    });
+
+    await AgentMemoryModel.destroy({
       where: {
         agentConfigurationId: agent.id,
         workspaceId: workspace.id,
