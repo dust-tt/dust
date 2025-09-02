@@ -216,11 +216,9 @@ export async function submitAgentBuilderForm({
     const { slackChannels, slackProvider } = formData.agentSettings;
     // If the user selected channels that were already routed to a different agent, the current behavior is to
     // unlink them from the previous agent and link them to this one.
-    if (slackProvider) {
+    if (slackProvider && slackChannels.length > 0) {
       const autoRespondWithoutMention =
-        slackChannels.length > 0
-          ? slackChannels[0].autoRespondWithoutMention
-          : undefined;
+        slackChannels[0].autoRespondWithoutMention;
       const slackLinkRes = await fetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/linked_slack_channels`,
         {
