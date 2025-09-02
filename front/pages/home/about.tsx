@@ -387,7 +387,7 @@ const PEOPLE: Record<
     title: "Enterprise Account Executive",
     image: "https://ca.slack-edge.com/T050RH73H9P-U09DVNHFS2C-9a2d6df66ced-512",
     linkedIn: "https://www.linkedin.com/in/alexandre-casanova-a89927a5/",
-    github: null,
+    github: "https://github.com/AlexandreCasa",
   },
   neyla: {
     name: "Neyla Belmaachi",
