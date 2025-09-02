@@ -269,7 +269,7 @@ export async function deleteAgentsActivity({
 
     await AgentMemoryModel.destroy({
       where: {
-        agentConfigurationId: agent.id,
+        agentConfigurationId: agent.sId,
         workspaceId: workspace.id,
       },
     });
