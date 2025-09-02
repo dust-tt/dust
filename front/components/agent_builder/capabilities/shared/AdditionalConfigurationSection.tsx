@@ -92,7 +92,14 @@ function NumberConfigurationInput({ configKey }: { configKey: string }) {
       <Input
         id={`number-${configKey}`}
         type="number"
-        {...field}
+        name={field.name}
+        value={field.value?.toString() ?? ""}
+        onChange={(e) => {
+          const value = e.target.value;
+          field.onChange(value === "" ? null : Number(value));
+        }}
+        onBlur={field.onBlur}
+        ref={field.ref}
         placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
         isError={!!fieldState.error}
         message={fieldState.error?.message}
@@ -131,7 +138,11 @@ function StringConfigurationInput({ configKey }: { configKey: string }) {
       <Input
         id={`string-${configKey}`}
         type="text"
-        {...field}
+        name={field.name}
+        value={field.value?.toString() ?? ""}
+        onChange={(e) => field.onChange(e.target.value)}
+        onBlur={field.onBlur}
+        ref={field.ref}
         placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
         isError={!!fieldState.error}
         message={fieldState.error?.message}
@@ -231,7 +242,9 @@ function ListConfigurationInput({
   });
 
   const currentValue: string[] = useMemo(() => {
-    return Array.isArray(field.value) ? field.value : [];
+    return Array.isArray(field.value)
+      ? field.value.filter((v): v is string => typeof v === "string")
+      : [];
   }, [field.value]);
 
   const filteredValues = useMemo(() => {
@@ -274,7 +287,7 @@ function ListConfigurationInput({
                     size="xs"
                     onCheckedChange={(checked) => {
                       const current = Array.isArray(field.value)
-                        ? field.value
+                        ? field.value.filter((v): v is string => typeof v === "string")
                         : [];
                       const newValues = checked
                         ? [...current, value]
