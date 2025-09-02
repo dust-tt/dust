@@ -114,17 +114,13 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   static async listByUserEditor(auth: Authenticator) {
-    const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
 
-    const res = await this.model.findAll({
+    return this.baseFetch(auth, {
       where: {
-        workspaceId: workspace.id,
         editor: user.id,
       },
     });
-
-    return res.map((c) => new this(this.model, c.get()));
   }
 
   static async listByUserSubscriber(auth: Authenticator) {
