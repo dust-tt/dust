@@ -183,22 +183,43 @@ When to use (Built-in & Core AI):
 - **Run Agent**: Invoke a child agent (agent as a tool) for sub-tasks.
 - **Run Dust App**: Execute a Dust App with parameters when appropriate.
 
-#### Communication & Productivity Tools (use only if listed in availableToolIds)
-- **Freshservice (Preview)**: ID: \`freshservice\`, NAME: \`Freshservice\`, Type: \`MCP\`. Data: tickets, incidents, changes, assets.
+#### Communication & Productivity Tools (Require setup; use only if listed in availableToolIds)
 - **Gmail**: ID: \`gmail\`, NAME: \`Gmail\`, Type: \`MCP\`. Data: messages, drafts, threads, attachments.
 - **Google Calendar**: ID: \`google_calendar\`, NAME: \`Google Calendar\`, Type: \`MCP\`. Data: calendars, events, attendees.
+- **Notion**: ID: \`notion\`, NAME: \`Notion\`, Type: \`MCP\`. Data: pages, databases, blocks, comments, users.
 - **Google Sheets (Preview)**: ID: \`google_sheets\`, NAME: \`Google Sheets\`, Type: \`MCP\`. Data: spreadsheets, worksheets, ranges, cells.
 - **HubSpot**: ID: \`hubspot\`, NAME: \`HubSpot\`, Type: \`MCP\`. Data: contacts, companies, deals, activities (emails, calls, meetings, tasks), files.
 - **Jira (Preview)**: ID: \`jira\`, NAME: \`Jira\`, Type: \`MCP\`. Data: issues, projects, sprints, comments, transitions.
 - **Monday (Preview)**: ID: \`monday\`, NAME: \`Monday\`, Type: \`MCP\`. Data: boards, groups, items, subitems, updates, files.
-- **Notion**: ID: \`notion\`, NAME: \`Notion\`, Type: \`MCP\`. Data: pages, databases, blocks, comments, users.
 - **Outlook**: ID: \`outlook\`, NAME: \`Outlook\`, Type: \`MCP\`. Data: messages, drafts, contacts, attachments.
 - **Outlook Calendar**: ID: \`outlook_calendar\`, NAME: \`Outlook Calendar\`, Type: \`MCP\`. Data: calendars, events, attendees.
 - **Salesforce**: ID: \`salesforce\`, NAME: \`Salesforce\`, Type: \`MCP\`. Data: objects (leads, contacts, accounts, opportunities), queries, files.
 - **Slack**: ID: \`slack\`, NAME: \`Slack\`, Type: \`MCP\`. Data: channels, messages, threads, users.
 - **Intercom**: Customer engagement. Data: conversations, articles, users, companies. (Knowledge connector; not an MCP action tool.)
+- **Freshservice (Preview)**: ID: \`freshservice\`, NAME: \`Freshservice\`, Type: \`MCP\`. Data: tickets, incidents, changes, assets.
+
+When to use (Communication & Productivity):
+- **Gmail**: Read/summarize emails, find messages by query, create and manage drafts and reply drafts.
+- **Google Calendar**: Schedule or update events, propose times, manage calendars and attendees.
+- **Notion**: Create/update pages, query databases, retrieve content and comments, store outputs as Notion pages.
+- **Google Sheets (Preview)**: Read/write spreadsheets, append or update ranges, generate or update operational reports.
+- **HubSpot**: Create/update CRM records (contacts, companies, deals), associate records, log/summarize engagements (emails, calls, meetings, tasks), owner lookups.
+- **Jira (Preview)**: Create/update issues, transition workflow statuses, add comments, retrieve project metadata, link related issues.
+- **Monday (Preview)**: Read/manage boards and items, create/update items and subitems, change statuses, post updates.
+- **Outlook**: Read/summarize emails, manage drafts, and update contacts.
+- **Outlook Calendar**: Create/update events and manage calendars and attendees.
+- **Salesforce**: Query or update CRM objects (leads, contacts, accounts, opportunities), run queries, attach/retrieve files.
+- **Slack**: Search/summarize messages and threads, post updates or notifications to channels or DMs.
+- **Intercom (Knowledge)**: Search or include help center articles and conversation context using knowledge tools (search/include/extract); do not add Intercom as an action tool.
+- **Freshservice (Preview)**: File/triage incidents and requests, manage changes, query tickets and assets, check on-call schedules, update statuses and assignment.
+
+#### Development Tools (Require setup; use only if listed in availableToolIds)
 - **GitHub**: ID: \`github\`, NAME: \`GitHub\`, Type: \`MCP\`. Repository and issue management. Data: issues, pull requests, commits, comments, projects.
 - **Linear**: Type: \`MCP\`. Project and issue tracking. Data: issues, projects, cycles, comments.
+
+When to use (Development):
+- **GitHub**: Create/triage issues, comment and mention users, review or summarize pull requests, reference commits and projects.
+- **Linear**: Create/triage/update issues, manage project status and cycles, retrieve comments and assignees for planning.
 
 ## Examples
 
