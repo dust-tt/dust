@@ -1,7 +1,6 @@
 import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { WebClient } from "@slack/web-api";
-import PQueue from "p-queue";
 
 import type {
   CreateConnectorErrorCode,
@@ -360,15 +359,16 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       }
     );
 
-    const q = new PQueue({ concurrency: 10 });
-    const promises: Promise<void>[] = [];
-
     const slackChannelsToSync: string[] = [];
 
     try {
-      for (const [internalId, permission] of Object.entries(permissions)) {
+      // Prepare permission entries for concurrent processing
+      const permissionEntries = Object.entries(permissions);
+
+      // First, ensure all channels exist (sequential to avoid race conditions)
+      for (const [internalId] of permissionEntries) {
         const slackChannelId = slackChannelIdFromInternalId(internalId);
-        let channel = channels[slackChannelId];
+        const channel = channels[slackChannelId];
         if (!channel) {
           const joinRes = await joinChannelWithRetries(
             this.connectorId,
@@ -392,51 +392,55 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
             private: !!channelInfo.is_private,
           });
           channels[slackChannelId] = slackChannel;
-          channel = slackChannel;
         }
-
-        promises.push(
-          q.add(async () => {
-            if (!channel) {
-              return;
-            }
-            const oldPermission = channel.permission;
-            if (oldPermission === permission) {
-              return;
-            }
-            await channel.update({
-              permission: permission,
-            });
-
-            if (
-              !["read", "read_write"].includes(oldPermission) &&
-              ["read", "read_write"].includes(permission)
-            ) {
-              // handle read permission enabled
-              slackChannelsToSync.push(channel.slackChannelId);
-              const joinChannelRes = await joinChannelWithRetries(
-                this.connectorId,
-                channel.slackChannelId
-              );
-              if (joinChannelRes.isErr()) {
-                logger.error(
-                  {
-                    connectorId: this.connectorId,
-                    channelId: channel.slackChannelId,
-                    error: joinChannelRes.error,
-                  },
-                  "Could not join the Slack channel"
-                );
-                throw new Error(
-                  `Our Slack bot (@Dust) was not able to join the Slack channel #${channel.slackChannelName}. Please re-authorize Slack or invite @Dust from #${channel.slackChannelName} on Slack.`
-                );
-              }
-            }
-          })
-        );
       }
 
-      await Promise.all(promises);
+      await concurrentExecutor(
+        permissionEntries,
+        async ([internalId, permission]) => {
+          const slackChannelId = slackChannelIdFromInternalId(internalId);
+          const channel = channels[slackChannelId];
+
+          if (!channel) {
+            return;
+          }
+
+          const oldPermission = channel.permission;
+          if (oldPermission === permission) {
+            return;
+          }
+
+          await channel.update({
+            permission: permission,
+          });
+
+          if (
+            !["read", "read_write"].includes(oldPermission) &&
+            ["read", "read_write"].includes(permission)
+          ) {
+            // handle read permission enabled
+            slackChannelsToSync.push(channel.slackChannelId);
+            const joinChannelRes = await joinChannelWithRetries(
+              this.connectorId,
+              channel.slackChannelId
+            );
+            if (joinChannelRes.isErr()) {
+              logger.error(
+                {
+                  connectorId: this.connectorId,
+                  channelId: channel.slackChannelId,
+                  error: joinChannelRes.error,
+                },
+                "Could not join the Slack channel"
+              );
+              throw new Error(
+                `Our Slack bot (@Dust) was not able to join the Slack channel #${channel.slackChannelName}. Please re-authorize Slack or invite @Dust from #${channel.slackChannelName} on Slack.`
+              );
+            }
+          }
+        },
+        { concurrency: 10 }
+      );
       const workflowRes = await launchSlackSyncWorkflow(
         this.connectorId,
         null,

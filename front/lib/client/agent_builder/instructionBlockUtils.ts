@@ -70,27 +70,65 @@ export function textToParagraphNodes(content: string): JSONContent[] {
 }
 
 /**
- * Convert text content to block nodes (paragraphs and headings)
+ * Convert text content to block nodes (paragraphs, headings, and code blocks)
  */
 export function textToBlockNodes(content: string): JSONContent[] {
   const nodes: JSONContent[] = [];
-  const lines = content.split("\n");
 
-  for (const line of lines) {
-    const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
-    if (headingMatch) {
-      const level = headingMatch[1].length;
-      const headingContent = headingMatch[2].trim();
+  for (const segment of splitContentByCodeFences(content)) {
+    if (segment.type === "code") {
+      const language = extractLanguageFromInfo(segment.info);
       nodes.push({
-        type: "heading",
-        attrs: { level },
-        content: headingContent ? [{ type: "text", text: headingContent }] : [],
+        type: "codeBlock",
+        attrs: { language },
+        content: segment.content
+          ? [{ type: "text", text: segment.content }]
+          : [],
       });
-    } else {
-      nodes.push({
-        type: "paragraph",
-        content: line.trim() ? [{ type: "text", text: line.trim() }] : [],
-      });
+      continue;
+    }
+
+    const lines = segment.content.split("\n");
+    let lastWasEmpty = false;
+    for (let i = 0; i < lines.length; i++) {
+      const raw = lines[i];
+      const line = raw.trim();
+      if (!line) {
+        // Only emit an empty paragraph if between content and not consecutive
+        const isNotFirst = i > 0;
+        const isNotLast = i < lines.length - 1;
+        const prevLineHasContent = i > 0 && lines[i - 1].trim();
+        const nextLineHasContent = i < lines.length - 1 && lines[i + 1].trim();
+        if (
+          isNotFirst &&
+          isNotLast &&
+          (prevLineHasContent || nextLineHasContent) &&
+          !lastWasEmpty
+        ) {
+          nodes.push({ type: "paragraph", content: [] });
+          lastWasEmpty = true;
+        }
+        continue;
+      }
+
+      lastWasEmpty = false;
+      const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+      if (headingMatch) {
+        const level = headingMatch[1].length;
+        const headingContent = headingMatch[2].trim();
+        nodes.push({
+          type: "heading",
+          attrs: { level },
+          content: headingContent
+            ? [{ type: "text", text: headingContent }]
+            : [],
+        });
+      } else {
+        nodes.push({
+          type: "paragraph",
+          content: [{ type: "text", text: line }],
+        });
+      }
     }
   }
 
@@ -115,34 +153,64 @@ export function textToProseMirrorParagraphs(
 }
 
 /**
- * Convert text content to ProseMirror block nodes (paragraphs and headings)
+ * Convert text content to ProseMirror block nodes (paragraphs, headings, and code blocks)
  */
 export function textToProseMirrorBlocks(
   content: string,
   schema: Schema
 ): ProseMirrorNode[] {
   const nodes: ProseMirrorNode[] = [];
-  const lines = content.split("\n");
 
-  for (const line of lines) {
-    const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
-    if (headingMatch && schema.nodes.heading) {
-      const level = headingMatch[1].length;
-      const headingContent = headingMatch[2].trim();
-      nodes.push(
-        schema.nodes.heading.create(
-          { level },
-          headingContent ? [schema.text(headingContent)] : []
-        )
-      );
-    } else {
-      const trimmedLine = line.trim();
-      nodes.push(
-        schema.nodes.paragraph.create(
-          {},
-          trimmedLine ? [schema.text(trimmedLine)] : []
-        )
-      );
+  for (const segment of splitContentByCodeFences(content)) {
+    if (segment.type === "code") {
+      if (schema.nodes.codeBlock) {
+        const language = extractLanguageFromInfo(segment.info);
+        nodes.push(
+          schema.nodes.codeBlock.create(
+            { language },
+            segment.content ? [schema.text(segment.content)] : []
+          )
+        );
+      }
+      continue;
+    }
+
+    const lines = segment.content.split("\n");
+    let lastWasEmpty = false;
+    for (let i = 0; i < lines.length; i++) {
+      const raw = lines[i];
+      const line = raw.trim();
+      if (!line) {
+        const isNotFirst = i > 0;
+        const isNotLast = i < lines.length - 1;
+        const prevLineHasContent = i > 0 && lines[i - 1].trim();
+        const nextLineHasContent = i < lines.length - 1 && lines[i + 1].trim();
+        if (
+          isNotFirst &&
+          isNotLast &&
+          (prevLineHasContent || nextLineHasContent) &&
+          !lastWasEmpty
+        ) {
+          nodes.push(schema.nodes.paragraph.create());
+          lastWasEmpty = true;
+        }
+        continue;
+      }
+
+      lastWasEmpty = false;
+      const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+      if (headingMatch && schema.nodes.heading) {
+        const level = headingMatch[1].length;
+        const headingContent = headingMatch[2].trim();
+        nodes.push(
+          schema.nodes.heading.create(
+            { level },
+            headingContent ? [schema.text(headingContent)] : []
+          )
+        );
+      } else {
+        nodes.push(schema.nodes.paragraph.create({}, [schema.text(line)]));
+      }
     }
   }
 
@@ -176,6 +244,57 @@ export function createInstructionBlockNode(
     attrs: { type },
     content: blockContent,
   };
+}
+
+/**
+ * Split content into segments preserving fenced code blocks.
+ * Supports info strings and languages with symbols (e.g., c++, objective-c).
+ */
+export function splitContentByCodeFences(
+  content: string
+): Array<{ type: "code" | "text"; content: string; info?: string }> {
+  const codeBlockRegex = /```([^\n]*)\n([\s\S]*?)```/g;
+  const segments: Array<{
+    type: "code" | "text";
+    content: string;
+    info?: string;
+  }> = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = codeBlockRegex.exec(content)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({
+        type: "text",
+        content: content.slice(lastIndex, match.index),
+      });
+    }
+    let codeContent = match[2];
+    if (codeContent && codeContent.endsWith("\n")) {
+      codeContent = codeContent.slice(0, -1);
+    }
+    segments.push({ type: "code", info: match[1] || "", content: codeContent });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < content.length) {
+    segments.push({ type: "text", content: content.slice(lastIndex) });
+  }
+
+  return segments;
+}
+
+/** Extract first token (language) from a fenced code info string. */
+function extractLanguageFromInfo(info?: string): string {
+  if (typeof info !== "string") {
+    return "";
+  }
+  const trimmed = info.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const [language] = trimmed.split(/\s+/);
+  return language || "";
 }
 
 /**

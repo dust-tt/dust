@@ -12,8 +12,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 
-import { TagCreationDialog } from "@app/components/agent_builder/settings/TagCreationDialog";
 import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
+import { TagCreationDialog } from "@app/components/assistant_builder/TagCreationDialog";
 import { useTags } from "@app/lib/swr/tags";
 import { tagsSorter } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
@@ -73,7 +73,7 @@ export const TagsSelector = ({
         owner={owner}
         isOpen={isDialogOpen}
         setIsOpen={setIsDialogOpen}
-        addTag={onTagCreated}
+        onTagCreated={onTagCreated}
       />
       <div className="mb-2 flex flex-wrap gap-2">
         {assistantTags.map((tag) => (
