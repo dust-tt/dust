@@ -73,12 +73,12 @@ export function SelectedDataSourcesSection({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <div className="text-element-900 text-sm font-medium">
+        <div className="heading-base font-semibold text-foreground dark:text-foreground-night">
           Selected Data Sources
         </div>
-        {isEditMode && onEditDataSources && (
+        {selectedDataSourcesList.length > 0 && (
           <Button
-            label="Edit"
+            label="Manage data source"
             size="xs"
             variant="outline"
             onClick={onEditDataSources}
