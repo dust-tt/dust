@@ -368,7 +368,7 @@ export function MCPServerViewsSheet({
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
     const requirement = getMCPServerRequirements(mcpServerView);
 
-    if (!requirement.noRequirement || requirement.requiredFlavors) {
+    if (!requirement.noRequirement || isCanvas) {
       const action = getDefaultMCPAction(mcpServerView);
       const isReasoning = requirement.requiresReasoningConfiguration;
 
@@ -515,6 +515,8 @@ export function MCPServerViewsSheet({
     [mcpServerView]
   );
 
+  const isCanvas = mcpServerView?.server.name === "canvas";
+
   // Stable form reset handler - no form dependency to prevent re-renders
   const resetFormValues = useMemo(
     () => createFormResetHandler(configurationTool, mcpServerView, isOpen),
@@ -540,11 +542,11 @@ export function MCPServerViewsSheet({
   // Determine if we need DataSourceBuilderProvider based on current state
   const needsDataSourceProvider = useMemo(() => {
     return (
-      mcpServerView?.server.name === "canvas" &&
+      isCanvas &&
       (currentPageId === TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION ||
         currentPageId === TOOLS_SHEET_PAGE_IDS.CONFIGURATION)
     );
-  }, [mcpServerView, currentPageId]);
+  }, [currentPageId, isCanvas]);
 
   const pages: MultiPageSheetPage[] = [
     {
@@ -593,14 +595,13 @@ export function MCPServerViewsSheet({
       description: "Choose data sources for Canvas to access",
       icon: undefined,
       noScroll: true,
-      content:
-        mcpServerView?.server.name === "canvas" ? (
-          <DataSourceBuilderSelector viewType="all" />
-        ) : (
-          <div className="flex h-40 w-full items-center justify-center">
-            <Spinner />
-          </div>
-        ),
+      content: isCanvas ? (
+        <DataSourceBuilderSelector viewType="all" />
+      ) : (
+        <div className="flex h-40 w-full items-center justify-center">
+          <Spinner />
+        </div>
+      ),
     },
     {
       id: TOOLS_SHEET_PAGE_IDS.CONFIGURATION,
