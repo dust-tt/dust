@@ -155,9 +155,12 @@ export function Slide({
 
 const NAVIGATION_HIDE_DELAY = 3000; // Milliseconds before navigation auto-hides
 
-function hasDisplayName(component: any): component is { displayName: string } {
+function hasDisplayName(
+  component: unknown
+): component is { displayName: string } {
   return (
-    typeof component === "function" && typeof component.displayName === "string"
+    typeof component === "function" &&
+    typeof (component as { displayName?: string }).displayName === "string"
   );
 }
 

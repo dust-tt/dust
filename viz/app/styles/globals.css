@@ -114,7 +114,7 @@
 
 @layer base {
   :root {
-    /* Responsive typography and spacing - aggressive mobile scaling */
+    /* Responsive typography and spacing */
     --responsive-text-xs: clamp(0.5rem, 1.8vw, 1rem);
     --responsive-text-sm: clamp(0.625rem, 2vw, 1.125rem);
     --responsive-text-base: clamp(0.75rem, 2.2vw, 1.25rem);
@@ -306,11 +306,5 @@
   }
   .slide-centered-padding {
     padding: var(--responsive-space-8);
-  }
-
-  /* Slide content container */
-  .slide-content-container {
-    max-height: calc(100vh - var(--responsive-space-24) - var(--responsive-space-8));
-    overflow: auto;
   }
 }
