@@ -503,9 +503,6 @@ export function MCPServerViewsSheet({
     shouldUnregister: false,
   });
 
-  console.log("form", form);
-  console.log("defaultFormValues", defaultFormValues);
-
   const requirements = useMemo(
     () => (mcpServerView ? getMCPServerRequirements(mcpServerView) : null),
     [mcpServerView]
@@ -520,17 +517,6 @@ export function MCPServerViewsSheet({
   useEffect(() => {
     resetFormValues(form);
   }, [resetFormValues, form]);
-
-  // Initialize form for Canvas when configuration changes
-  useEffect(() => {
-    if (mcpServerView?.server.name === "canvas" && configurationTool) {
-      // Ensure sources field is initialized for Canvas
-      const currentValues = form.getValues();
-      if (!currentValues.sources) {
-        form.setValue("sources" as any, { in: [], notIn: [] });
-      }
-    }
-  }, [mcpServerView, configurationTool, form]);
 
   const resetToSelection = useCallback(() => {
     setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);
