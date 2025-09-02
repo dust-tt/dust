@@ -830,7 +830,7 @@ export function MCPServerViewsSheet({
               if (pageId === TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION) {
                 resetToSelection();
               } else {
-                setCurrentPageId(pageId as ConfigurationPagePageId);
+                setCurrentPageId(pageId);
               }
             }}
             addFooterSeparator

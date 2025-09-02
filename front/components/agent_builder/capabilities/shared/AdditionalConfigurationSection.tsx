@@ -93,7 +93,7 @@ function NumberConfigurationInput({ configKey }: { configKey: string }) {
         id={`number-${configKey}`}
         type="number"
         name={field.name}
-        value={field.value?.toString() ?? ""}
+        value={field.value != null ? field.value.toString() : ""}
         onChange={(e) => {
           const value = e.target.value;
           field.onChange(value === "" ? null : Number(value));
@@ -139,7 +139,7 @@ function StringConfigurationInput({ configKey }: { configKey: string }) {
         id={`string-${configKey}`}
         type="text"
         name={field.name}
-        value={field.value?.toString() ?? ""}
+        value={field.value != null ? field.value.toString() : ""}
         onChange={(e) => field.onChange(e.target.value)}
         onBlur={field.onBlur}
         ref={field.ref}
