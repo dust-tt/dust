@@ -1,14 +1,30 @@
 import { z } from "zod";
 
+import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { mcpServerConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { 
   createBaseFormSchema,
   createMCPFormSchema 
 } from "@app/components/agent_builder/capabilities/mcp/validation/schemaBuilders";
 import type {AgentBuilderAction} from "@app/components/agent_builder/types";
+import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+
+type CanvasValidationData = {
+  name: string;
+  description: string | null;
+  configuration: MCPServerConfigurationType | null;
+  sources: DataSourceBuilderTreeType;
+  mcpServerView: MCPServerViewType;
+};
+
+type MCPValidationData = {
+  name: string;
+  description: string | null;
+  configuration: MCPServerConfigurationType | null;
+};
 
 const canvasFormSchema = z.object({
   ...createBaseFormSchema(),
@@ -65,17 +81,21 @@ export function validateMCPActionConfiguration(
     }
 
     // For Canvas, include sources and mcpServerView in validation
-    const validationData: any = {
-      name: action.name,
-      description: action.description,
-      configuration: action.configuration,
-    };
-    
-    if (serverView.server.name === 'canvas') {
-      // This is to bypass the validation 
-      validationData.sources = { in: [], notIn: [] };
-      validationData.mcpServerView = serverView;
-    }
+    const validationData: MCPValidationData | CanvasValidationData = 
+      serverView.server.name === 'canvas'
+        ? {
+            name: action.name,
+            description: action.description,
+            configuration: action.configuration,
+            // This is to bypass the validation, we don't need to validate it here
+            sources: { in: [], notIn: [] },
+            mcpServerView: serverView,
+          }
+        : {
+            name: action.name,
+            description: action.description,
+            configuration: action.configuration,
+          };
 
     schema.parse(validationData);
 
