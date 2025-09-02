@@ -10,7 +10,6 @@ import type { TriggerType } from "@app/types/assistant/triggers";
 
 export interface GetUserTriggersResponseBody {
   triggers: (TriggerType & {
-    isSubscriber: boolean;
     isEditor: boolean;
     agentName: string;
     agentPictureUrl: string;
@@ -32,14 +31,14 @@ async function handler(
     });
   }
 
-  // Get triggers where the user is either editor or subscriber
-  const userTriggers = await TriggerResource.listByUser(auth);
+  // Get triggers where user is editor or subscriber concurrently
+  const [editorTriggers, subscriberTriggers] = await Promise.all([
+    TriggerResource.listByUserEditor(auth),
+    TriggerResource.listByUserSubscriber(auth),
+  ]);
 
-  const triggersWithAgentNames = await Promise.all(
-    userTriggers.map(async (trigger) => {
-      const isEditor = trigger.editor === auth.getNonNullableUser().id;
-      const isSubscriber = await trigger.isSubscriber(auth);
-
+  const editorTriggersWithAgentInfo = await Promise.all(
+    editorTriggers.map(async (trigger) => {
       const agentConfiguration = await getAgentConfiguration(auth, {
         agentId: trigger.agentConfigurationId,
         variant: "light",
@@ -51,16 +50,40 @@ async function handler(
 
       return {
         ...trigger.toJSON(),
-        isSubscriber,
-        isEditor,
+        isEditor: true,
         agentName: agentConfiguration.name,
         agentPictureUrl: agentConfiguration.pictureUrl,
       };
     })
   );
 
-  // Filter out null values (in case some agent configurations were not found)
-  const filteredTriggers = triggersWithAgentNames.filter(
+  const subscriberTriggersWithAgentInfo = await Promise.all(
+    subscriberTriggers.map(async (trigger) => {
+      const agentConfiguration = await getAgentConfiguration(auth, {
+        agentId: trigger.agentConfigurationId,
+        variant: "light",
+      });
+
+      if (!agentConfiguration) {
+        return null;
+      }
+
+      return {
+        ...trigger.toJSON(),
+        isEditor: false,
+        agentName: agentConfiguration.name,
+        agentPictureUrl: agentConfiguration.pictureUrl,
+      };
+    })
+  );
+
+  // Combine and filter out null values
+  const allTriggers = [
+    ...editorTriggersWithAgentInfo,
+    ...subscriberTriggersWithAgentInfo,
+  ];
+
+  const filteredTriggers = allTriggers.filter(
     (trigger): trigger is NonNullable<typeof trigger> => trigger !== null
   );
 

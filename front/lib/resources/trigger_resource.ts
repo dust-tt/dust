@@ -113,27 +113,40 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return this.baseFetch(auth);
   }
 
-  static async listByUser(auth: Authenticator) {
+  static async listByUserEditor(auth: Authenticator) {
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
 
     const res = await this.model.findAll({
       where: {
         workspaceId: workspace.id,
-        [Op.or]: [
-          // User has to be editor or subscriber
-          { editor: user.id },
-          {
-            "$trigger_subscribers.userId$": user.id,
-          },
-        ],
+        editor: user.id,
+      },
+    });
+
+    return res.map((c) => new this(this.model, c.get()));
+  }
+
+  static async listByUserSubscriber(auth: Authenticator) {
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
+
+    const res = await this.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        "$trigger_subscribers.userId$": user.id,
+        // Exclude triggers where user is also editor to avoid duplicates
+        editor: { [Op.ne]: user.id },
       },
       include: [
         {
           model: TriggerSubscriberModel,
           as: "trigger_subscribers",
-          required: false,
+          required: true,
           attributes: [],
+          where: {
+            userId: user.id,
+          },
         },
       ],
     });

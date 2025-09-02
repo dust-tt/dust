@@ -103,10 +103,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
         cell: ({ row }) => (
           <DataTable.CellContent>
             <div className="flex items-center gap-2">
-              <Avatar
-                size="xs"
-                visual={row.original.agentPictureUrl}
-              />
+              <Avatar size="xs" visual={row.original.agentPictureUrl} />
               <div className="truncate text-sm text-foreground dark:text-foreground-night">
                 {row.original.agentName}
               </div>
@@ -130,7 +127,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
                   variant="outline"
                   size="sm"
                 />
-              ) : row.original.isSubscriber ? (
+              ) : (
                 <Button
                   label="Unsubscribe"
                   icon={TrashIcon}
@@ -147,7 +144,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
                     setIsLoading(false);
                   }}
                 />
-              ) : null}
+              )}
             </div>
           </DataTable.CellContent>
         ),
