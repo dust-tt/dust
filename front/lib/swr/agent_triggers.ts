@@ -45,6 +45,30 @@ export function useAgentTriggers({
   };
 }
 
+export function useUserTriggers({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const userTriggersFetcher: Fetcher<GetUserTriggersResponseBody> = fetcher;
+
+  const { data, error, mutate, isValidating } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/me/triggers`,
+    userTriggersFetcher,
+    { disabled }
+  );
+
+  return {
+    triggers: data?.triggers ?? emptyArray(),
+    isTriggersLoading: !error && !data && !disabled,
+    isTriggersError: error,
+    isTriggersValidating: isValidating,
+    mutateTriggers: mutate,
+  };
+}
+
 export function useTextAsCronRule({
   workspace,
 }: {
@@ -161,11 +185,9 @@ export function useAddTriggerSubscriber({
 export function useRemoveTriggerSubscriber({
   workspaceId,
   agentConfigurationId,
-  mutateUserTriggers,
 }: {
   workspaceId: string;
   agentConfigurationId?: string;
-  mutateUserTriggers?: boolean;
 }) {
   const sendNotification = useSendNotification();
   const { mutateTriggers: mutateAgentTriggers } = useAgentTriggers({
@@ -173,9 +195,9 @@ export function useRemoveTriggerSubscriber({
     agentConfigurationId: agentConfigurationId || null,
     disabled: !agentConfigurationId,
   });
-  const { mutateTriggers: mutateUserTriggersList } = useUserTriggers({
+  const { mutateTriggers: mutateUserTriggers } = useUserTriggers({
     workspaceId,
-    disabled: !mutateUserTriggers,
+    disabled: !!agentConfigurationId,
   });
 
   const removeSubscriber = useCallback(
@@ -183,7 +205,6 @@ export function useRemoveTriggerSubscriber({
       triggerId: string,
       triggerAgentConfigurationId?: string
     ): Promise<boolean> => {
-      // Use provided agentConfigurationId or fall back to the one from parameters
       const targetAgentConfigurationId =
         triggerAgentConfigurationId || agentConfigurationId;
 
@@ -206,9 +227,8 @@ export function useRemoveTriggerSubscriber({
           // Mutate the appropriate triggers list(s)
           if (agentConfigurationId) {
             void mutateAgentTriggers();
-          }
-          if (mutateUserTriggers) {
-            void mutateUserTriggersList();
+          } else {
+            void mutateUserTriggers();
           }
 
           return true;
@@ -235,34 +255,9 @@ export function useRemoveTriggerSubscriber({
       agentConfigurationId,
       sendNotification,
       mutateAgentTriggers,
-      mutateUserTriggersList,
       mutateUserTriggers,
     ]
   );
 
   return removeSubscriber;
-}
-
-export function useUserTriggers({
-  workspaceId,
-  disabled,
-}: {
-  workspaceId: string;
-  disabled?: boolean;
-}) {
-  const userTriggersFetcher: Fetcher<GetUserTriggersResponseBody> = fetcher;
-
-  const { data, error, mutate, isValidating } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/me/triggers`,
-    userTriggersFetcher,
-    { disabled }
-  );
-
-  return {
-    triggers: data?.triggers ?? emptyArray(),
-    isTriggersLoading: !error && !data && !disabled,
-    isTriggersError: error,
-    isTriggersValidating: isValidating,
-    mutateTriggers: mutate,
-  };
 }

@@ -29,7 +29,6 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
 
   const unsubscribe = useRemoveTriggerSubscriber({
     workspaceId: owner.sId,
-    mutateUserTriggers: true,
   });
 
   const getEditionURL = (agentConfigurationId: string) => {
