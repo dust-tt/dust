@@ -1,6 +1,16 @@
-import type { DirectoryGroup, DirectoryGroup as WorkOSGroup } from "@workos-inc/node";
+import type {
+  DirectoryGroup,
+  DirectoryGroup as WorkOSGroup,
+} from "@workos-inc/node";
 import assert from "assert";
-import type { Attributes, CreationAttributes, Includeable, ModelStatic, Transaction, WhereOptions } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  Includeable,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -31,7 +41,13 @@ import type {
   RolePermission,
   UserType,
 } from "@app/types";
-import { AGENT_GROUP_PREFIX, Err, normalizeError, Ok, removeNulls } from "@app/types";
+import {
+  AGENT_GROUP_PREFIX,
+  Err,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 export const ADMIN_GROUP_NAME = "dust-admins";
 export const BUILDER_GROUP_NAME = "dust-builders";
