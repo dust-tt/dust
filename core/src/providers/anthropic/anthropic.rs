@@ -106,7 +106,7 @@ impl AnthropicLLM {
 
         if system.is_some() {
             if prompt_caching {
-                body["system"] = json!([{"type": "text", "text": system.unwrap(), "cache_control": {"type": "ephemeral"}}]);
+                body["system"] = json!([{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]);
             } else {
                 body["system"] = json!(system);
             }
