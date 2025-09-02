@@ -362,7 +362,7 @@ const { attemptChannelJoinActivity: attemptChannelJoinWithRetries } =
     startToCloseTimeout: "10 minutes",
     retry: {
       maximumAttempts: 25,
-      initialInterval: "2s",
+      initialInterval: "5s",
       maximumInterval: "15s",
       backoffCoefficient: 1.5,
     },
