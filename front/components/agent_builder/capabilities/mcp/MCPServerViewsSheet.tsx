@@ -168,7 +168,7 @@ export function MCPServerViewsSheet({
   );
   const [configurationTool, setConfigurationTool] =
     useState<AgentBuilderAction | null>(getInitialConfigurationTool(mode));
-  
+
   // State for Canvas data source flow
   const [, setCanvasDataSourceSkipped] = useState(false);
   const [, setHasVisitedDataSourcePage] = useState(false);
@@ -271,11 +271,11 @@ export function MCPServerViewsSheet({
         );
         if (mcpServerView) {
           setConfigurationMCPServerView(mcpServerView);
-          
+
           // For Canvas in edit mode, go directly to configuration page
           // The data sources will be shown in the configuration page
           setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
-          
+
           // Mark that we've already visited data source page for Canvas
           // since we're showing the data sources in the configuration
           if (mcpServerView.server.name === "canvas") {
@@ -373,18 +373,18 @@ export function MCPServerViewsSheet({
   function onClickMCPServer(mcpServerView: MCPServerViewType) {
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
     const requirement = getMCPServerRequirements(mcpServerView);
-    const IS_CANVAS = mcpServerView.server.name === "canvas";
+    const isCanvas = mcpServerView.server.name === "canvas";
 
-    if (!requirement.noRequirement || IS_CANVAS) {
+    if (!requirement.noRequirement || isCanvas) {
       const action = getDefaultMCPAction(mcpServerView);
       const isReasoning = requirement.requiresReasoningConfiguration;
-      
+
       // For Canvas, go directly to configuration page with data source section
-      if (IS_CANVAS) {
+      if (isCanvas) {
         // Reset form with Canvas defaults BEFORE setting state to ensure sources is initialized
         const canvasDefaults = getDefaultFormValues(mcpServerView);
         form.reset(canvasDefaults);
-        
+
         setConfigurationTool(action);
         setConfigurationMCPServerView(mcpServerView);
         setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
@@ -499,20 +499,21 @@ export function MCPServerViewsSheet({
         description: configurationTool.description ?? "",
         configuration: configurationTool.configuration,
       };
-      
+
       if (mcpServerView?.server.name === "canvas") {
         // For Canvas, extract data sources from configuration if editing
-        const dataSourceConfigurations = configurationTool.configuration?.dataSourceConfigurations;
+        const dataSourceConfigurations =
+          configurationTool.configuration?.dataSourceConfigurations;
         const sources = dataSourceConfigurations
           ? transformSelectionConfigurationsToTree(dataSourceConfigurations)
           : { in: [], notIn: [] };
-        
+
         return {
           ...baseValues,
           sources,
         } as any; // Type cast to handle the dynamic sources field
       }
-      
+
       return baseValues;
     }
 
@@ -545,7 +546,7 @@ export function MCPServerViewsSheet({
   useEffect(() => {
     resetFormValues(form);
   }, [resetFormValues, form]);
-  
+
   // Initialize form for Canvas when configuration changes
   useEffect(() => {
     if (mcpServerView?.server.name === "canvas" && configurationTool) {
@@ -658,7 +659,9 @@ export function MCPServerViewsSheet({
                   <SelectedDataSourcesSection
                     isEditMode={true}
                     onEditDataSources={() => {
-                      setCurrentPageId(TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
+                      setCurrentPageId(
+                        TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION
+                      );
                     }}
                   />
                 )}
@@ -714,7 +717,9 @@ export function MCPServerViewsSheet({
                     <SelectedDataSourcesSection
                       isEditMode={true}
                       onEditDataSources={() => {
-                        setCurrentPageId(TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
+                        setCurrentPageId(
+                          TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION
+                        );
                       }}
                     />
                   )}
@@ -798,108 +803,117 @@ export function MCPServerViewsSheet({
     }
   }, [currentMode, onModeChange, resetSheet]);
 
-  const handleConfigurationSave = useCallback(async (formData: MCPFormData) => {
-    if (!configurationTool || !form || !mcpServerView) {
-      return;
-    }
-
-    try {
-      // Ensure we're working with an MCP action
-      if (configurationTool.type !== "MCP") {
-        throw new Error("Expected MCP action for configuration save");
+  const handleConfigurationSave = useCallback(
+    async (formData: MCPFormData) => {
+      if (!configurationTool || !form || !mcpServerView) {
+        return;
       }
 
-      const isNewActionOrNameChanged = shouldGenerateUniqueName(
-        mode,
-        defaultFormValues,
-        formData
-      );
+      try {
+        // Ensure we're working with an MCP action
+        if (configurationTool.type !== "MCP") {
+          throw new Error("Expected MCP action for configuration save");
+        }
 
-      const newActionName = isNewActionOrNameChanged
-        ? generateUniqueActionName({
-            baseName: nameToStorageFormat(formData.name),
-            existingActions: actions,
-            selectedToolsInSheet,
-          })
-        : mode?.type === "edit"
-          ? configurationTool.name
-          : formData.name;
+        const isNewActionOrNameChanged = shouldGenerateUniqueName(
+          mode,
+          defaultFormValues,
+          formData
+        );
 
-      // For Canvas, include data source configurations
-      let finalConfiguration = formData.configuration;
-      if (mcpServerView.server.name === "canvas" && 'sources' in formData) {
-        const sources = (formData as any).sources;
-        if (sources && typeof sources === 'object' && 'in' in sources && 'notIn' in sources) {
-          // Only add dataSourceConfigurations if there are selected sources
-          if (sources.in.length > 0) {
-            const dataSourceConfigurations = transformTreeToSelectionConfigurations(
-              sources,
-              supportedDataSourceViews
-            );
-            finalConfiguration = {
-              ...formData.configuration,
-              dataSourceConfigurations,
-            };
-          } else {
-            // No sources selected, just keep the base configuration
-            finalConfiguration = {
-              ...formData.configuration,
-            };
+        const newActionName = isNewActionOrNameChanged
+          ? generateUniqueActionName({
+              baseName: nameToStorageFormat(formData.name),
+              existingActions: actions,
+              selectedToolsInSheet,
+            })
+          : mode?.type === "edit"
+            ? configurationTool.name
+            : formData.name;
+
+        // For Canvas, include data source configurations
+        let finalConfiguration = formData.configuration;
+        if (mcpServerView.server.name === "canvas" && "sources" in formData) {
+          const sources = (formData as any).sources;
+          if (
+            sources &&
+            typeof sources === "object" &&
+            "in" in sources &&
+            "notIn" in sources
+          ) {
+            // Only add dataSourceConfigurations if there are selected sources
+            if (sources.in.length > 0) {
+              const dataSourceConfigurations =
+                transformTreeToSelectionConfigurations(
+                  sources,
+                  supportedDataSourceViews
+                );
+              finalConfiguration = {
+                ...formData.configuration,
+                dataSourceConfigurations,
+              };
+            } else {
+              // No sources selected, just keep the base configuration
+              finalConfiguration = {
+                ...formData.configuration,
+              };
+            }
           }
         }
+
+        const configuredAction: AgentBuilderAction = {
+          ...configurationTool,
+          name: newActionName,
+          description: formData.description,
+          configuration: finalConfiguration,
+        };
+
+        handleConfigurationSaveUtil({
+          mode,
+          configuredAction,
+          mcpServerView,
+          onActionUpdate,
+          onModeChange,
+          setSelectedToolsInSheet,
+          setIsOpen,
+          sendNotification,
+        });
+
+        // Handle legacy navigation for non-configure modes
+        if (mode?.type !== "edit" && mode?.type !== "configure") {
+          setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);
+          setConfigurationTool(null);
+          setConfigurationMCPServerView(null);
+        }
+      } catch (error) {
+        sendNotification({
+          title: "Configuration failed",
+          description:
+            "There was an error configuring the tool. Please try again.",
+          type: "error",
+        });
       }
+    },
+    [
+      configurationTool,
+      form,
+      mcpServerView,
+      mode,
+      defaultFormValues,
+      actions,
+      selectedToolsInSheet,
+      onActionUpdate,
+      onModeChange,
+      sendNotification,
+      supportedDataSourceViews,
+    ]
+  );
 
-      const configuredAction: AgentBuilderAction = {
-        ...configurationTool,
-        name: newActionName,
-        description: formData.description,
-        configuration: finalConfiguration,
-      };
-
-      handleConfigurationSaveUtil({
-        mode,
-        configuredAction,
-        mcpServerView,
-        onActionUpdate,
-        onModeChange,
-        setSelectedToolsInSheet,
-        setIsOpen,
-        sendNotification,
-      });
-
-      // Handle legacy navigation for non-configure modes
-      if (mode?.type !== "edit" && mode?.type !== "configure") {
-        setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);
-        setConfigurationTool(null);
-        setConfigurationMCPServerView(null);
-      }
-    } catch (error) {
-      sendNotification({
-        title: "Configuration failed",
-        description:
-          "There was an error configuring the tool. Please try again.",
-        type: "error",
-      });
-    }
-  }, [
-    configurationTool,
-    form,
-    mcpServerView,
-    mode,
-    defaultFormValues,
-    actions,
-    selectedToolsInSheet,
-    onActionUpdate,
-    onModeChange,
-    sendNotification,
-    supportedDataSourceViews,
-  ]);
-
-  
   const footerButtons = useMemo(() => {
-    const isDataSourcePage = currentPageId === TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
+    const isDataSourcePage =
+      currentPageId === TOOLS_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
     const isCanvas = mcpServerView?.server.name === "canvas";
-    
+
     if (isDataSourcePage && isCanvas) {
       // When selecting data sources for Canvas (from configuration page)
       return {
@@ -919,7 +933,7 @@ export function MCPServerViewsSheet({
         },
       };
     }
-    
+
     return getFooterButtons({
       currentPageId,
       modeType: currentMode,

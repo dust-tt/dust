@@ -1,4 +1,10 @@
-import { Button, Chip, ContentMessage, FolderIcon, PlusIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  Chip,
+  ContentMessage,
+  FolderIcon,
+  PlusIcon,
+} from "@dust-tt/sparkle";
 import { useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -24,7 +30,7 @@ function getDataSourceIcon(dataSourceView: DataSourceViewType) {
       dataSourceView.dataSource.connectorProvider
     ].getLogoComponent();
   }
-  
+
   // Default to folder icon for data sources without a specific connector
   return FolderIcon;
 }
@@ -35,28 +41,37 @@ export function SelectedDataSourcesSection({
 }: SelectedDataSourcesSectionProps) {
   const { watch } = useFormContext<MCPFormData>();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
-  
+
   // For Canvas, the form is extended with a sources field that's not in the MCPFormData type
   // We need to use watch with any type and validate the structure
   const watchedSources = watch("sources" as any);
-  
+
   const selectedDataSources = useMemo(() => {
     // Ensure sources has the proper structure
     let normalizedSources: DataSourceBuilderTreeType;
-    
-    if (watchedSources && typeof watchedSources === 'object' && 'in' in watchedSources && 'notIn' in watchedSources) {
+
+    if (
+      watchedSources &&
+      typeof watchedSources === "object" &&
+      "in" in watchedSources &&
+      "notIn" in watchedSources
+    ) {
       normalizedSources = watchedSources as DataSourceBuilderTreeType;
     } else {
       normalizedSources = { in: [], notIn: [] };
     }
-    
+
     if (!normalizedSources.in || normalizedSources.in.length === 0) {
       return [];
     }
-    
+
     // Map the selected source items to data source views
-    const results: Array<{ name: string; sId: string; dataSourceView: DataSourceViewType }> = [];
-    
+    const results: Array<{
+      name: string;
+      sId: string;
+      dataSourceView: DataSourceViewType;
+    }> = [];
+
     for (const item of normalizedSources.in) {
       // Check if this is a data source type item
       if (item.type === "data_source" && "dataSourceView" in item) {
@@ -76,7 +91,7 @@ export function SelectedDataSourcesSection({
           );
           if (dataSourceView) {
             // Check if we already added this data source
-            if (!results.find(r => r.sId === dataSourceView.sId)) {
+            if (!results.find((r) => r.sId === dataSourceView.sId)) {
               results.push({
                 name: getDataSourceNameFromView(dataSourceView),
                 sId: dataSourceView.sId,
@@ -88,18 +103,21 @@ export function SelectedDataSourcesSection({
       }
       // We could also handle "space" and "category" types if needed
     }
-    
+
     return results;
   }, [watchedSources, supportedDataSourceViews]);
 
-  if (!isEditMode && (!selectedDataSources || selectedDataSources.length === 0)) {
+  if (
+    !isEditMode &&
+    (!selectedDataSources || selectedDataSources.length === 0)
+  ) {
     return null;
   }
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <div className="text-sm font-medium text-element-900">
+        <div className="text-element-900 text-sm font-medium">
           Selected Data Sources
         </div>
         {isEditMode && onEditDataSources && (
@@ -111,7 +129,7 @@ export function SelectedDataSourcesSection({
           />
         )}
       </div>
-      
+
       {selectedDataSources.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {selectedDataSources.map((ds) => {
@@ -119,14 +137,7 @@ export function SelectedDataSourcesSection({
               return null;
             }
             const Icon = getDataSourceIcon(ds.dataSourceView);
-            return (
-              <Chip
-                key={ds.sId}
-                label={ds.name}
-                size="sm"
-                icon={Icon}
-              />
-            );
+            return <Chip key={ds.sId} label={ds.name} size="sm" icon={Icon} />;
           })}
         </div>
       ) : (
@@ -137,7 +148,10 @@ export function SelectedDataSourcesSection({
         >
           {isEditMode ? (
             <div className="flex flex-col gap-2">
-              <p>Canvas can access your data sources for better context. This is optional.</p>
+              <p>
+                Canvas can access your data sources for better context. This is
+                optional.
+              </p>
               {onEditDataSources && (
                 <Button
                   label="Select Data Sources"

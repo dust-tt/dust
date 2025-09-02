@@ -70,7 +70,7 @@ export function getDefaultFormValues(mcpServerView: MCPServerViewType | null) {
     description: "",
     configuration: getDefaultConfiguration(mcpServerView),
   };
-  
+
   // You can select data source for canvas
   if (mcpServerView?.server.name === "canvas") {
     return {
@@ -78,6 +78,6 @@ export function getDefaultFormValues(mcpServerView: MCPServerViewType | null) {
       sources: { in: [], notIn: [] },
     };
   }
-  
+
   return baseValues;
 }

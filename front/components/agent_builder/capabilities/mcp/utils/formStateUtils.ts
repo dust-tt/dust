@@ -33,19 +33,25 @@ export function createFormResetHandler(
       }
 
       if (configurationTool?.type === "MCP") {
-        const baseFormData = {name: configurationTool.name ?? "",
-              description: configurationTool.description ?? "",
-              configuration: configurationTool.configuration};
+        const baseFormData = {
+          name: configurationTool.name ?? "",
+          description: configurationTool.description ?? "",
+          configuration: configurationTool.configuration,
+        };
         // Edit mode: reset with existing tool data
-        const resetData: MCPFormData | CanvasFormData = mcpServerView?.server.name === "canvas"
-          ? {
-              ...baseFormData,
-              sources: configurationTool.configuration?.dataSourceConfigurations
-                ? transformSelectionConfigurationsToTree(configurationTool.configuration.dataSourceConfigurations)
-                : { in: [], notIn: [] },
-            }
-          : baseFormData;
-        
+        const resetData: MCPFormData | CanvasFormData =
+          mcpServerView?.server.name === "canvas"
+            ? {
+                ...baseFormData,
+                sources: configurationTool.configuration
+                  ?.dataSourceConfigurations
+                  ? transformSelectionConfigurationsToTree(
+                      configurationTool.configuration.dataSourceConfigurations
+                    )
+                  : { in: [], notIn: [] },
+              }
+            : baseFormData;
+
         form.reset(resetData);
       } else if (mcpServerView) {
         // New configuration mode: reset with default values

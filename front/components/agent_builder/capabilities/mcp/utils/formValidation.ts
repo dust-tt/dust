@@ -2,11 +2,11 @@ import { z } from "zod";
 
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { mcpServerConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { 
+import {
   createBaseFormSchema,
-  createMCPFormSchema 
+  createMCPFormSchema,
 } from "@app/components/agent_builder/capabilities/mcp/validation/schemaBuilders";
-import type {AgentBuilderAction} from "@app/components/agent_builder/types";
+import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -43,7 +43,7 @@ const canvasFormSchema = z.object({
 export function getMCPConfigurationFormSchema(
   mcpServerView: MCPServerViewType | null | undefined
 ) {
-  if (mcpServerView?.server.name === 'canvas') {
+  if (mcpServerView?.server.name === "canvas") {
     return canvasFormSchema;
   }
 
@@ -72,7 +72,7 @@ export function validateMCPActionConfiguration(
     }
 
     const schema = getMCPConfigurationFormSchema(serverView);
-    
+
     if (!schema) {
       return {
         isValid: false,
@@ -81,8 +81,8 @@ export function validateMCPActionConfiguration(
     }
 
     // For Canvas, include sources and mcpServerView in validation
-    const validationData: MCPValidationData | CanvasValidationData = 
-      serverView.server.name === 'canvas'
+    const validationData: MCPValidationData | CanvasValidationData =
+      serverView.server.name === "canvas"
         ? {
             name: action.name,
             description: action.description,

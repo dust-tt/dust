@@ -47,7 +47,7 @@ export function addNodeToTree(
   if (!tree || !tree.in || !tree.notIn) {
     tree = { in: [], notIn: [] };
   }
-  
+
   const { path } = item;
   const pathPrefix = getPathPrefix(path);
 
@@ -108,7 +108,7 @@ export function removeNodeFromTree(
   if (!tree || !tree.in || !tree.notIn) {
     tree = { in: [], notIn: [] };
   }
-  
+
   const pathPrefix = getPathPrefix(pathStr);
 
   let hasParentExclusion = false;
@@ -185,7 +185,7 @@ export function isNodeSelected(
   if (!tree || !tree.in || !tree.notIn) {
     return false;
   }
-  
+
   const pathStr = pathToString(path);
   const pathPrefix = getPathPrefix(pathStr);
 
