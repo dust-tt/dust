@@ -315,11 +315,6 @@ export function AgentBuilderCopilot() {
           shouldDirty: true,
           shouldValidate: true,
         });
-        sendNotification({
-          title: "Tool added",
-          description: "Data Visualization added to this agent.",
-          type: "success",
-        });
         return true;
       }
 
@@ -359,11 +354,6 @@ export function AgentBuilderCopilot() {
         shouldDirty: true,
         shouldValidate: true,
       });
-      sendNotification({
-        title: "Tool added",
-        description: `${view.server.name} added to this agent.`,
-        type: "success",
-      });
       return true;
     },
     [getValues, setValue, defaultMCPServerViews, mcpServerViews, sendNotification, currentToolIds]
@@ -398,14 +388,9 @@ export function AgentBuilderCopilot() {
         shouldDirty: true,
       });
 
-      sendNotification({
-        title: "Instructions Applied",
-        description:
-          "The copilot's instructions have been applied to your agent.",
-        type: "success",
-      });
+      // Success notification removed (too noisy). Only notify on errors elsewhere.
     },
-    [setValue, sendNotification]
+    [setValue]
   );
 
   if (!user) {
