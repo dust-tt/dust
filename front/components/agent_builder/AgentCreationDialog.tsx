@@ -100,7 +100,7 @@ export function AgentCreationDialog({
 
           {mode === "ai_generation" && (
             <div className="flex flex-col gap-3">
-              <div className="relative flex w-full flex-col rounded-2xl border border-border-dark/50 bg-muted-background transition-all duration-300 focus-within:border-border-dark focus-within:ring-2 focus-within:ring-highlight/30 dark:border-border-dark-night dark:bg-muted-background-night dark:focus-within:border-border-dark-night dark:focus-within:ring-2 dark:focus-within:ring-highlight/30-night">
+              <div className="relative flex w-full flex-col rounded-2xl border border-border-dark/50 bg-muted-background transition-all duration-300 focus-within:border-border-dark focus-within:ring-2 focus-within:ring-inset focus-within:ring-offset-0 focus-within:ring-highlight/30 dark:border-border-dark-night dark:bg-muted-background-night dark:focus-within:border-border-dark-night dark:focus-within:ring-2 dark:focus-within:ring-inset dark:focus-within:ring-offset-0 dark:focus-within:ring-highlight/30-night">
                 <textarea
                   value={aiInstructions}
                   onChange={(e) => {
@@ -176,4 +176,3 @@ export function AgentCreationDialog({
     </>
   );
 }
-
