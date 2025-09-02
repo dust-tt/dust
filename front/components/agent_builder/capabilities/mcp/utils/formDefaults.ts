@@ -71,7 +71,7 @@ export function getDefaultFormValues(mcpServerView: MCPServerViewType | null) {
     configuration: getDefaultConfiguration(mcpServerView),
   };
   
-  // For Canvas, include the sources field with proper initialization
+  // You can select data source for canvas
   if (mcpServerView?.server.name === "canvas") {
     return {
       ...baseValues,

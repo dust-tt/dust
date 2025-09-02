@@ -105,11 +105,6 @@ export function KnowledgeFooter() {
   const [isOpen, setOpen] = useState(true);
   const { field } = useSourcesFormController();
 
-  // Handle case where field.value is not yet initialized
-  if (!field.value || !field.value.in || field.value.in.length <= 0) {
-    return <></>;
-  }
-
   return (
     <Collapsible open={isOpen} onOpenChange={setOpen}>
       <CollapsibleTrigger isOpen={isOpen}>
