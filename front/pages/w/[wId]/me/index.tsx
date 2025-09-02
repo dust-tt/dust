@@ -21,8 +21,8 @@ import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useUser } from "@app/lib/swr/user";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
