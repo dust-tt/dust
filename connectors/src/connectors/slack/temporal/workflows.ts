@@ -9,6 +9,7 @@ import {
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
 import type { ModelId } from "@connectors/types";
+import { concurrentExecutor } from "@connectors/types";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
@@ -352,4 +353,52 @@ export function syncOneMessageDebouncedWorkflowId(
 
 export function slackGarbageCollectorWorkflowId(connectorId: ModelId) {
   return `slack-GarbageCollector-${connectorId}`;
+}
+
+// Configure attemptChannelJoinActivity with aggressive retries for joinChannels workflow
+const { attemptChannelJoinActivity: attemptChannelJoinWithRetries } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "5 minutes",
+    retry: {
+      maximumAttempts: 25,
+      initialInterval: "1s",
+      maximumInterval: "10s",
+      backoffCoefficient: 1.5,
+    },
+  });
+
+/**
+ * Workflow to join multiple Slack channels in batch with retries.
+ * Processes channels with a concurrency of 10.
+ * By default, fails if more than 250 channels are provided.
+ */
+export async function joinChannelsWorkflow(
+  connectorId: ModelId,
+  channelIds: string[]
+): Promise<void> {
+  const MAX_CHANNELS = 250;
+  const CONCURRENCY = 10;
+
+  // Fail if more than 250 channels are provided
+  if (channelIds.length > MAX_CHANNELS) {
+    throw new Error(
+      `Cannot join more than ${MAX_CHANNELS} channels in a single workflow. Received ${channelIds.length} channels.`
+    );
+  }
+
+  // Execute channel joins concurrently
+  await concurrentExecutor(
+    channelIds,
+    async (channelId) => {
+      await attemptChannelJoinWithRetries(connectorId, channelId);
+    },
+    { concurrency: CONCURRENCY }
+  );
+}
+
+export function joinChannelsWorkflowId(
+  connectorId: ModelId,
+  batchIndex: number = 0
+) {
+  return `slack-joinChannels-${connectorId}-batch-${batchIndex}`;
 }

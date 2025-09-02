@@ -13,6 +13,7 @@ import {
 } from "@connectors/connectors/interface";
 import {
   autoReadChannel,
+  autoReadChannelsBulk,
   findMatchingChannelPatterns,
 } from "@connectors/connectors/slack/auto_read_channel";
 import { getBotEnabled } from "@connectors/connectors/slack/bot";
@@ -552,8 +553,6 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         // Fetch all channels from Slack
         const allChannels = await getChannels(slackClient, connector.id, false);
 
-        const results: Result<boolean, Error>[] = [];
-
         // Filter channels that match any new pattern
         const matchingChannels = allChannels.filter((channel) => {
           const channelName = channel.name;
@@ -568,30 +567,21 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           return matchingPatterns.length > 0;
         });
 
-        await concurrentExecutor(
-          matchingChannels,
-          async (channel) => {
-            try {
-              if (channel.id) {
-                results.push(
-                  await autoReadChannel(
-                    slackConfig.slackTeamId,
-                    logger,
-                    channel.id,
-                    connector.type as "slack" | "slack_bot"
-                  )
-                );
-              }
-            } catch (error) {
-              results.push(new Err(normalizeError(error)));
-            }
-          },
-          { concurrency: 10 }
-        );
+        // Extract channel IDs and process them all at once
+        const channelIds = matchingChannels
+          .map((channel) => channel.id)
+          .filter((id): id is string => id !== undefined);
 
-        for (const result of results) {
-          if (result.isErr()) {
-            return result;
+        if (channelIds.length > 0) {
+          const bulkResult = await autoReadChannelsBulk(
+            slackConfig.slackTeamId,
+            logger,
+            channelIds,
+            connector.type as "slack" | "slack_bot"
+          );
+
+          if (bulkResult.isErr()) {
+            return bulkResult;
           }
         }
 

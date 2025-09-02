@@ -5,11 +5,11 @@ import type {
 } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
 
-import { joinChannelWithRetries } from "@connectors/connectors/slack/lib/channels";
 import {
   getSlackClient,
   reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
+import { launchSlackJoinChannelsWorkflowAndWait } from "@connectors/connectors/slack/temporal/client";
 import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
@@ -22,7 +22,7 @@ import { SlackChannel } from "@connectors/lib/models/slack";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import type { ModelId, SlackAutoReadPattern } from "@connectors/types";
+import type { SlackAutoReadPattern } from "@connectors/types";
 import {
   INTERNAL_MIME_TYPES,
   normalizeError,
@@ -100,24 +100,11 @@ export async function autoReadChannel(
   );
   if (matchingPatterns.length > 0) {
     if (!remoteChannel.channel?.is_member) {
-      const joinChannelRes = await withRetries(
-        logger,
-        async (connectorId: ModelId, slackChannelId: string) => {
-          const result = await joinChannelWithRetries(
-            connectorId,
-            slackChannelId
-          );
-          if (result.isErr()) {
-            // Retry on any error, not just rate limit errors
-            throw result.error; // This will trigger a retry
-          }
-          return result;
-        },
-        {
-          retries: 3,
-          delayBetweenRetriesMs: 10000, // 10 seconds between retries
-        }
-      )(connectorId, slackChannelId);
+      // Use the Temporal workflow to join the channel with built-in retries
+      const joinChannelRes = await launchSlackJoinChannelsWorkflowAndWait(
+        connectorId,
+        [slackChannelId]
+      );
 
       if (joinChannelRes.isErr()) {
         return joinChannelRes;
@@ -254,4 +241,236 @@ export async function autoReadChannel(
   }
 
   return new Ok(false);
+}
+
+/**
+ * Process multiple channels for auto-read at once.
+ * This is more efficient than calling autoReadChannel individually for each channel.
+ */
+export async function autoReadChannelsBulk(
+  teamId: string,
+  logger: Logger,
+  slackChannelIds: string[],
+  provider: Extract<ConnectorProvider, "slack_bot" | "slack"> = "slack"
+): Promise<Result<boolean, Error>> {
+  if (slackChannelIds.length === 0) {
+    return new Ok(true);
+  }
+
+  const slackConfigurations =
+    await SlackConfigurationResource.listForTeamId(teamId);
+  const connectorIds = slackConfigurations.map((c) => c.connectorId);
+  const connectors = await ConnectorResource.fetchByIds(provider, connectorIds);
+  const connector = connectors.find((c) => c.type === provider);
+
+  if (!connector) {
+    return new Err(
+      new Error(
+        `Connector not found for teamId ${teamId} and provider ${provider}`
+      )
+    );
+  }
+
+  const slackConfiguration = slackConfigurations.find(
+    (c) => c.connectorId === connector.id
+  );
+
+  if (!slackConfiguration) {
+    return new Err(
+      new Error(`Slack configuration not found for teamId ${teamId}`)
+    );
+  }
+
+  const { connectorId } = slackConfiguration;
+  const slackClient = await getSlackClient(connectorId);
+  const { autoReadChannelPatterns } = slackConfiguration;
+
+  // Collect channels that need to be joined
+  const channelsToJoin: string[] = [];
+  const channelsToProcess: Array<{
+    channelId: string;
+    channelName: string;
+    isPrivate: boolean;
+    matchingPatterns: SlackAutoReadPattern[];
+  }> = [];
+
+  // Check each channel to see if it matches patterns and needs joining
+  for (const slackChannelId of slackChannelIds) {
+    reportSlackUsage({
+      connectorId,
+      method: "conversations.info",
+      channelId: slackChannelId,
+    });
+    
+    const remoteChannel = await slackClient.conversations.info({
+      channel: slackChannelId,
+    });
+    
+    const remoteChannelName = remoteChannel.channel?.name;
+    if (!remoteChannel.ok || !remoteChannelName) {
+      logger.error({
+        connectorId,
+        channelId: slackChannelId,
+        error: remoteChannel.error,
+      });
+      continue; // Skip this channel
+    }
+
+    const matchingPatterns = findMatchingChannelPatterns(
+      remoteChannelName,
+      autoReadChannelPatterns
+    );
+
+    if (matchingPatterns.length > 0) {
+      if (!remoteChannel.channel?.is_member) {
+        channelsToJoin.push(slackChannelId);
+      }
+      
+      channelsToProcess.push({
+        channelId: slackChannelId,
+        channelName: remoteChannelName,
+        isPrivate: remoteChannel.channel?.is_private ?? false,
+        matchingPatterns,
+      });
+    }
+  }
+
+  // Join all channels at once using the workflow
+  if (channelsToJoin.length > 0) {
+    const joinChannelRes = await launchSlackJoinChannelsWorkflowAndWait(
+      connectorId,
+      channelsToJoin,
+      true // allowUnlimitedChannels since we're handling bulk operations
+    );
+
+    if (joinChannelRes.isErr()) {
+      return joinChannelRes;
+    }
+  }
+
+  // Process all channels (update DB and data sources)
+  for (const channelInfo of channelsToProcess) {
+    const { channelId, channelName, isPrivate, matchingPatterns } = channelInfo;
+
+    let channel = await SlackChannel.findOne({
+      where: {
+        slackChannelId: channelId,
+        connectorId,
+      },
+    });
+    
+    if (!channel) {
+      channel = await SlackChannel.create({
+        connectorId,
+        slackChannelId: channelId,
+        slackChannelName: channelName,
+        permission: "read_write",
+        private: isPrivate,
+      });
+    } else {
+      await channel.update({
+        permission: "read_write",
+      });
+    }
+
+    // For slack_bot context, skip data source operations
+    if (provider === "slack_bot") {
+      continue;
+    }
+
+    // Slack context: perform full data source operations
+    await upsertDataSourceFolder({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      folderId: slackChannelInternalIdFromSlackChannelId(channelId),
+      title: `#${channelName}`,
+      parentId: null,
+      parents: [slackChannelInternalIdFromSlackChannelId(channelId)],
+      mimeType: INTERNAL_MIME_TYPES.SLACK.CHANNEL,
+      sourceUrl: getSlackChannelSourceUrl(channelId, slackConfiguration),
+      providerVisibility: isPrivate ? "private" : "public",
+    });
+
+    const dustAPI = new DustAPI(
+      { url: apiConfig.getDustFrontAPIUrl() },
+      {
+        workspaceId: connector.workspaceId,
+        apiKey: connector.workspaceAPIKey,
+      },
+      logger
+    );
+
+    // Process all matching patterns for this channel
+    const results = await concurrentExecutor(
+      matchingPatterns,
+      async (p: SlackAutoReadPattern) => {
+        const searchParams = new URLSearchParams({
+          vaultId: p.spaceId,
+          dataSourceId: connector.dataSourceId,
+        });
+
+        const searchRes = await dustAPI.searchDataSourceViews(searchParams);
+        if (searchRes.isErr()) {
+          logger.error({
+            connectorId,
+            channelId,
+            error: searchRes.error.message,
+          });
+          throw new Error("Failed to join Slack channel in Dust.");
+        }
+
+        const [dataSourceView] = searchRes.value;
+        if (!dataSourceView) {
+          logger.error({
+            connectorId,
+            channelId,
+            error:
+              "Failed to join Slack channel, there was an issue retrieving dataSourceViews",
+          });
+          return new Err(
+            new Error("There was an issue retrieving dataSourceViews")
+          );
+        }
+
+        // Retry if the patch operation fails
+        try {
+          await withRetries(
+            logger,
+            async (dataSourceView: DataSourceViewType) => {
+              const updateDataSourceViewRes = await dustAPI.patchDataSourceView(
+                dataSourceView,
+                {
+                  parentsToAdd: [
+                    slackChannelInternalIdFromSlackChannelId(channel.slackChannelId),
+                  ],
+                  parentsToRemove: undefined,
+                }
+              );
+
+              if (updateDataSourceViewRes.isErr()) {
+                throw new Error(
+                  `Failed to update Slack data source view for space ${p.spaceId}.`
+                );
+              }
+            },
+            {
+              retries: 3,
+              delayBetweenRetriesMs: 5000,
+            }
+          )(dataSourceView);
+        } catch (e) {
+          return new Err(normalizeError(e));
+        }
+
+        return new Ok(true);
+      },
+      { concurrency: 5 }
+    );
+
+    // If any error, return the first error
+    if (results.some((r) => r.isErr())) {
+      return results.find((r) => r.isErr())!;
+    }
+  }
+
+  return new Ok(true);
 }
