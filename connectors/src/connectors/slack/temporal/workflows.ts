@@ -358,11 +358,11 @@ export function slackGarbageCollectorWorkflowId(connectorId: ModelId) {
 // Configure attemptChannelJoinActivity with aggressive retries for joinChannels workflow
 const { attemptChannelJoinActivity: attemptChannelJoinWithRetries } =
   proxyActivities<typeof activities>({
-    startToCloseTimeout: "5 minutes",
+    startToCloseTimeout: "10 minutes",
     retry: {
       maximumAttempts: 25,
-      initialInterval: "1s",
-      maximumInterval: "10s",
+      initialInterval: "2s",
+      maximumInterval: "15s",
       backoffCoefficient: 1.5,
     },
   });
