@@ -231,7 +231,7 @@ export type MCPFormData = {
   description: string;
   configuration: MCPServerConfigurationType;
   sources: DataSourceBuilderTreeType;
-}
+};
 
 export const AgentBuilderFormContext =
   createContext<UseFormReturn<AgentBuilderFormData> | null>(null);

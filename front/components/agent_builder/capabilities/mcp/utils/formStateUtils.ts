@@ -30,7 +30,8 @@ export function createFormResetHandler(
       if (configurationTool?.type === "MCP") {
         // Edit mode: reset with existing tool data
         // Extract data sources from configuration if present (only Canvas stores them in backend)
-        const sources = configurationTool.configuration?.dataSourceConfigurations
+        const sources = configurationTool.configuration
+          ?.dataSourceConfigurations
           ? transformSelectionConfigurationsToTree(
               configurationTool.configuration.dataSourceConfigurations
             )

@@ -32,11 +32,11 @@ export function getMCPConfigurationFormSchema(
     : null;
 
   const baseSchema = createMCPFormSchema(requirements);
-  
+
   // All MCP tools has sources but only content_creation will use it (and it should be optional)
   return z.object({
     ...baseSchema.shape,
-    sources: dataSourceBuilderTreeType, 
+    sources: dataSourceBuilderTreeType,
   });
 }
 

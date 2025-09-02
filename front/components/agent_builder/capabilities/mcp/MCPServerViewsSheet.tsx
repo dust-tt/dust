@@ -268,8 +268,6 @@ export function MCPServerViewsSheet({
         if (mcpServerView) {
           setConfigurationMCPServerView(mcpServerView);
         }
-      } else {
-        setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
       }
     } else if (mode?.type === "configure") {
       setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
@@ -464,7 +462,7 @@ export function MCPServerViewsSheet({
   );
 
   // Memoize default values to prevent form recreation
-  const defaultFormValues = useMemo(() => {
+  const defaultFormValues = useMemo<MCPFormData>(() => {
     if (configurationTool?.type === "MCP") {
       // Extract data sources from configuration if editing (only "content_creation" stores them for now)
       const dataSourceConfigurations =
@@ -775,14 +773,14 @@ export function MCPServerViewsSheet({
     ? {
         leftButton: {
           label: "Cancel",
-          variant: "outline" as const,
+          variant: "outline",
           onClick: () => {
             setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
           },
         },
         rightButton: {
           label: "Done",
-          variant: "primary" as const,
+          variant: "primary",
           onClick: () => {
             setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
           },
@@ -804,26 +802,6 @@ export function MCPServerViewsSheet({
         resetToSelection,
       });
 
-  const sheetContent = (
-    <MultiPageSheetContent
-      className="h-full"
-      showNavigation={false}
-      showHeaderNavigation={false}
-      size="xl"
-      pages={pages}
-      currentPageId={currentPageId}
-      onPageChange={(pageId) => {
-        if (pageId === TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION) {
-          resetToSelection();
-        } else {
-          setCurrentPageId(pageId as ConfigurationPagePageId);
-        }
-      }}
-      addFooterSeparator
-      {...footerButtons}
-    />
-  );
-
   return (
     <MultiPageSheet
       open={isOpen}
@@ -841,7 +819,23 @@ export function MCPServerViewsSheet({
     >
       <FormProvider form={form}>
         <DataSourceBuilderProvider spaces={spaces}>
-          {sheetContent}
+          <MultiPageSheetContent
+            className="h-full"
+            showNavigation={false}
+            showHeaderNavigation={false}
+            size="xl"
+            pages={pages}
+            currentPageId={currentPageId}
+            onPageChange={(pageId) => {
+              if (pageId === TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION) {
+                resetToSelection();
+              } else {
+                setCurrentPageId(pageId as ConfigurationPagePageId);
+              }
+            }}
+            addFooterSeparator
+            {...footerButtons}
+          />
         </DataSourceBuilderProvider>
       </FormProvider>
     </MultiPageSheet>

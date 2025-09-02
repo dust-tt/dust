@@ -4,7 +4,7 @@ import type { DataSourceBuilderTreeType } from "@app/components/data_source_view
 /**
  * Extracts data source views from the sources tree structure.
  * Handles both data_source and node types, deduplicating by dustAPIDataSourceId.
- * 
+ *
  * @param sources - The sources tree containing selected data sources
  * @returns A record of DataSourceFilterItem indexed by dustAPIDataSourceId
  */
