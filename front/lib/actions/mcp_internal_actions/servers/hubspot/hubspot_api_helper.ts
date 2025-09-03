@@ -194,7 +194,10 @@ interface HubspotFilter {
   highValue?: string;
 }
 
-function buildHubspotFilters(filters: Array<HubspotFilter>) {
+function buildHubspotFilters(
+  filters: Array<HubspotFilter>,
+  propertyTypes?: Record<string, string>
+) {
   // Define supported operators for validation
   const supportedOperators = [
     FilterOperatorEnum.Eq,
@@ -235,7 +238,7 @@ function buildHubspotFilters(filters: Array<HubspotFilter>) {
         operator === FilterOperatorEnum.In ||
         operator === FilterOperatorEnum.NotIn
       ) {
-        // For string properties, values must be lowercase, but not for date properties
+        // For string properties, values must be lowercase, but not for date or enumeration properties
         if (values?.length) {
           // Check if this is a date property to avoid lowercasing dates
           const isDateProperty =
@@ -246,13 +249,23 @@ function buildHubspotFilters(filters: Array<HubspotFilter>) {
             propertyName === "lastmodifieddate" ||
             propertyName === "hs_lastmodifieddate";
 
+          // Check if this is an enumeration property that should preserve case
+          const isEnumerationProperty =
+            propertyTypes?.[propertyName] === "enumeration" ||
+            propertyName === "industry" ||
+            propertyName === "lifecyclestage" ||
+            propertyName === "dealstage" ||
+            propertyName === "hs_lead_status" ||
+            propertyName === "type";
+
           // Filter out any undefined/null values and ensure all values are strings
           const cleanValues = values
             .filter((v) => v !== undefined && v !== null)
             .map((v) => String(v));
-          filter.values = isDateProperty
-            ? cleanValues
-            : cleanValues.map((v) => v.toLowerCase());
+          filter.values =
+            isDateProperty || isEnumerationProperty
+              ? cleanValues
+              : cleanValues.map((v) => v.toLowerCase());
         } else {
           throw new Error(`Values array is required for ${operator} operator`);
         }
@@ -292,10 +305,20 @@ function buildHubspotFilters(filters: Array<HubspotFilter>) {
             propertyName === "lastmodifieddate" ||
             propertyName === "hs_lastmodifieddate";
 
+          // Check if this is an enumeration property that should preserve case
+          const isEnumerationProperty =
+            propertyTypes?.[propertyName] === "enumeration" ||
+            propertyName === "industry" ||
+            propertyName === "lifecyclestage" ||
+            propertyName === "dealstage" ||
+            propertyName === "hs_lead_status" ||
+            propertyName === "type";
+
           const stringValue = String(value);
-          // For string comparison operators, lowercase non-date values for consistency
+          // For string comparison operators, lowercase non-date, non-enumeration values for consistency
           if (
             !isDateProperty &&
+            !isEnumerationProperty &&
             (operator === FilterOperatorEnum.Eq ||
               operator === FilterOperatorEnum.Neq ||
               operator === FilterOperatorEnum.ContainsToken ||
