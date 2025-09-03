@@ -18,11 +18,16 @@ export async function createClientExecutableFile(
     conversationId: string;
     fileName: string;
     mimeType: ContentCreationFileContentType;
-    agentConfigurationId?: string;
+    createdByAgentConfigurationId?: string;
   }
 ): Promise<Result<FileResource, Error>> {
-  const { content, conversationId, fileName, mimeType, agentConfigurationId } =
-    params;
+  const {
+    content,
+    conversationId,
+    fileName,
+    mimeType,
+    createdByAgentConfigurationId,
+  } = params;
 
   try {
     const workspace = auth.getNonNullableWorkspace();
@@ -74,7 +79,9 @@ export async function createClientExecutableFile(
       useCase: "conversation",
       useCaseMetadata: {
         conversationId,
-        ...(agentConfigurationId ? { agentConfigurationId } : {}),
+        ...(createdByAgentConfigurationId
+          ? { createdByAgentConfigurationId }
+          : {}),
       },
     });
 
@@ -109,7 +116,7 @@ export async function editClientExecutableFile(
     oldString: string;
     newString: string;
     expectedReplacements?: number;
-    agentConfigurationId?: string;
+    editedByAgentConfigurationId?: string;
   }
 ): Promise<
   Result<{ fileResource: FileResource; replacementCount: number }, Error>
@@ -119,7 +126,7 @@ export async function editClientExecutableFile(
     oldString,
     newString,
     expectedReplacements = 1,
-    agentConfigurationId,
+    editedByAgentConfigurationId,
   } = params;
 
   // Fetch the existing file.
@@ -150,12 +157,13 @@ export async function editClientExecutableFile(
   }
 
   if (
-    agentConfigurationId &&
-    fileResource.useCaseMetadata?.agentConfigurationId !== agentConfigurationId
+    editedByAgentConfigurationId &&
+    fileResource.useCaseMetadata?.agentConfigurationId !==
+      editedByAgentConfigurationId
   ) {
     await fileResource.setUseCaseMetadata({
       ...fileResource.useCaseMetadata,
-      agentConfigurationId,
+      agentConfigurationId: editedByAgentConfigurationId,
     });
   }
 
