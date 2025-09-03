@@ -42,9 +42,6 @@ export function AgentMessageActions({
   const lastAction = isAgentMessageWithActions
     ? agentMessage.actions[agentMessage.actions.length - 1]
     : null;
-  const hasSidePanelContent =
-    (isAgentMessageWithActions && agentMessage.actions.length > 0) ||
-    agentMessage.chainOfThought;
 
   const chainOfThought = agentMessage.chainOfThought || "";
 
