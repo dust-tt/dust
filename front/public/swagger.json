@@ -136,6 +136,20 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "variant",
+            "required": false,
+            "description": "Configuration variant to retrieve. 'light' returns basic config without actions, 'full' includes complete actions/tools configuration",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "light",
+                "full"
+              ],
+              "default": "light"
+            }
           }
         ],
         "security": [
@@ -4050,6 +4064,75 @@
           },
           "405": {
             "description": "Method not supported"
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/spaces/{spaceId}/mcp_server_views": {
+      "get": {
+        "summary": "List available MCP server views.",
+        "description": "Retrieves a list of enabled MCP server views (aka tools) for a specific space of the authenticated workspace.",
+        "tags": [
+          "Tools"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "Unique string identifier for the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "description": "ID of the space",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MCP server views of the space",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "spaces": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MCPServerView"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "404": {
+            "description": "Workspace not found."
+          },
+          "405": {
+            "description": "Method not supported."
+          },
+          "500": {
+            "description": "Internal Server Error."
           }
         }
       }

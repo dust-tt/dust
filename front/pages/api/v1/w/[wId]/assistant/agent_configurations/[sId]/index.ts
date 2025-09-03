@@ -130,7 +130,7 @@ async function handler(
   }
 
   // Validate variant parameter if provided
-  const configVariant = 
+  const configVariant =
     typeof variant === "string" && (variant === "light" || variant === "full")
       ? variant
       : "light";
