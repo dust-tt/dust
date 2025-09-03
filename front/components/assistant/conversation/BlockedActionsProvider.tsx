@@ -174,20 +174,8 @@ export function BlockedActionsProvider({
 
   useNavigationLock(isDialogOpen);
 
-  useEffect(() => {
-    // Close the dialog when there are no more blocked actions
-    if (blockedActionsQueue.length === 0 && isDialogOpen && !isValidating) {
-      setIsDialogOpen(false);
-      setCurrentStep("validation");
-      setCurrentValidationIndex(0);
-    }
-  }, [blockedActionsQueue.length, isDialogOpen, isValidating]);
-
   const submitValidation = async (status: MCPValidationOutputType) => {
     setSubmitStatus(status);
-    if (!pendingValidations.length) {
-      return;
-    }
 
     const currentBlockedAction = pendingValidations[currentValidationIndex];
     const { blockedAction, message } = currentBlockedAction;
@@ -200,6 +188,7 @@ export function BlockedActionsProvider({
     });
 
     if (!result.success) {
+      setErrorMessage("Failed to assess action approval. Please try again.");
       return;
     }
 
@@ -222,6 +211,7 @@ export function BlockedActionsProvider({
     }
   };
 
+  // Opens the dialog when there are new pending validations
   useEffect(() => {
     if (pendingValidations.length > 0 && !isDialogOpen) {
       setCurrentStep("validation");
@@ -229,6 +219,15 @@ export function BlockedActionsProvider({
       setIsDialogOpen(true);
     }
   }, [pendingValidations.length, isDialogOpen]);
+
+  // Close the dialog when there are no more blocked actions
+  useEffect(() => {
+    if (blockedActionsQueue.length === 0 && isDialogOpen && !isValidating) {
+      setIsDialogOpen(false);
+      setCurrentStep("validation");
+      setCurrentValidationIndex(0);
+    }
+  }, [blockedActionsQueue.length, isDialogOpen, isValidating]);
 
   const showBlockedActionsDialog = useCallback(() => {
     if (blockedActionsQueue.length > 0 && pendingValidations.length > 0) {
