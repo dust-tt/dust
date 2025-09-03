@@ -89,7 +89,9 @@ const createServer = (
           );
         }
 
-        const { conversation } = agentLoopContext?.runContext ?? {};
+        const { conversation, agentConfiguration } =
+          agentLoopContext?.runContext ?? {};
+
         if (!conversation) {
           return new Err(
             new MCPError(
@@ -103,6 +105,7 @@ const createServer = (
           conversationId: conversation.sId,
           fileName: file_name,
           mimeType: mime_type,
+          agentConfigurationId: agentConfiguration?.sId,
         });
 
         if (result.isErr()) {

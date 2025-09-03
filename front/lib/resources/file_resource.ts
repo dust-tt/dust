@@ -568,6 +568,10 @@ export class FileResource extends BaseResource<FileModel> {
   // Serialization logic.
 
   toJSON(auth?: Authenticator): FileType {
+    const extraMetadata = this.useCaseMetadata?.agentConfigurationId
+      ? { agentConfigurationId: this.useCaseMetadata.agentConfigurationId }
+      : {};
+
     const blob: FileType = {
       // TODO(spolu): move this to ModelId
       id: this.sId,
@@ -577,6 +581,7 @@ export class FileResource extends BaseResource<FileModel> {
       fileSize: this.fileSize,
       status: this.status,
       useCase: this.useCase,
+      ...extraMetadata,
     };
 
     if (auth && this.isReady && !this.isUpsertUseCase()) {

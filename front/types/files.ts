@@ -28,6 +28,7 @@ export type FileUseCaseMetadata = {
   conversationId?: string;
   spaceId?: string;
   generatedTables?: string[];
+  agentConfigurationId?: string;
 };
 
 export const fileShareScopeSchema = z.enum([
@@ -49,6 +50,7 @@ export interface FileType {
   uploadUrl?: string;
   publicUrl?: string;
   useCase: FileUseCase;
+  agentConfigurationId?: string;
 }
 
 export type FileTypeWithUploadUrl = FileType & { uploadUrl: string };

@@ -121,6 +121,10 @@ export function useUpsertFileAsDatasourceEntry(
   return doCreate;
 }
 
+type InternalFileMetadata = FileType & {
+  agentConfigurationId?: string;
+};
+
 export function useFileMetadata({
   fileId,
   owner,
@@ -130,7 +134,8 @@ export function useFileMetadata({
   owner: LightWorkspaceType;
   cacheKey?: string | null;
 }) {
-  const fileMetadataFetcher: Fetcher<FileType> = fetcher;
+  // Internally, our metadata may include extra fields not present in the public client type.
+  const fileMetadataFetcher: Fetcher<InternalFileMetadata> = fetcher;
 
   // Include cacheKey in the SWR key if provided to force cache invalidation.
   const swrKey = fileId

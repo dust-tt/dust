@@ -287,6 +287,28 @@ export function VisualizationWrapper({
 
   const [errored, setErrorMessage] = useState<Error | null>(null);
 
+  // Function to communicate errors to parent frame
+  const communicateErrorToParent = useCallback(
+    (error: Error | string) => {
+      const errorMessage = error instanceof Error ? error.message : error;
+      console.error("Content generation error:", errorMessage);
+
+      // Send error message to parent frame for better error handling
+      window.top?.postMessage(
+        {
+          command: "setErrorMessage",
+          messageUniqueId: Date.now().toString(),
+          identifier: identifier,
+          params: {
+            errorMessage: errorMessage,
+          },
+        },
+        "*"
+      );
+    },
+    [identifier]
+  );
+
   const {
     fetchCode,
     fetchFile,
@@ -398,7 +420,7 @@ export function VisualizationWrapper({
     if (error) {
       setErrorMessage(error);
     }
-  }, [error]);
+  }, [error, communicateErrorToParent]);
 
   // Add message listeners for export requests.
   useEffect(() => {
@@ -427,6 +449,23 @@ export function VisualizationWrapper({
   if (!runnerParams) {
     return <Spinner />;
   }
+
+  // Test error trigger for demonstration
+  const triggerTestError = () => {
+    // Simulate a realistic content generation error that could happen
+    const testError =
+      Math.random() > 0.5
+        ? new Error(
+            "Test error from visualization wrapper: This simulates a content generation error!"
+          )
+        : new Error(
+            "Forbidden Tailwind arbitrary values detected: h-[600px], w-[800px]. Arbitrary values like h-[600px], w-[800px], bg-[#ff0000] are not allowed. Use predefined classes like h-96, w-full, bg-red-500 instead, or use the style prop for specific values."
+          );
+
+    // Communicate the error to parent frame before throwing
+    communicateErrorToParent(testError);
+    throw testError;
+  };
 
   return (
     <div
@@ -465,10 +504,58 @@ export function VisualizationWrapper({
           scope={runnerParams.scope}
           onRendered={(error) => {
             if (error) {
+              // This catches content generation errors from the Runner component
+              console.error("Content generation error:", error);
               setErrorMessage(error);
+              communicateErrorToParent(error);
             }
           }}
         />
+      </div>
+
+      {/* Test Error Section - Always Visible for Testing */}
+      <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+        <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+          🧪 Test Error Boundary System
+        </h3>
+        <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+          Click these buttons to test different error scenarios and see the
+          error boundary in action:
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={triggerTestError}
+            className="px-3 py-2 text-xs font-medium rounded-md border border-red-300 text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+          >
+            🧪 Test Error Boundary
+          </button>
+          <button
+            onClick={() => {
+              // Simulate a content generation error that would be caught by the Runner
+              const error = new Error(
+                "Simulated Runner rendering error: This simulates an error during content generation!"
+              );
+              setErrorMessage(error);
+              communicateErrorToParent(error);
+            }}
+            className="px-3 py-2 text-xs font-medium rounded-md border border-orange-300 text-orange-600 bg-orange-50 hover:bg-orange-100 transition-colors"
+          >
+            🎭 Runner Error
+          </button>
+          <button
+            onClick={() => {
+              // Simulate a realistic Tailwind validation error
+              const error = new Error(
+                "Forbidden Tailwind arbitrary values detected: h-[600px], w-[800px]. Arbitrary values like h-[600px], w-[800px], bg-[#ff0000] are not allowed. Use predefined classes like h-96, w-full, bg-red-500 instead, or use the style prop for specific values."
+              );
+              setErrorMessage(error);
+              communicateErrorToParent(error);
+            }}
+            className="px-3 py-2 text-xs font-medium rounded-md border border-purple-300 text-purple-600 bg-purple-50 hover:bg-purple-100 transition-colors"
+          >
+            🎨 Tailwind Error
+          </button>
+        </div>
       </div>
     </div>
   );

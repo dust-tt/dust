@@ -20,6 +20,7 @@ import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigati
 import { useHashParam } from "@app/hooks/useHashParams";
 import { isFileUsingConversationFiles } from "@app/lib/files";
 import { useFileContent } from "@app/lib/swr/files";
+import { useFileMetadata } from "@app/lib/swr/files";
 import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
@@ -89,6 +90,7 @@ export function ClientExecutableRenderer({
     fileId,
     owner,
   });
+  const { fileMetadata } = useFileMetadata({ fileId, owner });
 
   const isUsingConversationFiles = React.useMemo(
     () => (fileContent ? isFileUsingConversationFiles(fileContent) : false),
@@ -221,7 +223,7 @@ export function ClientExecutableRenderer({
         ) : (
           <div className="h-full">
             <VisualizationActionIframe
-              agentConfigurationId={null}
+              agentConfigurationId={fileMetadata?.agentConfigurationId ?? null}
               workspace={owner}
               visualization={{
                 code: fileContent ?? "",

@@ -299,6 +299,8 @@ export const VisualizationActionIframe = forwardRef<
     [codeFullyGenerated, iframeLoaded, isErrored]
   );
 
+  console.log("agentConfigurationId", agentConfigurationId);
+
   const handleVisualizationRetry = useVisualizationRetry({
     workspaceId: workspace?.sId ?? null,
     conversationId,
@@ -316,7 +318,13 @@ export const VisualizationActionIframe = forwardRef<
     }
   }, [errorMessage, handleVisualizationRetry, retryClicked]);
 
-  const canRetry = useContext(MarkdownContentContext)?.isLastMessage ?? false;
+  const isContentCreationContext = Boolean(
+    conversationId || agentConfigurationId || workspace
+  );
+  const markdownContentContext = useContext(MarkdownContentContext);
+  const canRetry =
+    isContentCreationContext ||
+    (markdownContentContext?.isLastMessage ?? false);
 
   return (
     <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>

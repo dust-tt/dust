@@ -18,9 +18,11 @@ export async function createClientExecutableFile(
     conversationId: string;
     fileName: string;
     mimeType: ContentCreationFileContentType;
+    agentConfigurationId?: string;
   }
 ): Promise<Result<FileResource, Error>> {
-  const { content, conversationId, fileName, mimeType } = params;
+  const { content, conversationId, fileName, mimeType, agentConfigurationId } =
+    params;
 
   try {
     const workspace = auth.getNonNullableWorkspace();
@@ -72,6 +74,7 @@ export async function createClientExecutableFile(
       useCase: "conversation",
       useCaseMetadata: {
         conversationId,
+        ...(agentConfigurationId ? { agentConfigurationId } : {}),
       },
     });
 
