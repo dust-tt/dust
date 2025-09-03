@@ -781,6 +781,28 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async cancelRun({
+    projectId,
+    runId,
+  }: {
+    projectId: string;
+    runId: string;
+  }): Promise<CoreAPIResponse<{ success: boolean }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(
+        projectId
+      )}/runs/${encodeURIComponent(runId)}/cancel`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
   async getSpecificationHashes({
     projectId,
   }: {
