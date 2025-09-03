@@ -61,9 +61,9 @@ function BooleanConfigurationSection({
     // We make sure to save a boolean value that said.
     const value = !!additionalConfiguration[key];
     return (
-      <div key={key} className="mb-2 flex items-center gap-1">
-        <div className="flex items-center gap-1">
-          <Label htmlFor={`boolean-${key}`} className="w-1/5 text-sm font-medium">
+      <div key={key} className="mb-2 flex items-center gap-4">
+        <div className="flex items-center gap-2 w-1/5">
+          <Label htmlFor={`boolean-${key}`} className="text-sm font-medium">
             {formatKeyForDisplay(key)}
           </Label>
           {description && (
@@ -72,7 +72,7 @@ function BooleanConfigurationSection({
                 <Icon
                   visual={InformationCircleIcon}
                   size="xs"
-                  className="text-gray-400"
+                  className="text-gray-400 hover:text-gray-600 cursor-help"
                 />
               }
               label={description}
@@ -107,9 +107,9 @@ function NumberConfigurationSection({
   return requiredNumbers.map(({ key, description }) => {
     const value = additionalConfiguration[key] ?? null;
     return (
-      <div key={key} className="mb-2 flex items-center gap-1">
-        <div className="flex items-center gap-1">
-          <Label htmlFor={`number-${key}`} className="w-1/5 text-sm font-medium">
+      <div key={key} className="mb-2 flex items-center gap-4">
+        <div className="flex items-center gap-2 w-1/5">
+          <Label htmlFor={`number-${key}`} className="text-sm font-medium">
             {formatKeyForDisplay(key)}
           </Label>
           {description && (
@@ -118,25 +118,27 @@ function NumberConfigurationSection({
                 <Icon
                   visual={InformationCircleIcon}
                   size="xs"
-                  className="text-gray-400"
+                  className="text-gray-400 hover:text-gray-600 cursor-help"
                 />
               }
               label={description}
             />
           )}
         </div>
-        <Input
-          id={`number-${key}`}
-          type="number"
-          value={value?.toString() || ""}
-          onChange={(e) => {
-            const parsed = parseFloat(e.target.value);
-            if (!isNaN(parsed)) {
-              onConfigUpdate(key, parsed);
-            }
-          }}
-          placeholder={`Enter value for ${formatKeyForDisplay(key)}`}
-        />
+        <div className="flex-1">
+          <Input
+            id={`number-${key}`}
+            type="number"
+            value={value?.toString() || ""}
+            onChange={(e) => {
+              const parsed = parseFloat(e.target.value);
+              if (!isNaN(parsed)) {
+                onConfigUpdate(key, parsed);
+              }
+            }}
+            placeholder={`Enter value for ${formatKeyForDisplay(key)}`}
+          />
+        </div>
       </div>
     );
   });
@@ -160,9 +162,9 @@ function StringConfigurationSection({
   return requiredStrings.map(({ key, description }) => {
     const value = additionalConfiguration[key] ?? "";
     return (
-      <div key={key} className="mb-2 flex items-center gap-1">
-        <div className="flex items-center gap-1">
-          <Label htmlFor={`string-${key}`} className="w-1/5 text-sm font-medium">
+      <div key={key} className="mb-2 flex items-center gap-4">
+        <div className="flex items-center gap-2 w-1/5">
+          <Label htmlFor={`string-${key}`} className="text-sm font-medium">
             {formatKeyForDisplay(key)}
           </Label>
           {description && (
@@ -171,20 +173,22 @@ function StringConfigurationSection({
                 <Icon
                   visual={InformationCircleIcon}
                   size="xs"
-                  className="text-gray-400"
+                  className="text-gray-400 hover:text-gray-600 cursor-help"
                 />
               }
               label={description}
             />
           )}
         </div>
-        <Input
-          id={`string-${key}`}
-          type="text"
-          value={value.toString()}
-          onChange={(e) => onConfigUpdate(key, e.target.value)}
-          placeholder={`Enter value for ${formatKeyForDisplay(key)}`}
-        />
+        <div className="flex-1">
+          <Input
+            id={`string-${key}`}
+            type="text"
+            value={value.toString()}
+            onChange={(e) => onConfigUpdate(key, e.target.value)}
+            placeholder={`Enter value for ${formatKeyForDisplay(key)}`}
+          />
+        </div>
       </div>
     );
   });
@@ -208,9 +212,9 @@ function EnumConfigurationSection({
   return Object.entries(requiredEnums).map(([key, { options: enumValues, description }]) => {
     const displayLabel = `Select ${formatKeyForDisplay(key)}`;
     return (
-      <div key={key} className="mb-2 flex items-center gap-1">
-        <div className="flex items-center gap-1">
-          <Label className="w-1/5 text-sm font-medium">
+      <div key={key} className="mb-2 flex items-center gap-4">
+        <div className="flex items-center gap-2 w-1/5">
+          <Label className="text-sm font-medium">
             {formatKeyForDisplay(key)}
           </Label>
           {description && (
@@ -219,7 +223,7 @@ function EnumConfigurationSection({
                 <Icon
                   visual={InformationCircleIcon}
                   size="xs"
-                  className="text-gray-400"
+                  className="text-gray-400 hover:text-gray-600 cursor-help"
                 />
               }
               label={description}
@@ -281,9 +285,9 @@ function ListConfigurationSection({
 
         return (
       <div key={key} className="mb-2">
-        <div className="flex items-center gap-1">
-          <div className="flex items-center gap-1">
-            <Label className="w-1/5 text-sm font-medium">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 w-1/5">
+            <Label className="text-sm font-medium">
               {formatKeyForDisplay(key)}
             </Label>
             {description && (
@@ -292,7 +296,7 @@ function ListConfigurationSection({
                   <Icon
                     visual={InformationCircleIcon}
                     size="xs"
-                    className="text-gray-400"
+                    className="text-gray-400 hover:text-gray-600 cursor-help"
                   />
                 }
                 label={description}

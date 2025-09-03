@@ -55,11 +55,11 @@ function BooleanConfigurationInput({
   });
 
   return (
-    <div key={configKey} className="mb-2 flex items-center gap-1">
-      <div className="flex items-center gap-1">
+    <div key={configKey} className="mb-2 flex items-center gap-4">
+      <div className="flex items-center gap-2 w-1/5">
         <Label
           htmlFor={`boolean-${configKey}`}
-          className="w-1/5 text-sm font-medium"
+          className="text-sm font-medium"
         >
           {formatKeyForDisplay(configKey)}
         </Label>
@@ -69,7 +69,7 @@ function BooleanConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
-                className="text-gray-400"
+                className="text-gray-400 hover:text-gray-600 cursor-help"
               />
             }
             label={description}
@@ -111,11 +111,11 @@ function NumberConfigurationInput({
   });
 
   return (
-    <div key={configKey} className="mb-2 flex items-center gap-1">
-      <div className="flex items-center gap-1">
+    <div key={configKey} className="mb-2 flex items-center gap-4">
+      <div className="flex items-center gap-2 w-1/5">
         <Label
           htmlFor={`number-${configKey}`}
-          className="w-1/5 text-sm font-medium"
+          className="text-sm font-medium"
         >
           {formatKeyForDisplay(configKey)}
         </Label>
@@ -125,21 +125,23 @@ function NumberConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
-                className="text-gray-400"
+                className="text-gray-400 hover:text-gray-600 cursor-help"
               />
             }
             label={description}
           />
         )}
       </div>
-      <Input
-        id={`number-${configKey}`}
-        type="number"
-        {...field}
-        placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
-        isError={!!fieldState.error}
-        message={fieldState.error?.message}
-      />
+      <div className="flex-1">
+        <Input
+          id={`number-${configKey}`}
+          type="number"
+          {...field}
+          placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
+          isError={!!fieldState.error}
+          message={fieldState.error?.message}
+        />
+      </div>
     </div>
   );
 }
@@ -170,11 +172,11 @@ function StringConfigurationInput({
   });
 
   return (
-    <div key={configKey} className="mb-2 flex items-center gap-1">
-      <div className="flex items-center gap-1">
+    <div key={configKey} className="mb-2 flex items-center gap-4">
+      <div className="flex items-center gap-2 w-1/5">
         <Label
           htmlFor={`string-${configKey}`}
-          className="w-1/5 text-sm font-medium"
+          className="text-sm font-medium"
         >
           {formatKeyForDisplay(configKey)}
         </Label>
@@ -184,21 +186,23 @@ function StringConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
-                className="text-gray-400"
+                className="text-gray-400 hover:text-gray-600 cursor-help"
               />
             }
             label={description}
           />
         )}
       </div>
-      <Input
-        id={`string-${configKey}`}
-        type="text"
-        {...field}
-        placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
-        isError={!!fieldState.error}
-        message={fieldState.error?.message}
-      />
+      <div className="flex-1">
+        <Input
+          id={`string-${configKey}`}
+          type="text"
+          {...field}
+          placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
+          isError={!!fieldState.error}
+          message={fieldState.error?.message}
+        />
+      </div>
     </div>
   );
 }
@@ -232,9 +236,9 @@ function EnumConfigurationInput({
 
   const displayLabel = `Select ${formatKeyForDisplay(configKey)}`;
   return (
-    <div key={configKey} className="mb-2 flex items-center gap-1">
-      <div className="flex items-center gap-1">
-        <Label className="w-1/5 text-sm font-medium">
+    <div key={configKey} className="mb-2 flex items-center gap-4">
+      <div className="flex items-center gap-2 w-1/5">
+        <Label className="text-sm font-medium">
           {formatKeyForDisplay(configKey)}
         </Label>
         {description && (
@@ -243,7 +247,7 @@ function EnumConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
-                className="text-gray-400"
+                className="text-gray-400 hover:text-gray-600 cursor-help"
               />
             }
             label={description}
