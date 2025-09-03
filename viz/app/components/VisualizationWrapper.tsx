@@ -287,28 +287,6 @@ export function VisualizationWrapper({
 
   const [errored, setErrorMessage] = useState<Error | null>(null);
 
-  // Function to communicate errors to parent frame
-  const communicateErrorToParent = useCallback(
-    (error: Error | string) => {
-      const errorMessage = error instanceof Error ? error.message : error;
-      console.error("Content generation error:", errorMessage);
-
-      // Send error message to parent frame for better error handling
-      window.top?.postMessage(
-        {
-          command: "setErrorMessage",
-          messageUniqueId: Date.now().toString(),
-          identifier: identifier,
-          params: {
-            errorMessage: errorMessage,
-          },
-        },
-        "*"
-      );
-    },
-    [identifier]
-  );
-
   const {
     fetchCode,
     fetchFile,
@@ -420,7 +398,7 @@ export function VisualizationWrapper({
     if (error) {
       setErrorMessage(error);
     }
-  }, [error, communicateErrorToParent]);
+  }, [error]);
 
   // Add message listeners for export requests.
   useEffect(() => {
@@ -488,7 +466,6 @@ export function VisualizationWrapper({
           onRendered={(error) => {
             if (error) {
               setErrorMessage(error);
-              communicateErrorToParent(error);
             }
           }}
         />

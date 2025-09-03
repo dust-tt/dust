@@ -225,19 +225,8 @@ interface PublicVisualizationActionIframeProps {
 }
 
 // This interface represents the props for the VisualizationActionIframe component when it is used
-// in a private content creation context.
-interface ContentCreationVisualizationActionIframeProps {
-  // TODO(CONTENT_CREATION 2025-07-25): Add support to retry the visualization.
-  agentConfigurationId: string | null;
-  conversationId: string;
-  isInDrawer?: boolean;
-  visualization: Visualization;
-  workspace: LightWorkspaceType;
-}
-
-// This interface represents the props for the VisualizationActionIframe component when it is used
 // in a legacy context.
-interface LegacyVisualizationActionIframeProps {
+interface ConversationVisualizationActionIframeProps {
   agentConfigurationId: string;
   conversationId: string;
   isInDrawer?: boolean;
@@ -246,21 +235,24 @@ interface LegacyVisualizationActionIframeProps {
 }
 
 type VisualizationActionIframeProps =
-  | ContentCreationVisualizationActionIframeProps
-  | LegacyVisualizationActionIframeProps
+  | ConversationVisualizationActionIframeProps
   | PublicVisualizationActionIframeProps;
+
+function isPublicVisualization(
+  props: VisualizationActionIframeProps
+): props is PublicVisualizationActionIframeProps {
+  return (
+    props.agentConfigurationId === null &&
+    props.conversationId === null &&
+    props.workspace === null
+  );
+}
 
 export const VisualizationActionIframe = forwardRef<
   HTMLIFrameElement,
   VisualizationActionIframeProps
 >(function VisualizationActionIframe(
-  {
-    agentConfigurationId,
-    conversationId,
-    isInDrawer = false,
-    visualization,
-    workspace,
-  }: VisualizationActionIframeProps,
+  props: VisualizationActionIframeProps,
   ref
 ) {
   const [contentHeight, setContentHeight] = useState<number>(0);
@@ -284,9 +276,18 @@ export const VisualizationActionIframe = forwardRef<
 
   const isErrored = !!errorMessage || retryClicked;
 
+  const isPublic = isPublicVisualization(props);
+
+  const {
+    agentConfigurationId,
+    conversationId,
+    isInDrawer = false,
+    visualization,
+  } = props;
+
   useVisualizationDataHandler({
     visualization,
-    workspaceId: workspace?.sId ?? null,
+    workspaceId: isPublic ? null : props.workspace.sId,
     setContentHeight,
     setErrorMessage,
     setCodeDrawerOpened,
@@ -302,7 +303,7 @@ export const VisualizationActionIframe = forwardRef<
   );
 
   const handleVisualizationRetry = useVisualizationRetry({
-    workspaceId: workspace?.sId ?? null,
+    workspaceId: isPublic ? null : props.workspace.sId,
     conversationId,
     agentConfigurationId,
   });
@@ -318,13 +319,9 @@ export const VisualizationActionIframe = forwardRef<
     }
   }, [errorMessage, handleVisualizationRetry, retryClicked]);
 
-  const isContentCreationContext = Boolean(
-    conversationId || agentConfigurationId || workspace
-  );
   const markdownContentContext = useContext(MarkdownContentContext);
   const canRetry =
-    isContentCreationContext ||
-    (markdownContentContext?.isLastMessage ?? false);
+    !isPublic || (markdownContentContext?.isLastMessage ?? false);
 
   return (
     <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>
