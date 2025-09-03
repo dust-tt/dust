@@ -2,12 +2,10 @@ import { cva } from "class-variance-authority";
 import React from "react";
 import { toast, Toaster } from "sonner";
 
-import { Button } from "@sparkle/components/Button";
 import {
   CheckCircleIcon,
   InformationCircleIcon,
   XCircleIcon,
-  XMarkIcon,
 } from "@sparkle/icons/app";
 import { assertNever, cn } from "@sparkle/lib/utils";
 
@@ -60,8 +58,9 @@ function NotificationContent({
         "s-pointer-events-auto s-flex s-max-w-[400px] s-flex-row s-items-center s-gap-2 s-rounded-xl s-border",
         "s-border-border dark:s-border-border-night",
         "s-bg-background dark:s-bg-background-night",
-        "s-p-4 s-shadow-xl"
+        "s-cursor-pointer s-p-4 s-shadow-xl s-transition-colors hover:s-bg-muted/50 dark:hover:s-bg-muted-night/50"
       )}
+      onClick={onDismiss}
     >
       <Icon
         size="lg"
@@ -89,15 +88,6 @@ function NotificationContent({
           </div>
         )}
       </div>
-      {onDismiss && (
-        <Button
-          icon={XMarkIcon}
-          size="xs"
-          variant="ghost"
-          onClick={onDismiss}
-          className="s-shrink-0 s-self-start"
-        />
-      )}
     </div>
   );
 }
@@ -129,9 +119,10 @@ export const Notification = {
         <Toaster
           toastOptions={{
             className: cn(
-              "s-transition-all s-duration-300",
+              "s-transition-all s-duration-300 s-select-none",
               "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out",
               "data-[swipe=move]:s-translate-x-[var(--toast-swipe-move-x)]",
+              "data-[swipe=move]:s-translate-y-[var(--toast-swipe-move-y)]",
               "data-[state=closed]:s-fade-out-80 data-[state=closed]:s-slide-out-to-right-full",
               "data-[state=open]:s-slide-in-from-right-full"
             ),
@@ -142,6 +133,7 @@ export const Notification = {
           closeButton={false}
           expand={false}
           invert={false}
+          swipeDirections={["right"]}
         />
       </NotificationsContext.Provider>
     );
