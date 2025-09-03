@@ -8,13 +8,10 @@ import { QUEUE_NAME } from "@connectors/connectors/microsoft/temporal/config";
 import type { FolderUpdatesSignal } from "@connectors/connectors/microsoft/temporal/signal";
 import { folderUpdatesSignal } from "@connectors/connectors/microsoft/temporal/signal";
 import {
-  incrementalSyncWorkflowV2,
-  microsoftGarbageCollectionWorkflow,
-} from "@connectors/connectors/microsoft/temporal/workflows";
-import {
   fullSyncWorkflow,
-  incrementalSyncWorkflow,
+  incrementalSyncWorkflowV2,
   microsoftFullSyncWorkflowId,
+  microsoftGarbageCollectionWorkflow,
   microsoftIncrementalSyncWorkflowId,
 } from "@connectors/connectors/microsoft/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
