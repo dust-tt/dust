@@ -109,6 +109,25 @@ export function SlideshowPreviewSidebar({
   );
 }
 
+// Internal Grid logic.
+
+const Grid = ({
+  cols = 6,
+  className = "",
+  children,
+}: {
+  cols?: number;
+  className?: string;
+  children: React.ReactNode;
+}) => (
+  <div
+    className={`grid gap-6 ${className}`}
+    style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}
+  >
+    {children}
+  </div>
+);
+
 // Exposed components.
 
 type SlideProps = PropsWithChildren<{
@@ -133,7 +152,7 @@ export function Slide({
         variant === "centered" ? "items-center" : "items-start",
         className
       )}
-      style={{ fontFamily: "var(--font-geist)" }}
+      style={{ fontFamily: "var(--font-inter)" }}
     >
       {isPreview ? (
         <div className="p-2 w-full h-full" style={{ fontSize: "0.4em" }}>
@@ -177,6 +196,7 @@ function validateSlideChildren(
     "Slideshow.Slide.Full",
     "Slideshow.Slide.TitleCentered",
     "Slideshow.Slide.TitleTop",
+    "Slideshow.Slide.TitleTopH2",
     "Slideshow.Slide.BulletsOnly",
     "Slideshow.Slide.Quote",
   ]);
@@ -307,23 +327,37 @@ export const Title = ({
   className,
 }: PropsWithChildren<{ className?: string }>) => (
   <h1
-    className={cn("font-semibold text-7xl leading-tight m-0 mb-6", className)}
-    style={{ fontFamily: "var(--font-geist-mono)" }}
+    className={cn(
+      "slide-title font-semibold leading-tight m-0 mb-6 w-3/5 break-normal hyphens-none",
+      className
+    )}
+    style={{ fontFamily: "var(--font-inter)" }}
   >
     {children}
   </h1>
 );
 
-export const Heading = ({
+export const Heading1 = ({
   children,
   className,
 }: PropsWithChildren<{ className?: string }>) => (
-  <h2
-    className={cn("font-semibold text-5xl leading-tight m-0 mb-4", className)}
-    style={{ fontFamily: "var(--font-geist-mono)" }}
-  >
+  <h1 className={cn("slide-heading1", className)}>{children}</h1>
+);
+
+export const Heading2 = ({
+  children,
+  className,
+}: PropsWithChildren<{ className?: string }>) => (
+  <h2 className={cn("slide-heading2", className)}>{children}</h2>
+);
+
+export const Heading3 = ({
+  children,
+  className,
+}: PropsWithChildren<{ className?: string }>) => (
+  <h3 className={cn("text-3xl leading-tight m-0 mb-4", className)}>
     {children}
-  </h2>
+  </h3>
 );
 
 export const Text = ({
@@ -331,8 +365,8 @@ export const Text = ({
   className,
 }: PropsWithChildren<{ className?: string }>) => (
   <p
-    className={cn("font-normal text-lg m-0", className)}
-    style={{ fontFamily: "var(--font-geist)" }}
+    className={cn("font-normal text-5xl m-0", className)}
+    style={{ fontFamily: "var(--font-inter)" }}
   >
     {children}
   </p>
@@ -343,27 +377,22 @@ export const Text = ({
 interface CoverProps {
   className?: string;
   isPreview?: boolean;
-  subtitle?: string;
-  subtitleClassName?: string;
   title: string;
-  titleClassName?: string;
+  theme?: "light" | "dark";
 }
 
 export const Cover = ({
   className,
   isPreview = false,
-  subtitle,
-  subtitleClassName,
   title,
-  titleClassName,
+  theme = "dark",
 }: CoverProps) => (
-  <Slide variant="centered" className={className} isPreview={isPreview}>
-    <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-      <Title className={titleClassName}>{title}</Title>
-      {subtitle && (
-        <Text className={cn("opacity-80", subtitleClassName)}>{subtitle}</Text>
-      )}
-    </div>
+  <Slide
+    variant="top"
+    className={cn(`slide-cover-${theme}`, className)}
+    isPreview={isPreview}
+  >
+    <Slideshow.Title>{title}</Slideshow.Title>
   </Slide>
 );
 Cover.displayName = "Slideshow.Slide.Cover";
@@ -385,7 +414,7 @@ export const Bullets = ({
 }: BulletsProps) => (
   <Slide variant="top" className={className} isPreview={isPreview}>
     <div className="h-full flex flex-col space-y-6">
-      <Heading className={titleClassName}>{title}</Heading>
+      <Heading1 className={titleClassName}>{title}</Heading1>
       <ul className="space-y-4">
         {items.map((item, index) => (
           <li key={index} className="flex items-start">
@@ -459,25 +488,56 @@ type TitleTopProps = PropsWithChildren<{
   isPreview?: boolean;
   title: string;
   titleClassName?: string;
+  theme?: "light" | "dark";
 }>;
 
 export const TitleTop = ({
   title,
   children,
   className,
-  titleClassName,
   isPreview = false,
+  theme = "dark",
 }: TitleTopProps) => (
-  <Slide variant="top" className={className} isPreview={isPreview}>
-    <div className="h-full flex flex-col">
-      <div className="text-center pb-8">
-        <Title className={titleClassName}>{title}</Title>
-      </div>
-      <div className="flex-1 flex flex-col justify-center">{children}</div>
+  <Slide
+    variant="top"
+    className={cn(`slide-cover-${theme}`, className)}
+    isPreview={isPreview}
+  >
+    <div className="space-y-8">
+      <Heading1>{title}</Heading1>
+      {children && <div className="slide-content">{children}</div>}
     </div>
   </Slide>
 );
 TitleTop.displayName = "Slideshow.Slide.TitleTop";
+
+type TitleTopH2Props = PropsWithChildren<{
+  className?: string;
+  isPreview?: boolean;
+  title: string;
+  titleClassName?: string;
+  theme?: "light" | "dark";
+}>;
+
+export const TitleTopH2 = ({
+  title,
+  children,
+  className,
+  isPreview = false,
+  theme = "dark",
+}: TitleTopH2Props) => (
+  <Slide
+    variant="top"
+    className={cn(`slide-cover-${theme}`, className)}
+    isPreview={isPreview}
+  >
+    <div className="space-y-8">
+      <Heading2>{title}</Heading2>
+      {children && <div className="slide-content">{children}</div>}
+    </div>
+  </Slide>
+);
+TitleTopH2.displayName = "Slideshow.Slide.TitleTopH2";
 
 interface BulletsOnlyProps {
   className?: string;
@@ -544,7 +604,9 @@ Slide.displayName = "Slideshow.Slide.Base";
 
 // Namespace export.
 export const Slideshow = {
-  Heading,
+  Heading1,
+  Heading2,
+  Heading3,
   Root: SlideshowRoot,
   Slide: {
     Base: Slide,
@@ -556,6 +618,7 @@ export const Slideshow = {
     Split,
     TitleCentered,
     TitleTop,
+    TitleTopH2,
   },
   Text,
   Title,

@@ -33,7 +33,9 @@ COMMON SLIDESHOW STRUCTURES:
 
 **Typography Components (Automatically Responsive):**
 - \`<Slideshow.Title>\` - Main slide titles
-- \`<Slideshow.Heading>\` - Section headings
+- \`<Slideshow.Heading1>\` - Section headings
+- \`<Slideshow.Heading2>\` - Section headings
+- \`<Slideshow.Heading3>\` - Section headings
 - \`<Slideshow.Text>\` - Body content
 
 **Responsive Design Built-In:**
