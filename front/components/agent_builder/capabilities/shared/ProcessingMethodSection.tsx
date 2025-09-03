@@ -26,6 +26,7 @@ import {
 } from "@app/lib/actions/mcp_icons";
 import {
   DATA_WAREHOUSE_SERVER_NAME,
+  SEARCH_SERVER_NAME,
   TABLE_QUERY_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -129,12 +130,19 @@ export function ProcessingMethodSection() {
             tablesServer.includes(server.server.name) ||
             server.server.name === DATA_WAREHOUSE_SERVER_NAME
         );
-        if (tableQueryServer && mcpServerView?.sId !== tableQueryServer.sId) {
+        if (tableQueryServer) {
           setValue("mcpServerView", tableQueryServer, { shouldDirty: false });
+        }
+      } else {
+        const searchServer = serversToDisplay.find(
+          (server) => server.server.name === SEARCH_SERVER_NAME
+        );
+        if (searchServer) {
+          setValue("mcpServerView", searchServer, { shouldDirty: false });
         }
       }
     }
-  }, [mcpServerView?.sId, serversToDisplay, setValue, sources.in]);
+  }, [serversToDisplay, setValue, sources.in]);
 
   return (
     <div className="mt-2 flex flex-col space-y-4">
