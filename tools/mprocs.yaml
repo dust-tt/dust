@@ -1,0 +1,42 @@
+# Configuration for mprocs to run the dev environment locally.
+# Requirements: mprocs (`brew install mprocs`)
+# ⚠️ you need to restart front-workers after sdks-js is loaded: select front-workers in the mprocs window and press r
+procs:
+  core:
+    cwd: "<CONFIG_DIR>/../core"
+    shell: "./admin/dev.sh"
+  sqlite-workers:
+    cwd: "<CONFIG_DIR>/../core"
+    env:
+      CORE_API: "http://localhost:3001"
+      IS_LOCAL_DEV: "1"
+      DATABASES_STORE_DATABASE_URI: "postgresql://dev:dev@localhost:5432/dust_databases_store"
+      CORE_API_KEY: "soupinou"
+    shell: "cargo run --bin sqlite-worker"
+  oauth:
+    cwd: "<CONFIG_DIR>/../core"
+    shell: "./admin/dev_oauth.sh"
+  front:
+    cwd: "<CONFIG_DIR>/../front"
+    shell: "./admin/dev.sh"
+  front-workers:
+    cwd: "<CONFIG_DIR>/../front"
+    shell: "./admin/dev_worker.sh"
+  sdks-js:
+    cwd: "<CONFIG_DIR>/../sdks/js"
+    shell: "./admin/dev.sh"
+  connectors:
+    cwd: "<CONFIG_DIR>/../connectors"
+    shell: "./admin/dev.sh"
+  sparkle:
+    cwd: "<CONFIG_DIR>/../sparkle"
+    shell: "npm run storybook"
+    autostart: false
+  docs:
+    cwd: "<CONFIG_DIR>/../docs"
+    shell: "npm run start"
+    autostart: false
+  extension:
+    cwd: "<CONFIG_DIR>/../extension"
+    shell: "npm run dev:chrome"
+    autostart: false
