@@ -16,20 +16,20 @@ function createServer(): McpServer {
       user: z.object({
         name: ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
-        ],
+        ].describe("The name of the user"),
         age: ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER
-        ],
+        ].describe("The age of the user"),
         admin:
-          ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
-      }),
+          ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN].describe("Whether the user is an admin"),
       location:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.STRING],
+        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.STRING].describe("The location of the user"),
       enabled:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
+        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN].describe("Whether the user is enabled"),
       category: z.object({
         value: z.enum(["A", "B", "C"]),
         mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM),
+      }).describe("The category of the user"),
       }),
       choices: z.object({
         options: z
@@ -37,22 +37,22 @@ function createServer(): McpServer {
             z.object({
               value: z.literal("A"),
               label: z.literal("Label A"),
-            }),
+            }).describe("The label of the choice"),
             z.object({
               value: z.literal("B"),
               label: z.literal("Label B"),
-            }),
+            }).describe("The label of the choice"),
             z.object({
               value: z.literal("C"),
               label: z.literal("Label C"),
-            }),
+            }).describe("The label of the choice"),
           ])
           // Options are optionals because we only need them for the UI but they won't be provided when the tool is called.
           .optional(),
         // "values" are required because they are used to provide the selected values when the tool is called.
-        values: z.array(z.string()),
+        values: z.array(z.string()).describe("The values of the choices"),
         mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.LIST),
-      }),
+      }).describe("Indicate the choices the agent can select from"),
     },
     async (params) => {
       return {

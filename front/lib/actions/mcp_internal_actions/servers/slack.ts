@@ -205,7 +205,7 @@ const buildCommonSearchParams = (
     options: z.union(channelOptions as any).optional(),
     values: z.array(z.string()),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.LIST),
-  }),
+  }).describe("Indicate the channels the agent can search in"),
   usersFrom: z
     .string()
     .array()
