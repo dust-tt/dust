@@ -16,13 +16,15 @@ interface DesktopNavigationContextType {
 const DesktopNavigationContext =
   createContext<DesktopNavigationContextType | null>(null);
 
+interface DesktopNavigationProviderProps {
+  children: ReactNode;
+  defaultOpen?: boolean;
+}
+
 export function DesktopNavigationProvider({
   children,
   defaultOpen = true,
-}: {
-  children: ReactNode;
-  defaultOpen?: boolean;
-}) {
+}: DesktopNavigationProviderProps) {
   const [isNavigationBarOpen, setIsNavigationBarOpen] = useState(defaultOpen);
 
   const toggleNavigationBar = useCallback(() => {

@@ -95,7 +95,6 @@ export function ClientExecutableRenderer({
 
   const panel = panelRef?.current;
 
-  // Track fullscreen state in URL hash parameters
   const [fullScreenHash, setFullScreenHash] = useHashParam(
     FULL_SCREEN_HASH_PARAM
   );
