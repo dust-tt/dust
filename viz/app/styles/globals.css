@@ -126,6 +126,8 @@
     --responsive-text-5xl: clamp(1.75rem, 5vw, 3.5rem);
     --responsive-text-6xl: clamp(2rem, 6vw, 4.5rem);
     --responsive-text-7xl: clamp(2.5rem, 7vw, 5.5rem);
+    --responsive-text-8xl: clamp(3rem, 8vw, 6.5rem);
+    --responsive-text-9xl: clamp(3.5rem, 9vw, 8rem);
 
     --responsive-space-1: clamp(0.075rem, 0.25vw, 0.25rem);
     --responsive-space-2: clamp(0.125rem, 0.5vw, 0.5rem);
@@ -137,6 +139,12 @@
     --responsive-space-16: clamp(1.5rem, 4vw, 4rem);
     --responsive-space-20: clamp(2rem, 5vw, 5rem);
     --responsive-space-24: clamp(2.5rem, 6vw, 6rem);
+
+    --responsive-slide-text-title: clamp(3rem, 15vw, 190px);
+    --responsive-slide-text-heading1: clamp(2.5rem, 12vw, 140px);
+
+    --slide-cover-foreground: 220 9% 7%; /* #111418 */
+    --slide-content-text: 220 12% 37%; /* #545D6C */
   }
 
   * {
@@ -145,6 +153,24 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@layer utilities {
+  .leading-96p {
+    line-height: 0.96;
+  } /* 0.96 × font-size  */
+
+  .leading-103p {
+    line-height: 1.03;
+  } /* 1.03 × font-size  */
+
+  .leading-123p {
+    line-height: 1.23;
+  } /* 1.23 × font-size  */
+
+  .leading-140p {
+    line-height: 1.4;
+  } /* 1.40 × font-size  */
 }
 
 @layer components {
@@ -181,6 +207,12 @@
   }
   .responsive-text .text-7xl {
     font-size: var(--responsive-text-7xl);
+  }
+  .responsive-text .text-8xl {
+    font-size: var(--responsive-text-8xl);
+  }
+  .responsive-text .text-9xl {
+    font-size: var(--responsive-text-9xl);
   }
 
   .responsive-text .gap-1 {
@@ -306,5 +338,42 @@
   }
   .slide-centered-padding {
     padding: var(--responsive-space-8);
+  }
+
+  .slide-cover-light {
+    @apply bg-background;
+    color: hsl(var(--slide-cover-foreground));
+  }
+
+  .slide-cover-dark {
+    background-color: hsl(var(--slide-cover-foreground));
+    color: #ffffff;
+  }
+
+  .slide-cover-light .slide-title {
+    @apply text-black;
+  }
+
+  .slide-cover-dark .slide-title {
+    @apply text-white;
+  }
+
+  .slide-title {
+    font-size: var(--responsive-slide-text-title);
+  }
+
+  .slide-heading1 {
+    @apply leading-tight m-0 mb-6 break-normal hyphens-none leading-96p;
+    font-size: var(--responsive-slide-text-heading1);
+    font-family: var(--font-inter);
+  }
+
+  .slide-heading2 {
+    @apply leading-tight m-0 mb-6 break-normal text-8xl hyphens-none leading-103p;
+    font-family: var(--font-inter);
+  }
+
+  .slide-content {
+    color: hsl(var(--slide-content-text));
   }
 }

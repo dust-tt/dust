@@ -109,25 +109,6 @@ export function SlideshowPreviewSidebar({
   );
 }
 
-// Internal Grid logic.
-
-const Grid = ({
-  cols = 6,
-  className = "",
-  children,
-}: {
-  cols?: number;
-  className?: string;
-  children: React.ReactNode;
-}) => (
-  <div
-    className={`grid gap-6 ${className}`}
-    style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}
-  >
-    {children}
-  </div>
-);
-
 // Exposed components.
 
 type SlideProps = PropsWithChildren<{
@@ -154,20 +135,21 @@ export function Slide({
       )}
       style={{ fontFamily: "var(--font-inter)" }}
     >
-      {isPreview ? (
-        <div className="p-2 w-full h-full" style={{ fontSize: "0.4em" }}>
-          {children}
-        </div>
-      ) : (
-        <div
-          className={cn(
-            "w-full",
-            variant === "top" ? "slide-top-padding" : "slide-centered-padding"
-          )}
-        >
-          {children}
-        </div>
-      )}
+      <div
+        className={cn(
+          "w-full flex-1 min-h-0",
+          "grid grid-cols-6 [grid-template-rows:repeat(4,_auto)] gap-y-16 gap-x-4 pb-4",
+          variant === "top" ? "slide-top-padding" : "slide-centered-padding"
+        )}
+      >
+        {isPreview ? (
+          <div className="p-4 w-full h-full" style={{ fontSize: "0.4em" }}>
+            {children}
+          </div>
+        ) : (
+          children
+        )}
+      </div>
     </div>
   );
 }
@@ -199,6 +181,13 @@ function validateSlideChildren(
     "Slideshow.Slide.TitleTopH2",
     "Slideshow.Slide.BulletsOnly",
     "Slideshow.Slide.Quote",
+    "Slideshow.Slide.Columns",
+    "Slideshow.Slide.Columns2",
+    "Slideshow.Slide.Columns3",
+    "Slideshow.Slide.Columns4",
+    "Slideshow.Slide.BulletList",
+    "Slideshow.Slide.BulletItem",
+    "Slideshow.Slide.SlideWithChart",
   ]);
 
   const invalidChildren = childArray.filter((child) => {
@@ -328,7 +317,7 @@ export const Title = ({
 }: PropsWithChildren<{ className?: string }>) => (
   <h1
     className={cn(
-      "slide-title font-semibold leading-tight m-0 mb-6 w-3/5 break-normal hyphens-none",
+      "slide-title font-semibold leading-96p m-0 mb-6 break-normal hyphens-none",
       className
     )}
     style={{ fontFamily: "var(--font-inter)" }}
@@ -360,12 +349,36 @@ export const Heading3 = ({
   </h3>
 );
 
-export const Text = ({
+export const TextBody1 = ({
   children,
   className,
 }: PropsWithChildren<{ className?: string }>) => (
   <p
-    className={cn("font-normal text-5xl m-0", className)}
+    className={cn("font-normal text-5xl leading-123p m-0", className)}
+    style={{ fontFamily: "var(--font-inter)" }}
+  >
+    {children}
+  </p>
+);
+
+export const TextBody2 = ({
+  children,
+  className,
+}: PropsWithChildren<{ className?: string }>) => (
+  <p
+    className={cn("font-normal text-4xl leading-123p m-0", className)}
+    style={{ fontFamily: "var(--font-inter)" }}
+  >
+    {children}
+  </p>
+);
+
+export const TextBody3 = ({
+  children,
+  className,
+}: PropsWithChildren<{ className?: string }>) => (
+  <p
+    className={cn("font-normal text-2xl leading-140p m-0", className)}
     style={{ fontFamily: "var(--font-inter)" }}
   >
     {children}
@@ -392,7 +405,7 @@ export const Cover = ({
     className={cn(`slide-cover-${theme}`, className)}
     isPreview={isPreview}
   >
-    <Slideshow.Title>{title}</Slideshow.Title>
+    <Slideshow.Title className="col-span-4 row-span-2">{title}</Slideshow.Title>
   </Slide>
 );
 Cover.displayName = "Slideshow.Slide.Cover";
@@ -419,7 +432,7 @@ export const Bullets = ({
         {items.map((item, index) => (
           <li key={index} className="flex items-start">
             <span className="text-2xl mr-4 mt-1 opacity-60">•</span>
-            <Text className="flex-1">{item}</Text>
+            <TextBody1 className="flex-1">{item}</TextBody1>
           </li>
         ))}
       </ul>
@@ -453,11 +466,23 @@ Split.displayName = "Slideshow.Slide.Split";
 type FullProps = PropsWithChildren<{
   className?: string;
   isPreview?: boolean;
+  theme?: "light" | "dark";
 }>;
 
-export const Full = ({ children, className, isPreview = false }: FullProps) => (
-  <Slide variant="top" className={className} isPreview={isPreview}>
-    <div className="h-full flex flex-col space-y-6">{children}</div>
+export const Full = ({
+  children,
+  className,
+  isPreview = false,
+  theme = "light",
+}: FullProps) => (
+  <Slide
+    variant="top"
+    className={cn(`slide-cover-${theme}`, className)}
+    isPreview={isPreview}
+  >
+    <Col span={6} rowSpan={4} className="w-full h-full">
+      {children}
+    </Col>
   </Slide>
 );
 Full.displayName = "Slideshow.Slide.Full";
@@ -503,10 +528,12 @@ export const TitleTop = ({
     className={cn(`slide-cover-${theme}`, className)}
     isPreview={isPreview}
   >
-    <div className="space-y-8">
-      <Heading1>{title}</Heading1>
-      {children && <div className="slide-content">{children}</div>}
-    </div>
+    <Heading1 className="col-span-4 row-span-1">{title}</Heading1>
+    {children && (
+      <div className="slide-content row-start-3 col-start-2 row-span-2 col-span-3">
+        {children}
+      </div>
+    )}
   </Slide>
 );
 TitleTop.displayName = "Slideshow.Slide.TitleTop";
@@ -531,13 +558,173 @@ export const TitleTopH2 = ({
     className={cn(`slide-cover-${theme}`, className)}
     isPreview={isPreview}
   >
-    <div className="space-y-8">
-      <Heading2>{title}</Heading2>
-      {children && <div className="slide-content">{children}</div>}
-    </div>
+    <Heading2 className="col-span-4 row-span-1">{title}</Heading2>
+    {children && (
+      <div className="slide-content row-start-3 col-start-2 row-span-2 col-span-3">
+        {children}
+      </div>
+    )}
   </Slide>
 );
 TitleTopH2.displayName = "Slideshow.Slide.TitleTopH2";
+
+export const Col = ({
+  span = 1,
+  rowSpan = 1,
+  offset = 0,
+  children,
+  className,
+  rowStart,
+}: PropsWithChildren<{
+  span?: number;
+  rowSpan?: number;
+  offset?: number;
+  className?: string;
+  rowStart?: number;
+}>) => (
+  <div
+    style={{
+      gridColumn: offset ? `${offset + 1} / span ${span}` : `span ${span}`,
+      gridRow: rowStart ? `${rowStart} / span ${rowSpan}` : `span ${rowSpan}`,
+    }}
+    className={className}
+  >
+    {children}
+  </div>
+);
+
+const BASE_COLS = 6;
+
+type ColumnsProps = PropsWithChildren<{
+  title?: string;
+  description?: string;
+  theme?: "light" | "dark";
+  className?: string;
+  max?: 4 | 3 | 2; // set by Columns3, Columns4 etc.
+  isPreview?: boolean;
+}>;
+
+export const Columns = ({
+  children,
+  className,
+  title,
+  description,
+  theme = "light",
+  max,
+  isPreview = false,
+}: ColumnsProps) => {
+  const items = React.Children.toArray(children).slice(0, max ?? 999);
+  const cols = max ?? items.length;
+
+  return (
+    <Slide
+      variant="top"
+      className={cn(`slide-cover-${theme}`, className)}
+      isPreview={isPreview}
+    >
+      {title && (
+        <Col span={4}>
+          <Heading2>{title}</Heading2>
+        </Col>
+      )}
+      {description && (
+        <Col span={5}>
+          <TextBody2 className="slide-content">{description}</TextBody2>
+        </Col>
+      )}
+
+      {items.map((el, i) => (
+        <Col key={i} span={Math.floor(BASE_COLS / cols)} rowSpan={2}>
+          {el}
+        </Col>
+      ))}
+    </Slide>
+  );
+};
+Columns.displayName = "Slideshow.Slide.Columns";
+
+/* Aliases ------------------------------------------------------ */
+const Columns2 = (props: ColumnsProps) => <Columns {...props} max={2} />;
+Columns2.displayName = "Slideshow.Slide.Columns2";
+const Columns3 = (props: ColumnsProps) => <Columns {...props} max={3} />;
+Columns3.displayName = "Slideshow.Slide.Columns3";
+const Columns4 = (props: ColumnsProps) => <Columns {...props} max={4} />;
+Columns4.displayName = "Slideshow.Slide.Columns4";
+
+type ItemProps = PropsWithChildren<{ heading: string; className?: string }>;
+
+export const Item = ({ heading, children, className }: ItemProps) => (
+  <div className={cn("space-y-3", className)}>
+    <Col span={4}>
+      <Slideshow.TextBody1>{heading}</Slideshow.TextBody1>
+    </Col>
+    {/* leave children untouched so callers can pass ANY markup */}
+    {typeof children === "string" || typeof children === "number" ? (
+      <Slideshow.TextBody2 className="slide-content">
+        {children}
+      </Slideshow.TextBody2>
+    ) : (
+      <div className="slide-content">{children}</div>
+    )}
+  </div>
+);
+
+const BulletList = ({
+  children,
+  className,
+}: PropsWithChildren<{ className?: string }>) => (
+  <ul className={cn("list-disc pl-4 ml-4 space-y-1 slide-content", className)}>
+    {children}
+  </ul>
+);
+BulletList.displayName = "Slideshow.Slide.BulletList";
+
+const BulletItem = ({ children }: PropsWithChildren) => (
+  <li>
+    <TextBody3>{children}</TextBody3>
+  </li>
+);
+BulletItem.displayName = "Slideshow.Slide.BulletItem";
+
+const SlideWithChart = ({
+  children,
+  className,
+  theme = "light",
+  title,
+  isPreview = false,
+  description,
+}: PropsWithChildren<{
+  className?: string;
+  title: string;
+  theme?: "light" | "dark";
+  isPreview?: boolean;
+  description?: string;
+}>) => (
+  <Slide
+    variant="top"
+    className={cn(`slide-cover-${theme}`, className)}
+    isPreview={isPreview}
+  >
+    {/* Title – row 1, cols 1-2 */}
+    <Col span={2} rowSpan={1} rowStart={1}>
+      <Heading2>{title}</Heading2>
+    </Col>
+
+    {/* Spacer – row 2, cols 1-2 (keeps blank line) */}
+    <Col span={2} rowSpan={1} rowStart={2} />
+
+    {/* Description – row 3, cols 1-2 */}
+    <Col span={2} rowSpan={1} rowStart={3}>
+      <TextBody2 className="slide-content">{description}</TextBody2>
+    </Col>
+
+    {/* Chart – columns 3-6, rows 1-4  */}
+    <Col span={4} rowSpan={4} offset={2} className="flex items-center">
+      {children}
+    </Col>
+  </Slide>
+);
+SlideWithChart.displayName = "Slideshow.Slide.SlideWithChart";
 
 interface BulletsOnlyProps {
   className?: string;
@@ -556,7 +743,7 @@ export const BulletsOnly = ({
         {items.map((item, index) => (
           <li key={index} className="flex items-start">
             <span className="text-3xl mr-6 mt-1 opacity-60">•</span>
-            <Text className="flex-1">{item}</Text>
+            <TextBody1 className="flex-1">{item}</TextBody1>
           </li>
         ))}
       </ul>
@@ -619,7 +806,16 @@ export const Slideshow = {
     TitleCentered,
     TitleTop,
     TitleTopH2,
+    Columns,
+    Columns2,
+    Columns3,
+    Columns4,
+    Item,
+    BulletList,
+    BulletItem,
+    SlideWithChart,
   },
-  Text,
+  TextBody1,
+  TextBody2,
   Title,
 };
