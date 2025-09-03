@@ -9,7 +9,7 @@ import type { FolderUpdatesSignal } from "@connectors/connectors/microsoft/tempo
 import { folderUpdatesSignal } from "@connectors/connectors/microsoft/temporal/signal";
 import {
   fullSyncWorkflow,
-  incrementalSyncWorkflow,
+  incrementalSyncWorkflowV2,
   microsoftFullSyncWorkflowId,
   microsoftGarbageCollectionWorkflow,
   microsoftIncrementalSyncWorkflowId,
@@ -108,7 +108,7 @@ export async function launchMicrosoftIncrementalSyncWorkflow(
 
   try {
     await terminateWorkflow(workflowId);
-    await client.workflow.start(incrementalSyncWorkflow, {
+    await client.workflow.start(incrementalSyncWorkflowV2, {
       args: [{ connectorId }],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
