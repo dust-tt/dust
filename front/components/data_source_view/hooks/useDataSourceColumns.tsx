@@ -102,9 +102,13 @@ export const useDataSourceColumns = () => {
                   }
                 }
 
-                state
-                  ? selectCurrentNavigationEntry()
-                  : removeCurrentNavigationEntry();
+                if (isUnselectingPartial) {
+                  removeCurrentNavigationEntry();
+                } else {
+                  state
+                    ? selectCurrentNavigationEntry()
+                    : removeCurrentNavigationEntry();
+                }
               }}
             />
           );
@@ -138,20 +142,21 @@ export const useDataSourceColumns = () => {
                   }
 
                   if (selectionState === "partial") {
-                    // User confirmed they want to unselect all
                     removeNode(row.original.entry);
                   } else if (state) {
-                    // User wants to select
                     selectNode(row.original.entry);
                   } else {
-                    // User wants to unselect - show confirmation
-                    const confirmed = await confirm({
-                      title: "Are you sure?",
-                      message: `Do you want to unselect "${navigationHistoryEntryTitle(row.original.entry)}"?`,
-                      validateLabel: "Unselect",
-                      validateVariant: "warning",
-                    });
-                    if (confirmed) {
+                    if (row.original.entry.type === "data_source") {
+                      const confirmed = await confirm({
+                        title: "Are you sure?",
+                        message: `Do you want to unselect "${navigationHistoryEntryTitle(row.original.entry)}"?`,
+                        validateLabel: "Unselect",
+                        validateVariant: "warning",
+                      });
+                      if (confirmed) {
+                        removeNode(row.original.entry);
+                      }
+                    } else {
                       removeNode(row.original.entry);
                     }
                   }
