@@ -176,6 +176,7 @@ export async function fullSyncWorkflow({
   }
 }
 
+// Legacy workflow, use incrementalSyncWorkflowV2 instead from now on.
 export async function incrementalSyncWorkflow({
   connectorId,
 }: {
