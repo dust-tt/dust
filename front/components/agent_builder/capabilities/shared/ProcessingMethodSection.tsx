@@ -119,7 +119,7 @@ export function ProcessingMethodSection() {
   }, [mcpServerViewsWithKnowledge, sources.in, mcpServerView]);
 
   useEffect(() => {
-    if (serversToDisplay && sources.in.length > 0) {
+    if (serversToDisplay && sources.in.length > 0 && !mcpServerView) {
       const allTablesOrDatabases = sources.in.every(
         isRemoteDatabaseOrTableItem
       );
